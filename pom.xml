@@ -11,7 +11,7 @@
 
     <name>llamacpp-ai-index-maven-plugin</name>
     <description>Free Maven plugin for hierarchical AI-readable indexing and summarization of source code projects using llama.cpp-compatible local models.</description>
-    <url>https://github.com/ladenthin/llamacpp-ai-index-maven-plugin</url>
+    <url>https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin</url>
 
     <licenses>
         <license>
@@ -29,9 +29,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/ladenthin/llamacpp-ai-index-maven-plugin.git</connection>
-        <developerConnection>scm:git:ssh://github.com/ladenthin/llamacpp-ai-index-maven-plugin.git</developerConnection>
-        <url>https://github.com/ladenthin/llamacpp-ai-index-maven-plugin</url>
+        <connection>scm:git:https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin.git</connection>
+        <developerConnection>scm:git:https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin.git</developerConnection>
+        <url>https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin</url>
     </scm>
 
     <issueManagement>
@@ -186,6 +186,45 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                                <configuration>
+                                    <keyname>${gpg.keyname}</keyname>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.10.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>ai-index-selftest</id>
             <build>
