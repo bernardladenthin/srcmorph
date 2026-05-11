@@ -35,6 +35,19 @@ Represents a document consisting of a structured metadata header and a markdown 
 - Java 21+
 - Maven 3.6+
 - Local GGUF model (llama.cpp compatible)
+
+## Dependency
+
+The plugin depends on [`net.ladenthin:llama`](https://central.sonatype.com/artifact/net.ladenthin/llama), the Java/JNI binding for llama.cpp.
+It is published on Maven Central and resolves automatically — no manual installation required.
+
+```xml
+<dependency>
+    <groupId>net.ladenthin</groupId>
+    <artifactId>llama</artifactId>
+    <version>5.0.0</version>
+</dependency>
+```
 ## Configuration
 Minimal setup in POM:
 ```
