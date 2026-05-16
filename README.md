@@ -1,7 +1,18 @@
-**Build:** ![Java 8+](https://img.shields.io/badge/Java-8%2B-informational) [![Publish](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml/badge.svg)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml) [![CodeQL](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/codeql.yml/badge.svg)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/codeql.yml)  
-**Coverage:** [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin?branch=main) [![codecov](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-**Package:** [![Maven Central](https://img.shields.io/maven-central/v/net.ladenthin/llamacpp-ai-index-maven-plugin)](https://central.sonatype.com/artifact/net.ladenthin/llamacpp-ai-index-maven-plugin) [![Snapshot](https://img.shields.io/badge/snapshot-latest-informational)](https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/llamacpp-ai-index-maven-plugin/)  
-**License:** [![License](https://img.shields.io/badge/License-Apache%202.0-orange)](./LICENSE)
+**Build:**  
+![Java 8+](https://img.shields.io/badge/Java-8%2B-informational)  
+[![Publish](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml/badge.svg)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
+[![CodeQL](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/codeql.yml/badge.svg)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/codeql.yml)  
+
+**Coverage:**  
+[![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin?branch=main)  
+[![codecov](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
+
+**Package:**  
+[![Maven Central](https://img.shields.io/maven-central/v/net.ladenthin/llamacpp-ai-index-maven-plugin)](https://central.sonatype.com/artifact/net.ladenthin/llamacpp-ai-index-maven-plugin)  
+[![Snapshot](https://img.shields.io/badge/snapshot-latest-informational)](https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/llamacpp-ai-index-maven-plugin/)  
+
+**License:**  
+[![License](https://img.shields.io/badge/License-Apache%202.0-orange)](./LICENSE)
 
 # llamacpp-ai-index-maven-plugin
 A Maven plugin for generating hierarchical, AI-readable documentation of source code projects using local llama.cpp-compatible models.
