@@ -1,0 +1,30 @@
+version = 1
+SPDX-PackageName = "llamacpp-ai-index-maven-plugin"
+SPDX-PackageSupplier = "Bernard Ladenthin <bernard.ladenthin@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin"
+
+[[annotations]]
+path = [
+    "**.md",
+    "CITATION.cff",
+    "src/site/ai/empty.md",
+    "docs/RELEASE.md",
+    ".github/ISSUE_TEMPLATE/bug_report.md",
+    ".github/ISSUE_TEMPLATE/feature_request.md",
+    ".github/PULL_REQUEST_TEMPLATE.md",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "HuggingFaceTB"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "LICENSE"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
+SPDX-License-Identifier = "Apache-2.0"
