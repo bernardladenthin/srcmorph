@@ -51,7 +51,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
-        <maven.version>3.9.15</maven.version>
+        <maven.version>3.9.16</maven.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
 
