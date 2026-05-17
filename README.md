@@ -7,15 +7,28 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 
+**Security:**  
+[![Known Vulnerabilities](https://snyk.io/test/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/bernardladenthin/llamacpp-ai-index-maven-plugin?targetFile=pom.xml)  
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbernardladenthin%2Fllamacpp-ai-index-maven-plugin.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbernardladenthin%2Fllamacpp-ai-index-maven-plugin?ref=badge_shield)  
+[![Dependencies](https://img.shields.io/librariesio/github/bernardladenthin/llamacpp-ai-index-maven-plugin)](https://libraries.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin)  
+
 **Package:**  
 [![Maven Central](https://img.shields.io/maven-central/v/net.ladenthin/llamacpp-ai-index-maven-plugin)](https://central.sonatype.com/artifact/net.ladenthin/llamacpp-ai-index-maven-plugin)  
 [![Snapshot](https://img.shields.io/badge/snapshot-latest-informational)](https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/llamacpp-ai-index-maven-plugin/)  
+![Release Date](https://img.shields.io/github/release-date/bernardladenthin/llamacpp-ai-index-maven-plugin)  
+![Last Commit](https://img.shields.io/github/last-commit/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 
 **License:**  
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange)](./LICENSE)  
 
 **Community:**  
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12863/badge)](https://www.bestpractices.dev/projects/12863)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12863/badge)](https://www.bestpractices.dev/projects/12863)  
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/badge)](https://scorecard.dev/viewer/?uri=github.com/bernardladenthin/llamacpp-ai-index-maven-plugin)  
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-success?logo=dependabot)](./.github/dependabot.yml)  
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://www.conventionalcommits.org/en/v1.0.0/)  
+[![Keep a Changelog](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-blue)](https://keepachangelog.com/en/1.1.0/)  
+[![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)  
+[![REUSE](https://api.reuse.software/badge/github.com/bernardladenthin/llamacpp-ai-index-maven-plugin)](https://api.reuse.software/info/github.com/bernardladenthin/llamacpp-ai-index-maven-plugin)
 
 # llamacpp-ai-index-maven-plugin
 A Maven plugin for generating hierarchical, AI-readable documentation of source code projects using local llama.cpp-compatible models.
