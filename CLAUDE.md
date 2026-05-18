@@ -11,7 +11,7 @@ This document provides guidance for AI assistants working on the llamacpp-ai-ind
 - **Group ID:** `net.ladenthin`
 - **Artifact ID:** `llamacpp-ai-index-maven-plugin`
 - **Version:** 0.1.0-SNAPSHOT
-- **Java:** 21
+- **Java:** target bytecode 1.8, built with JDK 21
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)
 - **Plugin goal prefix:** `ai-index`
@@ -46,7 +46,7 @@ mvn install
 
 ### JVM / Compiler Configuration
 
-- Java 21 source and target
+- Java 1.8 source and target (compiled with JDK 21)
 - UTF-8 encoding
 - `maven-enforcer-plugin` requires Maven ≥ 3.6.3
 
@@ -72,11 +72,11 @@ CP=$(find ~/.m2/repository -name "*.jar" | tr '\n' ':')
 OUT=/tmp/aiindex-classes && mkdir -p "$OUT"
 
 # Compile production sources
-find src/main/java -name "*.java" | xargs javac -cp "$CP" -d "$OUT" --release 21
+find src/main/java -name "*.java" | xargs javac -cp "$CP" -d "$OUT" --release 8
 
 # Compile test sources (after production classes are compiled)
 TOUT=/tmp/aiindex-test-classes && mkdir -p "$TOUT"
-find src/test/java -name "*.java" | xargs javac -cp "$CP:$OUT" -d "$TOUT" --release 21
+find src/test/java -name "*.java" | xargs javac -cp "$CP:$OUT" -d "$TOUT" --release 8
 ```
 
 Zero compiler output means zero errors.

@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
         with:
-          java-version: '8'
+          java-version: '21'
           distribution: temurin
           cache: maven
       - name: Build
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
         with:
-          java-version: '8'
+          java-version: '21'
           distribution: temurin
           cache: maven
       - name: Test
@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
-        with: { java-version: '8', distribution: temurin }
+        with: { java-version: '21', distribution: temurin }
       - uses: actions/download-artifact@v8
         with: { name: jacoco-report, path: target/site/jacoco/ }
         continue-on-error: true
@@ -145,7 +145,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
         with:
-          java-version: '8'
+          java-version: '21'
           distribution: temurin
           cache: maven
           server-id: central
@@ -169,7 +169,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
         with:
-          java-version: '8'
+          java-version: '21'
           distribution: temurin
           cache: maven
           server-id: central
