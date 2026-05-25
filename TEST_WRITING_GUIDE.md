@@ -40,16 +40,16 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 | Concern | Choice |
 |---|---|
-| Test runner | JUnit 4 (`@Test`, `@Before`, `@Rule`, etc.) |
-| Parameterized tests | `com.tngtech.java.junit.dataprovider` (`@RunWith(DataProviderRunner.class)`, `@UseDataProvider`) |
+| Test runner | JUnit Jupiter (`@Test`, `@BeforeEach`, `@TempDir`, etc.) from `org.junit.jupiter.api.*` |
+| Parameterized tests | `@ParameterizedTest` + `@MethodSource` / `@ValueSource` / `@CsvSource` |
 | Assertions | Hamcrest only — `assertThat(actual, is(equalTo(expected)))` |
 | Mocking | Mockito (`mock()`, `verify()`, `when()`, `ArgumentCaptor`) |
-| Temp file system | `Files.createTempDirectory(...)` or JUnit `@Rule public TemporaryFolder folder = new TemporaryFolder()` |
+| Temp file system | `Files.createTempDirectory(...)` or `@TempDir Path folder` (JUnit Jupiter) |
 | Maven logger in tests | `new SystemStreamLog()` or `mock(Log.class)` |
 
 **Do NOT use:**
-- `Assert.assertEquals` / `Assert.assertTrue` / `Assert.assertFalse` from `org.junit.Assert` — use Hamcrest equivalents.
-- TestNG or JUnit 5.
+- `Assertions.assertEquals` / `Assertions.assertTrue` / `Assertions.assertFalse` — use Hamcrest equivalents.
+- TestNG or JUnit 4 (`org.junit.*`).
 
 ---
 
@@ -58,11 +58,10 @@ package net.ladenthin.maven.llamacpp.aiindex;
 ### Class Declaration
 
 ```java
-@RunWith(DataProviderRunner.class)   // only when @UseDataProvider is used in this class
 public class FooTest {
 ```
 
-Omit `@RunWith` if no data providers are used.
+No runner annotation is required — JUnit Jupiter discovers `@Test` and `@ParameterizedTest` methods automatically.
 
 ### Shared Instance Fields
 
@@ -73,26 +72,26 @@ private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
 private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
 ```
 
-Mocks that need fresh state per test are declared at field level but initialized in `@Before`:
+Mocks that need fresh state per test are declared at field level but initialized in `@BeforeEach`:
 
 ```java
 private Log mockLog;
 
-@Before
+@BeforeEach
 public void setUp() {
     mockLog = mock(Log.class);
 }
 ```
 
-An empty `@Before` method should be omitted entirely. Only keep it if it does meaningful work.
+An empty `@BeforeEach` method should be omitted entirely. Only keep it if it does meaningful work.
 
-### TemporaryFolder (file-system tests)
+### TempDir (file-system tests)
 
-Prefer `Files.createTempDirectory(...)` for one-off temp directories within a single test. Use `@Rule public TemporaryFolder` when multiple tests in the same class share the same temporary root.
+Prefer `Files.createTempDirectory(...)` for one-off temp directories within a single test. Use `@TempDir` when multiple tests in the same class share the same temporary root — JUnit Jupiter resolves a fresh directory per test instance.
 
 ```java
-@Rule
-public TemporaryFolder folder = new TemporaryFolder();
+@TempDir
+public Path folder;
 ```
 
 ---
@@ -257,16 +256,16 @@ Do **not** use:
 ### Simple expected exception (no message check needed)
 
 ```java
-@Test(expected = IllegalArgumentException.class)
+@Test
 public void preparePrompt_unsupportedTarget_throwsException() {
-    // act
-    summarizer.someMethod(null);
+    // act / assert
+    assertThrows(IllegalArgumentException.class, () -> summarizer.someMethod(null));
 }
 ```
 
 ### Exception with message verification
 
-Use try/catch when the exception message must be asserted:
+Use `assertThrows` and inspect the returned exception when the message must be asserted:
 
 ```java
 @Test
@@ -274,48 +273,44 @@ public void create_unknownProvider_throwsWithMessage() {
     // arrange
     final AiGenerationProviderFactory factory = new AiGenerationProviderFactory();
 
-    try {
-        // act
-        factory.create("unknown-provider", config, promptSupport);
-        fail("Expected IllegalArgumentException");
-    } catch (IllegalArgumentException e) {
-        // assert
-        assertThat(e.getMessage(), containsString("unknown-provider"));
-    }
+    // act
+    final IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+            () -> factory.create("unknown-provider", config, promptSupport));
+
+    // assert
+    assertThat(e.getMessage(), containsString("unknown-provider"));
 }
 ```
 
 ---
 
-## 9. Data Providers (Parameterized Tests)
+## 9. Parameterized Tests
 
-When multiple test cases share the same test logic with different inputs, use `junit-dataprovider`:
+When multiple test cases share the same test logic with different inputs, use JUnit Jupiter's `@ParameterizedTest` with a `@MethodSource`:
 
 ```java
-// 1. Constant for the provider name
-public static final String DATA_PROVIDER_NODE_TYPES = "nodeTypes";
+// 1. Constant for the source method name
+public static final String SOURCE_NODE_TYPES = "nodeTypes";
 
 // 2. Javadoc linking to which test it serves
 /**
  * For {@link AiMdHeaderCodecTest}.
  */
-@DataProvider
-public static Object[][] nodeTypes() {
-    return new Object[][] {
-        { AiMdHeaderCodec.NODE_TYPE_FILE },
-        { AiMdHeaderCodec.NODE_TYPE_PACKAGE },
-    };
+static Stream<String> nodeTypes() {
+    return Stream.of(
+            AiMdHeaderCodec.NODE_TYPE_FILE,
+            AiMdHeaderCodec.NODE_TYPE_PACKAGE
+    );
 }
 ```
 
-Consuming a provider:
+Consuming a source:
 
 ```java
-@RunWith(DataProviderRunner.class)
 public class AiMdHeaderCodecTest {
 
-    @Test
-    @UseDataProvider(value = CommonDataProvider.DATA_PROVIDER_NODE_TYPES, location = CommonDataProvider.class)
+    @ParameterizedTest
+    @MethodSource("nodeTypes")
     public void roundtrip_validNodeType_preservesValue(final String nodeType) {
         // arrange
         final AiMdHeader header = buildHeader(nodeType);
@@ -329,6 +324,9 @@ public class AiMdHeaderCodecTest {
     }
 }
 ```
+
+For sources shared across multiple test classes, reference a fully-qualified method:
+`@MethodSource("net.ladenthin.maven.llamacpp.aiindex.CommonDataProvider#nodeTypes")`.
 
 ---
 
@@ -506,7 +504,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.maven.plugin.logging.SystemStreamLog;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class SourceFileIndexerTest {
 

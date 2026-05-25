@@ -7,16 +7,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 
 public class AiMdHeaderSupportTest {
 
-    @Rule
-    public TemporaryFolder folder = new TemporaryFolder();
+    @TempDir
+    public Path folder;
 
     private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
     private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
@@ -61,7 +60,7 @@ public class AiMdHeaderSupportTest {
     @Test
     public void shouldWrite_fileDoesNotExist_returnsTrue() throws IOException {
         // arrange
-        final Path target = folder.getRoot().toPath().resolve("test.ai.md");
+        final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader(FIXED_CHECKSUM, FIXED_G);
 
         // act
@@ -74,7 +73,7 @@ public class AiMdHeaderSupportTest {
     @Test
     public void shouldWrite_matchingExistingHeaderWithBody_returnsFalse() throws IOException {
         // arrange
-        final Path target = folder.getRoot().toPath().resolve("test.ai.md");
+        final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
         final AiMdDocument document = new AiMdDocument(header, "Existing body content.\n");
         documentCodec.write(target, document);
@@ -89,7 +88,7 @@ public class AiMdHeaderSupportTest {
     @Test
     public void shouldWrite_matchingExistingHeaderEmptyBody_returnsTrue() throws IOException {
         // arrange
-        final Path target = folder.getRoot().toPath().resolve("test.ai.md");
+        final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
         // write document with blank body to simulate a previously failed AI generation
         final AiMdDocument document = new AiMdDocument(header, "");
@@ -105,7 +104,7 @@ public class AiMdHeaderSupportTest {
     @Test
     public void shouldWrite_checksumChanged_returnsTrue() throws IOException {
         // arrange
-        final Path target = folder.getRoot().toPath().resolve("test.ai.md");
+        final Path target = folder.resolve("test.ai.md");
         final AiMdHeader original = buildHeader("AAAAAAAA", FIXED_G);
         Files.write(target, headerCodec.write(original).getBytes(StandardCharsets.UTF_8));
 
@@ -121,7 +120,7 @@ public class AiMdHeaderSupportTest {
     @Test
     public void shouldWrite_generatorVersionChanged_returnsTrue() throws IOException {
         // arrange
-        final Path target = folder.getRoot().toPath().resolve("test.ai.md");
+        final Path target = folder.resolve("test.ai.md");
         final AiMdHeader original = buildHeader(FIXED_CHECKSUM, FIXED_G);
         Files.write(target, headerCodec.write(original).getBytes(StandardCharsets.UTF_8));
 
@@ -137,7 +136,7 @@ public class AiMdHeaderSupportTest {
     @Test
     public void shouldWrite_forceEnabled_returnsTrue() throws IOException {
         // arrange
-        final Path target = folder.getRoot().toPath().resolve("test.ai.md");
+        final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader(FIXED_CHECKSUM, FIXED_G);
         Files.write(target, headerCodec.write(header).getBytes(StandardCharsets.UTF_8));
 

@@ -7,8 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
-import org.junit.Assume;
-import org.junit.Test;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.is;
@@ -24,10 +24,10 @@ public class LlamaCppJniAiSummaryProviderTest {
     @Test
     public void generate_realProvider_returnsNonEmptyResponse() throws Exception {
         // arrange — skip if native lib is unavailable or model is missing
-        Assume.assumeTrue("Native llama test disabled. Enable with -DrunNativeLlamaTests=true",
-                Boolean.getBoolean("runNativeLlamaTests"));
-        Assume.assumeTrue("Model file missing: " + MODEL_PATH,
-                Files.exists(Paths.get(MODEL_PATH)));
+        Assumptions.assumeTrue(Boolean.getBoolean("runNativeLlamaTests"),
+                "Native llama test disabled. Enable with -DrunNativeLlamaTests=true");
+        Assumptions.assumeTrue(Files.exists(Paths.get(MODEL_PATH)),
+                "Model file missing: " + MODEL_PATH);
 
         final LlamaCppJniConfig config = new LlamaCppJniConfig(
                 null, MODEL_PATH, 32768, 128, 0.15f, 8,

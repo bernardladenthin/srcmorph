@@ -10,8 +10,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.maven.plugin.logging.SystemStreamLog;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -51,7 +51,7 @@ public class AiFieldGenerationSupportTest {
 
     private WarnCapturingLog capturingLog;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         capturingLog = new WarnCapturingLog();
     }

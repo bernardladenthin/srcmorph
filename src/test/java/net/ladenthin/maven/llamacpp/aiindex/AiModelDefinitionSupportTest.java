@@ -5,12 +5,13 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Arrays;
 import java.util.Collections;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AiModelDefinitionSupportTest {
 
@@ -90,13 +91,13 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.isChatTemplateEnableThinking(), is(AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void getConfig_unknownKey_throwsException() {
         // arrange
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Collections.<AiModelDefinition>emptyList());
 
-        // act
-        support.getConfig("unknown-key");
+        // act / assert
+        assertThrows(IllegalArgumentException.class, () -> support.getConfig("unknown-key"));
     }
 
     @Test
