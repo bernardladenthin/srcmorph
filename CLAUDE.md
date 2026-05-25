@@ -244,7 +244,7 @@ k: "parser,codec,markdown"
 
 ### Frameworks
 
-- **JUnit Jupiter** (5.11.4) — test runner (`@Test`, `@BeforeEach`, `@TempDir`)
+- **JUnit Jupiter** (6.1.0) — test runner (`@Test`, `@BeforeEach`, `@TempDir`)
 - **Hamcrest** — matchers (`assertThat`, `is`, `equalTo`)
 - **`MockAiGenerationProvider`** — deterministic AI responses for all tests
 
@@ -312,7 +312,7 @@ Test-only:
 
 | Dependency | Version | Purpose |
 |---|---|---|
-| `org.junit.jupiter:junit-jupiter` | 5.11.4 | Test runner |
+| `org.junit.jupiter:junit-jupiter` | 6.1.0 | Test runner |
 | `org.hamcrest:hamcrest` | 3.0 | Matchers |
 
 ---
