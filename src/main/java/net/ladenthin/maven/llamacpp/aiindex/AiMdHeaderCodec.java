@@ -12,7 +12,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/** Reads and writes the metadata header section of an {@code .ai.md} document. */
 public class AiMdHeaderCodec {
+
+    /** Creates a new {@link AiMdHeaderCodec}. */
+    public AiMdHeaderCodec() {
+        // no-op
+    }
 
     /**
      * Prefix used for the title line in every AI index document header.
@@ -95,6 +101,12 @@ public class AiMdHeaderCodec {
 
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
+    /**
+     * Parses an {@link AiMdHeader} from the given header lines.
+     *
+     * @param lines lines that include the title and key-value field lines
+     * @return parsed header (missing fields default to the empty string)
+     */
     public AiMdHeader read(final List<String> lines) {
         String title = null;
         final Map<String, String> values = new HashMap<>(lines.size());
@@ -131,6 +143,12 @@ public class AiMdHeaderCodec {
         );
     }
 
+    /**
+     * Renders the given header to its serialised string form.
+     *
+     * @param header header to serialise
+     * @return serialised header text
+     */
     public String write(final AiMdHeader header) {
         return compatibilityHelper.formatted("### %s\n" +
                 "- H: %s\n" +
@@ -156,6 +174,13 @@ public class AiMdHeaderCodec {
         return value != null ? value : "";
     }
 
+    /**
+     * Reads an {@link AiMdHeader} from a file.
+     *
+     * @param file path to the {@code .ai.md} file to read
+     * @return parsed header
+     * @throws IOException if the file cannot be read
+     */
     public AiMdHeader read(final Path file) throws IOException {
         return read(Files.readAllLines(file, StandardCharsets.UTF_8));
     }

@@ -14,6 +14,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * {@link AiGenerationProvider} implementation backed by the {@code net.ladenthin:llama}
+ * JNI binding, running GGUF models locally via llama.cpp.
+ */
 public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoCloseable {
 
     private final LlamaCppJniConfig config;
@@ -21,6 +25,12 @@ public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoC
     private final AiPromptSupport promptSupport;
     private final AiResponseNormalizer responseNormalizer = new AiResponseNormalizer();
 
+    /**
+     * Creates a new {@link LlamaCppJniAiSummaryProvider} and loads the configured GGUF model.
+     *
+     * @param config        llama.cpp configuration
+     * @param promptSupport prompt lookup used to render request prompts
+     */
     public LlamaCppJniAiSummaryProvider(
             final LlamaCppJniConfig config,
             final AiPromptSupport promptSupport

@@ -13,6 +13,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
+/**
+ * Walks the configured source subtrees, creates per-file {@code .ai.md} index files,
+ * and fills in their AI-generated summary and keyword fields.
+ */
 public class SourceFileIndexer {
 
     /**
@@ -41,6 +45,22 @@ public class SourceFileIndexer {
 
     private final AiFieldGenerationSupport fieldGenerationSupport;
 
+    /**
+     * Creates a new {@link SourceFileIndexer}.
+     *
+     * @param log                    Maven plugin logger
+     * @param baseDirectory          project base directory
+     * @param outputRoot             root directory in which {@code .ai.md} files are written
+     * @param fileExtensions         file extensions to index; {@code null} means all files
+     * @param pluginVersion          plugin version recorded in headers
+     * @param aiVersion              AI summarisation logic version recorded in headers
+     * @param subtrees               source subtrees in scope; may be {@code null}
+     * @param force                  when {@code true}, regenerate even when fields are populated
+     * @param generationProvider     AI provider used to generate fields
+     * @param fieldGenerations       field generation configurations; may be {@code null}
+     * @param promptSupport          prompt lookup
+     * @param modelDefinitionSupport AI model definition lookup
+     */
     public SourceFileIndexer(
             final Log log,
             final Path baseDirectory,
@@ -69,6 +89,13 @@ public class SourceFileIndexer {
                 modelDefinitionSupport);
     }
 
+    /**
+     * Indexes every matching file beneath {@code sourceRoot}.
+     *
+     * @param sourceRoot source root directory to walk
+     * @return number of source-file index files written or refreshed
+     * @throws IOException if a file cannot be read or written
+     */
     public int indexSourceRoot(final Path sourceRoot) throws IOException {
         int count = 0;
 

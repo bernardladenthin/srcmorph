@@ -19,6 +19,11 @@ import java.io.IOException;
  */
 public class AiResponseNormalizer {
 
+    /** Creates a new {@link AiResponseNormalizer}. */
+    public AiResponseNormalizer() {
+        // no-op
+    }
+
     /**
      * Token that opens a Gemma-4 thinking block.
      * The model emits {@code <|channel>thought\n[reasoning]<channel|>[final answer]};

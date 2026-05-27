@@ -25,6 +25,11 @@ import java.util.List;
  */
 public abstract class AbstractAiIndexMojo extends AbstractMojo {
 
+    /** Creates a new {@link AbstractAiIndexMojo}. */
+    protected AbstractAiIndexMojo() {
+        // no-op
+    }
+
     /** The Maven project base directory, injected by Maven. */
     @Parameter(defaultValue = "${project.basedir}", readonly = true, required = true)
     protected File baseDirectory;
@@ -112,6 +117,8 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * Returns the llama.cpp context window size for this goal.
      * Each concrete mojo declares its own {@code @Parameter}-annotated field and
      * implements this method to return it.
+     *
+     * @return configured llama.cpp context window size
      */
     protected abstract int getLlamaContextSize();
 
@@ -119,6 +126,8 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * Returns the number of CPU threads for llama.cpp inference for this goal.
      * Each concrete mojo declares its own {@code @Parameter}-annotated field and
      * implements this method to return it.
+     *
+     * @return configured number of CPU threads for llama.cpp inference
      */
     protected abstract int getLlamaThreads();
 

@@ -57,6 +57,18 @@ public final class AiMdHeader {
     private final String x;
 
 
+    /**
+     * Creates a new {@link AiMdHeader}.
+     *
+     * @param title display title (typically the file name or package path)
+     * @param h     header format version
+     * @param c     source-state checksum
+     * @param d     source-state timestamp
+     * @param t     generation timestamp of this {@code .ai.md}
+     * @param g     generator/template version
+     * @param a     AI summarisation logic / output schema version
+     * @param x     node type, for example {@code file} or {@code package}
+     */
     public AiMdHeader(String title, String h, String c, String d, String t, String g, String a, String x) {
         Objects.requireNonNull(title, "title");
         Objects.requireNonNull(h, "h");
@@ -76,34 +88,74 @@ public final class AiMdHeader {
         this.x = x;
     }
 
+    /**
+     * Returns the display title.
+     *
+     * @return display title
+     */
     public String title() {
         return title;
     }
 
+    /**
+     * Returns the header format version.
+     *
+     * @return header format version
+     */
     public String h() {
         return h;
     }
 
+    /**
+     * Returns the source-state checksum.
+     *
+     * @return source-state checksum
+     */
     public String c() {
         return c;
     }
 
+    /**
+     * Returns the source-state timestamp.
+     *
+     * @return source-state timestamp
+     */
     public String d() {
         return d;
     }
 
+    /**
+     * Returns the generation timestamp of this {@code .ai.md}.
+     *
+     * @return generation timestamp
+     */
     public String t() {
         return t;
     }
 
+    /**
+     * Returns the generator/template version.
+     *
+     * @return generator/template version
+     */
     public String g() {
         return g;
     }
 
+    /**
+     * Returns the AI summarisation logic version.
+     *
+     * @return AI summarisation logic version
+     */
     public String a() {
         return a;
     }
 
+    /**
+     * Returns the node type ({@code file} or {@code package}).
+     *
+     * @return node type
+     */
     public String x() {
         return x;
     }

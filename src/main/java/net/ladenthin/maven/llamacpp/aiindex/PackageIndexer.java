@@ -14,6 +14,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
+/**
+ * Aggregates {@code package.ai.md} index files: walks the output tree, lists each
+ * package's contents, and fills in AI-generated summary and keyword fields.
+ */
 public class PackageIndexer {
 
     /**
@@ -61,6 +65,21 @@ public class PackageIndexer {
 
     private final AiFieldGenerationSupport fieldGenerationSupport;
 
+    /**
+     * Creates a new {@link PackageIndexer}.
+     *
+     * @param log                    Maven plugin logger
+     * @param baseDirectory          project base directory
+     * @param outputRoot             root directory in which {@code .ai.md} files reside
+     * @param pluginVersion          plugin version recorded in headers
+     * @param aiVersion              AI summarisation logic version recorded in headers
+     * @param sourceSubtrees         source subtrees in scope; may be {@code null}
+     * @param force                  when {@code true}, regenerate even when fields are populated
+     * @param generationProvider     AI provider used to generate fields
+     * @param fieldGenerations       field generation configurations; may be {@code null}
+     * @param promptSupport          prompt lookup
+     * @param modelDefinitionSupport AI model definition lookup
+     */
     public PackageIndexer(
             final Log log,
             final Path baseDirectory,
@@ -88,6 +107,13 @@ public class PackageIndexer {
                 modelDefinitionSupport);
     }
 
+    /**
+     * Aggregates all package directories beneath {@code rootDirectory}.
+     *
+     * @param rootDirectory output root directory to walk
+     * @return number of package index files written or refreshed
+     * @throws IOException if the output tree cannot be read or written
+     */
     public int aggregate(final Path rootDirectory) throws IOException {
         return aggregateRecursive(rootDirectory);
     }

@@ -7,11 +7,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Registry of prompt templates that renders prompt strings for AI generation requests. */
 public class AiPromptSupport {
 
     private final Map<String, String> templates = new HashMap<>();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
+    /**
+     * Creates a new {@link AiPromptSupport} pre-populated with the given definitions.
+     *
+     * @param promptDefinitions prompt definitions to register; may be {@code null}
+     */
     public AiPromptSupport(final List<AiPromptDefinition> promptDefinitions) {
         if (promptDefinitions != null) {
             for (AiPromptDefinition definition : promptDefinitions) {
@@ -22,6 +28,13 @@ public class AiPromptSupport {
         }
     }
 
+    /**
+     * Builds the prompt for the given request.
+     *
+     * @param request request whose prompt key, source file, and source text are used
+     * @return rendered prompt string
+     * @throws IllegalArgumentException if no template is registered for the request's prompt key
+     */
     public String buildPrompt(final AiGenerationRequest request) {
         return buildPrompt(request.promptKey(), request.sourceFile(), request.sourceText());
     }

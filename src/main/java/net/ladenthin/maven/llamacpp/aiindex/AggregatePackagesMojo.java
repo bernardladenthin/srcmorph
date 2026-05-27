@@ -11,8 +11,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
+/**
+ * Maven goal {@code ai-index:aggregate-packages}: aggregates per-package
+ * {@code .ai.md} index files and fills in their AI-generated summary and keyword fields.
+ */
 @Mojo(name = "aggregate-packages", threadSafe = true)
 public class AggregatePackagesMojo extends AbstractAiIndexMojo {
+
+    /** Creates a new {@link AggregatePackagesMojo}. */
+    public AggregatePackagesMojo() {
+        // no-op
+    }
 
     @Parameter(defaultValue = "${project.version}", readonly = true)
     private String pluginVersion;

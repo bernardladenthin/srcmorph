@@ -19,6 +19,11 @@ import java.util.stream.Stream;
  */
 public class Java8CompatibilityHelper {
 
+    /** Creates a new {@link Java8CompatibilityHelper}. */
+    public Java8CompatibilityHelper() {
+        // no-op
+    }
+
     /**
      * Wrapper for {@code String#isBlank()} (Java 11+).
      * Returns {@code true} if the string is empty or contains only whitespace,

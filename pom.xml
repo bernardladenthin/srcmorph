@@ -255,6 +255,9 @@ SPDX-License-Identifier: Apache-2.0
                     <failOnError>true</failOnError>
                     <failOnWarnings>true</failOnWarnings>
                     <doclint>all</doclint>
+                    <sourceFileExcludes>
+                        <sourceFileExclude>**/HelpMojo.java</sourceFileExclude>
+                    </sourceFileExcludes>
                 </configuration>
                 <executions>
                     <execution>

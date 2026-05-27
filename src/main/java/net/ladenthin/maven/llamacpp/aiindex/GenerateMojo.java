@@ -11,8 +11,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
+/**
+ * Maven goal {@code ai-index:generate}: indexes source files and fills in their
+ * AI-generated summary and keyword fields.
+ */
 @Mojo(name = "generate", threadSafe = true)
 public class GenerateMojo extends AbstractAiIndexMojo {
+
+    /** Creates a new {@link GenerateMojo}. */
+    public GenerateMojo() {
+        // no-op
+    }
 
     /**
      * Default file extension used when no explicit {@code fileExtensions} parameter

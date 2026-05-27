@@ -5,12 +5,19 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Objects;
 
+/** Immutable representation of an {@code .ai.md} document consisting of a header and a body. */
 @ConvertToRecord
 public class AiMdDocument {
     private final AiMdHeader header;
     private final String body;
 
 
+    /**
+     * Creates a new {@link AiMdDocument}.
+     *
+     * @param header metadata header
+     * @param body   markdown body text
+     */
     public AiMdDocument(AiMdHeader header, String body) {
         Objects.requireNonNull(header, "header");
         Objects.requireNonNull(body, "body");
@@ -18,10 +25,20 @@ public class AiMdDocument {
         this.body = body;
     }
 
+    /**
+     * Returns the metadata header.
+     *
+     * @return metadata header
+     */
     public AiMdHeader header() {
         return header;
     }
 
+    /**
+     * Returns the markdown body.
+     *
+     * @return markdown body
+     */
     public String body() {
         return body;
     }

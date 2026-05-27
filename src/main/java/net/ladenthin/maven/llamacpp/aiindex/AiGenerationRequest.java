@@ -6,6 +6,11 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.nio.file.Path;
 import java.util.Objects;
 
+/**
+ * Immutable request object passed to an {@link AiGenerationProvider}: identifies the
+ * prompt template, the source file being processed, its current text, and the existing
+ * header (if any).
+ */
 @ConvertToRecord
 public class AiGenerationRequest {
     private final String promptKey;
@@ -14,6 +19,14 @@ public class AiGenerationRequest {
     private final AiMdHeader currentHeader;
 
 
+    /**
+     * Creates a new {@link AiGenerationRequest}.
+     *
+     * @param promptKey     key of the prompt template to use
+     * @param sourceFile    path to the source file being processed
+     * @param sourceText    contents of the source file
+     * @param currentHeader current header of the corresponding {@code .ai.md} file
+     */
     public AiGenerationRequest(String promptKey, Path sourceFile, String sourceText, AiMdHeader currentHeader) {
         Objects.requireNonNull(promptKey, "promptKey");
         Objects.requireNonNull(sourceFile, "sourceFile");
@@ -25,18 +38,38 @@ public class AiGenerationRequest {
         this.currentHeader = currentHeader;
     }
 
+    /**
+     * Returns the prompt template key.
+     *
+     * @return prompt template key
+     */
     public String promptKey() {
         return promptKey;
     }
 
+    /**
+     * Returns the path to the source file.
+     *
+     * @return source file path
+     */
     public Path sourceFile() {
         return sourceFile;
     }
 
+    /**
+     * Returns the source file contents.
+     *
+     * @return source file contents
+     */
     public String sourceText() {
         return sourceText;
     }
 
+    /**
+     * Returns the current header of the corresponding {@code .ai.md} file.
+     *
+     * @return current header
+     */
     public AiMdHeader currentHeader() {
         return currentHeader;
     }

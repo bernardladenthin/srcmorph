@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+/**
+ * Prepares prompts for {@link AiGenerationProvider} calls by substituting the source
+ * text into a template and trimming it at a line boundary so that the prompt fits
+ * within the configured character budget.
+ */
 public class AiPromptPreparationSupport {
 
     /**
@@ -20,10 +25,23 @@ public class AiPromptPreparationSupport {
 
     private final AiPromptSupport promptSupport;
 
+    /**
+     * Creates a new {@link AiPromptPreparationSupport}.
+     *
+     * @param promptSupport prompt lookup used to render templates
+     */
     public AiPromptPreparationSupport(final AiPromptSupport promptSupport) {
         this.promptSupport = promptSupport;
     }
 
+    /**
+     * Prepares the prompt for {@code request}, trimming the source text at a line
+     * boundary when the rendered prompt would exceed {@code maxInputChars}.
+     *
+     * @param request       generation request to prepare a prompt for
+     * @param maxInputChars maximum number of characters allowed in the rendered prompt
+     * @return prepared prompt along with trimming metrics
+     */
     public AiPreparedPrompt preparePrompt(
             final AiGenerationRequest request,
             final int maxInputChars

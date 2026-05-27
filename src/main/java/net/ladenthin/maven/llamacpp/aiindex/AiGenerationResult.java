@@ -18,6 +18,8 @@ public class AiGenerationResult {
     private final String body;
 
     /**
+     * Creates a new {@link AiGenerationResult}.
+     *
      * @param body AI-generated body text destined for {@link AiMdDocument#body()}
      */
     public AiGenerationResult(
@@ -26,6 +28,11 @@ public class AiGenerationResult {
         this.body = body;
     }
 
+    /**
+     * Returns the AI-generated body text.
+     *
+     * @return body text; may be empty if no body field was generated
+     */
     public String body() {
         return body;
     }
