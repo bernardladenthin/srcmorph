@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -319,9 +320,9 @@ public class AiModelDefinition {
     /**
      * Sets the list of stop strings that terminate generation when encountered.
      *
-     * @param stopStrings list of strings; generation stops at the first match
+     * @param stopStrings collection of strings; generation stops at the first match
      */
-    public void setStopStrings(final List<String> stopStrings) {
+    public void setStopStrings(final Collection<String> stopStrings) {
         this.stopStrings = stopStrings != null ? new ArrayList<>(stopStrings) : null;
     }
 }
