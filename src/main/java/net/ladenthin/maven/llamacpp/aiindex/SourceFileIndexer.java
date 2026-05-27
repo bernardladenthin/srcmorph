@@ -8,6 +8,7 @@ import org.apache.maven.plugin.logging.Log;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -56,12 +57,12 @@ public class SourceFileIndexer {
         this.log = log;
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
-        this.fileExtensions = fileExtensions;
+        this.fileExtensions = fileExtensions != null ? new ArrayList<>(fileExtensions) : null;
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
-        this.subtrees = subtrees;
+        this.subtrees = subtrees != null ? new ArrayList<>(subtrees) : null;
         this.force = force;
-        this.fieldGenerations = fieldGenerations;
+        this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
                 log, generationProvider, new AiPromptPreparationSupport(promptSupport),
                 modelDefinitionSupport);
@@ -89,7 +90,11 @@ public class SourceFileIndexer {
     }
 
     private boolean matchesExtension(final Path path) {
-        final String fileName = path.getFileName().toString();
+        final Path fileNamePath = path.getFileName();
+        if (fileNamePath == null) {
+            return false;
+        }
+        final String fileName = fileNamePath.toString();
         for (String extension : fileExtensions) {
             if (fileName.endsWith(extension)) {
                 return true;
@@ -108,9 +113,13 @@ public class SourceFileIndexer {
                 .resolve(relativeToBase.toString() + AiMdHeaderCodec.AI_MD_EXTENSION)
                 .normalize();
 
-        Files.createDirectories(targetFile.getParent());
+        final Path parent = targetFile.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
 
-        final String fileName = sourceFile.getFileName().toString();
+        final Path sourceFileNamePath = sourceFile.getFileName();
+        final String fileName = sourceFileNamePath != null ? sourceFileNamePath.toString() : sourceFile.toString();
         final String checksum = checksumSupport.calculateCrc32Hex(sourceFile);
         final String sourceModified = timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());

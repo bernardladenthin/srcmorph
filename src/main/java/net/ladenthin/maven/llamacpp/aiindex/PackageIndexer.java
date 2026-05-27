@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -78,10 +79,10 @@ public class PackageIndexer {
         this.outputRoot = outputRoot;
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
-        this.sourceSubtrees = sourceSubtrees;
-        this.aiSubtrees = toAiSubtrees(sourceSubtrees);
+        this.sourceSubtrees = sourceSubtrees != null ? new ArrayList<>(sourceSubtrees) : null;
+        this.aiSubtrees = toAiSubtrees(this.sourceSubtrees);
         this.force = force;
-        this.fieldGenerations = fieldGenerations;
+        this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
                 log, generationProvider, new AiPromptPreparationSupport(promptSupport),
                 modelDefinitionSupport);
@@ -135,11 +136,11 @@ public class PackageIndexer {
     }
 
     private List<Path> toAiSubtrees(final List<Path> sourceSubtrees) {
-        final List<Path> result = new ArrayList<>();
         if (sourceSubtrees == null || sourceSubtrees.isEmpty()) {
-            return result;
+            return new ArrayList<>();
         }
 
+        final List<Path> result = new ArrayList<>(sourceSubtrees.size());
         for (Path sourceSubtree : sourceSubtrees) {
             final Path relative = pathSupport.relativizeFromSrc(baseDirectory, sourceSubtree);
             result.add(outputRoot.resolve(relative).normalize());
@@ -221,7 +222,11 @@ public class PackageIndexer {
 
         try (Stream<Path> stream = Files.list(directory)) {
             for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final String name = path.getFileName().toString();
+                final Path fileNamePath = path.getFileName();
+                if (fileNamePath == null) {
+                    continue;
+                }
+                final String name = fileNamePath.toString();
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
@@ -264,12 +269,12 @@ public class PackageIndexer {
      * Does nothing when {@code contents} is empty.
      *
      * @param builder        target string builder
-     * @param contents       list of content entry names
+     * @param contents       collection of content entry names
      * @param prependNewline when {@code true}, a blank line is prepended before the heading
      */
     private void appendContentsSection(
             final StringBuilder builder,
-            final List<String> contents,
+            final Collection<String> contents,
             final boolean prependNewline) {
         if (contents.isEmpty()) {
             return;
@@ -288,12 +293,16 @@ public class PackageIndexer {
 
         try (Stream<Path> stream = Files.list(directory)) {
             for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final String name = path.getFileName().toString();
+                final Path fileNamePath = path.getFileName();
+                if (fileNamePath == null) {
+                    continue;
+                }
+                final String name = fileNamePath.toString();
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
                         builder.append(headerSupport.buildChecksumLine(
-                                path.getFileName().toString(), readChildPackageHeader(path)));
+                                name, readChildPackageHeader(path)));
                     }
                     continue;
                 }
@@ -312,7 +321,11 @@ public class PackageIndexer {
 
         try (Stream<Path> stream = Files.list(directory)) {
             for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final String name = path.getFileName().toString();
+                final Path fileNamePath = path.getFileName();
+                if (fileNamePath == null) {
+                    continue;
+                }
+                final String name = fileNamePath.toString();
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
@@ -366,7 +379,7 @@ public class PackageIndexer {
      * @return {@code true} if the file is a regular content AI index entry
      */
     private boolean isAiMdContentFile(final String name) {
-        return !name.equals(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)
+        return !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name)
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX)
                 && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION);
     }
