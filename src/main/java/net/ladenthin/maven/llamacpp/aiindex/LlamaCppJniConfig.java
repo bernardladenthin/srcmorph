@@ -79,7 +79,7 @@ public class LlamaCppJniConfig {
     }
 
     public List<String> stopStrings() {
-        return stopStrings;
+        return Collections.unmodifiableList(stopStrings);
     }
 
     @Override

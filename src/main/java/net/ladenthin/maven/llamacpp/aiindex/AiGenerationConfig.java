@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class AiGenerationConfig {
@@ -245,7 +246,7 @@ public class AiGenerationConfig {
     }
 
     public List<String> getStopStrings() {
-        return stopStrings;
+        return stopStrings != null ? Collections.unmodifiableList(stopStrings) : null;
     }
 
     public void setStopStrings(final List<String> stopStrings) {

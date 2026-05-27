@@ -11,7 +11,8 @@ public class MockAiGenerationProvider implements AiGenerationProvider {
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
         final Path file = request.sourceFile();
-        final String fileName = file.getFileName().toString();
+        final Path fileNamePath = file.getFileName();
+        final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
         return "Mock summary for " + fileName;
     }
 }
