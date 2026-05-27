@@ -97,7 +97,7 @@ public class AiMdHeaderCodec {
 
     public AiMdHeader read(final List<String> lines) {
         String title = null;
-        final Map<String, String> values = new HashMap<>();
+        final Map<String, String> values = new HashMap<>(lines.size());
 
         for (String line : lines) {
             if (line.startsWith(HEADER_TITLE_PREFIX)) {

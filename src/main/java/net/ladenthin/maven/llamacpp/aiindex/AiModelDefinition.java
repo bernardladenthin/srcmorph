@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -311,7 +313,7 @@ public class AiModelDefinition {
      * @return stop strings, or {@code null} if not configured
      */
     public List<String> getStopStrings() {
-        return stopStrings;
+        return stopStrings != null ? Collections.unmodifiableList(stopStrings) : null;
     }
 
     /**
@@ -320,6 +322,6 @@ public class AiModelDefinition {
      * @param stopStrings list of strings; generation stops at the first match
      */
     public void setStopStrings(final List<String> stopStrings) {
-        this.stopStrings = stopStrings;
+        this.stopStrings = stopStrings != null ? new ArrayList<>(stopStrings) : null;
     }
 }

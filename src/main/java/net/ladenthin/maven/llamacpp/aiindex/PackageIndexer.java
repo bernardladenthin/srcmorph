@@ -67,10 +67,10 @@ public class PackageIndexer {
             final Path outputRoot,
             final String pluginVersion,
             final String aiVersion,
-            final List<Path> sourceSubtrees,
+            final Collection<Path> sourceSubtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
-            final List<AiFieldGenerationConfig> fieldGenerations,
+            final Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport
     ) {
@@ -244,7 +244,7 @@ public class PackageIndexer {
         return entries;
     }
 
-    private String buildPackageSourceText(final AiMdHeader header, final List<String> contents) {
+    private String buildPackageSourceText(final AiMdHeader header, final Collection<String> contents) {
         final StringBuilder builder = new StringBuilder();
         builder.append(AiMdHeaderCodec.HEADER_TITLE_PREFIX).append(header.title()).append('\n');
         builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("H: ").append(header.h()).append('\n');
@@ -258,7 +258,7 @@ public class PackageIndexer {
         return builder.toString();
     }
 
-    private String buildDefaultPackageBody(final List<String> contents) {
+    private String buildDefaultPackageBody(final Collection<String> contents) {
         final StringBuilder builder = new StringBuilder();
         appendContentsSection(builder, contents, false);
         return builder.toString();

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -44,13 +45,13 @@ public class SourceFileIndexer {
             final Log log,
             final Path baseDirectory,
             final Path outputRoot,
-            final List<String> fileExtensions,
+            final Collection<String> fileExtensions,
             final String pluginVersion,
             final String aiVersion,
-            final List<Path> subtrees,
+            final Collection<Path> subtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
-            final List<AiFieldGenerationConfig> fieldGenerations,
+            final Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport
     ) {

@@ -9,6 +9,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -152,13 +153,13 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     }
 
     /**
-     * Returns the size of {@code list}, or {@code 0} when {@code list} is {@code null}.
+     * Returns the size of {@code collection}, or {@code 0} when {@code collection} is {@code null}.
      *
-     * @param list any list, or {@code null}
+     * @param collection any collection, or {@code null}
      * @return number of elements, or {@code 0}
      */
-    protected int sizeOf(final List<?> list) {
-        return list == null ? 0 : list.size();
+    protected int sizeOf(final Collection<?> collection) {
+        return collection == null ? 0 : collection.size();
     }
 
     /**
