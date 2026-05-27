@@ -423,3 +423,9 @@ Use numeric hex entities (`&#xNNNN;`) for any Unicode symbol outside ASCII. Name
 - After refactors, run `mvn -B -ntp -DskipTests -Dgpg.skip=true verify` and confirm the BugInstance count is unchanged. A drop means a suppression is now stale and should be deleted; an increase means a new finding needs its own decision (fix vs. suppress).
 - Keep the rationale comment on each `<Match>` accurate — if the original justification no longer applies to the post-refactor code, remove the suppression rather than leave outdated reasoning in place.
 - Never use `--` inside `<!-- ... -->` comment bodies in `spotbugs-exclude.xml` — XML forbids it and the entire filter file silently stops loading (every previously suppressed finding reappears).
+
+## Open TODOs
+
+- **`@VisibleForTesting` audit.** No usages currently. Walk the production tree for package-private/protected methods or fields that exist purely so tests can reach them, and either annotate (`com.google.common.annotations.VisibleForTesting`) or move into the test source tree.
+- **Strict null-safety with Maven hard-check.** No nullability annotations in the codebase today. Adopt JSpecify (`org.jspecify:jspecify`) for `@Nullable`/`@NonNull` and add Error Prone + NullAway in the compiler plugin so the build fails on potential NPEs (the BitcoinAddressFinder pom.xml already does this and is a working reference).
+- **At least one LogCaptor smoke test.** SLF4J is used by the plugin. Add a `LogCaptor.forClass(...)` test that confirms a known log message actually fires through the configured pipeline, so a future binding/configuration regression is caught at test time rather than silently swallowed.
