@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import org.apache.maven.plugin.logging.Log;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
+import org.apache.maven.plugin.logging.Log;
 
 /**
  * Walks the configured source subtrees, creates per-file {@code .ai.md} index files,
@@ -73,8 +72,7 @@ public class SourceFileIndexer {
             final AiGenerationProvider generationProvider,
             final Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport
-    ) {
+            final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
@@ -85,8 +83,7 @@ public class SourceFileIndexer {
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
-                log, generationProvider, new AiPromptPreparationSupport(promptSupport),
-                modelDefinitionSupport);
+                log, generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
     }
 
     /**
@@ -149,7 +146,8 @@ public class SourceFileIndexer {
         final Path sourceFileNamePath = sourceFile.getFileName();
         final String fileName = sourceFileNamePath != null ? sourceFileNamePath.toString() : sourceFile.toString();
         final String checksum = checksumSupport.calculateCrc32Hex(sourceFile);
-        final String sourceModified = timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
+        final String sourceModified =
+                timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
@@ -160,8 +158,7 @@ public class SourceFileIndexer {
                 generatedAt,
                 pluginVersion,
                 aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                AiMdHeaderCodec.NODE_TYPE_FILE);
 
         if (!headerSupport.shouldWrite(force, targetFile, baseHeader)) {
             log.info("Unchanged AI index file: " + targetFile);

@@ -3,15 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugins.annotations.Parameter;
-
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Base class for all AI index mojos. Centralises the parameters shared by every goal
@@ -38,10 +37,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * Directory into which all {@code .ai.md} files are written.
      * Defaults to {@code ${project.basedir}/src/site/ai}.
      */
-    @Parameter(
-            property = "aiIndex.outputDirectory",
-            defaultValue = "${project.basedir}/src/site/ai"
-    )
+    @Parameter(property = "aiIndex.outputDirectory", defaultValue = "${project.basedir}/src/site/ai")
     protected File outputDirectory;
 
     /** When {@code true}, the goal skips all processing and returns immediately. */
@@ -204,8 +200,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                     config.getTopK(),
                     config.getRepeatPenalty(),
                     config.isChatTemplateEnableThinking(),
-                    config.getStopStrings()
-            );
+                    config.getStopStrings());
         }
         return new LlamaCppJniConfig(
                 llamaLibraryPath,
@@ -218,8 +213,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                 AiGenerationConfig.DEFAULT_TOP_K,
                 AiGenerationConfig.DEFAULT_REPEAT_PENALTY,
                 AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING,
-                Collections.emptyList()
-        );
+                Collections.emptyList());
     }
 
     /**
@@ -259,8 +253,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
             final Path basePath,
             final Path outputPath,
             final List<Path> resolvedSubtrees,
-            final List<String> resolvedExtensions
-    ) {
+            final List<String> resolvedExtensions) {
         getLog().info(startMessage);
         getLog().info("Base directory  : " + basePath);
         getLog().info("Output directory: " + outputPath);

@@ -43,6 +43,5 @@ public interface AiGenerationProvider extends AutoCloseable {
     }
 
     @Override
-    default void close() throws IOException {
-    }
+    default void close() throws IOException {}
 }

@@ -3,16 +3,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import org.apache.maven.plugin.logging.SystemStreamLog;
-import org.junit.jupiter.api.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
+import org.apache.maven.plugin.logging.SystemStreamLog;
+import org.junit.jupiter.api.Test;
 
 public class PackageIndexerTest {
 
@@ -32,19 +32,29 @@ public class PackageIndexerTest {
         Files.createDirectories(packageDirectory);
 
         final AiMdHeader childHeader = new AiMdHeader(
-                "Test.java", AiMdHeaderCodec.HEADER_VERSION_1_0, "AAAAAAAA",
-                "2026-03-16T00:00:00Z", "2026-03-16T00:00:10Z", "1.0.0", "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                "Test.java",
+                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                "AAAAAAAA",
+                "2026-03-16T00:00:00Z",
+                "2026-03-16T00:00:10Z",
+                "1.0.0",
+                "0.0.0",
+                AiMdHeaderCodec.NODE_TYPE_FILE);
         documentCodec.write(childAiFile, new AiMdDocument(childHeader, ""));
 
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
         final PackageIndexer indexer = new PackageIndexer(
-                new SystemStreamLog(), baseDirectory, outputRoot,
-                "1.0.0", "0.0.0", Collections.<Path>emptyList(), false, new MockAiGenerationProvider(),
-                CommonTestFixtures.createPackageFieldGenerations(), promptSupport,
-                CommonTestFixtures.createDefaultAiModelDefinitionSupport()
-        );
+                new SystemStreamLog(),
+                baseDirectory,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new MockAiGenerationProvider(),
+                CommonTestFixtures.createPackageFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         final int aggregated = indexer.aggregate(outputRoot);

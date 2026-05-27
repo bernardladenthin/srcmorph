@@ -18,7 +18,6 @@ public class AiGenerationRequest {
     private final String sourceText;
     private final AiMdHeader currentHeader;
 
-
     /**
      * Creates a new {@link AiGenerationRequest}.
      *
@@ -79,10 +78,10 @@ public class AiGenerationRequest {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         AiGenerationRequest that = (AiGenerationRequest) obj;
-        return Objects.equals(this.promptKey, that.promptKey) &&
-                Objects.equals(this.sourceFile, that.sourceFile) &&
-                Objects.equals(this.sourceText, that.sourceText) &&
-                Objects.equals(this.currentHeader, that.currentHeader);
+        return Objects.equals(this.promptKey, that.promptKey)
+                && Objects.equals(this.sourceFile, that.sourceFile)
+                && Objects.equals(this.sourceText, that.sourceText)
+                && Objects.equals(this.currentHeader, that.currentHeader);
     }
 
     @Override
@@ -92,11 +91,10 @@ public class AiGenerationRequest {
 
     @Override
     public String toString() {
-        return "AiGenerationRequest[" +
-                "promptKey=" + promptKey + ", " +
-                "sourceFile=" + sourceFile + ", " +
-                "sourceText=" + sourceText + ", " +
-                "currentHeader=" + currentHeader + ']';
+        return "AiGenerationRequest[" + "promptKey="
+                + promptKey + ", " + "sourceFile="
+                + sourceFile + ", " + "sourceText="
+                + sourceText + ", " + "currentHeader="
+                + currentHeader + ']';
     }
-
 }

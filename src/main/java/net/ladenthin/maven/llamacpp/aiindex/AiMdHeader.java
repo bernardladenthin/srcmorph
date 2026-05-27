@@ -56,7 +56,6 @@ public final class AiMdHeader {
     private final String a;
     private final String x;
 
-
     /**
      * Creates a new {@link AiMdHeader}.
      *
@@ -165,14 +164,14 @@ public final class AiMdHeader {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         AiMdHeader that = (AiMdHeader) obj;
-        return Objects.equals(this.title, that.title) &&
-                Objects.equals(this.h, that.h) &&
-                Objects.equals(this.c, that.c) &&
-                Objects.equals(this.d, that.d) &&
-                Objects.equals(this.t, that.t) &&
-                Objects.equals(this.g, that.g) &&
-                Objects.equals(this.a, that.a) &&
-                Objects.equals(this.x, that.x);
+        return Objects.equals(this.title, that.title)
+                && Objects.equals(this.h, that.h)
+                && Objects.equals(this.c, that.c)
+                && Objects.equals(this.d, that.d)
+                && Objects.equals(this.t, that.t)
+                && Objects.equals(this.g, that.g)
+                && Objects.equals(this.a, that.a)
+                && Objects.equals(this.x, that.x);
     }
 
     @Override
@@ -182,15 +181,14 @@ public final class AiMdHeader {
 
     @Override
     public String toString() {
-        return "AiMdHeader[" +
-                "title=" + title + ", " +
-                "h=" + h + ", " +
-                "c=" + c + ", " +
-                "d=" + d + ", " +
-                "t=" + t + ", " +
-                "g=" + g + ", " +
-                "a=" + a + ", " +
-                "x=" + x + ']';
+        return "AiMdHeader[" + "title="
+                + title + ", " + "h="
+                + h + ", " + "c="
+                + c + ", " + "d="
+                + d + ", " + "t="
+                + t + ", " + "g="
+                + g + ", " + "a="
+                + a + ", " + "x="
+                + x + ']';
     }
-
 }

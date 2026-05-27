@@ -56,9 +56,6 @@ public class AiPromptSupport {
             throw new IllegalArgumentException("Missing prompt template for key: " + promptKey);
         }
 
-        return compatibilityHelper.formatted(template,
-                sourceFile.getFileName(),
-                sourceText
-        );
+        return compatibilityHelper.formatted(template, sourceFile.getFileName(), sourceText);
     }
 }

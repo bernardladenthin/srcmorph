@@ -37,9 +37,18 @@ public class LlamaCppJniConfig {
      * @param chatTemplateEnableThinking  whether chat-template thinking mode is enabled
      * @param stopStrings                 stop strings; may be {@code null} (treated as empty)
      */
-    public LlamaCppJniConfig(String libraryPath, String modelPath, int contextSize, int maxOutputTokens,
-            float temperature, int threads, float topP, int topK, float repeatPenalty,
-            boolean chatTemplateEnableThinking, List<String> stopStrings) {
+    public LlamaCppJniConfig(
+            String libraryPath,
+            String modelPath,
+            int contextSize,
+            int maxOutputTokens,
+            float temperature,
+            int threads,
+            float topP,
+            int topK,
+            float repeatPenalty,
+            boolean chatTemplateEnableThinking,
+            List<String> stopStrings) {
         Objects.requireNonNull(modelPath, "modelPath");
         this.libraryPath = libraryPath;
         this.modelPath = modelPath;
@@ -158,39 +167,48 @@ public class LlamaCppJniConfig {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         LlamaCppJniConfig that = (LlamaCppJniConfig) obj;
-        return Objects.equals(this.libraryPath, that.libraryPath) &&
-                Objects.equals(this.modelPath, that.modelPath) &&
-                this.contextSize == that.contextSize &&
-                this.maxOutputTokens == that.maxOutputTokens &&
-                Float.floatToIntBits(this.temperature) == Float.floatToIntBits(that.temperature) &&
-                this.threads == that.threads &&
-                Float.floatToIntBits(this.topP) == Float.floatToIntBits(that.topP) &&
-                this.topK == that.topK &&
-                Float.floatToIntBits(this.repeatPenalty) == Float.floatToIntBits(that.repeatPenalty) &&
-                this.chatTemplateEnableThinking == that.chatTemplateEnableThinking &&
-                Objects.equals(this.stopStrings, that.stopStrings);
+        return Objects.equals(this.libraryPath, that.libraryPath)
+                && Objects.equals(this.modelPath, that.modelPath)
+                && this.contextSize == that.contextSize
+                && this.maxOutputTokens == that.maxOutputTokens
+                && Float.floatToIntBits(this.temperature) == Float.floatToIntBits(that.temperature)
+                && this.threads == that.threads
+                && Float.floatToIntBits(this.topP) == Float.floatToIntBits(that.topP)
+                && this.topK == that.topK
+                && Float.floatToIntBits(this.repeatPenalty) == Float.floatToIntBits(that.repeatPenalty)
+                && this.chatTemplateEnableThinking == that.chatTemplateEnableThinking
+                && Objects.equals(this.stopStrings, that.stopStrings);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(libraryPath, modelPath, contextSize, maxOutputTokens, temperature, threads,
-                topP, topK, repeatPenalty, chatTemplateEnableThinking, stopStrings);
+        return Objects.hash(
+                libraryPath,
+                modelPath,
+                contextSize,
+                maxOutputTokens,
+                temperature,
+                threads,
+                topP,
+                topK,
+                repeatPenalty,
+                chatTemplateEnableThinking,
+                stopStrings);
     }
 
     @Override
     public String toString() {
-        return "LlamaCppJniConfig[" +
-                "libraryPath=" + libraryPath + ", " +
-                "modelPath=" + modelPath + ", " +
-                "contextSize=" + contextSize + ", " +
-                "maxOutputTokens=" + maxOutputTokens + ", " +
-                "temperature=" + temperature + ", " +
-                "threads=" + threads + ", " +
-                "topP=" + topP + ", " +
-                "topK=" + topK + ", " +
-                "repeatPenalty=" + repeatPenalty + ", " +
-                "chatTemplateEnableThinking=" + chatTemplateEnableThinking + ", " +
-                "stopStrings=" + stopStrings + ']';
+        return "LlamaCppJniConfig[" + "libraryPath="
+                + libraryPath + ", " + "modelPath="
+                + modelPath + ", " + "contextSize="
+                + contextSize + ", " + "maxOutputTokens="
+                + maxOutputTokens + ", " + "temperature="
+                + temperature + ", " + "threads="
+                + threads + ", " + "topP="
+                + topP + ", " + "topK="
+                + topK + ", " + "repeatPenalty="
+                + repeatPenalty + ", " + "chatTemplateEnableThinking="
+                + chatTemplateEnableThinking + ", " + "stopStrings="
+                + stopStrings + ']';
     }
-
 }

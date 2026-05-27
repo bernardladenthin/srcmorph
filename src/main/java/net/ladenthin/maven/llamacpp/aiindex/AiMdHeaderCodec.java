@@ -3,14 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Reads and writes the metadata header section of an {@code .ai.md} document. */
 public class AiMdHeaderCodec {
@@ -126,7 +125,8 @@ public class AiMdHeaderCodec {
                 continue;
             }
 
-            final String key = line.substring(HEADER_FIELD_PREFIX.length(), colonIndex).trim();
+            final String key =
+                    line.substring(HEADER_FIELD_PREFIX.length(), colonIndex).trim();
             final String value = line.substring(colonIndex + 1).trim();
             values.put(key, value);
         }
@@ -139,8 +139,7 @@ public class AiMdHeaderCodec {
                 valueOrEmpty(values, FIELD_KEY_T),
                 valueOrEmpty(values, FIELD_KEY_G),
                 valueOrEmpty(values, FIELD_KEY_A),
-                valueOrEmpty(values, FIELD_KEY_X)
-        );
+                valueOrEmpty(values, FIELD_KEY_X));
     }
 
     /**
@@ -150,23 +149,15 @@ public class AiMdHeaderCodec {
      * @return serialised header text
      */
     public String write(final AiMdHeader header) {
-        return compatibilityHelper.formatted("### %s\n" +
-                "- H: %s\n" +
-                "- C: %s\n" +
-                "- D: %s\n" +
-                "- T: %s\n" +
-                "- G: %s\n" +
-                "- A: %s\n" +
-                "- X: %s\n",
-                header.title(),
-                header.h(),
-                header.c(),
-                header.d(),
-                header.t(),
-                header.g(),
-                header.a(),
-                header.x()
-        );
+        return compatibilityHelper.formatted(
+                "### %s\n" + "- H: %s\n"
+                        + "- C: %s\n"
+                        + "- D: %s\n"
+                        + "- T: %s\n"
+                        + "- G: %s\n"
+                        + "- A: %s\n"
+                        + "- X: %s\n",
+                header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x());
     }
 
     private String valueOrEmpty(final Map<String, String> values, final String key) {

@@ -22,9 +22,7 @@ public class AiGenerationResult {
      *
      * @param body AI-generated body text destined for {@link AiMdDocument#body()}
      */
-    public AiGenerationResult(
-            String body
-    ) {
+    public AiGenerationResult(String body) {
         this.body = body;
     }
 
@@ -52,7 +50,6 @@ public class AiGenerationResult {
 
     @Override
     public String toString() {
-        return "AiGenerationResult[" +
-                "body=" + body + ']';
+        return "AiGenerationResult[" + "body=" + body + ']';
     }
 }

@@ -11,7 +11,6 @@ public class AiMdDocument {
     private final AiMdHeader header;
     private final String body;
 
-
     /**
      * Creates a new {@link AiMdDocument}.
      *
@@ -48,8 +47,7 @@ public class AiMdDocument {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         AiMdDocument that = (AiMdDocument) obj;
-        return Objects.equals(this.header, that.header) &&
-                Objects.equals(this.body, that.body);
+        return Objects.equals(this.header, that.header) && Objects.equals(this.body, that.body);
     }
 
     @Override
@@ -59,9 +57,6 @@ public class AiMdDocument {
 
     @Override
     public String toString() {
-        return "AiMdDocument[" +
-                "header=" + header + ", " +
-                "body=" + body + ']';
+        return "AiMdDocument[" + "header=" + header + ", " + "body=" + body + ']';
     }
-
 }

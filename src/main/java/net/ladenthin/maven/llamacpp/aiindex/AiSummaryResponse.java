@@ -47,8 +47,7 @@ public class AiSummaryResponse {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         AiSummaryResponse that = (AiSummaryResponse) obj;
-        return Objects.equals(this.summary, that.summary) &&
-                Objects.equals(this.keywords, that.keywords);
+        return Objects.equals(this.summary, that.summary) && Objects.equals(this.keywords, that.keywords);
     }
 
     @Override
@@ -58,9 +57,6 @@ public class AiSummaryResponse {
 
     @Override
     public String toString() {
-        return "AiSummaryResponse[" +
-                "summary=" + summary + ", " +
-                "keywords=" + keywords + ']';
+        return "AiSummaryResponse[" + "summary=" + summary + ", " + "keywords=" + keywords + ']';
     }
-
 }

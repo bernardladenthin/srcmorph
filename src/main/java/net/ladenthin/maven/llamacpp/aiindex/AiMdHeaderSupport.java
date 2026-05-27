@@ -34,11 +34,8 @@ public class AiMdHeaderSupport {
      *         {@code expectedHeader}
      * @throws IOException if the existing file cannot be read
      */
-    public boolean shouldWrite(
-            final boolean force,
-            final Path targetFile,
-            final AiMdHeader expectedHeader
-    ) throws IOException {
+    public boolean shouldWrite(final boolean force, final Path targetFile, final AiMdHeader expectedHeader)
+            throws IOException {
         if (force) {
             return true;
         }
@@ -75,10 +72,7 @@ public class AiMdHeaderSupport {
      * @param childHeader child header to read {@code c}, {@code d}, and {@code x} from
      * @return checksum line terminated by a newline character
      */
-    public String buildChecksumLine(
-            final String name,
-            final AiMdHeader childHeader
-    ) {
+    public String buildChecksumLine(final String name, final AiMdHeader childHeader) {
         return name
                 + CHECKSUM_LINE_SEPARATOR
                 + childHeader.c()

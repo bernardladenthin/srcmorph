@@ -23,10 +23,7 @@ public class AiGenerationProviderFactory {
      * @throws IllegalArgumentException if {@code providerName} is not recognised
      */
     public AiGenerationProvider create(
-            final String providerName,
-            final LlamaCppJniConfig llamaConfig,
-            final AiPromptSupport promptSupport
-    ) {
+            final String providerName, final LlamaCppJniConfig llamaConfig, final AiPromptSupport promptSupport) {
         if (providerName == null || compatibilityHelper.isBlank(providerName)) {
             return new MockAiGenerationProvider();
         }

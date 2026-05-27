@@ -3,14 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.is;
 
 public class AiMdHeaderSupportTest {
 
@@ -50,10 +51,14 @@ public class AiMdHeaderSupportTest {
      */
     private AiMdHeader buildHeader(final String checksum, final String generatorVersion) {
         return new AiMdHeader(
-                FIXED_TITLE, AiMdHeaderCodec.HEADER_VERSION_1_0, checksum,
-                FIXED_D, FIXED_T, generatorVersion, FIXED_A,
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                FIXED_TITLE,
+                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                checksum,
+                FIXED_D,
+                FIXED_T,
+                generatorVersion,
+                FIXED_A,
+                AiMdHeaderCodec.NODE_TYPE_FILE);
     }
 
     // <editor-fold defaultstate="collapsed" desc="shouldWrite">

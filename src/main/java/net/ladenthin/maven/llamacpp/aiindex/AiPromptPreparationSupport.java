@@ -42,10 +42,7 @@ public class AiPromptPreparationSupport {
      * @param maxInputChars maximum number of characters allowed in the rendered prompt
      * @return prepared prompt along with trimming metrics
      */
-    public AiPreparedPrompt preparePrompt(
-            final AiGenerationRequest request,
-            final int maxInputChars
-    ) {
+    public AiPreparedPrompt preparePrompt(final AiGenerationRequest request, final int maxInputChars) {
         final String fullPrompt = promptSupport.buildPrompt(request);
         final int originalSourceLength = request.sourceText().length();
 
@@ -56,16 +53,11 @@ public class AiPromptPreparationSupport {
                     false,
                     originalSourceLength,
                     originalSourceLength,
-                    originalSourceLength
-            );
+                    originalSourceLength);
         }
 
-        final AiGenerationRequest emptySourceRequest = new AiGenerationRequest(
-                request.promptKey(),
-                request.sourceFile(),
-                "",
-                request.currentHeader()
-        );
+        final AiGenerationRequest emptySourceRequest =
+                new AiGenerationRequest(request.promptKey(), request.sourceFile(), "", request.currentHeader());
 
         final String promptWithoutSource = promptSupport.buildPrompt(emptySourceRequest);
         final int availableSourceChars = Math.max(0, maxInputChars - promptWithoutSource.length());
@@ -76,11 +68,7 @@ public class AiPromptPreparationSupport {
         final String trimmedSourceWithMarker = trimmedSource + EOF_MARKER;
 
         final AiGenerationRequest trimmedRequest = new AiGenerationRequest(
-                request.promptKey(),
-                request.sourceFile(),
-                trimmedSourceWithMarker,
-                request.currentHeader()
-        );
+                request.promptKey(), request.sourceFile(), trimmedSourceWithMarker, request.currentHeader());
 
         final String trimmedPrompt = promptSupport.buildPrompt(trimmedRequest);
 
@@ -90,8 +78,7 @@ public class AiPromptPreparationSupport {
                 true,
                 originalSourceLength,
                 trimmedSource.length(),
-                availableSourceChars
-        );
+                availableSourceChars);
     }
 
     /**
@@ -131,5 +118,4 @@ public class AiPromptPreparationSupport {
 
         return sourceText.substring(0, lastNewline + 1);
     }
-
 }
