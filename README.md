@@ -180,3 +180,12 @@ mvn clean install -DaiIndex.skip=true
 ```
 ## License
 Apache License 2.0
+
+---
+
+<details>
+<summary>🍺 Beer-driven architectural review (2026-05-26)</summary>
+
+> _Sometimes you spend two beers debating "architektonisch" vs "architekturiell" and the only conclusion is: ship the code anyway. Cheers!_
+
+</details>
