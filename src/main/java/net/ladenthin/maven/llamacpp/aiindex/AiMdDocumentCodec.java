@@ -9,7 +9,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+/** Reads and writes {@code .ai.md} documents (header plus body) from and to disk. */
 public class AiMdDocumentCodec {
+
+    /** Creates a new {@link AiMdDocumentCodec}. */
+    public AiMdDocumentCodec() {
+        // no-op
+    }
 
     /**
      * Separator line between the metadata header and document body.
@@ -18,10 +24,23 @@ public class AiMdDocumentCodec {
 
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
+    /**
+     * Reads an {@link AiMdDocument} from a file.
+     *
+     * @param file path to the {@code .ai.md} file to read
+     * @return parsed document
+     * @throws IOException if the file cannot be read
+     */
     public AiMdDocument read(final Path file) throws IOException {
         return read(Files.readAllLines(file, StandardCharsets.UTF_8));
     }
 
+    /**
+     * Parses an {@link AiMdDocument} from the given lines.
+     *
+     * @param lines raw lines of the {@code .ai.md} file
+     * @return parsed document
+     */
     public AiMdDocument read(final List<String> lines) {
         final AiMdHeader header = new AiMdHeaderCodec().read(lines);
 
@@ -31,7 +50,8 @@ public class AiMdDocumentCodec {
 
         for (String line : lines) {
             if (!headerFinished) {
-                if (line.startsWith(AiMdHeaderCodec.HEADER_TITLE_PREFIX) || line.startsWith(AiMdHeaderCodec.HEADER_FIELD_PREFIX)) {
+                if (line.startsWith(AiMdHeaderCodec.HEADER_TITLE_PREFIX)
+                        || line.startsWith(AiMdHeaderCodec.HEADER_FIELD_PREFIX)) {
                     continue;
                 }
 
@@ -56,6 +76,12 @@ public class AiMdDocumentCodec {
         return new AiMdDocument(header, body.toString());
     }
 
+    /**
+     * Renders the given document to its serialised {@code .ai.md} string form.
+     *
+     * @param document document to serialise
+     * @return serialised document text
+     */
     public String write(final AiMdDocument document) {
         final StringBuilder builder = new StringBuilder();
         builder.append(new AiMdHeaderCodec().write(document.header()));
@@ -71,6 +97,13 @@ public class AiMdDocumentCodec {
         return builder.toString();
     }
 
+    /**
+     * Writes the given document to a UTF-8 file.
+     *
+     * @param file     destination file
+     * @param document document to write
+     * @throws IOException if the file cannot be written
+     */
     public void write(final Path file, final AiMdDocument document) throws IOException {
         compatibilityHelper.writeString(file, write(document), StandardCharsets.UTF_8);
     }

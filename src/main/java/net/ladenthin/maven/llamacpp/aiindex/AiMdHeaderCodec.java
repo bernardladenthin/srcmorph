@@ -3,16 +3,21 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+/** Reads and writes the metadata header section of an {@code .ai.md} document. */
 public class AiMdHeaderCodec {
+
+    /** Creates a new {@link AiMdHeaderCodec}. */
+    public AiMdHeaderCodec() {
+        // no-op
+    }
 
     /**
      * Prefix used for the title line in every AI index document header.
@@ -95,6 +100,12 @@ public class AiMdHeaderCodec {
 
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
+    /**
+     * Parses an {@link AiMdHeader} from the given header lines.
+     *
+     * @param lines lines that include the title and key-value field lines
+     * @return parsed header (missing fields default to the empty string)
+     */
     public AiMdHeader read(final List<String> lines) {
         String title = null;
         final Map<String, String> values = new HashMap<>(lines.size());
@@ -114,7 +125,8 @@ public class AiMdHeaderCodec {
                 continue;
             }
 
-            final String key = line.substring(HEADER_FIELD_PREFIX.length(), colonIndex).trim();
+            final String key =
+                    line.substring(HEADER_FIELD_PREFIX.length(), colonIndex).trim();
             final String value = line.substring(colonIndex + 1).trim();
             values.put(key, value);
         }
@@ -127,28 +139,25 @@ public class AiMdHeaderCodec {
                 valueOrEmpty(values, FIELD_KEY_T),
                 valueOrEmpty(values, FIELD_KEY_G),
                 valueOrEmpty(values, FIELD_KEY_A),
-                valueOrEmpty(values, FIELD_KEY_X)
-        );
+                valueOrEmpty(values, FIELD_KEY_X));
     }
 
+    /**
+     * Renders the given header to its serialised string form.
+     *
+     * @param header header to serialise
+     * @return serialised header text
+     */
     public String write(final AiMdHeader header) {
-        return compatibilityHelper.formatted("### %s\n" +
-                "- H: %s\n" +
-                "- C: %s\n" +
-                "- D: %s\n" +
-                "- T: %s\n" +
-                "- G: %s\n" +
-                "- A: %s\n" +
-                "- X: %s\n",
-                header.title(),
-                header.h(),
-                header.c(),
-                header.d(),
-                header.t(),
-                header.g(),
-                header.a(),
-                header.x()
-        );
+        return compatibilityHelper.formatted(
+                "### %s\n" + "- H: %s\n"
+                        + "- C: %s\n"
+                        + "- D: %s\n"
+                        + "- T: %s\n"
+                        + "- G: %s\n"
+                        + "- A: %s\n"
+                        + "- X: %s\n",
+                header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x());
     }
 
     private String valueOrEmpty(final Map<String, String> values, final String key) {
@@ -156,6 +165,13 @@ public class AiMdHeaderCodec {
         return value != null ? value : "";
     }
 
+    /**
+     * Reads an {@link AiMdHeader} from a file.
+     *
+     * @param file path to the {@code .ai.md} file to read
+     * @return parsed header
+     * @throws IOException if the file cannot be read
+     */
     public AiMdHeader read(final Path file) throws IOException {
         return read(Files.readAllLines(file, StandardCharsets.UTF_8));
     }

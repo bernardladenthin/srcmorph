@@ -29,6 +29,11 @@ import java.util.List;
  */
 public class AiModelDefinition {
 
+    /** Creates a new {@link AiModelDefinition} with the defaults of {@link AiGenerationConfig} applied. */
+    public AiModelDefinition() {
+        // no-op
+    }
+
     private String key;
     private String modelPath;
     private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;

@@ -3,13 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import org.apache.maven.plugin.logging.Log;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.maven.plugin.logging.Log;
 
 /**
  * Shared field-generation logic used by both {@link SourceFileIndexer} and
@@ -130,8 +129,7 @@ public class AiFieldGenerationSupport {
             final Log log,
             final AiGenerationProvider generationProvider,
             final AiPromptPreparationSupport promptPreparationSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport
-    ) {
+            final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
         this.generationProvider = generationProvider;
         this.promptPreparationSupport = promptPreparationSupport;
@@ -175,8 +173,8 @@ public class AiFieldGenerationSupport {
             final Path contextFile,
             final String contextType,
             final String sourceText,
-            final AiMdHeader baseHeader
-    ) throws IOException {
+            final AiMdHeader baseHeader)
+            throws IOException {
         String body = "";
 
         for (AiFieldGenerationConfig fieldGeneration : fieldGenerations) {
@@ -187,20 +185,13 @@ public class AiFieldGenerationSupport {
             final AiGenerationConfig generationConfig =
                     modelDefinitionSupport.getConfig(fieldGeneration.getAiDefinitionKey());
 
-            final int effectiveMaxInputChars = resolveMaxInputChars(
-                    fieldGeneration, generationConfig, contextFile);
+            final int effectiveMaxInputChars = resolveMaxInputChars(fieldGeneration, generationConfig, contextFile);
 
-            final AiGenerationRequest request = new AiGenerationRequest(
-                    fieldGeneration.getPromptKey(),
-                    contextFile,
-                    sourceText,
-                    baseHeader
-            );
+            final AiGenerationRequest request =
+                    new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader);
 
-            final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(
-                    request,
-                    effectiveMaxInputChars
-            );
+            final AiPreparedPrompt preparedPrompt =
+                    promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
             if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
                 log.warn("Trimmed AI input for " + contextType + TRIM_WARN_FIELD_LABEL + "body': " + contextFile
@@ -211,17 +202,13 @@ public class AiFieldGenerationSupport {
             }
 
             final AiGenerationRequest generationRequest = new AiGenerationRequest(
-                    fieldGeneration.getPromptKey(),
-                    contextFile,
-                    preparedPrompt.sourceText(),
-                    baseHeader
-            );
+                    fieldGeneration.getPromptKey(), contextFile, preparedPrompt.sourceText(), baseHeader);
 
-            log.info("Generating field '" + fieldGeneration.getPromptKey() +
-                    "' with temperature=" + generationConfig.getTemperature() +
-                    ", maxRetries=" + generationConfig.getMaxRetries() +
-                    ", retryTemperatureIncrement=" + generationConfig.getRetryTemperatureIncrement() +
-                    ", maxInputChars=" + effectiveMaxInputChars);
+            log.info("Generating field '" + fieldGeneration.getPromptKey() + "' with temperature="
+                    + generationConfig.getTemperature() + ", maxRetries="
+                    + generationConfig.getMaxRetries() + ", retryTemperatureIncrement="
+                    + generationConfig.getRetryTemperatureIncrement() + ", maxInputChars="
+                    + effectiveMaxInputChars);
             body = generationProvider.generate(generationRequest);
 
             if (compatibilityHelper.isBlank(body)) {
@@ -239,15 +226,22 @@ public class AiFieldGenerationSupport {
                             .replace("{0}", String.valueOf(generationConfig.getTemperature()))
                             .replace("{1}", String.valueOf(attempt))
                             .replace("{2}", String.valueOf(generationConfig.getRetryTemperatureIncrement()));
-                    log.info(RETRY_ATTEMPT_INFO_PREFIX + attempt + RETRY_OF_INFIX + maxRetries
-                            + RETRY_FIELD_INFIX + fieldGeneration.getPromptKey()
-                            + RETRY_TEMPERATURE_INFIX + retryTemperature
+                    log.info(RETRY_ATTEMPT_INFO_PREFIX
+                            + attempt
+                            + RETRY_OF_INFIX
+                            + maxRetries
+                            + RETRY_FIELD_INFIX
+                            + fieldGeneration.getPromptKey()
+                            + RETRY_TEMPERATURE_INFIX
+                            + retryTemperature
                             + temperatureCalculation
-                            + RETRY_CONTEXT_SUFFIX + contextFile);
+                            + RETRY_CONTEXT_SUFFIX
+                            + contextFile);
                     body = generationProvider.generate(generationRequest, retryTemperature);
                 }
                 if (compatibilityHelper.isBlank(body)) {
-                    log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL + fieldGeneration.getPromptKey() + "': " + contextFile);
+                    log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL
+                            + fieldGeneration.getPromptKey() + "': " + contextFile);
                 }
             }
         }
@@ -272,21 +266,20 @@ public class AiFieldGenerationSupport {
     private int resolveMaxInputChars(
             final AiFieldGenerationConfig fieldGeneration,
             final AiGenerationConfig generationConfig,
-            final Path contextFile
-    ) {
+            final Path contextFile) {
         if (generationConfig.getCharsPerToken() <= 0) {
             return generationConfig.getMaxInputChars();
         }
 
-        final String cacheKey = computeMaxInputCharsKey(
-                fieldGeneration.getAiDefinitionKey(), fieldGeneration.getPromptKey());
+        final String cacheKey =
+                computeMaxInputCharsKey(fieldGeneration.getAiDefinitionKey(), fieldGeneration.getPromptKey());
         final Integer cached = maxInputCharsCache.get(cacheKey);
         if (cached != null) {
             return cached;
         }
 
-        final int basePromptLength = promptPreparationSupport.getBasePromptLength(
-                fieldGeneration.getPromptKey(), contextFile);
+        final int basePromptLength =
+                promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
         final int computed = calculateAndLogMaxInputChars(generationConfig, basePromptLength);
         maxInputCharsCache.put(cacheKey, computed);
         return computed;
@@ -312,10 +305,7 @@ public class AiFieldGenerationSupport {
      * @param basePromptLength character length of the prompt template rendered with empty source
      * @return final (rounded) maximum input character count
      */
-    private int calculateAndLogMaxInputChars(
-            final AiGenerationConfig config,
-            final int basePromptLength
-    ) {
+    private int calculateAndLogMaxInputChars(final AiGenerationConfig config, final int basePromptLength) {
         final int contextSize = config.getContextSize();
         final int charsPerToken = config.getCharsPerToken();
         final int maxOutputTokens = config.getMaxOutputTokens();
@@ -329,7 +319,8 @@ public class AiFieldGenerationSupport {
         final int availableChars = totalChars - overheadTotal;
         final int finalChars = Math.max(0, (availableChars / MAX_INPUT_CHARS_ROUNDING) * MAX_INPUT_CHARS_ROUNDING);
 
-        log.info("Maximum input characters for source code before trimming. Calculated as: (context_size x " + charsPerToken + ") - overhead");
+        log.info("Maximum input characters for source code before trimming. Calculated as: (context_size x "
+                + charsPerToken + ") - overhead");
         log.info("  Context: " + contextSize + " tokens");
         log.info("  Chars per token: ~" + charsPerToken);
         log.info("  [Total available]: " + contextSize + " x " + charsPerToken + " = " + totalChars + " chars");

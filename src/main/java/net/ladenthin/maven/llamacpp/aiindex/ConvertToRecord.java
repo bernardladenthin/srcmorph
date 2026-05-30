@@ -4,5 +4,8 @@
 
 package net.ladenthin.maven.llamacpp.aiindex;
 
-public @interface ConvertToRecord {
-}
+/**
+ * Marker annotation for classes that should be migrated to a Java {@code record}
+ * once the project's target bytecode is raised above Java 8.
+ */
+public @interface ConvertToRecord {}

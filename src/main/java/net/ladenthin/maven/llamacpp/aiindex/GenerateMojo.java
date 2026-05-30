@@ -3,16 +3,24 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-
+/**
+ * Maven goal {@code ai-index:generate}: indexes source files and fills in their
+ * AI-generated summary and keyword fields.
+ */
 @Mojo(name = "generate", threadSafe = true)
 public class GenerateMojo extends AbstractAiIndexMojo {
+
+    /** Creates a new {@link GenerateMojo}. */
+    public GenerateMojo() {
+        // no-op
+    }
 
     /**
      * Default file extension used when no explicit {@code fileExtensions} parameter
@@ -61,7 +69,8 @@ public class GenerateMojo extends AbstractAiIndexMojo {
         final List<Path> resolvedSubtrees = resolveSubtrees(basePath);
         final List<String> resolvedExtensions = resolveFileExtensions();
 
-        logExecutionParameters("Starting AI index generation", basePath, outputPath, resolvedSubtrees, resolvedExtensions);
+        logExecutionParameters(
+                "Starting AI index generation", basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
         try {
             final AiPromptSupport promptSupport = buildPromptSupport();
@@ -69,7 +78,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
             final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
             try (AiGenerationProvider generationProvider =
-                         providerFactory.create(summaryProvider, buildLlamaCppJniConfig(), promptSupport)) {
+                    providerFactory.create(summaryProvider, buildLlamaCppJniConfig(), promptSupport)) {
 
                 final SourceFileIndexer fileIndexer = new SourceFileIndexer(
                         getLog(),
@@ -83,8 +92,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         generationProvider,
                         fieldGenerations,
                         promptSupport,
-                        modelDefinitionSupport
-                );
+                        modelDefinitionSupport);
 
                 int count = 0;
 

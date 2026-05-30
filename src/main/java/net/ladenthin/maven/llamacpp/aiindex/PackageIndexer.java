@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import org.apache.maven.plugin.logging.Log;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,7 +11,12 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
+import org.apache.maven.plugin.logging.Log;
 
+/**
+ * Aggregates {@code package.ai.md} index files: walks the output tree, lists each
+ * package's contents, and fills in AI-generated summary and keyword fields.
+ */
 public class PackageIndexer {
 
     /**
@@ -61,6 +64,21 @@ public class PackageIndexer {
 
     private final AiFieldGenerationSupport fieldGenerationSupport;
 
+    /**
+     * Creates a new {@link PackageIndexer}.
+     *
+     * @param log                    Maven plugin logger
+     * @param baseDirectory          project base directory
+     * @param outputRoot             root directory in which {@code .ai.md} files reside
+     * @param pluginVersion          plugin version recorded in headers
+     * @param aiVersion              AI summarisation logic version recorded in headers
+     * @param sourceSubtrees         source subtrees in scope; may be {@code null}
+     * @param force                  when {@code true}, regenerate even when fields are populated
+     * @param generationProvider     AI provider used to generate fields
+     * @param fieldGenerations       field generation configurations; may be {@code null}
+     * @param promptSupport          prompt lookup
+     * @param modelDefinitionSupport AI model definition lookup
+     */
     public PackageIndexer(
             final Log log,
             final Path baseDirectory,
@@ -72,8 +90,7 @@ public class PackageIndexer {
             final AiGenerationProvider generationProvider,
             final Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport
-    ) {
+            final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
@@ -84,10 +101,16 @@ public class PackageIndexer {
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
-                log, generationProvider, new AiPromptPreparationSupport(promptSupport),
-                modelDefinitionSupport);
+                log, generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
     }
 
+    /**
+     * Aggregates all package directories beneath {@code rootDirectory}.
+     *
+     * @param rootDirectory output root directory to walk
+     * @return number of package index files written or refreshed
+     * @throws IOException if the output tree cannot be read or written
+     */
     public int aggregate(final Path rootDirectory) throws IOException {
         return aggregateRecursive(rootDirectory);
     }
@@ -97,9 +120,8 @@ public class PackageIndexer {
 
         final List<Path> subDirectories;
         try (Stream<Path> stream = Files.list(directory)) {
-            subDirectories = compatibilityHelper.toList(stream
-                    .filter(Files::isDirectory)
-                    .sorted());
+            subDirectories =
+                    compatibilityHelper.toList(stream.filter(Files::isDirectory).sorted());
         }
 
         for (Path subDirectory : subDirectories) {
@@ -194,8 +216,7 @@ public class PackageIndexer {
                 generatedAt,
                 pluginVersion,
                 aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE
-        );
+                AiMdHeaderCodec.NODE_TYPE_PACKAGE);
 
         if (!headerSupport.shouldWrite(force, packageFile, baseHeader)) {
             log.info("Unchanged package AI index file: " + packageFile);
@@ -246,14 +267,37 @@ public class PackageIndexer {
 
     private String buildPackageSourceText(final AiMdHeader header, final Collection<String> contents) {
         final StringBuilder builder = new StringBuilder();
-        builder.append(AiMdHeaderCodec.HEADER_TITLE_PREFIX).append(header.title()).append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("H: ").append(header.h()).append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("C: ").append(header.c()).append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("D: ").append(header.d()).append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("T: ").append(header.t()).append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("G: ").append(header.g()).append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("A: ").append(header.a()).append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX).append("X: ").append(header.x()).append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_TITLE_PREFIX)
+                .append(header.title())
+                .append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
+                .append("H: ")
+                .append(header.h())
+                .append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
+                .append("C: ")
+                .append(header.c())
+                .append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
+                .append("D: ")
+                .append(header.d())
+                .append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
+                .append("T: ")
+                .append(header.t())
+                .append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
+                .append("G: ")
+                .append(header.g())
+                .append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
+                .append("A: ")
+                .append(header.a())
+                .append('\n');
+        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
+                .append("X: ")
+                .append(header.x())
+                .append('\n');
         appendContentsSection(builder, contents, true);
         return builder.toString();
     }
@@ -273,9 +317,7 @@ public class PackageIndexer {
      * @param prependNewline when {@code true}, a blank line is prepended before the heading
      */
     private void appendContentsSection(
-            final StringBuilder builder,
-            final Collection<String> contents,
-            final boolean prependNewline) {
+            final StringBuilder builder, final Collection<String> contents, final boolean prependNewline) {
         if (contents.isEmpty()) {
             return;
         }
@@ -301,14 +343,14 @@ public class PackageIndexer {
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
-                        builder.append(headerSupport.buildChecksumLine(
-                                name, readChildPackageHeader(path)));
+                        builder.append(headerSupport.buildChecksumLine(name, readChildPackageHeader(path)));
                     }
                     continue;
                 }
 
                 if (isAiMdContentFile(name)) {
-                    builder.append(headerSupport.buildChecksumLine(name, documentCodec.read(path).header()));
+                    builder.append(headerSupport.buildChecksumLine(
+                            name, documentCodec.read(path).header()));
                 }
             }
         }
@@ -353,7 +395,9 @@ public class PackageIndexer {
      * @throws java.io.IOException if the file cannot be read
      */
     private AiMdHeader readChildPackageHeader(final Path directory) throws java.io.IOException {
-        return documentCodec.read(directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)).header();
+        return documentCodec
+                .read(directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME))
+                .header();
     }
 
     /**

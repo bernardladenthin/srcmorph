@@ -7,10 +7,22 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
+/** Utility helpers for formatting timestamps written into {@code .ai.md} headers. */
 public class AiTimeSupport {
+
+    /** Creates a new {@link AiTimeSupport}. */
+    public AiTimeSupport() {
+        // no-op
+    }
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
+    /**
+     * Formats the given instant as an ISO-8601 string truncated to seconds.
+     *
+     * @param instant instant to format
+     * @return ISO-8601 timestamp with second precision
+     */
     public String formatInstant(final Instant instant) {
         return ISO_FORMATTER.format(instant.truncatedTo(ChronoUnit.SECONDS));
     }

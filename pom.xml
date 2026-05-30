@@ -60,14 +60,20 @@ SPDX-License-Identifier: Apache-2.0
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <maven.version>3.9.16</maven.version>
+        <llama.version>5.0.1</llama.version>
+        <junit.version>6.1.0</junit.version>
+        <hamcrest.version>3.0</hamcrest.version>
+        <jmh.version>1.37</jmh.version>
         <jcstress.version>0.16</jcstress.version>
         <lincheck.version>2.39</lincheck.version>
         <vmlens.version>1.2.28</vmlens.version>
-        <jqwik.version>1.9.2</jqwik.version>
-        <archunit.version>1.3.0</archunit.version>
-        <spotbugs.version>4.8.6.6</spotbugs.version>
+        <jqwik.version>1.10.0</jqwik.version>
+        <archunit.version>1.4.2</archunit.version>
+        <spotbugs.version>4.9.8.3</spotbugs.version>
         <fb-contrib.version>7.6.4</fb-contrib.version>
-        <findsecbugs.version>1.13.0</findsecbugs.version>
+        <findsecbugs.version>1.14.0</findsecbugs.version>
+        <spotless.version>3.5.1</spotless.version>
+        <palantir-java-format.version>2.66.0</palantir-java-format.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
 
@@ -79,7 +85,7 @@ SPDX-License-Identifier: Apache-2.0
         <dependency>
             <groupId>net.ladenthin</groupId>
             <artifactId>llama</artifactId>
-            <version>5.0.1</version>
+            <version>${llama.version}</version>
         </dependency>
 
         <dependency>
@@ -99,14 +105,14 @@ SPDX-License-Identifier: Apache-2.0
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>6.1.0</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest</artifactId>
-            <version>3.0</version>
+            <version>${hamcrest.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -124,13 +130,13 @@ SPDX-License-Identifier: Apache-2.0
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
             <artifactId>jmh-core</artifactId>
-            <version>1.37</version>
+            <version>${jmh.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
             <artifactId>jmh-generator-annprocess</artifactId>
-            <version>1.37</version>
+            <version>${jmh.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -148,11 +154,89 @@ SPDX-License-Identifier: Apache-2.0
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>${spotbugs.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.vmlens</groupId>
+                    <artifactId>vmlens-maven-plugin</artifactId>
+                    <version>${vmlens.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>io.github.git-commit-id</groupId>
+                    <artifactId>git-commit-id-maven-plugin</artifactId>
+                    <version>10.0.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.15.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.6.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.8</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.12.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-plugin-plugin</artifactId>
+                    <version>${maven.plugin.tools.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.4.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.6.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.14</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.10.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>10.0.0</version>
                 <executions>
                     <execution>
                         <id>get-git-properties</id>
@@ -172,7 +256,6 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.6.3</version>
                 <executions>
                     <execution>
                         <id>enforce-maven</id>
@@ -193,7 +276,6 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
@@ -213,7 +295,7 @@ SPDX-License-Identifier: Apache-2.0
                                 <path>
                                     <groupId>org.openjdk.jmh</groupId>
                                     <artifactId>jmh-generator-annprocess</artifactId>
-                                    <version>1.37</version>
+                                    <version>${jmh.version}</version>
                                 </path>
                             </annotationProcessorPaths>
                         </configuration>
@@ -224,13 +306,11 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.5</version>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -245,9 +325,14 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.12.0</version>
                 <configuration>
                     <source>${maven.compiler.source}</source>
+                    <failOnError>true</failOnError>
+                    <failOnWarnings>true</failOnWarnings>
+                    <doclint>all</doclint>
+                    <sourceFileExcludes>
+                        <sourceFileExclude>**/HelpMojo.java</sourceFileExclude>
+                    </sourceFileExcludes>
                 </configuration>
                 <executions>
                     <execution>
@@ -262,7 +347,6 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-plugin-plugin</artifactId>
-                <version>${maven.plugin.tools.version}</version>
                 <configuration>
                     <goalPrefix>ai-index</goalPrefix>
                 </configuration>
@@ -285,7 +369,6 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.14</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -303,9 +386,35 @@ SPDX-License-Identifier: Apache-2.0
                 </executions>
             </plugin>
             <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                        <removeUnusedImports/>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>${spotbugs.version}</version>
                 <configuration>
                     <effort>Default</effort>
                     <threshold>Default</threshold>
@@ -338,31 +447,10 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.6.3</version>
                 <configuration>
                     <mainClass>org.openjdk.jmh.Main</mainClass>
                     <classpathScope>test</classpathScope>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>jcstress</id>
-                        <phase>test</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration>
-                            <skip>${skipTests}</skip>
-                            <executable>${java.home}/bin/java</executable>
-                            <classpathScope>test</classpathScope>
-                            <arguments>
-                                <argument>-classpath</argument>
-                                <classpath/>
-                                <argument>org.openjdk.jcstress.Main</argument>
-                                <argument>-v</argument>
-                                <argument>-m</argument>
-                                <argument>default</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
@@ -375,7 +463,6 @@ SPDX-License-Identifier: Apache-2.0
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.8</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -395,7 +482,6 @@ SPDX-License-Identifier: Apache-2.0
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.10.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
@@ -776,7 +862,6 @@ Source:
                     <plugin>
                         <groupId>com.vmlens</groupId>
                         <artifactId>vmlens-maven-plugin</artifactId>
-                        <version>${vmlens.version}</version>
                         <configuration>
                             <!--
                                 Lincheck generates its own TestThreadExecution class on the fly.
@@ -796,6 +881,36 @@ Source:
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>jcstress</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jcstress</id>
+                                <phase>test</phase>
+                                <goals><goal>exec</goal></goals>
+                                <configuration>
+                                    <executable>${java.home}/bin/java</executable>
+                                    <classpathScope>test</classpathScope>
+                                    <arguments>
+                                        <argument>-classpath</argument>
+                                        <classpath/>
+                                        <argument>org.openjdk.jcstress.Main</argument>
+                                        <argument>-v</argument>
+                                        <argument>-m</argument>
+                                        <argument>default</argument>
+                                    </arguments>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

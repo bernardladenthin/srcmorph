@@ -5,8 +5,19 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.io.IOException;
 
+/**
+ * Pluggable AI backend that produces text for an {@link AiGenerationRequest}.
+ * Implementations may run locally (llama.cpp) or be mock providers for tests.
+ */
 public interface AiGenerationProvider extends AutoCloseable {
 
+    /**
+     * Generates text for the given request using the provider's default sampling parameters.
+     *
+     * @param request the generation request containing prompt key, source file, source text, and current header
+     * @return the generated text; never {@code null}, but may be blank if the model produced no tokens
+     * @throws IOException if the underlying provider fails
+     */
     String generate(AiGenerationRequest request) throws IOException;
 
     /**
@@ -32,6 +43,5 @@ public interface AiGenerationProvider extends AutoCloseable {
     }
 
     @Override
-    default void close() throws IOException {
-    }
+    default void close() throws IOException {}
 }

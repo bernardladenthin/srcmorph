@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.containsString;
 
 public class AiMdDocumentCodecTest {
 
@@ -28,8 +29,7 @@ public class AiMdDocumentCodecTest {
                 "2026-03-15T18:34:26Z",
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiMdDocument document = new AiMdDocument(header, "This is the body content.");
 
         // act
@@ -50,8 +50,7 @@ public class AiMdDocumentCodecTest {
                 "2026-03-15T18:34:26Z",
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiMdDocument document = new AiMdDocument(header, "Body content");
 
         // act
@@ -82,8 +81,7 @@ public class AiMdDocumentCodecTest {
                 "2026-03-15T18:34:26Z",
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiMdDocument document = new AiMdDocument(header, "   ");
 
         // act
@@ -106,8 +104,7 @@ public class AiMdDocumentCodecTest {
                 "2026-03-15T18:34:26Z",
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                AiMdHeaderCodec.NODE_TYPE_FILE);
         final String originalBody = "This is some body content.\nWith multiple lines.";
         final AiMdDocument original = new AiMdDocument(originalHeader, originalBody);
 
@@ -136,8 +133,7 @@ public class AiMdDocumentCodecTest {
                 "- X: file",
                 "",
                 "---",
-                "This is the actual body content."
-        );
+                "This is the actual body content.");
 
         // act
         final AiMdDocument document = documentCodec.read(lines);
@@ -162,8 +158,7 @@ public class AiMdDocumentCodecTest {
                 "",
                 "---",
                 "Body with --- in the middle",
-                "More content"
-        );
+                "More content");
 
         // act
         final AiMdDocument document = documentCodec.read(lines);
@@ -185,8 +180,7 @@ public class AiMdDocumentCodecTest {
                 "2026-03-15T18:34:26Z",
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE
-        );
+                AiMdHeaderCodec.NODE_TYPE_PACKAGE);
         final String bodyWithBlankLines = "First paragraph.\n\nSecond paragraph.";
         final AiMdDocument original = new AiMdDocument(header, bodyWithBlankLines);
 
@@ -210,8 +204,7 @@ public class AiMdDocumentCodecTest {
                 "- T: 2026-03-15T18:34:26Z",
                 "- G: 0.1.0-SNAPSHOT",
                 "- A: 0.0.0",
-                "- X: file"
-        );
+                "- X: file");
 
         // act
         final AiMdDocument document = documentCodec.read(lines);

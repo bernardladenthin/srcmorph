@@ -19,6 +19,11 @@ import java.io.IOException;
  */
 public class AiResponseNormalizer {
 
+    /** Creates a new {@link AiResponseNormalizer}. */
+    public AiResponseNormalizer() {
+        // no-op
+    }
+
     /**
      * Token that opens a Gemma-4 thinking block.
      * The model emits {@code <|channel>thought\n[reasoning]<channel|>[final answer]};
@@ -63,15 +68,14 @@ public class AiResponseNormalizer {
         }
         final int thinkingEnd = response.lastIndexOf(THINKING_BLOCK_END_MARKER);
         if (thinkingEnd >= 0) {
-            return response.substring(thinkingEnd + THINKING_BLOCK_END_MARKER.length()).trim();
+            return response.substring(thinkingEnd + THINKING_BLOCK_END_MARKER.length())
+                    .trim();
         }
         if (response.contains(THINKING_BLOCK_START_MARKER)) {
-            throw new IOException(
-                "Model token budget exhausted inside thinking block: "
-                + THINKING_BLOCK_START_MARKER + " was emitted but "
-                + THINKING_BLOCK_END_MARKER + " was not. "
-                + "Increase maxOutputTokens for this model definition."
-            );
+            throw new IOException("Model token budget exhausted inside thinking block: "
+                    + THINKING_BLOCK_START_MARKER + " was emitted but "
+                    + THINKING_BLOCK_END_MARKER + " was not. "
+                    + "Increase maxOutputTokens for this model definition.");
         }
         return response.trim();
     }

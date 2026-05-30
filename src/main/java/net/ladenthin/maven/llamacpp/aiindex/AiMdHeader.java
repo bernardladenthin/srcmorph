@@ -56,7 +56,18 @@ public final class AiMdHeader {
     private final String a;
     private final String x;
 
-
+    /**
+     * Creates a new {@link AiMdHeader}.
+     *
+     * @param title display title (typically the file name or package path)
+     * @param h     header format version
+     * @param c     source-state checksum
+     * @param d     source-state timestamp
+     * @param t     generation timestamp of this {@code .ai.md}
+     * @param g     generator/template version
+     * @param a     AI summarisation logic / output schema version
+     * @param x     node type, for example {@code file} or {@code package}
+     */
     public AiMdHeader(String title, String h, String c, String d, String t, String g, String a, String x) {
         Objects.requireNonNull(title, "title");
         Objects.requireNonNull(h, "h");
@@ -76,34 +87,74 @@ public final class AiMdHeader {
         this.x = x;
     }
 
+    /**
+     * Returns the display title.
+     *
+     * @return display title
+     */
     public String title() {
         return title;
     }
 
+    /**
+     * Returns the header format version.
+     *
+     * @return header format version
+     */
     public String h() {
         return h;
     }
 
+    /**
+     * Returns the source-state checksum.
+     *
+     * @return source-state checksum
+     */
     public String c() {
         return c;
     }
 
+    /**
+     * Returns the source-state timestamp.
+     *
+     * @return source-state timestamp
+     */
     public String d() {
         return d;
     }
 
+    /**
+     * Returns the generation timestamp of this {@code .ai.md}.
+     *
+     * @return generation timestamp
+     */
     public String t() {
         return t;
     }
 
+    /**
+     * Returns the generator/template version.
+     *
+     * @return generator/template version
+     */
     public String g() {
         return g;
     }
 
+    /**
+     * Returns the AI summarisation logic version.
+     *
+     * @return AI summarisation logic version
+     */
     public String a() {
         return a;
     }
 
+    /**
+     * Returns the node type ({@code file} or {@code package}).
+     *
+     * @return node type
+     */
     public String x() {
         return x;
     }
@@ -113,14 +164,14 @@ public final class AiMdHeader {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         AiMdHeader that = (AiMdHeader) obj;
-        return Objects.equals(this.title, that.title) &&
-                Objects.equals(this.h, that.h) &&
-                Objects.equals(this.c, that.c) &&
-                Objects.equals(this.d, that.d) &&
-                Objects.equals(this.t, that.t) &&
-                Objects.equals(this.g, that.g) &&
-                Objects.equals(this.a, that.a) &&
-                Objects.equals(this.x, that.x);
+        return Objects.equals(this.title, that.title)
+                && Objects.equals(this.h, that.h)
+                && Objects.equals(this.c, that.c)
+                && Objects.equals(this.d, that.d)
+                && Objects.equals(this.t, that.t)
+                && Objects.equals(this.g, that.g)
+                && Objects.equals(this.a, that.a)
+                && Objects.equals(this.x, that.x);
     }
 
     @Override
@@ -130,15 +181,14 @@ public final class AiMdHeader {
 
     @Override
     public String toString() {
-        return "AiMdHeader[" +
-                "title=" + title + ", " +
-                "h=" + h + ", " +
-                "c=" + c + ", " +
-                "d=" + d + ", " +
-                "t=" + t + ", " +
-                "g=" + g + ", " +
-                "a=" + a + ", " +
-                "x=" + x + ']';
+        return "AiMdHeader[" + "title="
+                + title + ", " + "h="
+                + h + ", " + "c="
+                + c + ", " + "d="
+                + d + ", " + "t="
+                + t + ", " + "g="
+                + g + ", " + "a="
+                + a + ", " + "x="
+                + x + ']';
     }
-
 }

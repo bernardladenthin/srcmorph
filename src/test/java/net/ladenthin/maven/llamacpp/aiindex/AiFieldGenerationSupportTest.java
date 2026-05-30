@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -12,10 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 
 public class AiFieldGenerationSupportTest {
 
@@ -61,19 +62,26 @@ public class AiFieldGenerationSupportTest {
     public void processFieldGenerations_providerReturnsNonEmpty_noWarningLogged() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader("Test.java", "1.0", "ABCD1234",
-                "2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z", "0.1.0", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "Test.java",
+                "1.0",
+                "ABCD1234",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:01:00Z",
+                "0.1.0",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider nonEmptyProvider = request -> "A real summary.";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, nonEmptyProvider, new AiPromptPreparationSupport(promptSupport),
+                capturingLog,
+                nonEmptyProvider,
+                new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(),
-                contextFile, "file", "public class Test {}", header);
+                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert
         assertThat(capturingLog.getCapturedWarnings().isEmpty(), is(true));
@@ -83,19 +91,30 @@ public class AiFieldGenerationSupportTest {
     public void processFieldGenerations_providerReturnsEmpty_warningContainsContextFile() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("AiGenerationConfig", ".java");
-        final AiMdHeader header = new AiMdHeader("AiGenerationConfig.java", "1.0", "A8CBFAAA",
-                "2026-03-20T21:32:55Z", "2026-03-20T21:58:26Z", "0.1.0-SNAPSHOT", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "AiGenerationConfig.java",
+                "1.0",
+                "A8CBFAAA",
+                "2026-03-20T21:32:55Z",
+                "2026-03-20T21:58:26Z",
+                "0.1.0-SNAPSHOT",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, emptyProvider, new AiPromptPreparationSupport(promptSupport),
+                capturingLog,
+                emptyProvider,
+                new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         support.processFieldGenerations(
                 CommonTestFixtures.createFileFieldGenerations(),
-                contextFile, "file", "public class AiGenerationConfig {}", header);
+                contextFile,
+                "file",
+                "public class AiGenerationConfig {}",
+                header);
 
         // assert
         assertThat(capturingLog.getCapturedWarnings().size(), is(equalTo(1)));
@@ -106,54 +125,74 @@ public class AiFieldGenerationSupportTest {
     public void processFieldGenerations_providerReturnsEmpty_warningContainsPromptKey() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader("Test.java", "1.0", "ABCD1234",
-                "2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z", "0.1.0", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "Test.java",
+                "1.0",
+                "ABCD1234",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:01:00Z",
+                "0.1.0",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, emptyProvider, new AiPromptPreparationSupport(promptSupport),
+                capturingLog,
+                emptyProvider,
+                new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(),
-                contextFile, "file", "public class Test {}", header);
+                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert
         assertThat(capturingLog.getCapturedWarnings().size(), is(equalTo(1)));
-        assertThat(capturingLog.getCapturedWarnings().get(0),
-                containsString(CommonTestFixtures.PROMPT_KEY_FILE_BODY));
+        assertThat(capturingLog.getCapturedWarnings().get(0), containsString(CommonTestFixtures.PROMPT_KEY_FILE_BODY));
     }
 
     @Test
     public void processFieldGenerations_providerReturnsEmpty_resultBodyIsEmpty() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader("Test.java", "1.0", "ABCD1234",
-                "2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z", "0.1.0", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "Test.java",
+                "1.0",
+                "ABCD1234",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:01:00Z",
+                "0.1.0",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, emptyProvider, new AiPromptPreparationSupport(promptSupport),
+                capturingLog,
+                emptyProvider,
+                new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         final AiGenerationResult result = support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(),
-                contextFile, "file", "public class Test {}", header);
+                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert
         assertThat(result.body(), is(equalTo("")));
     }
 
     @Test
-    public void processFieldGenerations_providerReturnEmptyThenNonEmpty_noWarningLoggedAndResultBodyIsNonEmpty() throws Exception {
+    public void processFieldGenerations_providerReturnEmptyThenNonEmpty_noWarningLoggedAndResultBodyIsNonEmpty()
+            throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader("Test.java", "1.0", "ABCD1234",
-                "2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z", "0.1.0", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "Test.java",
+                "1.0",
+                "ABCD1234",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:01:00Z",
+                "0.1.0",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AtomicInteger callCount = new AtomicInteger(0);
@@ -172,13 +211,14 @@ public class AiFieldGenerationSupportTest {
             }
         };
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, eventualProvider, new AiPromptPreparationSupport(promptSupport),
+                capturingLog,
+                eventualProvider,
+                new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         final AiGenerationResult result = support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(),
-                contextFile, "file", "public class Test {}", header);
+                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert — warning suppressed because retry succeeded
         assertThat(capturingLog.getCapturedWarnings().isEmpty(), is(true));
@@ -189,8 +229,14 @@ public class AiFieldGenerationSupportTest {
     public void processFieldGenerations_providerAlwaysEmpty_retriesDefaultMaxRetriesTimes() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader("Test.java", "1.0", "ABCD1234",
-                "2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z", "0.1.0", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "Test.java",
+                "1.0",
+                "ABCD1234",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:01:00Z",
+                "0.1.0",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AtomicInteger retryCallCount = new AtomicInteger(0);
@@ -207,13 +253,14 @@ public class AiFieldGenerationSupportTest {
             }
         };
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, alwaysEmptyProvider, new AiPromptPreparationSupport(promptSupport),
+                capturingLog,
+                alwaysEmptyProvider,
+                new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(),
-                contextFile, "file", "public class Test {}", header);
+                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert — retry was invoked exactly DEFAULT_MAX_RETRIES times
         assertThat(retryCallCount.get(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_RETRIES)));
@@ -223,8 +270,14 @@ public class AiFieldGenerationSupportTest {
     public void processFieldGenerations_providerAlwaysEmpty_logsRetryInfoMessages() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader("Test.java", "1.0", "ABCD1234",
-                "2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z", "0.1.0", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "Test.java",
+                "1.0",
+                "ABCD1234",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:01:00Z",
+                "0.1.0",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider alwaysEmptyProvider = new AiGenerationProvider() {
@@ -239,13 +292,14 @@ public class AiFieldGenerationSupportTest {
             }
         };
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, alwaysEmptyProvider, new AiPromptPreparationSupport(promptSupport),
+                capturingLog,
+                alwaysEmptyProvider,
+                new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(),
-                contextFile, "file", "public class Test {}", header);
+                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert — one INFO log per retry attempt + one for the initial generation attempt
         final List<String> infos = capturingLog.getCapturedInfos();
@@ -273,8 +327,14 @@ public class AiFieldGenerationSupportTest {
     public void processFieldGenerations_zeroMaxRetries_providerCalledOnce() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader("Test.java", "1.0", "ABCD1234",
-                "2026-01-01T00:00:00Z", "2026-01-01T00:01:00Z", "0.1.0", "0.0.0",
+        final AiMdHeader header = new AiMdHeader(
+                "Test.java",
+                "1.0",
+                "ABCD1234",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:01:00Z",
+                "0.1.0",
+                "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AtomicInteger retryCallCount = new AtomicInteger(0);
@@ -302,8 +362,7 @@ public class AiFieldGenerationSupportTest {
         fieldConfig.setAiDefinitionKey(zeroRetriesKey);
 
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, alwaysEmptyProvider, new AiPromptPreparationSupport(promptSupport),
-                modelSupport);
+                capturingLog, alwaysEmptyProvider, new AiPromptPreparationSupport(promptSupport), modelSupport);
 
         // act
         support.processFieldGenerations(

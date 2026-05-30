@@ -18,14 +18,19 @@ public class AiGenerationResult {
     private final String body;
 
     /**
+     * Creates a new {@link AiGenerationResult}.
+     *
      * @param body AI-generated body text destined for {@link AiMdDocument#body()}
      */
-    public AiGenerationResult(
-            String body
-    ) {
+    public AiGenerationResult(String body) {
         this.body = body;
     }
 
+    /**
+     * Returns the AI-generated body text.
+     *
+     * @return body text; may be empty if no body field was generated
+     */
     public String body() {
         return body;
     }
@@ -45,7 +50,6 @@ public class AiGenerationResult {
 
     @Override
     public String toString() {
-        return "AiGenerationResult[" +
-                "body=" + body + ']';
+        return "AiGenerationResult[" + "body=" + body + ']';
     }
 }

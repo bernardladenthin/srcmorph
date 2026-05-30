@@ -30,6 +30,11 @@ package net.ladenthin.maven.llamacpp.aiindex;
  */
 public class AiFieldGenerationConfig {
 
+    /** Creates a new {@link AiFieldGenerationConfig}. */
+    public AiFieldGenerationConfig() {
+        // no-op
+    }
+
     private String promptKey;
 
     /**

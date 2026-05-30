@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-import org.apache.maven.plugin.logging.Log;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,7 +10,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
+import org.apache.maven.plugin.logging.Log;
 
+/**
+ * Walks the configured source subtrees, creates per-file {@code .ai.md} index files,
+ * and fills in their AI-generated summary and keyword fields.
+ */
 public class SourceFileIndexer {
 
     /**
@@ -41,6 +44,22 @@ public class SourceFileIndexer {
 
     private final AiFieldGenerationSupport fieldGenerationSupport;
 
+    /**
+     * Creates a new {@link SourceFileIndexer}.
+     *
+     * @param log                    Maven plugin logger
+     * @param baseDirectory          project base directory
+     * @param outputRoot             root directory in which {@code .ai.md} files are written
+     * @param fileExtensions         file extensions to index; {@code null} means all files
+     * @param pluginVersion          plugin version recorded in headers
+     * @param aiVersion              AI summarisation logic version recorded in headers
+     * @param subtrees               source subtrees in scope; may be {@code null}
+     * @param force                  when {@code true}, regenerate even when fields are populated
+     * @param generationProvider     AI provider used to generate fields
+     * @param fieldGenerations       field generation configurations; may be {@code null}
+     * @param promptSupport          prompt lookup
+     * @param modelDefinitionSupport AI model definition lookup
+     */
     public SourceFileIndexer(
             final Log log,
             final Path baseDirectory,
@@ -53,8 +72,7 @@ public class SourceFileIndexer {
             final AiGenerationProvider generationProvider,
             final Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport
-    ) {
+            final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
@@ -65,10 +83,16 @@ public class SourceFileIndexer {
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
-                log, generationProvider, new AiPromptPreparationSupport(promptSupport),
-                modelDefinitionSupport);
+                log, generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
     }
 
+    /**
+     * Indexes every matching file beneath {@code sourceRoot}.
+     *
+     * @param sourceRoot source root directory to walk
+     * @return number of source-file index files written or refreshed
+     * @throws IOException if a file cannot be read or written
+     */
     public int indexSourceRoot(final Path sourceRoot) throws IOException {
         int count = 0;
 
@@ -122,7 +146,8 @@ public class SourceFileIndexer {
         final Path sourceFileNamePath = sourceFile.getFileName();
         final String fileName = sourceFileNamePath != null ? sourceFileNamePath.toString() : sourceFile.toString();
         final String checksum = checksumSupport.calculateCrc32Hex(sourceFile);
-        final String sourceModified = timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
+        final String sourceModified =
+                timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
@@ -133,8 +158,7 @@ public class SourceFileIndexer {
                 generatedAt,
                 pluginVersion,
                 aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                AiMdHeaderCodec.NODE_TYPE_FILE);
 
         if (!headerSupport.shouldWrite(force, targetFile, baseHeader)) {
             log.info("Unchanged AI index file: " + targetFile);

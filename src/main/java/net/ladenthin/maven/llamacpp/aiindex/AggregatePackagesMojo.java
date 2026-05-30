@@ -3,16 +3,24 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-
+/**
+ * Maven goal {@code ai-index:aggregate-packages}: aggregates per-package
+ * {@code .ai.md} index files and fills in their AI-generated summary and keyword fields.
+ */
 @Mojo(name = "aggregate-packages", threadSafe = true)
 public class AggregatePackagesMojo extends AbstractAiIndexMojo {
+
+    /** Creates a new {@link AggregatePackagesMojo}. */
+    public AggregatePackagesMojo() {
+        // no-op
+    }
 
     @Parameter(defaultValue = "${project.version}", readonly = true)
     private String pluginVersion;
@@ -61,7 +69,8 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
             final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
             final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
-            try (AiGenerationProvider generationProvider = providerFactory.create(summaryProvider, buildLlamaCppJniConfig(), promptSupport)) {
+            try (AiGenerationProvider generationProvider =
+                    providerFactory.create(summaryProvider, buildLlamaCppJniConfig(), promptSupport)) {
                 final PackageIndexer packageIndexer = new PackageIndexer(
                         getLog(),
                         basePath,
@@ -73,8 +82,7 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
                         generationProvider,
                         fieldGenerations,
                         promptSupport,
-                        modelDefinitionSupport
-                );
+                        modelDefinitionSupport);
 
                 final int aggregated = packageIndexer.aggregate(outputPath);
                 getLog().info("Aggregated packages: " + aggregated);

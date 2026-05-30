@@ -7,7 +7,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Mutable configuration object that carries all parameters for a single AI generation
+ * step (model path, sampling parameters, retry policy, input trimming limits, stop
+ * strings) between the Maven configuration layer and the AI provider implementations.
+ */
 public class AiGenerationConfig {
+
+    /** Creates a new {@link AiGenerationConfig} with all defaults applied. */
+    public AiGenerationConfig() {
+        // no-op
+    }
 
     /** Default context window size (in tokens) used when no explicit context size is configured. */
     public static final int DEFAULT_CONTEXT_SIZE = 32768;
@@ -121,42 +131,92 @@ public class AiGenerationConfig {
     private boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private List<String> stopStrings = new ArrayList<>();
 
+    /**
+     * Returns the GGUF model file path.
+     *
+     * @return model file path, or {@code null} if not set
+     */
     public String getModelPath() {
         return modelPath;
     }
 
+    /**
+     * Sets the GGUF model file path.
+     *
+     * @param modelPath absolute or relative path to the model file
+     */
     public void setModelPath(final String modelPath) {
         this.modelPath = modelPath;
     }
 
+    /**
+     * Returns the context window size in tokens.
+     *
+     * @return context window size in tokens
+     */
     public int getContextSize() {
         return contextSize;
     }
 
+    /**
+     * Sets the context window size in tokens.
+     *
+     * @param contextSize context window size in tokens
+     */
     public void setContextSize(final int contextSize) {
         this.contextSize = contextSize;
     }
 
+    /**
+     * Returns the maximum number of output tokens per inference call.
+     *
+     * @return maximum output tokens
+     */
     public int getMaxOutputTokens() {
         return maxOutputTokens;
     }
 
+    /**
+     * Sets the maximum number of output tokens per inference call.
+     *
+     * @param maxOutputTokens maximum output tokens
+     */
     public void setMaxOutputTokens(final int maxOutputTokens) {
         this.maxOutputTokens = maxOutputTokens;
     }
 
+    /**
+     * Returns the sampling temperature.
+     *
+     * @return sampling temperature
+     */
     public float getTemperature() {
         return temperature;
     }
 
+    /**
+     * Sets the sampling temperature.
+     *
+     * @param temperature sampling temperature; lower is more deterministic
+     */
     public void setTemperature(final float temperature) {
         this.temperature = temperature;
     }
 
+    /**
+     * Returns the number of CPU threads used for inference.
+     *
+     * @return number of CPU threads
+     */
     public int getThreads() {
         return threads;
     }
 
+    /**
+     * Sets the number of CPU threads used for inference.
+     *
+     * @param threads number of CPU threads
+     */
     public void setThreads(final int threads) {
         this.threads = threads;
     }
@@ -181,74 +241,164 @@ public class AiGenerationConfig {
         this.charsPerToken = charsPerToken;
     }
 
+    /**
+     * Returns the maximum number of input characters fed to the prompt.
+     *
+     * @return maximum input characters
+     */
     public int getMaxInputChars() {
         return maxInputChars;
     }
 
+    /**
+     * Sets the maximum number of input characters fed to the prompt.
+     *
+     * @param maxInputChars maximum input characters
+     */
     public void setMaxInputChars(final int maxInputChars) {
         this.maxInputChars = maxInputChars;
     }
 
+    /**
+     * Returns whether a warning is emitted when the prompt source text is trimmed.
+     *
+     * @return {@code true} if trim warnings are enabled
+     */
     public boolean isWarnOnTrim() {
         return warnOnTrim;
     }
 
+    /**
+     * Sets whether a warning is emitted when the prompt source text is trimmed.
+     *
+     * @param warnOnTrim {@code true} to enable trim warnings
+     */
     public void setWarnOnTrim(final boolean warnOnTrim) {
         this.warnOnTrim = warnOnTrim;
     }
 
+    /**
+     * Returns the maximum number of retry attempts on empty-body responses.
+     *
+     * @return maximum retry attempts
+     */
     public int getMaxRetries() {
         return maxRetries;
     }
 
+    /**
+     * Sets the maximum number of retry attempts on empty-body responses.
+     *
+     * @param maxRetries maximum retry attempts
+     */
     public void setMaxRetries(final int maxRetries) {
         this.maxRetries = maxRetries;
     }
 
+    /**
+     * Returns the temperature increment added on each retry attempt.
+     *
+     * @return temperature increment per retry
+     */
     public float getRetryTemperatureIncrement() {
         return retryTemperatureIncrement;
     }
 
+    /**
+     * Sets the temperature increment added on each retry attempt.
+     *
+     * @param retryTemperatureIncrement temperature increment per retry
+     */
     public void setRetryTemperatureIncrement(final float retryTemperatureIncrement) {
         this.retryTemperatureIncrement = retryTemperatureIncrement;
     }
 
+    /**
+     * Returns the nucleus-sampling probability threshold.
+     *
+     * @return top-p value
+     */
     public float getTopP() {
         return topP;
     }
 
+    /**
+     * Sets the nucleus-sampling probability threshold.
+     *
+     * @param topP top-p value
+     */
     public void setTopP(final float topP) {
         this.topP = topP;
     }
 
+    /**
+     * Returns the top-k sampling limit.
+     *
+     * @return top-k value
+     */
     public int getTopK() {
         return topK;
     }
 
+    /**
+     * Sets the top-k sampling limit.
+     *
+     * @param topK top-k value
+     */
     public void setTopK(final int topK) {
         this.topK = topK;
     }
 
+    /**
+     * Returns the repetition penalty.
+     *
+     * @return repeat penalty
+     */
     public float getRepeatPenalty() {
         return repeatPenalty;
     }
 
+    /**
+     * Sets the repetition penalty.
+     *
+     * @param repeatPenalty repeat penalty
+     */
     public void setRepeatPenalty(final float repeatPenalty) {
         this.repeatPenalty = repeatPenalty;
     }
 
+    /**
+     * Returns whether the model's chat-template thinking mode is enabled.
+     *
+     * @return {@code true} if chat-template thinking mode is enabled
+     */
     public boolean isChatTemplateEnableThinking() {
         return chatTemplateEnableThinking;
     }
 
+    /**
+     * Sets whether the model's chat-template thinking mode is enabled.
+     *
+     * @param chatTemplateEnableThinking {@code true} to enable chat-template thinking mode
+     */
     public void setChatTemplateEnableThinking(final boolean chatTemplateEnableThinking) {
         this.chatTemplateEnableThinking = chatTemplateEnableThinking;
     }
 
+    /**
+     * Returns an unmodifiable view of the configured stop strings.
+     *
+     * @return unmodifiable list of stop strings, or {@code null} if not set
+     */
     public List<String> getStopStrings() {
         return stopStrings != null ? Collections.unmodifiableList(stopStrings) : null;
     }
 
+    /**
+     * Sets the list of stop strings; a {@code null} value resets to an empty list.
+     *
+     * @param stopStrings stop strings, or {@code null} to clear
+     */
     public void setStopStrings(final List<String> stopStrings) {
         this.stopStrings = stopStrings != null ? stopStrings : new ArrayList<>();
     }

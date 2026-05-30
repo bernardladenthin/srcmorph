@@ -18,8 +18,10 @@ public class PluginArchitectureTest {
      */
     @ArchTest
     static final ArchRule noJavaUtilLogging = noClasses()
-            .that().resideInAPackage("net.ladenthin.maven.llamacpp.aiindex..")
-            .should().dependOnClassesThat()
+            .that()
+            .resideInAPackage("net.ladenthin.maven.llamacpp.aiindex..")
+            .should()
+            .dependOnClassesThat()
             .resideInAPackage("java.util.logging..");
 
     /**
@@ -27,7 +29,9 @@ public class PluginArchitectureTest {
      */
     @ArchTest
     static final ArchRule noTestFrameworksInProduction = noClasses()
-            .that().resideInAPackage("net.ladenthin.maven.llamacpp.aiindex..")
-            .should().dependOnClassesThat()
+            .that()
+            .resideInAPackage("net.ladenthin.maven.llamacpp.aiindex..")
+            .should()
+            .dependOnClassesThat()
             .resideInAnyPackage("org.junit..", "net.jqwik..", "com.tngtech.archunit..");
 }

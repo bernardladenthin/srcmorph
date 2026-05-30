@@ -3,18 +3,18 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 
 public class SourceFileIndexerTest {
 
@@ -32,22 +32,30 @@ public class SourceFileIndexerTest {
         final Path aiFile = outputRoot.resolve("main/java/com/example/Test.java.ai.md");
 
         Files.createDirectories(sourceFile.getParent());
-        Files.write(sourceFile, ("package com.example;\n" +
-                                      "\n" +
-                                      "public class Test {\n" +
-                                      "    public String hello(final String name) {\n" +
-                                      "        return \"Hello \" + name;\n" +
-                                      "    }\n" +
-                                      "}\n").getBytes(StandardCharsets.UTF_8));
+        Files.write(
+                sourceFile,
+                ("package com.example;\n" + "\n"
+                                + "public class Test {\n"
+                                + "    public String hello(final String name) {\n"
+                                + "        return \"Hello \" + name;\n"
+                                + "    }\n"
+                                + "}\n")
+                        .getBytes(StandardCharsets.UTF_8));
 
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final SourceFileIndexer indexer = new SourceFileIndexer(
-                new SystemStreamLog(), baseDirectory, outputRoot,
-                Arrays.asList(".java"), "1.0.0", "0.0.0", Collections.<Path>emptyList(), false,
+                new SystemStreamLog(),
+                baseDirectory,
+                outputRoot,
+                Arrays.asList(".java"),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
                 new MockAiGenerationProvider(),
-                CommonTestFixtures.createFileFieldGenerations(), promptSupport,
-                CommonTestFixtures.createDefaultAiModelDefinitionSupport()
-        );
+                CommonTestFixtures.createFileFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         final int indexed = indexer.indexSourceRoot(sourceRoot);

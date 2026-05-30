@@ -4,7 +4,6 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -43,12 +42,11 @@ public class CommonTestFixtures {
     public static List<AiPromptDefinition> createFilePromptDefinitions() {
         final AiPromptDefinition bodyPrompt = new AiPromptDefinition();
         bodyPrompt.setKey(PROMPT_KEY_FILE_BODY);
-        bodyPrompt.setTemplate("Summarize this Java file and include relevant keywords in your response.\n" +
-                               "\n" +
-                               "File: %s\n" +
-                               "\n" +
-                               "Source:\n" +
-                               "%s\n");
+        bodyPrompt.setTemplate("Summarize this Java file and include relevant keywords in your response.\n" + "\n"
+                + "File: %s\n"
+                + "\n"
+                + "Source:\n"
+                + "%s\n");
 
         return Arrays.asList(bodyPrompt);
     }
@@ -61,9 +59,7 @@ public class CommonTestFixtures {
      * @return list with one field generation config for the body
      */
     public static List<AiFieldGenerationConfig> createFileFieldGenerations() {
-        return Arrays.asList(
-                createFieldConfig(PROMPT_KEY_FILE_BODY)
-        );
+        return Arrays.asList(createFieldConfig(PROMPT_KEY_FILE_BODY));
     }
 
     /**
@@ -77,12 +73,11 @@ public class CommonTestFixtures {
     public static List<AiPromptDefinition> createPackagePromptDefinitions() {
         final AiPromptDefinition bodyPrompt = new AiPromptDefinition();
         bodyPrompt.setKey(PROMPT_KEY_PACKAGE_BODY);
-        bodyPrompt.setTemplate("Summarize this Java package and include relevant keywords in your response.\n" +
-                               "\n" +
-                               "File: %s\n" +
-                               "\n" +
-                               "Source:\n" +
-                               "%s\n");
+        bodyPrompt.setTemplate("Summarize this Java package and include relevant keywords in your response.\n" + "\n"
+                + "File: %s\n"
+                + "\n"
+                + "Source:\n"
+                + "%s\n");
 
         return Arrays.asList(bodyPrompt);
     }
@@ -95,9 +90,7 @@ public class CommonTestFixtures {
      * @return list with one field generation config for the body
      */
     public static List<AiFieldGenerationConfig> createPackageFieldGenerations() {
-        return Arrays.asList(
-                createFieldConfig(PROMPT_KEY_PACKAGE_BODY)
-        );
+        return Arrays.asList(createFieldConfig(PROMPT_KEY_PACKAGE_BODY));
     }
 
     /**

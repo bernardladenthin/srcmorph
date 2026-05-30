@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 
 public class AiMdHeaderCodecTest {
 
@@ -26,8 +27,7 @@ public class AiMdHeaderCodecTest {
                 "2026-03-15T18:34:26Z",
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE
-        );
+                AiMdHeaderCodec.NODE_TYPE_FILE);
 
         // act
         final String encoded = headerCodec.write(original);
@@ -48,8 +48,7 @@ public class AiMdHeaderCodecTest {
                 "2026-03-15T18:34:26Z",
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE
-        );
+                AiMdHeaderCodec.NODE_TYPE_PACKAGE);
 
         // act
         final String encoded = headerCodec.write(original);

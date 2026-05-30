@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+/**
+ * Prepares prompts for {@link AiGenerationProvider} calls by substituting the source
+ * text into a template and trimming it at a line boundary so that the prompt fits
+ * within the configured character budget.
+ */
 public class AiPromptPreparationSupport {
 
     /**
@@ -20,14 +25,24 @@ public class AiPromptPreparationSupport {
 
     private final AiPromptSupport promptSupport;
 
+    /**
+     * Creates a new {@link AiPromptPreparationSupport}.
+     *
+     * @param promptSupport prompt lookup used to render templates
+     */
     public AiPromptPreparationSupport(final AiPromptSupport promptSupport) {
         this.promptSupport = promptSupport;
     }
 
-    public AiPreparedPrompt preparePrompt(
-            final AiGenerationRequest request,
-            final int maxInputChars
-    ) {
+    /**
+     * Prepares the prompt for {@code request}, trimming the source text at a line
+     * boundary when the rendered prompt would exceed {@code maxInputChars}.
+     *
+     * @param request       generation request to prepare a prompt for
+     * @param maxInputChars maximum number of characters allowed in the rendered prompt
+     * @return prepared prompt along with trimming metrics
+     */
+    public AiPreparedPrompt preparePrompt(final AiGenerationRequest request, final int maxInputChars) {
         final String fullPrompt = promptSupport.buildPrompt(request);
         final int originalSourceLength = request.sourceText().length();
 
@@ -38,16 +53,11 @@ public class AiPromptPreparationSupport {
                     false,
                     originalSourceLength,
                     originalSourceLength,
-                    originalSourceLength
-            );
+                    originalSourceLength);
         }
 
-        final AiGenerationRequest emptySourceRequest = new AiGenerationRequest(
-                request.promptKey(),
-                request.sourceFile(),
-                "",
-                request.currentHeader()
-        );
+        final AiGenerationRequest emptySourceRequest =
+                new AiGenerationRequest(request.promptKey(), request.sourceFile(), "", request.currentHeader());
 
         final String promptWithoutSource = promptSupport.buildPrompt(emptySourceRequest);
         final int availableSourceChars = Math.max(0, maxInputChars - promptWithoutSource.length());
@@ -58,11 +68,7 @@ public class AiPromptPreparationSupport {
         final String trimmedSourceWithMarker = trimmedSource + EOF_MARKER;
 
         final AiGenerationRequest trimmedRequest = new AiGenerationRequest(
-                request.promptKey(),
-                request.sourceFile(),
-                trimmedSourceWithMarker,
-                request.currentHeader()
-        );
+                request.promptKey(), request.sourceFile(), trimmedSourceWithMarker, request.currentHeader());
 
         final String trimmedPrompt = promptSupport.buildPrompt(trimmedRequest);
 
@@ -72,8 +78,7 @@ public class AiPromptPreparationSupport {
                 true,
                 originalSourceLength,
                 trimmedSource.length(),
-                availableSourceChars
-        );
+                availableSourceChars);
     }
 
     /**
@@ -113,5 +118,4 @@ public class AiPromptPreparationSupport {
 
         return sourceText.substring(0, lastNewline + 1);
     }
-
 }
