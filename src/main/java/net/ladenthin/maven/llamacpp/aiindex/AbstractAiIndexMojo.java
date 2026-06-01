@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Base class for all AI index mojos. Centralises the parameters shared by every goal
@@ -189,6 +190,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
         if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
             final AiFieldGenerationConfig first = fieldGenerations.get(0);
             final AiGenerationConfig config = buildAiModelDefinitionSupport().getConfig(first.getAiDefinitionKey());
+            final List<String> stopStrings = config.getStopStrings();
             return new LlamaCppJniConfig(
                     llamaLibraryPath,
                     config.getModelPath(),
@@ -200,7 +202,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                     config.getTopK(),
                     config.getRepeatPenalty(),
                     config.isChatTemplateEnableThinking(),
-                    config.getStopStrings());
+                    stopStrings != null ? stopStrings : Collections.emptyList());
         }
         return new LlamaCppJniConfig(
                 llamaLibraryPath,
@@ -253,7 +255,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
             final Path basePath,
             final Path outputPath,
             final List<Path> resolvedSubtrees,
-            final List<String> resolvedExtensions) {
+            final @Nullable List<String> resolvedExtensions) {
         getLog().info(startMessage);
         getLog().info("Base directory  : " + basePath);
         getLog().info("Output directory: " + outputPath);

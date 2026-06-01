@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.maven.plugin.logging.Log;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Walks the configured source subtrees, creates per-file {@code .ai.md} index files,
@@ -27,13 +28,13 @@ public class SourceFileIndexer {
     private final Log log;
     private final Path baseDirectory;
     private final Path outputRoot;
-    private final List<String> fileExtensions;
+    private final @Nullable List<String> fileExtensions;
     private final String pluginVersion;
     private final String aiVersion;
-    private final List<Path> subtrees;
+    private final @Nullable List<Path> subtrees;
     private final boolean force;
 
-    private final List<AiFieldGenerationConfig> fieldGenerations;
+    private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
 
     private final AiPathSupport pathSupport = new AiPathSupport();
     private final AiTimeSupport timeSupport = new AiTimeSupport();
@@ -64,13 +65,13 @@ public class SourceFileIndexer {
             final Log log,
             final Path baseDirectory,
             final Path outputRoot,
-            final Collection<String> fileExtensions,
+            final @Nullable Collection<String> fileExtensions,
             final String pluginVersion,
             final String aiVersion,
-            final Collection<Path> subtrees,
+            final @Nullable Collection<Path> subtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
-            final Collection<AiFieldGenerationConfig> fieldGenerations,
+            final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
@@ -115,6 +116,9 @@ public class SourceFileIndexer {
     }
 
     private boolean matchesExtension(final Path path) {
+        if (fileExtensions == null) {
+            return false;
+        }
         final Path fileNamePath = path.getFileName();
         if (fileNamePath == null) {
             return false;

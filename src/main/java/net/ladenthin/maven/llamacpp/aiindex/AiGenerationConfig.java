@@ -6,12 +6,14 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Mutable configuration object that carries all parameters for a single AI generation
  * step (model path, sampling parameters, retry policy, input trimming limits, stop
  * strings) between the Maven configuration layer and the AI provider implementations.
  */
+@SuppressWarnings("NullAway.Init")
 public class AiGenerationConfig {
 
     /** Creates a new {@link AiGenerationConfig} with all defaults applied. */
@@ -390,7 +392,7 @@ public class AiGenerationConfig {
      *
      * @return unmodifiable list of stop strings, or {@code null} if not set
      */
-    public List<String> getStopStrings() {
+    public @Nullable List<String> getStopStrings() {
         return stopStrings != null ? Collections.unmodifiableList(stopStrings) : null;
     }
 
@@ -399,7 +401,7 @@ public class AiGenerationConfig {
      *
      * @param stopStrings stop strings, or {@code null} to clear
      */
-    public void setStopStrings(final List<String> stopStrings) {
+    public void setStopStrings(final @Nullable List<String> stopStrings) {
         this.stopStrings = stopStrings != null ? stopStrings : new ArrayList<>();
     }
 }

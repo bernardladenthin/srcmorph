@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.maven.plugin.logging.Log;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Aggregates {@code package.ai.md} index files: walks the output tree, lists each
@@ -49,11 +50,11 @@ public class PackageIndexer {
     private final Path outputRoot;
     private final String pluginVersion;
     private final String aiVersion;
-    private final List<Path> sourceSubtrees;
+    private final @Nullable List<Path> sourceSubtrees;
     private final List<Path> aiSubtrees;
     private final boolean force;
 
-    private final List<AiFieldGenerationConfig> fieldGenerations;
+    private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
 
     private final AiPathSupport pathSupport = new AiPathSupport();
     private final AiTimeSupport timeSupport = new AiTimeSupport();
@@ -85,10 +86,10 @@ public class PackageIndexer {
             final Path outputRoot,
             final String pluginVersion,
             final String aiVersion,
-            final Collection<Path> sourceSubtrees,
+            final @Nullable Collection<Path> sourceSubtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
-            final Collection<AiFieldGenerationConfig> fieldGenerations,
+            final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
@@ -157,7 +158,7 @@ public class PackageIndexer {
         return false;
     }
 
-    private List<Path> toAiSubtrees(final List<Path> sourceSubtrees) {
+    private List<Path> toAiSubtrees(final @Nullable List<Path> sourceSubtrees) {
         if (sourceSubtrees == null || sourceSubtrees.isEmpty()) {
             return new ArrayList<>();
         }
