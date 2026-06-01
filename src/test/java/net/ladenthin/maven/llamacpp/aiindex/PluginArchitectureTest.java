@@ -48,4 +48,16 @@ public class PluginArchitectureTest {
             .accessField(System.class, "out")
             .orShould()
             .accessField(System.class, "err");
+
+    /**
+     * Production code must not import unsupported / internal JDK packages.
+     * These are not part of the Java SE API and may change or disappear without notice.
+     */
+    @ArchTest
+    static final ArchRule noInternalJdkImports = noClasses()
+            .that()
+            .resideInAPackage("net.ladenthin.maven.llamacpp.aiindex..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("sun..", "com.sun..", "jdk.internal..");
 }
