@@ -50,7 +50,7 @@ public class PackageIndexer {
     private final Path outputRoot;
     private final String pluginVersion;
     private final String aiVersion;
-    private final @Nullable List<Path> sourceSubtrees;
+    private final List<Path> sourceSubtrees;
     private final List<Path> aiSubtrees;
     private final boolean force;
 
@@ -73,7 +73,7 @@ public class PackageIndexer {
      * @param outputRoot             root directory in which {@code .ai.md} files reside
      * @param pluginVersion          plugin version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
-     * @param sourceSubtrees         source subtrees in scope; may be {@code null}
+     * @param sourceSubtrees         source subtrees in scope; may be empty
      * @param force                  when {@code true}, regenerate even when fields are populated
      * @param generationProvider     AI provider used to generate fields
      * @param fieldGenerations       field generation configurations; may be {@code null}
@@ -86,7 +86,7 @@ public class PackageIndexer {
             final Path outputRoot,
             final String pluginVersion,
             final String aiVersion,
-            final @Nullable Collection<Path> sourceSubtrees,
+            final Collection<Path> sourceSubtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
             final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
@@ -97,7 +97,7 @@ public class PackageIndexer {
         this.outputRoot = outputRoot;
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
-        this.sourceSubtrees = sourceSubtrees != null ? new ArrayList<>(sourceSubtrees) : null;
+        this.sourceSubtrees = new ArrayList<>(sourceSubtrees);
         this.aiSubtrees = toAiSubtrees(this.sourceSubtrees);
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
@@ -142,7 +142,7 @@ public class PackageIndexer {
     }
 
     private boolean matchesAggregationScope(final Path directory) {
-        if (aiSubtrees == null || aiSubtrees.isEmpty()) {
+        if (aiSubtrees.isEmpty()) {
             return true;
         }
 
@@ -158,8 +158,8 @@ public class PackageIndexer {
         return false;
     }
 
-    private List<Path> toAiSubtrees(final @Nullable List<Path> sourceSubtrees) {
-        if (sourceSubtrees == null || sourceSubtrees.isEmpty()) {
+    private List<Path> toAiSubtrees(final List<Path> sourceSubtrees) {
+        if (sourceSubtrees.isEmpty()) {
             return new ArrayList<>();
         }
 

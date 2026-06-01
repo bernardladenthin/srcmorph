@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Base class for all AI index mojos. Centralises the parameters shared by every goal
@@ -248,19 +247,19 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * @param basePath           resolved, absolute project base directory
      * @param outputPath         resolved, absolute output directory
      * @param resolvedSubtrees   resolved subtree paths; may be empty but not {@code null}
-     * @param resolvedExtensions file extensions in scope, or {@code null} if not applicable
+     * @param resolvedExtensions file extensions in scope; pass an empty list when not applicable
      */
     protected void logExecutionParameters(
             final String startMessage,
             final Path basePath,
             final Path outputPath,
             final List<Path> resolvedSubtrees,
-            final @Nullable List<String> resolvedExtensions) {
+            final List<String> resolvedExtensions) {
         getLog().info(startMessage);
         getLog().info("Base directory  : " + basePath);
         getLog().info("Output directory: " + outputPath);
         getLog().info("Subtrees        : " + resolvedSubtrees);
-        if (resolvedExtensions != null) {
+        if (!resolvedExtensions.isEmpty()) {
             getLog().info("Extensions      : " + resolvedExtensions);
         }
         getLog().info("Force           : " + force);

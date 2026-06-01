@@ -28,10 +28,10 @@ public class SourceFileIndexer {
     private final Log log;
     private final Path baseDirectory;
     private final Path outputRoot;
-    private final @Nullable List<String> fileExtensions;
+    private final List<String> fileExtensions;
     private final String pluginVersion;
     private final String aiVersion;
-    private final @Nullable List<Path> subtrees;
+    private final List<Path> subtrees;
     private final boolean force;
 
     private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
@@ -51,10 +51,10 @@ public class SourceFileIndexer {
      * @param log                    Maven plugin logger
      * @param baseDirectory          project base directory
      * @param outputRoot             root directory in which {@code .ai.md} files are written
-     * @param fileExtensions         file extensions to index; {@code null} means all files
+     * @param fileExtensions         file extensions to index; may be empty (matches no files)
      * @param pluginVersion          plugin version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
-     * @param subtrees               source subtrees in scope; may be {@code null}
+     * @param subtrees               source subtrees in scope; may be empty
      * @param force                  when {@code true}, regenerate even when fields are populated
      * @param generationProvider     AI provider used to generate fields
      * @param fieldGenerations       field generation configurations; may be {@code null}
@@ -65,10 +65,10 @@ public class SourceFileIndexer {
             final Log log,
             final Path baseDirectory,
             final Path outputRoot,
-            final @Nullable Collection<String> fileExtensions,
+            final Collection<String> fileExtensions,
             final String pluginVersion,
             final String aiVersion,
-            final @Nullable Collection<Path> subtrees,
+            final Collection<Path> subtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
             final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
@@ -77,10 +77,10 @@ public class SourceFileIndexer {
         this.log = log;
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
-        this.fileExtensions = fileExtensions != null ? new ArrayList<>(fileExtensions) : null;
+        this.fileExtensions = new ArrayList<>(fileExtensions);
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
-        this.subtrees = subtrees != null ? new ArrayList<>(subtrees) : null;
+        this.subtrees = new ArrayList<>(subtrees);
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
@@ -116,9 +116,6 @@ public class SourceFileIndexer {
     }
 
     private boolean matchesExtension(final Path path) {
-        if (fileExtensions == null) {
-            return false;
-        }
         final Path fileNamePath = path.getFileName();
         if (fileNamePath == null) {
             return false;

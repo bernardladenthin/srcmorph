@@ -5,6 +5,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -57,7 +58,12 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
         final Path outputPath = outputDirectory.toPath().toAbsolutePath().normalize();
         final List<Path> resolvedSubtrees = resolveSubtrees(basePath);
 
-        logExecutionParameters("Starting AI package aggregation", basePath, outputPath, resolvedSubtrees, null);
+        logExecutionParameters(
+                "Starting AI package aggregation",
+                basePath,
+                outputPath,
+                resolvedSubtrees,
+                Collections.emptyList());
 
         if (!outputPath.toFile().exists()) {
             getLog().info("AI output directory does not exist, skipping package aggregation: " + outputPath);
