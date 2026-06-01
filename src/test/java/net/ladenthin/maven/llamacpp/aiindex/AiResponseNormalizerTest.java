@@ -57,5 +57,14 @@ public class AiResponseNormalizerTest {
         // assert
         assertThat(result, is(equalTo("plain answer")));
     }
+
+    @Test
+    public void normalize_nullResponse_returnsEmptyString() throws Exception {
+        // act
+        final String result = normalizer.normalize(null);
+
+        // assert
+        assertThat(result, is(equalTo("")));
+    }
     // </editor-fold>
 }

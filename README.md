@@ -172,6 +172,9 @@ src/site/ai/
 - Model output may require normalization (handled in code)
 - Large models increase runtime
 - Output quality depends on chosen model
+
+## TODO
+- **Expand PIT mutation-testing scope.** PIT is wired in `pom.xml` and runs on every CI build with `<mutationThreshold>100</mutationThreshold>`, but `<targetClasses>` is currently narrowed to a single class (`AiResponseNormalizer`). The intent is to exercise the wiring and gate against regressions on that single class today; widen `<targetClasses>` incrementally as additional classes reach mutation-test parity (i.e., add tests until 100% mutation coverage holds on the candidate class, then add it to the list). Final target: `<param>net.ladenthin.maven.llamacpp.aiindex.*</param>` matching the streambuffer pattern.
 ## Recommended Models
 - Qwen2.5 Coder (balanced quality and speed)
 - Smaller instruct models for faster indexing
