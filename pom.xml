@@ -280,6 +280,25 @@ SPDX-License-Identifier: Apache-2.0
                                 <requireMavenVersion>
                                     <version>[3.6.3,)</version>
                                 </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>[1.8,)</version>
+                                </requireJavaVersion>
+                                <dependencyConvergence/>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <!-- Use SLF4J directly; never commons-logging. -->
+                                        <exclude>commons-logging:commons-logging</exclude>
+                                        <!-- Legacy / EoL logging frameworks. -->
+                                        <exclude>log4j:log4j</exclude>
+                                        <!-- Old hamcrest split artifacts; use hamcrest:hamcrest 2.x+. -->
+                                        <exclude>org.hamcrest:hamcrest-core</exclude>
+                                        <exclude>org.hamcrest:hamcrest-library</exclude>
+                                        <exclude>org.hamcrest:hamcrest-all</exclude>
+                                        <!-- Legacy JUnit 3 / 4; we use Jupiter (junit:junit-jupiter). -->
+                                        <exclude>junit:junit</exclude>
+                                        <exclude>junit:junit-dep</exclude>
+                                    </excludes>
+                                </bannedDependencies>
                             </rules>
                         </configuration>
                     </execution>
