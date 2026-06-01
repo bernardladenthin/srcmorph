@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable result of preparing a prompt: the substituted prompt text, the source text
@@ -100,7 +101,7 @@ public class AiPreparedPrompt {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         AiPreparedPrompt that = (AiPreparedPrompt) obj;

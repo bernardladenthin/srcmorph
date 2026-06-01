@@ -9,7 +9,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
  * <p>Fields are populated by the Maven plugin framework via reflection from the
  * configuration XML; the no-arg constructor cannot guarantee non-null initialization.
  */
-@SuppressWarnings("NullAway.Init")
+@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiPromptDefinition {
 
     /** Creates a new {@link AiPromptDefinition}. */

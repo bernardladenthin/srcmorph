@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Canonical header model for a single {@code .ai.md} document.
@@ -160,7 +161,7 @@ public final class AiMdHeader {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         AiMdHeader that = (AiMdHeader) obj;

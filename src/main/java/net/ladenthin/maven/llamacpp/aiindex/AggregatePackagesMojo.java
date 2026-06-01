@@ -15,6 +15,10 @@ import org.apache.maven.plugins.annotations.Parameter;
  * Maven goal {@code ai-index:aggregate-packages}: aggregates per-package
  * {@code .ai.md} index files and fills in their AI-generated summary and keyword fields.
  */
+// @Parameter fields are populated by the Maven plugin framework via reflection after
+// construction. NullAway is configured via ExcludedFieldAnnotations to skip them; Checker
+// Framework has no equivalent option for plugin-framework fields, so we suppress class-level.
+@SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "aggregate-packages", threadSafe = true)
 public class AggregatePackagesMojo extends AbstractAiIndexMojo {
 

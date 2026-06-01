@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
  * step (model path, sampling parameters, retry policy, input trimming limits, stop
  * strings) between the Maven configuration layer and the AI provider implementations.
  */
-@SuppressWarnings("NullAway.Init")
+@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiGenerationConfig {
 
     /** Creates a new {@link AiGenerationConfig} with all defaults applied. */

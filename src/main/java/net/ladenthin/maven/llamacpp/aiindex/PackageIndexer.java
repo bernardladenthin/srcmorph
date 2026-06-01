@@ -43,10 +43,16 @@ public class PackageIndexer {
      * producing a consistent, platform-independent sort order when listing directory entries.
      */
     private static final Comparator<Path> BY_FILE_NAME =
-            Comparator.comparing(p -> p.getFileName().toString());
+            Comparator.comparing(p -> {
+                final Path fileName = p.getFileName();
+                // Files.list never returns the filesystem root, so getFileName() is non-null here.
+                if (fileName == null) {
+                    throw new IllegalStateException("Path has no file-name component: " + p);
+                }
+                return fileName.toString();
+            });
 
     private final Log log;
-    private final Path baseDirectory;
     private final Path outputRoot;
     private final String pluginVersion;
     private final String aiVersion;
@@ -93,12 +99,18 @@ public class PackageIndexer {
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
-        this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
         this.sourceSubtrees = new ArrayList<>(sourceSubtrees);
-        this.aiSubtrees = toAiSubtrees(this.sourceSubtrees);
+        // Inlined here (instead of calling toAiSubtrees) so the Checker Framework
+        // does not flag a method invocation on an @UnderInitialization receiver.
+        final List<Path> ai = new ArrayList<>(this.sourceSubtrees.size());
+        for (Path sourceSubtree : this.sourceSubtrees) {
+            final Path relative = pathSupport.relativizeFromSrc(baseDirectory, sourceSubtree);
+            ai.add(outputRoot.resolve(relative).normalize());
+        }
+        this.aiSubtrees = ai;
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
@@ -158,24 +170,15 @@ public class PackageIndexer {
         return false;
     }
 
-    private List<Path> toAiSubtrees(final List<Path> sourceSubtrees) {
-        if (sourceSubtrees.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        final List<Path> result = new ArrayList<>(sourceSubtrees.size());
-        for (Path sourceSubtree : sourceSubtrees) {
-            final Path relative = pathSupport.relativizeFromSrc(baseDirectory, sourceSubtree);
-            result.add(outputRoot.resolve(relative).normalize());
-        }
-
-        return result;
-    }
-
     private boolean shouldCreatePackageFile(final Path directory) throws IOException {
         try (Stream<Path> stream = Files.list(directory)) {
             return stream.anyMatch(path -> {
-                final String name = path.getFileName().toString();
+                final Path fileName = path.getFileName();
+                // Files.list never returns the filesystem root, so getFileName() is non-null here.
+                if (fileName == null) {
+                    return false;
+                }
+                final String name = fileName.toString();
                 if (Files.isDirectory(path)) {
                     return hasPackageAiMdFile(path);
                 }

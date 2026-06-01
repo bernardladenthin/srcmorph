@@ -56,6 +56,9 @@ public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoC
         final List<Pair<String, String>> messages = new ArrayList<>();
         messages.add(new Pair<>("user", prompt));
 
+        // setMessages(systemMessage, ...) accepts null upstream to omit the system message,
+        // but it is unannotated, so Checker Framework infers @NonNull.
+        @SuppressWarnings("argument")
         final InferenceParameters inferenceParameters = new InferenceParameters("")
                 .setMessages(null, messages)
                 .setUseChatTemplate(true)

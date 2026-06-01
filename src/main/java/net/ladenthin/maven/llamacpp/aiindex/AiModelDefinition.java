@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * @see AiModelDefinitionSupport
  * @see AiGenerationConfig
  */
-@SuppressWarnings("NullAway.Init")
+@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiModelDefinition {
 
     /** Creates a new {@link AiModelDefinition} with the defaults of {@link AiGenerationConfig} applied. */

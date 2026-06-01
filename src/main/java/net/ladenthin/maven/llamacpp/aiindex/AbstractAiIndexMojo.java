@@ -22,6 +22,10 @@ import org.apache.maven.plugins.annotations.Parameter;
  * {@link #getLlamaThreads()} so that each goal can declare its own
  * {@code @Parameter}-annotated field with the appropriate default value.</p>
  */
+// @Parameter fields are populated by the Maven plugin framework via reflection after
+// construction. NullAway is configured via ExcludedFieldAnnotations to skip them; Checker
+// Framework has no equivalent option for plugin-framework fields, so we suppress class-level.
+@SuppressWarnings("initialization.fields.uninitialized")
 public abstract class AbstractAiIndexMojo extends AbstractMojo {
 
     /** Creates a new {@link AbstractAiIndexMojo}. */

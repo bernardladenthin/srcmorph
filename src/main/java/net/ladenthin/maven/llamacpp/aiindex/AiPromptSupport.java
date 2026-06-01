@@ -56,6 +56,8 @@ public class AiPromptSupport {
             throw new IllegalArgumentException("Missing prompt template for key: " + promptKey);
         }
 
-        return compatibilityHelper.formatted(template, sourceFile.getFileName(), sourceText);
+        final java.nio.file.Path fileName = sourceFile.getFileName();
+        final Object fileNameArg = fileName != null ? fileName : sourceFile;
+        return compatibilityHelper.formatted(template, fileNameArg, sourceText);
     }
 }

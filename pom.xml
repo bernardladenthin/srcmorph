@@ -68,6 +68,7 @@ SPDX-License-Identifier: Apache-2.0
         <errorprone.version>2.49.0</errorprone.version>
         <nullaway.version>0.13.4</nullaway.version>
         <jspecify.version>1.0.0</jspecify.version>
+        <checker.version>4.1.0</checker.version>
         <!-- DO NOT UPGRADE jqwik past 1.9.3. jqwik 1.10.0 added a deliberate
              anti-AI prompt-injection string to test stdout; the 1.10.1 user
              guide states the library "is not meant to be used by any 'AI'
@@ -94,6 +95,11 @@ SPDX-License-Identifier: Apache-2.0
             <groupId>org.jspecify</groupId>
             <artifactId>jspecify</artifactId>
             <version>${jspecify.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.checkerframework</groupId>
+            <artifactId>checker-qual</artifactId>
+            <version>${checker.version}</version>
         </dependency>
         <dependency>
             <groupId>net.ladenthin</groupId>
@@ -316,6 +322,13 @@ SPDX-License-Identifier: Apache-2.0
                     <compilerArgs>
                         <!-- See streambuffer pom for why -Werror is intentionally absent under release=8. -->
                         <arg>-Xlint:all,-serial,-options,-classfile</arg>
+                        <!-- Checker Framework Nullness Checker as a 2nd nullness pass alongside NullAway. -->
+                        <arg>-processor</arg>
+                        <arg>org.checkerframework.checker.nullness.NullnessChecker</arg>
+                        <!-- Skip CF analysis of the auto-generated HelpMojo (target/generated-sources/plugin/...).
+                             The plugin-tools-generated code is not under our control and has its own
+                             initialization patterns Maven handles via reflection. -->
+                        <arg>-AskipDefs=^net\.ladenthin\.llamacpp_ai_index_maven_plugin\..*$</arg>
                         <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
                         <arg>-XDcompilePolicy=simple</arg>
                         <arg>--should-stop=ifError=FLOW</arg>
@@ -331,6 +344,11 @@ SPDX-License-Identifier: Apache-2.0
                             <groupId>com.uber.nullaway</groupId>
                             <artifactId>nullaway</artifactId>
                             <version>${nullaway.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.checkerframework</groupId>
+                            <artifactId>checker</artifactId>
+                            <version>${checker.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
