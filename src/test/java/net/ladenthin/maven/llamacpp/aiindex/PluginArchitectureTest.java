@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -60,4 +61,21 @@ public class PluginArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("sun..", "com.sun..", "jdk.internal..");
+
+    /**
+     * Public mutable state forbidden: any non-static field declared
+     * {@code public} must also be {@code final}. Maven plugin configuration
+     * POJOs use {@code private} fields with setters
+     * ({@link AiPromptDefinition}, {@link AiModelDefinition}, etc.) and
+     * therefore pass this rule.
+     */
+    @ArchTest
+    static final ArchRule noPublicMutableFields = fields()
+            .that()
+            .arePublic()
+            .and()
+            .areNotStatic()
+            .should()
+            .beFinal()
+            .allowEmptyShould(true); // regression guard; passes vacuously today
 }
