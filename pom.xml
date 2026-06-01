@@ -314,10 +314,12 @@ SPDX-License-Identifier: Apache-2.0
                     <showWarnings>true</showWarnings>
                     <parameters>true</parameters>
                     <compilerArgs>
+                        <!-- See streambuffer pom for why -Werror is intentionally absent under release=8. -->
+                        <arg>-Xlint:all,-serial,-options,-classfile</arg>
                         <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
                         <arg>-XDcompilePolicy=simple</arg>
                         <arg>--should-stop=ifError=FLOW</arg>
-                        <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true</arg>
+                        <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true -Xep:BoxedPrimitiveEquality:ERROR -Xep:EqualsHashCode:ERROR -Xep:EqualsIncompatibleType:ERROR -Xep:IdentityBinaryExpression:ERROR -Xep:SelfAssignment:ERROR -Xep:SelfComparison:ERROR -Xep:SelfEquals:ERROR -Xep:DeadException:ERROR -Xep:FormatString:ERROR -Xep:InvalidPatternSyntax:ERROR -Xep:OptionalEquality:ERROR -Xep:ImpossibleNullComparison:ERROR</arg>
                     </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
