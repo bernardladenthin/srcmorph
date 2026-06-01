@@ -34,4 +34,18 @@ public class PluginArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("org.junit..", "net.jqwik..", "com.tngtech.archunit..");
+
+    /**
+     * Production code must not write to {@code System.out} / {@code System.err}; all output
+     * goes through Maven's {@link org.apache.maven.plugin.logging.Log}. Currently vacuous
+     * (no usage); acts as a regression guard.
+     */
+    @ArchTest
+    static final ArchRule noSystemOutOrErrInProduction = noClasses()
+            .that()
+            .resideInAPackage("net.ladenthin.maven.llamacpp.aiindex..")
+            .should()
+            .accessField(System.class, "out")
+            .orShould()
+            .accessField(System.class, "err");
 }
