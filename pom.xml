@@ -53,10 +53,8 @@ SPDX-License-Identifier: Apache-2.0
     </distributionManagement>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.testSource>21</maven.compiler.testSource>
-        <maven.compiler.testTarget>21</maven.compiler.testTarget>
+        <maven.compiler.release>8</maven.compiler.release>
+        <maven.compiler.testRelease>21</maven.compiler.testRelease>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <maven.version>3.9.16</maven.version>
@@ -292,16 +290,15 @@ SPDX-License-Identifier: Apache-2.0
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                    <testSource>${maven.compiler.testSource}</testSource>
-                    <testTarget>${maven.compiler.testTarget}</testTarget>
+                    <release>${maven.compiler.release}</release>
+                    <testRelease>${maven.compiler.testRelease}</testRelease>
                     <showWarnings>true</showWarnings>
+                    <parameters>true</parameters>
                     <compilerArgs>
                         <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
                         <arg>-XDcompilePolicy=simple</arg>
                         <arg>--should-stop=ifError=FLOW</arg>
-                        <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:AnnotatedPackages=net.ladenthin.maven.llamacpp.aiindex -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true</arg>
+                        <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true</arg>
                     </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
@@ -320,7 +317,10 @@ SPDX-License-Identifier: Apache-2.0
                     <execution>
                         <id>default-testCompile</id>
                         <configuration>
-                            <compilerArgs>
+                            <!-- Drop -parameters for test compile so jcstress / Lincheck reflection
+                                 doesn't pick up parameter names from MethodParameters. -->
+                            <parameters>false</parameters>
+                            <compilerArgs combine.self="override">
                                 <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
                                 <arg>-XDcompilePolicy=simple</arg>
                                 <arg>--should-stop=ifError=FLOW</arg>
@@ -366,7 +366,7 @@ SPDX-License-Identifier: Apache-2.0
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
+                    <source>${maven.compiler.release}</source>
                     <failOnError>true</failOnError>
                     <failOnWarnings>true</failOnWarnings>
                     <doclint>all</doclint>
