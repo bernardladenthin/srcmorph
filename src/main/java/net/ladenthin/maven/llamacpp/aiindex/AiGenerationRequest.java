@@ -77,7 +77,7 @@ public class AiGenerationRequest {
     @Override
     public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiGenerationRequest)) return false;
         AiGenerationRequest that = (AiGenerationRequest) obj;
         return Objects.equals(this.promptKey, that.promptKey)
                 && Objects.equals(this.sourceFile, that.sourceFile)

@@ -46,7 +46,7 @@ public class AiMdDocument {
     @Override
     public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiMdDocument)) return false;
         AiMdDocument that = (AiMdDocument) obj;
         return Objects.equals(this.header, that.header) && Objects.equals(this.body, that.body);
     }

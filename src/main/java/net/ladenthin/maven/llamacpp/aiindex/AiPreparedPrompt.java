@@ -103,7 +103,7 @@ public class AiPreparedPrompt {
     @Override
     public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiPreparedPrompt)) return false;
         AiPreparedPrompt that = (AiPreparedPrompt) obj;
         return Objects.equals(this.prompt, that.prompt)
                 && Objects.equals(this.sourceText, that.sourceText)

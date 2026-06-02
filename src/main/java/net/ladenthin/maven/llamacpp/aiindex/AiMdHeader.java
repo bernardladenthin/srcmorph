@@ -163,7 +163,7 @@ public final class AiMdHeader {
     @Override
     public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiMdHeader)) return false;
         AiMdHeader that = (AiMdHeader) obj;
         return Objects.equals(this.title, that.title)
                 && Objects.equals(this.h, that.h)

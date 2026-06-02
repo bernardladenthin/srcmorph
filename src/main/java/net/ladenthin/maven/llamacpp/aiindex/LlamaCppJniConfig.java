@@ -166,7 +166,7 @@ public class LlamaCppJniConfig {
     @Override
     public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof LlamaCppJniConfig)) return false;
         LlamaCppJniConfig that = (LlamaCppJniConfig) obj;
         return Objects.equals(this.libraryPath, that.libraryPath)
                 && Objects.equals(this.modelPath, that.modelPath)

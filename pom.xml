@@ -325,8 +325,20 @@ SPDX-License-Identifier: Apache-2.0
                     <showWarnings>true</showWarnings>
                     <parameters>true</parameters>
                     <compilerArgs>
-                        <!-- See streambuffer pom for why -Werror is intentionally absent under release=8. -->
-                        <arg>-Xlint:all,-serial,-options,-classfile</arg>
+                        <!--
+                          -Xlint:all surfaces every category of javac warning. Excluded categories:
+                            -serial    : serialVersionUID warnings on non-Serializable classes
+                            -options   : bootclasspath / target-mismatch chatter under release=8
+                            -classfile : noise when javac reads our own .class output mid-build
+                            -processing: "No processor claimed any of these annotations" (Error
+                                         Prone's @GuardedBy is consumed by the EP javac plugin,
+                                         not by a JSR-269 annotation processor)
+                          -Werror is on: the ElementType.MODULE blocker is gone now that
+                          @NullMarked lives only in module-info.java (compiled at release 9 in a
+                          separate execution); see module-info.java's javadoc.
+                        -->
+                        <arg>-Xlint:all,-serial,-options,-classfile,-processing</arg>
+                        <arg>-Werror</arg>
                         <!-- Checker Framework Nullness Checker as a 2nd nullness pass alongside NullAway. -->
                         <arg>-processor</arg>
                         <arg>org.checkerframework.checker.nullness.NullnessChecker</arg>
@@ -337,7 +349,11 @@ SPDX-License-Identifier: Apache-2.0
                         <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
                         <arg>-XDcompilePolicy=simple</arg>
                         <arg>--should-stop=ifError=FLOW</arg>
-                        <arg>-Xplugin:ErrorProne -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true -Xep:BoxedPrimitiveEquality:ERROR -Xep:EqualsHashCode:ERROR -Xep:EqualsIncompatibleType:ERROR -Xep:IdentityBinaryExpression:ERROR -Xep:SelfAssignment:ERROR -Xep:SelfComparison:ERROR -Xep:SelfEquals:ERROR -Xep:DeadException:ERROR -Xep:FormatString:ERROR -Xep:InvalidPatternSyntax:ERROR -Xep:OptionalEquality:ERROR -Xep:ImpossibleNullComparison:ERROR</arg>
+                        <!-- XepExcludedPaths skips the auto-generated HelpMojo for Error Prone
+                             (parallels the -AskipDefs above for Checker Framework). The two
+                             remaining warnings on that file (StringSplitter) would otherwise
+                             break -Werror. -->
+                        <arg>-Xplugin:ErrorProne -XepExcludedPaths:.*/generated-sources/.* -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true -Xep:BoxedPrimitiveEquality:ERROR -Xep:EqualsHashCode:ERROR -Xep:EqualsIncompatibleType:ERROR -Xep:IdentityBinaryExpression:ERROR -Xep:SelfAssignment:ERROR -Xep:SelfComparison:ERROR -Xep:SelfEquals:ERROR -Xep:DeadException:ERROR -Xep:FormatString:ERROR -Xep:InvalidPatternSyntax:ERROR -Xep:OptionalEquality:ERROR -Xep:ImpossibleNullComparison:ERROR</arg>
                     </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
