@@ -42,15 +42,14 @@ public class PackageIndexer {
      * Comparator that orders {@link Path} instances by their file name component only,
      * producing a consistent, platform-independent sort order when listing directory entries.
      */
-    private static final Comparator<Path> BY_FILE_NAME =
-            Comparator.comparing(p -> {
-                final Path fileName = p.getFileName();
-                // Files.list never returns the filesystem root, so getFileName() is non-null here.
-                if (fileName == null) {
-                    throw new IllegalStateException("Path has no file-name component: " + p);
-                }
-                return fileName.toString();
-            });
+    private static final Comparator<Path> BY_FILE_NAME = Comparator.comparing(p -> {
+        final Path fileName = p.getFileName();
+        // Files.list never returns the filesystem root, so getFileName() is non-null here.
+        if (fileName == null) {
+            throw new IllegalStateException("Path has no file-name component: " + p);
+        }
+        return fileName.toString();
+    });
 
     private final Log log;
     private final Path outputRoot;

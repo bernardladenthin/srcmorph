@@ -71,8 +71,7 @@ public class PluginArchitectureTest {
      * therefore pass this rule.
      */
     @ArchTest
-    static final ArchRule noPublicMutableFields = fields()
-            .that()
+    static final ArchRule noPublicMutableFields = fields().that()
             .arePublic()
             .and()
             .areNotStatic()

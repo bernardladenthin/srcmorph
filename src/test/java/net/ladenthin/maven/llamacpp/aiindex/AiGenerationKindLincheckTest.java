@@ -5,8 +5,8 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jetbrains.kotlinx.lincheck.LinChecker;
-import org.jetbrains.lincheck.datastructures.Operation;
 import org.jetbrains.lincheck.datastructures.ModelCheckingOptions;
+import org.jetbrains.lincheck.datastructures.Operation;
 import org.junit.jupiter.api.Test;
 
 /**

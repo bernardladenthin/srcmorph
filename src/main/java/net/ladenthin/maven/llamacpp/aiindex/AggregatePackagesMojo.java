@@ -63,11 +63,7 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
         final List<Path> resolvedSubtrees = resolveSubtrees(basePath);
 
         logExecutionParameters(
-                "Starting AI package aggregation",
-                basePath,
-                outputPath,
-                resolvedSubtrees,
-                Collections.emptyList());
+                "Starting AI package aggregation", basePath, outputPath, resolvedSubtrees, Collections.emptyList());
 
         if (!outputPath.toFile().exists()) {
             getLog().info("AI output directory does not exist, skipping package aggregation: " + outputPath);
