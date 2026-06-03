@@ -193,7 +193,7 @@ k: "parser,codec,markdown"
 |---|---|
 | `h` | Header format version |
 | `title` | File or package path |
-| `c` | SHA-256 checksum of the source file |
+| `c` | CRC32 checksum of the source file (8-char uppercase hex; see `AiChecksumSupport`) |
 | `d` | Index creation timestamp (ISO-8601) |
 | `t` | Last generation timestamp |
 | `g` | Plugin version (`project.version`) |
