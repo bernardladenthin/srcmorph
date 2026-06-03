@@ -22,7 +22,7 @@ public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoC
     private final LlamaCppJniConfig config;
     private final LlamaModel model;
     private final AiPromptSupport promptSupport;
-    private final AiResponseNormalizer responseNormalizer = new AiResponseNormalizer();
+    private final AiCompletionParser completionParser = new AiCompletionParser();
 
     /**
      * Creates a new {@link LlamaCppJniAiSummaryProvider} and loads the configured GGUF model.
@@ -56,6 +56,9 @@ public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoC
         final List<Pair<String, String>> messages = new ArrayList<>();
         messages.add(new Pair<>("user", prompt));
 
+        // setMessages(systemMessage, ...) accepts null upstream to omit the system message,
+        // but it is unannotated, so Checker Framework infers @NonNull.
+        @SuppressWarnings("argument")
         final InferenceParameters inferenceParameters = new InferenceParameters("")
                 .setMessages(null, messages)
                 .setUseChatTemplate(true)
@@ -67,7 +70,7 @@ public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoC
 
         inferenceParameters.setStopStrings(config.stopStrings().toArray(new String[0]));
 
-        return responseNormalizer.normalize(model.chatCompleteText(inferenceParameters));
+        return completionParser.parseCompletion(model.chatCompleteText(inferenceParameters));
     }
 
     @Override

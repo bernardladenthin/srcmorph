@@ -75,7 +75,7 @@ public class AiModelDefinitionSupport {
      * @param definition the definition to convert; must not be {@code null}
      * @return a fully populated {@link AiGenerationConfig}
      */
-    private AiGenerationConfig toConfig(final AiModelDefinition definition) {
+    private static AiGenerationConfig toConfig(final AiModelDefinition definition) {
         final AiGenerationConfig config = new AiGenerationConfig();
         config.setModelPath(definition.getModelPath());
         config.setContextSize(definition.getContextSize());

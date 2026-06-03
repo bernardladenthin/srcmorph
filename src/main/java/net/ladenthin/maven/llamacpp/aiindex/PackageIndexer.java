@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.maven.plugin.logging.Log;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Aggregates {@code package.ai.md} index files: walks the output tree, lists each
@@ -41,11 +42,16 @@ public class PackageIndexer {
      * Comparator that orders {@link Path} instances by their file name component only,
      * producing a consistent, platform-independent sort order when listing directory entries.
      */
-    private static final Comparator<Path> BY_FILE_NAME =
-            Comparator.comparing(p -> p.getFileName().toString());
+    private static final Comparator<Path> BY_FILE_NAME = Comparator.comparing(p -> {
+        final Path fileName = p.getFileName();
+        // Files.list never returns the filesystem root, so getFileName() is non-null here.
+        if (fileName == null) {
+            throw new IllegalStateException("Path has no file-name component: " + p);
+        }
+        return fileName.toString();
+    });
 
     private final Log log;
-    private final Path baseDirectory;
     private final Path outputRoot;
     private final String pluginVersion;
     private final String aiVersion;
@@ -53,7 +59,7 @@ public class PackageIndexer {
     private final List<Path> aiSubtrees;
     private final boolean force;
 
-    private final List<AiFieldGenerationConfig> fieldGenerations;
+    private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
 
     private final AiPathSupport pathSupport = new AiPathSupport();
     private final AiTimeSupport timeSupport = new AiTimeSupport();
@@ -72,7 +78,7 @@ public class PackageIndexer {
      * @param outputRoot             root directory in which {@code .ai.md} files reside
      * @param pluginVersion          plugin version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
-     * @param sourceSubtrees         source subtrees in scope; may be {@code null}
+     * @param sourceSubtrees         source subtrees in scope; may be empty
      * @param force                  when {@code true}, regenerate even when fields are populated
      * @param generationProvider     AI provider used to generate fields
      * @param fieldGenerations       field generation configurations; may be {@code null}
@@ -88,16 +94,22 @@ public class PackageIndexer {
             final Collection<Path> sourceSubtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
-            final Collection<AiFieldGenerationConfig> fieldGenerations,
+            final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
-        this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
-        this.sourceSubtrees = sourceSubtrees != null ? new ArrayList<>(sourceSubtrees) : null;
-        this.aiSubtrees = toAiSubtrees(this.sourceSubtrees);
+        this.sourceSubtrees = new ArrayList<>(sourceSubtrees);
+        // Inlined here (instead of calling toAiSubtrees) so the Checker Framework
+        // does not flag a method invocation on an @UnderInitialization receiver.
+        final List<Path> ai = new ArrayList<>(this.sourceSubtrees.size());
+        for (Path sourceSubtree : this.sourceSubtrees) {
+            final Path relative = pathSupport.relativizeFromSrc(baseDirectory, sourceSubtree);
+            ai.add(outputRoot.resolve(relative).normalize());
+        }
+        this.aiSubtrees = ai;
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
@@ -141,7 +153,7 @@ public class PackageIndexer {
     }
 
     private boolean matchesAggregationScope(final Path directory) {
-        if (aiSubtrees == null || aiSubtrees.isEmpty()) {
+        if (aiSubtrees.isEmpty()) {
             return true;
         }
 
@@ -157,24 +169,15 @@ public class PackageIndexer {
         return false;
     }
 
-    private List<Path> toAiSubtrees(final List<Path> sourceSubtrees) {
-        if (sourceSubtrees == null || sourceSubtrees.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        final List<Path> result = new ArrayList<>(sourceSubtrees.size());
-        for (Path sourceSubtree : sourceSubtrees) {
-            final Path relative = pathSupport.relativizeFromSrc(baseDirectory, sourceSubtree);
-            result.add(outputRoot.resolve(relative).normalize());
-        }
-
-        return result;
-    }
-
     private boolean shouldCreatePackageFile(final Path directory) throws IOException {
         try (Stream<Path> stream = Files.list(directory)) {
             return stream.anyMatch(path -> {
-                final String name = path.getFileName().toString();
+                final Path fileName = path.getFileName();
+                // Files.list never returns the filesystem root, so getFileName() is non-null here.
+                if (fileName == null) {
+                    return false;
+                }
+                final String name = fileName.toString();
                 if (Files.isDirectory(path)) {
                     return hasPackageAiMdFile(path);
                 }

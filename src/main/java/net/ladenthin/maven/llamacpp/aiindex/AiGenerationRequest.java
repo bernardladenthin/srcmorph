@@ -5,6 +5,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable request object passed to an {@link AiGenerationProvider}: identifies the
@@ -74,9 +75,9 @@ public class AiGenerationRequest {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiGenerationRequest)) return false;
         AiGenerationRequest that = (AiGenerationRequest) obj;
         return Objects.equals(this.promptKey, that.promptKey)
                 && Objects.equals(this.sourceFile, that.sourceFile)

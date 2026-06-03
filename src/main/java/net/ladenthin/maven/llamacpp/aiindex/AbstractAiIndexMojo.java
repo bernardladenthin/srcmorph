@@ -22,6 +22,10 @@ import org.apache.maven.plugins.annotations.Parameter;
  * {@link #getLlamaThreads()} so that each goal can declare its own
  * {@code @Parameter}-annotated field with the appropriate default value.</p>
  */
+// @Parameter fields are populated by the Maven plugin framework via reflection after
+// construction. NullAway is configured via ExcludedFieldAnnotations to skip them; Checker
+// Framework has no equivalent option for plugin-framework fields, so we suppress class-level.
+@SuppressWarnings("initialization.fields.uninitialized")
 public abstract class AbstractAiIndexMojo extends AbstractMojo {
 
     /** Creates a new {@link AbstractAiIndexMojo}. */
@@ -189,6 +193,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
         if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
             final AiFieldGenerationConfig first = fieldGenerations.get(0);
             final AiGenerationConfig config = buildAiModelDefinitionSupport().getConfig(first.getAiDefinitionKey());
+            final List<String> stopStrings = config.getStopStrings();
             return new LlamaCppJniConfig(
                     llamaLibraryPath,
                     config.getModelPath(),
@@ -200,7 +205,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                     config.getTopK(),
                     config.getRepeatPenalty(),
                     config.isChatTemplateEnableThinking(),
-                    config.getStopStrings());
+                    stopStrings != null ? stopStrings : Collections.emptyList());
         }
         return new LlamaCppJniConfig(
                 llamaLibraryPath,
@@ -246,7 +251,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * @param basePath           resolved, absolute project base directory
      * @param outputPath         resolved, absolute output directory
      * @param resolvedSubtrees   resolved subtree paths; may be empty but not {@code null}
-     * @param resolvedExtensions file extensions in scope, or {@code null} if not applicable
+     * @param resolvedExtensions file extensions in scope; pass an empty list when not applicable
      */
     protected void logExecutionParameters(
             final String startMessage,
@@ -258,7 +263,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
         getLog().info("Base directory  : " + basePath);
         getLog().info("Output directory: " + outputPath);
         getLog().info("Subtrees        : " + resolvedSubtrees);
-        if (resolvedExtensions != null) {
+        if (!resolvedExtensions.isEmpty()) {
             getLog().info("Extensions      : " + resolvedExtensions);
         }
         getLog().info("Force           : " + force);

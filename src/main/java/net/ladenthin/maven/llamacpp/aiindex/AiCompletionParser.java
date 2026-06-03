@@ -6,8 +6,8 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.io.IOException;
 
 /**
- * Normalizes raw LLM completion text by stripping model-internal thinking blocks
- * before the result is stored in an AI index file.
+ * Parses raw LLM completion text to extract the model answer by stripping any
+ * model-internal thinking block before the result is stored in an AI index file.
  *
  * <p>Gemma 4 (and compatible models) wrap their chain-of-thought reasoning in a
  * thinking block delimited by {@link #THINKING_BLOCK_START_MARKER} and
@@ -17,10 +17,10 @@ import java.io.IOException;
  *
  * <p>This class is non-final to allow subclassing and mocking in tests.</p>
  */
-public class AiResponseNormalizer {
+public class AiCompletionParser {
 
-    /** Creates a new {@link AiResponseNormalizer}. */
-    public AiResponseNormalizer() {
+    /** Creates a new {@link AiCompletionParser}. */
+    public AiCompletionParser() {
         // no-op
     }
 
@@ -62,7 +62,7 @@ public class AiResponseNormalizer {
      * @throws IOException if a thinking block was started but the token budget was
      *                     exhausted before the closing marker was emitted
      */
-    public String normalize(final String response) throws IOException {
+    public String parseCompletion(final String response) throws IOException {
         if (response == null) {
             return "";
         }

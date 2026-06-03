@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Immutable representation of an {@code .ai.md} document consisting of a header and a body. */
 @ConvertToRecord
@@ -43,9 +44,9 @@ public class AiMdDocument {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiMdDocument)) return false;
         AiMdDocument that = (AiMdDocument) obj;
         return Objects.equals(this.header, that.header) && Objects.equals(this.body, that.body);
     }

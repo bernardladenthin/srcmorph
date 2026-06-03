@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.maven.plugin.logging.Log;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Walks the configured source subtrees, creates per-file {@code .ai.md} index files,
@@ -33,7 +34,7 @@ public class SourceFileIndexer {
     private final List<Path> subtrees;
     private final boolean force;
 
-    private final List<AiFieldGenerationConfig> fieldGenerations;
+    private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
 
     private final AiPathSupport pathSupport = new AiPathSupport();
     private final AiTimeSupport timeSupport = new AiTimeSupport();
@@ -50,10 +51,10 @@ public class SourceFileIndexer {
      * @param log                    Maven plugin logger
      * @param baseDirectory          project base directory
      * @param outputRoot             root directory in which {@code .ai.md} files are written
-     * @param fileExtensions         file extensions to index; {@code null} means all files
+     * @param fileExtensions         file extensions to index; may be empty (matches no files)
      * @param pluginVersion          plugin version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
-     * @param subtrees               source subtrees in scope; may be {@code null}
+     * @param subtrees               source subtrees in scope; may be empty
      * @param force                  when {@code true}, regenerate even when fields are populated
      * @param generationProvider     AI provider used to generate fields
      * @param fieldGenerations       field generation configurations; may be {@code null}
@@ -70,16 +71,16 @@ public class SourceFileIndexer {
             final Collection<Path> subtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
-            final Collection<AiFieldGenerationConfig> fieldGenerations,
+            final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport) {
         this.log = log;
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
-        this.fileExtensions = fileExtensions != null ? new ArrayList<>(fileExtensions) : null;
+        this.fileExtensions = new ArrayList<>(fileExtensions);
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
-        this.subtrees = subtrees != null ? new ArrayList<>(subtrees) : null;
+        this.subtrees = new ArrayList<>(subtrees);
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(

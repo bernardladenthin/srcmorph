@@ -45,6 +45,11 @@ public class Java8CompatibilityHelper {
      * @param args   the arguments referenced by the format specifiers in the format string
      * @return a formatted string
      */
+    // Not annotated @FormatMethod because callers (AiPromptSupport#buildPrompt) pass a
+    // runtime template loaded from configuration, not a compile-time constant string —
+    // marking this @FormatMethod would propagate FormatStringAnnotation into every
+    // caller and break the build.
+    @SuppressWarnings("AnnotateFormatMethod")
     public String formatted(final String format, final Object... args) {
         return String.format(format, args);
     }
@@ -95,7 +100,12 @@ public class Java8CompatibilityHelper {
      * @param <T>      the element type
      * @return a list containing the specified elements
      */
+    // @SafeVarargs suppresses the warning at the listOf declaration; @SuppressWarnings
+    // is additionally needed because javac still flags the forwarded Arrays.asList(...)
+    // call as a possible-heap-pollution site even though Arrays.asList is itself
+    // @SafeVarargs in the JDK.
     @SafeVarargs
+    @SuppressWarnings({"unchecked", "varargs"})
     public final <T> List<T> listOf(final T... elements) {
         return Arrays.asList(elements);
     }

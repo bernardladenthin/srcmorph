@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable result produced by {@link AiFieldGenerationSupport#processFieldGenerations}.
@@ -36,9 +37,9 @@ public class AiGenerationResult {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiGenerationResult)) return false;
         AiGenerationResult that = (AiGenerationResult) obj;
         return Objects.equals(this.body, that.body);
     }

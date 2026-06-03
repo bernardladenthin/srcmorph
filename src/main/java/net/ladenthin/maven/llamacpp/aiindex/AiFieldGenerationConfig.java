@@ -28,6 +28,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
  * @see AiModelDefinitionSupport
  * @see AiPromptDefinition
  */
+@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiFieldGenerationConfig {
 
     /** Creates a new {@link AiFieldGenerationConfig}. */

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Maven plugin configuration POJO that pairs a lookup key with a complete set of
@@ -27,6 +28,7 @@ import java.util.List;
  * @see AiModelDefinitionSupport
  * @see AiGenerationConfig
  */
+@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiModelDefinition {
 
     /** Creates a new {@link AiModelDefinition} with the defaults of {@link AiGenerationConfig} applied. */
@@ -48,7 +50,7 @@ public class AiModelDefinition {
     private int topK = AiGenerationConfig.DEFAULT_TOP_K;
     private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
-    private List<String> stopStrings;
+    private @Nullable List<String> stopStrings;
 
     /**
      * Returns the unique lookup key for this definition.
@@ -318,7 +320,7 @@ public class AiModelDefinition {
      *
      * @return stop strings, or {@code null} if not configured
      */
-    public List<String> getStopStrings() {
+    public @Nullable List<String> getStopStrings() {
         return stopStrings != null ? Collections.unmodifiableList(stopStrings) : null;
     }
 
@@ -327,7 +329,7 @@ public class AiModelDefinition {
      *
      * @param stopStrings collection of strings; generation stops at the first match
      */
-    public void setStopStrings(final Collection<String> stopStrings) {
+    public void setStopStrings(final @Nullable Collection<String> stopStrings) {
         this.stopStrings = stopStrings != null ? new ArrayList<>(stopStrings) : null;
     }
 }

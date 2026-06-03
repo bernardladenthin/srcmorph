@@ -3,7 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
-/** Maven plugin configuration POJO that pairs a lookup key with a prompt template string. */
+/**
+ * Maven plugin configuration POJO that pairs a lookup key with a prompt template string.
+ *
+ * <p>Fields are populated by the Maven plugin framework via reflection from the
+ * configuration XML; the no-arg constructor cannot guarantee non-null initialization.
+ */
+@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiPromptDefinition {
 
     /** Creates a new {@link AiPromptDefinition}. */

@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Immutable AI response carrying the summary text and comma-separated keyword list. */
 @ConvertToRecord
@@ -43,9 +44,9 @@ public class AiSummaryResponse {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
+        if (!(obj instanceof AiSummaryResponse)) return false;
         AiSummaryResponse that = (AiSummaryResponse) obj;
         return Objects.equals(this.summary, that.summary) && Objects.equals(this.keywords, that.keywords);
     }
