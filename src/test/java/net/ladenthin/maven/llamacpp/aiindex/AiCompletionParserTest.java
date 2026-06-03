@@ -66,5 +66,20 @@ public class AiCompletionParserTest {
         // assert
         assertThat(result, is(equalTo("")));
     }
+
+    @Test
+    public void parseCompletion_endMarkerAtIndexZero_returnsTrailingTrimmedAnswer() throws Exception {
+        // The end marker appears at the very start of the response (thinkingEnd == 0).
+        // Pins the >= 0 boundary check: a > 0 mutation would fall through and return
+        // the whole input including the leading end-marker.
+        // arrange
+        final String response = AiCompletionParser.THINKING_BLOCK_END_MARKER + "actual answer";
+
+        // act
+        final String result = parser.parseCompletion(response);
+
+        // assert
+        assertThat(result, is(equalTo("actual answer")));
+    }
     // </editor-fold>
 }
