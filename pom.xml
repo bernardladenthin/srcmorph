@@ -587,7 +587,7 @@ SPDX-License-Identifier: Apache-2.0
             <plugin>
                 <!--
                   PIT mutation testing is INTENTIONALLY scoped to a single class
-                  (AiResponseNormalizer) so that the wiring is exercised on every
+                  (AiCompletionParser) so that the wiring is exercised on every
                   CI build with a 100% mutation threshold gate, without forcing
                   every other class up to 100% mutation coverage at once. Expand
                   targetClasses incrementally as classes reach mutation-test
@@ -604,10 +604,10 @@ SPDX-License-Identifier: Apache-2.0
                 </dependencies>
                 <configuration>
                     <targetClasses>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.AiResponseNormalizer</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.AiCompletionParser</param>
                     </targetClasses>
                     <targetTests>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.AiResponseNormalizerTest</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.AiCompletionParserTest</param>
                     </targetTests>
                     <mutationThreshold>100</mutationThreshold>
                     <timeoutConstant>30000</timeoutConstant>
