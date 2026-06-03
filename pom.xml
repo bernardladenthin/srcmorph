@@ -81,7 +81,7 @@ SPDX-License-Identifier: Apache-2.0
         <spotbugs.version>4.9.8.3</spotbugs.version>
         <fb-contrib.version>7.7.4</fb-contrib.version>
         <findsecbugs.version>1.14.0</findsecbugs.version>
-        <spotless.version>3.5.1</spotless.version>
+        <spotless.version>3.6.0</spotless.version>
         <palantir-java-format.version>2.66.0</palantir-java-format.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
