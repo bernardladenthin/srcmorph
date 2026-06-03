@@ -1,7 +1,16 @@
-# Unit Test Writing Guide — llamacpp-ai-index-maven-plugin
+# Unit Test Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
 
-Derived by analysis of all test files in `src/test/java/net/ladenthin/maven/llamacpp/aiindex/`.
-This guide is the authoritative reference for writing and improving tests in this project.
+> **Canonical workspace rules** (JUnit Jupiter framework choices, AAA
+> structure with `// pre-assert` semantics, editor folds, naming pattern,
+> Hamcrest assertions, exception testing, parameterized tests via
+> `@MethodSource`, import grouping, DRY constants per fold) live in
+> [`../workspace/guides/TEST_WRITING_GUIDE.md`](../workspace/guides/TEST_WRITING_GUIDE.md).
+> Derived from a full pass over `src/test/java/net/ladenthin/maven/llamacpp/aiindex/`.
+> This file contains only **plugin-specific applications**: Maven `Log`
+> mocking (`org.apache.maven.plugin.logging.Log` via Mockito),
+> `MockAiGenerationProvider` patterns, the bundled
+> `SmolLM2-135M-Instruct-Q3_K_M.gguf` model used by real-JNI integration
+> tests, and the `LlamaCppJniAvailability.isAvailable()` guard.
 
 ---
 

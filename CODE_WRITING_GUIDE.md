@@ -1,6 +1,15 @@
-# Code Writing Guide — llamacpp-ai-index-maven-plugin
+# Code Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
 
-This guide is the authoritative reference for writing and improving production code in this project.
+> **Canonical workspace rules** (named constants, logger injection, records,
+> defensive null checks, helper classes, key-indexed definition pattern)
+> live in
+> [`../workspace/guides/CODE_WRITING_GUIDE.md`](../workspace/guides/CODE_WRITING_GUIDE.md).
+> This file contains only **plugin-specific applications** of those rules:
+> the `AI_MD_EXTENSION` / header-field-key / node-type / provider-name
+> constants, the Mojo + `@VisibleForTesting` constructor pair, the Maven
+> `@Parameter` reflection-injected exception to the records rule, prompt
+> target string constants, and the `AiPromptDefinition` /
+> `AiModelDefinition` key-indexed examples.
 
 ---
 
