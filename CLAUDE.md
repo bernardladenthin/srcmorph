@@ -157,11 +157,11 @@ The plugin operates in two logical phases:
 | `AbstractAiIndexMojo` | Shared `@Parameter` fields and utilities for all mojos |
 | `GenerateMojo` | Phase 1: index + summarize source files |
 | `AggregatePackagesMojo` | Phase 2: aggregate + summarize package index files |
-| `SourceFileIndexer` | Walks source trees, creates `.ai.md` files, calls AI for `s`/`k` fields |
-| `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI for `s`/`k` fields |
+| `SourceFileIndexer` | Walks source trees, creates `.ai.md` files, calls AI to fill the document body |
+| `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
 | `AiGenerationProvider` | Interface for AI backends (llama.cpp JNI or mock) |
 | `AiFieldGenerationSupport` | Shared field-generation loop extracted from both indexers |
-| `AiGenerationResult` | Record carrying `summary`, `keywords`, and `body` out of the loop |
+| `AiGenerationResult` | Immutable carrier for the AI-generated body text out of the loop |
 | `AiModelDefinition` | Maven `@Parameter` POJO for a named AI model definition |
 | `AiModelDefinitionSupport` | Key-indexed lookup: converts `AiModelDefinition` → `AiGenerationConfig` |
 | `AiMdDocumentCodec` | Reads and writes `.ai.md` files |
@@ -183,10 +183,15 @@ t: "2026-01-01T00:01:00Z"
 g: "0.1.0"
 a: "1.0.0"
 x: "file"
-s: "This class handles..."
-k: "parser,codec,markdown"
 -->
+This class handles parsing of Markdown headers...
+(AI-generated body text continues here)
 ```
+
+The header carries only deterministic metadata. All AI-generated
+content lives in the document body after the header block, keeping
+the header machine-parseable without AI involvement (see
+`AiMdHeader.java` Javadoc for the rationale).
 
 | Field | Meaning |
 |---|---|
@@ -198,8 +203,6 @@ k: "parser,codec,markdown"
 | `g` | Plugin version (`project.version`) |
 | `a` | AI model version |
 | `x` | Node type: `file` or `package` |
-| `s` | AI-generated summary |
-| `k` | AI-generated keywords (comma-separated) |
 
 ### Provider Pattern
 
