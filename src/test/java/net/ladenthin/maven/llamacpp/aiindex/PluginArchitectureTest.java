@@ -5,6 +5,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -62,6 +63,19 @@ public class PluginArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("sun..", "com.sun..", "jdk.internal..");
+
+    /**
+     * No package cycles between sub-packages. Vacuous today on this
+     * single-package plugin; acts as a forward-looking guard so a future
+     * sub-package extraction cannot introduce a circular dependency without
+     * breaking the build.
+     */
+    @ArchTest
+    static final ArchRule noPackageCycles = slices()
+            .matching("net.ladenthin.maven.llamacpp.aiindex.(*)..")
+            .should()
+            .beFreeOfCycles()
+            .allowEmptyShould(true);
 
     /**
      * Public mutable state forbidden: any non-static field declared
