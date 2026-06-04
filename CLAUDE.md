@@ -99,10 +99,10 @@ llamacpp-ai-index-maven-plugin/
 │   │       ├── AiModelDefinition.java      # POJO for a named AI model definition (Maven @Parameter)
 │   │       ├── AiModelDefinitionSupport.java# Key-indexed lookup: AiModelDefinition -> AiGenerationConfig
 │   │       ├── AiFieldGenerationConfig.java# Per-field generation config (references model def by key)
-│   │       ├── AiFieldGenerationSupport.java# Shared field-generation loop (summary/keywords/body)
+│   │       ├── AiFieldGenerationSupport.java# Shared field-generation loop (body target)
 │   │       ├── AiGenerationKind.java       # Enum: generation types
 │   │       ├── AiGenerationRequest.java    # Request object
-│   │       ├── AiGenerationResult.java     # Record: summary + keywords + body output
+│   │       ├── AiGenerationResult.java     # Immutable carrier for the AI-generated body text
 │   │       ├── AiPromptDefinition.java     # Prompt template definition
 │   │       ├── AiPreparedPrompt.java       # Prompt after substitution
 │   │       ├── AiPromptSupport.java        # Prompt lookup utilities
