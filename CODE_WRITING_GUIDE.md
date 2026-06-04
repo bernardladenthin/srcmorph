@@ -128,17 +128,19 @@ Java `record` types are the preferred representation for immutable data carriers
 - There is no mutable state.
 - The class has value semantics (equality based on field values).
 
-Examples already using records: `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiSummaryResponse`, `AiGenerationRequest`.
+Examples already using records: `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiGenerationRequest`.
 
 ```java
 // GOOD — immutable value object as a record
-public record AiSummaryResponse(String text, int tokensGenerated) {}
+public record AiPreparedPrompt(String sourceText, boolean trimmed,
+                               int originalSourceLength, int trimmedSourceLength,
+                               int availableSourceChars) {}
 
 // BAD — mutable class with getters/setters for a simple data carrier
-public class AiSummaryResponse {
-    private String text;
-    public String getText() { return text; }
-    public void setText(String text) { this.text = text; }
+public class AiPreparedPrompt {
+    private String sourceText;
+    public String getSourceText() { return sourceText; }
+    public void setSourceText(String sourceText) { this.sourceText = sourceText; }
 }
 ```
 

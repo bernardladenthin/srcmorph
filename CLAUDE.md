@@ -112,7 +112,6 @@ llamacpp-ai-index-maven-plugin/
 │   │       ├── MockAiGenerationProvider.java    # Mock for testing
 │   │       ├── LlamaCppJniAiSummaryProvider.java# llama.cpp JNI provider
 │   │       ├── LlamaCppJniConfig.java      # llama.cpp configuration
-│   │       ├── AiSummaryResponse.java      # AI generation response
 │   │       ├── SourceFileIndexer.java      # Indexes + summarizes source files
 │   │       ├── PackageIndexer.java         # Aggregates + summarizes package index files
 │   │       ├── AiChecksumSupport.java      # Checksum utilities
@@ -282,7 +281,7 @@ All source files must include the Apache 2.0 license header wrapped in `// @form
 
 ### Records
 
-Immutable value types are implemented as Java `record` types (e.g., `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiSummaryResponse`). Prefer records for data carriers.
+Immutable value types are implemented as Java `record` types (e.g., `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiGenerationRequest`). Prefer records for data carriers.
 
 ---
 
