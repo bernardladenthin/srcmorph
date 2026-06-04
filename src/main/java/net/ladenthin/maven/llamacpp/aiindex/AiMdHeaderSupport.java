@@ -15,12 +15,6 @@ public class AiMdHeaderSupport {
         // no-op
     }
 
-    /**
-     * Separator character used between fields in a checksum line produced by
-     * {@link #buildChecksumLine(String, AiMdHeader)}.
-     */
-    private static final char CHECKSUM_LINE_SEPARATOR = '|';
-
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -62,24 +56,5 @@ public class AiMdHeaderSupport {
                 || !expectedHeader.d().equals(actualHeader.d())
                 || !expectedHeader.g().equals(actualHeader.g())
                 || !expectedHeader.a().equals(actualHeader.a());
-    }
-
-    /**
-     * Builds a deterministic checksum line that captures a child entry's identity for
-     * package-level aggregation.
-     *
-     * @param name        child name (file or package name)
-     * @param childHeader child header to read {@code c}, {@code d}, and {@code x} from
-     * @return checksum line terminated by a newline character
-     */
-    public String buildChecksumLine(final String name, final AiMdHeader childHeader) {
-        return name
-                + CHECKSUM_LINE_SEPARATOR
-                + childHeader.c()
-                + CHECKSUM_LINE_SEPARATOR
-                + childHeader.d()
-                + CHECKSUM_LINE_SEPARATOR
-                + childHeader.x()
-                + '\n';
     }
 }

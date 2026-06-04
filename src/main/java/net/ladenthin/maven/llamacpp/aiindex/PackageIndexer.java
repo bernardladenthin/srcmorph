@@ -65,6 +65,7 @@ public class PackageIndexer {
     private final AiTimeSupport timeSupport = new AiTimeSupport();
     private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
     private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
+    private final AiMdChildEntryLineFormatter childEntryLineFormatter = new AiMdChildEntryLineFormatter();
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
@@ -346,13 +347,13 @@ public class PackageIndexer {
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
-                        builder.append(headerSupport.buildChecksumLine(name, readChildPackageHeader(path)));
+                        builder.append(childEntryLineFormatter.format(name, readChildPackageHeader(path)));
                     }
                     continue;
                 }
 
                 if (isAiMdContentFile(name)) {
-                    builder.append(headerSupport.buildChecksumLine(
+                    builder.append(childEntryLineFormatter.format(
                             name, documentCodec.read(path).header()));
                 }
             }

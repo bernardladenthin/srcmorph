@@ -94,7 +94,8 @@ llamacpp-ai-index-maven-plugin/
 │   │       ├── AiMdHeader.java             # Record: document metadata
 │   │       ├── AiMdHeaderCodec.java        # Encode/decode metadata headers
 │   │       ├── AiMdDocumentCodec.java      # Encode/decode full documents
-│   │       ├── AiMdHeaderSupport.java      # Header manipulation utilities
+│   │       ├── AiMdHeaderSupport.java      # Rewrite-decision helper (shouldWrite)
+│   │       ├── AiMdChildEntryLineFormatter.java # Child-entry line formatter for package-checksum aggregation
 │   │       ├── AiGenerationConfig.java     # Configuration for a generation step
 │   │       ├── AiModelDefinition.java      # POJO for a named AI model definition (Maven @Parameter)
 │   │       ├── AiModelDefinitionSupport.java# Key-indexed lookup: AiModelDefinition -> AiGenerationConfig
