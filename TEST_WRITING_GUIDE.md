@@ -376,7 +376,7 @@ assertThat(captor.getValue(), containsString("expected fragment"));
 
 ## 11. LLM Integration Tests (JNI Provider)
 
-Tests that exercise the real `LlamaCppJniAiSummaryProvider` must:
+Tests that exercise the real `LlamaCppJniAiGenerationProvider` must:
 
 1. Be annotated with a marker (e.g., `@LlamaJniTest` if introduced) or clearly named with `_realProvider_` in the method name.
 2. Guard with an availability check as the first statement, so they skip gracefully when the native library is absent.

@@ -669,7 +669,7 @@ SPDX-License-Identifier: Apache-2.0
                                 <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex</subtree>
                             </subtrees>
 
-                            <summaryProvider>llamacpp-jni</summaryProvider>
+                            <generationProvider>llamacpp-jni</generationProvider>
 
                             <!--
                                 AI model definitions: define each model once and reference it by key.

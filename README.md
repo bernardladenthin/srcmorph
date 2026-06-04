@@ -136,7 +136,7 @@ mvn clean install -Pai-index-selftest -DrunNativeLlamaTests=true
 Key parameters:
 - outputDirectory: target directory for `.ai.md` files
 - subtrees: source directories to index
-- summaryProvider: AI backend (`llamacpp-jni`)
+- generationProvider: AI backend (`llamacpp-jni`)
 - llamaModelPath: path to GGUF model
 - llamaContextSize: context window
 - llamaMaxTokens: output token limit

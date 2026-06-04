@@ -111,7 +111,7 @@ llamacpp-ai-index-maven-plugin/
 │   │       ├── AiGenerationProvider.java   # Provider interface
 │   │       ├── AiGenerationProviderFactory.java # Factory for providers
 │   │       ├── MockAiGenerationProvider.java    # Mock for testing
-│   │       ├── LlamaCppJniAiSummaryProvider.java# llama.cpp JNI provider
+│   │       ├── LlamaCppJniAiGenerationProvider.java# llama.cpp JNI provider
 │   │       ├── LlamaCppJniConfig.java      # llama.cpp configuration
 │   │       ├── SourceFileIndexer.java      # Indexes + summarizes source files
 │   │       ├── PackageIndexer.java         # Aggregates + summarizes package index files
@@ -211,7 +211,7 @@ the header machine-parseable without AI involvement (see
 
 | Implementation | Description |
 |---|---|
-| `LlamaCppJniAiSummaryProvider` | Uses the `net.ladenthin:llama` JNI binding to run local GGUF models |
+| `LlamaCppJniAiGenerationProvider` | Uses the `net.ladenthin:llama` JNI binding to run local GGUF models |
 | `MockAiGenerationProvider` | Returns deterministic mock responses; used in all tests |
 
 `AiGenerationProviderFactory` selects the provider by name (`"llamacpp-jni"` or `"mock"`).
@@ -234,7 +234,7 @@ the header machine-parseable without AI involvement (see
 | `force` | `aiIndex.force` | `false` | Regenerate even if summary exists |
 | `subtrees` | `aiIndex.subtrees` | *(all)* | Limit to specific source subdirectories |
 | `fileExtensions` | `aiIndex.fileExtensions` | `.java` | File extensions to index |
-| `summaryProvider` | `aiIndex.summaryProvider` | `mock` | `mock` or `llamacpp-jni` |
+| `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
 | `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
 | `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |
 | `llamaMaxOutputTokens` | `aiIndex.llama.maxOutputTokens` | `128` | Max generated output tokens |
@@ -253,7 +253,7 @@ the header machine-parseable without AI involvement (see
 
 ### Test Model
 
-`src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf` is a small (≈90 MB) GGUF model used by integration tests that exercise the real `LlamaCppJniAiSummaryProvider`. These tests are skipped when the JNI native library is unavailable.
+`src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf` is a small (≈90 MB) GGUF model used by integration tests that exercise the real `LlamaCppJniAiGenerationProvider`. These tests are skipped when the JNI native library is unavailable.
 
 ### Conventions
 

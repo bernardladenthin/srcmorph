@@ -68,8 +68,8 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      *
      * @see AiGenerationProviderFactory
      */
-    @Parameter(property = "aiIndex.summaryProvider", defaultValue = "mock")
-    protected String summaryProvider;
+    @Parameter(property = "aiIndex.generationProvider", defaultValue = "mock")
+    protected String generationProvider;
 
     /** Prompt template definitions referenced by field generation configurations. */
     @Parameter
@@ -267,7 +267,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
             getLog().info("Extensions      : " + resolvedExtensions);
         }
         getLog().info("Force           : " + force);
-        getLog().info("Provider        : " + summaryProvider);
+        getLog().info("Provider        : " + generationProvider);
         getLog().info("LlamaCpp Temperature: " + llamaTemperature);
         getLog().info("LlamaCpp Max Output Tokens: " + llamaMaxOutputTokens);
     }

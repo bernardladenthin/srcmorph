@@ -81,8 +81,8 @@ public class GenerateMojo extends AbstractAiIndexMojo {
             final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
             final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
-            try (AiGenerationProvider generationProvider =
-                    providerFactory.create(summaryProvider, buildLlamaCppJniConfig(), promptSupport)) {
+            try (AiGenerationProvider provider =
+                    providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
 
                 final SourceFileIndexer fileIndexer = new SourceFileIndexer(
                         getLog(),
@@ -93,7 +93,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         aiVersion,
                         resolvedSubtrees,
                         force,
-                        generationProvider,
+                        provider,
                         fieldGenerations,
                         promptSupport,
                         modelDefinitionSupport);

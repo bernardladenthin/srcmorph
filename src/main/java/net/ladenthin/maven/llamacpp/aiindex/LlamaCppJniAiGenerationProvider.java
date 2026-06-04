@@ -17,7 +17,7 @@ import net.ladenthin.llama.Pair;
  * {@link AiGenerationProvider} implementation backed by the {@code net.ladenthin:llama}
  * JNI binding, running GGUF models locally via llama.cpp.
  */
-public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoCloseable {
+public class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, AutoCloseable {
 
     private final LlamaCppJniConfig config;
     private final LlamaModel model;
@@ -25,12 +25,12 @@ public class LlamaCppJniAiSummaryProvider implements AiGenerationProvider, AutoC
     private final AiCompletionParser completionParser = new AiCompletionParser();
 
     /**
-     * Creates a new {@link LlamaCppJniAiSummaryProvider} and loads the configured GGUF model.
+     * Creates a new {@link LlamaCppJniAiGenerationProvider} and loads the configured GGUF model.
      *
      * @param config        llama.cpp configuration
      * @param promptSupport prompt lookup used to render request prompts
      */
-    public LlamaCppJniAiSummaryProvider(final LlamaCppJniConfig config, final AiPromptSupport promptSupport) {
+    public LlamaCppJniAiGenerationProvider(final LlamaCppJniConfig config, final AiPromptSupport promptSupport) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
 
