@@ -1,10 +1,12 @@
 # Unit Test Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
 
-> **Canonical workspace rules** (JUnit Jupiter framework choices, AAA
-> structure with `// pre-assert` semantics, editor folds, naming pattern,
-> Hamcrest assertions, exception testing, parameterized tests via
-> `@MethodSource`, import grouping, DRY constants per fold) live in
-> [`../workspace/guides/TEST_WRITING_GUIDE.md`](../workspace/guides/TEST_WRITING_GUIDE.md).
+> **Canonical workspace rules** for test sources live in
+> [`../workspace/guides/test/TEST_WRITING_GUIDE-8.md`](../workspace/guides/test/TEST_WRITING_GUIDE-8.md)
+> (JUnit Jupiter framework choices, AAA structure with `// pre-assert`
+> semantics, both `<editor-fold>` and `@Nested` grouping styles, naming
+> pattern, Hamcrest assertions, exception testing, parameterized tests
+> via `@MethodSource`, logger mocking, import grouping, DRY constants
+> per group). This repo is Java 8, so only the `-8.md` baseline applies.
 > Derived from a full pass over `src/test/java/net/ladenthin/maven/llamacpp/aiindex/`.
 > This file contains only **plugin-specific applications**: Maven `Log`
 > mocking (`org.apache.maven.plugin.logging.Log` via Mockito),

@@ -321,13 +321,13 @@ Test-only:
 
 After modifying or creating any `.java` file:
 
-- For `*Test.java` files, verify rules from
-  [`../workspace/guides/TEST_WRITING_GUIDE.md`](../workspace/guides/TEST_WRITING_GUIDE.md)
-  (canonical) **and** this repo's own `TEST_WRITING_GUIDE.md` (plugin-
-  specific supplement).
-- For production sources, verify rules from
-  [`../workspace/guides/CODE_WRITING_GUIDE.md`](../workspace/guides/CODE_WRITING_GUIDE.md)
-  (canonical) **and** this repo's own `CODE_WRITING_GUIDE.md`.
+- For `*Test.java` files, follow the workspace version chain:
+  [`../workspace/guides/test/TEST_WRITING_GUIDE-8.md`](../workspace/guides/test/TEST_WRITING_GUIDE-8.md)
+  (this repo is Java 8) **and** this repo's own `TEST_WRITING_GUIDE.md`
+  (plugin-specific supplement).
+- For production sources, follow the workspace version chain:
+  [`../workspace/guides/src/CODE_WRITING_GUIDE-8.md`](../workspace/guides/src/CODE_WRITING_GUIDE-8.md)
+  (this repo is Java 8) **and** this repo's own `CODE_WRITING_GUIDE.md`.
 - Apply all fixable violations automatically; report only those that
   cannot be resolved without a large refactor.
 
@@ -382,6 +382,6 @@ See [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jq
 
 - **Cross-repo code-quality TODOs** — see [`../workspace/policies/code-quality-todos.md`](../workspace/policies/code-quality-todos.md) for the canonical `@VisibleForTesting` design-fit review, package hierarchy review, and class/method naming review. This repo has no `@VisibleForTesting` usages today; the package and naming reviews are still open here.
 
-- ~~**Abstract the Java and test writing guidelines to a workspace-level shared layer.**~~ **DONE.** Canonical guides now live at [`../workspace/guides/CODE_WRITING_GUIDE.md`](../workspace/guides/CODE_WRITING_GUIDE.md) and [`../workspace/guides/TEST_WRITING_GUIDE.md`](../workspace/guides/TEST_WRITING_GUIDE.md); the canonical TDD skill is at [`../workspace/.claude/skills/java-tdd-guide/SKILL.md`](../workspace/.claude/skills/java-tdd-guide/SKILL.md). This repo's `CODE_WRITING_GUIDE.md` / `TEST_WRITING_GUIDE.md` now hold only plugin-specific supplements (Maven `@Parameter` POJO patterns, named-constant catalogue for header field keys / node types / provider names, LLM-integration test patterns).
+- ~~**Abstract the Java and test writing guidelines to a workspace-level shared layer.**~~ **DONE.** This repo is Java 8; follow the workspace version chain at [`../workspace/guides/src/CODE_WRITING_GUIDE-8.md`](../workspace/guides/src/CODE_WRITING_GUIDE-8.md) and [`../workspace/guides/test/TEST_WRITING_GUIDE-8.md`](../workspace/guides/test/TEST_WRITING_GUIDE-8.md); canonical TDD skill at [`../workspace/.claude/skills/java-tdd-guide/SKILL.md`](../workspace/.claude/skills/java-tdd-guide/SKILL.md). This repo's `CODE_WRITING_GUIDE.md` / `TEST_WRITING_GUIDE.md` now hold only plugin-specific supplements (Maven `@Parameter` POJO patterns, named-constant catalogue for header field keys / node types / provider names, LLM-integration test patterns).
 
 - ~~**Adopt a standard `CLAUDE.md` template/tool for cross-repo consistency.**~~ **DONE.** Template lives at [`../workspace/templates/CLAUDE.md.template`](../workspace/templates/CLAUDE.md.template); this CLAUDE.md uses the template's section order.

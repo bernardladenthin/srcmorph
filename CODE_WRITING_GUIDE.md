@@ -1,9 +1,11 @@
 # Code Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
 
-> **Canonical workspace rules** (named constants, logger injection, records,
-> defensive null checks, helper classes, key-indexed definition pattern)
-> live in
-> [`../workspace/guides/CODE_WRITING_GUIDE.md`](../workspace/guides/CODE_WRITING_GUIDE.md).
+> **Canonical workspace rules** for production sources live in
+> [`../workspace/guides/src/CODE_WRITING_GUIDE-8.md`](../workspace/guides/src/CODE_WRITING_GUIDE-8.md)
+> (named constants, custom domain exceptions, constructor injection,
+> defensive null checks, helper classes as instance methods,
+> `@VisibleForTesting`, SPDX license headers, concurrency primitives).
+> This repo is Java 8, so only the `-8.md` baseline applies.
 > This file contains only **plugin-specific applications** of those rules:
 > the `AI_MD_EXTENSION` / header-field-key / node-type / provider-name
 > constants, the Mojo + `@VisibleForTesting` constructor pair, the Maven
