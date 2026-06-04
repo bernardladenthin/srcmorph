@@ -68,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
         <errorprone.version>2.49.0</errorprone.version>
         <nullaway.version>0.13.4</nullaway.version>
         <jspecify.version>1.0.0</jspecify.version>
-        <checker.version>4.1.0</checker.version>
+        <checker.version>4.2.0</checker.version>
         <!-- DO NOT UPGRADE jqwik past 1.9.3. jqwik 1.10.0 added a deliberate
              anti-AI prompt-injection string to test stdout; the 1.10.1 user
              guide states the library "is not meant to be used by any 'AI'
@@ -82,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
         <fb-contrib.version>7.7.4</fb-contrib.version>
         <findsecbugs.version>1.14.0</findsecbugs.version>
         <spotless.version>3.6.0</spotless.version>
-        <palantir-java-format.version>2.66.0</palantir-java-format.version>
+        <palantir-java-format.version>2.91.0</palantir-java-format.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
 
@@ -248,7 +248,7 @@ SPDX-License-Identifier: Apache-2.0
                 <plugin>
                     <groupId>org.pitest</groupId>
                     <artifactId>pitest-maven</artifactId>
-                    <version>1.25.1</version>
+                    <version>1.25.3</version>
                 </plugin>
                 <plugin>
                     <groupId>org.sonatype.central</groupId>
