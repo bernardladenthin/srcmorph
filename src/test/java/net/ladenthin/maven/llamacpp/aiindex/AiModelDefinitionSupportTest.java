@@ -157,8 +157,7 @@ public class AiModelDefinitionSupportTest {
         // deeper in the goal). Message must name the list index and dump the bad
         // entry so the user can locate the misconfiguration in their POM.
         final NullPointerException npe = assertThrows(
-                NullPointerException.class,
-                () -> new AiModelDefinitionSupport(Arrays.asList(validDef, nullKeyDef)));
+                NullPointerException.class, () -> new AiModelDefinitionSupport(Arrays.asList(validDef, nullKeyDef)));
         assertThat(npe.getMessage(), containsString("aiDefinitions[1].key"));
         assertThat(npe.getMessage(), containsString("AiModelDefinition"));
     }
