@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import java.util.Objects;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
@@ -28,16 +29,22 @@ public class AiGenerationResult {
     /**
      * Creates a new {@link AiGenerationResult}.
      *
-     * @param body AI-generated body text destined for {@link AiMdDocument#body()}
+     * <p>Empty body is allowed (and is the documented default when no body
+     * field was generated); {@code null} is not, so callers cannot leak
+     * a null body into downstream rendering.</p>
+     *
+     * @param body AI-generated body text destined for {@link AiMdDocument#body()};
+     *             must not be {@code null} (pass {@code ""} for no-body)
+     * @throws NullPointerException if {@code body} is {@code null}
      */
     public AiGenerationResult(String body) {
-        this.body = body;
+        this.body = Objects.requireNonNull(body, "body");
     }
 
     /**
      * Returns the AI-generated body text.
      *
-     * @return body text; may be empty if no body field was generated
+     * @return body text, never {@code null}; may be empty if no body field was generated
      */
     public String body() {
         return body;
