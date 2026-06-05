@@ -125,9 +125,10 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     }
 
     private List<String> resolveFileExtensions() {
-        if (fileExtensions == null || fileExtensions.isEmpty()) {
+        final List<String> configured = fileExtensions;
+        if (configured == null || configured.isEmpty()) {
             return compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION);
         }
-        return fileExtensions;
+        return configured;
     }
 }

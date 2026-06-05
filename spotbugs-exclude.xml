@@ -198,4 +198,27 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="USBR_UNNECESSARY_STORE_BEFORE_RETURN"/>
     </Match>
 
+    <!--
+        AI_ANNOTATION_ISSUES_NEEDS_NULLABLE on GenerateMojo.resolveFileExtensions.
+
+        The method body returns either compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION)
+        (non-null by contract) or the @Parameter-injected fileExtensions list, gated by
+        an early-return guard that ensures the second branch only runs when the field
+        is non-null and non-empty. The method provably cannot return null.
+
+        fb-contrib&apos;s analyzer is conservative: it sees a field-load on a Maven
+        @Parameter field (no model for the @NullMarked + ExcludedFieldAnnotations
+        wiring) and assumes the second return path may propagate null. We tried
+        hoisting the field to a local variable to give fb-contrib a clearer dataflow
+        signal; the finding persisted. Adding @Nullable to the return would be a lie
+        about the contract (the method genuinely cannot return null).
+
+        Suppression is scoped narrowly to this one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.GenerateMojo"/>
+        <Method name="resolveFileExtensions"/>
+        <Bug pattern="AI_ANNOTATION_ISSUES_NEEDS_NULLABLE"/>
+    </Match>
+
 </FindBugsFilter>
