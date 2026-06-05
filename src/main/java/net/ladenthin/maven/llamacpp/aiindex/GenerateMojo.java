@@ -119,9 +119,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
 
         } catch (IOException e) {
             throw new MojoExecutionException(
-                    "Failed to generate AI index files under " + outputPath
-                            + " from base " + basePath,
-                    e);
+                    "Failed to generate AI index files under " + outputPath + " from base " + basePath, e);
         }
 
         getLog().info("AI index generation finished.");

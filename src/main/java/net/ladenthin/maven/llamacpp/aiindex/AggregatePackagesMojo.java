@@ -96,8 +96,7 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
                 getLog().info("Aggregated packages: " + aggregated);
             }
         } catch (IOException e) {
-            throw new MojoExecutionException(
-                    "Failed to aggregate package AI index files under " + outputPath, e);
+            throw new MojoExecutionException("Failed to aggregate package AI index files under " + outputPath, e);
         }
 
         getLog().info("AI package aggregation finished.");

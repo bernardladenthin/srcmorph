@@ -211,8 +211,7 @@ public class PackageIndexer {
 
     private void writePackageFile(final Path directory) throws IOException {
         if (fieldGenerations == null || fieldGenerations.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "No field generations configured for package indexing of " + directory);
+            throw new IllegalArgumentException("No field generations configured for package indexing of " + directory);
         }
 
         final List<String> contents = collectContents(directory);
@@ -246,9 +245,8 @@ public class PackageIndexer {
 
         // result.body() is non-null by AiGenerationResult's constructor contract;
         // an empty/blank body falls back to the deterministic default.
-        final String body = compatibilityHelper.isBlank(result.body())
-                ? buildDefaultPackageBody(contents)
-                : result.body();
+        final String body =
+                compatibilityHelper.isBlank(result.body()) ? buildDefaultPackageBody(contents) : result.body();
 
         final AiMdDocument document = new AiMdDocument(baseHeader, body);
         documentCodec.write(packageFile, document);
