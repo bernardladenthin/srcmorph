@@ -199,6 +199,31 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        FORMAT_STRING_MANIPULATION on the prompt-template pipeline.
+
+        The plugin's whole contract is "developers write prompt templates in their POM
+        &lt;configuration&gt; and the plugin substitutes per-file context into them via
+        String.format". The template comes from operator-controlled POM XML (parsed and
+        validated by Maven at build time), not from end-user request input. A malformed
+        template raises IllegalFormatException on first use, immediately surfacing the
+        configuration error.
+
+        Three sites all trace to the same data path:
+          - Java8CompatibilityHelper#formatted -&gt; String.format(template, args)
+          - AiPromptSupport#buildPrompt -&gt; templates.get(promptKey) -&gt; formatted(...)
+
+        Restructuring to escape user-supplied format specifiers would defeat the
+        configurable-templates feature; suppression is the right answer here.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.Java8CompatibilityHelper"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.AiPromptSupport"/>
+        </Or>
+        <Bug pattern="FORMAT_STRING_MANIPULATION"/>
+    </Match>
+
+    <!--
         AI_ANNOTATION_ISSUES_NEEDS_NULLABLE on GenerateMojo.resolveFileExtensions.
 
         The method body returns either compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION)
