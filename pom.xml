@@ -79,6 +79,7 @@ SPDX-License-Identifier: Apache-2.0
         <jqwik.version>1.9.3</jqwik.version>
         <archunit.version>1.4.2</archunit.version>
         <spotbugs.version>4.9.8.3</spotbugs.version>
+        <lombok.version>1.18.46</lombok.version>
         <fb-contrib.version>7.7.4</fb-contrib.version>
         <findsecbugs.version>1.14.0</findsecbugs.version>
         <spotless.version>3.6.0</spotless.version>
@@ -91,6 +92,12 @@ SPDX-License-Identifier: Apache-2.0
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.jspecify</groupId>
             <artifactId>jspecify</artifactId>
