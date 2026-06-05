@@ -142,7 +142,8 @@ public class SourceFileIndexer {
 
     private void writeAiFile(final Path sourceFile) throws IOException {
         if (fieldGenerations == null || fieldGenerations.isEmpty()) {
-            throw new IllegalArgumentException("No field generations configured for source file indexing.");
+            throw new IllegalArgumentException(
+                    "No field generations configured for source file indexing of " + sourceFile);
         }
 
         final Path relativeToBase = pathSupport.relativizeFromSrc(baseDirectory, sourceFile);

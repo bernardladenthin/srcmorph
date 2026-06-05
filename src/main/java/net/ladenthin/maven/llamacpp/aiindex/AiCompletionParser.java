@@ -77,7 +77,8 @@ public class AiCompletionParser {
             throw new IOException("Model token budget exhausted inside thinking block: "
                     + THINKING_BLOCK_START_MARKER + " was emitted but "
                     + THINKING_BLOCK_END_MARKER + " was not. "
-                    + "Increase maxOutputTokens for this model definition.");
+                    + "Increase maxOutputTokens for this model definition. "
+                    + "(response length=" + response.length() + " chars)");
         }
         return response.trim();
     }
