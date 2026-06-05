@@ -246,4 +246,37 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="AI_ANNOTATION_ISSUES_NEEDS_NULLABLE"/>
     </Match>
 
+    <!--
+        DCN_NULLPOINTER_EXCEPTION on AbstractAiIndexMojo.buildPromptSupport /
+        buildAiModelDefinitionSupport.
+
+        fb-contrib's general rule is "do not catch NullPointerException" — sound
+        advice when NPE indicates a bug. Our two catch sites are the deliberate
+        translation bridge between the support classes' Objects.requireNonNull
+        validation (which throws NPE by Java convention with the rich
+        index + bad-entry message) and Maven's MojoExecutionException (which the
+        framework treats as a user configuration error rather than a plugin bug).
+
+        The alternatives we considered and rejected:
+          - Throw IllegalArgumentException from the support ctors via a manual
+            (x == null) check: brings back the RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE
+            findings that started this chain.
+          - Pre-validate inside the Mojo before calling the ctor: duplicates the
+            validation logic and lets the ctor accept malformed input, which is
+            a footgun for any non-Mojo caller (tests, future programmatic API).
+          - Pull in Guava Preconditions.checkNotNull: adds a dep purely to dodge
+            one detector rule.
+
+        Scoping to these two methods (not class-wide) means any other NPE-catching
+        site on AbstractAiIndexMojo would still surface.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.AbstractAiIndexMojo"/>
+        <Or>
+            <Method name="buildPromptSupport"/>
+            <Method name="buildAiModelDefinitionSupport"/>
+        </Or>
+        <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
+    </Match>
+
 </FindBugsFilter>

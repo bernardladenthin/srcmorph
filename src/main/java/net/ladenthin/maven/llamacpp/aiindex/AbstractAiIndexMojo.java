@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import lombok.ToString;
 import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Parameter;
 
 /**
@@ -195,8 +196,10 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * @throws IllegalArgumentException if the first field generation's
      *                                  {@link AiFieldGenerationConfig#getAiDefinitionKey()}
      *                                  does not match any registered definition
+     * @throws MojoExecutionException   propagated from {@link #buildAiModelDefinitionSupport()}
+     *                                  if any AI definition is missing a required field
      */
-    protected LlamaCppJniConfig buildLlamaCppJniConfig() {
+    protected LlamaCppJniConfig buildLlamaCppJniConfig() throws MojoExecutionException {
         if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
             final AiFieldGenerationConfig first = fieldGenerations.get(0);
             final AiGenerationConfig config = buildAiModelDefinitionSupport().getConfig(first.getAiDefinitionKey());
@@ -231,19 +234,43 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     /**
      * Builds an {@link AiPromptSupport} from the configured {@link #promptDefinitions}.
      *
+     * <p>If any {@code <promptDefinition>} entry in the POM is missing its {@code key}
+     * or {@code template}, the underlying constructor throws
+     * {@link NullPointerException} with a message naming the offending list index and
+     * the bad entry. This method translates that into a
+     * {@link MojoExecutionException} so Maven reports it as a user configuration
+     * error (the "Invalid plugin {@code <configuration>}" framing) rather than as
+     * a plugin bug.</p>
+     *
      * @return prompt support instance backed by the configured definitions
+     * @throws MojoExecutionException if any prompt definition is missing a required field
      */
-    protected AiPromptSupport buildPromptSupport() {
-        return new AiPromptSupport(promptDefinitions);
+    protected AiPromptSupport buildPromptSupport() throws MojoExecutionException {
+        try {
+            return new AiPromptSupport(promptDefinitions);
+        } catch (NullPointerException e) {
+            throw new MojoExecutionException("Invalid plugin configuration: " + e.getMessage(), e);
+        }
     }
 
     /**
      * Builds an {@link AiModelDefinitionSupport} from the configured {@link #aiDefinitions}.
      *
+     * <p>If any {@code <aiDefinition>} entry in the POM is missing its {@code key},
+     * the underlying constructor throws {@link NullPointerException} with a message
+     * naming the offending list index and the bad entry. This method translates that
+     * into a {@link MojoExecutionException} so Maven reports it as a user
+     * configuration error rather than as a plugin bug.</p>
+     *
      * @return model definition support instance backed by the configured definitions
+     * @throws MojoExecutionException if any AI definition is missing a required field
      */
-    protected AiModelDefinitionSupport buildAiModelDefinitionSupport() {
-        return new AiModelDefinitionSupport(aiDefinitions);
+    protected AiModelDefinitionSupport buildAiModelDefinitionSupport() throws MojoExecutionException {
+        try {
+            return new AiModelDefinitionSupport(aiDefinitions);
+        } catch (NullPointerException e) {
+            throw new MojoExecutionException("Invalid plugin configuration: " + e.getMessage(), e);
+        }
     }
 
     /**

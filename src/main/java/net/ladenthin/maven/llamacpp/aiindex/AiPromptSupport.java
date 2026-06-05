@@ -6,27 +6,56 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.ToString;
 
 /** Registry of prompt templates that renders prompt strings for AI generation requests. */
 @ToString
 public class AiPromptSupport {
 
-    private final Map<String, String> templates = new HashMap<>();
+    private final Map<String, String> templates;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
      * Creates a new {@link AiPromptSupport} pre-populated with the given definitions.
      *
-     * @param promptDefinitions prompt definitions to register; may be {@code null}
+     * <p>Every entry in {@code promptDefinitions} must have both a non-null
+     * {@code key} and a non-null {@code template}; a null in either field
+     * throws {@link NullPointerException} naming the list index and dumping
+     * the offending entry. This is the contract enforcement boundary that
+     * makes misconfigured POM {@code <promptDefinitions>} fail at build
+     * configuration time rather than silently dropping the entry and
+     * surfacing as a "Missing prompt template for key" failure deeper in
+     * the goal. Mojos wrap construction in {@link NullPointerException}
+     * &rarr; {@link org.apache.maven.plugin.MojoExecutionException} so the
+     * Maven framework reports it as a user configuration error rather
+     * than a plugin bug.
+     *
+     * @param promptDefinitions prompt definitions to register; may be
+     *                          {@code null} (treated as no definitions);
+     *                          individual entries must be well-formed
+     * @throws NullPointerException if any entry has a {@code null} {@code key}
+     *                              or {@code null} {@code template}
      */
     public AiPromptSupport(final List<AiPromptDefinition> promptDefinitions) {
-        if (promptDefinitions != null) {
-            for (AiPromptDefinition definition : promptDefinitions) {
-                if (definition.getKey() != null && definition.getTemplate() != null) {
-                    templates.put(definition.getKey(), definition.getTemplate());
-                }
-            }
+        if (promptDefinitions == null) {
+            this.templates = new HashMap<>(1);
+            return;
+        }
+        final int count = promptDefinitions.size();
+        // Presize the load-factor-corrected capacity so the loop's put() calls
+        // never trigger a rehash (fb-contrib PSC_PRESIZE_COLLECTIONS).
+        this.templates = new HashMap<>((int) (count / 0.75f) + 1);
+        for (int i = 0; i < count; i++) {
+            final AiPromptDefinition definition = promptDefinitions.get(i);
+            final int index = i;
+            Objects.requireNonNull(
+                    definition.getKey(),
+                    () -> "promptDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
+            Objects.requireNonNull(
+                    definition.getTemplate(),
+                    () -> "promptDefinitions[" + index + "].template is required (bad entry: " + definition + ")");
+            templates.put(definition.getKey(), definition.getTemplate());
         }
     }
 
