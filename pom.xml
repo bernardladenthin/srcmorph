@@ -346,9 +346,12 @@ SPDX-License-Identifier: Apache-2.0
                         -->
                         <arg>-Xlint:all,-serial,-options,-classfile,-processing</arg>
                         <arg>-Werror</arg>
-                        <!-- Checker Framework Nullness Checker as a 2nd nullness pass alongside NullAway. -->
+                        <!-- Explicit processor list: Lombok (two SPI classes) + Checker Framework's
+                             Nullness Checker as a 2nd nullness pass alongside NullAway. The explicit
+                             -processor argument overrides SPI discovery, so every processor we want
+                             to run must be listed here. -->
                         <arg>-processor</arg>
-                        <arg>org.checkerframework.checker.nullness.NullnessChecker</arg>
+                        <arg>lombok.launch.AnnotationProcessorHider$AnnotationProcessor,lombok.launch.AnnotationProcessorHider$ClaimingProcessor,org.checkerframework.checker.nullness.NullnessChecker</arg>
                         <!-- Skip CF analysis of the auto-generated HelpMojo (target/generated-sources/plugin/...).
                              The plugin-tools-generated code is not under our control and has its own
                              initialization patterns Maven handles via reflection. -->
@@ -363,6 +366,11 @@ SPDX-License-Identifier: Apache-2.0
                         <arg>-Xplugin:ErrorProne -XepExcludedPaths:.*/generated-sources/.* -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true -Xep:BoxedPrimitiveEquality:ERROR -Xep:EqualsHashCode:ERROR -Xep:EqualsIncompatibleType:ERROR -Xep:IdentityBinaryExpression:ERROR -Xep:SelfAssignment:ERROR -Xep:SelfComparison:ERROR -Xep:SelfEquals:ERROR -Xep:DeadException:ERROR -Xep:FormatString:ERROR -Xep:InvalidPatternSyntax:ERROR -Xep:OptionalEquality:ERROR -Xep:ImpossibleNullComparison:ERROR</arg>
                     </compilerArgs>
                     <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
                         <path>
                             <groupId>com.google.errorprone</groupId>
                             <artifactId>error_prone_core</artifactId>
