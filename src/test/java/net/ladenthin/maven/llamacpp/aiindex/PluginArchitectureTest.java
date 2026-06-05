@@ -71,8 +71,7 @@ public class PluginArchitectureTest {
      * breaking the build.
      */
     @ArchTest
-    static final ArchRule noPackageCycles = slices()
-            .matching("net.ladenthin.maven.llamacpp.aiindex.(*)..")
+    static final ArchRule noPackageCycles = slices().matching("net.ladenthin.maven.llamacpp.aiindex.(*)..")
             .should()
             .beFreeOfCycles()
             .allowEmptyShould(true);

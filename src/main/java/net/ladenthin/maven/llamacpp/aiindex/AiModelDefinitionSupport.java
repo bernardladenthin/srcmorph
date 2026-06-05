@@ -6,6 +6,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.ToString;
 
 /**
  * Resolves {@link AiModelDefinition} entries by their key, returning the corresponding
@@ -24,6 +25,7 @@ import java.util.Map;
  * @see AiModelDefinition
  * @see AiFieldGenerationConfig
  */
+@ToString
 public class AiModelDefinitionSupport {
 
     /**

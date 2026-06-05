@@ -4,8 +4,10 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.nio.file.Path;
+import lombok.ToString;
 
 /** Path utilities for resolving and trimming source paths used during indexing. */
+@ToString
 public class AiPathSupport {
 
     /** Creates a new {@link AiPathSupport}. */

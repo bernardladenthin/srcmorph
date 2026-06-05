@@ -8,8 +8,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import lombok.ToString;
 
 /** Reads and writes {@code .ai.md} documents (header plus body) from and to disk. */
+@ToString
 public class AiMdDocumentCodec {
 
     /** Creates a new {@link AiMdDocumentCodec}. */

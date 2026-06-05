@@ -4,6 +4,7 @@
 package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.io.IOException;
+import lombok.ToString;
 
 /**
  * Parses raw LLM completion text to extract the model answer by stripping any
@@ -17,6 +18,7 @@ import java.io.IOException;
  *
  * <p>This class is non-final to allow subclassing and mocking in tests.</p>
  */
+@ToString
 public class AiCompletionParser {
 
     /** Creates a new {@link AiCompletionParser}. */

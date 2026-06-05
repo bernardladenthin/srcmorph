@@ -6,8 +6,10 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import lombok.ToString;
 
 /** Utility helpers for formatting timestamps written into {@code .ai.md} headers. */
+@ToString
 public class AiTimeSupport {
 
     /** Creates a new {@link AiTimeSupport}. */

@@ -6,8 +6,10 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import lombok.ToString;
 
 /** Header comparison helpers that decide whether an {@code .ai.md} file needs to be rewritten. */
+@ToString
 public class AiMdHeaderSupport {
 
     /** Creates a new {@link AiMdHeaderSupport}. */

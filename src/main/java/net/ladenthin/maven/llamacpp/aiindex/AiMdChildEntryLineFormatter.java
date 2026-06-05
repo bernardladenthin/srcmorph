@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import lombok.ToString;
+
 /**
  * Formats one line of a package-level checksum manifest for a single child entry.
  *
@@ -18,6 +20,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
  *
  * @see PackageIndexer
  */
+@ToString
 public class AiMdChildEntryLineFormatter {
 
     /** Creates a new {@link AiMdChildEntryLineFormatter}. */

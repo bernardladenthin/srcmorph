@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.ToString;
 
 /** Reads and writes the metadata header section of an {@code .ai.md} document. */
+@ToString
 public class AiMdHeaderCodec {
 
     /** Creates a new {@link AiMdHeaderCodec}. */

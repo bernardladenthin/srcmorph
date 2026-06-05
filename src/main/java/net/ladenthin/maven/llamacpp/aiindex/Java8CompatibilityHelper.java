@@ -12,11 +12,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.ToString;
 
 /**
  * Wrapper methods for Java 9+ APIs to provide Java 1.8 compatibility.
  * This class centralizes all compatibility layer logic and can be mocked for testing.
  */
+@ToString
 public class Java8CompatibilityHelper {
 
     /** Creates a new {@link Java8CompatibilityHelper}. */

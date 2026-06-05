@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import lombok.ToString;
+
 /** Selects and instantiates an {@link AiGenerationProvider} implementation by name. */
+@ToString
 public class AiGenerationProviderFactory {
 
     /** Creates a new {@link AiGenerationProviderFactory}. */

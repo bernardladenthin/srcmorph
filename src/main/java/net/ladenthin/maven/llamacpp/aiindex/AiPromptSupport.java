@@ -6,8 +6,10 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.ToString;
 
 /** Registry of prompt templates that renders prompt strings for AI generation requests. */
+@ToString
 public class AiPromptSupport {
 
     private final Map<String, String> templates = new HashMap<>();

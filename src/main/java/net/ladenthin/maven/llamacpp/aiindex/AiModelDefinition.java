@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -29,6 +30,7 @@ import org.jspecify.annotations.Nullable;
  * @see AiGenerationConfig
  */
 @SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
+@ToString
 public class AiModelDefinition {
 
     /** Creates a new {@link AiModelDefinition} with the defaults of {@link AiGenerationConfig} applied. */

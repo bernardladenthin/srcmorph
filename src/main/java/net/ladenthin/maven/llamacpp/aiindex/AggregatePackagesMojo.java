@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import lombok.ToString;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -20,6 +21,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 // Framework has no equivalent option for plugin-framework fields, so we suppress class-level.
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "aggregate-packages", threadSafe = true)
+@ToString(callSuper = true)
 public class AggregatePackagesMojo extends AbstractAiIndexMojo {
 
     /** Creates a new {@link AggregatePackagesMojo}. */
