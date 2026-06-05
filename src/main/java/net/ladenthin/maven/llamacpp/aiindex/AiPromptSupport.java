@@ -39,13 +39,13 @@ public class AiPromptSupport {
      */
     public AiPromptSupport(final List<AiPromptDefinition> promptDefinitions) {
         if (promptDefinitions == null) {
-            this.templates = new HashMap<>(1);
+            this.templates = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
             return;
         }
         final int count = promptDefinitions.size();
-        // Presize the load-factor-corrected capacity so the loop's put() calls
-        // never trigger a rehash (fb-contrib PSC_PRESIZE_COLLECTIONS).
-        this.templates = new HashMap<>((int) (count / 0.75f) + 1);
+        // Presize so the loop's put() calls never trigger a rehash
+        // (fb-contrib PSC_PRESIZE_COLLECTIONS).
+        this.templates = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
         for (int i = 0; i < count; i++) {
             final AiPromptDefinition definition = promptDefinitions.get(i);
             final int index = i;

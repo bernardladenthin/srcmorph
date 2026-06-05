@@ -111,4 +111,28 @@ public class Java8CompatibilityHelper {
     public final <T> List<T> listOf(final T... elements) {
         return Arrays.asList(elements);
     }
+
+    /**
+     * Wrapper for {@code HashMap.newHashMap(int)} (Java 19+).
+     *
+     * <p>Returns the {@code initialCapacity} argument that lets a {@link java.util.HashMap}
+     * hold {@code numMappings} entries without a single rehash, assuming the JDK default
+     * load factor of {@code 0.75}. The formula is the one
+     * {@code java.util.HashMap.calculateHashMapCapacity} uses internally on
+     * Java&nbsp;19+: {@code ceil(numMappings / 0.75)} expressed as {@code (int)(n / 0.75f) + 1}
+     * to avoid a floating-point {@code Math.ceil} import for the same answer on the
+     * non-zero domain we care about.
+     *
+     * <p>Use at the call site as
+     * {@code new HashMap<>(compatibilityHelper.hashMapCapacityFor(n))}. Pass
+     * {@code 0} for an empty map (returns {@code 1}, the smallest non-trivial capacity).
+     * Centralised here so the formula isn't duplicated across construction sites
+     * (originally inlined in {@code AiPromptSupport} / {@code AiModelDefinitionSupport}).
+     *
+     * @param numMappings expected number of entries the map will hold; must be {@code >= 0}
+     * @return load-factor-corrected initial capacity, never {@code < 1}
+     */
+    public int hashMapCapacityFor(final int numMappings) {
+        return (int) (numMappings / 0.75f) + 1;
+    }
 }

@@ -44,6 +44,7 @@ public class AiModelDefinitionSupport {
     private static final String MISSING_DEFINITION_MESSAGE_PREFIX = "Missing AI model definition for key: ";
 
     private final Map<String, AiGenerationConfig> configs;
+    private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
      * Builds a new {@code AiModelDefinitionSupport} from the supplied definitions list.
@@ -59,13 +60,13 @@ public class AiModelDefinitionSupport {
      */
     public AiModelDefinitionSupport(final List<AiModelDefinition> definitions) {
         if (definitions == null) {
-            this.configs = new HashMap<>(1);
+            this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
             return;
         }
         final int count = definitions.size();
-        // Presize the load-factor-corrected capacity so the loop's put() calls
-        // never trigger a rehash (fb-contrib PSC_PRESIZE_COLLECTIONS).
-        this.configs = new HashMap<>((int) (count / 0.75f) + 1);
+        // Presize so the loop's put() calls never trigger a rehash
+        // (fb-contrib PSC_PRESIZE_COLLECTIONS).
+        this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
         for (int i = 0; i < count; i++) {
             final AiModelDefinition definition = definitions.get(i);
             final int index = i;
