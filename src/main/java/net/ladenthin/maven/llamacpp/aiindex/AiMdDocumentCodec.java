@@ -40,10 +40,15 @@ public class AiMdDocumentCodec {
     /**
      * Parses an {@link AiMdDocument} from the given lines.
      *
+     * <p>Package-private: production code reaches this through
+     * {@link #read(Path)}; the line-form overload is a test seam used by
+     * unit tests that build the input directly without round-tripping
+     * through the file system.
+     *
      * @param lines raw lines of the {@code .ai.md} file
      * @return parsed document
      */
-    public AiMdDocument read(final List<String> lines) {
+    AiMdDocument read(final List<String> lines) {
         final AiMdHeader header = new AiMdHeaderCodec().read(lines);
 
         final StringBuilder body = new StringBuilder();
@@ -81,10 +86,15 @@ public class AiMdDocumentCodec {
     /**
      * Renders the given document to its serialised {@code .ai.md} string form.
      *
+     * <p>Package-private: production code reaches this through
+     * {@link #write(Path, AiMdDocument)}; the string-form overload is a
+     * test seam used by unit tests that assert against the rendered text
+     * without round-tripping through the file system.
+     *
      * @param document document to serialise
      * @return serialised document text
      */
-    public String write(final AiMdDocument document) {
+    String write(final AiMdDocument document) {
         final StringBuilder builder = new StringBuilder();
         builder.append(new AiMdHeaderCodec().write(document.header()));
 
