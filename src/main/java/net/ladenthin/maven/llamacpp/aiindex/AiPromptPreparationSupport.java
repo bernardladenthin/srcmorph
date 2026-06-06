@@ -3,11 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import lombok.ToString;
+
 /**
  * Prepares prompts for {@link AiGenerationProvider} calls by substituting the source
  * text into a template and trimming it at a line boundary so that the prompt fits
  * within the configured character budget.
  */
+@ToString
 public class AiPromptPreparationSupport {
 
     /**

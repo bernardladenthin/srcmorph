@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import lombok.ToString;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -20,6 +21,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 // Framework has no equivalent option for plugin-framework fields, so we suppress class-level.
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "aggregate-packages", threadSafe = true)
+@ToString(callSuper = true)
 public class AggregatePackagesMojo extends AbstractAiIndexMojo {
 
     /** Creates a new {@link AggregatePackagesMojo}. */
@@ -75,8 +77,8 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
             final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
             final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
-            try (AiGenerationProvider generationProvider =
-                    providerFactory.create(summaryProvider, buildLlamaCppJniConfig(), promptSupport)) {
+            try (AiGenerationProvider provider =
+                    providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
                 final PackageIndexer packageIndexer = new PackageIndexer(
                         getLog(),
                         basePath,
@@ -85,7 +87,7 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
                         aiVersion,
                         resolvedSubtrees,
                         force,
-                        generationProvider,
+                        provider,
                         fieldGenerations,
                         promptSupport,
                         modelDefinitionSupport);
@@ -94,7 +96,7 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
                 getLog().info("Aggregated packages: " + aggregated);
             }
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to aggregate package AI index files", e);
+            throw new MojoExecutionException("Failed to aggregate package AI index files under " + outputPath, e);
         }
 
         getLog().info("AI package aggregation finished.");

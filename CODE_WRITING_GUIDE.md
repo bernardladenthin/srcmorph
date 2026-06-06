@@ -1,6 +1,17 @@
-# Code Writing Guide — llamacpp-ai-index-maven-plugin
+# Code Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
 
-This guide is the authoritative reference for writing and improving production code in this project.
+> **Canonical workspace rules** for production sources live in
+> [`../workspace/guides/src/CODE_WRITING_GUIDE-8.md`](../workspace/guides/src/CODE_WRITING_GUIDE-8.md)
+> (named constants, custom domain exceptions, constructor injection,
+> defensive null checks, helper classes as instance methods,
+> `@VisibleForTesting`, SPDX license headers, concurrency primitives).
+> This repo is Java 8, so only the `-8.md` baseline applies.
+> This file contains only **plugin-specific applications** of those rules:
+> the `AI_MD_EXTENSION` / header-field-key / node-type / provider-name
+> constants, the Mojo + `@VisibleForTesting` constructor pair, the Maven
+> `@Parameter` reflection-injected exception to the records rule, prompt
+> target string constants, and the `AiPromptDefinition` /
+> `AiModelDefinition` key-indexed examples.
 
 ---
 
@@ -117,17 +128,19 @@ Java `record` types are the preferred representation for immutable data carriers
 - There is no mutable state.
 - The class has value semantics (equality based on field values).
 
-Examples already using records: `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiSummaryResponse`, `AiGenerationRequest`.
+Examples already using records: `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiGenerationRequest`.
 
 ```java
 // GOOD — immutable value object as a record
-public record AiSummaryResponse(String text, int tokensGenerated) {}
+public record AiPreparedPrompt(String sourceText, boolean trimmed,
+                               int originalSourceLength, int trimmedSourceLength,
+                               int availableSourceChars) {}
 
 // BAD — mutable class with getters/setters for a simple data carrier
-public class AiSummaryResponse {
-    private String text;
-    public String getText() { return text; }
-    public void setText(String text) { this.text = text; }
+public class AiPreparedPrompt {
+    private String sourceText;
+    public String getSourceText() { return sourceText; }
+    public void setSourceText(String sourceText) { this.sourceText = sourceText; }
 }
 ```
 

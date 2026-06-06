@@ -8,8 +8,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.CRC32;
+import lombok.ToString;
 
 /** Utility helpers for computing CRC32 checksums used in {@code .ai.md} headers. */
+@ToString
 public class AiChecksumSupport {
 
     /** Creates a new {@link AiChecksumSupport}. */

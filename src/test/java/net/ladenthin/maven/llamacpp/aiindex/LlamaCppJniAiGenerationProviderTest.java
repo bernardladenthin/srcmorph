@@ -13,7 +13,7 @@ import java.util.Collections;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-public class LlamaCppJniAiSummaryProviderTest {
+public class LlamaCppJniAiGenerationProviderTest {
 
     private static final String MODEL_PATH = Paths.get("src", "test", "resources", "SmolLM2-135M-Instruct-Q3_K_M.gguf")
             .toAbsolutePath()
@@ -63,7 +63,7 @@ public class LlamaCppJniAiSummaryProviderTest {
                 CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), source, header);
 
         // act
-        try (LlamaCppJniAiSummaryProvider provider = new LlamaCppJniAiSummaryProvider(config, promptSupport)) {
+        try (LlamaCppJniAiGenerationProvider provider = new LlamaCppJniAiGenerationProvider(config, promptSupport)) {
             final String body = provider.generate(bodyRequest);
 
             // assert

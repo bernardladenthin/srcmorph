@@ -6,6 +6,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import lombok.ToString;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -19,6 +20,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 // Framework has no equivalent option for plugin-framework fields, so we suppress class-level.
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "generate", threadSafe = true)
+@ToString(callSuper = true)
 public class GenerateMojo extends AbstractAiIndexMojo {
 
     /** Creates a new {@link GenerateMojo}. */
@@ -81,8 +83,8 @@ public class GenerateMojo extends AbstractAiIndexMojo {
             final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
             final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
-            try (AiGenerationProvider generationProvider =
-                    providerFactory.create(summaryProvider, buildLlamaCppJniConfig(), promptSupport)) {
+            try (AiGenerationProvider provider =
+                    providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
 
                 final SourceFileIndexer fileIndexer = new SourceFileIndexer(
                         getLog(),
@@ -93,7 +95,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         aiVersion,
                         resolvedSubtrees,
                         force,
-                        generationProvider,
+                        provider,
                         fieldGenerations,
                         promptSupport,
                         modelDefinitionSupport);
@@ -116,16 +118,18 @@ public class GenerateMojo extends AbstractAiIndexMojo {
             }
 
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to generate AI index files", e);
+            throw new MojoExecutionException(
+                    "Failed to generate AI index files under " + outputPath + " from base " + basePath, e);
         }
 
         getLog().info("AI index generation finished.");
     }
 
     private List<String> resolveFileExtensions() {
-        if (fileExtensions == null || fileExtensions.isEmpty()) {
+        final List<String> configured = fileExtensions;
+        if (configured == null || configured.isEmpty()) {
             return compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION);
         }
-        return fileExtensions;
+        return configured;
     }
 }

@@ -5,8 +5,10 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import lombok.ToString;
 
 /** Deterministic {@link AiGenerationProvider} that returns a mock summary; used for testing. */
+@ToString
 public class MockAiGenerationProvider implements AiGenerationProvider {
 
     /** Creates a new {@link MockAiGenerationProvider}. */

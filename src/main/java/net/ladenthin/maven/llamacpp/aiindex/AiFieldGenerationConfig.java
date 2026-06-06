@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import lombok.ToString;
+
 /**
  * Maven plugin configuration POJO that associates a prompt template (by key) with an
  * AI model definition (also by key) for a single field-generation step.
@@ -29,6 +31,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
  * @see AiPromptDefinition
  */
 @SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
+@ToString
 public class AiFieldGenerationConfig {
 
     /** Creates a new {@link AiFieldGenerationConfig}. */

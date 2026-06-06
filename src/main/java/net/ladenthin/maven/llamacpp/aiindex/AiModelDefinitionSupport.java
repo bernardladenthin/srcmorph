@@ -6,6 +6,8 @@ package net.ladenthin.maven.llamacpp.aiindex;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import lombok.ToString;
 
 /**
  * Resolves {@link AiModelDefinition} entries by their key, returning the corresponding
@@ -17,13 +19,22 @@ import java.util.Map;
  * reference definitions by their string key rather than embedding the full parameter
  * set inline.</p>
  *
- * <p>Definitions with a {@code null} key are silently ignored during construction.
- * Lookups for missing keys throw {@link IllegalArgumentException} so that
+ * <p>Every entry in the supplied list must have a non-null {@code key}; a null key
+ * throws {@link NullPointerException} naming the list index and dumping the offending
+ * entry. This is the contract enforcement boundary that makes misconfigured POM
+ * {@code <aiDefinitions>} fail at build configuration time rather than silently
+ * dropping the entry and surfacing later as a "Missing AI model definition" failure
+ * deeper in the goal. Mojos wrap construction in {@link NullPointerException}
+ * &rarr; {@link org.apache.maven.plugin.MojoExecutionException} so the Maven
+ * framework reports it as a user configuration error rather than a plugin bug.</p>
+ *
+ * <p>Lookups for missing keys throw {@link IllegalArgumentException} so that
  * configuration errors are detected eagerly at runtime.</p>
  *
  * @see AiModelDefinition
  * @see AiFieldGenerationConfig
  */
+@ToString
 public class AiModelDefinitionSupport {
 
     /**
@@ -32,24 +43,37 @@ public class AiModelDefinitionSupport {
      */
     private static final String MISSING_DEFINITION_MESSAGE_PREFIX = "Missing AI model definition for key: ";
 
-    private final Map<String, AiGenerationConfig> configs = new HashMap<>();
+    private final Map<String, AiGenerationConfig> configs;
+    private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
      * Builds a new {@code AiModelDefinitionSupport} from the supplied definitions list.
      *
-     * <p>Each definition with a non-{@code null} key is converted to an
-     * {@link AiGenerationConfig} and stored internally. Definitions with a {@code null}
-     * key are silently skipped.</p>
+     * <p>Every entry must have a non-null {@code key}; a null key throws
+     * {@link NullPointerException} naming the list index and the offending entry.
+     * See the class Javadoc for the full contract.</p>
      *
      * @param definitions list of AI model definitions; may be {@code null} or empty
+     *                    (treated as no definitions); individual entries must be
+     *                    well-formed
+     * @throws NullPointerException if any entry has a {@code null} {@code key}
      */
     public AiModelDefinitionSupport(final List<AiModelDefinition> definitions) {
-        if (definitions != null) {
-            for (AiModelDefinition definition : definitions) {
-                if (definition.getKey() != null) {
-                    configs.put(definition.getKey(), toConfig(definition));
-                }
-            }
+        if (definitions == null) {
+            this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
+            return;
+        }
+        final int count = definitions.size();
+        // Presize so the loop's put() calls never trigger a rehash
+        // (fb-contrib PSC_PRESIZE_COLLECTIONS).
+        this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
+        for (int i = 0; i < count; i++) {
+            final AiModelDefinition definition = definitions.get(i);
+            final int index = i;
+            Objects.requireNonNull(
+                    definition.getKey(),
+                    () -> "aiDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
+            configs.put(definition.getKey(), toConfig(definition));
         }
     }
 

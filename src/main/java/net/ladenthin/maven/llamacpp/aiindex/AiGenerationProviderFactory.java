@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex;
 
+import lombok.ToString;
+
 /** Selects and instantiates an {@link AiGenerationProvider} implementation by name. */
+@ToString
 public class AiGenerationProviderFactory {
 
     /** Creates a new {@link AiGenerationProviderFactory}. */
@@ -32,7 +35,7 @@ public class AiGenerationProviderFactory {
             case "mock":
                 return new MockAiGenerationProvider();
             case "llamacpp-jni":
-                return new LlamaCppJniAiSummaryProvider(llamaConfig, promptSupport);
+                return new LlamaCppJniAiGenerationProvider(llamaConfig, promptSupport);
             default:
                 throw new IllegalArgumentException("Unsupported AI provider: " + providerName);
         }

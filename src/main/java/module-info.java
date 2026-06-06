@@ -39,5 +39,10 @@
 module net.ladenthin.maven.llamacpp.aiindex {
     requires static org.jspecify;
 
+    // Lombok is `provided` scope: only used at compile time to generate equals/hashCode/toString.
+    // `requires static` means the runtime does not need the lombok jar on the module path —
+    // the @lombok.Generated annotation carried on generated members has CLASS retention.
+    requires static lombok;
+
     exports net.ladenthin.maven.llamacpp.aiindex;
 }

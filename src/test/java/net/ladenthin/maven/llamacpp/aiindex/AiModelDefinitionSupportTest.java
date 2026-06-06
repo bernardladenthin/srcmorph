@@ -145,19 +145,21 @@ public class AiModelDefinitionSupportTest {
     }
 
     @Test
-    public void getConfig_definitionWithNullKey_ignoredDuringConstruction() {
-        // arrange
-        final AiModelDefinition nullKeyDef = new AiModelDefinition();
-        // key not set — remains null
+    public void constructor_definitionWithNullKey_throwsWithIndexAndBadEntry() {
+        // arrange — first entry well-formed, second missing the required key
         final AiModelDefinition validDef = new AiModelDefinition();
         validDef.setKey("valid");
-        final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(nullKeyDef, validDef));
+        final AiModelDefinition nullKeyDef = new AiModelDefinition();
+        // key not set — remains null
 
-        // act
-        final AiGenerationConfig config = support.getConfig("valid");
-
-        // assert — null-key definition was silently ignored; valid one is accessible
-        assertThat(config, is(notNullValue()));
+        // act + assert — construction now fails fast at the bad entry rather than
+        // silently dropping it (which would surface as "Missing AI model definition"
+        // deeper in the goal). Message must name the list index and dump the bad
+        // entry so the user can locate the misconfiguration in their POM.
+        final NullPointerException npe = assertThrows(
+                NullPointerException.class, () -> new AiModelDefinitionSupport(Arrays.asList(validDef, nullKeyDef)));
+        assertThat(npe.getMessage(), containsString("aiDefinitions[1].key"));
+        assertThat(npe.getMessage(), containsString("AiModelDefinition"));
     }
 
     @Test

@@ -1,7 +1,18 @@
-# Unit Test Writing Guide — llamacpp-ai-index-maven-plugin
+# Unit Test Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
 
-Derived by analysis of all test files in `src/test/java/net/ladenthin/maven/llamacpp/aiindex/`.
-This guide is the authoritative reference for writing and improving tests in this project.
+> **Canonical workspace rules** for test sources live in
+> [`../workspace/guides/test/TEST_WRITING_GUIDE-8.md`](../workspace/guides/test/TEST_WRITING_GUIDE-8.md)
+> (JUnit Jupiter framework choices, AAA structure with `// pre-assert`
+> semantics, both `<editor-fold>` and `@Nested` grouping styles, naming
+> pattern, Hamcrest assertions, exception testing, parameterized tests
+> via `@MethodSource`, logger mocking, import grouping, DRY constants
+> per group). This repo is Java 8, so only the `-8.md` baseline applies.
+> Derived from a full pass over `src/test/java/net/ladenthin/maven/llamacpp/aiindex/`.
+> This file contains only **plugin-specific applications**: Maven `Log`
+> mocking (`org.apache.maven.plugin.logging.Log` via Mockito),
+> `MockAiGenerationProvider` patterns, the bundled
+> `SmolLM2-135M-Instruct-Q3_K_M.gguf` model used by real-JNI integration
+> tests, and the `LlamaCppJniAvailability.isAvailable()` guard.
 
 ---
 
@@ -365,7 +376,7 @@ assertThat(captor.getValue(), containsString("expected fragment"));
 
 ## 11. LLM Integration Tests (JNI Provider)
 
-Tests that exercise the real `LlamaCppJniAiSummaryProvider` must:
+Tests that exercise the real `LlamaCppJniAiGenerationProvider` must:
 
 1. Be annotated with a marker (e.g., `@LlamaJniTest` if introduced) or clearly named with `_realProvider_` in the method name.
 2. Guard with an availability check as the first statement, so they skip gracefully when the native library is absent.
