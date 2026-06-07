@@ -348,6 +348,14 @@ See [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jq
 
 See [`../workspace/policies/lombok-config.md`](../workspace/policies/lombok-config.md).
 
+## JPMS Module Descriptor
+
+This repo ships a `module-info.java` compiled in a separate `release 9` execution. Javadoc
+currently runs in **classpath mode** (javadoc `<source>` resolves to `8`), which is the *only*
+thing keeping it clear of the JPMS module-mode javadoc trap that bit BAF. **Before raising the
+Java / javadoc source level to ≥ 9, read**
+[`../workspace/policies/jpms-module-descriptor.md`](../workspace/policies/jpms-module-descriptor.md).
+
 ## Open TODOs
 
 Open TODOs for this repo live in [`TODO.md`](TODO.md). Cross-repo status
