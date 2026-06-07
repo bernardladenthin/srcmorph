@@ -17,7 +17,7 @@ cross-cutting initiative.
 
 - **Mutation-testing threshold enforcement (PIT)** — currently uses the "single class, full plumbing" pattern: PIT is wired in `pom.xml` with `<mutationThreshold>100</mutationThreshold>`, `<targetClasses>` narrowed to `AiCompletionParser`. Expand `<targetClasses>` incrementally as additional classes reach parity.
 
-- **Additional ArchUnit rules to consider** — the full **`layeredArchitecture()`** rule is now DONE (the flat plugin package was split into layered packages — see "Done" below). Per-module banned-imports lists remain open.
+- **Additional ArchUnit rules to consider** — the full **`layeredArchitecture()`** rule and **per-module banned-imports** (`jniConfinedToProvider`, `mavenMojoAnnotationsConfinedToMojo`, `foundationIsMavenFree`) are now DONE (see "Done" below). No further ArchUnit rules outstanding.
 
 - **No LogCaptor smoke test needed** — this module has no logging code (`org.slf4j.*` not used in `src/main/java/`); production uses Maven's `Log` interface. If SLF4J logging is ever introduced, add a LogCaptor smoke test at the same time so the binding/configuration is exercised in tests.
 

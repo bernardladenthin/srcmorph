@@ -177,4 +177,55 @@ public class PluginArchitectureTest {
             .orShould()
             .callMethod(Thread.class, "sleep", long.class, int.class)
             .allowEmptyShould(true);
+
+    // ---------------------------------------------------------------------------------------
+    // Per-module banned imports — confine the heavy / framework-specific dependencies to the
+    // single layer that owns them, keeping the rest of the plugin decoupled and unit-testable.
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * The llama.cpp JNI binding ({@code net.ladenthin.llama..}) may only be referenced from the
+     * {@code provider} package, where {@code LlamaCppJniAiGenerationProvider} wraps it. Every
+     * other layer talks to the model exclusively through the {@code AiGenerationProvider}
+     * interface, so the indexers, document/prompt/config and mojo code carry no JNI dependency
+     * and stay testable with {@code MockAiGenerationProvider}.
+     */
+    @ArchTest
+    static final ArchRule jniConfinedToProvider = noClasses()
+            .that()
+            .resideOutsideOfPackage("net.ladenthin.maven.llamacpp.aiindex.provider..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("net.ladenthin.llama..")
+            .allowEmptyShould(true);
+
+    /**
+     * The Maven Mojo SPI annotations ({@code @Mojo} / {@code @Parameter} from
+     * {@code org.apache.maven.plugins.annotations..}) may only appear in the {@code mojo}
+     * package — the goal entry points. The lower layers are plain Java and must not be
+     * annotated as Maven components.
+     */
+    @ArchTest
+    static final ArchRule mavenMojoAnnotationsConfinedToMojo = noClasses()
+            .that()
+            .resideOutsideOfPackage("net.ladenthin.maven.llamacpp.aiindex.mojo..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.maven.plugins.annotations..")
+            .allowEmptyShould(true);
+
+    /**
+     * The foundation layers ({@code config}, {@code support}) must be framework-free: no Maven
+     * API at all (not even {@code Log}). They are pure data + stateless utilities, so they can
+     * be unit-tested without a Maven runtime.
+     */
+    @ArchTest
+    static final ArchRule foundationIsMavenFree = noClasses()
+            .that()
+            .resideInAnyPackage(
+                    "net.ladenthin.maven.llamacpp.aiindex.config..", "net.ladenthin.maven.llamacpp.aiindex.support..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.apache.maven..")
+            .allowEmptyShould(true);
 }
