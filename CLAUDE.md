@@ -89,38 +89,19 @@ Zero compiler output means zero errors.
 llamacpp-ai-index-maven-plugin/
 ├── src/
 │   ├── main/
-│   │   └── java/net/ladenthin/maven/llamacpp/aiindex/
-│   │       ├── AiMdDocument.java           # Record: header + body
-│   │       ├── AiMdHeader.java             # Record: document metadata
-│   │       ├── AiMdHeaderCodec.java        # Encode/decode metadata headers
-│   │       ├── AiMdDocumentCodec.java      # Encode/decode full documents
-│   │       ├── AiMdHeaderSupport.java      # Rewrite-decision helper (shouldWrite)
-│   │       ├── AiMdChildEntryLineFormatter.java # Child-entry line formatter for package-checksum aggregation
-│   │       ├── AiGenerationConfig.java     # Configuration for a generation step
-│   │       ├── AiModelDefinition.java      # POJO for a named AI model definition (Maven @Parameter)
-│   │       ├── AiModelDefinitionSupport.java# Key-indexed lookup: AiModelDefinition -> AiGenerationConfig
-│   │       ├── AiFieldGenerationConfig.java# Per-field generation config (references model def by key)
-│   │       ├── AiFieldGenerationSupport.java# Shared field-generation loop (body target)
-│   │       ├── AiGenerationKind.java       # Enum: generation types
-│   │       ├── AiGenerationRequest.java    # Request object
-│   │       ├── AiGenerationResult.java     # Immutable carrier for the AI-generated body text
-│   │       ├── AiPromptDefinition.java     # Prompt template definition
-│   │       ├── AiPreparedPrompt.java       # Prompt after substitution
-│   │       ├── AiPromptSupport.java        # Prompt lookup utilities
-│   │       ├── AiPromptPreparationSupport.java # Prompt preparation logic
-│   │       ├── AiGenerationProvider.java   # Provider interface
-│   │       ├── AiGenerationProviderFactory.java # Factory for providers
-│   │       ├── MockAiGenerationProvider.java    # Mock for testing
-│   │       ├── LlamaCppJniAiGenerationProvider.java# llama.cpp JNI provider
-│   │       ├── LlamaCppJniConfig.java      # llama.cpp configuration
-│   │       ├── SourceFileIndexer.java      # Indexes + summarizes source files
-│   │       ├── PackageIndexer.java         # Aggregates + summarizes package index files
-│   │       ├── AiChecksumSupport.java      # Checksum utilities
-│   │       ├── AiTimeSupport.java          # Timestamp utilities
-│   │       ├── AiPathSupport.java          # Path utilities
-│   │       ├── AbstractAiIndexMojo.java    # Shared parameters and utilities for all mojos
-│   │       ├── GenerateMojo.java           # goal: ai-index:generate
-│   │       └── AggregatePackagesMojo.java  # goal: ai-index:aggregate-packages
+│   │   └── java/net/ladenthin/maven/llamacpp/aiindex/   # layered packages (top → bottom)
+│   │       ├── mojo/        # Entry: AbstractAiIndexMojo, GenerateMojo, AggregatePackagesMojo
+│   │       ├── indexer/     # Orchestration: SourceFileIndexer, PackageIndexer, AiFieldGenerationSupport
+│   │       ├── provider/    # AI backends: AiGenerationProvider(+Factory), Mock/LlamaCppJni providers,
+│   │       │                #   AiCompletionParser, LlamaCppJniConfig
+│   │       ├── document/    # .ai.md model + codecs: AiMdDocument, AiMdHeader, AiMd*Codec,
+│   │       │                #   AiMdHeaderSupport, AiMdChildEntryLineFormatter,
+│   │       │                #   AiGenerationRequest, AiGenerationResult (carry an AiMdHeader)
+│   │       ├── prompt/      # AiPromptDefinition, AiPreparedPrompt, AiPromptSupport, AiPromptPreparationSupport
+│   │       ├── config/      # AiGenerationConfig, AiGenerationKind, AiFieldGenerationConfig,
+│   │       │                #   AiModelDefinition, AiModelDefinitionSupport
+│   │       └── support/     # Foundation: AiChecksumSupport, AiTimeSupport, AiPathSupport,
+│   │                        #   Java8CompatibilityHelper, ConvertToRecord
 │   ├── site/
 │   │   └── ai/                            # Output directory for .ai.md files
 │   └── test/
@@ -307,7 +288,7 @@ Immutable value types are implemented as Java `record` types (e.g., `AiMdDocumen
 
 | Dependency | Version | Purpose |
 |---|---|---|
-| `net.ladenthin:llama` | 5.0.0 | llama.cpp JNI binding (GGUF inference) |
+| `net.ladenthin:llama` | 5.0.2-SNAPSHOT | llama.cpp JNI binding (GGUF inference); pinned to the layered-package + immutable-wither API. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
 | `org.apache.maven:maven-plugin-api` | 3.9.13 | Maven plugin API (provided) |
 | `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.1 | `@Mojo`, `@Parameter` annotations (provided) |
 

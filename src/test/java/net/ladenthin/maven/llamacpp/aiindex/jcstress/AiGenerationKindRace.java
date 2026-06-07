@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex.jcstress;
 
-import net.ladenthin.maven.llamacpp.aiindex.AiGenerationKind;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationKind;
 import org.openjdk.jcstress.annotations.Actor;
 import org.openjdk.jcstress.annotations.Description;
 import org.openjdk.jcstress.annotations.Expect;

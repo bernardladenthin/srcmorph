@@ -80,8 +80,8 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Or>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.GenerateMojo"/>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.AggregatePackagesMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
         </Or>
         <Bug pattern="SPP_FIELD_COULD_BE_STATIC"/>
     </Match>
@@ -111,9 +111,9 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Or>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.AbstractAiIndexMojo"/>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.AggregatePackagesMojo"/>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.GenerateMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
@@ -141,8 +141,8 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Or>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.AiFieldGenerationConfig"/>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.AiPromptDefinition"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
@@ -162,7 +162,7 @@ SPDX-License-Identifier: Apache-2.0
         Identity is the correct semantics for a stateful service object.
     -->
     <Match>
-        <Class name="net.ladenthin.maven.llamacpp.aiindex.AiModelDefinitionSupport"/>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport"/>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
 
@@ -217,8 +217,8 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Or>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.Java8CompatibilityHelper"/>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.AiPromptSupport"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport"/>
         </Or>
         <Bug pattern="FORMAT_STRING_MANIPULATION"/>
     </Match>
@@ -241,7 +241,7 @@ SPDX-License-Identifier: Apache-2.0
         Suppression is scoped narrowly to this one method.
     -->
     <Match>
-        <Class name="net.ladenthin.maven.llamacpp.aiindex.GenerateMojo"/>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
         <Method name="resolveFileExtensions"/>
         <Bug pattern="AI_ANNOTATION_ISSUES_NEEDS_NULLABLE"/>
     </Match>
@@ -271,7 +271,7 @@ SPDX-License-Identifier: Apache-2.0
         site on AbstractAiIndexMojo would still surface.
     -->
     <Match>
-        <Class name="net.ladenthin.maven.llamacpp.aiindex.AbstractAiIndexMojo"/>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
         <Or>
             <Method name="buildPromptSupport"/>
             <Method name="buildAiModelDefinitionSupport"/>
