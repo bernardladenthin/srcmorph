@@ -77,20 +77,14 @@ public class PluginArchitectureTest {
             .allowEmptyShould(true);
 
     /**
-     * Strict layered architecture. The flat plugin package was split into layered packages so
-     * boundaries align with the layers; dependencies flow strictly top-to-bottom:
-     *
-     * <pre>
-     *   Mojo        mojo                 (ai-index goal entry points)
-     *   Indexer     indexer              (source/package tree orchestration + field-generation loop)
-     *   Provider    provider             (AI backends + generation request/result carriers)
-     *   Format      document, prompt     (.ai.md model/codecs, prompt templates)
-     *   Foundation  config, support      (generation config/model defs, stateless utilities)
-     * </pre>
-     *
-     * <p>{@code document} and {@code prompt} are peers in the Format layer; {@code provider}
-     * legitimately depends on {@code document} (the generation request carries an
-     * {@code AiMdHeader}). {@code consideringOnlyDependenciesInLayers()} ignores external libs.
+     * Strict layered architecture — <b>one layer per package</b>. Each package's
+     * {@code mayOnlyBeAccessedByLayers} lists the EXACT set of packages that reference it today
+     * (verified against the compiled bytecode graph), so even intra-tier edges are governed
+     * (e.g. {@code provider} may use {@code document}+{@code prompt} but {@code document} and
+     * {@code prompt} may not use each other beyond what is listed). A new dependency between any
+     * two packages fails the build unless this rule is updated to intend it. Conceptual tiers:
+     * {@code Mojo} &gt; {@code Indexer} &gt; {@code Provider} &gt; {@code Document}/{@code Prompt}
+     * &gt; {@code Config}/{@code Support}.
      */
     @ArchTest
     static final ArchRule layeredArchitecture = layeredArchitecture()
@@ -101,22 +95,28 @@ public class PluginArchitectureTest {
             .definedBy("net.ladenthin.maven.llamacpp.aiindex.indexer..")
             .layer("Provider")
             .definedBy("net.ladenthin.maven.llamacpp.aiindex.provider..")
-            .layer("Format")
-            .definedBy(
-                    "net.ladenthin.maven.llamacpp.aiindex.document..", "net.ladenthin.maven.llamacpp.aiindex.prompt..")
-            .layer("Foundation")
-            .definedBy(
-                    "net.ladenthin.maven.llamacpp.aiindex.config..", "net.ladenthin.maven.llamacpp.aiindex.support..")
+            .layer("Document")
+            .definedBy("net.ladenthin.maven.llamacpp.aiindex.document..")
+            .layer("Prompt")
+            .definedBy("net.ladenthin.maven.llamacpp.aiindex.prompt..")
+            .layer("Config")
+            .definedBy("net.ladenthin.maven.llamacpp.aiindex.config..")
+            .layer("Support")
+            .definedBy("net.ladenthin.maven.llamacpp.aiindex.support..")
             .whereLayer("Mojo")
             .mayNotBeAccessedByAnyLayer()
             .whereLayer("Indexer")
             .mayOnlyBeAccessedByLayers("Mojo")
             .whereLayer("Provider")
             .mayOnlyBeAccessedByLayers("Mojo", "Indexer")
-            .whereLayer("Format")
-            .mayOnlyBeAccessedByLayers("Mojo", "Indexer", "Provider")
-            .whereLayer("Foundation")
-            .mayOnlyBeAccessedByLayers("Mojo", "Indexer", "Provider", "Format");
+            .whereLayer("Document")
+            .mayOnlyBeAccessedByLayers("Indexer", "Prompt", "Provider")
+            .whereLayer("Prompt")
+            .mayOnlyBeAccessedByLayers("Indexer", "Mojo", "Provider")
+            .whereLayer("Config")
+            .mayOnlyBeAccessedByLayers("Indexer", "Mojo")
+            .whereLayer("Support")
+            .mayOnlyBeAccessedByLayers("Config", "Document", "Indexer", "Mojo", "Prompt", "Provider");
 
     /**
      * Public mutable state forbidden: any non-static field declared
