@@ -5,6 +5,7 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -12,6 +13,8 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import java.util.Random;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
 
 @AnalyzeClasses(packages = "net.ladenthin.maven.llamacpp.aiindex", importOptions = ImportOption.DoNotIncludeTests.class)
 public class PluginArchitectureTest {
@@ -65,16 +68,55 @@ public class PluginArchitectureTest {
             .resideInAnyPackage("sun..", "com.sun..", "jdk.internal..");
 
     /**
-     * No package cycles between sub-packages. Vacuous today on this
-     * single-package plugin; acts as a forward-looking guard so a future
-     * sub-package extraction cannot introduce a circular dependency without
-     * breaking the build.
+     * No package cycles between the layered sub-packages.
      */
     @ArchTest
     static final ArchRule noPackageCycles = slices().matching("net.ladenthin.maven.llamacpp.aiindex.(*)..")
             .should()
             .beFreeOfCycles()
             .allowEmptyShould(true);
+
+    /**
+     * Strict layered architecture. The flat plugin package was split into layered packages so
+     * boundaries align with the layers; dependencies flow strictly top-to-bottom:
+     *
+     * <pre>
+     *   Mojo        mojo                 (ai-index goal entry points)
+     *   Indexer     indexer              (source/package tree orchestration + field-generation loop)
+     *   Provider    provider             (AI backends + generation request/result carriers)
+     *   Format      document, prompt     (.ai.md model/codecs, prompt templates)
+     *   Foundation  config, support      (generation config/model defs, stateless utilities)
+     * </pre>
+     *
+     * <p>{@code document} and {@code prompt} are peers in the Format layer; {@code provider}
+     * legitimately depends on {@code document} (the generation request carries an
+     * {@code AiMdHeader}). {@code consideringOnlyDependenciesInLayers()} ignores external libs.
+     */
+    @ArchTest
+    static final ArchRule layeredArchitecture = layeredArchitecture()
+            .consideringOnlyDependenciesInLayers()
+            .layer("Mojo")
+            .definedBy("net.ladenthin.maven.llamacpp.aiindex.mojo..")
+            .layer("Indexer")
+            .definedBy("net.ladenthin.maven.llamacpp.aiindex.indexer..")
+            .layer("Provider")
+            .definedBy("net.ladenthin.maven.llamacpp.aiindex.provider..")
+            .layer("Format")
+            .definedBy(
+                    "net.ladenthin.maven.llamacpp.aiindex.document..", "net.ladenthin.maven.llamacpp.aiindex.prompt..")
+            .layer("Foundation")
+            .definedBy(
+                    "net.ladenthin.maven.llamacpp.aiindex.config..", "net.ladenthin.maven.llamacpp.aiindex.support..")
+            .whereLayer("Mojo")
+            .mayNotBeAccessedByAnyLayer()
+            .whereLayer("Indexer")
+            .mayOnlyBeAccessedByLayers("Mojo")
+            .whereLayer("Provider")
+            .mayOnlyBeAccessedByLayers("Mojo", "Indexer")
+            .whereLayer("Format")
+            .mayOnlyBeAccessedByLayers("Mojo", "Indexer", "Provider")
+            .whereLayer("Foundation")
+            .mayOnlyBeAccessedByLayers("Mojo", "Indexer", "Provider", "Format");
 
     /**
      * Public mutable state forbidden: any non-static field declared

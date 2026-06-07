@@ -17,13 +17,47 @@ cross-cutting initiative.
 
 - **Mutation-testing threshold enforcement (PIT)** — currently uses the "single class, full plumbing" pattern: PIT is wired in `pom.xml` with `<mutationThreshold>100</mutationThreshold>`, `<targetClasses>` narrowed to `AiCompletionParser`. Expand `<targetClasses>` incrementally as additional classes reach parity.
 
-- **Additional ArchUnit rules to consider** — layered-architecture rules (`layeredArchitecture().consideringAllDependencies()`) and per-module banned-imports lists. `noPackageCycles` and the standard ban set are already wired; layered-architecture and per-module banned-imports are still open.
+- **Additional ArchUnit rules to consider** — the full **`layeredArchitecture()`** rule is now DONE (the flat plugin package was split into layered packages — see "Done" below). Per-module banned-imports lists remain open.
 
 - **No LogCaptor smoke test needed** — this module has no logging code (`org.slf4j.*` not used in `src/main/java/`); production uses Maven's `Log` interface. If SLF4J logging is ever introduced, add a LogCaptor smoke test at the same time so the binding/configuration is exercised in tests.
 
 - **Cross-repo code-quality TODOs** — see [`../workspace/policies/code-quality-todos.md`](../workspace/policies/code-quality-todos.md) for the canonical `@VisibleForTesting` design-fit review, package hierarchy review, and class/method naming review. This repo has no `@VisibleForTesting` usages today; the package and naming reviews are still open here.
 
 ## Done (kept for history)
+
+### Layered package restructure (flat plugin package → layered hierarchy)
+
+The 34 classes that sat flat in `net.ladenthin.maven.llamacpp.aiindex` were split
+(via `git mv`, history preserved) into layered packages enforced by a new
+`layeredArchitecture()` ArchUnit rule (Mojo → Indexer → Provider → Format →
+Foundation):
+
+- **mojo** (entry): AbstractAiIndexMojo, GenerateMojo, AggregatePackagesMojo
+- **indexer** (orchestration): SourceFileIndexer, PackageIndexer, AiFieldGenerationSupport
+- **provider**: AiGenerationProvider(+Factory), Mock/LlamaCppJni providers, AiCompletionParser, LlamaCppJniConfig
+- **document** (Format): AiMd* model/codecs + the AiGenerationRequest/AiGenerationResult carriers (they hold an AiMdHeader)
+- **prompt** (Format): AiPromptDefinition, AiPreparedPrompt, AiPromptSupport, AiPromptPreparationSupport
+- **config** (Foundation): AiGenerationConfig, AiGenerationKind, AiFieldGenerationConfig, AiModelDefinition, AiModelDefinitionSupport
+- **support** (Foundation): AiChecksumSupport, AiTimeSupport, AiPathSupport, Java8CompatibilityHelper, ConvertToRecord
+
+Cycle-breaking placement: the generation carriers went to `document` (not
+`provider`) because the `prompt` classes take an `AiGenerationRequest` parameter —
+keeping them in `provider` created a `prompt ↔ provider` cycle. Test classes
+mirrored into their subjects' packages; cross-package Javadoc `{@link}` references
+fully-qualified; `module-info` exports the new packages.
+
+**jllama consumption updated in the same change** (this is what surfaced the need):
+bumped `net.ladenthin:llama` 5.0.1 → 5.0.2-SNAPSHOT and adapted to its new shape —
+package moves (`InferenceParameters`/`ModelParameters` → `…parameters`, `Pair` →
+`…value`), the immutable-wither API (`InferenceParameters` `set*` → `with*`,
+folding `withStopStrings` into the builder chain), corrected `setChatTemplateKwargs`
+Javadoc links to `ModelParameters`, and a `<dependencyManagement>` pin converging
+`slf4j-api` to 2.0.18 (logback pulled an older patch). All 10 ArchUnit rules green;
+54 tests pass (1 JNI integration test skipped without the native lib); `javadoc:jar`
+clean.
+
+**Note**: 5.0.2-SNAPSHOT is the local jllama dev version carrying the layered
+packages; pin the exact release version when jllama publishes the breaking change.
 
 - **Error Prone bug-pattern promotions to `ERROR`** — `034b553` (12 patterns promoted; `-Xlint:all` enabled).
 - **`javac -Werror` + `-Xlint:all,-serial,-options,-classfile,-processing`** — done. EqualsGetClass warnings on the 7 `@ConvertToRecord` classes were fixed by switching to `instanceof` checks; `Java8CompatibilityHelper.formatted` carries an inline `@SuppressWarnings("AnnotateFormatMethod")`; generated `HelpMojo` is excluded from Error Prone via `-XepExcludedPaths`; `listOf` carries `@SafeVarargs` + `@SuppressWarnings({"unchecked","varargs"})`.

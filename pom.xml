@@ -58,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <maven.version>3.9.16</maven.version>
-        <llama.version>5.0.1</llama.version>
+        <llama.version>5.0.2-SNAPSHOT</llama.version>
         <junit.version>6.1.0</junit.version>
         <hamcrest.version>3.0</hamcrest.version>
         <jmh.version>1.37</jmh.version>
@@ -90,6 +90,21 @@ SPDX-License-Identifier: Apache-2.0
         <project.build.outputTimestamp>${git.commit.time}</project.build.outputTimestamp>
 
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!--
+                Converge slf4j-api: the llama dependency brings slf4j-api directly AND
+                transitively (via logback-classic, which requests an older patch). Pin the
+                higher version so maven-enforcer DependencyConvergence is satisfied.
+            -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>2.0.18</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -619,10 +634,10 @@ SPDX-License-Identifier: Apache-2.0
                 </dependencies>
                 <configuration>
                     <targetClasses>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.AiCompletionParser</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
                     </targetClasses>
                     <targetTests>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.AiCompletionParserTest</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParserTest</param>
                     </targetTests>
                     <mutationThreshold>100</mutationThreshold>
                     <timeoutConstant>30000</timeoutConstant>

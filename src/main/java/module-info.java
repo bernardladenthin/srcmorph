@@ -44,5 +44,11 @@ module net.ladenthin.maven.llamacpp.aiindex {
     // the @lombok.Generated annotation carried on generated members has CLASS retention.
     requires static lombok;
 
-    exports net.ladenthin.maven.llamacpp.aiindex;
+    exports net.ladenthin.maven.llamacpp.aiindex.config;
+    exports net.ladenthin.maven.llamacpp.aiindex.document;
+    exports net.ladenthin.maven.llamacpp.aiindex.indexer;
+    exports net.ladenthin.maven.llamacpp.aiindex.mojo;
+    exports net.ladenthin.maven.llamacpp.aiindex.prompt;
+    exports net.ladenthin.maven.llamacpp.aiindex.provider;
+    exports net.ladenthin.maven.llamacpp.aiindex.support;
 }

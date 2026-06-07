@@ -5,6 +5,11 @@ package net.ladenthin.maven.llamacpp.aiindex;
 
 import java.util.Arrays;
 import java.util.List;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
 
 /**
  * Shared test fixture factory methods used across multiple test classes.
