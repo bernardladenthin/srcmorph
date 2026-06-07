@@ -639,16 +639,22 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdChildEntryLineFormatter</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper</param>
                     </targetClasses>
                     <targetTests>
                         <param>net.ladenthin.maven.llamacpp.aiindex.*</param>

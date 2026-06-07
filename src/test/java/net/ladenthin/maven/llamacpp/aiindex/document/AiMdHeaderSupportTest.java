@@ -91,6 +91,22 @@ public class AiMdHeaderSupportTest {
     }
 
     @Test
+    public void shouldWrite_existingHeaderVersionMismatch_returnsTrue() throws IOException {
+        // arrange: an existing doc whose header format version is NOT 1.0, with a non-blank body.
+        final Path target = folder.resolve("test.ai.md");
+        final AiMdHeader oldVersionHeader = new AiMdHeader(
+                FIXED_TITLE, "0.9", "ABCDEF12", FIXED_D, FIXED_T, FIXED_G, FIXED_A, AiMdHeaderCodec.NODE_TYPE_FILE);
+        documentCodec.write(target, new AiMdDocument(oldVersionHeader, "Existing body content.\n"));
+        final AiMdHeader expected = buildHeader("ABCDEF12", FIXED_G);
+
+        // act: the stored 0.9 header forces a rewrite regardless of field equality.
+        final boolean result = headerSupport.shouldWrite(false, target, expected);
+
+        // assert
+        assertThat(result, is(true));
+    }
+
+    @Test
     public void shouldWrite_matchingExistingHeaderEmptyBody_returnsTrue() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");

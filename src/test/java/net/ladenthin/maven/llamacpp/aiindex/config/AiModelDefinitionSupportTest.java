@@ -50,6 +50,10 @@ public class AiModelDefinitionSupportTest {
         definition.setMaxRetries(5);
         definition.setRetryTemperatureIncrement(0.2f);
         definition.setChatTemplateEnableThinking(false);
+        definition.setTopP(0.55f);
+        definition.setTopK(21);
+        definition.setRepeatPenalty(1.15f);
+        definition.setStopStrings(Arrays.asList("</s>", "STOP"));
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition));
 
         // act
@@ -66,6 +70,12 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getMaxRetries(), is(equalTo(5)));
         assertThat(config.getRetryTemperatureIncrement(), is(equalTo(0.2f)));
         assertThat(config.isChatTemplateEnableThinking(), is(false));
+        // topP/topK/repeatPenalty/stopStrings are propagated too — kills the void-call mutants
+        // that would drop those setter calls from toConfig().
+        assertThat(config.getTopP(), is(equalTo(0.55f)));
+        assertThat(config.getTopK(), is(equalTo(21)));
+        assertThat(config.getRepeatPenalty(), is(equalTo(1.15f)));
+        assertThat(config.getStopStrings(), is(equalTo(Arrays.asList("</s>", "STOP"))));
     }
 
     @Test
