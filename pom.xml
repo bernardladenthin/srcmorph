@@ -651,8 +651,10 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper</param>
                     </targetClasses>

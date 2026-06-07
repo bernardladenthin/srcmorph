@@ -15,6 +15,9 @@ public class AiPathSupport {
         // no-op
     }
 
+    /** Leading path segment stripped from a relativised source path. */
+    private static final String SRC_DIRECTORY_NAME = "src";
+
     /**
      * Relativises {@code path} against {@code baseDirectory} and strips a leading
      * {@code src} segment when present.
@@ -25,7 +28,9 @@ public class AiPathSupport {
      */
     public Path relativizeFromSrc(final Path baseDirectory, final Path path) {
         final Path relative = baseDirectory.relativize(path);
-        if (relative.getNameCount() > 0 && "src".equals(relative.getName(0).toString())) {
+        // Path#startsWith compares whole name elements, so it is false for the empty
+        // relativised path and needs no separate getNameCount() guard before subpath().
+        if (relative.startsWith(SRC_DIRECTORY_NAME)) {
             return relative.subpath(1, relative.getNameCount());
         }
         return relative;

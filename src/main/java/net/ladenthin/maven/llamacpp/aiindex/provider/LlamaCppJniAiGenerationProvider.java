@@ -15,6 +15,7 @@ import net.ladenthin.llama.parameters.ModelParameters;
 import net.ladenthin.llama.value.Pair;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link AiGenerationProvider} implementation backed by the {@code net.ladenthin:llama}
@@ -32,15 +33,18 @@ public class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, Au
     private final LlamaCppJniConfig config;
 
     // Native llama.cpp model handle — its toString prints native pointer / internal
-    // state details; excluded from the rendered output.
+    // state details; excluded from the rendered output. Lazily initialised on first
+    // generate() so constructing the provider (via the factory, or when every file is
+    // already cached) is cheap and native-free; the ~90 MB GGUF + native context are
+    // only loaded when generation actually happens.
     @ToString.Exclude
-    private final LlamaModel model;
+    private @Nullable LlamaModel model;
 
     private final AiPromptSupport promptSupport;
     private final AiCompletionParser completionParser = new AiCompletionParser();
 
     /**
-     * Creates a new {@link LlamaCppJniAiGenerationProvider} and loads the configured GGUF model.
+     * Creates a new {@link LlamaCppJniAiGenerationProvider}; the GGUF model is loaded lazily on the first generate(...) call.
      *
      * @param config        llama.cpp configuration
      * @param promptSupport prompt lookup used to render request prompts
@@ -48,15 +52,22 @@ public class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, Au
     public LlamaCppJniAiGenerationProvider(final LlamaCppJniConfig config, final AiPromptSupport promptSupport) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
+    }
 
-        final ModelParameters modelParameters = new ModelParameters()
-                .setModel(config.modelPath())
-                .setCtxSize(config.contextSize())
-                .setThreads(config.threads())
-                .setChatTemplateKwargs(Collections.singletonMap(
-                        "enable_thinking", String.valueOf(config.chatTemplateEnableThinking())));
-
-        this.model = new LlamaModel(modelParameters);
+    /** Loads the GGUF model on first use and caches it for subsequent calls. */
+    private LlamaModel model() {
+        LlamaModel current = model;
+        if (current == null) {
+            final ModelParameters modelParameters = new ModelParameters()
+                    .setModel(config.modelPath())
+                    .setCtxSize(config.contextSize())
+                    .setThreads(config.threads())
+                    .setChatTemplateKwargs(Collections.singletonMap(
+                            "enable_thinking", String.valueOf(config.chatTemplateEnableThinking())));
+            current = new LlamaModel(modelParameters);
+            model = current;
+        }
+        return current;
     }
 
     @Override
@@ -87,11 +98,14 @@ public class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, Au
                 .withRepeatPenalty(config.repeatPenalty())
                 .withStopStrings(config.stopStrings().toArray(new String[0]));
 
-        return completionParser.parseCompletion(model.chatCompleteText(inferenceParameters));
+        return completionParser.parseCompletion(model().chatCompleteText(inferenceParameters));
     }
 
     @Override
     public void close() throws IOException {
-        model.close();
+        final LlamaModel current = model;
+        if (current != null) {
+            current.close();
+        }
     }
 }

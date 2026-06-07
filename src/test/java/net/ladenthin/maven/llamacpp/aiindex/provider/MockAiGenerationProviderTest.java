@@ -14,15 +14,15 @@ import org.junit.jupiter.api.Test;
 
 public class MockAiGenerationProviderTest {
 
-    private static final AiMdHeader HEADER =
-            new AiMdHeader("Foo.java", "1.0", "C", "2026-01-01T00:00:00Z", "2026-01-01T00:00:10Z", "0.1.0", "1.0.0",
-                    "file");
+    private static final AiMdHeader HEADER = new AiMdHeader(
+            "Foo.java", "1.0", "C", "2026-01-01T00:00:00Z", "2026-01-01T00:00:10Z", "0.1.0", "1.0.0", "file");
 
     private final MockAiGenerationProvider provider = new MockAiGenerationProvider();
 
     @Test
     public void generateUsesFileNameOnly() throws IOException {
-        AiGenerationRequest request = new AiGenerationRequest("summary", Paths.get("a", "b", "Foo.java"), "src", HEADER);
+        AiGenerationRequest request =
+                new AiGenerationRequest("summary", Paths.get("a", "b", "Foo.java"), "src", HEADER);
         // Only the file name (not the full path) is used — kills the negate mutant on the
         // getFileName() null-guard, which would fall back to the full path string.
         assertThat(provider.generate(request), is("Mock summary for Foo.java"));
