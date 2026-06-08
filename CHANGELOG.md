@@ -11,13 +11,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
-Initial release in preparation. Pre-OpenSSF history themes (March–May 2026): Java 8 compatibility, key-indexed `aiDefinitions` (PR #21), Sonatype Central Portal migration, JaCoCo+Coveralls+Codecov, GH Actions major-version bumps, CodeQL v3→v4, model catalogue (Qwen2.5-Coder, Ministral 8B/14B, Gemma 4 MoE).
+## [1.0.0] - 2026-06-08
+
+First public release on Maven Central. Pre-OpenSSF history themes (March–May 2026): Java 8 compatibility, key-indexed `aiDefinitions` (PR #21), Sonatype Central Portal migration, JaCoCo+Coveralls+Codecov, GH Actions major-version bumps, CodeQL v3→v4, model catalogue (Qwen2.5-Coder, Ministral 8B/14B, Gemma 4 MoE).
 
 ### Added
 - OpenSSF Best Practices badge and passing-level artifacts (CONTRIBUTING.md, SECURITY.md, CHANGELOG.md).
 
 ### Changed
-- Switched runtime dependency to `net.ladenthin:llama` 5.0.0 (official Maven Central release).
+- Switched runtime dependency to `net.ladenthin:llama` 5.0.2 (official Maven Central release).
 - CI: added `startgate` abort-window environment before publish pipeline.
 - CI: separated snapshot and release publish paths; added `check-snapshot` / `check-tag` gate jobs.
 - CI: bumped `softprops/action-gh-release` v2 → v3 (Node 24 compatibility).
@@ -30,4 +32,5 @@ Initial release in preparation. Pre-OpenSSF history themes (March–May 2026): J
 
 ---
 
-[Unreleased]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/snapshot...HEAD
+[Unreleased]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/releases/tag/v1.0.0
