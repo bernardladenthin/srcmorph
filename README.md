@@ -93,7 +93,7 @@ The plugin runs in two phases.
 - C: A48CED8C
 - D: 2026-03-15T23:31:52Z
 - T: 2026-03-19T18:13:31Z
-- G: 0.1.0-SNAPSHOT
+- G: 1.0.0
 - X: file
 - K: AiMdDocument, AiMdHeader, record, metadata, markdown
 #### AiMdDocument.java
@@ -113,7 +113,7 @@ It is published on Maven Central and resolves automatically — no manual instal
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>llama</artifactId>
-    <version>5.0.0</version>
+    <version>5.0.2</version>
 </dependency>
 ```
 ## Configuration
