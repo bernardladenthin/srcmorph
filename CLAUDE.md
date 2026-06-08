@@ -288,7 +288,7 @@ Immutable value types are implemented as Java `record` types (e.g., `AiMdDocumen
 
 | Dependency | Version | Purpose |
 |---|---|---|
-| `net.ladenthin:llama` | 5.0.2-SNAPSHOT | llama.cpp JNI binding (GGUF inference); pinned to the layered-package + immutable-wither API. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
+| `net.ladenthin:llama` | 5.0.2 | llama.cpp JNI binding (GGUF inference); pinned to the layered-package + immutable-wither API. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
 | `org.apache.maven:maven-plugin-api` | 3.9.13 | Maven plugin API (provided) |
 | `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.1 | `@Mojo`, `@Parameter` annotations (provided) |
 
