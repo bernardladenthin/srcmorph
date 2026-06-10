@@ -894,6 +894,29 @@ SPDX-License-Identifier: Apache-2.0
                                         <stopString>&lt;end_of_turn&gt;</stopString>
                                     </stopStrings>
                                 </aiDefinition>
+                                <!-- gemma-4-12B-it-Q4_K_M (32 K context)
+                                     12B dense instruction-tuned model from Google DeepMind.
+                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     32k context is a practical sweet spot for code summarization on local hardware.
+                                     https://huggingface.co/bartowski/gemma-4-12B-it-GGUF -->
+                                <aiDefinition>
+                                    <key>Gemma-4-12B-it-Q4_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/gemma-4-12B-it-Q4_K_M.gguf</modelPath>
+                                    <contextSize>32768</contextSize>
+                                    <maxOutputTokens>8192</maxOutputTokens>
+                                    <temperature>1.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.95</topP>
+                                    <topK>64</topK>
+                                    <repeatPenalty>1.1</repeatPenalty>
+                                    <chatTemplateEnableThinking>false</chatTemplateEnableThinking>
+                                    <stopStrings>
+                                        <stopString>&lt;end_of_turn&gt;</stopString>
+                                    </stopStrings>
+                                </aiDefinition>
                                 <!-- Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q4_K_M (32 K context)
                                      ~4B effective parameters (MoE); uncensored derivative of gemma-4-E4B-it.
                                      Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
