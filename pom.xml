@@ -764,7 +764,7 @@ SPDX-License-Identifier: Apache-2.0
                                     - Generic (not code-tuned); 8B dense is slower than the MoE picks.
                                     Use when: mixed prose + code and you trust the Llama family.
 
-                                  Codestral-22B-v0.1-Q4_K-C32k  /  -Q6_K-C32k
+                                  Codestral-22B-v0.1-Q4_K_M-C32k  /  -Q6_K-C32k
                                     + Purpose-built code model (FIM-aware), excellent at code structure.
                                     - 22B DENSE = heavy/slow on CPU; Q6_K variant is higher fidelity but
                                       even slower and larger (pick Q4_K for speed, Q6_K only if quality
@@ -865,11 +865,11 @@ SPDX-License-Identifier: Apache-2.0
                                     <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
-                                <!-- Codestral-22B-v0.1-Q4_K (32 K context)
-                                     https://huggingface.co/bartowski/Codestral-22B-v0.1-GGUF/blob/main/Codestral-22B-v0.1-Q4_K.gguf -->
+                                <!-- Codestral-22B-v0.1-Q4_K_M (32 K context)
+                                     https://huggingface.co/bartowski/Codestral-22B-v0.1-GGUF/blob/main/Codestral-22B-v0.1-Q4_K_M.gguf -->
                                 <aiDefinition>
-                                    <key>Codestral-22B-v0.1-Q4_K-C32k</key>
-                                    <modelPath>X:/Modelle/Codestral-22B-v0.1-Q4_K.gguf</modelPath>
+                                    <key>Codestral-22B-v0.1-Q4_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Codestral-22B-v0.1-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>1.0</temperature>
