@@ -965,6 +965,118 @@ SPDX-License-Identifier: Apache-2.0
                                         <stopString>&lt;end_of_turn&gt;</stopString>
                                     </stopStrings>
                                 </aiDefinition>
+                                <!-- Qwen3-Coder-30B-A3B-Instruct-Q4_K_M (32 K context)
+                                     MoE 30B total / ~3B active, Apache-2.0. Code-specialized; fewer active
+                                     params than Gemma-4-26B-A4B, so a strong CPU pick. Qwen sampling:
+                                     temp 0.7, top_p 0.8, top_k 20, repeat_penalty 1.05.
+                                     Single-file GGUF (18.6 GB). Download:
+                                     https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>32768</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Qwen3-Coder-30B-A3B-Instruct-Q4_K_M (256 K context)
+                                     Same single-file GGUF as above, opened to its native 256 K window.
+                                     MoE (~3B active) + GQA keeps the KV cache small (~+4.8 GB for 256 K vs 32 K),
+                                     so this stays the most practical LARGE-context CPU code option.
+                                     https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C256k</key>
+                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>262144</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Qwen2.5-Coder-14B-Instruct-Q4_K_M (32 K context)
+                                     Dense 14B, the cited top local coding model at the 16 GB tier;
+                                     upgrade of the Qwen2.5-Coder-7B entry above. Single-file GGUF from
+                                     bartowski (the official Qwen repo splits Q5_K_M into two parts). Download:
+                                     https://huggingface.co/bartowski/Qwen2.5-Coder-14B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen2.5-Coder-14B-Instruct-Q4_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>32768</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Qwen3-4B-Instruct-2507-Q5_K_M (32 K context)
+                                     Dense 4B, Apache-2.0, NON-thinking instruct variant (no &lt;think&gt; blocks) —
+                                     the fast/low-RAM tier for short structured summaries on a laptop.
+                                     Single-file GGUF (2.89 GB). Download:
+                                     https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q5_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen3-4B-Instruct-2507-Q5_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Qwen3-4B-Instruct-2507-Q5_K_M.gguf</modelPath>
+                                    <contextSize>32768</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Granite-4.0-H-Tiny-Q4_K_M (128 K context)
+                                     7B total / ~1B active, hybrid Mamba-2/Transformer, Apache-2.0.
+                                     128 K validated (512 K trained). Mamba layers keep KV memory ~flat with
+                                     context, making this the most CPU-performant LARGE-context option.
+                                     Low temperature for deterministic summaries. Single-file GGUF. Download:
+                                     https://huggingface.co/bartowski/ibm-granite_granite-4.0-h-tiny-GGUF/resolve/main/ibm-granite_granite-4.0-h-tiny-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Granite-4.0-H-Tiny-Q4_K_M-C128k</key>
+                                    <modelPath>X:/Modelle/ibm-granite_granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <contextSize>131072</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.2</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <repeatPenalty>1.1</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Granite-4.0-H-Small-Q4_K_M (128 K context)
+                                     32B total / ~9B active, hybrid Mamba-2/Transformer, Apache-2.0, 128 K.
+                                     More quality headroom than H-Tiny while staying memory-flat at long
+                                     context; heavier active count so slower per-token on CPU. Download:
+                                     https://huggingface.co/bartowski/ibm-granite_granite-4.0-h-small-GGUF/resolve/main/ibm-granite_granite-4.0-h-small-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Granite-4.0-H-Small-Q4_K_M-C128k</key>
+                                    <modelPath>X:/Modelle/ibm-granite_granite-4.0-h-small-Q4_K_M.gguf</modelPath>
+                                    <contextSize>131072</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.2</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <repeatPenalty>1.1</repeatPenalty>
+                                </aiDefinition>
                             </aiDefinitions>
 
                             <!--
