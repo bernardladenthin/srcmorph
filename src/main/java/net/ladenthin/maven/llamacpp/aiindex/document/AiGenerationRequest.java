@@ -22,7 +22,7 @@ import net.ladenthin.maven.llamacpp.aiindex.support.ConvertToRecord;
 @ConvertToRecord
 @ToString
 @EqualsAndHashCode
-public class AiGenerationRequest {
+public final class AiGenerationRequest {
     private final String promptKey;
     private final Path sourceFile;
     private final String sourceText;

@@ -24,7 +24,7 @@ import net.ladenthin.maven.llamacpp.aiindex.support.ConvertToRecord;
 @ConvertToRecord
 @ToString
 @EqualsAndHashCode
-public class AiGenerationResult {
+public final class AiGenerationResult {
     private final String body;
 
     /**

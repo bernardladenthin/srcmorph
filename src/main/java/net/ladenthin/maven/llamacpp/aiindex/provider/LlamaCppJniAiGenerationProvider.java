@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * Maven-side debugging.
  */
 @ToString
-public class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, AutoCloseable {
+public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, AutoCloseable {
 
     private final LlamaCppJniConfig config;
 
@@ -102,7 +102,7 @@ public class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, Au
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         final LlamaModel current = model;
         if (current != null) {
             current.close();

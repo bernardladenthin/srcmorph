@@ -36,7 +36,7 @@ import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
  * @see AiFieldGenerationConfig
  */
 @ToString
-public class AiModelDefinitionSupport {
+public final class AiModelDefinitionSupport {
 
     /**
      * Error message prefix used when a requested key is not found in the definition map.

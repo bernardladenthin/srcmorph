@@ -22,7 +22,7 @@ import net.ladenthin.maven.llamacpp.aiindex.support.ConvertToRecord;
 @ConvertToRecord
 @ToString
 @EqualsAndHashCode
-public class LlamaCppJniConfig {
+public final class LlamaCppJniConfig {
     private final String libraryPath;
     private final String modelPath;
     private final int contextSize;

@@ -20,7 +20,7 @@ import net.ladenthin.maven.llamacpp.aiindex.support.ConvertToRecord;
 @ConvertToRecord
 @ToString
 @EqualsAndHashCode
-public class AiPreparedPrompt {
+public final class AiPreparedPrompt {
     private final String prompt;
     private final String sourceText;
     private final boolean trimmed;
