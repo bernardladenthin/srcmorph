@@ -13,7 +13,7 @@ import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 
 /** Registry of prompt templates that renders prompt strings for AI generation requests. */
 @ToString
-public class AiPromptSupport {
+public final class AiPromptSupport {
 
     private final Map<String, String> templates;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();

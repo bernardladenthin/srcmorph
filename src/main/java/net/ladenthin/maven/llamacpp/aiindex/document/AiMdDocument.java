@@ -18,7 +18,7 @@ import net.ladenthin.maven.llamacpp.aiindex.support.ConvertToRecord;
 @ConvertToRecord
 @ToString
 @EqualsAndHashCode
-public class AiMdDocument {
+public final class AiMdDocument {
     private final AiMdHeader header;
     private final String body;
 
