@@ -730,6 +730,113 @@ SPDX-License-Identifier: Apache-2.0
                                 maxOutputTokens, charsPerToken, and the prompt template length.
                             -->
                             <aiDefinitions>
+                                <!--
+                                  ============================================================
+                                   MODEL SELECTION GUIDE — pros / cons / when to pick each
+                                  ============================================================
+                                  This plugin runs local GGUF models, typically CPU-only, to
+                                  summarize source files (Phase 1) and packages (Phase 2). The
+                                  three levers that matter on CPU: (1) ACTIVE parameter count
+                                  (MoE models activate only a fraction per token, so they decode
+                                  far faster than a dense model of the same total size); (2)
+                                  ATTENTION type for long context (Mamba-hybrid and GQA keep the
+                                  KV cache small, so big windows stay affordable); (3) quant level
+                                  (Q4_K_M = best size/quality balance, Q5/Q6 = more fidelity, more
+                                  RAM + slower). Pick by key from the entries below.
+
+                                  QUICK CHOOSER
+                                    Fastest / least RAM ............ Qwen3-4B-Instruct-2507 (Q5_K_M)
+                                    Best CPU code (recommended) .... Qwen3-Coder-30B-A3B (Q4_K_M, MoE ~3B active)
+                                    Largest context on CPU ......... Granite-4.0-H-Tiny (128K, Mamba-hybrid, flat KV)
+                                    Best dense code @ ~16 GB ....... Qwen2.5-Coder-14B / Codestral-22B
+                                    Best general prose summaries ... Gemma-4-12B-it / Ministral-3-14B
+                                    Max quality, still CPU-able .... Gemma-4-26B-A4B (MoE) / Granite-4.0-H-Small
+
+                                  PER-MODEL NOTES (key -> pro / con / use when)
+
+                                  Mistral-7B-Instruct-v0.3-Q4_K_M-C16k
+                                    + Tiny, fast, rock-stable baseline; great instruction following.
+                                    - Not code-specialized; only 16K context; older than the Qwen3 tier.
+                                    Use when: you want a known-good, low-risk general summarizer.
+
+                                  Meta-Llama-3.1-8B-Instruct-Q5_K_M-C32k
+                                    + Strong general model, 32K context, broad ecosystem support.
+                                    - Generic (not code-tuned); 8B dense is slower than the MoE picks.
+                                    Use when: mixed prose + code and you trust the Llama family.
+
+                                  Codestral-22B-v0.1-Q4_K_M-C32k  /  -Q6_K-C32k
+                                    + Purpose-built code model (FIM-aware), excellent at code structure.
+                                    - 22B DENSE = heavy/slow on CPU; Q6_K variant is higher fidelity but
+                                      even slower and larger (pick Q4_K for speed, Q6_K only if quality
+                                      gaps show). Non-commercial license (MNPL) — check before shipping.
+                                    Use when: code quality matters more than speed and you have RAM.
+
+                                  Qwen2.5-Coder-7B-Instruct-Q5_K_M-C16k
+                                    + Best-in-class small CODE model; fast; tight instruction following.
+                                    - 16K context; superseded on quality by the 14B and Qwen3 entries.
+                                    Use when: fast per-file code summaries on modest hardware.
+
+                                  Ministral-3-8B / 14B-Instruct-2512  (Q4_K_M and Q5_K_M, C32k)
+                                    + Modern dense Mistral; 14B rivals much larger models; low temp = stable.
+                                    - Dense (no MoE speedup); repo may be GATED on HuggingFace (needs login);
+                                      Q5_K_M trades speed for a little extra fidelity over Q4_K_M.
+                                    Use when: you want current Mistral quality; 14B for best, 8B for speed.
+
+                                  Gemma-4-26B-A4B-it-UD-Q4_K_M-C32k
+                                    + MoE 26B total / ~4B active: near-27B-dense quality at ~4B-dense SPEED.
+                                      One of the best quality-per-CPU-second options here.
+                                    - Larger download/RAM than the small dense models; needs temp = 1.0
+                                      (lowering it degrades Gemma 4); 32K context.
+                                    Use when: you want top quality but cannot afford a slow dense 20B+.
+
+                                  Gemma-4-12B-it-Q4_K_M-C32k
+                                    + Excellent dense generalist for readable prose summaries.
+                                    - 12B dense is slower than the MoE picks; temp must stay at 1.0.
+                                    Use when: package-level prose quality is the priority.
+
+                                  Gemma-4-E4B-Uncensored-...-Q4_K_M  /  -Q6_K_P  (C32k)
+                                    + ~4B effective (MoE), very light; uncensored derivative avoids refusals
+                                      on edged content; Q6_K_P is a near-lossless custom quant (~1-2 quant
+                                      levels better for only 5-15% more size).
+                                    - Community/uncensored build (less vetted); quality below the larger
+                                      Gemma 4 entries; only pick Q6_K_P if Q4_K_M quality is visibly short.
+                                    Use when: a light model keeps refusing, or you need the lightest Gemma 4.
+
+                                  Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C32k   (RECOMMENDED default for code)
+                                    + MoE 30B total / ~3B active: code-specialized AND fast on CPU; fewer
+                                      active params than Gemma-4-26B-A4B; Apache-2.0.
+                                    - 18.6 GB download; needs Qwen sampling (temp 0.7 / top_p 0.8 / top_k 20).
+                                    Use when: this is the go-to for most code summarization on CPU.
+
+                                  Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C256k   (same file, huge window)
+                                    + Native 256K context; MoE + GQA keep the KV cache small (~+4.8 GB vs 32K).
+                                    - CPU PREFILL of a near-full window can take minutes; only worth it for
+                                      very large package roll-ups (Phase 2) or huge files.
+                                    Use when: a single input genuinely exceeds the 32K entries.
+
+                                  Qwen2.5-Coder-14B-Instruct-Q4_K_M-C32k
+                                    + The cited top LOCAL dense code model at the 16 GB tier; big step up
+                                      from the 7B entry.
+                                    - 14B dense is slower than the MoE Qwen3-Coder; 32K context.
+                                    Use when: you prefer a dense code model and have ~16 GB to spare.
+
+                                  Qwen3-4B-Instruct-2507-Q5_K_M-C32k
+                                    + Smallest/fastest here (2.89 GB), Apache-2.0, NON-thinking (no <think>
+                                      noise); punches well above 4B on instruction following.
+                                    - Lowest ceiling on hard reasoning / large files.
+                                    Use when: laptop / low-RAM, or you want maximum throughput per file.
+
+                                  Granite-4.0-H-Tiny-Q4_K_M-C128k   (best LARGE context on CPU)
+                                    + Hybrid Mamba-2/Transformer, ~1B active of 7B: KV memory stays ~FLAT as
+                                      context grows, so 128K is cheap on CPU; Apache-2.0; very fast.
+                                    - General (not code-specialized); summary quality below the big coders.
+                                    Use when: you need long context with the least CPU/RAM cost.
+
+                                  Granite-4.0-H-Small-Q4_K_M-C128k
+                                    + Same flat-KV long-context benefit with more capacity (~9B active of 32B).
+                                    - Heavier active count = slower per token than H-Tiny; larger download.
+                                    Use when: you want long context AND more quality than H-Tiny gives.
+                                -->
                                 <!-- Mistral-7B-Instruct-v0.3-Q4_K_M (16 K context)
                                      https://huggingface.co/lmstudio-community/Mistral-7B-Instruct-v0.3-GGUF/blob/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf -->
                                 <aiDefinition>
@@ -758,11 +865,11 @@ SPDX-License-Identifier: Apache-2.0
                                     <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
-                                <!-- Codestral-22B-v0.1-Q4_K (32 K context)
-                                     https://huggingface.co/bartowski/Codestral-22B-v0.1-GGUF/blob/main/Codestral-22B-v0.1-Q4_K.gguf -->
+                                <!-- Codestral-22B-v0.1-Q4_K_M (32 K context)
+                                     https://huggingface.co/bartowski/Codestral-22B-v0.1-GGUF/blob/main/Codestral-22B-v0.1-Q4_K_M.gguf -->
                                 <aiDefinition>
-                                    <key>Codestral-22B-v0.1-Q4_K-C32k</key>
-                                    <modelPath>X:/Modelle/Codestral-22B-v0.1-Q4_K.gguf</modelPath>
+                                    <key>Codestral-22B-v0.1-Q4_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Codestral-22B-v0.1-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -964,6 +1071,118 @@ SPDX-License-Identifier: Apache-2.0
                                     <stopStrings>
                                         <stopString>&lt;end_of_turn&gt;</stopString>
                                     </stopStrings>
+                                </aiDefinition>
+                                <!-- Qwen3-Coder-30B-A3B-Instruct-Q4_K_M (32 K context)
+                                     MoE 30B total / ~3B active, Apache-2.0. Code-specialized; fewer active
+                                     params than Gemma-4-26B-A4B, so a strong CPU pick. Qwen sampling:
+                                     temp 0.7, top_p 0.8, top_k 20, repeat_penalty 1.05.
+                                     Single-file GGUF (18.6 GB). Download:
+                                     https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>32768</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Qwen3-Coder-30B-A3B-Instruct-Q4_K_M (256 K context)
+                                     Same single-file GGUF as above, opened to its native 256 K window.
+                                     MoE (~3B active) + GQA keeps the KV cache small (~+4.8 GB for 256 K vs 32 K),
+                                     so this stays the most practical LARGE-context CPU code option.
+                                     https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C256k</key>
+                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>262144</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Qwen2.5-Coder-14B-Instruct-Q4_K_M (32 K context)
+                                     Dense 14B, the cited top local coding model at the 16 GB tier;
+                                     upgrade of the Qwen2.5-Coder-7B entry above. Single-file GGUF from
+                                     bartowski (the official Qwen repo splits Q5_K_M into two parts). Download:
+                                     https://huggingface.co/bartowski/Qwen2.5-Coder-14B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen2.5-Coder-14B-Instruct-Q4_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>32768</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Qwen3-4B-Instruct-2507-Q5_K_M (32 K context)
+                                     Dense 4B, Apache-2.0, NON-thinking instruct variant (no &lt;think&gt; blocks) —
+                                     the fast/low-RAM tier for short structured summaries on a laptop.
+                                     Single-file GGUF (2.89 GB). Download:
+                                     https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q5_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Qwen3-4B-Instruct-2507-Q5_K_M-C32k</key>
+                                    <modelPath>X:/Modelle/Qwen3-4B-Instruct-2507-Q5_K_M.gguf</modelPath>
+                                    <contextSize>32768</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Granite-4.0-H-Tiny-Q4_K_M (128 K context)
+                                     7B total / ~1B active, hybrid Mamba-2/Transformer, Apache-2.0.
+                                     128 K validated (512 K trained). Mamba layers keep KV memory ~flat with
+                                     context, making this the most CPU-performant LARGE-context option.
+                                     Low temperature for deterministic summaries. Single-file GGUF. Download:
+                                     https://huggingface.co/bartowski/ibm-granite_granite-4.0-h-tiny-GGUF/resolve/main/ibm-granite_granite-4.0-h-tiny-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Granite-4.0-H-Tiny-Q4_K_M-C128k</key>
+                                    <modelPath>X:/Modelle/ibm-granite_granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <contextSize>131072</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.2</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <repeatPenalty>1.1</repeatPenalty>
+                                </aiDefinition>
+                                <!-- Granite-4.0-H-Small-Q4_K_M (128 K context)
+                                     32B total / ~9B active, hybrid Mamba-2/Transformer, Apache-2.0, 128 K.
+                                     More quality headroom than H-Tiny while staying memory-flat at long
+                                     context; heavier active count so slower per-token on CPU. Download:
+                                     https://huggingface.co/bartowski/ibm-granite_granite-4.0-h-small-GGUF/resolve/main/ibm-granite_granite-4.0-h-small-Q4_K_M.gguf -->
+                                <aiDefinition>
+                                    <key>Granite-4.0-H-Small-Q4_K_M-C128k</key>
+                                    <modelPath>X:/Modelle/ibm-granite_granite-4.0-h-small-Q4_K_M.gguf</modelPath>
+                                    <contextSize>131072</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.2</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                             </aiDefinitions>
 
