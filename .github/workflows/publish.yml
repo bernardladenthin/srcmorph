@@ -57,7 +57,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Build
-        run: mvn --batch-mode -DskipTests -Dmaven.javadoc.skip=true package
+        run: mvn --batch-mode --no-transfer-progress -DskipTests -Dmaven.javadoc.skip=true package
       - uses: actions/upload-artifact@v7
         with: { name: plugin-jars, path: target/*.jar }
 
@@ -73,14 +73,14 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Test
-        run: mvn --batch-mode -P jcstress verify
+        run: mvn --batch-mode --no-transfer-progress -P jcstress verify
       - uses: actions/upload-artifact@v7
         with:
           name: jacoco-report
           path: target/site/jacoco/jacoco.xml
           if-no-files-found: ignore
       - name: Run PIT mutation tests
-        run: mvn --batch-mode test-compile org.pitest:pitest-maven:mutationCoverage -Dmaven.javadoc.skip=true
+        run: mvn --batch-mode --no-transfer-progress test-compile org.pitest:pitest-maven:mutationCoverage -Dmaven.javadoc.skip=true
       - name: Extract PIT survivors
         if: always()
         run: |
@@ -163,7 +163,7 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
       - name: Deploy snapshot
-        run: mvn --batch-mode -P release deploy -DskipTests
+        run: mvn --batch-mode --no-transfer-progress -P release deploy -DskipTests
         env:
           MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
@@ -225,7 +225,7 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
       - name: Deploy release
-        run: mvn --batch-mode -P release deploy -DskipTests
+        run: mvn --batch-mode --no-transfer-progress -P release deploy -DskipTests
         env:
           MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
