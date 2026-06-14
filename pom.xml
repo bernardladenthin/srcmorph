@@ -193,6 +193,21 @@ SPDX-License-Identifier: Apache-2.0
             <version>${lincheck.version}</version>
             <scope>test</scope>
         </dependency>
+        <!--
+            vmlens interleaving-analysis API. Test-scoped and transitive-dependency-free
+            (its own deps are all test-scope, hence not propagated), so it is safe on the
+            default test classpath under dependencyConvergence. Needed so the
+            VmlensInterleavingSmoke* test compiles in every build; it is only *executed*
+            under the `vmlens` profile (see that profile + the vmlens CI job). The default
+            surefire run excludes it (managed surefire <excludes> below) so the vmlens
+            agent's JDK 9 API class is never loaded outside the agent-driven run.
+        -->
+        <dependency>
+            <groupId>com.vmlens</groupId>
+            <artifactId>api</artifactId>
+            <version>${vmlens.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -257,6 +272,19 @@ SPDX-License-Identifier: Apache-2.0
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.6</version>
+                    <configuration>
+                        <!--
+                            The vmlens interleaving smoke test is meaningful only when run
+                            under the vmlens agent (the `vmlens` profile / CI job). Without the
+                            agent its AllInterleavings loop body never executes (a vacuous pass
+                            that also prints an "agent not configured" warning), so exclude it
+                            from the ordinary surefire run. The vmlens job re-includes it with
+                            `-Dtest=...`, which overrides this exclude.
+                        -->
+                        <excludes>
+                            <exclude>**/VmlensInterleavingSmokeTest.java</exclude>
+                        </excludes>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -1305,14 +1333,6 @@ Source:
 
         <profile>
             <id>vmlens</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.vmlens</groupId>
-                    <artifactId>api</artifactId>
-                    <version>${vmlens.version}</version>
-                    <scope>test</scope>
-                </dependency>
-            </dependencies>
             <build>
                 <plugins>
                     <plugin>
@@ -1320,16 +1340,15 @@ Source:
                         <artifactId>vmlens-maven-plugin</artifactId>
                         <configuration>
                             <!--
-                                Lincheck generates its own TestThreadExecution class on the fly.
-                                That bytecode clashes with vmlens's load-time instrumentation
-                                (java.lang.VerifyError). Skip the Lincheck test under vmlens;
-                                the default test job still runs it.
-                                **/*$* is the plugin default - kept to preserve inner-class skip.
+                                Staged scope (one class for now): run vmlens interleaving
+                                analysis only on the minimal smoke test. The `com.vmlens:api`
+                                test dependency lives in the main <dependencies> block.
+                                Expand <includes> as more concurrency tests are added (the
+                                streambuffer repo runs vmlens over its whole suite).
                             -->
-                            <excludes>
-                                <exclude>**/*$*</exclude>
-                                <exclude>**/AiGenerationKindLincheckTest.java</exclude>
-                            </excludes>
+                            <includes>
+                                <include>**/VmlensInterleavingSmokeTest.java</include>
+                            </includes>
                         </configuration>
                         <executions>
                             <execution>
