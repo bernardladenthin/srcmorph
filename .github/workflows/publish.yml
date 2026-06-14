@@ -57,7 +57,7 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Build
-        run: mvn --batch-mode --no-transfer-progress -DskipTests -Dmaven.javadoc.skip=true package
+        run: mvn --batch-mode --no-transfer-progress -DskipTests package
       - uses: actions/upload-artifact@v7
         with: { name: plugin-jars, path: target/*.jar }
 
@@ -80,7 +80,7 @@ jobs:
           path: target/site/jacoco/jacoco.xml
           if-no-files-found: ignore
       - name: Run PIT mutation tests
-        run: mvn --batch-mode --no-transfer-progress test-compile org.pitest:pitest-maven:mutationCoverage -Dmaven.javadoc.skip=true
+        run: mvn --batch-mode --no-transfer-progress test-compile org.pitest:pitest-maven:mutationCoverage
       - name: Extract PIT survivors
         if: always()
         run: |
