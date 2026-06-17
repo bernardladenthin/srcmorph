@@ -72,12 +72,30 @@ jobs:
           java-version: '21'
           distribution: temurin
           cache: maven
+      - name: Memory before tests
+        run: free -h
       - name: Test
-        run: mvn --batch-mode --no-transfer-progress -P jcstress verify
+        run: mvn -e --batch-mode --no-transfer-progress -P jcstress verify
       - uses: actions/upload-artifact@v7
         with:
           name: jacoco-report
           path: target/site/jacoco/jacoco.xml
+          if-no-files-found: ignore
+      - name: Memory after tests
+        if: always()
+        run: free -h
+      - name: Upload crash & surefire dumps
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: crash-dumps-test
+          path: |
+            ${{ github.workspace }}/hs_err_pid*.log
+            ${{ github.workspace }}/*.hprof
+            ${{ github.workspace }}/target/surefire-reports/*.dump
+            ${{ github.workspace }}/target/surefire-reports/*.dumpstream
+            ${{ github.workspace }}/target/surefire-reports/*.txt
+            ${{ github.workspace }}/target/surefire-reports/TEST-*.xml
           if-no-files-found: ignore
       - name: Run PIT mutation tests
         run: mvn --batch-mode --no-transfer-progress test-compile org.pitest:pitest-maven:mutationCoverage
