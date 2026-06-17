@@ -349,6 +349,10 @@ Run `mvn spotless:apply` before every commit that touches `.java` files.
 
 See [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md).
 
+## CI Test Diagnostics
+
+See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-test-diagnostics.md).
+
 ## Lombok Config
 
 See [`../workspace/policies/lombok-config.md`](../workspace/policies/lombok-config.md).

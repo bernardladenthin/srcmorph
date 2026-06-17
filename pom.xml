@@ -274,6 +274,15 @@ SPDX-License-Identifier: Apache-2.0
                     <version>3.5.6</version>
                     <configuration>
                         <!--
+                            argLine starts with @{argLine} so the JaCoCo agent (placed into the
+                            argLine property by jacoco:prepare-agent) survives via late property
+                            replacement; dropping it would detach the agent and break coverage.
+                            The remaining flags add cross-repo-standard test JVM diagnostics:
+                            a 2 GB heap cap, a heap dump on OutOfMemoryError into the working
+                            directory, and a JVM fatal-error log named per crashing PID.
+                        -->
+                        <argLine>@{argLine} -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=. -XX:ErrorFile=hs_err_pid%p.log</argLine>
+                        <!--
                             The vmlens interleaving smoke test is meaningful only when run
                             under the vmlens agent (the `vmlens` profile / CI job). Without the
                             agent its AllInterleavings loop body never executes (a vacuous pass
