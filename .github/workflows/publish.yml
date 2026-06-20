@@ -36,7 +36,7 @@ jobs:
     needs: startgate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           java-version: '21'
@@ -55,7 +55,7 @@ jobs:
     needs: startgate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           java-version: '21'
@@ -71,7 +71,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           java-version: '21'
@@ -124,7 +124,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with: { java-version: '21', distribution: temurin, cache: maven }
       - name: Test under vmlens (one class — staged scope)
@@ -145,7 +145,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with: { java-version: '21', distribution: temurin }
       - uses: actions/download-artifact@v8
@@ -193,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: maven-central
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           java-version: '21'
@@ -264,7 +264,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           java-version: '21'
