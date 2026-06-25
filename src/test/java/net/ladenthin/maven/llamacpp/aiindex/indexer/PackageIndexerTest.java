@@ -8,15 +8,20 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import net.ladenthin.maven.llamacpp.aiindex.CommonTestFixtures;
+import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
+import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider;
 import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Test;
@@ -89,4 +94,118 @@ public class PackageIndexerTest {
         assertThat(document.body().trim().isEmpty(), is(false));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="child summaries in package source">
+    @Test
+    public void aggregate_childFileBodies_areEmbeddedInPackageSourceText() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path packageDirectory = outputRoot.resolve("main/java/com/example");
+        Files.createDirectories(packageDirectory);
+
+        writeChildFile(packageDirectory.resolve("Foo.java.ai.md"), "Foo.java", "FOO_BODY_MARKER summary of Foo.");
+        writeChildFile(packageDirectory.resolve("Bar.java.ai.md"), "Bar.java", "BAR_BODY_MARKER summary of Bar.");
+
+        final CapturingProvider provider = new CapturingProvider();
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                new SystemStreamLog(),
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                provider,
+                CommonTestFixtures.createPackageFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        indexer.aggregate(outputRoot);
+
+        // assert: the example package's AI source text contains both child bodies, each under a
+        // per-file heading — not merely the file names.
+        final String exampleSource = provider.sourceTextFor(packageDirectory.resolve("package.ai.md"));
+        assertThat(exampleSource, is(notNullValue()));
+        assertThat(exampleSource.contains("### Foo.java"), is(true));
+        assertThat(exampleSource.contains("FOO_BODY_MARKER summary of Foo."), is(true));
+        assertThat(exampleSource.contains("### Bar.java"), is(true));
+        assertThat(exampleSource.contains("BAR_BODY_MARKER summary of Bar."), is(true));
+        // the raw .ai.md file-name form must NOT leak into the labelled headings
+        assertThat(exampleSource.contains("### Foo.java.ai.md"), is(false));
+    }
+
+    @Test
+    public void aggregate_subPackageBody_isEmbeddedInParentSourceText() throws Exception {
+        // arrange: a child file in the leaf package, whose generated body bubbles up into the parent.
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path leafDirectory = outputRoot.resolve("main/java/com/example");
+        Files.createDirectories(leafDirectory);
+
+        writeChildFile(leafDirectory.resolve("Foo.java.ai.md"), "Foo.java", "FOO_BODY_MARKER summary of Foo.");
+
+        final CapturingProvider provider = new CapturingProvider();
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                new SystemStreamLog(),
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                provider,
+                CommonTestFixtures.createPackageFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        indexer.aggregate(outputRoot);
+
+        // assert: the parent ("com") package source embeds the leaf sub-package's generated body
+        // under a directory-suffixed heading.
+        final Path comPackageFile = outputRoot.resolve("main/java/com").resolve("package.ai.md");
+        final String comSource = provider.sourceTextFor(comPackageFile);
+        assertThat(comSource, is(notNullValue()));
+        assertThat(comSource.contains("### example/"), is(true));
+        assertThat(comSource.contains(CapturingProvider.GENERATED_BODY), is(true));
+    }
+    // </editor-fold>
+
+    private void writeChildFile(final Path file, final String title, final String body) throws IOException {
+        final AiMdHeader header = new AiMdHeader(
+                title,
+                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                "AAAAAAAA",
+                "2026-03-16T00:00:00Z",
+                "2026-03-16T00:00:10Z",
+                "1.0.0",
+                "0.0.0",
+                AiMdHeaderCodec.NODE_TYPE_FILE);
+        documentCodec.write(file, new AiMdDocument(header, body));
+    }
+
+    /**
+     * Test {@link AiGenerationProvider} that records the source text passed for each context file
+     * and returns a fixed non-blank body, so a generated {@code package.ai.md} body is never blank.
+     */
+    private static final class CapturingProvider implements AiGenerationProvider {
+
+        static final String GENERATED_BODY = "CAPTURED_PACKAGE_SUMMARY";
+
+        private final Map<Path, String> sourceTextByFile = new HashMap<>();
+
+        @Override
+        public String generate(final AiGenerationRequest request) {
+            sourceTextByFile.put(request.sourceFile(), request.sourceText());
+            return GENERATED_BODY;
+        }
+
+        String sourceTextFor(final Path file) {
+            return sourceTextByFile.get(file);
+        }
+    }
 }

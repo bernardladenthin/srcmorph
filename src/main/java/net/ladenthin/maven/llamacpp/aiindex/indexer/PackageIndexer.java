@@ -50,6 +50,28 @@ public class PackageIndexer {
     private static final String CONTENTS_HEADING = "#### Contents";
 
     /**
+     * Markdown heading prefix used to label each child summary embedded in the package
+     * source text fed to the AI model, e.g. {@code "### Foo.java"}. Identifies which
+     * per-file (or sub-package) summary follows so the model can attribute it correctly.
+     * Independent from {@link AiMdHeaderCodec#HEADER_TITLE_PREFIX} despite the same literal:
+     * this one structures the AI <em>input</em>, not a persisted {@code .ai.md} header.
+     */
+    private static final String CHILD_SUMMARY_HEADING_PREFIX = "### ";
+
+    /**
+     * Suffix appended to a sub-package entry name so it is visually distinguishable from a
+     * regular file entry in content listings and child-summary labels (e.g. {@code "sub/"}).
+     */
+    private static final String CHILD_DIRECTORY_SUFFIX = "/";
+
+    /**
+     * Placeholder note emitted under a child-summary heading when the corresponding
+     * {@code .ai.md} body is blank or could not be read, so the model still learns the
+     * child exists without being given a fabricated summary.
+     */
+    private static final String CHILD_SUMMARY_MISSING_NOTE = "(no summary available)";
+
+    /**
      * Earliest possible date value used as the starting point when scanning child nodes
      * to find the latest index creation date.
      */
@@ -254,7 +276,7 @@ public class PackageIndexer {
             return;
         }
 
-        final String sourceText = buildPackageSourceText(baseHeader, contents);
+        final String sourceText = buildPackageSourceText(baseHeader, directory, contents);
 
         final AiGenerationResult result = fieldGenerationSupport.processFieldGenerations(
                 fieldGenerations, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
@@ -283,7 +305,7 @@ public class PackageIndexer {
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
-                        entries.add(name + "/");
+                        entries.add(name + CHILD_DIRECTORY_SUFFIX);
                     }
                     continue;
                 }
@@ -297,8 +319,59 @@ public class PackageIndexer {
         return entries;
     }
 
-    private String buildPackageSourceText(final AiMdHeader header, final Collection<String> contents) {
+    /**
+     * Builds the source text passed to the AI model for a package summary.
+     *
+     * <p>The text starts with the package's own deterministic header block, then embeds the
+     * <em>already-generated</em> AI body of every child {@code .ai.md} (per-file summaries and
+     * sub-package summaries), each under a {@link #CHILD_SUMMARY_HEADING_PREFIX} heading that
+     * names the child. This is what the {@code package-body} prompt expects: it synthesises a
+     * package summary from the child summaries, not from a bare name listing. Only the child
+     * bodies are inlined; the single-letter child headers (metadata) are deliberately omitted
+     * to save context and avoid distracting the model.</p>
+     *
+     * <p>When no child contributes a usable body (all blank or unreadable), the method falls
+     * back to the plain {@link #CONTENTS_HEADING} name listing so the model still receives the
+     * package contents.</p>
+     *
+     * <p>No explicit length cap is applied here: the combined text is subject to the existing
+     * trim logic in {@link net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport#preparePrompt}, which truncates at a line
+     * boundary to the computed {@code maxInputChars} budget and triggers the {@code warnOnTrim}
+     * warning — so large packages degrade gracefully without a bespoke truncation scheme.</p>
+     *
+     * @param header    the package's own header (its title and metadata)
+     * @param directory the package directory whose child {@code .ai.md} bodies are embedded
+     * @param contents  pre-collected child entry names, used only for the no-body fallback
+     * @return the rendered source text for the AI prompt
+     * @throws IOException if a child {@code .ai.md} file cannot be read
+     */
+    private String buildPackageSourceText(
+            final AiMdHeader header, final Path directory, final Collection<String> contents) throws IOException {
         final StringBuilder builder = new StringBuilder();
+        appendPackageHeaderLines(builder, header);
+
+        final StringBuilder summaries = new StringBuilder();
+        final int bodyCount = appendChildSummaries(summaries, directory);
+
+        if (bodyCount > 0) {
+            builder.append(summaries);
+        } else {
+            // No child bodies were available — fall back to the plain name listing so the
+            // model still receives the package contents rather than an empty source.
+            appendContentsSection(builder, contents, true);
+        }
+
+        return builder.toString();
+    }
+
+    /**
+     * Appends the package's own deterministic header block (title plus single-letter fields)
+     * to {@code builder}, mirroring the on-disk {@code .ai.md} header layout.
+     *
+     * @param builder target string builder
+     * @param header  the package header to render
+     */
+    private void appendPackageHeaderLines(final StringBuilder builder, final AiMdHeader header) {
         builder.append(AiMdHeaderCodec.HEADER_TITLE_PREFIX)
                 .append(header.title())
                 .append('\n');
@@ -330,8 +403,101 @@ public class PackageIndexer {
                 .append("X: ")
                 .append(header.x())
                 .append('\n');
-        appendContentsSection(builder, contents, true);
-        return builder.toString();
+    }
+
+    /**
+     * Appends one labelled child-summary block per child {@code .ai.md} under {@code directory}
+     * to {@code builder}, in deterministic ascending name order. Each block is a
+     * {@link #CHILD_SUMMARY_HEADING_PREFIX} heading naming the child followed by that child's
+     * already-generated AI body (or {@link #CHILD_SUMMARY_MISSING_NOTE} when the body is blank).
+     * Sub-package children reuse their aggregated {@code package.ai.md} body; the trailing
+     * {@link #CHILD_DIRECTORY_SUFFIX} marks them as directories.
+     *
+     * @param builder   target string builder
+     * @param directory the package directory whose children are scanned
+     * @return the number of children that contributed a non-blank body
+     * @throws IOException if a child {@code .ai.md} file cannot be read
+     */
+    private int appendChildSummaries(final StringBuilder builder, final Path directory) throws IOException {
+        int bodyCount = 0;
+
+        try (Stream<Path> stream = Files.list(directory)) {
+            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
+                final Path fileNamePath = path.getFileName();
+                if (fileNamePath == null) {
+                    continue;
+                }
+                final String name = fileNamePath.toString();
+
+                if (Files.isDirectory(path)) {
+                    if (hasPackageAiMdFile(path)) {
+                        final String body = readChildBody(path.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
+                        if (appendChildSummary(builder, name + CHILD_DIRECTORY_SUFFIX, body)) {
+                            bodyCount++;
+                        }
+                    }
+                    continue;
+                }
+
+                if (isAiMdContentFile(name)) {
+                    final String body = readChildBody(path);
+                    if (appendChildSummary(builder, toChildDisplayName(name), body)) {
+                        bodyCount++;
+                    }
+                }
+            }
+        }
+
+        return bodyCount;
+    }
+
+    /**
+     * Appends a single child-summary block (heading plus body or missing-note) to {@code builder}.
+     *
+     * @param builder target string builder
+     * @param label   child display label (file or sub-package name)
+     * @param body    the child's AI body; may be blank
+     * @return {@code true} if a non-blank body was appended, {@code false} for the missing-note case
+     */
+    private boolean appendChildSummary(final StringBuilder builder, final String label, final String body) {
+        builder.append('\n').append(CHILD_SUMMARY_HEADING_PREFIX).append(label).append('\n');
+
+        if (compatibilityHelper.isBlank(body)) {
+            builder.append(CHILD_SUMMARY_MISSING_NOTE).append('\n');
+            return false;
+        }
+
+        builder.append(body);
+        if (!body.endsWith("\n")) {
+            builder.append('\n');
+        }
+        return true;
+    }
+
+    /**
+     * Reads and returns the AI body of a child {@code .ai.md} file, discarding its header.
+     *
+     * @param aiMdFile path to the child {@code .ai.md} file
+     * @return the document body (possibly blank); never {@code null}
+     * @throws IOException if the file cannot be read
+     */
+    private String readChildBody(final Path aiMdFile) throws IOException {
+        return documentCodec.read(aiMdFile).body();
+    }
+
+    /**
+     * Strips the {@link AiMdHeaderCodec#AI_MD_EXTENSION} suffix from a child file name so the
+     * embedded heading reads as the original source name (e.g. {@code "Foo.java.ai.md"} →
+     * {@code "Foo.java"}). Names without the extension are returned unchanged.
+     *
+     * @param fileName the child {@code .ai.md} file name
+     * @return the display name with the {@code .ai.md} extension removed
+     */
+    private String toChildDisplayName(final String fileName) {
+        if (fileName.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION)) {
+            return fileName.substring(0, fileName.length() - AiMdHeaderCodec.AI_MD_EXTENSION.length());
+        }
+        return fileName;
     }
 
     private String buildDefaultPackageBody(final Collection<String> contents) {
