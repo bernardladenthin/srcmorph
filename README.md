@@ -178,7 +178,7 @@ src/site/ai/
 - Output quality depends on chosen model
 
 ## TODO
-- **Expand PIT mutation-testing scope.** PIT is wired in `pom.xml` and runs on every CI build with `<mutationThreshold>100</mutationThreshold>`, but `<targetClasses>` is currently narrowed to a single class (`AiCompletionParser`). The intent is to exercise the wiring and gate against regressions on that single class today; widen `<targetClasses>` incrementally as additional classes reach mutation-test parity (i.e., add tests until 100% mutation coverage holds on the candidate class, then add it to the list). Final target: `<param>net.ladenthin.maven.llamacpp.aiindex.*</param>` matching the streambuffer pattern.
+- **Expand PIT mutation-testing scope.** PIT is wired in `pom.xml` and runs on every CI build with `<mutationThreshold>100</mutationThreshold>`. `<targetClasses>` currently lists an explicit **21-class** set (config / document / prompt / provider / support classes verified at 100% mutation parity; ~146 mutations). Widen it incrementally as additional classes reach parity (add tests until 100% mutation coverage holds on the candidate, then add it to the list). Final target: `<param>net.ladenthin.maven.llamacpp.aiindex.*</param>` matching the streambuffer pattern. Run locally with `mvn test-compile org.pitest:pitest-maven:mutationCoverage` (see [PIT policy](../workspace/policies/pit-mutation-testing.md)).
 ## Recommended Models
 - Qwen2.5 Coder (balanced quality and speed)
 - Smaller instruct models for faster indexing

@@ -353,6 +353,13 @@ See [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jq
 
 See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-test-diagnostics.md).
 
+## PIT Mutation Testing
+
+See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-mutation-testing.md).
+Run PIT with the lifecycle prefix — `mvn test-compile org.pitest:pitest-maven:mutationCoverage`
+(the bare goal fails with `NoSuchFileException: {argLine}`). The gate covers an explicit
+21-class list at a 100% threshold.
+
 ## Lombok Config
 
 See [`../workspace/policies/lombok-config.md`](../workspace/policies/lombok-config.md).
