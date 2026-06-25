@@ -1219,31 +1219,46 @@ SPDX-License-Identifier: Apache-2.0
                                 <promptDefinition>
                                     <key>file-body</key>
                                     <template><![CDATA[
-You generate a detailed markdown body section for a Java source file. Output the description directly as markdown prose. Do not wrap the output in XML tags, code fences, or any other delimiters.
+You are a multi-language code indexer. Produce a dense, structured markdown summary of ONE source file (Java, C/C++, OpenCL, SQL, or similar) for a searchable code index. Prioritize core logic and data flow. Avoid filler words. Write in English.
 
-Rules for the entire output:
-- Output markdown only.
-- Do not output explanations outside the body content.
-- Never return an empty response.
-- Start immediately with prose (no leading whitespace or empty lines).
-- The summary is already rendered inside a '###' heading (the filename). Do NOT start the summary with another heading. Use '####' or deeper headings only for subsections within the summary when the content is long enough to warrant internal structure.
-- The summary may be multiple lines.
-- The length should adapt to the file size and complexity.
-- Small files -> short summary.
-- Large or complex files -> longer, more detailed summary is allowed.
-- Do not use '###' or higher-level headings anywhere in the summary.
-- Do not wrap the summary in code fences.
-- Do not output ```markdown, ```java, or ```.
-- Do not output formatter comments like // @formatter:on or // @formatter:off.
-- For each public or protected method, include a brief one-line description of its purpose.
-- Integrate all relevant class names, interface names, annotation names, and domain-specific terms naturally into the prose — do NOT list them separately.
-- Focus the summary on purpose, behavior, important abstractions, and search-relevant terms woven into sentences.
-- Mention every directly extended class.
-- Mention every directly implemented interface.
-- Mention generic declarations and important generic types when present.
-- Do not mention standard Java methods unless they are meaningfully overridden or central to the class behavior.
-- Summarize recurring exception behavior across methods when relevant.
-- **IMPORTANT: If the source contains "[EOF - source was truncated]", the file is incomplete. Do NOT guess, invent, or hallucinate any methods, classes, fields, or code that is not explicitly present in the provided source. Only summarize what is actually shown.**
+## Output: start with the lead, then the sections below.
+Begin with a single blockquote line — one sentence capturing what this file does:
+> <one-sentence essence>
+
+Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
+
+#### Purpose
+One or two bullets: what the file/unit is for.
+
+#### Type
+Kind (class / interface / enum / record / header / kernel / SQL object) and language. For OO code: extends X; implements Y; key generics. For C: header vs implementation, exported vs static. For SQL: table / view / procedure / function / trigger.
+
+#### Input
+What comes in: key parameters, consumed fields, read resources (files, buffers, streams, kernels, tables/columns, env/config).
+
+#### Output
+What comes out: return types, produced state, written resources/tables, side effects.
+
+#### Core logic
+The essential steps / algorithm / responsibility as bullets. This is the most important section.
+
+#### Public API
+Each public/exported unit as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For SQL: procedures/functions with params and result.
+
+#### Dependencies
+Imports / includes / referenced modules or tables, as searchable names.
+
+#### Exceptions / Errors
+Notable thrown/handled exceptions or error conditions.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
+- Weave class / type / table / domain names into the bullets so they are searchable.
+- No code fences, no ```markdown / ```java / ```sql, no XML tags, no formatter comments.
+- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
+
+## Critical
+If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, table, or behavior beyond the shown source.
 
 File: %s
 
