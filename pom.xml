@@ -1269,34 +1269,45 @@ Source:
                                 <promptDefinition>
                                     <key>package-body</key>
                                     <template><![CDATA[
-You generate a detailed markdown body section for a Java package or package-like index. Output the description directly as markdown prose. Do not wrap the output in XML tags, code fences, or any other delimiters.
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group — do not just concatenate the file summaries. Avoid filler. Write in English.
 
-Rules for the entire output:
-- Output markdown only.
-- Do not output explanations outside the body content.
-- Never return an empty response.
-- Start immediately with prose (no leading whitespace or empty lines).
-- The summary is already rendered inside a '###' heading (the package name). Do NOT start the summary with another heading. Use '####' or deeper headings only for subsections within the summary when the content is long enough to warrant internal structure.
-- The summary may be multiple lines.
-- The length should adapt to the size and complexity of the package.
-- Small packages -> short summary.
-- Large packages -> more detailed summary is allowed.
-- Do not use '###' or higher-level headings anywhere in the summary.
-- Do not wrap the summary in code fences.
-- Do not output ```markdown, ```java, or ```.
-- Do not output formatter comments like // @formatter:on or // @formatter:off.
-- For each contained file, include a brief one-line description of its purpose.
-- Integrate all relevant class names, interface names, annotation names, and domain-specific terms naturally into the prose — do NOT list them separately.
-- Focus the summary on the overall purpose, structure, responsibilities, and collaboration of the contained files.
-- Mention important directly extended classes and directly implemented interfaces if they are central and repeatedly represented in the package content.
-- Mention important generic declarations or important generic type patterns if they are central to the package design.
-- Summarize recurring exception behavior across the package when relevant.
-- For larger packages, group contained files by responsibility instead of listing every file.
-- **IMPORTANT: If the source contains "[EOF - source was truncated]", the index is incomplete. Do NOT guess, invent, or hallucinate any files, classes, or content that is not explicitly present in the provided source. Only summarize what is actually shown.**
+## Output: start with the lead, then the sections below.
+Begin with a single blockquote line — one sentence capturing what this package does as a whole:
+> <one-sentence essence>
 
-File: %s
+Then output these sections as markdown. Omit any that do not apply. Use '####' for labels. Never '###' or higher.
 
-Source:
+#### Purpose
+One or two bullets: the package's overall responsibility.
+
+#### Responsibilities
+The main functional groups inside the package, as bullets. Group files by role; do not list every file separately for large packages.
+
+#### Key units
+The central classes / interfaces / modules / SQL objects and their job, one clause each, with their searchable names.
+
+#### Data flow
+How inputs move through the package to outputs, if a clear pipeline or collaboration exists across the files.
+
+#### Dependencies
+Notable internal collaborations and external modules/packages/tables the package depends on.
+
+#### Cross-cutting
+Recurring patterns across files: shared base types/interfaces, common exception/error handling, threading/concurrency notes, configuration.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs.
+- Weave type / module / table / domain names in as searchable terms.
+- Base every statement only on the provided file summaries. Do NOT invent units, methods, tables, or behavior not present in them.
+- No code fences, no ```markdown, no XML tags, no formatter comments.
+- The package-name heading is already rendered above your output. Start immediately with the blockquote lead. Never empty.
+
+## Critical
+If the input contains "[EOF - source was truncated]", summarize ONLY what is present. Never infer or invent files or content beyond the provided summaries.
+
+Package: %s
+
+File summaries:
 %s
                                     ]]></template>
                                 </promptDefinition>
