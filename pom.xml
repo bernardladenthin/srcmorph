@@ -654,12 +654,10 @@ SPDX-License-Identifier: Apache-2.0
             </plugin>
             <plugin>
                 <!--
-                  PIT mutation testing is gated at a 100% threshold on every CI
-                  build over the explicit list of classes that have reached 100%
-                  mutation parity (verified with pitest-maven 1.25.4). Expand the
-                  targetClasses list as more classes reach parity (see README TODO).
-                  targetTests is the whole aiindex tree so any unit test may kill a
-                  mutant; all listed classes are covered by pure-Java tests
+                  Generic PIT policy (version, 100% gate, invocation, expansion rule):
+                  see ../workspace/policies/pit-mutation-testing.md.
+                  Repo-specific: targetTests is the whole aiindex tree (any unit test may
+                  kill a mutant); all gated classes are covered by pure-Java tests
                   (MockAiGenerationProvider — no GGUF model needed).
                 -->
                 <groupId>org.pitest</groupId>
@@ -840,17 +838,13 @@ SPDX-License-Identifier: Apache-2.0
                                       Gemma 4 entries; only pick Q6_K_P if Q4_K_M quality is visibly short.
                                     Use when: a light model keeps refusing, or you need the lightest Gemma 4.
 
-                                  Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C32k   (RECOMMENDED default for code)
-                                    + MoE 30B total / ~3B active: code-specialized AND fast on CPU; fewer
-                                      active params than Gemma-4-26B-A4B; Apache-2.0.
-                                    - 18.6 GB download; needs Qwen sampling (temp 0.7 / top_p 0.8 / top_k 20).
+                                  Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k   (RECOMMENDED default for code; ACTIVE for both phases)
+                                    + MoE 30B total / ~3.3B active: code-specialized AND fast on CPU; fewer
+                                      active params than Gemma-4-26B-A4B; non-thinking; Apache-2.0.
+                                    + Locally present (X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf,
+                                      17.7 GB); 64K context — generous but CPU-feasible (256K prefill is unusable on CPU).
+                                    - Needs Qwen sampling (temp 0.7 / top_p 0.8 / top_k 20 / repeat 1.05).
                                     Use when: this is the go-to for most code summarization on CPU.
-
-                                  Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C256k   (same file, huge window)
-                                    + Native 256K context; MoE + GQA keep the KV cache small (~+4.8 GB vs 32K).
-                                    - CPU PREFILL of a near-full window can take minutes; only worth it for
-                                      very large package roll-ups (Phase 2) or huge files.
-                                    Use when: a single input genuinely exceeds the 32K entries.
 
                                   Qwen2.5-Coder-14B-Instruct-Q4_K_M-C32k
                                     + The cited top LOCAL dense code model at the 16 GB tier; big step up
@@ -1110,36 +1104,27 @@ SPDX-License-Identifier: Apache-2.0
                                         <stopString>&lt;end_of_turn&gt;</stopString>
                                     </stopStrings>
                                 </aiDefinition>
-                                <!-- Qwen3-Coder-30B-A3B-Instruct-Q4_K_M (32 K context)
-                                     MoE 30B total / ~3B active, Apache-2.0. Code-specialized; fewer active
-                                     params than Gemma-4-26B-A4B, so a strong CPU pick. Qwen sampling:
-                                     temp 0.7, top_p 0.8, top_k 20, repeat_penalty 1.05.
-                                     Single-file GGUF (18.6 GB). Download:
-                                     https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf -->
+                                <!-- Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL (64 K context) — the
+                                     locally-present file and the active model for BOTH AI phases
+                                     (file-body + package-body). MoE 30B total / ~3.3B active,
+                                     non-thinking (emits no <think> blocks, so no enable_thinking flag
+                                     is needed or set), Apache-2.0. Unsloth Dynamic UD-Q4_K_XL quant,
+                                     single-file GGUF (17.7 GB) at
+                                     X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf.
+                                     Official Qwen3-Coder sampling (model card): temperature 0.7,
+                                     top_p 0.8, top_k 20, repetition_penalty 1.05.
+                                     Context: native window is 262144; 64 K is a deliberate, generous
+                                     yet CPU-feasible cap — 256 K prefill is unusable on CPU.
+                                     maxOutputTokens is deliberately 1536 (NOT the model card's generic
+                                     65536): the purpose here is short, dense bullet-point summaries,
+                                     not long code generations, so a tight output cap keeps each
+                                     generation fast and on-topic.
+                                     https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF -->
                                 <aiDefinition>
-                                    <key>Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C32k</key>
-                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf</modelPath>
-                                    <contextSize>32768</contextSize>
-                                    <maxOutputTokens>2048</maxOutputTokens>
-                                    <temperature>0.7</temperature>
-                                    <threads>8</threads>
-                                    <charsPerToken>4</charsPerToken>
-                                    <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
-                                    <topP>0.8</topP>
-                                    <topK>20</topK>
-                                    <repeatPenalty>1.05</repeatPenalty>
-                                </aiDefinition>
-                                <!-- Qwen3-Coder-30B-A3B-Instruct-Q4_K_M (256 K context)
-                                     Same single-file GGUF as above, opened to its native 256 K window.
-                                     MoE (~3B active) + GQA keeps the KV cache small (~+4.8 GB for 256 K vs 32 K),
-                                     so this stays the most practical LARGE-context CPU code option.
-                                     https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf -->
-                                <aiDefinition>
-                                    <key>Qwen3-Coder-30B-A3B-Instruct-Q4_K_M-C256k</key>
-                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf</modelPath>
-                                    <contextSize>262144</contextSize>
-                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <key>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</key>
+                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>65536</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
@@ -1232,31 +1217,46 @@ SPDX-License-Identifier: Apache-2.0
                                 <promptDefinition>
                                     <key>file-body</key>
                                     <template><![CDATA[
-You generate a detailed markdown body section for a Java source file. Output the description directly as markdown prose. Do not wrap the output in XML tags, code fences, or any other delimiters.
+You are a multi-language code indexer. Produce a dense, structured markdown summary of ONE source file (Java, C/C++, OpenCL, SQL, or similar) for a searchable code index. Prioritize core logic and data flow. Avoid filler words. Write in English.
 
-Rules for the entire output:
-- Output markdown only.
-- Do not output explanations outside the body content.
-- Never return an empty response.
-- Start immediately with prose (no leading whitespace or empty lines).
-- The summary is already rendered inside a '###' heading (the filename). Do NOT start the summary with another heading. Use '####' or deeper headings only for subsections within the summary when the content is long enough to warrant internal structure.
-- The summary may be multiple lines.
-- The length should adapt to the file size and complexity.
-- Small files -> short summary.
-- Large or complex files -> longer, more detailed summary is allowed.
-- Do not use '###' or higher-level headings anywhere in the summary.
-- Do not wrap the summary in code fences.
-- Do not output ```markdown, ```java, or ```.
-- Do not output formatter comments like // @formatter:on or // @formatter:off.
-- For each public or protected method, include a brief one-line description of its purpose.
-- Integrate all relevant class names, interface names, annotation names, and domain-specific terms naturally into the prose — do NOT list them separately.
-- Focus the summary on purpose, behavior, important abstractions, and search-relevant terms woven into sentences.
-- Mention every directly extended class.
-- Mention every directly implemented interface.
-- Mention generic declarations and important generic types when present.
-- Do not mention standard Java methods unless they are meaningfully overridden or central to the class behavior.
-- Summarize recurring exception behavior across methods when relevant.
-- **IMPORTANT: If the source contains "[EOF - source was truncated]", the file is incomplete. Do NOT guess, invent, or hallucinate any methods, classes, fields, or code that is not explicitly present in the provided source. Only summarize what is actually shown.**
+## Output: start with the lead, then the sections below.
+Begin with a single blockquote line — one sentence capturing what this file does:
+> <one-sentence essence>
+
+Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
+
+#### Purpose
+One or two bullets: what the file/unit is for.
+
+#### Type
+Kind (class / interface / enum / record / header / kernel / SQL object) and language. For OO code: extends X; implements Y; key generics. For C: header vs implementation, exported vs static. For SQL: table / view / procedure / function / trigger.
+
+#### Input
+What comes in: key parameters, consumed fields, read resources (files, buffers, streams, kernels, tables/columns, env/config).
+
+#### Output
+What comes out: return types, produced state, written resources/tables, side effects.
+
+#### Core logic
+The essential steps / algorithm / responsibility as bullets. This is the most important section.
+
+#### Public API
+Each public/exported unit as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For SQL: procedures/functions with params and result.
+
+#### Dependencies
+Imports / includes / referenced modules or tables, as searchable names.
+
+#### Exceptions / Errors
+Notable thrown/handled exceptions or error conditions.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
+- Weave class / type / table / domain names into the bullets so they are searchable.
+- No code fences, no ```markdown / ```java / ```sql, no XML tags, no formatter comments.
+- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
+
+## Critical
+If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, table, or behavior beyond the shown source.
 
 File: %s
 
@@ -1267,34 +1267,45 @@ Source:
                                 <promptDefinition>
                                     <key>package-body</key>
                                     <template><![CDATA[
-You generate a detailed markdown body section for a Java package or package-like index. Output the description directly as markdown prose. Do not wrap the output in XML tags, code fences, or any other delimiters.
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group — do not just concatenate the file summaries. Avoid filler. Write in English.
 
-Rules for the entire output:
-- Output markdown only.
-- Do not output explanations outside the body content.
-- Never return an empty response.
-- Start immediately with prose (no leading whitespace or empty lines).
-- The summary is already rendered inside a '###' heading (the package name). Do NOT start the summary with another heading. Use '####' or deeper headings only for subsections within the summary when the content is long enough to warrant internal structure.
-- The summary may be multiple lines.
-- The length should adapt to the size and complexity of the package.
-- Small packages -> short summary.
-- Large packages -> more detailed summary is allowed.
-- Do not use '###' or higher-level headings anywhere in the summary.
-- Do not wrap the summary in code fences.
-- Do not output ```markdown, ```java, or ```.
-- Do not output formatter comments like // @formatter:on or // @formatter:off.
-- For each contained file, include a brief one-line description of its purpose.
-- Integrate all relevant class names, interface names, annotation names, and domain-specific terms naturally into the prose — do NOT list them separately.
-- Focus the summary on the overall purpose, structure, responsibilities, and collaboration of the contained files.
-- Mention important directly extended classes and directly implemented interfaces if they are central and repeatedly represented in the package content.
-- Mention important generic declarations or important generic type patterns if they are central to the package design.
-- Summarize recurring exception behavior across the package when relevant.
-- For larger packages, group contained files by responsibility instead of listing every file.
-- **IMPORTANT: If the source contains "[EOF - source was truncated]", the index is incomplete. Do NOT guess, invent, or hallucinate any files, classes, or content that is not explicitly present in the provided source. Only summarize what is actually shown.**
+## Output: start with the lead, then the sections below.
+Begin with a single blockquote line — one sentence capturing what this package does as a whole:
+> <one-sentence essence>
 
-File: %s
+Then output these sections as markdown. Omit any that do not apply. Use '####' for labels. Never '###' or higher.
 
-Source:
+#### Purpose
+One or two bullets: the package's overall responsibility.
+
+#### Responsibilities
+The main functional groups inside the package, as bullets. Group files by role; do not list every file separately for large packages.
+
+#### Key units
+The central classes / interfaces / modules / SQL objects and their job, one clause each, with their searchable names.
+
+#### Data flow
+How inputs move through the package to outputs, if a clear pipeline or collaboration exists across the files.
+
+#### Dependencies
+Notable internal collaborations and external modules/packages/tables the package depends on.
+
+#### Cross-cutting
+Recurring patterns across files: shared base types/interfaces, common exception/error handling, threading/concurrency notes, configuration.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs.
+- Weave type / module / table / domain names in as searchable terms.
+- Base every statement only on the provided file summaries. Do NOT invent units, methods, tables, or behavior not present in them.
+- No code fences, no ```markdown, no XML tags, no formatter comments.
+- The package-name heading is already rendered above your output. Start immediately with the blockquote lead. Never empty.
+
+## Critical
+If the input contains "[EOF - source was truncated]", summarize ONLY what is present. Never infer or invent files or content beyond the provided summaries.
+
+Package: %s
+
+File summaries:
 %s
                                     ]]></template>
                                 </promptDefinition>
@@ -1313,7 +1324,7 @@ Source:
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>file-body</promptKey>
-                                            <aiDefinitionKey>Gemma-4-26B-A4B-it-UD-Q4_K_M-C32k</aiDefinitionKey>
+                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
@@ -1329,7 +1340,7 @@ Source:
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>package-body</promptKey>
-                                            <aiDefinitionKey>Gemma-4-26B-A4B-it-UD-Q4_K_M-C32k</aiDefinitionKey>
+                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
