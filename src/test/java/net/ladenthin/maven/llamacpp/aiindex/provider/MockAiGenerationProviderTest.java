@@ -7,6 +7,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
@@ -30,9 +31,12 @@ public class MockAiGenerationProviderTest {
 
     @Test
     public void generateFallsBackToFullPathWhenFileNameNull() throws IOException {
-        // A root path has a null getFileName(); the provider must use file.toString().
-        AiGenerationRequest request = new AiGenerationRequest("summary", Paths.get("/"), "src", HEADER);
-        assertThat(provider.generate(request), is("Mock summary for /"));
+        // A root path has a null getFileName(); the provider must use file.toString(). Derive the
+        // expected separator from the same Path so the assertion holds on Windows too (the root
+        // renders with the platform separator: "/" on POSIX, "\" on Windows).
+        Path root = Paths.get("/");
+        AiGenerationRequest request = new AiGenerationRequest("summary", root, "src", HEADER);
+        assertThat(provider.generate(request), is("Mock summary for " + root));
     }
 
     @Test

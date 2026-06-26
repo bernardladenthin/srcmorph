@@ -8,6 +8,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,7 +33,11 @@ public class AiPromptSupportTest {
     @Test
     public void buildPromptUsesFullPathWhenFileNameNull() {
         AiPromptSupport support = new AiPromptSupport(Collections.singletonList(def("summary", "[%s] %s")));
-        assertThat(support.buildPrompt("summary", Paths.get("/"), "x"), is("[/] x"));
+        // A root path has a null getFileName() on every OS, so buildPrompt falls back to the full
+        // path string. Derive the expected separator from the same Path so the assertion holds on
+        // Windows too (the root renders with the platform separator: "/" on POSIX, "\" on Windows).
+        Path root = Paths.get("/");
+        assertThat(support.buildPrompt("summary", root, "x"), is("[" + root + "] x"));
     }
 
     @Test
