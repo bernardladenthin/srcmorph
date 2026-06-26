@@ -15,7 +15,7 @@ cross-cutting initiative.
 
 - **SpotBugs `effort=Max` + `threshold=Low`** — ✅ **enforced at the gate** (`0bddf2a`). `pom.xml` `<effort>Max</effort>` + `<threshold>Low</threshold>`; `spotbugs:check` is part of `mvn verify` and fails on any unsuppressed finding. The full clearing chain is recorded in [`../workspace/crossrepostatus.md`](../workspace/crossrepostatus.md) under "SpotBugs Max+Low". `spotbugs-exclude.xml` carries narrow `<Match>` blocks with rationale: Lombok-USBR, HelpMojo auto-gen family, Maven `@Parameter` SPP, identity-IMC, prompt-template `FORMAT_STRING`, fb-contrib flow-coarseness sites, NPE→`MojoExecutionException` bridge.
 
-- **Mutation-testing threshold enforcement (PIT)** — `pom.xml` wires `<mutationThreshold>100</mutationThreshold>`. **Scope expanded 2026-06-07** from the single `AiCompletionParser` target to an explicit **20-class** list (config / document / prompt / provider / support value + support classes; 142 mutations, all killed — `document.AiMdLeadExtractor` is the latest addition, landed with the project-index feature, 4/4 killed). Still open (optional): `document.AiMdDocumentCodec` / `AiMdHeaderCodec` / `prompt.AiPromptPreparationSupport` (need careful codec fixtures). `support.AiPathSupport` and `provider.AiGenerationProviderFactory` are excluded — equivalent / native-dependent mutants (see crossrepostatus "Deliberate non-parity").
+- **Mutation-testing threshold enforcement (PIT)** — `pom.xml` wires `<mutationThreshold>100</mutationThreshold>`. The explicit `<targetClasses>` list now covers **24 classes** (config / document / prompt / provider / support value + support classes; **200 mutations, all killed**). Latest additions landed with the three-level index work: `document.AiMdLeadExtractor` (project index), `config.AiFieldGenerationSelector` (extension-based prompt selection), and `support.AiSourceExcludeFilter` (exclude globs). Still open (optional): `document.AiMdDocumentCodec` / `AiMdHeaderCodec` / `prompt.AiPromptPreparationSupport` (need careful codec fixtures). The orchestration layers (`indexer.*`, `mojo.*`) and the JNI provider stay out of PIT — they need a Maven/native context rather than pure-unit mutation (see crossrepostatus "Deliberate non-parity").
 
 - **Additional ArchUnit rules to consider** — the full **`layeredArchitecture()`** rule and **per-module banned-imports** (`jniConfinedToProvider`, `mavenMojoAnnotationsConfinedToMojo`, `foundationIsMavenFree`) are now DONE (see "Done" below). No further ArchUnit rules outstanding.
 
@@ -24,6 +24,35 @@ cross-cutting initiative.
 - **Cross-repo code-quality TODOs** — see [`../workspace/policies/code-quality-todos.md`](../workspace/policies/code-quality-todos.md) for the canonical `@VisibleForTesting` design-fit review, package hierarchy review, and class/method naming review. This repo has no `@VisibleForTesting` usages today; the package and naming reviews are still open here.
 
 ## Done (kept for history)
+
+### Three-level hierarchical index + per-phase switches
+
+The project index (third level) and its surrounding navigation / prompt / scaling work:
+
+- **Project index (`aggregate-project` goal / `ProjectIndexer`)** — harvests the one-line blockquote
+  lead of every `package.ai.md` (`AiMdLeadExtractor`) into a single, always-loadable `project.ai.md`
+  table of contents. Deterministic listing, no model. Node type `x: project`, `PROJECT_AI_MD_FILENAME`.
+- **Header `F` child-link navigation (level 2 → 1)** — `AiMdHeader` carries a repeatable `F` markdown
+  link list (children for a package, packages for the project), so navigation stays in the
+  machine-parseable header while the body stays free-form. `AiMdDocumentCodec` parses only the header
+  block, so a `- F:` line in the body is never read as a link.
+- **Language-specific file prompts** — `AiFieldGenerationConfig` gained `fileExtensions`;
+  `AiFieldGenerationSelector` picks the per-file prompt by extension (`.java` / `.sql` / fallback) while
+  one model stays loaded. Backward compatible: a single extension-less entry is the universal fallback.
+- **Exclude globs** — `AiSourceExcludeFilter` (a pure, cross-platform glob matcher: `*` within a
+  segment, `**` across, `?` one char) + the `excludes` parameter (`aiIndex.excludes`) skip
+  trivial/generated sources during the file walk.
+- **Optional AI project overview** — opt-in `#### Overview` paragraph synthesised from the package
+  leads (never the full bodies), gated incrementally by folding the generation signature
+  (`promptKey:aiDefinitionKey`) — not the AI output — into the `c` checksum, so an unchanged project is
+  never re-inferred but enabling/switching the overview, or a package change, rebuilds it.
+- **Independently switchable phases** — `AbstractAiIndexMojo` owns the global `skip` (`aiIndex.skip`),
+  the abstract `isPhaseSkipped()` seam and `shouldSkip() = skip || isPhaseSkipped()`; each goal adds one
+  `skip<Phase>` `@Parameter` named after the index level (`aiIndex.file.skip` / `aiIndex.package.skip` /
+  `aiIndex.project.skip`). Covered by `MojoPhaseSkipTest`.
+
+Gates: 174 tests green (1 JNI integration test skipped without the native lib); SpotBugs `Max`+`Low`
+clean; full PIT 200/200 (100%); javadoc clean.
 
 ### Layered package restructure (flat plugin package → layered hierarchy)
 

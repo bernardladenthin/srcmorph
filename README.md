@@ -28,7 +28,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/llamacpp-ai-index-maven-plugin?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(1%20class)-brightgreen)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(24%20classes)-brightgreen)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_llamacpp-ai-index-maven-plugin&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_llamacpp-ai-index-maven-plugin)  
@@ -76,10 +76,13 @@ using the assigned ID:
 A Maven plugin for generating hierarchical, AI-readable documentation of source code projects using local llama.cpp-compatible models.
 It creates structured `.ai.md` files per source file and aggregates them into package-level summaries for fast semantic navigation and retrieval.
 ## Features
-- Generate AI summaries for Java source files
+- Generate AI summaries for source files
+- Per-language prompts — Java, SQL schema, and a generic fallback — selected by file extension
 - Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
-- Build a single project index (one line + link per package) for top-down navigation
+- Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
+- Run any phase independently — toggle file / package / project on or off
+- Exclude trivial or generated files with glob patterns
 - Uses local models via llama.cpp (no cloud dependency)
 - Incremental updates (skips unchanged files)
 - Optimized for AI-assisted code understanding
@@ -146,7 +149,8 @@ The plugin is configured from three building blocks, declared on the plugin insi
 
 1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
 2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
-   two `%s` placeholders: the file/package name and the source (or, for packages, the child summaries).
+   two `%s` placeholders: the file/package name and the source (for packages, the child summaries; for
+   the optional project overview, the per-package leads).
 3. **`<fieldGenerations>`** — per goal, map one `<promptKey>` to one `<aiDefinitionKey>`. This is
    **required**: a goal with no field generation fails fast. The `generate` goal may list several
    field generations and give each an optional `<fileExtensions>` filter so the per-file prompt is
@@ -179,9 +183,10 @@ The plugin is configured from three building blocks, declared on the plugin insi
             </aiDefinition>
         </aiDefinitions>
 
-        <!-- 2) Prompts (abbreviated): one prompt per language plus a fallback. See the
-                ai-index-selftest profile in this repo's pom.xml for the full, tested
-                file-body-java / file-body-sql / file-body-fallback / package-body templates. -->
+        <!-- 2) Prompts (abbreviated): one prompt per language plus a fallback, a package
+                prompt, and the optional project-overview prompt. See the ai-index-selftest
+                profile in this repo's pom.xml for the full, tested file-body-java /
+                file-body-sql / file-body-fallback / package-body / project-body templates. -->
         <promptDefinitions>
             <promptDefinition>
                 <key>file-body-java</key>
@@ -208,6 +213,15 @@ Source:
 Package: %s
 
 File summaries:
+%s]]></template>
+            </promptDefinition>
+            <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
+            <promptDefinition>
+                <key>project-body</key>
+                <template><![CDATA[Write a short overview of the whole project from its per-package leads.
+
+Index file: %s
+
 %s]]></template>
             </promptDefinition>
         </promptDefinitions>
