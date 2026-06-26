@@ -26,11 +26,12 @@ import org.apache.maven.plugin.logging.Log;
  * Builds the single project-level AI index — the top of the three-level index.
  *
  * <p>Walks the output tree, finds every {@link AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME}, and writes
- * one {@link AiMdHeaderCodec#PROJECT_AI_MD_FILENAME} into the output root that lists each package on
- * a single line: the package's one-sentence <em>lead</em> (harvested from its already-generated body
- * by {@link AiMdLeadExtractor}) plus a relative link to its {@code package.ai.md}. The result is a
- * compact, always-loadable table of contents an agent reads first to decide which package to open,
- * instead of scanning thousands of file summaries.</p>
+ * one {@link AiMdHeaderCodec#PROJECT_AI_MD_FILENAME} into the output root. The body lists each package
+ * on a single line — its one-sentence <em>lead</em> (harvested from its already-generated body by
+ * {@link AiMdLeadExtractor}) — while the header {@code F} list carries the matching clickable links to
+ * each {@code package.ai.md}, mirroring the package level so navigation is uniformly in the header. The
+ * result is a compact, always-loadable table of contents an agent reads first to decide which package
+ * to open, instead of scanning thousands of file summaries.</p>
  *
  * <p>This step is fully <strong>deterministic</strong>: it harvests existing leads and never calls
  * the AI model, so it adds negligible cost and scales to projects with hundreds of packages. The
@@ -132,6 +133,11 @@ public class ProjectIndexer {
         }
         entries.sort(Comparator.comparing(PackageEntry::link));
 
+        final List<String> packageLinks = new ArrayList<>(entries.size());
+        for (final PackageEntry entry : entries) {
+            packageLinks.add(markdownLink(entry.displayPath(), entry.link()));
+        }
+
         final String body = buildBody(entries);
         final String checksum = checksumSupport.calculateCrc32Hex(body);
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
@@ -144,7 +150,8 @@ public class ProjectIndexer {
                 generatedAt,
                 pluginVersion,
                 aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_PROJECT);
+                AiMdHeaderCodec.NODE_TYPE_PROJECT,
+                packageLinks);
 
         final Path projectFile = rootDirectory.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
 
@@ -171,8 +178,9 @@ public class ProjectIndexer {
 
     /**
      * Renders the project index body: a deterministic blockquote lead followed by one listing line
-     * per package ({@code - [display](link) — lead}; the lead and its separator are omitted when the
-     * package has no lead).
+     * per package ({@code - <display> — <lead>}; the lead and its separator are omitted when the
+     * package has no lead). The clickable links live in the header {@code F} list, not the body, so
+     * the body stays compact at hundreds of packages and the path doubles as the header-link anchor.
      *
      * @param entries package entries, already sorted by link
      * @return the rendered markdown body
@@ -180,21 +188,28 @@ public class ProjectIndexer {
     private String buildBody(final List<PackageEntry> entries) {
         final StringBuilder builder = new StringBuilder();
         final String leadLine = AiMdLeadExtractor.BLOCKQUOTE_MARKER + " Project index of " + projectTitle
-                + ": one line per package, each linking to its package summary.";
+                + ": one line per package; leads here, clickable links in the header F list.";
         builder.append(leadLine).append('\n').append('\n');
         builder.append(PACKAGES_HEADING).append('\n');
         for (final PackageEntry entry : entries) {
-            builder.append("- [")
-                    .append(entry.displayPath())
-                    .append("](")
-                    .append(entry.link())
-                    .append(')');
+            builder.append("- ").append(entry.displayPath());
             if (!compatibilityHelper.isBlank(entry.lead())) {
                 builder.append(LEAD_SEPARATOR).append(entry.lead());
             }
             builder.append('\n');
         }
         return builder.toString();
+    }
+
+    /**
+     * Formats a markdown link {@code [label](target)} for the header {@code F} child-link list.
+     *
+     * @param label  link label (the package display path)
+     * @param target link target (the relative path to the package's {@code package.ai.md})
+     * @return the markdown link string
+     */
+    private String markdownLink(final String label, final String target) {
+        return "[" + label + "](" + target + ")";
     }
 
     /**

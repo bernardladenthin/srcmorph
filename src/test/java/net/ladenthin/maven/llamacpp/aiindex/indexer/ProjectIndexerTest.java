@@ -13,6 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
@@ -62,13 +63,18 @@ public class ProjectIndexerTest {
         assertThat(document.header().d().trim().isEmpty(), is(false));
         assertThat(document.header().t().trim().isEmpty(), is(false));
 
-        // assert: body harvests each package's lead and links to its package.ai.md
+        // assert: the body carries each package's path + lead (one line each, no link)
         final String body = document.body();
         assertThat(body, containsString("#### Packages"));
-        assertThat(body, containsString("Calculates VAT for invoices."));
-        assertThat(body, containsString("Creates and sends invoices."));
-        assertThat(body, containsString("(main/java/com/example/fiscal/package.ai.md)"));
-        assertThat(body, containsString("(main/java/com/example/billing/package.ai.md)"));
+        assertThat(body, containsString("- main/java/com/example/fiscal — Calculates VAT for invoices."));
+        assertThat(body, containsString("- main/java/com/example/billing — Creates and sends invoices."));
+
+        // assert: the clickable links live in the header F list, sorted ascending by link
+        assertThat(
+                document.header().children(),
+                is(equalTo(Arrays.asList(
+                        "[main/java/com/example/billing](main/java/com/example/billing/package.ai.md)",
+                        "[main/java/com/example/fiscal](main/java/com/example/fiscal/package.ai.md)"))));
     }
     // </editor-fold>
 
@@ -135,7 +141,7 @@ public class ProjectIndexerTest {
 
     // <editor-fold defaultstate="collapsed" desc="edge cases: missing lead, root package">
     @Test
-    public void aggregate_packageWithoutLead_listsLinkWithoutSeparator() throws Exception {
+    public void aggregate_packageWithoutLead_listsPathWithoutLeadSeparator() throws Exception {
         // arrange: a package whose body is blank yields no lead
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         writePackageFile(outputRoot.resolve("main/java/com/example/package.ai.md"), "main/java/com/example", "");
@@ -146,12 +152,13 @@ public class ProjectIndexerTest {
         // act
         indexer.aggregate(outputRoot);
 
-        // assert: the listing links the package but carries no lead separator
-        final String body = documentCodec
-                .read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME))
-                .body();
-        assertThat(body, containsString("(main/java/com/example/package.ai.md)"));
-        assertThat(body, not(containsString(" — ")));
+        // assert: the header links the package; the body lists the bare path with no lead separator
+        final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        assertThat(
+                document.header().children(),
+                is(equalTo(Arrays.asList("[main/java/com/example](main/java/com/example/package.ai.md)"))));
+        assertThat(document.body(), containsString("- main/java/com/example\n"));
+        assertThat(document.body(), not(containsString(" — ")));
     }
 
     @Test
@@ -166,12 +173,10 @@ public class ProjectIndexerTest {
         // act
         indexer.aggregate(outputRoot);
 
-        // assert: the root package is shown with the "." display path and a self link
-        final String body = documentCodec
-                .read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME))
-                .body();
-        assertThat(body, containsString("[.](package.ai.md)"));
-        assertThat(body, containsString("The whole project."));
+        // assert: the root package shows the "." display path in the body and a self link in the header
+        final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        assertThat(document.header().children(), is(equalTo(Arrays.asList("[.](package.ai.md)"))));
+        assertThat(document.body(), containsString("- . — The whole project."));
     }
     // </editor-fold>
 
