@@ -134,7 +134,7 @@ The plugin operates in three logical phases, building a navigable index from fin
 
 **Phase 3 — Project Index (deterministic, no AI call)**
 ```
-[package.ai.md files] → ProjectIndexer → [one project.ai.md: per-package lead + link]
+[package.ai.md files] → ProjectIndexer → [one project.ai.md: per-package lead (body) + link (header F)]
 ```
 Phase 3 harvests the one-sentence blockquote lead each `package.ai.md` already begins with
 (via `AiMdLeadExtractor`) and writes a single, always-loadable table of contents linking to
@@ -168,24 +168,30 @@ It calls no model, so it is cheap and scales to hundreds of packages (no embeddi
 Each `.ai.md` file begins with a metadata header block:
 
 ```
-<!-- ai-md-header
-h: "1.0"
-title: "MyClass.java"
-c: "a1b2c3d4"
-d: "2026-01-01T00:00:00Z"
-t: "2026-01-01T00:01:00Z"
-g: "0.1.0"
-a: "1.0.0"
-x: "file"
--->
-This class handles parsing of Markdown headers...
+### main/java/com/example
+- H: 1.0
+- C: A1B2C3D4
+- D: 2026-01-01T00:00:00Z
+- T: 2026-01-01T00:01:00Z
+- G: 0.1.0
+- A: 1.0.0
+- X: package
+- F: [MyClass.java](MyClass.java.ai.md)
+- F: [sub/](sub/package.ai.md)
+---
+> Handles example domain logic for ...
 (AI-generated body text continues here)
 ```
 
 The header carries only deterministic metadata. All AI-generated
-content lives in the document body after the header block, keeping
+content lives in the document body after the `---` separator, keeping
 the header machine-parseable without AI involvement (see
-`AiMdHeader.java` Javadoc for the rationale).
+`AiMdHeader.java` Javadoc for the rationale). The repeatable `F` field
+holds the deterministic child links — for a `package`, one per child
+`.ai.md` (files and sub-packages); for a `project`, one per package —
+so navigation (project → package → file) stays uniformly in the header
+while the body stays free-form. `AiMdDocumentCodec` parses only the
+header block, so a `- F:` line in the body is never read as a link.
 
 | Field | Meaning |
 |---|---|
@@ -197,6 +203,7 @@ the header machine-parseable without AI involvement (see
 | `g` | Plugin version (`project.version`) |
 | `a` | AI model version |
 | `x` | Node type: `file`, `package`, or `project` |
+| `F` | Repeatable child link (markdown), e.g. `[Foo.java](Foo.java.ai.md)`; the navigation list for `package`/`project` nodes, absent for `file` |
 
 ### Provider Pattern
 

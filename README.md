@@ -92,10 +92,10 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 ### 2. Package Aggregation (aggregate-packages)
 - Traverses generated `.ai.md` files
 - Builds hierarchical package summaries
-- Produces `package.ai.md` files
+- Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
 ### 3. Project Index (aggregate-project)
 - Harvests the one-line lead from every `package.ai.md` — deterministic, no AI call
-- Produces a single `project.ai.md`: one line per package — its lead plus a relative link
+- Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
 - A compact, always-loadable table of contents an agent reads first to navigate down
 ## Example Output
 ```
