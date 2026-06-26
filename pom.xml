@@ -1221,8 +1221,8 @@ SPDX-License-Identifier: Apache-2.0
 You are a multi-language code indexer. Produce a dense, structured markdown summary of ONE source file (Java, C/C++, OpenCL, SQL, or similar) for a searchable code index. Prioritize core logic and data flow. Avoid filler words. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this file does:
-> <one-sentence essence>
+Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
+> <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
 
@@ -1271,8 +1271,8 @@ Source:
 You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group — do not just concatenate the file summaries. Avoid filler. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this package does as a whole:
-> <one-sentence essence>
+Begin with a single blockquote line — one sentence capturing what this package does as a whole in DOMAIN terms: the business/functional responsibility a developer would search for, not how it is named or layered:
+> <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any that do not apply. Use '####' for labels. Never '###' or higher.
 
