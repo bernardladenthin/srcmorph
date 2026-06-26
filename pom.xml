@@ -673,6 +673,7 @@ SPDX-License-Identifier: Apache-2.0
                     <targetClasses>
                         <!-- Classes verified at 100% PIT mutation parity. Expand as more reach it. -->
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>

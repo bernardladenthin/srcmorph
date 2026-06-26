@@ -7,17 +7,24 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import net.ladenthin.maven.llamacpp.aiindex.CommonTestFixtures;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
+import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider;
 import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Test;
@@ -89,4 +96,107 @@ public class SourceFileIndexerTest {
         assertThat(document.body().trim().isEmpty(), is(false));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="extension-based prompt selection">
+    @Test
+    public void indexSourceRoot_selectsPromptByFileExtension() throws Exception {
+        // arrange: a .java source; config maps .java -> java prompt, .sql -> sql, plus a fallback
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        Files.createDirectories(sourceRoot.resolve("com/example"));
+        Files.write(
+                sourceRoot.resolve("com/example/Foo.java"),
+                "package com.example;\nclass Foo {}\n".getBytes(StandardCharsets.UTF_8));
+
+        final AiPromptSupport promptSupport = new AiPromptSupport(Arrays.asList(
+                promptDefinition("file-body-java"),
+                promptDefinition("file-body-sql"),
+                promptDefinition("file-body-fallback")));
+        final CapturingProvider provider = new CapturingProvider();
+        final SourceFileIndexer indexer = new SourceFileIndexer(
+                new SystemStreamLog(),
+                temp,
+                outputRoot,
+                Arrays.asList(".java"),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                provider,
+                Arrays.asList(
+                        fieldGeneration("file-body-java", Arrays.asList(".java")),
+                        fieldGeneration("file-body-sql", Arrays.asList(".sql")),
+                        fieldGeneration("file-body-fallback", null)),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        indexer.indexSourceRoot(sourceRoot);
+
+        // assert: only the java prompt ran for the .java file
+        assertThat(provider.promptKeys(), is(equalTo(Arrays.asList("file-body-java"))));
+    }
+
+    @Test
+    public void indexSourceRoot_noMatchingExtensionAndNoFallback_throws() throws Exception {
+        // arrange: a .java file, but the only field generation targets .sql with no fallback
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        Files.createDirectories(sourceRoot.resolve("com/example"));
+        Files.write(
+                sourceRoot.resolve("com/example/Foo.java"),
+                "package com.example;\nclass Foo {}\n".getBytes(StandardCharsets.UTF_8));
+
+        final AiPromptSupport promptSupport =
+                new AiPromptSupport(Collections.singletonList(promptDefinition("file-body-sql")));
+        final SourceFileIndexer indexer = new SourceFileIndexer(
+                new SystemStreamLog(),
+                temp,
+                outputRoot,
+                Arrays.asList(".java"),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new MockAiGenerationProvider(),
+                Collections.singletonList(fieldGeneration("file-body-sql", Arrays.asList(".sql"))),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act + assert
+        assertThrows(IllegalArgumentException.class, () -> indexer.indexSourceRoot(sourceRoot));
+    }
+    // </editor-fold>
+
+    private static AiPromptDefinition promptDefinition(final String key) {
+        final AiPromptDefinition definition = new AiPromptDefinition();
+        definition.setKey(key);
+        definition.setTemplate("Summarize.\nFile: %s\nSource:\n%s\n");
+        return definition;
+    }
+
+    private static AiFieldGenerationConfig fieldGeneration(final String promptKey, final List<String> extensions) {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        config.setPromptKey(promptKey);
+        config.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        config.setFileExtensions(extensions);
+        return config;
+    }
+
+    /** Test provider that records the prompt key of each request so prompt selection can be asserted. */
+    private static final class CapturingProvider implements AiGenerationProvider {
+        private final List<String> promptKeys = new ArrayList<>();
+
+        @Override
+        public String generate(final AiGenerationRequest request) {
+            promptKeys.add(request.promptKey());
+            return "body for " + request.promptKey();
+        }
+
+        List<String> promptKeys() {
+            return promptKeys;
+        }
+    }
 }

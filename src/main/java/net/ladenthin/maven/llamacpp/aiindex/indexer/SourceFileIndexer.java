@@ -8,10 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
@@ -68,6 +70,7 @@ public class SourceFileIndexer {
     private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+    private final AiFieldGenerationSelector fieldGenerationSelector = new AiFieldGenerationSelector();
 
     private final AiFieldGenerationSupport fieldGenerationSupport;
 
@@ -195,8 +198,14 @@ public class SourceFileIndexer {
 
         final String sourceText = compatibilityHelper.readString(sourceFile);
 
+        final AiFieldGenerationConfig selected = fieldGenerationSelector.selectForFileName(fieldGenerations, fileName);
+        if (selected == null) {
+            throw new IllegalArgumentException("No field generation matches file '" + fileName
+                    + "' and no extension-agnostic fallback is configured: " + sourceFile);
+        }
+
         final AiGenerationResult result = fieldGenerationSupport.processFieldGenerations(
-                fieldGenerations, sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
+                Collections.singletonList(selected), sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
 
         final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(targetFile, document);

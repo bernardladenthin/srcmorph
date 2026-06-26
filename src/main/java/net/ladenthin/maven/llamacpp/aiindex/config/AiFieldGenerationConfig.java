@@ -3,7 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex.config;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import lombok.ToString;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Maven plugin configuration POJO that associates a prompt template (by key) with an
@@ -52,6 +57,16 @@ public class AiFieldGenerationConfig {
     private String aiDefinitionKey;
 
     /**
+     * Optional source file extensions (e.g. {@code .java}, {@code .sql}) that select this field
+     * generation for a file. When non-empty, this entry applies only to files whose name ends with
+     * one of the listed extensions. When {@code null} or empty, this entry is the fallback applied to
+     * any file that no extension-specific entry matched.
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private @Nullable List<String> fileExtensions;
+
+    /**
      * Returns the prompt template key.
      *
      * @return the key that identifies the prompt template to use for this field
@@ -85,5 +100,25 @@ public class AiFieldGenerationConfig {
      */
     public void setAiDefinitionKey(final String aiDefinitionKey) {
         this.aiDefinitionKey = aiDefinitionKey;
+    }
+
+    /**
+     * Returns the source file extensions that select this entry, or {@code null} when this entry is
+     * the extension-agnostic fallback.
+     *
+     * @return the selecting file extensions, or {@code null}
+     */
+    public @Nullable List<String> getFileExtensions() {
+        return fileExtensions != null ? Collections.unmodifiableList(fileExtensions) : null;
+    }
+
+    /**
+     * Sets the source file extensions that select this entry. The list is defensively copied.
+     *
+     * @param fileExtensions selecting file extensions (e.g. {@code .java}); {@code null} or empty
+     *                       makes this entry the fallback
+     */
+    public void setFileExtensions(final @Nullable Collection<String> fileExtensions) {
+        this.fileExtensions = fileExtensions != null ? new ArrayList<>(fileExtensions) : null;
     }
 }
