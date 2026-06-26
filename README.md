@@ -133,12 +133,95 @@ It is published on Maven Central and resolves automatically — no manual instal
 </dependency>
 ```
 ## Configuration
-Minimal setup in POM:
-```
-<properties>
-    <ai.index.model.path>/path/to/model.gguf</ai.index.model.path>
-    <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
-</properties>
+The plugin is configured from three building blocks, declared on the plugin inside
+`<build><plugins>`:
+
+1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
+2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
+   two `%s` placeholders: the file/package name and the source (or, for packages, the child summaries).
+3. **`<fieldGenerations>`** — per goal, map one `<promptKey>` to one `<aiDefinitionKey>`. This is
+   **required**: a goal with no field generation fails fast.
+
+```xml
+<plugin>
+    <groupId>net.ladenthin</groupId>
+    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+    <version>1.0.0</version>
+
+    <configuration>
+        <!-- outputDirectory defaults to ${project.basedir}/src/site/ai -->
+        <subtrees>
+            <subtree>src/main/java/com/example</subtree>
+        </subtrees>
+        <!-- provider defaults to "mock"; use "llamacpp-jni" to run a real GGUF model -->
+        <generationProvider>llamacpp-jni</generationProvider>
+
+        <!-- 1) Models: define once, reference by key. -->
+        <aiDefinitions>
+            <aiDefinition>
+                <key>coder</key>
+                <modelPath>/path/to/model.gguf</modelPath>
+                <contextSize>32768</contextSize>
+                <maxOutputTokens>1536</maxOutputTokens>
+                <temperature>0.7</temperature>
+                <threads>8</threads>
+            </aiDefinition>
+        </aiDefinitions>
+
+        <!-- 2) Prompts (abbreviated). See the ai-index-selftest profile in this repo's
+                pom.xml for the full, tested file-body / package-body templates. -->
+        <promptDefinitions>
+            <promptDefinition>
+                <key>file-body</key>
+                <template><![CDATA[Summarize ONE source file as structured markdown.
+
+File: %s
+
+Source:
+%s]]></template>
+            </promptDefinition>
+            <promptDefinition>
+                <key>package-body</key>
+                <template><![CDATA[Summarize ONE package from its already-generated file summaries.
+
+Package: %s
+
+File summaries:
+%s]]></template>
+            </promptDefinition>
+        </promptDefinitions>
+    </configuration>
+
+    <!-- 3) Bind each goal to a phase and map prompt -> model per goal. -->
+    <executions>
+        <execution>
+            <id>ai-generate</id>
+            <phase>generate-resources</phase>
+            <goals><goal>generate</goal></goals>
+            <configuration>
+                <fieldGenerations>
+                    <fieldGeneration>
+                        <promptKey>file-body</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                    </fieldGeneration>
+                </fieldGenerations>
+            </configuration>
+        </execution>
+        <execution>
+            <id>ai-aggregate-packages</id>
+            <phase>process-resources</phase>
+            <goals><goal>aggregate-packages</goal></goals>
+            <configuration>
+                <fieldGenerations>
+                    <fieldGeneration>
+                        <promptKey>package-body</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                    </fieldGeneration>
+                </fieldGenerations>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
 ```
 ## Usage
 Run AI index generation:
@@ -150,15 +233,18 @@ With native llama tests:
 mvn clean install -Pai-index-selftest -DrunNativeLlamaTests=true
 ```
 ## Plugin Configuration
-Key parameters:
-- outputDirectory: target directory for `.ai.md` files
-- subtrees: source directories to index
-- generationProvider: AI backend (`llamacpp-jni`)
-- llamaModelPath: path to GGUF model
-- llamaContextSize: context window
-- llamaMaxOutputTokens: output token limit
-- llamaTemperature: sampling temperature
-- llamaThreads: CPU threads
+Run-level parameters (set in `<configuration>`):
+- `outputDirectory` — target directory for `.ai.md` files (default: `${project.basedir}/src/site/ai`)
+- `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`)
+- `fileExtensions` — file extensions to index (default: `.java`)
+- `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
+- `force` — regenerate even when a body already exists (default: `false`)
+- `skip` — skip the goal entirely (default: `false`)
+- `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
+- `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
+
+Per-model parameters — model path, context size, output tokens, temperature, top-p / top-k,
+repeat penalty, threads — live inside each `<aiDefinition>`, not as top-level parameters.
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
 from `<fieldGenerations>`. The self-test profile defines two:
