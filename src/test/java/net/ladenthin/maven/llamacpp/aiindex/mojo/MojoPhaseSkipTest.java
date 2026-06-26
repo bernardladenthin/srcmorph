@@ -61,7 +61,7 @@ public class MojoPhaseSkipTest {
     public void generateMojo_phaseFlagTogglesIndependently() throws Exception {
         final GenerateMojo mojo = new GenerateMojo();
         assertThat(mojo.isPhaseSkipped(), is(false));
-        setBooleanField(mojo, "skipGenerate", true);
+        setBooleanField(mojo, "skipFile", true);
         assertThat(mojo.isPhaseSkipped(), is(true));
         assertThat(mojo.shouldSkip(), is(true));
     }
@@ -70,7 +70,7 @@ public class MojoPhaseSkipTest {
     public void aggregatePackagesMojo_phaseFlagTogglesIndependently() throws Exception {
         final AggregatePackagesMojo mojo = new AggregatePackagesMojo();
         assertThat(mojo.isPhaseSkipped(), is(false));
-        setBooleanField(mojo, "skipAggregatePackages", true);
+        setBooleanField(mojo, "skipPackage", true);
         assertThat(mojo.isPhaseSkipped(), is(true));
         assertThat(mojo.shouldSkip(), is(true));
     }
@@ -79,7 +79,7 @@ public class MojoPhaseSkipTest {
     public void aggregateProjectMojo_phaseFlagTogglesIndependently() throws Exception {
         final AggregateProjectMojo mojo = new AggregateProjectMojo();
         assertThat(mojo.isPhaseSkipped(), is(false));
-        setBooleanField(mojo, "skipAggregateProject", true);
+        setBooleanField(mojo, "skipProject", true);
         assertThat(mojo.isPhaseSkipped(), is(true));
         assertThat(mojo.shouldSkip(), is(true));
     }

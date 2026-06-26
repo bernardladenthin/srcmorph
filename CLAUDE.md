@@ -147,8 +147,8 @@ the full bodies). Incrementality is preserved by folding the overview generation
 is never re-inferred but enabling/switching the overview, or a package change, rebuilds it.
 
 **Each phase is independently switchable.** Every goal is a separate Maven execution, and each can be
-toggled on/off on its own via a phase-specific skip flag (`aiIndex.generate.skip`,
-`aiIndex.aggregatePackages.skip`, `aiIndex.aggregateProject.skip`), with `aiIndex.skip` as a global
+toggled on/off on its own via a phase-specific skip flag named after the index level (`aiIndex.file.skip`,
+`aiIndex.package.skip`, `aiIndex.project.skip` — the `x` node types), with `aiIndex.skip` as a global
 "skip all" switch — so you can run nothing, all three, or any subset (e.g. file + project only). The
 mechanism is generalized symmetrically: `AbstractAiIndexMojo` owns the global `skip`, the abstract
 `isPhaseSkipped()` seam, and `shouldSkip() = skip || isPhaseSkipped()`; each concrete mojo adds exactly
@@ -246,9 +246,9 @@ header block, so a `- F:` line in the body is never read as a link.
 |---|---|---|---|
 | `outputDirectory` | `aiIndex.outputDirectory` | `${basedir}/src/site/ai` | Where `.ai.md` files are written |
 | `skip` | `aiIndex.skip` | `false` | Global switch: skip **every** phase |
-| `skipGenerate` | `aiIndex.generate.skip` | `false` | Skip only the `generate` (file) phase |
-| `skipAggregatePackages` | `aiIndex.aggregatePackages.skip` | `false` | Skip only the `aggregate-packages` phase |
-| `skipAggregateProject` | `aiIndex.aggregateProject.skip` | `false` | Skip only the `aggregate-project` phase |
+| `skipFile` | `aiIndex.file.skip` | `false` | Skip only the **file** phase (`generate` goal) |
+| `skipPackage` | `aiIndex.package.skip` | `false` | Skip only the **package** phase (`aggregate-packages` goal) |
+| `skipProject` | `aiIndex.project.skip` | `false` | Skip only the **project** phase (`aggregate-project` goal) |
 | `force` | `aiIndex.force` | `false` | Regenerate even if summary exists |
 | `subtrees` | `aiIndex.subtrees` | *(all)* | Limit to specific source subdirectories |
 | `fileExtensions` | `aiIndex.fileExtensions` | `.java` | File extensions to index |

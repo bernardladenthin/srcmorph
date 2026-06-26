@@ -41,11 +41,11 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     private static final String DEFAULT_FILE_EXTENSION = ".java";
 
     /**
-     * Phase switch for the {@code generate} (file indexing) phase: when {@code true}, this phase is
-     * skipped independently of the other phases. The global {@link #skip} still skips every phase.
+     * Phase switch for the <strong>file</strong> phase (the {@code generate} goal): when {@code true},
+     * only this phase is skipped. The global {@link #skip} still skips every phase.
      */
-    @Parameter(property = "aiIndex.generate.skip", defaultValue = "false")
-    private boolean skipGenerate;
+    @Parameter(property = "aiIndex.file.skip", defaultValue = "false")
+    private boolean skipFile;
 
     @Parameter(defaultValue = "${project.version}", readonly = true)
     private String pluginVersion;
@@ -89,7 +89,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
 
     @Override
     protected boolean isPhaseSkipped() {
-        return skipGenerate;
+        return skipFile;
     }
 
     @Override
