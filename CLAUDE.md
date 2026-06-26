@@ -124,12 +124,12 @@ The plugin operates in two logical phases:
 
 **Phase 1 — File Indexing & Summarization**
 ```
-[Source .java files] → SourceFileIndexer → [*.java.ai.md files (with s/k filled)]
+[Source .java files] → SourceFileIndexer → [*.java.ai.md files (deterministic header + AI body)]
 ```
 
 **Phase 2 — Package Aggregation & Summarization**
 ```
-[*.java.ai.md files] → PackageIndexer → [package.ai.md files (with s/k filled)]
+[*.java.ai.md files] → PackageIndexer → [package.ai.md files (deterministic header + AI body)]
 ```
 
 ### Key Components
@@ -203,8 +203,8 @@ the header machine-parseable without AI involvement (see
 
 | Goal | Description |
 |---|---|
-| `ai-index:generate` | Phase 1: index source files and fill AI summary/keywords fields |
-| `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill AI summary/keywords fields |
+| `ai-index:generate` | Phase 1: index source files and fill the AI-generated document body |
+| `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill the AI-generated document body |
 
 ### Key Parameters (`GenerateMojo`)
 
@@ -326,7 +326,7 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
 ## Key Design Principles
 
 1. **Local-first** — all AI inference runs locally via llama.cpp; no cloud API calls, no data leaves the machine.
-2. **Deterministic indexing** — same source produces the same `.ai.md` skeleton; only AI-generated fields (`s`, `k`) vary.
+2. **Deterministic indexing** — same source produces the same `.ai.md` skeleton (deterministic header); only the AI-generated body varies.
 3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums detect source changes.
 4. **Unified indexing and summarization** — each indexer (`SourceFileIndexer`, `PackageIndexer`) both creates the `.ai.md` skeleton and fills in AI fields in a single pass; no separate summarization step is needed.
 5. **Provider abstraction** — AI backends are pluggable through `AiGenerationProvider`; mock provider enables fully deterministic tests.

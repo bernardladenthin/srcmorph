@@ -77,7 +77,7 @@ A Maven plugin for generating hierarchical, AI-readable documentation of source 
 It creates structured `.ai.md` files per source file and aggregates them into package-level summaries for fast semantic navigation and retrieval.
 ## Features
 - Generate AI summaries for Java source files
-- Extract keyword metadata for search and indexing
+- Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
 - Uses local models via llama.cpp (no cloud dependency)
 - Incremental updates (skips unchanged files)
@@ -100,10 +100,20 @@ The plugin runs in two phases.
 - D: 2026-03-15T23:31:52Z
 - T: 2026-03-19T18:13:31Z
 - G: 1.0.0
+- A: 0.0.0
 - X: file
-- K: AiMdDocument, AiMdHeader, record, metadata, markdown
-#### AiMdDocument.java
-Represents a document consisting of a structured metadata header and a markdown body. Ensures non-null invariants and encapsulates AI-generated content.
+---
+> Immutable value type pairing a deterministic metadata header with the AI-generated markdown body of one .ai.md document.
+
+#### Purpose
+- Hold one parsed `.ai.md` document as an `AiMdHeader` plus its markdown body.
+
+#### Type
+- record-shaped value class (Java); marked `@ConvertToRecord`.
+
+#### Public API
+- `header() -> AiMdHeader` — the document's metadata header.
+- `body() -> String` — the AI-generated markdown body.
 ```
 ## Requirements
 - Java 8+ (production code targets Java 8; CI builds on Java 8 via temurin)
@@ -123,12 +133,95 @@ It is published on Maven Central and resolves automatically — no manual instal
 </dependency>
 ```
 ## Configuration
-Minimal setup in POM:
-```
-<properties>
-    <ai.index.model.path>/path/to/model.gguf</ai.index.model.path>
-    <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
-</properties>
+The plugin is configured from three building blocks, declared on the plugin inside
+`<build><plugins>`:
+
+1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
+2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
+   two `%s` placeholders: the file/package name and the source (or, for packages, the child summaries).
+3. **`<fieldGenerations>`** — per goal, map one `<promptKey>` to one `<aiDefinitionKey>`. This is
+   **required**: a goal with no field generation fails fast.
+
+```xml
+<plugin>
+    <groupId>net.ladenthin</groupId>
+    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+    <version>1.0.0</version>
+
+    <configuration>
+        <!-- outputDirectory defaults to ${project.basedir}/src/site/ai -->
+        <subtrees>
+            <subtree>src/main/java/com/example</subtree>
+        </subtrees>
+        <!-- provider defaults to "mock"; use "llamacpp-jni" to run a real GGUF model -->
+        <generationProvider>llamacpp-jni</generationProvider>
+
+        <!-- 1) Models: define once, reference by key. -->
+        <aiDefinitions>
+            <aiDefinition>
+                <key>coder</key>
+                <modelPath>/path/to/model.gguf</modelPath>
+                <contextSize>32768</contextSize>
+                <maxOutputTokens>1536</maxOutputTokens>
+                <temperature>0.7</temperature>
+                <threads>8</threads>
+            </aiDefinition>
+        </aiDefinitions>
+
+        <!-- 2) Prompts (abbreviated). See the ai-index-selftest profile in this repo's
+                pom.xml for the full, tested file-body / package-body templates. -->
+        <promptDefinitions>
+            <promptDefinition>
+                <key>file-body</key>
+                <template><![CDATA[Summarize ONE source file as structured markdown.
+
+File: %s
+
+Source:
+%s]]></template>
+            </promptDefinition>
+            <promptDefinition>
+                <key>package-body</key>
+                <template><![CDATA[Summarize ONE package from its already-generated file summaries.
+
+Package: %s
+
+File summaries:
+%s]]></template>
+            </promptDefinition>
+        </promptDefinitions>
+    </configuration>
+
+    <!-- 3) Bind each goal to a phase and map prompt -> model per goal. -->
+    <executions>
+        <execution>
+            <id>ai-generate</id>
+            <phase>generate-resources</phase>
+            <goals><goal>generate</goal></goals>
+            <configuration>
+                <fieldGenerations>
+                    <fieldGeneration>
+                        <promptKey>file-body</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                    </fieldGeneration>
+                </fieldGenerations>
+            </configuration>
+        </execution>
+        <execution>
+            <id>ai-aggregate-packages</id>
+            <phase>process-resources</phase>
+            <goals><goal>aggregate-packages</goal></goals>
+            <configuration>
+                <fieldGenerations>
+                    <fieldGeneration>
+                        <promptKey>package-body</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                    </fieldGeneration>
+                </fieldGenerations>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
 ```
 ## Usage
 Run AI index generation:
@@ -140,22 +233,25 @@ With native llama tests:
 mvn clean install -Pai-index-selftest -DrunNativeLlamaTests=true
 ```
 ## Plugin Configuration
-Key parameters:
-- outputDirectory: target directory for `.ai.md` files
-- subtrees: source directories to index
-- generationProvider: AI backend (`llamacpp-jni`)
-- llamaModelPath: path to GGUF model
-- llamaContextSize: context window
-- llamaMaxTokens: output token limit
-- llamaTemperature: sampling temperature
-- llamaThreads: CPU threads
+Run-level parameters (set in `<configuration>`):
+- `outputDirectory` — target directory for `.ai.md` files (default: `${project.basedir}/src/site/ai`)
+- `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`)
+- `fileExtensions` — file extensions to index (default: `.java`)
+- `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
+- `force` — regenerate even when a body already exists (default: `false`)
+- `skip` — skip the goal entirely (default: `false`)
+- `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
+- `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
+
+Per-model parameters — model path, context size, output tokens, temperature, top-p / top-k,
+repeat penalty, threads — live inside each `<aiDefinition>`, not as top-level parameters.
 ## Prompt System
-The plugin uses configurable prompts:
-- file-summary
-- file-keywords
-- package-summary
-- package-keywords
-Prompts are optimized to avoid code blocks, formatter artifacts, empty outputs, and produce structured markdown.
+Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
+from `<fieldGenerations>`. The self-test profile defines two:
+- `file-body` — summarizes a single source file
+- `package-body` — synthesizes a package summary from the already-generated file summaries
+Each summary begins with a one-sentence blockquote lead, followed by structured `####` sections.
+Prompts are optimized to avoid code blocks, formatter artifacts, and empty outputs, and to produce structured markdown.
 ## Output Structure
 ```
 src/site/ai/
