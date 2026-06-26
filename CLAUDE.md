@@ -99,7 +99,7 @@ llamacpp-ai-index-maven-plugin/
 │   │       │                #   AiGenerationRequest, AiGenerationResult (carry an AiMdHeader)
 │   │       ├── prompt/      # AiPromptDefinition, AiPreparedPrompt, AiPromptSupport, AiPromptPreparationSupport
 │   │       ├── config/      # AiGenerationConfig, AiGenerationKind, AiFieldGenerationConfig,
-│   │       │                #   AiModelDefinition, AiModelDefinitionSupport
+│   │       │                #   AiFieldGenerationSelector, AiModelDefinition, AiModelDefinitionSupport
 │   │       └── support/     # Foundation: AiChecksumSupport, AiTimeSupport, AiPathSupport,
 │   │                        #   Java8CompatibilityHelper, ConvertToRecord
 │   ├── site/
@@ -350,7 +350,7 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
 3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums detect source changes.
 4. **Unified indexing and summarization** — each indexer (`SourceFileIndexer`, `PackageIndexer`) both creates the `.ai.md` skeleton and fills in AI fields in a single pass; no separate summarization step is needed.
 5. **Provider abstraction** — AI backends are pluggable through `AiGenerationProvider`; mock provider enables fully deterministic tests.
-6. **Configuration-driven prompts** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change.
+6. **Configuration-driven prompts** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change. For the `generate` goal the per-file prompt is chosen by source extension (`AiFieldGenerationSelector`): each `<fieldGeneration>` may carry an optional `<fileExtensions>` filter (e.g. `.java`/`.sql`), and an entry without one is the fallback — so a Java prompt, a SQL-schema prompt, and a generic fallback can coexist while one model stays loaded.
 
 ## Javadoc Conventions
 

@@ -145,7 +145,10 @@ The plugin is configured from three building blocks, declared on the plugin insi
 2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
    two `%s` placeholders: the file/package name and the source (or, for packages, the child summaries).
 3. **`<fieldGenerations>`** — per goal, map one `<promptKey>` to one `<aiDefinitionKey>`. This is
-   **required**: a goal with no field generation fails fast.
+   **required**: a goal with no field generation fails fast. The `generate` goal may list several
+   field generations and give each an optional `<fileExtensions>` filter so the per-file prompt is
+   chosen by source language (`.java` → a Java prompt, `.sql` → a SQL-schema prompt); an entry with
+   no `<fileExtensions>` is the fallback applied to any file no extension-specific entry matched.
 
 ```xml
 <plugin>
@@ -173,11 +176,21 @@ The plugin is configured from three building blocks, declared on the plugin insi
             </aiDefinition>
         </aiDefinitions>
 
-        <!-- 2) Prompts (abbreviated). See the ai-index-selftest profile in this repo's
-                pom.xml for the full, tested file-body / package-body templates. -->
+        <!-- 2) Prompts (abbreviated): one prompt per language plus a fallback. See the
+                ai-index-selftest profile in this repo's pom.xml for the full, tested
+                file-body-java / file-body-sql / file-body-fallback / package-body templates. -->
         <promptDefinitions>
             <promptDefinition>
-                <key>file-body</key>
+                <key>file-body-java</key>
+                <template><![CDATA[Summarize ONE Java source file as structured markdown.
+
+File: %s
+
+Source:
+%s]]></template>
+            </promptDefinition>
+            <promptDefinition>
+                <key>file-body-fallback</key>
                 <template><![CDATA[Summarize ONE source file as structured markdown.
 
 File: %s
@@ -204,9 +217,19 @@ File summaries:
             <phase>generate-resources</phase>
             <goals><goal>generate</goal></goals>
             <configuration>
+                <!-- .java picks the Java prompt; any other file falls back. Add a
+                     file-body-sql entry with <fileExtensions>.sql</fileExtensions> to
+                     index SQL schema the same way. -->
                 <fieldGenerations>
                     <fieldGeneration>
-                        <promptKey>file-body</promptKey>
+                        <promptKey>file-body-java</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                        <fileExtensions>
+                            <fileExtension>.java</fileExtension>
+                        </fileExtensions>
+                    </fieldGeneration>
+                    <fieldGeneration>
+                        <promptKey>file-body-fallback</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
                     </fieldGeneration>
                 </fieldGenerations>
@@ -258,9 +281,18 @@ Per-model parameters — model path, context size, output tokens, temperature, t
 repeat penalty, threads — live inside each `<aiDefinition>`, not as top-level parameters.
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
-from `<fieldGenerations>`. The self-test profile defines two:
-- `file-body` — summarizes a single source file
+from `<fieldGenerations>`. The self-test profile defines four:
+- `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
+- `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
+  the tables it reads vs writes, and relationships)
+- `file-body-fallback` — generic multi-language summary for any other source file
 - `package-body` — synthesizes a package summary from the already-generated file summaries
+
+For the `generate` goal the file-level prompt is selected per file by extension: the first field
+generation whose `<fileExtensions>` matches the file name wins; otherwise the first entry without a
+`<fileExtensions>` filter is the fallback. A single field generation with no filter (the historical
+shape) keeps working — it is simply the fallback for every file.
+
 Each summary begins with a one-sentence blockquote lead, followed by structured `####` sections.
 Prompts are optimized to avoid code blocks, formatter artifacts, and empty outputs, and to produce structured markdown.
 ## Output Structure
