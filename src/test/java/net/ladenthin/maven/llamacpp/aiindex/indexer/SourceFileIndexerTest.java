@@ -64,6 +64,7 @@ public class SourceFileIndexerTest {
                 "1.0.0",
                 "0.0.0",
                 Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
                 false,
                 new MockAiGenerationProvider(),
                 CommonTestFixtures.createFileFieldGenerations(),
@@ -122,6 +123,7 @@ public class SourceFileIndexerTest {
                 "1.0.0",
                 "0.0.0",
                 Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
                 false,
                 provider,
                 Arrays.asList(
@@ -159,6 +161,7 @@ public class SourceFileIndexerTest {
                 "1.0.0",
                 "0.0.0",
                 Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
                 false,
                 new MockAiGenerationProvider(),
                 Collections.singletonList(fieldGeneration("file-body-sql", Arrays.asList(".sql"))),
@@ -167,6 +170,47 @@ public class SourceFileIndexerTest {
 
         // act + assert
         assertThrows(IllegalArgumentException.class, () -> indexer.indexSourceRoot(sourceRoot));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="exclude filter">
+    @Test
+    public void indexSourceRoot_excludedFileIsSkipped() throws Exception {
+        // arrange: two .java files; exclude package-info.java by glob
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        Files.createDirectories(sourceRoot.resolve("com/example"));
+        Files.write(
+                sourceRoot.resolve("com/example/Foo.java"),
+                "package com.example;\nclass Foo {}\n".getBytes(StandardCharsets.UTF_8));
+        Files.write(
+                sourceRoot.resolve("com/example/package-info.java"),
+                "package com.example;\n".getBytes(StandardCharsets.UTF_8));
+
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final SourceFileIndexer indexer = new SourceFileIndexer(
+                new SystemStreamLog(),
+                temp,
+                outputRoot,
+                Arrays.asList(".java"),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                Arrays.asList("**/package-info.java"),
+                false,
+                new MockAiGenerationProvider(),
+                CommonTestFixtures.createFileFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        final int indexed = indexer.indexSourceRoot(sourceRoot);
+
+        // assert: only Foo.java was indexed; package-info.java was excluded
+        assertThat(indexed, is(equalTo(1)));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Foo.java.ai.md")), is(true));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/package-info.java.ai.md")), is(false));
     }
     // </editor-fold>
 

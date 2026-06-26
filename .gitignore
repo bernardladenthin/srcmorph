@@ -29,6 +29,8 @@ target/
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+# heap dumps from OOM (e.g. -XX:+HeapDumpOnOutOfMemoryError on test/PIT forks)
+*.hprof
 
 # jcstress / jqwik test outputs (generated in repo root)
 /.jqwik-database

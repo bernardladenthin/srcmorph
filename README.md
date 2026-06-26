@@ -271,6 +271,9 @@ Run-level parameters (set in `<configuration>`):
 - `outputDirectory` — target directory for `.ai.md` files (default: `${project.basedir}/src/site/ai`)
 - `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`)
 - `fileExtensions` — file extensions to index (default: `.java`)
+- `excludes` — glob patterns for source files to skip, matched against each file's path relative to
+  the base dir with `/` separators, e.g. `**/package-info.java`, `**/generated/**` (default: none).
+  `*` stays within one path segment, `**` spans directories, `?` is a single character.
 - `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
 - `force` — regenerate even when a body already exists (default: `false`)
 - `skip` — skip the goal entirely (default: `false`)

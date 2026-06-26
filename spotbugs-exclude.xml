@@ -169,6 +169,27 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on the AiSourceExcludeFilter matcher.
+
+        AiSourceExcludeFilter is a stateless matcher: it compiles its @Parameter-derived
+        glob patterns into a List<Pattern> once at construction and exposes a single
+        isExcluded(path) predicate. It is built once per generate execution, held inside
+        SourceFileIndexer, and discarded. No code path stores two filter instances in a
+        Set/Map keyed by value or compares two filters for value equality; the compiled
+        Pattern list is an implementation detail, not an identity.
+
+        Generating a value-equality equals over the compiled patterns would mislead
+        readers into treating the matcher as a value object and would compare
+        java.util.regex.Pattern instances, which themselves use identity equality (two
+        Patterns compiled from the same source are not equal). Identity is the correct
+        semantics for this helper, matching AiModelDefinitionSupport above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
         USBR_UNNECESSARY_STORE_BEFORE_RETURN on Lombok-generated equals / hashCode /
         canEqual / toString.
 

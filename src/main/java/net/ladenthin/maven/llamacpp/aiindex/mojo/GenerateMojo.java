@@ -49,6 +49,17 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     @Parameter(property = "aiIndex.fileExtensions")
     private List<String> fileExtensions;
 
+    /**
+     * Glob patterns for source files to skip, matched against each file's path relative to the
+     * project base directory with {@code /} separators (e.g. {@code **}{@code /package-info.java},
+     * {@code **}{@code /generated/**}). Lets the index stay focused by excluding trivial or generated
+     * sources. Empty by default — nothing is excluded.
+     *
+     * @see net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter
+     */
+    @Parameter(property = "aiIndex.excludes")
+    private List<String> excludes;
+
     /** llama.cpp context window size; smaller default suits the fast generate pass. */
     @Parameter(property = "aiIndex.llama.contextSize", defaultValue = "2048")
     private int llamaContextSize;
@@ -100,6 +111,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         pluginVersion,
                         aiVersion,
                         resolvedSubtrees,
+                        excludes,
                         force,
                         provider,
                         fieldGenerations,

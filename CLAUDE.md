@@ -101,7 +101,7 @@ llamacpp-ai-index-maven-plugin/
 │   │       ├── config/      # AiGenerationConfig, AiGenerationKind, AiFieldGenerationConfig,
 │   │       │                #   AiFieldGenerationSelector, AiModelDefinition, AiModelDefinitionSupport
 │   │       └── support/     # Foundation: AiChecksumSupport, AiTimeSupport, AiPathSupport,
-│   │                        #   Java8CompatibilityHelper, ConvertToRecord
+│   │                        #   AiSourceExcludeFilter, Java8CompatibilityHelper, ConvertToRecord
 │   ├── site/
 │   │   └── ai/                            # Output directory for .ai.md files
 │   └── test/
@@ -235,6 +235,7 @@ header block, so a `- F:` line in the body is never read as a link.
 | `force` | `aiIndex.force` | `false` | Regenerate even if summary exists |
 | `subtrees` | `aiIndex.subtrees` | *(all)* | Limit to specific source subdirectories |
 | `fileExtensions` | `aiIndex.fileExtensions` | `.java` | File extensions to index |
+| `excludes` | `aiIndex.excludes` | *(none)* | Glob patterns (base-relative, `/` separators) for source files to skip, e.g. `**/package-info.java`, `**/generated/**` (`AiSourceExcludeFilter`) |
 | `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
 | `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
 | `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |
