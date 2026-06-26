@@ -14,10 +14,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
+import net.ladenthin.maven.llamacpp.aiindex.CommonTestFixtures;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
+import net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider;
 import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Test;
 
@@ -179,6 +185,124 @@ public class ProjectIndexerTest {
         assertThat(document.body(), containsString("- . — The whole project."));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="optional AI overview">
+    @Test
+    public void aggregate_overviewEnabled_writesOverviewSectionAboveTheListing() throws Exception {
+        // arrange
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(
+                outputRoot.resolve("main/java/com/example/package.ai.md"),
+                "main/java/com/example",
+                "> Example package.\n");
+
+        // act
+        final int written = overviewIndexer(false).aggregate(outputRoot);
+
+        // assert: an #### Overview section with the generated text precedes the deterministic listing
+        assertThat(written, is(equalTo(1)));
+        final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        final String body = document.body();
+        assertThat(body, containsString(OVERVIEW_HEADING));
+        assertThat(body, containsString("Mock summary for project.ai.md"));
+        assertThat(body, containsString("#### Packages"));
+        assertThat(body, containsString("- main/java/com/example — Example package."));
+        assertThat(body.indexOf(OVERVIEW_HEADING) < body.indexOf("#### Packages"), is(true));
+    }
+
+    @Test
+    public void aggregate_overviewDisabled_hasNoOverviewSection() throws Exception {
+        // arrange
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(
+                outputRoot.resolve("main/java/com/example/package.ai.md"),
+                "main/java/com/example",
+                "> Example package.\n");
+
+        // act: the deterministic constructor performs no AI call
+        new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+
+        // assert
+        final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        assertThat(document.body(), not(containsString(OVERVIEW_HEADING)));
+    }
+
+    @Test
+    public void aggregate_overviewEnabled_unchangedProjectIsNotReInferred() throws Exception {
+        // arrange
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(
+                outputRoot.resolve("main/java/com/example/package.ai.md"),
+                "main/java/com/example",
+                "> Example package.\n");
+
+        // first run writes the overview
+        assertThat(overviewIndexer(false).aggregate(outputRoot), is(equalTo(1)));
+
+        // act: a second run over the same packages and same overview config must detect no change
+        // (the checksum folds in the generation signature but not the AI output)
+        final int second = overviewIndexer(false).aggregate(outputRoot);
+
+        // assert
+        assertThat(second, is(equalTo(0)));
+    }
+
+    @Test
+    public void aggregate_enablingOverview_rewritesPreviouslyDeterministicIndex() throws Exception {
+        // arrange: a deterministic project index already exists
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(
+                outputRoot.resolve("main/java/com/example/package.ai.md"),
+                "main/java/com/example",
+                "> Example package.\n");
+        assertThat(
+                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot),
+                is(equalTo(1)));
+
+        // act: enabling the overview changes the generation signature in the checksum -> regenerate
+        final int rewritten = overviewIndexer(false).aggregate(outputRoot);
+
+        // assert
+        assertThat(rewritten, is(equalTo(1)));
+        final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        assertThat(document.body(), containsString(OVERVIEW_HEADING));
+    }
+    // </editor-fold>
+
+    /**
+     * Markdown heading the overview section emits; duplicated here from the (private) constant in
+     * {@code ProjectIndexer} so the tests assert on the literal contract rather than the symbol.
+     */
+    private static final String OVERVIEW_HEADING = "#### Overview";
+
+    /**
+     * Builds a {@link ProjectIndexer} with the AI overview enabled, backed by the deterministic
+     * {@link MockAiGenerationProvider} (which returns {@code "Mock summary for project.ai.md"}).
+     *
+     * @param force the force flag to pass through
+     * @return an overview-enabled indexer
+     */
+    private ProjectIndexer overviewIndexer(final boolean force) {
+        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+        overview.setPromptKey("project-body");
+        overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+
+        final AiPromptDefinition prompt = new AiPromptDefinition();
+        prompt.setKey("project-body");
+        prompt.setTemplate("Write a project overview.\nProject: %s\nLeads:\n%s\n");
+        final AiPromptSupport promptSupport = new AiPromptSupport(Collections.singletonList(prompt));
+
+        return new ProjectIndexer(
+                new SystemStreamLog(),
+                PROJECT_TITLE,
+                "1.0.0",
+                "0.0.0",
+                force,
+                new MockAiGenerationProvider(),
+                overview,
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+    }
 
     private void writePackageFile(final Path file, final String title, final String body) throws IOException {
         Files.createDirectories(file.getParent());

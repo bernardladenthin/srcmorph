@@ -1415,6 +1415,20 @@ File summaries:
 %s
                                     ]]></template>
                                 </promptDefinition>
+                                <promptDefinition>
+                                    <key>project-body</key>
+                                    <template><![CDATA[
+You are writing a short overview for the very top of a project's code index. You receive the project's
+per-package one-line leads (already generated, one sentence per package). Synthesize them: name the main
+subsystems and how they fit together, in 2 to 4 sentences. Use domain terms a developer would search for.
+No headings, no bullet lists, no code fences, no XML tags, no formatter comments. Write in English. Base
+every statement only on the provided leads — never invent packages or behavior not present in them.
+
+Index file: %s
+
+%s
+                                    ]]></template>
+                                </promptDefinition>
                             </promptDefinitions>
 
                         </configuration>
@@ -1478,10 +1492,14 @@ File summaries:
                             </execution>
 
                             <!--
-                                Phase 3 — project index. Deterministic: harvests the per-package
-                                lead already produced by aggregate-packages into a single
-                                project.ai.md. No model/prompt/fieldGenerations needed. Bound to
-                                prepare-package so it runs after process-resources (aggregate-packages).
+                                Phase 3 — project index. Harvests the per-package lead already produced by
+                                aggregate-packages into a single project.ai.md. Bound to prepare-package so it
+                                runs after process-resources (aggregate-packages).
+
+                                The per-package listing is deterministic (no model). The optional project
+                                overview paragraph below is opt-in: the single <fieldGeneration> enables ONE
+                                extra AI call that writes a short #### Overview from the package leads. Remove
+                                the <configuration> block to fall back to the purely deterministic index.
                             -->
                             <execution>
                                 <id>ai-aggregate-project</id>
@@ -1489,6 +1507,14 @@ File summaries:
                                 <goals>
                                     <goal>aggregate-project</goal>
                                 </goals>
+                                <configuration>
+                                    <fieldGenerations>
+                                        <fieldGeneration>
+                                            <promptKey>project-body</promptKey>
+                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                        </fieldGeneration>
+                                    </fieldGenerations>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

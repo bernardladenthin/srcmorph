@@ -94,9 +94,12 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - Builds hierarchical package summaries
 - Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
 ### 3. Project Index (aggregate-project)
-- Harvests the one-line lead from every `package.ai.md` — deterministic, no AI call
+- Harvests the one-line lead from every `package.ai.md` — the per-package listing is deterministic, no AI call
 - Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
 - A compact, always-loadable table of contents an agent reads first to navigate down
+- **Optional** (opt-in): configure a `<fieldGeneration>` on this goal and it makes *one* extra AI call to
+  write a short `#### Overview` paragraph from the package leads. The deterministic per-package listing is
+  unchanged; with no field generation the goal stays purely deterministic and calls no model.
 ## Example Output
 ```
 ### AiMdDocument.java
@@ -248,11 +251,21 @@ File summaries:
                 </fieldGenerations>
             </configuration>
         </execution>
-        <!-- Phase 3: deterministic project index; no model/prompt needed. -->
+        <!-- Phase 3: project index. The per-package listing is deterministic (no model needed).
+             Add the optional <configuration> below to also write a short #### Overview paragraph
+             from the package leads (one extra AI call); omit it for a purely deterministic index. -->
         <execution>
             <id>ai-aggregate-project</id>
             <phase>prepare-package</phase>
             <goals><goal>aggregate-project</goal></goals>
+            <configuration>
+                <fieldGenerations>
+                    <fieldGeneration>
+                        <promptKey>project-body</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                    </fieldGeneration>
+                </fieldGenerations>
+            </configuration>
         </execution>
     </executions>
 </plugin>
@@ -284,12 +297,13 @@ Per-model parameters — model path, context size, output tokens, temperature, t
 repeat penalty, threads — live inside each `<aiDefinition>`, not as top-level parameters.
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
-from `<fieldGenerations>`. The self-test profile defines four:
+from `<fieldGenerations>`. The self-test profile defines five:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
   the tables it reads vs writes, and relationships)
 - `file-body-fallback` — generic multi-language summary for any other source file
 - `package-body` — synthesizes a package summary from the already-generated file summaries
+- `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
 
 For the `generate` goal the file-level prompt is selected per file by extension: the first field
 generation whose `<fileExtensions>` matches the file name wins; otherwise the first entry without a

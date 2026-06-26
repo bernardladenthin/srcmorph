@@ -132,14 +132,19 @@ The plugin operates in three logical phases, building a navigable index from fin
 [*.java.ai.md files] → PackageIndexer → [package.ai.md files (deterministic header + AI body)]
 ```
 
-**Phase 3 — Project Index (deterministic, no AI call)**
+**Phase 3 — Project Index (deterministic listing; optional AI overview)**
 ```
 [package.ai.md files] → ProjectIndexer → [one project.ai.md: per-package lead (body) + link (header F)]
 ```
 Phase 3 harvests the one-sentence blockquote lead each `package.ai.md` already begins with
 (via `AiMdLeadExtractor`) and writes a single, always-loadable table of contents linking to
 every package — the entry point an agent reads first to navigate project → package → file → raw.
-It calls no model, so it is cheap and scales to hundreds of packages (no embeddings/vector DB).
+The per-package listing calls no model, so it is cheap and scales to hundreds of packages (no
+embeddings/vector DB). **Optional (opt-in):** when a `<fieldGeneration>` is configured on the
+goal, *one* extra AI call writes a short `#### Overview` paragraph from the package leads (never
+the full bodies). Incrementality is preserved by folding the overview generation signature
+(`promptKey:aiDefinitionKey`) — not the AI output — into the `c` checksum, so an unchanged project
+is never re-inferred but enabling/switching the overview, or a package change, rebuilds it.
 
 ### Key Components
 
@@ -148,10 +153,10 @@ It calls no model, so it is cheap and scales to hundreds of packages (no embeddi
 | `AbstractAiIndexMojo` | Shared `@Parameter` fields and utilities for the AI generate/aggregate-packages mojos |
 | `GenerateMojo` | Phase 1: index + summarize source files |
 | `AggregatePackagesMojo` | Phase 2: aggregate + summarize package index files |
-| `AggregateProjectMojo` | Phase 3: build the single `project.ai.md` (deterministic; extends `AbstractMojo` directly, no provider params) |
+| `AggregateProjectMojo` | Phase 3: build the single `project.ai.md` (deterministic listing; extends `AbstractAiIndexMojo` and builds a provider **only** when a `<fieldGeneration>` opts into the AI overview) |
 | `SourceFileIndexer` | Walks source trees, creates `.ai.md` files, calls AI to fill the document body |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
-| `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic, no AI call |
+| `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
 | `AiMdLeadExtractor` | Pure extraction of the one-line blockquote lead from an `.ai.md` body (fallback: first non-blank line) |
 | `AiGenerationProvider` | Interface for AI backends (llama.cpp JNI or mock) |
 | `AiFieldGenerationSupport` | Shared field-generation loop extracted from both indexers |
@@ -224,7 +229,7 @@ header block, so a `- F:` line in the body is never read as a link.
 |---|---|
 | `ai-index:generate` | Phase 1: index source files and fill the AI-generated document body |
 | `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill the AI-generated document body |
-| `ai-index:aggregate-project` | Phase 3: harvest per-package leads into one `project.ai.md` (deterministic, no AI call) |
+| `ai-index:aggregate-project` | Phase 3: harvest per-package leads into one `project.ai.md` (deterministic listing; optional one-call AI `#### Overview` when a `<fieldGeneration>` is configured) |
 
 ### Key Parameters (`GenerateMojo`)
 
