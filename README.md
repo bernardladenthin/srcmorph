@@ -289,7 +289,14 @@ Run-level parameters (set in `<configuration>`):
   `*` stays within one path segment, `**` spans directories, `?` is a single character.
 - `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
 - `force` — regenerate even when a body already exists (default: `false`)
-- `skip` — skip the goal entirely (default: `false`)
+- `skip` — global switch: skip **every** phase (default: `false`)
+- Per-phase switches — turn any of the three phases on/off independently (each default `false`):
+  - `aiIndex.generate.skip` — skip the file-indexing phase (`generate`)
+  - `aiIndex.aggregatePackages.skip` — skip the package-aggregation phase (`aggregate-packages`)
+  - `aiIndex.aggregateProject.skip` — skip the project-index phase (`aggregate-project`)
+
+  So `-DaiIndex.aggregatePackages.skip=true` runs file + project only, `-DaiIndex.skip=true` runs
+  nothing, and the defaults run all three.
 - `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
 - `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
 

@@ -56,6 +56,13 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
      */
     private static final String DEFAULT_PROJECT_TITLE = "project";
 
+    /**
+     * Phase switch for the {@code aggregate-project} phase: when {@code true}, this phase is skipped
+     * independently of the other phases. The global {@link #skip} still skips every phase.
+     */
+    @Parameter(property = "aiIndex.aggregateProject.skip", defaultValue = "false")
+    private boolean skipAggregateProject;
+
     /** Plugin version recorded in the project index header. */
     @Parameter(defaultValue = "${project.version}", readonly = true)
     private String pluginVersion;
@@ -92,8 +99,13 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
     }
 
     @Override
+    protected boolean isPhaseSkipped() {
+        return skipAggregateProject;
+    }
+
+    @Override
     public void execute() throws MojoExecutionException {
-        if (skip) {
+        if (shouldSkip()) {
             getLog().info("AI project index aggregation skipped.");
             return;
         }
