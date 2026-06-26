@@ -279,21 +279,4 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
     </Match>
 
-    <!--
-        PROVISIONAL (under review; see TODO.md "CE_CLASS_ENVY on
-        PackageIndexer.appendPackageHeaderLines"). fb-contrib CE_CLASS_ENVY:
-        appendPackageHeaderLines(StringBuilder, AiMdHeader) renders the package
-        .ai.md header by reading all eight AiMdHeader accessors and appending
-        them with AiMdHeaderCodec prefix constants, so it touches other classes
-        more than its own. AiMdHeaderCodec.write(AiMdHeader) already produces
-        byte-for-byte identical output; the clean resolution is to delegate to
-        it and drop this suppression. Suppressed now so the early SpotBugs gate
-        is green; the delegate-or-keep decision is a tracked deep check.
-    -->
-    <Match>
-        <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.PackageIndexer"/>
-        <Method name="appendPackageHeaderLines"/>
-        <Bug pattern="CE_CLASS_ENVY"/>
-    </Match>
-
 </FindBugsFilter>

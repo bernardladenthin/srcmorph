@@ -116,6 +116,7 @@ public class PackageIndexer {
     private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
     private final AiMdChildEntryLineFormatter childEntryLineFormatter = new AiMdChildEntryLineFormatter();
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
+    private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     private final AiFieldGenerationSupport fieldGenerationSupport;
@@ -365,44 +366,16 @@ public class PackageIndexer {
     }
 
     /**
-     * Appends the package's own deterministic header block (title plus single-letter fields)
-     * to {@code builder}, mirroring the on-disk {@code .ai.md} header layout.
+     * Appends the package's own deterministic header block (title plus single-letter fields) to
+     * {@code builder} by delegating to {@link AiMdHeaderCodec#write(AiMdHeader)} — the single source
+     * of truth for the {@code .ai.md} header layout, and the same call {@link AiMdDocumentCodec} uses
+     * to serialise a persisted header.
      *
      * @param builder target string builder
      * @param header  the package header to render
      */
     private void appendPackageHeaderLines(final StringBuilder builder, final AiMdHeader header) {
-        builder.append(AiMdHeaderCodec.HEADER_TITLE_PREFIX)
-                .append(header.title())
-                .append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
-                .append("H: ")
-                .append(header.h())
-                .append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
-                .append("C: ")
-                .append(header.c())
-                .append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
-                .append("D: ")
-                .append(header.d())
-                .append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
-                .append("T: ")
-                .append(header.t())
-                .append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
-                .append("G: ")
-                .append(header.g())
-                .append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
-                .append("A: ")
-                .append(header.a())
-                .append('\n');
-        builder.append(AiMdHeaderCodec.HEADER_FIELD_PREFIX)
-                .append("X: ")
-                .append(header.x())
-                .append('\n');
+        builder.append(headerCodec.write(header));
     }
 
     /**
