@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,20 @@ public class AiMdHeaderCodec {
 
     /** Field key for the node type ({@code x}). */
     public static final String FIELD_KEY_X = "X";
+
+    /**
+     * Field key for a child-link line ({@code F}). Unlike the scalar keys this one may appear
+     * multiple times — once per child — and the values are collected into {@link AiMdHeader#children()}.
+     */
+    public static final String FIELD_KEY_F = "F";
+
+    /**
+     * Full line prefix for a child-link header line ({@code "- F: "}). Built from
+     * {@link #HEADER_FIELD_PREFIX} + {@link #FIELD_KEY_F} so the {@code write} side stays in sync with
+     * the {@code read} side's key match, and so the single-character {@link #FIELD_KEY_F} is never
+     * appended on its own (SpotBugs UCPM).
+     */
+    private static final String CHILD_FIELD_LINE_PREFIX = HEADER_FIELD_PREFIX + FIELD_KEY_F + ": ";
 
     /**
      * Current metadata header format version written into every AI document.
@@ -122,12 +137,18 @@ public class AiMdHeaderCodec {
     /**
      * Parses an {@link AiMdHeader} from the given header lines.
      *
+     * <p>The single-letter scalar keys ({@code H}/{@code C}/{@code D}/{@code T}/{@code G}/{@code A}/{@code X})
+     * map to one value each; the repeatable {@link #FIELD_KEY_F} key is collected, in encounter order, into
+     * {@link AiMdHeader#children()}. Callers must pass header lines only (see {@link AiMdDocumentCodec}),
+     * so a {@code - F:} line in the document body is never mistaken for a child link.</p>
+     *
      * @param lines lines that include the title and key-value field lines
-     * @return parsed header (missing fields default to the empty string)
+     * @return parsed header (missing scalar fields default to the empty string)
      */
     public AiMdHeader read(final List<String> lines) {
         String title = null;
         final Map<String, String> values = new HashMap<>(lines.size());
+        final List<String> children = new ArrayList<>();
 
         for (String line : lines) {
             if (line.startsWith(HEADER_TITLE_PREFIX)) {
@@ -147,7 +168,11 @@ public class AiMdHeaderCodec {
             final String key =
                     line.substring(HEADER_FIELD_PREFIX.length(), colonIndex).trim();
             final String value = line.substring(colonIndex + 1).trim();
-            values.put(key, value);
+            if (FIELD_KEY_F.equals(key)) {
+                children.add(value);
+            } else {
+                values.put(key, value);
+            }
         }
 
         return new AiMdHeader(
@@ -158,17 +183,19 @@ public class AiMdHeaderCodec {
                 valueOrEmpty(values, FIELD_KEY_T),
                 valueOrEmpty(values, FIELD_KEY_G),
                 valueOrEmpty(values, FIELD_KEY_A),
-                valueOrEmpty(values, FIELD_KEY_X));
+                valueOrEmpty(values, FIELD_KEY_X),
+                children);
     }
 
     /**
-     * Renders the given header to its serialised string form.
+     * Renders the given header to its serialised string form: the scalar fields followed by one
+     * {@link #FIELD_KEY_F} line per {@link AiMdHeader#children() child link}.
      *
      * @param header header to serialise
      * @return serialised header text
      */
     public String write(final AiMdHeader header) {
-        return compatibilityHelper.formatted(
+        final StringBuilder builder = new StringBuilder(compatibilityHelper.formatted(
                 "### %s\n" + "- H: %s\n"
                         + "- C: %s\n"
                         + "- D: %s\n"
@@ -176,7 +203,11 @@ public class AiMdHeaderCodec {
                         + "- G: %s\n"
                         + "- A: %s\n"
                         + "- X: %s\n",
-                header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x());
+                header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x()));
+        for (final String child : header.children()) {
+            builder.append(CHILD_FIELD_LINE_PREFIX).append(child).append('\n');
+        }
+        return builder.toString();
     }
 
     private String valueOrEmpty(final Map<String, String> values, final String key) {

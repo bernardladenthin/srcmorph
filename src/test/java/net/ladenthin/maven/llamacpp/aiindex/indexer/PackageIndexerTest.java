@@ -13,6 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -226,6 +227,43 @@ public class PackageIndexerTest {
         assertThat(rootSource, containsString("### main/"));
         assertThat(rootSource, not(containsString("PROJECT_BODY_MARKER")));
         assertThat(rootSource, not(containsString(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="child links in header">
+    @Test
+    public void aggregate_packageHeader_listsChildLinksInHeader() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path packageDirectory = outputRoot.resolve("main/java/com/example");
+        Files.createDirectories(packageDirectory);
+        writeChildFile(packageDirectory.resolve("Foo.java.ai.md"), "Foo.java", "Foo summary.");
+        writeChildFile(packageDirectory.resolve("Bar.java.ai.md"), "Bar.java", "Bar summary.");
+
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                new SystemStreamLog(),
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new MockAiGenerationProvider(),
+                CommonTestFixtures.createPackageFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        indexer.aggregate(outputRoot);
+
+        // assert: the example package header carries one deterministic child link per file,
+        // in ascending name order, pointing at each child .ai.md.
+        final AiMdDocument document = documentCodec.read(packageDirectory.resolve("package.ai.md"));
+        assertThat(
+                document.header().children(),
+                is(equalTo(Arrays.asList("[Bar.java](Bar.java.ai.md)", "[Foo.java](Foo.java.ai.md)"))));
     }
     // </editor-fold>
 
