@@ -118,9 +118,9 @@ llamacpp-ai-index-maven-plugin/
 
 ## Core Architecture
 
-### Two-Phase Operation
+### Three-Phase Operation
 
-The plugin operates in two logical phases:
+The plugin operates in three logical phases, building a navigable index from fine to coarse:
 
 **Phase 1 — File Indexing & Summarization**
 ```
@@ -132,15 +132,27 @@ The plugin operates in two logical phases:
 [*.java.ai.md files] → PackageIndexer → [package.ai.md files (deterministic header + AI body)]
 ```
 
+**Phase 3 — Project Index (deterministic, no AI call)**
+```
+[package.ai.md files] → ProjectIndexer → [one project.ai.md: per-package lead + link]
+```
+Phase 3 harvests the one-sentence blockquote lead each `package.ai.md` already begins with
+(via `AiMdLeadExtractor`) and writes a single, always-loadable table of contents linking to
+every package — the entry point an agent reads first to navigate project → package → file → raw.
+It calls no model, so it is cheap and scales to hundreds of packages (no embeddings/vector DB).
+
 ### Key Components
 
 | Class | Role |
 |---|---|
-| `AbstractAiIndexMojo` | Shared `@Parameter` fields and utilities for all mojos |
+| `AbstractAiIndexMojo` | Shared `@Parameter` fields and utilities for the AI generate/aggregate-packages mojos |
 | `GenerateMojo` | Phase 1: index + summarize source files |
 | `AggregatePackagesMojo` | Phase 2: aggregate + summarize package index files |
+| `AggregateProjectMojo` | Phase 3: build the single `project.ai.md` (deterministic; extends `AbstractMojo` directly, no provider params) |
 | `SourceFileIndexer` | Walks source trees, creates `.ai.md` files, calls AI to fill the document body |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
+| `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic, no AI call |
+| `AiMdLeadExtractor` | Pure extraction of the one-line blockquote lead from an `.ai.md` body (fallback: first non-blank line) |
 | `AiGenerationProvider` | Interface for AI backends (llama.cpp JNI or mock) |
 | `AiFieldGenerationSupport` | Shared field-generation loop extracted from both indexers |
 | `AiGenerationResult` | Immutable carrier for the AI-generated body text out of the loop |
@@ -184,7 +196,7 @@ the header machine-parseable without AI involvement (see
 | `t` | Last generation timestamp |
 | `g` | Plugin version (`project.version`) |
 | `a` | AI model version |
-| `x` | Node type: `file` or `package` |
+| `x` | Node type: `file`, `package`, or `project` |
 
 ### Provider Pattern
 
@@ -205,6 +217,7 @@ the header machine-parseable without AI involvement (see
 |---|---|
 | `ai-index:generate` | Phase 1: index source files and fill the AI-generated document body |
 | `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill the AI-generated document body |
+| `ai-index:aggregate-project` | Phase 3: harvest per-package leads into one `project.ai.md` (deterministic, no AI call) |
 
 ### Key Parameters (`GenerateMojo`)
 

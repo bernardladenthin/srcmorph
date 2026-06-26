@@ -79,11 +79,12 @@ It creates structured `.ai.md` files per source file and aggregates them into pa
 - Generate AI summaries for Java source files
 - Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
+- Build a single project index (one line + link per package) for top-down navigation
 - Uses local models via llama.cpp (no cloud dependency)
 - Incremental updates (skips unchanged files)
 - Optimized for AI-assisted code understanding
 ## How It Works
-The plugin runs in two phases.
+The plugin runs in three phases, building a navigable index from fine to coarse.
 ### 1. File Generation (generate)
 - Scans configured source directories
 - Creates `.ai.md` files per source file
@@ -92,6 +93,10 @@ The plugin runs in two phases.
 - Traverses generated `.ai.md` files
 - Builds hierarchical package summaries
 - Produces `package.ai.md` files
+### 3. Project Index (aggregate-project)
+- Harvests the one-line lead from every `package.ai.md` — deterministic, no AI call
+- Produces a single `project.ai.md`: one line per package — its lead plus a relative link
+- A compact, always-loadable table of contents an agent reads first to navigate down
 ## Example Output
 ```
 ### AiMdDocument.java
@@ -219,6 +224,12 @@ File summaries:
                     </fieldGeneration>
                 </fieldGenerations>
             </configuration>
+        </execution>
+        <!-- Phase 3: deterministic project index; no model/prompt needed. -->
+        <execution>
+            <id>ai-aggregate-project</id>
+            <phase>prepare-package</phase>
+            <goals><goal>aggregate-project</goal></goals>
         </execution>
     </executions>
 </plugin>
