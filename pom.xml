@@ -682,6 +682,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdLeadExtractor</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
@@ -1344,6 +1345,20 @@ File summaries:
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
+                            </execution>
+
+                            <!--
+                                Phase 3 — project index. Deterministic: harvests the per-package
+                                lead already produced by aggregate-packages into a single
+                                project.ai.md. No model/prompt/fieldGenerations needed. Bound to
+                                prepare-package so it runs after process-resources (aggregate-packages).
+                            -->
+                            <execution>
+                                <id>ai-aggregate-project</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>aggregate-project</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>

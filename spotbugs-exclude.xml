@@ -51,11 +51,12 @@ SPDX-License-Identifier: Apache-2.0
 
     <!--
         SPP_FIELD_COULD_BE_STATIC on Maven @Parameter instance fields on the
-        project's own Mojos (GenerateMojo, AggregatePackagesMojo).
+        project's own Mojos (GenerateMojo, AggregatePackagesMojo, AggregateProjectMojo).
 
-        fb-contrib flags the four @Parameter fields on each Mojo (pluginVersion,
-        aiVersion, llamaContextSize, llamaThreads) as "assigned at most once,
-        could be static" purely from bytecode shape. The rule is wrong for
+        fb-contrib flags @Parameter fields on each Mojo (e.g. pluginVersion,
+        aiVersion, llamaContextSize, llamaThreads on the generate/aggregate-packages
+        goals; pluginVersion, aiVersion, projectName on aggregate-project) as
+        "assigned at most once, could be static" purely from bytecode shape. The rule is wrong for
         Maven @Parameter fields by contract:
 
             // Maven's per-execution wiring (simplified):
@@ -73,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
         never reach it. fb-contrib has no model of Maven's plugin contract; this
         is a structural false positive that source changes cannot resolve.
 
-        Suppression scoped narrowly to the two concrete Mojos so any genuine
+        Suppression scoped narrowly to the three concrete Mojos so any genuine
         SPP finding on non-Mojo code still surfaces. AbstractAiIndexMojo's
         shared @Parameter fields don't trigger SPP because they're written
         from multiple subclasses.
@@ -82,6 +83,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregateProjectMojo"/>
         </Or>
         <Bug pattern="SPP_FIELD_COULD_BE_STATIC"/>
     </Match>

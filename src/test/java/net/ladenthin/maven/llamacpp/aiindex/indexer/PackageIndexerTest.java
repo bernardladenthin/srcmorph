@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex.indexer;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -172,6 +174,58 @@ public class PackageIndexerTest {
         assertThat(comSource, is(notNullValue()));
         assertThat(comSource.contains("### example/"), is(true));
         assertThat(comSource.contains(CapturingProvider.GENERATED_BODY), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="project.ai.md is ignored as content">
+    @Test
+    public void aggregate_projectAiMdInOutputRoot_isNotEmbeddedAsChild() throws Exception {
+        // arrange: a leaf file (so the tree aggregates up to the root) plus a stray project.ai.md
+        // already sitting in the output root from a previous aggregate-project run.
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path leafDirectory = outputRoot.resolve("main/java/com/example");
+        Files.createDirectories(leafDirectory);
+        writeChildFile(leafDirectory.resolve("Foo.java.ai.md"), "Foo.java", "FOO_BODY summary of Foo.");
+
+        final AiMdHeader projectHeader = new AiMdHeader(
+                "my-project",
+                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                "BBBBBBBB",
+                "2026-03-16T00:00:00Z",
+                "2026-03-16T00:00:10Z",
+                "1.0.0",
+                "0.0.0",
+                AiMdHeaderCodec.NODE_TYPE_PROJECT);
+        documentCodec.write(
+                outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME),
+                new AiMdDocument(projectHeader, "PROJECT_BODY_MARKER must not be embedded as a child."));
+
+        final CapturingProvider provider = new CapturingProvider();
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                new SystemStreamLog(),
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                provider,
+                CommonTestFixtures.createPackageFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        indexer.aggregate(outputRoot);
+
+        // assert: the root package was aggregated (its sub-package is embedded) but the stray
+        // project.ai.md is neither embedded as a child body nor listed as content.
+        final String rootSource = provider.sourceTextFor(outputRoot.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
+        assertThat(rootSource, is(notNullValue()));
+        assertThat(rootSource, containsString("### main/"));
+        assertThat(rootSource, not(containsString("PROJECT_BODY_MARKER")));
+        assertThat(rootSource, not(containsString(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)));
     }
     // </editor-fold>
 

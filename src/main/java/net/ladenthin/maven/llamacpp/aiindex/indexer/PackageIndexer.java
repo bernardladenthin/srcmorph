@@ -587,7 +587,10 @@ public class PackageIndexer {
     /**
      * Returns {@code true} when {@code name} refers to a child AI index file that should
      * be included in content listings and checksum calculations. Excludes the
-     * {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} file itself and any
+     * {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} file itself, the
+     * project-level {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#PROJECT_AI_MD_FILENAME}
+     * (which the aggregator writes into the output root and must not fold back into its own
+     * checksum or summary on a re-run), and any
      * {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#GENERATED_BY_PREFIX} marker files.
      *
      * @param name file name of the path under examination
@@ -595,6 +598,7 @@ public class PackageIndexer {
      */
     private boolean isAiMdContentFile(final String name) {
         return !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name)
+                && !AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equals(name)
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX)
                 && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION);
     }

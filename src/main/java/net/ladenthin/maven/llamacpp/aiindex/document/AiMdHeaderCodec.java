@@ -77,6 +77,15 @@ public class AiMdHeaderCodec {
     public static final String NODE_TYPE_PACKAGE = "package";
 
     /**
+     * Node type value for the single project-level AI index document — the top of the
+     * three-level index. The {@link #PROJECT_AI_MD_FILENAME} file lists every package with a
+     * one-line lead and a relative link, so an agent can read one compact file and navigate down.
+     *
+     * @see AiMdHeader#x()
+     */
+    public static final String NODE_TYPE_PROJECT = "project";
+
+    /**
      * Title of the root AI index node representing the top-level output directory.
      *
      * @see AiMdHeader#title()
@@ -94,6 +103,13 @@ public class AiMdHeaderCodec {
      * One {@value} file is created per indexed package directory.
      */
     public static final String PACKAGE_AI_MD_FILENAME = "package.ai.md";
+
+    /**
+     * File name used for the single project-level AI index document, written into the output root.
+     * One {@value} file is created per project; it lists every {@link #PACKAGE_AI_MD_FILENAME} with
+     * its one-line lead and a relative link, forming the navigable top of the three-level index.
+     */
+    public static final String PROJECT_AI_MD_FILENAME = "project.ai.md";
 
     /**
      * Prefix of internally generated marker files that must be excluded from content
