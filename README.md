@@ -77,7 +77,7 @@ A Maven plugin for generating hierarchical, AI-readable documentation of source 
 It creates structured `.ai.md` files per source file and aggregates them into package-level summaries for fast semantic navigation and retrieval.
 ## Features
 - Generate AI summaries for Java source files
-- Extract keyword metadata for search and indexing
+- Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
 - Uses local models via llama.cpp (no cloud dependency)
 - Incremental updates (skips unchanged files)
@@ -100,10 +100,20 @@ The plugin runs in two phases.
 - D: 2026-03-15T23:31:52Z
 - T: 2026-03-19T18:13:31Z
 - G: 1.0.0
+- A: 0.0.0
 - X: file
-- K: AiMdDocument, AiMdHeader, record, metadata, markdown
-#### AiMdDocument.java
-Represents a document consisting of a structured metadata header and a markdown body. Ensures non-null invariants and encapsulates AI-generated content.
+---
+> Immutable value type pairing a deterministic metadata header with the AI-generated markdown body of one .ai.md document.
+
+#### Purpose
+- Hold one parsed `.ai.md` document as an `AiMdHeader` plus its markdown body.
+
+#### Type
+- record-shaped value class (Java); marked `@ConvertToRecord`.
+
+#### Public API
+- `header() -> AiMdHeader` — the document's metadata header.
+- `body() -> String` — the AI-generated markdown body.
 ```
 ## Requirements
 - Java 8+ (production code targets Java 8; CI builds on Java 8 via temurin)
@@ -146,16 +156,16 @@ Key parameters:
 - generationProvider: AI backend (`llamacpp-jni`)
 - llamaModelPath: path to GGUF model
 - llamaContextSize: context window
-- llamaMaxTokens: output token limit
+- llamaMaxOutputTokens: output token limit
 - llamaTemperature: sampling temperature
 - llamaThreads: CPU threads
 ## Prompt System
-The plugin uses configurable prompts:
-- file-summary
-- file-keywords
-- package-summary
-- package-keywords
-Prompts are optimized to avoid code blocks, formatter artifacts, empty outputs, and produce structured markdown.
+Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
+from `<fieldGenerations>`. The self-test profile defines two:
+- `file-body` — summarizes a single source file
+- `package-body` — synthesizes a package summary from the already-generated file summaries
+Each summary begins with a one-sentence blockquote lead, followed by structured `####` sections.
+Prompts are optimized to avoid code blocks, formatter artifacts, and empty outputs, and to produce structured markdown.
 ## Output Structure
 ```
 src/site/ai/
