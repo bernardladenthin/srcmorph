@@ -8,10 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
@@ -24,6 +26,7 @@ import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.logging.Log;
@@ -58,6 +61,7 @@ public class SourceFileIndexer {
     private final String pluginVersion;
     private final String aiVersion;
     private final List<Path> subtrees;
+    private final AiSourceExcludeFilter excludeFilter;
     private final boolean force;
 
     private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
@@ -68,6 +72,7 @@ public class SourceFileIndexer {
     private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+    private final AiFieldGenerationSelector fieldGenerationSelector = new AiFieldGenerationSelector();
 
     private final AiFieldGenerationSupport fieldGenerationSupport;
 
@@ -81,6 +86,8 @@ public class SourceFileIndexer {
      * @param pluginVersion          plugin version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
      * @param subtrees               source subtrees in scope; may be empty
+     * @param excludes               glob patterns (relative to {@code baseDirectory}, {@code /}
+     *                               separators) for source files to skip; may be {@code null} or empty
      * @param force                  when {@code true}, regenerate even when fields are populated
      * @param generationProvider     AI provider used to generate fields
      * @param fieldGenerations       field generation configurations; may be {@code null}
@@ -95,6 +102,7 @@ public class SourceFileIndexer {
             final String pluginVersion,
             final String aiVersion,
             final Collection<Path> subtrees,
+            final @Nullable Collection<String> excludes,
             final boolean force,
             final AiGenerationProvider generationProvider,
             final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
@@ -107,6 +115,7 @@ public class SourceFileIndexer {
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
         this.subtrees = new ArrayList<>(subtrees);
+        this.excludeFilter = new AiSourceExcludeFilter(excludes);
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
@@ -133,12 +142,30 @@ public class SourceFileIndexer {
                     continue;
                 }
 
+                if (isExcluded(path)) {
+                    log.debug("Excluded from indexing: " + path);
+                    continue;
+                }
+
                 writeAiFile(path);
                 count++;
             }
         }
 
         return count;
+    }
+
+    /**
+     * Returns {@code true} when {@code path} matches a configured exclude glob. The path is
+     * relativised against {@link #baseDirectory} and normalised to {@code /} separators before
+     * matching, so the same pattern behaves identically on Windows and POSIX.
+     *
+     * @param path absolute source file path encountered during the walk
+     * @return {@code true} if the file should be skipped
+     */
+    private boolean isExcluded(final Path path) {
+        final String relative = baseDirectory.relativize(path).toString().replace('\\', '/');
+        return excludeFilter.isExcluded(relative);
     }
 
     private boolean matchesExtension(final Path path) {
@@ -195,8 +222,14 @@ public class SourceFileIndexer {
 
         final String sourceText = compatibilityHelper.readString(sourceFile);
 
+        final AiFieldGenerationConfig selected = fieldGenerationSelector.selectForFileName(fieldGenerations, fileName);
+        if (selected == null) {
+            throw new IllegalArgumentException("No field generation matches file '" + fileName
+                    + "' and no extension-agnostic fallback is configured: " + sourceFile);
+        }
+
         final AiGenerationResult result = fieldGenerationSupport.processFieldGenerations(
-                fieldGenerations, sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
+                Collections.singletonList(selected), sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
 
         final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(targetFile, document);

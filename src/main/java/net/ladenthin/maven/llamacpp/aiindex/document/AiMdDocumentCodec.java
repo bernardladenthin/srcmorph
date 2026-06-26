@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.ToString;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
@@ -50,8 +51,7 @@ public class AiMdDocumentCodec {
      * @return parsed document
      */
     AiMdDocument read(final List<String> lines) {
-        final AiMdHeader header = new AiMdHeaderCodec().read(lines);
-
+        final List<String> headerLines = new ArrayList<>();
         final StringBuilder body = new StringBuilder();
         boolean bodyStarted = false;
         boolean headerFinished = false;
@@ -60,6 +60,7 @@ public class AiMdDocumentCodec {
             if (!headerFinished) {
                 if (line.startsWith(AiMdHeaderCodec.HEADER_TITLE_PREFIX)
                         || line.startsWith(AiMdHeaderCodec.HEADER_FIELD_PREFIX)) {
+                    headerLines.add(line);
                     continue;
                 }
 
@@ -81,6 +82,8 @@ public class AiMdDocumentCodec {
             body.append(line).append('\n');
         }
 
+        // Parse only the header block — a "- F:" line in the body must never become a child link.
+        final AiMdHeader header = new AiMdHeaderCodec().read(headerLines);
         return new AiMdDocument(header, body.toString());
     }
 

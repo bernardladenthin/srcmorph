@@ -59,7 +59,11 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     @Parameter(property = "aiIndex.outputDirectory", defaultValue = "${project.basedir}/src/site/ai")
     protected File outputDirectory;
 
-    /** When {@code true}, the goal skips all processing and returns immediately. */
+    /**
+     * Global skip switch: when {@code true}, <em>every</em> AI index goal (generate,
+     * aggregate-packages, aggregate-project) skips and returns immediately. To toggle a single
+     * phase instead, use that goal's own {@code skip<Phase>} flag (see {@link #isPhaseSkipped()}).
+     */
     @Parameter(property = "aiIndex.skip", defaultValue = "false")
     protected boolean skip;
 
@@ -146,9 +150,30 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      */
     protected abstract int getLlamaThreads();
 
+    /**
+     * Returns whether this individual goal (phase) is disabled by its own phase-specific skip flag,
+     * independent of the global {@link #skip}. Each concrete goal declares its own
+     * {@code skip<Phase>} {@code @Parameter} and returns it here, so the three phases (generate,
+     * aggregate-packages, aggregate-project) can be switched on and off independently.
+     *
+     * @return {@code true} if this phase's own skip flag is set
+     */
+    protected abstract boolean isPhaseSkipped();
+
     // -------------------------------------------------------------------------
     // Shared utility methods
     // -------------------------------------------------------------------------
+
+    /**
+     * Returns whether this goal should skip execution: either the global {@link #skip} (which skips
+     * every phase) or this phase's own {@link #isPhaseSkipped()} flag. Centralised here so every goal
+     * applies the same rule identically.
+     *
+     * @return {@code true} if the goal must not run
+     */
+    protected boolean shouldSkip() {
+        return skip || isPhaseSkipped();
+    }
 
     /**
      * Resolves the configured {@link #subtrees} strings against {@code basePath},

@@ -212,5 +212,29 @@ public class AiMdDocumentCodecTest {
         // assert
         assertThat(document.body().trim().isEmpty(), is(true));
     }
+
+    @Test
+    public void read_bodyLineLookingLikeChildLink_isNotParsedAsChild() {
+        // arrange: a "- F:" line in the BODY must not be mistaken for a header child link
+        final List<String> lines = Arrays.asList(
+                "### Example.java",
+                "- H: 1.0",
+                "- C: ABC123",
+                "- D: 2026-03-15T18:33:40Z",
+                "- T: 2026-03-15T18:34:26Z",
+                "- G: 0.1.0-SNAPSHOT",
+                "- A: 0.0.0",
+                "- X: file",
+                "",
+                "---",
+                "- F: this looks like a child link but is body text");
+
+        // act
+        final AiMdDocument document = documentCodec.read(lines);
+
+        // assert: the header has no children, and the line stayed in the body
+        assertThat(document.header().children().isEmpty(), is(true));
+        assertThat(document.body(), containsString("- F: this looks like a child link but is body text"));
+    }
     // </editor-fold>
 }

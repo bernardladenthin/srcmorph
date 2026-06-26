@@ -51,11 +51,12 @@ SPDX-License-Identifier: Apache-2.0
 
     <!--
         SPP_FIELD_COULD_BE_STATIC on Maven @Parameter instance fields on the
-        project's own Mojos (GenerateMojo, AggregatePackagesMojo).
+        project's own Mojos (GenerateMojo, AggregatePackagesMojo, AggregateProjectMojo).
 
-        fb-contrib flags the four @Parameter fields on each Mojo (pluginVersion,
-        aiVersion, llamaContextSize, llamaThreads) as "assigned at most once,
-        could be static" purely from bytecode shape. The rule is wrong for
+        fb-contrib flags @Parameter fields on each Mojo (e.g. pluginVersion,
+        aiVersion, llamaContextSize, llamaThreads on the generate/aggregate-packages
+        goals; pluginVersion, aiVersion, projectName on aggregate-project) as
+        "assigned at most once, could be static" purely from bytecode shape. The rule is wrong for
         Maven @Parameter fields by contract:
 
             // Maven's per-execution wiring (simplified):
@@ -73,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
         never reach it. fb-contrib has no model of Maven's plugin contract; this
         is a structural false positive that source changes cannot resolve.
 
-        Suppression scoped narrowly to the two concrete Mojos so any genuine
+        Suppression scoped narrowly to the three concrete Mojos so any genuine
         SPP finding on non-Mojo code still surfaces. AbstractAiIndexMojo's
         shared @Parameter fields don't trigger SPP because they're written
         from multiple subclasses.
@@ -82,6 +83,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregateProjectMojo"/>
         </Or>
         <Bug pattern="SPP_FIELD_COULD_BE_STATIC"/>
     </Match>
@@ -163,6 +165,27 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on the AiSourceExcludeFilter matcher.
+
+        AiSourceExcludeFilter is a stateless matcher: it compiles its @Parameter-derived
+        glob patterns into a List<Pattern> once at construction and exposes a single
+        isExcluded(path) predicate. It is built once per generate execution, held inside
+        SourceFileIndexer, and discarded. No code path stores two filter instances in a
+        Set/Map keyed by value or compares two filters for value equality; the compiled
+        Pattern list is an implementation detail, not an identity.
+
+        Generating a value-equality equals over the compiled patterns would mislead
+        readers into treating the matcher as a value object and would compare
+        java.util.regex.Pattern instances, which themselves use identity equality (two
+        Patterns compiled from the same source are not equal). Identity is the correct
+        semantics for this helper, matching AiModelDefinitionSupport above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter"/>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
 

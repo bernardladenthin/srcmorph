@@ -28,7 +28,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/llamacpp-ai-index-maven-plugin?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(1%20class)-brightgreen)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(24%20classes)-brightgreen)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_llamacpp-ai-index-maven-plugin&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_llamacpp-ai-index-maven-plugin)  
@@ -76,14 +76,18 @@ using the assigned ID:
 A Maven plugin for generating hierarchical, AI-readable documentation of source code projects using local llama.cpp-compatible models.
 It creates structured `.ai.md` files per source file and aggregates them into package-level summaries for fast semantic navigation and retrieval.
 ## Features
-- Generate AI summaries for Java source files
+- Generate AI summaries for source files
+- Per-language prompts — Java, SQL schema, and a generic fallback — selected by file extension
 - Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
+- Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
+- Run any phase independently — toggle file / package / project on or off
+- Exclude trivial or generated files with glob patterns
 - Uses local models via llama.cpp (no cloud dependency)
 - Incremental updates (skips unchanged files)
 - Optimized for AI-assisted code understanding
 ## How It Works
-The plugin runs in two phases.
+The plugin runs in three phases, building a navigable index from fine to coarse.
 ### 1. File Generation (generate)
 - Scans configured source directories
 - Creates `.ai.md` files per source file
@@ -91,7 +95,14 @@ The plugin runs in two phases.
 ### 2. Package Aggregation (aggregate-packages)
 - Traverses generated `.ai.md` files
 - Builds hierarchical package summaries
-- Produces `package.ai.md` files
+- Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
+### 3. Project Index (aggregate-project)
+- Harvests the one-line lead from every `package.ai.md` — the per-package listing is deterministic, no AI call
+- Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
+- A compact, always-loadable table of contents an agent reads first to navigate down
+- **Optional** (opt-in): configure a `<fieldGeneration>` on this goal and it makes *one* extra AI call to
+  write a short `#### Overview` paragraph from the package leads. The deterministic per-package listing is
+  unchanged; with no field generation the goal stays purely deterministic and calls no model.
 ## Example Output
 ```
 ### AiMdDocument.java
@@ -138,9 +149,13 @@ The plugin is configured from three building blocks, declared on the plugin insi
 
 1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
 2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
-   two `%s` placeholders: the file/package name and the source (or, for packages, the child summaries).
+   two `%s` placeholders: the file/package name and the source (for packages, the child summaries; for
+   the optional project overview, the per-package leads).
 3. **`<fieldGenerations>`** — per goal, map one `<promptKey>` to one `<aiDefinitionKey>`. This is
-   **required**: a goal with no field generation fails fast.
+   **required**: a goal with no field generation fails fast. The `generate` goal may list several
+   field generations and give each an optional `<fileExtensions>` filter so the per-file prompt is
+   chosen by source language (`.java` → a Java prompt, `.sql` → a SQL-schema prompt); an entry with
+   no `<fileExtensions>` is the fallback applied to any file no extension-specific entry matched.
 
 ```xml
 <plugin>
@@ -168,11 +183,22 @@ The plugin is configured from three building blocks, declared on the plugin insi
             </aiDefinition>
         </aiDefinitions>
 
-        <!-- 2) Prompts (abbreviated). See the ai-index-selftest profile in this repo's
-                pom.xml for the full, tested file-body / package-body templates. -->
+        <!-- 2) Prompts (abbreviated): one prompt per language plus a fallback, a package
+                prompt, and the optional project-overview prompt. See the ai-index-selftest
+                profile in this repo's pom.xml for the full, tested file-body-java /
+                file-body-sql / file-body-fallback / package-body / project-body templates. -->
         <promptDefinitions>
             <promptDefinition>
-                <key>file-body</key>
+                <key>file-body-java</key>
+                <template><![CDATA[Summarize ONE Java source file as structured markdown.
+
+File: %s
+
+Source:
+%s]]></template>
+            </promptDefinition>
+            <promptDefinition>
+                <key>file-body-fallback</key>
                 <template><![CDATA[Summarize ONE source file as structured markdown.
 
 File: %s
@@ -189,6 +215,15 @@ Package: %s
 File summaries:
 %s]]></template>
             </promptDefinition>
+            <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
+            <promptDefinition>
+                <key>project-body</key>
+                <template><![CDATA[Write a short overview of the whole project from its per-package leads.
+
+Index file: %s
+
+%s]]></template>
+            </promptDefinition>
         </promptDefinitions>
     </configuration>
 
@@ -199,9 +234,19 @@ File summaries:
             <phase>generate-resources</phase>
             <goals><goal>generate</goal></goals>
             <configuration>
+                <!-- .java picks the Java prompt; any other file falls back. Add a
+                     file-body-sql entry with <fileExtensions>.sql</fileExtensions> to
+                     index SQL schema the same way. -->
                 <fieldGenerations>
                     <fieldGeneration>
-                        <promptKey>file-body</promptKey>
+                        <promptKey>file-body-java</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                        <fileExtensions>
+                            <fileExtension>.java</fileExtension>
+                        </fileExtensions>
+                    </fieldGeneration>
+                    <fieldGeneration>
+                        <promptKey>file-body-fallback</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
                     </fieldGeneration>
                 </fieldGenerations>
@@ -215,6 +260,22 @@ File summaries:
                 <fieldGenerations>
                     <fieldGeneration>
                         <promptKey>package-body</promptKey>
+                        <aiDefinitionKey>coder</aiDefinitionKey>
+                    </fieldGeneration>
+                </fieldGenerations>
+            </configuration>
+        </execution>
+        <!-- Phase 3: project index. The per-package listing is deterministic (no model needed).
+             Add the optional <configuration> below to also write a short #### Overview paragraph
+             from the package leads (one extra AI call); omit it for a purely deterministic index. -->
+        <execution>
+            <id>ai-aggregate-project</id>
+            <phase>prepare-package</phase>
+            <goals><goal>aggregate-project</goal></goals>
+            <configuration>
+                <fieldGenerations>
+                    <fieldGeneration>
+                        <promptKey>project-body</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
                     </fieldGeneration>
                 </fieldGenerations>
@@ -237,9 +298,20 @@ Run-level parameters (set in `<configuration>`):
 - `outputDirectory` — target directory for `.ai.md` files (default: `${project.basedir}/src/site/ai`)
 - `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`)
 - `fileExtensions` — file extensions to index (default: `.java`)
+- `excludes` — glob patterns for source files to skip, matched against each file's path relative to
+  the base dir with `/` separators, e.g. `**/package-info.java`, `**/generated/**` (default: none).
+  `*` stays within one path segment, `**` spans directories, `?` is a single character.
 - `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
 - `force` — regenerate even when a body already exists (default: `false`)
-- `skip` — skip the goal entirely (default: `false`)
+- `skip` — global switch: skip **every** phase (default: `false`)
+- Per-phase switches — turn any of the three phases on/off independently (each default `false`).
+  Named after the three index levels (`file` / `package` / `project`, the `x` node types):
+  - `aiIndex.file.skip` — skip the **file** phase (the `generate` goal)
+  - `aiIndex.package.skip` — skip the **package** phase (the `aggregate-packages` goal)
+  - `aiIndex.project.skip` — skip the **project** phase (the `aggregate-project` goal)
+
+  So `-DaiIndex.package.skip=true` runs file + project only, `-DaiIndex.skip=true` runs
+  nothing, and the defaults run all three.
 - `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
 - `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
 
@@ -247,9 +319,19 @@ Per-model parameters — model path, context size, output tokens, temperature, t
 repeat penalty, threads — live inside each `<aiDefinition>`, not as top-level parameters.
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
-from `<fieldGenerations>`. The self-test profile defines two:
-- `file-body` — summarizes a single source file
+from `<fieldGenerations>`. The self-test profile defines five:
+- `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
+- `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
+  the tables it reads vs writes, and relationships)
+- `file-body-fallback` — generic multi-language summary for any other source file
 - `package-body` — synthesizes a package summary from the already-generated file summaries
+- `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
+
+For the `generate` goal the file-level prompt is selected per file by extension: the first field
+generation whose `<fileExtensions>` matches the file name wins; otherwise the first entry without a
+`<fileExtensions>` filter is the fallback. A single field generation with no filter (the historical
+shape) keeps working — it is simply the fallback for every file.
+
 Each summary begins with a one-sentence blockquote lead, followed by structured `####` sections.
 Prompts are optimized to avoid code blocks, formatter artifacts, and empty outputs, and to produce structured markdown.
 ## Output Structure

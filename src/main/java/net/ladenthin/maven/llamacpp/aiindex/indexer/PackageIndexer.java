@@ -254,6 +254,7 @@ public class PackageIndexer {
         }
 
         final List<String> contents = collectContents(directory);
+        final List<String> childLinks = collectChildLinks(directory);
         final Path packageFile = directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME);
 
         final String nodeName = outputRoot.relativize(directory).toString().replace('\\', '/');
@@ -270,7 +271,8 @@ public class PackageIndexer {
                 generatedAt,
                 pluginVersion,
                 aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE);
+                AiMdHeaderCodec.NODE_TYPE_PACKAGE,
+                childLinks);
 
         if (!headerSupport.shouldWrite(force, packageFile, baseHeader)) {
             log.info("Unchanged package AI index file: " + packageFile);
@@ -318,6 +320,56 @@ public class PackageIndexer {
         }
 
         return entries;
+    }
+
+    /**
+     * Collects the deterministic child links for {@code directory}'s header {@code F} list: one
+     * markdown link per child {@code .ai.md} (the source name pointing at its index file) and per
+     * sub-package (the directory name pointing at its {@code package.ai.md}), in ascending name order.
+     * These links live in the header so the package&rarr;file navigation stays machine-parseable and
+     * the AI body stays free-form.
+     *
+     * @param directory the package directory whose children are linked
+     * @return ordered list of markdown child links; empty when the package has no children
+     * @throws IOException if the directory cannot be listed
+     */
+    private List<String> collectChildLinks(final Path directory) throws IOException {
+        final List<String> links = new ArrayList<>();
+
+        try (Stream<Path> stream = Files.list(directory)) {
+            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
+                final Path fileNamePath = path.getFileName();
+                if (fileNamePath == null) {
+                    continue;
+                }
+                final String name = fileNamePath.toString();
+
+                if (Files.isDirectory(path)) {
+                    if (hasPackageAiMdFile(path)) {
+                        final String label = name + CHILD_DIRECTORY_SUFFIX;
+                        links.add(markdownLink(label, label + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
+                    }
+                    continue;
+                }
+
+                if (isAiMdContentFile(name)) {
+                    links.add(markdownLink(toChildDisplayName(name), name));
+                }
+            }
+        }
+
+        return links;
+    }
+
+    /**
+     * Formats a markdown link {@code [label](target)}.
+     *
+     * @param label  link label
+     * @param target link target (relative path)
+     * @return the markdown link string
+     */
+    private String markdownLink(final String label, final String target) {
+        return "[" + label + "](" + target + ")";
     }
 
     /**
@@ -587,7 +639,10 @@ public class PackageIndexer {
     /**
      * Returns {@code true} when {@code name} refers to a child AI index file that should
      * be included in content listings and checksum calculations. Excludes the
-     * {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} file itself and any
+     * {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} file itself, the
+     * project-level {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#PROJECT_AI_MD_FILENAME}
+     * (which the aggregator writes into the output root and must not fold back into its own
+     * checksum or summary on a re-run), and any
      * {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec#GENERATED_BY_PREFIX} marker files.
      *
      * @param name file name of the path under examination
@@ -595,6 +650,7 @@ public class PackageIndexer {
      */
     private boolean isAiMdContentFile(final String name) {
         return !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name)
+                && !AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equals(name)
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX)
                 && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION);
     }

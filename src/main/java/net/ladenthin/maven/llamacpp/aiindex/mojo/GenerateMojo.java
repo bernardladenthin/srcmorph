@@ -40,6 +40,13 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      */
     private static final String DEFAULT_FILE_EXTENSION = ".java";
 
+    /**
+     * Phase switch for the <strong>file</strong> phase (the {@code generate} goal): when {@code true},
+     * only this phase is skipped. The global {@link #skip} still skips every phase.
+     */
+    @Parameter(property = "aiIndex.file.skip", defaultValue = "false")
+    private boolean skipFile;
+
     @Parameter(defaultValue = "${project.version}", readonly = true)
     private String pluginVersion;
 
@@ -48,6 +55,17 @@ public class GenerateMojo extends AbstractAiIndexMojo {
 
     @Parameter(property = "aiIndex.fileExtensions")
     private List<String> fileExtensions;
+
+    /**
+     * Glob patterns for source files to skip, matched against each file's path relative to the
+     * project base directory with {@code /} separators (e.g. {@code **}{@code /package-info.java},
+     * {@code **}{@code /generated/**}). Lets the index stay focused by excluding trivial or generated
+     * sources. Empty by default — nothing is excluded.
+     *
+     * @see net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter
+     */
+    @Parameter(property = "aiIndex.excludes")
+    private List<String> excludes;
 
     /** llama.cpp context window size; smaller default suits the fast generate pass. */
     @Parameter(property = "aiIndex.llama.contextSize", defaultValue = "2048")
@@ -70,8 +88,13 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     }
 
     @Override
+    protected boolean isPhaseSkipped() {
+        return skipFile;
+    }
+
+    @Override
     public void execute() throws MojoExecutionException {
-        if (skip) {
+        if (shouldSkip()) {
             getLog().info("AI index generation skipped.");
             return;
         }
@@ -100,6 +123,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         pluginVersion,
                         aiVersion,
                         resolvedSubtrees,
+                        excludes,
                         force,
                         provider,
                         fieldGenerations,

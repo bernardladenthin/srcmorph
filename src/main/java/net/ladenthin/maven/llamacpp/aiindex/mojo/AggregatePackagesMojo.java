@@ -34,6 +34,13 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
         // no-op
     }
 
+    /**
+     * Phase switch for the <strong>package</strong> phase (the {@code aggregate-packages} goal): when
+     * {@code true}, only this phase is skipped. The global {@link #skip} still skips every phase.
+     */
+    @Parameter(property = "aiIndex.package.skip", defaultValue = "false")
+    private boolean skipPackage;
+
     @Parameter(defaultValue = "${project.version}", readonly = true)
     private String pluginVersion;
 
@@ -59,8 +66,13 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
     }
 
     @Override
+    protected boolean isPhaseSkipped() {
+        return skipPackage;
+    }
+
+    @Override
     public void execute() throws MojoExecutionException {
-        if (skip) {
+        if (shouldSkip()) {
             getLog().info("AI package aggregation skipped.");
             return;
         }

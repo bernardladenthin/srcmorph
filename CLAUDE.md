@@ -99,9 +99,9 @@ llamacpp-ai-index-maven-plugin/
 │   │       │                #   AiGenerationRequest, AiGenerationResult (carry an AiMdHeader)
 │   │       ├── prompt/      # AiPromptDefinition, AiPreparedPrompt, AiPromptSupport, AiPromptPreparationSupport
 │   │       ├── config/      # AiGenerationConfig, AiGenerationKind, AiFieldGenerationConfig,
-│   │       │                #   AiModelDefinition, AiModelDefinitionSupport
+│   │       │                #   AiFieldGenerationSelector, AiModelDefinition, AiModelDefinitionSupport
 │   │       └── support/     # Foundation: AiChecksumSupport, AiTimeSupport, AiPathSupport,
-│   │                        #   Java8CompatibilityHelper, ConvertToRecord
+│   │                        #   AiSourceExcludeFilter, Java8CompatibilityHelper, ConvertToRecord
 │   ├── site/
 │   │   └── ai/                            # Output directory for .ai.md files
 │   └── test/
@@ -118,9 +118,9 @@ llamacpp-ai-index-maven-plugin/
 
 ## Core Architecture
 
-### Two-Phase Operation
+### Three-Phase Operation
 
-The plugin operates in two logical phases:
+The plugin operates in three logical phases, building a navigable index from fine to coarse:
 
 **Phase 1 — File Indexing & Summarization**
 ```
@@ -132,15 +132,41 @@ The plugin operates in two logical phases:
 [*.java.ai.md files] → PackageIndexer → [package.ai.md files (deterministic header + AI body)]
 ```
 
+**Phase 3 — Project Index (deterministic listing; optional AI overview)**
+```
+[package.ai.md files] → ProjectIndexer → [one project.ai.md: per-package lead (body) + link (header F)]
+```
+Phase 3 harvests the one-sentence blockquote lead each `package.ai.md` already begins with
+(via `AiMdLeadExtractor`) and writes a single, always-loadable table of contents linking to
+every package — the entry point an agent reads first to navigate project → package → file → raw.
+The per-package listing calls no model, so it is cheap and scales to hundreds of packages (no
+embeddings/vector DB). **Optional (opt-in):** when a `<fieldGeneration>` is configured on the
+goal, *one* extra AI call writes a short `#### Overview` paragraph from the package leads (never
+the full bodies). Incrementality is preserved by folding the overview generation signature
+(`promptKey:aiDefinitionKey`) — not the AI output — into the `c` checksum, so an unchanged project
+is never re-inferred but enabling/switching the overview, or a package change, rebuilds it.
+
+**Each phase is independently switchable.** Every goal is a separate Maven execution, and each can be
+toggled on/off on its own via a phase-specific skip flag named after the index level (`aiIndex.file.skip`,
+`aiIndex.package.skip`, `aiIndex.project.skip` — the `x` node types), with `aiIndex.skip` as a global
+"skip all" switch — so you can run nothing, all three, or any subset (e.g. file + project only). The
+mechanism is generalized symmetrically: `AbstractAiIndexMojo` owns the global `skip`, the abstract
+`isPhaseSkipped()` seam, and `shouldSkip() = skip || isPhaseSkipped()`; each concrete mojo adds exactly
+one `skip<Phase>` `@Parameter` plus a one-line `isPhaseSkipped()` override and calls `shouldSkip()` at
+the top of `execute()`. Covered by `MojoPhaseSkipTest`.
+
 ### Key Components
 
 | Class | Role |
 |---|---|
-| `AbstractAiIndexMojo` | Shared `@Parameter` fields and utilities for all mojos |
+| `AbstractAiIndexMojo` | Shared `@Parameter` fields and utilities for the AI generate/aggregate-packages mojos |
 | `GenerateMojo` | Phase 1: index + summarize source files |
 | `AggregatePackagesMojo` | Phase 2: aggregate + summarize package index files |
+| `AggregateProjectMojo` | Phase 3: build the single `project.ai.md` (deterministic listing; extends `AbstractAiIndexMojo` and builds a provider **only** when a `<fieldGeneration>` opts into the AI overview) |
 | `SourceFileIndexer` | Walks source trees, creates `.ai.md` files, calls AI to fill the document body |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
+| `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
+| `AiMdLeadExtractor` | Pure extraction of the one-line blockquote lead from an `.ai.md` body (fallback: first non-blank line) |
 | `AiGenerationProvider` | Interface for AI backends (llama.cpp JNI or mock) |
 | `AiFieldGenerationSupport` | Shared field-generation loop extracted from both indexers |
 | `AiGenerationResult` | Immutable carrier for the AI-generated body text out of the loop |
@@ -156,24 +182,30 @@ The plugin operates in two logical phases:
 Each `.ai.md` file begins with a metadata header block:
 
 ```
-<!-- ai-md-header
-h: "1.0"
-title: "MyClass.java"
-c: "a1b2c3d4"
-d: "2026-01-01T00:00:00Z"
-t: "2026-01-01T00:01:00Z"
-g: "0.1.0"
-a: "1.0.0"
-x: "file"
--->
-This class handles parsing of Markdown headers...
+### main/java/com/example
+- H: 1.0
+- C: A1B2C3D4
+- D: 2026-01-01T00:00:00Z
+- T: 2026-01-01T00:01:00Z
+- G: 0.1.0
+- A: 1.0.0
+- X: package
+- F: [MyClass.java](MyClass.java.ai.md)
+- F: [sub/](sub/package.ai.md)
+---
+> Handles example domain logic for ...
 (AI-generated body text continues here)
 ```
 
 The header carries only deterministic metadata. All AI-generated
-content lives in the document body after the header block, keeping
+content lives in the document body after the `---` separator, keeping
 the header machine-parseable without AI involvement (see
-`AiMdHeader.java` Javadoc for the rationale).
+`AiMdHeader.java` Javadoc for the rationale). The repeatable `F` field
+holds the deterministic child links — for a `package`, one per child
+`.ai.md` (files and sub-packages); for a `project`, one per package —
+so navigation (project → package → file) stays uniformly in the header
+while the body stays free-form. `AiMdDocumentCodec` parses only the
+header block, so a `- F:` line in the body is never read as a link.
 
 | Field | Meaning |
 |---|---|
@@ -184,7 +216,8 @@ the header machine-parseable without AI involvement (see
 | `t` | Last generation timestamp |
 | `g` | Plugin version (`project.version`) |
 | `a` | AI model version |
-| `x` | Node type: `file` or `package` |
+| `x` | Node type: `file`, `package`, or `project` |
+| `F` | Repeatable child link (markdown), e.g. `[Foo.java](Foo.java.ai.md)`; the navigation list for `package`/`project` nodes, absent for `file` |
 
 ### Provider Pattern
 
@@ -205,16 +238,21 @@ the header machine-parseable without AI involvement (see
 |---|---|
 | `ai-index:generate` | Phase 1: index source files and fill the AI-generated document body |
 | `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill the AI-generated document body |
+| `ai-index:aggregate-project` | Phase 3: harvest per-package leads into one `project.ai.md` (deterministic listing; optional one-call AI `#### Overview` when a `<fieldGeneration>` is configured) |
 
 ### Key Parameters (`GenerateMojo`)
 
 | Parameter | Property | Default | Description |
 |---|---|---|---|
 | `outputDirectory` | `aiIndex.outputDirectory` | `${basedir}/src/site/ai` | Where `.ai.md` files are written |
-| `skip` | `aiIndex.skip` | `false` | Skip all execution |
+| `skip` | `aiIndex.skip` | `false` | Global switch: skip **every** phase |
+| `skipFile` | `aiIndex.file.skip` | `false` | Skip only the **file** phase (`generate` goal) |
+| `skipPackage` | `aiIndex.package.skip` | `false` | Skip only the **package** phase (`aggregate-packages` goal) |
+| `skipProject` | `aiIndex.project.skip` | `false` | Skip only the **project** phase (`aggregate-project` goal) |
 | `force` | `aiIndex.force` | `false` | Regenerate even if summary exists |
 | `subtrees` | `aiIndex.subtrees` | *(all)* | Limit to specific source subdirectories |
 | `fileExtensions` | `aiIndex.fileExtensions` | `.java` | File extensions to index |
+| `excludes` | `aiIndex.excludes` | *(none)* | Glob patterns (base-relative, `/` separators) for source files to skip, e.g. `**/package-info.java`, `**/generated/**` (`AiSourceExcludeFilter`) |
 | `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
 | `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
 | `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |
@@ -330,7 +368,7 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
 3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums detect source changes.
 4. **Unified indexing and summarization** — each indexer (`SourceFileIndexer`, `PackageIndexer`) both creates the `.ai.md` skeleton and fills in AI fields in a single pass; no separate summarization step is needed.
 5. **Provider abstraction** — AI backends are pluggable through `AiGenerationProvider`; mock provider enables fully deterministic tests.
-6. **Configuration-driven prompts** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change.
+6. **Configuration-driven prompts** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change. For the `generate` goal the per-file prompt is chosen by source extension (`AiFieldGenerationSelector`): each `<fieldGeneration>` may carry an optional `<fileExtensions>` filter (e.g. `.java`/`.sql`), and an entry without one is the fallback — so a Java prompt, a SQL-schema prompt, and a generic fallback can coexist while one model stays loaded.
 
 ## Javadoc Conventions
 
