@@ -23,6 +23,8 @@ cross-cutting initiative.
 
 - **Cross-repo code-quality TODOs** — see [`../workspace/policies/code-quality-todos.md`](../workspace/policies/code-quality-todos.md) for the canonical `@VisibleForTesting` design-fit review, package hierarchy review, and class/method naming review. This repo has no `@VisibleForTesting` usages today; the package and naming reviews are still open here.
 
+- **SpotBugs `CE_CLASS_ENVY` on `PackageIndexer.appendPackageHeaderLines` (provisional suppression).** fb-contrib flags this method — it renders the package `.ai.md` header from all eight `AiMdHeader` accessors plus `AiMdHeaderCodec` prefix constants, so it uses other classes more than its own. It is **provisionally suppressed** in `spotbugs-exclude.xml` so the early SpotBugs `code-style` gate is green. **Deep-check / resolve:** `AiMdHeaderCodec.write(AiMdHeader)` already emits byte-for-byte identical text, so the clean fix is to delegate — add an `AiMdHeaderCodec` field and replace the body with `builder.append(headerCodec.write(header))`, then drop the suppression and confirm `PackageIndexerTest` still passes. Surfaced (already merged, via PR #117) when SpotBugs moved to the early `code-style` CI gate. See [`../workspace/policies/spotbugs-suppressions.md`](../workspace/policies/spotbugs-suppressions.md).
+
 ## Done (kept for history)
 
 ### Layered package restructure (flat plugin package → layered hierarchy)
