@@ -53,6 +53,7 @@ public class AiModelDefinition {
     private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
+    private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private @Nullable List<String> stopStrings;
 
     /**
@@ -336,6 +337,26 @@ public class AiModelDefinition {
      */
     public void setCachePrompt(final boolean cachePrompt) {
         this.cachePrompt = cachePrompt;
+    }
+
+    /**
+     * Returns the gpt-oss reasoning-effort level for this model.
+     *
+     * @return reasoning effort ({@code "low"}/{@code "medium"}/{@code "high"}), or empty to omit it;
+     *         defaults to {@link AiGenerationConfig#DEFAULT_REASONING_EFFORT}
+     */
+    public String getReasoningEffort() {
+        return reasoningEffort;
+    }
+
+    /**
+     * Sets the gpt-oss reasoning-effort level for this model.
+     *
+     * @param reasoningEffort {@code "low"}/{@code "medium"}/{@code "high"} (passed as the
+     *        {@code reasoning_effort} chat-template kwarg), or empty/blank to omit it
+     */
+    public void setReasoningEffort(final String reasoningEffort) {
+        this.reasoningEffort = reasoningEffort;
     }
 
     /**

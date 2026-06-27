@@ -46,6 +46,7 @@ public class LlamaCppJniAiGenerationProviderTest {
                 AiGenerationConfig.DEFAULT_REPEAT_PENALTY,
                 AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING,
                 AiGenerationConfig.DEFAULT_CACHE_PROMPT,
+                AiGenerationConfig.DEFAULT_REASONING_EFFORT,
                 Collections.emptyList());
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
 

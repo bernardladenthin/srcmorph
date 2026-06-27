@@ -61,12 +61,6 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     /** Chat-template kwarg for the gpt-oss reasoning-effort level (ignored by non-gpt-oss templates). */
     private static final String REASONING_EFFORT_KWARG = "reasoning_effort";
 
-    /**
-     * Reasoning effort for this task: {@code "low"} keeps the discarded chain-of-thought minimal for
-     * the short, structured summaries this plugin produces (the gpt-oss default would be medium).
-     */
-    private static final String REASONING_EFFORT_LOW = "low";
-
     /** Number of chat-template kwargs put into the map (used for presizing). */
     private static final int CHAT_TEMPLATE_KWARG_COUNT = 2;
 
@@ -88,9 +82,11 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
             final Map<String, String> chatTemplateKwargs =
                     new HashMap<>(compatibilityHelper.hashMapCapacityFor(CHAT_TEMPLATE_KWARG_COUNT));
             chatTemplateKwargs.put(ENABLE_THINKING_KWARG, String.valueOf(config.chatTemplateEnableThinking()));
-            // gpt-oss honors reasoning_effort; non-gpt-oss chat templates ignore it. "low" keeps the
-            // discarded chain-of-thought minimal for the short structured summaries this plugin produces.
-            chatTemplateKwargs.put(REASONING_EFFORT_KWARG, REASONING_EFFORT_LOW);
+            // gpt-oss honors reasoning_effort; non-gpt-oss chat templates ignore it. An empty
+            // configured value omits the kwarg so the model's own template default applies.
+            if (!compatibilityHelper.isBlank(config.reasoningEffort())) {
+                chatTemplateKwargs.put(REASONING_EFFORT_KWARG, config.reasoningEffort());
+            }
             final ModelParameters modelParameters = new ModelParameters()
                     .setModel(config.modelPath())
                     .setCtxSize(config.contextSize())

@@ -62,4 +62,14 @@ public class AiGenerationConfigTest {
         // removed-assignment setter mutant.
         assertThat(c.isCachePrompt(), is(false));
     }
+
+    @Test
+    public void reasoningEffortDefaultsLowAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default "low" kills the empty/null return mutants on the getter.
+        assertThat(c.getReasoningEffort(), is("low"));
+        c.setReasoningEffort("high");
+        // Round-tripped value kills the removed-assignment setter mutant.
+        assertThat(c.getReasoningEffort(), is("high"));
+    }
 }

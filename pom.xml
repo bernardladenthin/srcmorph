@@ -96,6 +96,10 @@ SPDX-License-Identifier: Apache-2.0
              files. Override per run for benchmarking, e.g. -Dai.cachePrompt=false. -->
         <ai.cachePrompt>true</ai.cachePrompt>
 
+        <!-- gpt-oss reasoning effort (low/medium/high). Override per run for benchmarking, e.g.
+             -Dai.reasoningEffort=high. Only gpt-oss honors it; other models ignore it. -->
+        <ai.reasoningEffort>low</ai.reasoningEffort>
+
         <!-- EXPERIMENT KNOBS (commented out, kept for re-runs). Re-enable these and switch
              the executions' aiDefinitionKey/promptKey back to ${exp.model}/${exp.filePrompt}/
              ${exp.pkgPrompt} to drive model + prompt per run via -D for benchmarking, e.g.:
@@ -1309,6 +1313,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <topP>1.0</topP>
                                     <topK>0</topK>
                                     <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>${ai.reasoningEffort}</reasoningEffort>
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Qwen3-Coder-30B</key>

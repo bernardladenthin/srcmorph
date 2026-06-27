@@ -58,4 +58,14 @@ public class AiModelDefinitionTest {
         // removed-assignment setter mutant.
         assertThat(d.isCachePrompt(), is(false));
     }
+
+    @Test
+    public void reasoningEffortDefaultsLowAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        // Default "low" kills the empty/null return mutants on the getter.
+        assertThat(d.getReasoningEffort(), is("low"));
+        d.setReasoningEffort("medium");
+        // Round-tripped value kills the removed-assignment setter mutant.
+        assertThat(d.getReasoningEffort(), is("medium"));
+    }
 }

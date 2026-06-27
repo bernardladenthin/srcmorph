@@ -133,6 +133,16 @@ public class AiGenerationConfig {
      */
     public static final boolean DEFAULT_CACHE_PROMPT = true;
 
+    /**
+     * Default gpt-oss reasoning-effort level ({@code "low"} / {@code "medium"} / {@code "high"}).
+     *
+     * <p>{@code "low"} keeps the discarded chain-of-thought minimal for the short, structured
+     * summaries this plugin produces (the gpt-oss model default would be {@code "medium"}). It is
+     * passed as the {@code reasoning_effort} chat-template kwarg; non-gpt-oss chat templates ignore
+     * it. An empty value omits the kwarg entirely so the model's own template default applies.</p>
+     */
+    public static final String DEFAULT_REASONING_EFFORT = "low";
+
     private String modelPath;
     private int contextSize = DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS;
@@ -148,6 +158,7 @@ public class AiGenerationConfig {
     private float repeatPenalty = DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
+    private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private List<String> stopStrings = new ArrayList<>();
 
     /**
@@ -420,6 +431,25 @@ public class AiGenerationConfig {
      */
     public void setCachePrompt(final boolean cachePrompt) {
         this.cachePrompt = cachePrompt;
+    }
+
+    /**
+     * Returns the gpt-oss reasoning-effort level passed as the {@code reasoning_effort} kwarg.
+     *
+     * @return reasoning effort ({@code "low"}/{@code "medium"}/{@code "high"}), or empty to omit it
+     */
+    public String getReasoningEffort() {
+        return reasoningEffort;
+    }
+
+    /**
+     * Sets the gpt-oss reasoning-effort level.
+     *
+     * @param reasoningEffort {@code "low"}/{@code "medium"}/{@code "high"}, or empty/blank to omit
+     *                        the kwarg (the model's own chat-template default then applies)
+     */
+    public void setReasoningEffort(final String reasoningEffort) {
+        this.reasoningEffort = reasoningEffort;
     }
 
     /**
