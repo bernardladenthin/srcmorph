@@ -398,13 +398,7 @@ only consumes the budget the deliverable needs. The truncation above is a **budg
 model limit**: give the reasoning room and the summary completes (see below). `low` remains the best
 default — fastest, and the whole budget goes to the summary.
 
-### Clean runs & large files (~100 KB / >1000 lines)
-
-The truncation seen above is fixed by sizing the budget to the effort. The pom ships three ready
-presets — `gpt-oss-20B-{small,medium,high}-c48k` — all at **48K context** and **`charsPerToken=3`**
-(dense Java tokenises below the 4-char default; 3 keeps the char-based pre-trim token-safe so a big
-file is never silently over-fed into too small a window), with the output budget scaled to the effort
-(`small`=4096, `medium`=6144, `high`=8192).
+### Clean runs, large files, and the context-window limit
 
 Two independent limits must both be satisfied for a clean run:
 
@@ -413,22 +407,68 @@ Two independent limits must both be satisfied for a clean run:
 | `contextSize` | input (prompt + source) that fits the window | source **trimmed** before the model sees it |
 | `maxOutputTokens` | reasoning **+** final answer (gpt-oss reasons in-band) | summary **truncated** mid-output |
 
-**Validation — `medium-c48k` on a 96 KB / 2470-line synthetic Java class:**
+`charsPerToken=3` is set on all presets: dense Java measured **~4.2 chars/token**, and using 3 keeps
+the char-based pre-trim conservative so a big file is never silently over-fed past the real token
+window. (The earlier 1536-budget truncation was a *budget* artifact, not a model limit — give the
+output room and the summary completes.)
 
-| Check | Result |
-|---|---|
-| `maxInputChars` (derived) | 125 800 — 96 KB file fits, **no trim** |
-| `truncated` (llama.cpp) | **0** — whole file prefilled (~24 K tokens) |
-| stop reason | **natural** — `n_decoded = 1198`, far below the 6144 cap |
-| retries | **none** |
-| `.ai.md` | complete to `#### Concurrency`; covers the whole file (last fields + `adjustBucket120` + tail methods); even flagged a real injected bug (`undefined variable i`) |
-| build | `BUILD SUCCESS` |
+**How big can one file be?** gpt-oss-20b's native window is **`n_ctx_train = 131072` (128K tokens)**.
+At ~4.2 chars/token that is the hard ceiling; the practical ceiling on CPU is *time*, not the window:
 
-**Cost reality for big files:** the 96 KB file took **~25 min** — prefill **~978 s** (24 K tokens @ ~25 t/s)
-plus generation **~522 s** (only 1198 tokens, but @ ~2.3 t/s — a large KV context slows decoding too).
-The bottleneck on ~100 KB files is **CPU prefill + large-context decode, not the effort level**
-(the 6144 budget was barely used). So for large files the knobs that matter are `contextSize` +
-`charsPerToken` (fit untrimmed); the output budget just needs headroom. Expect minutes-per-file on CPU.
+| File size | ≈ tokens | fits 128K window? | practical on CPU? |
+|---|---|---|---|
+| ~40 KB | ~10 K | yes | yes — ~1–2 min/file |
+| ~100 KB | ~24 K | yes | yes — ~25 min/file |
+| ~250 KB | ~62 K | yes | borderline — **~80 min/file** |
+| ~480–500 KB | ~115–120 K | edge (needs tiny output budget) | no — hours |
+| > ~500 KB | > 122 K | **no — exceeds the window** | n/a |
+
+**Three size-tiered presets ship in the pom** (all `reasoningEffort=low`, `charsPerToken=3`):
+
+| Preset | `contextSize` | `maxOutputTokens` | covers file up to | ~ time (CPU) |
+|---|---|---|---|---|
+| `gpt-oss-20B-c16k` | 16384 | 2048 | ~40 KB | ~1–2 min |
+| `gpt-oss-20B-c48k` | 49152 | 4096 | ~125 KB | ~25 min @ 100 KB |
+| `gpt-oss-20B-c96k` | 98304 | 6144 | ~260 KB | ~80 min @ 250 KB |
+
+**Validated end-to-end** (synthetic Java fixtures from
+[`tools/generate-fixture.sh`](tools/generate-fixture.sh); `mvn generate-resources`, CPU-only):
+
+| Run | file | `truncated` | stop | output | total | prefill | decode |
+|---|---|---|---|---|---|---|---|
+| `c48k` | 96 KB / 2470 ln | **0** | natural (`n_decoded=1198`) | complete to `#### Concurrency` | ~25 min | ~978 s (24 K tok @ ~25 t/s) | ~522 s (@ ~2.3 t/s) |
+| `c96k` | 253 KB / 6441 ln | **0** | natural (`n_decoded=738`) | complete to `#### Concurrency` | **~80 min** | ~4053 s (61 K tok @ ~15 t/s) | ~754 s (@ **~1.0 t/s**) |
+
+Both ran with no trim, no retries, `BUILD SUCCESS`, and summaries that span the whole file (first
+field → last `adjustBucketN` → tail methods). The 250 KB summary was compact (738 tokens) and faithful
+but mis-counted the bucket methods ("260" vs 329) — large inputs invite small quantitative slips even
+when the structure is right.
+
+**Cost reality:** the bottleneck on big files is **CPU prefill + large-context decode, not the effort
+level** — at 96K context decode drops to **~1 t/s** (vs ~2.3 t/s at 48K, ~10 t/s for small files),
+and prefill is effectively O(n²). The output budget is barely used (738–1198 tokens), so for large
+files the knobs that matter are `contextSize` + `charsPerToken` (fit untrimmed); the budget just needs
+headroom.
+
+### Strategy for a repo with mixed file sizes
+
+The plugin routes the model per file by **extension, not by size** (`AiFieldGenerationSelector`), so
+one run cannot auto-pick a preset per file size. Key fact: **`contextSize` costs KV RAM (one-time),
+not per-small-file speed** — prefill and decode scale with each file's *actual* token count, not with
+the allocated window, so a small file stays fast even in a large context; you only pay the RAM
+(roughly: ~12 GB model + KV ~2 GB @16K / ~6 GB @48K / ~11 GB @96K). Two workable approaches:
+
+1. **One preset, sized to your largest file (simplest).** If your biggest class fits ~125 KB and you
+   have the RAM, run `c48k` for everything — small files are unaffected in speed.
+2. **Split into scoped runs (RAM-constrained, or rare monster files).**
+   - cheap run: `c16k` with `<excludes>` skipping the known big files (or `<subtrees>` limited to the
+     normal packages);
+   - targeted run: `c48k`/`c96k` with `<subtrees>` limited to the big file(s).
+   The model reloads per run, but the large context is paid only where needed; checksum incrementality
+   makes re-runs cheap once a file is summarized.
+
+Size-based auto-routing (file bytes → preset) is **not currently a feature** — it would be the clean
+fix if mixed-size repos become common.
 
 ## 12. Caveats
 
