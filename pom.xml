@@ -96,10 +96,6 @@ SPDX-License-Identifier: Apache-2.0
              files. Override per run for benchmarking, e.g. -Dai.cachePrompt=false. -->
         <ai.cachePrompt>true</ai.cachePrompt>
 
-        <!-- gpt-oss reasoning effort (low/medium/high). Override per run for benchmarking, e.g.
-             -Dai.reasoningEffort=high. Only gpt-oss honors it; other models ignore it. -->
-        <ai.reasoningEffort>low</ai.reasoningEffort>
-
         <!-- EXPERIMENT KNOBS (commented out, kept for re-runs). Re-enable these and switch
              the executions' aiDefinitionKey/promptKey back to ${exp.model}/${exp.filePrompt}/
              ${exp.pkgPrompt} to drive model + prompt per run via -D for benchmarking, e.g.:
@@ -1300,20 +1296,67 @@ SPDX-License-Identifier: Apache-2.0
                                     <topK>20</topK>
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
+                                <!-- ============================================================
+                                     gpt-oss-20B — three ready-to-use reasoning presets.
+                                     gpt-oss is a *reasoning* model: it emits an internal analysis
+                                     channel BEFORE the answer, and llama.cpp counts those reasoning
+                                     tokens IN-BAND against maxOutputTokens. So a higher reasoningEffort
+                                     needs a LARGER maxOutputTokens, or the final summary is truncated.
+                                     These three presets size the output budget to the effort and are
+                                     robust to large source files (~100 KB / >1000 lines):
+                                       - contextSize 49152 (48K) holds a ~100 KB file (~30K tokens)
+                                         plus prompt plus the output budget.
+                                       - charsPerToken 3 matches dense Java (the 4-char default is too
+                                         optimistic for code and risks real context overflow on big files).
+                                     For this short-summary task, "small" (low effort) is the best
+                                     default: fastest and the full budget goes to the summary. See
+                                     docs/ai-index-benchmark/COMPARISON.md §11.
+                                     gpt-oss sampling per model card: temp 1.0, top-p 1.0, top-k 0.
+                                     ============================================================ -->
                                 <aiDefinition>
-                                    <key>EXP-gpt-oss-20B</key>
+                                    <key>gpt-oss-20B-small-c48k</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
-                                    <contextSize>16384</contextSize>
-                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <contextSize>49152</contextSize>
+                                    <maxOutputTokens>4096</maxOutputTokens>
                                     <temperature>1.0</temperature>
                                     <threads>8</threads>
-                                    <charsPerToken>4</charsPerToken>
+                                    <charsPerToken>3</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
                                     <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>1.0</topP>
                                     <topK>0</topK>
                                     <repeatPenalty>1.0</repeatPenalty>
-                                    <reasoningEffort>${ai.reasoningEffort}</reasoningEffort>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-medium-c48k</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>49152</contextSize>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>1.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>medium</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-high-c48k</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>49152</contextSize>
+                                    <maxOutputTokens>8192</maxOutputTokens>
+                                    <temperature>1.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>high</reasoningEffort>
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Qwen3-Coder-30B</key>
