@@ -363,14 +363,16 @@ Based on an 8-model × 2-prompt benchmark run against this codebase — full res
 pros/cons, a source-faithfulness deep-dive, and reproduction steps in
 [docs/ai-index-benchmark](docs/ai-index-benchmark/COMPARISON.md):
 
-- **Qwen3-Coder-30B-A3B-Instruct** — best overall and for large Java files: most complete/faithful
-  output, code-specialized, Apache-2.0, fast for its quality (~3.3B-active MoE, 262K context).
+- **`gpt-oss-20B-c96k` — the production default.** Most *accurate* per file (won 5/6 in the per-file
+  matrix), run at `reasoningEffort=low` and a 96K window so it covers files up to ~250 KB untrimmed.
+  Slowest of the set (~2× the 30B) — the accepted cost for accuracy. See the preset/timing details below.
+- **Qwen3-Coder-30B-A3B-Instruct** — throughput alternative (and best of the non-reasoning models for
+  large Java files): most complete/faithful of the fast models, code-specialized, Apache-2.0,
+  ~3.3B-active MoE, 262K context. Pick it when throughput beats the last points of fidelity.
 - **Granite-4.0-H-Tiny** — fastest on CPU (~4×, flat-KV hybrid, Apache-2.0); best for very large
   or many files when throughput beats the last points of fidelity.
 - **Seed-Coder-8B-Instruct** — clean, permissive (MIT) small dense coder.
-- `gpt-oss-20b` is the most *accurate* per file (won 5/6 in the per-file matrix) but the slowest
-  (~2× the 30B) — use only when fidelity beats throughput; avoid `Qwen3.5-4B` (thinking tax, no
-  quality gain).
+- Avoid `Qwen3.5-4B` (thinking tax, no quality gain).
 
 ### gpt-oss-20b presets, large files, and timing
 

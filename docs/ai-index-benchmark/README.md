@@ -8,18 +8,21 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
 
 ## Bottom line
 
-- **Best overall (and for large Java files): `Qwen3-Coder-30B-A3B-Instruct`** — most complete &
-  faithful output, code-specialized, Apache-2.0, fast for its quality (~3.3B-active MoE, 262K ctx).
-  The current production default is validated.
+- **Production default: `gpt-oss-20B-c96k`** — most faithful per file (won 5/6 in the per-file
+  matrix), run at `reasoningEffort=low` and a 96K window so it covers files up to ~250 KB untrimmed
+  (§11). Slowest of the set; chosen because per-file accuracy is the priority.
+- **Throughput alternative (and best of the non-reasoning models for large files):
+  `Qwen3-Coder-30B-A3B-Instruct`** — most complete & faithful of the fast models, code-specialized,
+  Apache-2.0, ~71 s/file (~3.3B-active MoE, 262K ctx).
 - **Fastest / best for very large or many files: `Granite-4.0-H-Tiny`** — ~4× faster on CPU
   (flat-KV hybrid, ~1B active), Apache-2.0, accept slightly lower fidelity.
 - **Cleanest permissive small coder: `Seed-Coder-8B-Instruct`** (MIT).
-- **Maximum precision, CPU time no object (one-off index of a large/important project):
-  `gpt-oss-20b`** — the per-file *accuracy* leader (won 5/6 in the per-file matrix), most faithful,
-  no hallucinated `final`/examples. It is the slowest (~2× the 30B, harmony reasoning overhead), so
-  reserve it for precision runs, not bulk throughput. Run it with `reasoningEffort=low` and one of the
-  three size-tiered presets (`gpt-oss-20B-c16k/c48k/c96k`, **default c96k**); context-window limits,
-  large-file (250 KB) validation, and the O(n²) timing model are in [COMPARISON.md §11](COMPARISON.md).
+- **Why `gpt-oss-20b` is the default (precision):** the per-file *accuracy* leader (won 5/6 in the
+  per-file matrix), most faithful, no hallucinated `final`/examples. It is the slowest (~2× the 30B,
+  harmony reasoning overhead) — the accepted cost for accuracy. Run it with `reasoningEffort=low` and
+  one of the three size-tiered presets (`gpt-oss-20B-c16k/c48k/c96k`, **default c96k**); context-window
+  limits, large-file (250 KB) validation, and the O(n²) timing model are in
+  [COMPARISON.md §11](COMPARISON.md).
 - **Avoid:** `Qwen3.5-4B` (thinking tax, no quality gain) and `DeepSeek-Coder-V2-Lite` (copied the
   prompt's example as a summary).
 - **Cross-model caveat:** all models mis-state structural facts (e.g. `final`, annotations, exact

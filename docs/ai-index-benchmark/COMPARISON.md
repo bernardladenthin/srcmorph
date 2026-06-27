@@ -120,11 +120,12 @@ for a hybrid deterministic-structure + AI-prose design.
 
 ## 7. Recommendations
 
-- **Default for this task: `Qwen3-Coder-30B-A3B-Instruct`** — clean, accurate, code-specialized,
-  Apache-2.0, and fast for its quality (~71 s/file via ~3.3B active MoE). The current production
-  choice is validated.
-- **Maximum precision, CPU time no object (one-off index of a large/important project):
-  `gpt-oss-20b`.** When throughput does not matter, this is the most *faithful* model in the study.
+- **Production default (this project): `gpt-oss-20B-c96k`.** Chosen for maximum per-file fidelity,
+  run at `reasoningEffort=low` and a 96K window so it covers files up to ~250 KB untrimmed (§11). It
+  is the slowest of the set, accepted here because accuracy is the priority — details below.
+- **Throughput alternative: `Qwen3-Coder-30B-A3B-Instruct`** — clean, accurate, code-specialized,
+  Apache-2.0, ~71 s/file (~3.3B active MoE); pick it when throughput beats the last points of fidelity.
+- **Why gpt-oss is the precision pick:** it is the most *faithful* model in the study.
   It won the per-file matrix **5 of 6** (§8), was the only model to consistently avoid the `final`
   hallucination, copied no prompt examples, and captured exact exception messages, the full member
   sets, and the complete JNI pipeline — including correct (unsynchronized) lazy-init where others
