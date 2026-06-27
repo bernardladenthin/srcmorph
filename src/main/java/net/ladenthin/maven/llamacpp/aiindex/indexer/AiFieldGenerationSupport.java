@@ -125,6 +125,9 @@ public class AiFieldGenerationSupport {
     /** Bytes per kibibyte, used to render the source size in the per-file processing log. */
     private static final int KIBIBYTES_DIVISOR = 1024;
 
+    /** Size label used in the processing log line for sources smaller than one kibibyte. */
+    private static final String SIZE_BELOW_ONE_KIB_LABEL = "<1";
+
     /** Prefix of the per-file processing/ETA log line. */
     private static final String PROCESSING_LOG_PREFIX = "Processing ";
 
@@ -134,15 +137,15 @@ public class AiFieldGenerationSupport {
     /** Unit/infix for the source size and token estimate in the processing log line. */
     private static final String PROCESSING_LOG_TOKENS_INFIX = " KB source, ~";
 
-    /** Infix introducing the estimated duration in the processing log line. */
-    private static final String PROCESSING_LOG_ETA_INFIX = " tokens) — estimated ";
+    /** Infix introducing the estimated duration in the processing log line. ASCII-only for CI logs. */
+    private static final String PROCESSING_LOG_ETA_INFIX = " tokens) - estimated ";
 
     /**
      * Suffix on the processing log line stressing that the duration is a rough,
-     * hardware-specific estimate (see {@link AiGenerationTimeEstimator}).
+     * hardware-specific estimate (see {@link AiGenerationTimeEstimator}). ASCII-only for CI logs.
      */
     private static final String PROCESSING_LOG_DISCLAIMER =
-            " (rough; calibrated on reference CPU + gpt-oss-20b — actual depends on your hardware)";
+            " (rough; calibrated on reference CPU + gpt-oss-20b - actual depends on your hardware)";
 
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
@@ -250,8 +253,11 @@ public class AiFieldGenerationSupport {
                     fieldGeneration.getPromptKey(), contextFile, preparedPrompt.sourceText(), baseHeader);
 
             final int processedSourceChars = preparedPrompt.sourceText().length();
+            final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
+                    ? SIZE_BELOW_ONE_KIB_LABEL
+                    : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
             log.info(PROCESSING_LOG_PREFIX + contextType + " '" + contextFile + "'"
-                    + PROCESSING_LOG_SIZE_INFIX + (sourceText.length() / KIBIBYTES_DIVISOR)
+                    + PROCESSING_LOG_SIZE_INFIX + sourceSizeKb
                     + PROCESSING_LOG_TOKENS_INFIX + timeEstimator.estimatePromptTokens(processedSourceChars)
                     + PROCESSING_LOG_ETA_INFIX
                     + timeEstimator.formatDuration(timeEstimator.estimateSeconds(processedSourceChars))
