@@ -361,7 +361,76 @@ Enabled by default (`cachePrompt=true` on each model definition; needs `net.lade
 ≥ 5.0.3 for the pinned-slot API). Measured at 16K context (the new CPU default — 64K's ~6 GB KV
 caused memory paging on the test box that confounded timing).
 
-## 11. Caveats
+## 11. gpt-oss `reasoning_effort` (low / medium / high)
+
+gpt-oss is a *reasoning* model: it emits an internal `analysis` channel before the `final` answer,
+and llama.cpp counts those reasoning tokens **in-band** against `maxOutputTokens`. The benchmark ran
+the file phase (`config`+`provider`, 12 files) with `EXP-gpt-oss-20B` @ 16K, `maxOutputTokens=1536`,
+flipping only `-Dai.reasoningEffort` across `low` / `medium` / `high`.
+
+**Headline: higher effort is strictly worse for this task — it is slower *and* truncates the
+deliverable.** Because reasoning shares the fixed 1536-token budget, more reasoning leaves fewer
+tokens for the actual summary, so the `final` answer gets cut off (or never starts).
+
+| Aspect (gpt-oss-20B @ 16K, file phase, 12 files) | `low` | `medium` | `high` |
+|---|---|---|---|
+| Wall time (12 files) | **1072 s** | 1545 s | aborted (≈ 8 min/file, ~4×) |
+| ~ per file | **~89 s** | ~129 s | ~8 min/file (aborted) |
+| Relative speed | **1.0× (fastest)** | ~1.44× slower | ~4× slower |
+| Reasoning (`analysis`) tokens spent | minimal | moderate | large |
+| Share of 1536-token budget left for the summary | ~all | ~half | little / none |
+| `AiGenerationConfig.java` body | **complete** (all sections → `Concurrency`) | truncated mid `Public API` | truncated after `Annotated` (≈ 2 body lines) |
+| `AiModelDefinition.java` body | **complete** (→ `Concurrency`) | complete | **header only — no body produced** |
+| Truncation risk at `maxOutputTokens=1536` | low | medium (file-dependent) | high (frequent / total) |
+| Summary structure when it completes | full, well-sectioned | comparable when not cut | rarely reaches the sections |
+| Harmony-marker leakage into body | 0 | 0 | 0 |
+| Net usefulness for this short-summary task | **best** | borderline | unusable at this budget |
+
+The `high` run was **aborted** after confirming the pattern: at the 1536 budget it truncates even
+worse than `medium` (e.g. `AiModelDefinition.java` produced a header with no body) while running ~4×
+slower — strictly dominated, so finishing all 12 files added no information.
+
+### Is there any benefit to medium/high?
+
+For this task — short, dense bullet summaries — **not at a tight output budget**. The summary content is
+extraction/structuring, not multi-step problem solving, so the extra reasoning buys little quality; it
+only consumes the budget the deliverable needs. The truncation above is a **budget artifact, not a
+model limit**: give the reasoning room and the summary completes (see below). `low` remains the best
+default — fastest, and the whole budget goes to the summary.
+
+### Clean runs & large files (~100 KB / >1000 lines)
+
+The truncation seen above is fixed by sizing the budget to the effort. The pom ships three ready
+presets — `gpt-oss-20B-{small,medium,high}-c48k` — all at **48K context** and **`charsPerToken=3`**
+(dense Java tokenises below the 4-char default; 3 keeps the char-based pre-trim token-safe so a big
+file is never silently over-fed into too small a window), with the output budget scaled to the effort
+(`small`=4096, `medium`=6144, `high`=8192).
+
+Two independent limits must both be satisfied for a clean run:
+
+| Limit | Controls | Failure if too small |
+|---|---|---|
+| `contextSize` | input (prompt + source) that fits the window | source **trimmed** before the model sees it |
+| `maxOutputTokens` | reasoning **+** final answer (gpt-oss reasons in-band) | summary **truncated** mid-output |
+
+**Validation — `medium-c48k` on a 96 KB / 2470-line synthetic Java class:**
+
+| Check | Result |
+|---|---|
+| `maxInputChars` (derived) | 125 800 — 96 KB file fits, **no trim** |
+| `truncated` (llama.cpp) | **0** — whole file prefilled (~24 K tokens) |
+| stop reason | **natural** — `n_decoded = 1198`, far below the 6144 cap |
+| retries | **none** |
+| `.ai.md` | complete to `#### Concurrency`; covers the whole file (last fields + `adjustBucket120` + tail methods); even flagged a real injected bug (`undefined variable i`) |
+| build | `BUILD SUCCESS` |
+
+**Cost reality for big files:** the 96 KB file took **~25 min** — prefill **~978 s** (24 K tokens @ ~25 t/s)
+plus generation **~522 s** (only 1198 tokens, but @ ~2.3 t/s — a large KV context slows decoding too).
+The bottleneck on ~100 KB files is **CPU prefill + large-context decode, not the effort level**
+(the 6144 budget was barely used). So for large files the knobs that matter are `contextSize` +
+`charsPerToken` (fit untrimmed); the output budget just needs headroom. Expect minutes-per-file on CPU.
+
+## 12. Caveats
 
 - Quality tiers (§4) are from a **representative file sample**, not a full read of all 368
   summaries; metrics (§1) cover every file.
