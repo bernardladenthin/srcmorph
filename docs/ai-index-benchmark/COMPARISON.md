@@ -83,20 +83,77 @@ dense 7B Qwen2.5-Coder, and MoE low-active models (Granite, DeepSeek 2.4B, Qwen3
 
 ---
 
-## 5. Recommendations
+## 5. Per-model pros & cons
+
+| Model (active params) | Pros | Cons |
+|---|---|---|
+| **Qwen3-Coder-30B-A3B** (MoE ~3.3B) | Most complete & faithful content; code-specialized; clean (0 fences / 0 leak); fast for its quality (~71 s/file); Apache-2.0; 262K native ctx | Wrongly tags the class `final`; drops the `@SuppressWarnings` annotation; minor dangling `implements` line |
+| **gpt-oss-20b** (MoE ~3.6B) | Highest fidelity — captured exact exception strings, constructor calls, and the unmodifiable/nullable `stopStrings` contract; clean; Apache-2.0 | Slowest (~121–129 s/file — harmony reasoning overhead); "final by default" nonsense; drops `@SuppressWarnings` |
+| **Granite-4.0-H-Tiny** (MoE ~1B) | Fastest by far (~34 s/file); the only model that captured `@SuppressWarnings`; Apache-2.0; flat-KV hybrid → cheap long context | Verbose (repeats field lists across sections); wrong `final`; junk self-package dependency entry |
+| **Seed-Coder-8B** (dense, MIT) | Clean, terse, accurate; avoided the `final` trap; permissive MIT | Calls the private fields "public fields"; drops `@SuppressWarnings`; v2 emits a few code fences |
+| **Qwen3-4B-Instruct-2507** (dense) | Fast (~72 s/file); non-thinking; good core-logic capture; no fences | **Dropped all setters** from Public API (incomplete on a long file); overclaims thread-safety; "final fields" wrong |
+| **Qwen2.5-Coder-7B** (dense) | Accurate, code-specialized; captured constructor + unmodifiable `stopStrings` | Slowest dense (~133–141 s/file); wrong `final`; accessor bloat (v1: 109 lines); v2 fences |
+| **Qwen3.5-4B** (dense, hybrid) | Thorough API listing; avoided the `final` trap | Thinking tax (~90–101 s/file) with no quality edge; **fabricated field counts** (claimed 25 constants / 16 fields vs real ~13 / 14); junk self-dependency |
+| **DeepSeek-Coder-V2-Lite** (MoE ~2.4B) | Fast (~67–84 s/file); accurate body content | **Copied the prompt's "Calculates VAT for invoices" example as the lead** — instruction-following failure; redundant `- **Label**:` echoing; most fences (24); leaked `{@link}` Javadoc tags; **license is a use-restricted custom *DeepSeek Model License* (weights), not OSI/commercial-OK** |
+
+## 6. Source-faithfulness deep-dive — `AiGenerationConfig.java` (largest in-scope file, 414 lines)
+
+Each model's summary of this complex POJO was checked field-by-field against the real source.
+Cross-model findings:
+
+- **`final` is hallucinated by 6 of 8 models.** The class is `public class AiGenerationConfig`
+  (NOT final); only Qwen3.5-4B and Seed-Coder got it right. Likely pattern-matching — most classes
+  in this repo *are* `final`. A reliable, recurring inaccuracy.
+- **Annotation capture is poor.** Only Granite reported `@SuppressWarnings({"NullAway.Init", …})`;
+  every other model dropped it. Most did capture `@ToString`.
+- **The blockquote lead is the riskiest field.** DeepSeek emitted the prompt's literal *example*
+  (`Calculates VAT for invoices`); the others produced correct domain leads.
+- **Completeness varies on a long member list.** gpt-oss / Qwen3-Coder-30B / Qwen2.5-Coder listed
+  the full accessor set accurately; Qwen3-4B-2507 omitted every setter; Qwen3.5-4B invented counts.
+- **`equals`/`hashCode` intentionally absent** (managed by identity) — no model surfaced this
+  subtlety (acceptable; it requires reasoning about a *negative*).
+
+Implication: the structural facts models get wrong (class modifiers, annotations, exact member
+sets, dependency lists) are exactly the ones an **AST / deterministic extractor would get right**.
+The prose sections (lead, purpose, core logic) are where the model adds real value — which argues
+for a hybrid deterministic-structure + AI-prose design.
+
+## 7. Recommendations
 
 - **Default for this task: `Qwen3-Coder-30B-A3B-Instruct`** — clean, accurate, code-specialized,
   Apache-2.0, and fast for its quality (~71 s/file via ~3.3B active MoE). The current production
   choice is validated.
-- **Best speed/quality for large repos or overnight runs: `Granite-4.0-H-Tiny`** — ~4× faster
-  than the dense coders, Apache-2.0, surprisingly accurate. The standout new candidate.
-- **Best permissive small dense coder: `Seed-Coder-8B-Instruct`** — MIT, clean output. Good
-  middle option.
+- **Maximum precision, CPU time no object (one-off index of a large/important project):
+  `gpt-oss-20b`.** When throughput does not matter, this is the most *faithful* model in the study.
+  It won the per-file matrix **5 of 6** (§8), was the only model to consistently avoid the `final`
+  hallucination, copied no prompt examples, and captured exact exception messages, the full member
+  sets, and the complete JNI pipeline — including correct (unsynchronized) lazy-init where others
+  invented "double-checked locking". Its harmony chain-of-thought — the very thing that makes it
+  the slowest (~121–129 s/file, §3) — is what buys the extra accuracy, so the speed cost is
+  irrelevant in this scenario. Pair it with the **v1 prompt** and a **generous `maxOutputTokens`**
+  so long member lists are never truncated, and run each file at the model's full context. Output is
+  clean (0 harmony leakage, §2). For an even higher ceiling you *could* trial larger local models
+  not benchmarked here (e.g. `Qwen3.6-35B-A3B`, `gemma-4-26B-A4B`), but among the tested set
+  `gpt-oss-20b` is the precision winner. (For the same one-off job where you still want it to finish
+  noticeably sooner with only a small fidelity trade, fall back to `Qwen3-Coder-30B-A3B`.)
+- **Best for large Java files: `Qwen3-Coder-30B-A3B-Instruct`**, with `Granite-4.0-H-Tiny` as the
+  high-throughput alternative. Large files mean a big prefill + a long member list to enumerate.
+  On the 414-line `AiGenerationConfig` the 30B kept the member list complete and accurate, and its
+  262K native context + ~3.3B-active MoE handle long input affordably; the full-project baseline
+  (28 KB `PackageIndexer.java`) confirmed it stays complete (one `Serializable` slip). Granite's
+  flat-KV hybrid makes very large/​many files the cheapest on CPU (~4× faster) — use it when
+  throughput beats the last few points of fidelity. **Caveat:** large files were not directly swept
+  across all models (scope was `config`+`provider`, max 414 lines); this extrapolates from that
+  file, model architecture, and the 30B full-project baseline. Avoid `Qwen3-4B-2507` for large
+  files specifically — it dropped members on the long list.
+- **Best permissive small dense coder: `Seed-Coder-8B-Instruct`** — MIT, clean output.
 - **Budget / laptop: `Qwen3-4B-Instruct-2507`** (non-thinking) over `Qwen3.5-4B` — faster, no
-  thinking tax, equal-or-better output.
-- **Avoid for batch summarization:** `gpt-oss-20b` (highest fidelity but slowest — reasoning
-  overhead not worth it), `Qwen2.5-Coder-7B` (slowest dense), `DeepSeek-Coder-V2-Lite v2`
-  (formatting noise).
+  thinking tax, equal-or-better output (but not for the largest files; see above).
+- **Avoid for *batch / throughput* work:** `gpt-oss-20b` (highest fidelity but slowest — reserve it
+  for the max-precision use above, not bulk runs), `Qwen2.5-Coder-7B` (slowest dense),
+  `DeepSeek-Coder-V2-Lite` (the VAT-lead and fence/format noise).
+- **Regardless of model:** expect the `final`/annotation/exact-member inaccuracies above. The
+  durable fix is deterministic AST extraction for the structural sections (see §6).
 
 ### Prompt v1 vs v2
 
@@ -109,7 +166,171 @@ the indexer's filtering than by prompt wording.
 
 ---
 
-## 6. Caveats
+## 8. Per-file model matrix
+
+Six source files of deliberately different archetypes were each summarized by all 8 models
+(**v1 / production prompt**) and scored field-by-field against the real source. One table per file.
+
+### AiGenerationKind.java — enum / marker
+*Source:* A trivial `public enum AiGenerationKind` with two constants, `FILE_SUMMARY` and `PACKAGE_SUMMARY`, marking AI-generation scope (file vs. package); no methods.
+
+| Model | Faithfulness (vs source) | Completeness | Key issues | Verdict |
+|---|---|---|---|---|
+| Qwen3-Coder-30B | Mostly accurate; "final" ok | Over-complete, bloated | Constants as methods `FILE_SUMMARY()`; verbose | Fair — method formatting |
+| gpt-oss-20b | Accurate; constants correct | Right-sized | Minor: trailing whitespace only | Good — clean, faithful |
+| Granite-4.0-H-Tiny | Accurate; `public` correct | Complete but padded | Many empty "No..." filler lines | Good — faithful, verbose |
+| Seed-Coder-8B | Wrong: claims `sealed` | Adequate | Hallucinated `sealed`; self-ref dependency | Poor — invented modifier |
+| DeepSeek-Coder-V2-Lite | Accurate; `public enum` right | Good | Constants as methods `FILE_SUMMARY()` | Fair — method formatting |
+| Qwen2.5-Coder-7B | Fully accurate | Concise, appropriate | None notable | Excellent — terse, correct |
+| Qwen3-4B-2507 | Wrong API signatures | Over-stated | `FILE_SUMMARY(file)→void`; self-ref dep | Poor — invented params |
+| Qwen3.5-4B | Wrong: "no modifiers" | Concise | Missed `public`; self-ref dependency | Fair — modifier error |
+
+**Best for this file:** Qwen2.5-Coder-7B — accurate, no hallucinations, appropriately short for a trivial enum.
+
+### AiGenerationConfig.java — large config POJO
+*Source:* A mutable, non-final JavaBean (`@ToString` + `@SuppressWarnings`) carrying ~13 `DEFAULT_*` constants and ~14 fields with full getter/setter pairs, where `getStopStrings` returns an unmodifiable list or null; equals/hashCode intentionally absent.
+
+| Model | Faithfulness (vs source) | Completeness | Key issues | Verdict |
+|---|---|---|---|---|
+| Qwen3-Coder-30B | Mostly right; getStopStrings nuance ok | Full getters+setters, deps correct | Says "final" (wrong); misses @SuppressWarnings | Good — final error |
+| gpt-oss-20b | Strong; clean, no fabrication | Full API, deps, lead all correct | "final by default" (wrong); misses @SuppressWarnings | Good — lone final slip |
+| Granite-4.0-H-Tiny | Captured @SuppressWarnings correctly | Full API, all fields listed | "Final: Yes" (wrong); junk referenced types | Good — final error, minor junk |
+| Seed-Coder-8B | Avoids final but "Public fields" wrong | Full API present | Drops `List` dep; sloppy concurrency claim | Fair — field/dep errors |
+| DeepSeek-Coder-V2-Lite | Lead copied from prompt example | Full API present | "Calculates VAT" lead; says final twice | Poor — copied lead + final |
+| Qwen2.5-Coder-7B | "No return types" contradicts getters | Full API present | Says "Final"; self-contradictory output | Fair — final + contradiction |
+| Qwen3-4B-2507 | "final fields" wrong; bad concurrency | Drops ALL setters | Setters missing; claims thread-safe | Poor — setters dropped |
+| Qwen3.5-4B | Correctly non-final `public class` | Full getters+setters | Invents 25 constants/16 fields; junk self-dep | Fair — fabricated counts |
+
+**Best for this file:** gpt-oss-20b — most complete and faithful with no fabricated counts or junk deps; only flaw is the "final by default" note.
+
+### AiGenerationProvider.java — interface / contract
+*Source:* A `public interface AiGenerationProvider extends AutoCloseable` with an abstract `generate(request)`, a default temperature-override `generate(request, float)` that delegates, and a default no-op `close()`.
+
+| Model | Faithfulness (vs source) | Completeness | Key issues | Verdict |
+|---|---|---|---|---|
+| Qwen3-Coder-30B | Correct interface + AutoCloseable, both generate methods | Misses `close()` in API | Lists AutoCloseable as a "dependency" | Good — accurate, slight gap |
+| gpt-oss-20b | Fully correct; interface, extends, all 3 members | All methods incl. default `close()` | None notable | Excellent — complete & precise |
+| Granite-4.0-H-Tiny | Correct interface/extends, both generate | Omits `close()`; deps miss AiGenerationRequest | Thin coverage | Good — terse but right |
+| Seed-Coder-8B | Wrong: "Extends AiGenerationRequest" | Has close, both generate | Fabricated extends; false thread-safety | Poor — invented inheritance |
+| DeepSeek-Coder-V2-Lite | Wrong: "Extends AiGenerationRequest" | All 3 methods listed | Fabricated extends; false thread-safety claim | Poor — invented inheritance |
+| Qwen2.5-Coder-7B | Correct interface/extends, exact signatures | Misses `close()` in API | "Constructor params" odd for interface | Good — signatures accurate |
+| Qwen3-4B-2507 | Correct interface, extends, all 3 members | Complete incl. `close()` | Minor: omits "may be blank" | Good — clean and faithful |
+| Qwen3.5-4B | Interface/extends correct | All 3 methods | Invented core logic (validates, runs llama.cpp inference) | Fair — hallucinated impl detail |
+
+**Best for this file:** gpt-oss-20b — correct interface, all three members with accurate signatures and deps, no hallucination.
+
+### AiGenerationProviderFactory.java — factory / wiring
+*Source:* A `@ToString` (non-final) factory whose `create(providerName, llamaConfig, promptSupport)` returns `MockAiGenerationProvider` for null/blank/"mock", `LlamaCppJniAiGenerationProvider` for "llamacpp-jni", else throws `IllegalArgumentException("Unsupported AI provider: " + providerName)`.
+
+| Model | Faithfulness (vs source) | Completeness | Key issues | Verdict |
+|---|---|---|---|---|
+| Qwen3-Coder-30B | Accurate logic, but asserts "final" | All deps (6), full switch | Wrong: class not final; message unquoted | Good — false final |
+| gpt-oss-20b | Fully accurate, no final claim | Exact message, full switch | Missing only LlamaCppJniConfig dep | Excellent — exact message |
+| Granite-4.0-H-Tiny | Lead is prompt's "Calculates VAT" | Omits "mock" case; 3 deps only | VAT lead; "final"; deps incomplete | Poor — copied lead |
+| Seed-Coder-8B | Accurate, correctly not final | Full switch incl. mock | Missing LlamaCppJniConfig + provider iface deps | Good — solid |
+| DeepSeek-Coder-V2-Lite | Accurate, not final | Default-throw only in Exceptions section | `{@link}` leakage; deps miss provider classes | Fair — deps thin |
+| Qwen2.5-Coder-7B | Very accurate, notes isBlank | Full switch, not final | Self-referential dep (Factory); deps incomplete | Good — junk dep |
+| Qwen3-4B-2507 | Accurate; hedged "final (not marked)" | 5 deps, full switch | Confusing final wording; misses lombok dep | Good — final hedge |
+| Qwen3.5-4B | Accurate; correctly says final *field* | 6 deps, full switch | Mild invention ("integration into system"); odd phrasing | Good — complete |
+
+**Best for this file:** gpt-oss-20b — only one with the exact exception message, correct non-final type, and clean full switch logic.
+
+### AiCompletionParser.java — algorithm / string parsing
+*Source:* A non-final parser that strips a Gemma-4 thinking block (markers `<|channel>thought` / `<channel|>`), returning text after the last end marker, throwing IOException on an unclosed block and mapping null to empty.
+
+| Model | Faithfulness (vs source) | Completeness | Key issues | Verdict |
+|---|---|---|---|---|
+| Qwen3-Coder-30B | Accurate; non-final, logic right | All sections, IOException + null | "Checks presence" not "last index" (minor) | Excellent |
+| gpt-oss-20b | Fully accurate; last-index, null, msg | Thorough; markers + maxOutputTokens note | None significant | Excellent |
+| Granite-4.0-H-Tiny | Logic right but calls class **final** | Good; but contradicts self on final | "Type: final" wrong; verbatim purpose copy | Fair — wrong modifier |
+| Seed-Coder-8B | Accurate; non-final, edge cases noted | Concise; less marker detail | No "last marker" specificity | Good |
+| DeepSeek-Coder-V2-Lite | Logic right but says **final class** | Very detailed sections | "public final class" wrong; not "last" | Fair — wrong modifier |
+| Qwen2.5-Coder-7B | Accurate; non-final, last-index, null | Complete | Purpose claims it "stores" file (overreach) | Good |
+| Qwen3-4B-2507 | Fully accurate; non-final, null, msg | Complete, clean | None significant | Excellent |
+| Qwen3.5-4B | Content accurate where present | Missing Purpose + Type sections | Leaks stray code-fence; truncated header | Fair — corrupted output |
+
+**Best for this file:** gpt-oss-20b — accurate logic, captures last-index, null-handling, and the actionable maxOutputTokens message, with no errors.
+
+### LlamaCppJniAiGenerationProvider.java — heavy implementation (JNI)
+*Source:* Lazy-loading llama.cpp JNI provider (implements `AiGenerationProvider` + `AutoCloseable`) that builds inference params via immutable withers, runs `chatCompleteText`, and parses output through `AiCompletionParser`.
+
+| Model | Faithfulness (vs source) | Completeness | Key issues | Verdict |
+|---|---|---|---|---|
+| Qwen3-Coder-30B | Accurate; lazy-load, withers, parser captured | Full: API, deps, exclude | Invented "double-checked locking" | Good — one false concurrency claim |
+| gpt-oss-20b | Fully accurate; correct unsynchronized lazy-init | Full: fields, deps, withers, parser | None notable | Excellent — precise, complete |
+| Granite-4.0-H-Tiny | Lead copied prompt example; wrong thread-safe claim | Moderate; misses parser class name | "Calculates VAT for invoices" lead | Poor — prompt-leak lead |
+| Seed-Coder-8B | Mostly accurate; lazy + parser noted | Good | Wrong: thread-safe + double-checked locking | Fair — false concurrency |
+| DeepSeek-Coder-V2-Lite | Lead copied prompt example; thread-safe wrong | Good core logic | "Calculates VAT for invoices" lead | Poor — prompt-leak lead |
+| Qwen2.5-Coder-7B | Accurate; lazy, parser, withers all noted | Full deps + API | Honest "not handled" concurrency | Good — solid, no hallucination |
+| Qwen3-4B-2507 | Accurate logic; lazy + parser captured | Full withers, deps | Wrong AiCompletionParser package; muddled concurrency | Good — minor dep/package slip |
+| Qwen3.5-4B | Accurate; lifecycle, parser, exclude noted | Full deps + API | close() doesn't throw IOException | Good — small exception error |
+
+**Best for this file:** gpt-oss-20b — fully faithful, complete (lazy-load, wither chain, parser pipeline), correct concurrency, no hallucinations.
+
+### Matrix synthesis
+
+**"Best for this file" tally:** gpt-oss-20b **5/6**, Qwen2.5-Coder-7B **1/6** (the trivial enum).
+
+So **gpt-oss-20b is the per-file accuracy leader** — it alone avoided the `final` hallucination on
+most files, copied no prompt examples, and captured exact exception messages and the JNI pipeline.
+But this must be read against §3: **gpt-oss is the slowest model (~121–129 s/file)** because of
+harmony reasoning overhead. The practical pick remains **Qwen3-Coder-30B-A3B** — consistently
+"Good" across every archetype at **~71 s/file** — with gpt-oss reserved for when per-file fidelity
+outweighs throughput. The dominant cross-file error for nearly every model is the **`final`
+modifier hallucination** (a structural fact an AST extractor would get right — see §6); the worst
+single failures are DeepSeek/Granite **copying the prompt's "Calculates VAT for invoices" example
+as the lead**, and Qwen3-4B-2507 **dropping members** on longer files.
+
+## 9. External corroboration (published benchmarks)
+
+A web research pass cross-checked these findings against public benchmarks, leaderboards, and
+official model cards. **Headline:** our *structural* findings are corroborated; our *accuracy
+ranking* is novel and cannot be corroborated, because no public benchmark scores source-faithfulness
+of code-index summaries and IFEval exists for only **2 of our 8** models.
+
+**Corroborated (at the mechanism / category level):**
+- **Speed ↔ active params:** CPU decode is memory-bandwidth-bound and reads only active expert
+  weights, so a 30B-A3B decodes like a dense ~6B ([llama.cpp #19890](https://github.com/ggml-org/llama.cpp/discussions/19890)).
+  IBM publishes Granite 4.0 "~2× faster / >70% less RAM" ([IBM](https://www.ibm.com/granite/docs/models/granite)).
+  *(Our exact "~4× fastest Granite" magnitude is our own measurement.)*
+- **Reasoning is a throughput tax** that helps hard tasks but not short summaries
+  ([OptimalThinkingBench](https://arxiv.org/html/2508.13141v1); "Stop Overthinking"
+  [survey](https://arxiv.org/pdf/2503.16419)) — supports our Qwen3.5-4B result. The *conditional*
+  exception (reasoning genuinely raised gpt-oss accuracy at a latency cost) is also documented
+  ([BrowseComp-Plus](https://arxiv.org/pdf/2508.06600), [DataRobot](https://www.datarobot.com/blog/testing-gpt-oss-models/)).
+- **All four hallucination modes are named categories:** attribute/faithfulness hallucination (the
+  `final` slip), few-shot/prompt leakage (the "Calculates VAT for invoices" copy), format drift
+  (code fences), and negative-constraint instruction-following failure (ignoring "omit trivial
+  sections").
+- **Tooling:** llama.cpp `reasoning_format` parsing and the `--reasoning-format none` harmony-leak
+  are confirmed in the repo ([server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md),
+  [#15341](https://github.com/ggml-org/llama.cpp/discussions/15341)).
+
+**Novel (no public equivalent):** our source-faithfulness scoring for code-index summaries, the
+per-file head-to-head (gpt-oss-20b 5/6), and CPU timings for these exact Q4_K_M quants at 16K on a
+Ryzen 7 5800H. **Treat the §5/§8 accuracy ranking as internal evidence, not a public-record claim.**
+
+**The only published IFEval anchors for our set:** Granite-4.0-H-Tiny ≈ **81.4** avg (84.8
+instruct-strict) and Qwen3-4B-Instruct-2507 ≈ **83.4**. The other six models have no published
+IFEval (gpt-oss-20b's official card has none; a ~69.5% figure circulating is unofficial).
+
+**Where we may be exposed:**
+- **Qwen2.5-Coder-7B may be under-ranked.** Public coding benchmarks rank it strongly (Qwen reports
+  it beats DeepSeek-Coder-V2-Lite and Codestral-22B; leads CRUXEval at its size). Our mid-pack
+  placement may reflect its **format drift (code fences)** rather than weaker comprehension — worth
+  a re-score after normalizing fences.
+- **DeepSeek-Coder-V2-Lite low** agrees with the public record (its own paper concedes an
+  instruction-following gap).
+
+**License correction (applied above):** DeepSeek-Coder-V2-Lite weights are under a use-restricted
+custom **DeepSeek Model License** (the repo *code* is MIT) — not "commercial-OK". Codestral remains
+MNPL (non-commercial); the rest are Apache-2.0 (Qwen family, gpt-oss, Granite) or MIT (Seed-Coder).
+
+**Caveat — model-name collisions:** public IFEval figures are easy to mis-attribute across
+`Qwen3-Coder-30B-A3B` vs `Qwen3-30B-A3B-2507` (the 83.7 figure is the non-thinking 30B, *not* the
+Coder or the 4B) and `Qwen3.5-4B` vs `Qwen3-4B-Instruct-2507`. Anchors above are attributed carefully.
+
+## 10. Caveats
 
 - Quality tiers (§4) are from a **representative file sample**, not a full read of all 368
   summaries; metrics (§1) cover every file.

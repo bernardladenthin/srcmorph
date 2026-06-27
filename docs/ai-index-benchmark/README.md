@@ -3,8 +3,27 @@
 This directory captures a controlled comparison of **local GGUF models** and **two prompt
 versions** for the plugin's code-summarization task (`.ai.md` generation), run on CPU.
 
-- **[COMPARISON.md](COMPARISON.md)** — scored results, findings, and recommendation.
+- **[COMPARISON.md](COMPARISON.md)** — scored results, per-model pros/cons, source deep-dive, recommendation.
 - **[outputs/](outputs/)** — the raw generated `.ai.md` trees, one directory per cell.
+
+## Bottom line
+
+- **Best overall (and for large Java files): `Qwen3-Coder-30B-A3B-Instruct`** — most complete &
+  faithful output, code-specialized, Apache-2.0, fast for its quality (~3.3B-active MoE, 262K ctx).
+  The current production default is validated.
+- **Fastest / best for very large or many files: `Granite-4.0-H-Tiny`** — ~4× faster on CPU
+  (flat-KV hybrid, ~1B active), Apache-2.0, accept slightly lower fidelity.
+- **Cleanest permissive small coder: `Seed-Coder-8B-Instruct`** (MIT).
+- **Maximum precision, CPU time no object (one-off index of a large/important project):
+  `gpt-oss-20b`** — the per-file *accuracy* leader (won 5/6 in the per-file matrix), most faithful,
+  no hallucinated `final`/examples. It is the slowest (~2× the 30B, harmony reasoning overhead), so
+  reserve it for precision runs, not bulk throughput.
+- **Avoid:** `Qwen3.5-4B` (thinking tax, no quality gain) and `DeepSeek-Coder-V2-Lite` (copied the
+  prompt's example as a summary).
+- **Cross-model caveat:** all models mis-state structural facts (e.g. `final`, annotations, exact
+  member sets); only prose sections are reliably model-added → a hybrid AST+AI design is the
+  durable fix. Prompt **v2** helps verbosity but isn't shippable yet (code-fence regression on
+  code models). Full detail: [COMPARISON.md](COMPARISON.md).
 
 ## What was tested
 

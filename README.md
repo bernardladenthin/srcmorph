@@ -358,8 +358,18 @@ src/site/ai/
 ## TODO
 - **Expand PIT mutation-testing scope.** `<targetClasses>` in `pom.xml` lists an explicit subset of classes verified at 100% mutation parity; widen it incrementally toward the whole `net.ladenthin.maven.llamacpp.aiindex.*` tree (the streambuffer whole-package model) as more classes reach parity. Generic PIT setup and invocation: see the [PIT policy](../workspace/policies/pit-mutation-testing.md).
 ## Recommended Models
-- Qwen2.5 Coder (balanced quality and speed)
-- Smaller instruct models for faster indexing
+Based on an 8-model × 2-prompt benchmark run against this codebase — full results, per-model
+pros/cons, a source-faithfulness deep-dive, and reproduction steps in
+[docs/ai-index-benchmark](docs/ai-index-benchmark/COMPARISON.md):
+
+- **Qwen3-Coder-30B-A3B-Instruct** — best overall and for large Java files: most complete/faithful
+  output, code-specialized, Apache-2.0, fast for its quality (~3.3B-active MoE, 262K context).
+- **Granite-4.0-H-Tiny** — fastest on CPU (~4×, flat-KV hybrid, Apache-2.0); best for very large
+  or many files when throughput beats the last points of fidelity.
+- **Seed-Coder-8B-Instruct** — clean, permissive (MIT) small dense coder.
+- `gpt-oss-20b` is the most *accurate* per file (won 5/6 in the per-file matrix) but the slowest
+  (~2× the 30B) — use only when fidelity beats throughput; avoid `Qwen3.5-4B` (thinking tax, no
+  quality gain).
 ## Development
 
 Run full build:
