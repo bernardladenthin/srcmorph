@@ -888,7 +888,7 @@ SPDX-License-Identifier: Apache-2.0
                                       Gemma 4 entries; only pick Q6_K_P if Q4_K_M quality is visibly short.
                                     Use when: a light model keeps refusing, or you need the lightest Gemma 4.
 
-                                  Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k   (RECOMMENDED default for code; ACTIVE for both phases)
+                                  Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k   (throughput-optimal alternative; gpt-oss-20B-c96k is now the ACTIVE default)
                                     + MoE 30B total / ~3.3B active: code-specialized AND fast on CPU; fewer
                                       active params than Gemma-4-26B-A4B; non-thinking; Apache-2.0.
                                     + Locally present (X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf,
@@ -1775,8 +1775,8 @@ message: the path on the first line, then a blank line, then the summaries to sy
                         <!--
                             BENCHMARK MODE (example, disabled).
                             The executions below use concrete production values
-                            (Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k + file-body-java /
-                            package-body). To sweep models/prompts per run instead, re-enable the
+                            (gpt-oss-20B-c96k + file-body-java / package-body). To sweep
+                            models/prompts per run instead, re-enable the
                             commented exp.* properties near the top of <properties> and swap the
                             execution values for these parameterized forms, then drive each run with
                             -Dexp.model / -Dexp.filePrompt / -Dexp.pkgPrompt:
@@ -1826,21 +1826,21 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                             <fileExtensions>
                                                 <fileExtension>.java</fileExtension>
                                             </fileExtensions>
                                         </fieldGeneration>
                                         <fieldGeneration>
                                             <promptKey>file-body-sql</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                             <fileExtensions>
                                                 <fileExtension>.sql</fileExtension>
                                             </fileExtensions>
                                         </fieldGeneration>
                                         <fieldGeneration>
                                             <promptKey>file-body-fallback</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
@@ -1856,7 +1856,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>package-body</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
@@ -1882,7 +1882,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>project-body</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
