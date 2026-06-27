@@ -18,6 +18,7 @@ import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.logging.Log;
 
@@ -121,6 +122,28 @@ public class AiFieldGenerationSupport {
      */
     private static final int MAX_INPUT_CHARS_ROUNDING = 100;
 
+    /** Bytes per kibibyte, used to render the source size in the per-file processing log. */
+    private static final int KIBIBYTES_DIVISOR = 1024;
+
+    /** Prefix of the per-file processing/ETA log line. */
+    private static final String PROCESSING_LOG_PREFIX = "Processing ";
+
+    /** Infix introducing the estimated source size in the processing log line. */
+    private static final String PROCESSING_LOG_SIZE_INFIX = " (";
+
+    /** Unit/infix for the source size and token estimate in the processing log line. */
+    private static final String PROCESSING_LOG_TOKENS_INFIX = " KB source, ~";
+
+    /** Infix introducing the estimated duration in the processing log line. */
+    private static final String PROCESSING_LOG_ETA_INFIX = " tokens) — estimated ";
+
+    /**
+     * Suffix on the processing log line stressing that the duration is a rough,
+     * hardware-specific estimate (see {@link AiGenerationTimeEstimator}).
+     */
+    private static final String PROCESSING_LOG_DISCLAIMER =
+            " (rough; calibrated on reference CPU + gpt-oss-20b — actual depends on your hardware)";
+
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
     @ToString.Exclude
@@ -130,6 +153,7 @@ public class AiFieldGenerationSupport {
     private final AiPromptPreparationSupport promptPreparationSupport;
     private final AiModelDefinitionSupport modelDefinitionSupport;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+    private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
 
     /**
      * Per-{@code (aiDefinitionKey, promptKey)} cache of the computed {@code maxInputChars}
@@ -224,6 +248,14 @@ public class AiFieldGenerationSupport {
 
             final AiGenerationRequest generationRequest = new AiGenerationRequest(
                     fieldGeneration.getPromptKey(), contextFile, preparedPrompt.sourceText(), baseHeader);
+
+            final int processedSourceChars = preparedPrompt.sourceText().length();
+            log.info(PROCESSING_LOG_PREFIX + contextType + " '" + contextFile + "'"
+                    + PROCESSING_LOG_SIZE_INFIX + (sourceText.length() / KIBIBYTES_DIVISOR)
+                    + PROCESSING_LOG_TOKENS_INFIX + timeEstimator.estimatePromptTokens(processedSourceChars)
+                    + PROCESSING_LOG_ETA_INFIX
+                    + timeEstimator.formatDuration(timeEstimator.estimateSeconds(processedSourceChars))
+                    + PROCESSING_LOG_DISCLAIMER);
 
             log.info("Generating field '" + fieldGeneration.getPromptKey() + "' with temperature="
                     + generationConfig.getTemperature() + ", maxRetries="

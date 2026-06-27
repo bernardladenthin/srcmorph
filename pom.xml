@@ -727,6 +727,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport</param>
@@ -1305,6 +1306,18 @@ SPDX-License-Identifier: Apache-2.0
                                      effort only for genuinely reasoning-heavy generation AND raise
                                      maxOutputTokens with it, or the final answer is truncated.
 
+                                     >>> DEFAULT: gpt-oss-20B-c96k <<<
+                                     Why the widest practical window is the default: a measured A/B
+                                     (§11) proved that a larger contextSize costs ONLY KV RAM, NOT
+                                     per-file time — for the same small file, 16K vs 96K had identical
+                                     prefill/decode/wall time; only RAM grew (~+400 MiB per +16K). So
+                                     defaulting to 96K means one preset covers EVERY file up to ~250 KB
+                                     with no trimming and no truncation, while small files stay just as
+                                     fast. The only cost is RAM you must have anyway for the big files.
+                                     Downshift to c48k / c16k ONLY to save RAM on memory-constrained
+                                     machines (model ~12 GB + KV ~2 GB @16K / ~6 GB @48K / ~11 GB @96K;
+                                     a fully filled 96K window plus context checkpoints peaks ~23 GB).
+
                                      Shared design:
                                        - charsPerToken 3 matches dense Java (measured ~4.2 chars/token;
                                          3 keeps the char-based pre-trim token-safe so a big file is never
@@ -1314,10 +1327,11 @@ SPDX-License-Identifier: Apache-2.0
                                      Sizing (measured: 96 KB code = ~24K tokens; model window = 131072):
                                        c16k  -> files up to ~40 KB   (typical files; fast, ~1-2 min/file)
                                        c48k  -> files up to ~125 KB  (large files; ~25 min for ~100 KB) [validated]
-                                       c96k  -> files up to ~260 KB  (huge files; ~1 h for ~250 KB, RAM-heavy)
+                                       c96k  -> files up to ~260 KB  (DEFAULT; ~1 h for ~250 KB) [validated]
                                      Hard ceiling: the 128K window caps input at ~480-500 KB of code, but
                                      CPU prefill+decode time and KV RAM make ~250 KB the practical limit.
-                                     Prefill is the dominant cost on big files, not the effort level.
+                                     Prefill is the dominant cost on big files (O(n^2)), not the effort
+                                     level — see the estimate the plugin logs per file.
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>gpt-oss-20B-c16k</key>
