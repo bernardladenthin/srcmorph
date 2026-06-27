@@ -79,7 +79,31 @@ sections, so they are complete, not failures.)_
 **Question:** gpt-oss's card recommends temp 1.0, but for *extraction* (not creative writing) does a
 lower temperature reduce miscounts / hallucination?
 
-_Results: pending._
+**Setup:** 24 KB fixture (26 methods), low effort, budget 4096, top-p 1.0 / top-k 0, 2 reps per temp.
+All cells completed (9/9 sections, no truncation); the variable is faithfulness + reproducibility.
+
+| temp | count error (r1 / r2) | reproducible? | wall (s) |
+|---|---|---|---|
+| 0.0 | **0 / 0** | **yes — both reps bit-identical** (502 dec tok, 2201 B) | 321 / 321 |
+| 0.3 | **0 / 0** | near-identical | 327 / 322 |
+| 0.7 | 0 / **25** | no | 329 / 299 |
+| 1.0 (card default) | **14** / n.a.* | no | 301 / 314 |
+
+`*` = at temp 1.0 r1 the model reported **40** methods (true: 26); r2 phrased the count in prose
+(scorer couldn't extract — not necessarily wrong).
+
+**Findings**
+
+1. **Lower temperature is more faithful for extraction.** temp 0.0 and 0.3 hit the exact count every
+   time; 0.7 and 1.0 produced wrong counts (1, 40) in some reps. Higher sampling variance → more
+   numeric/structural slips, with **no speed benefit** (decode time ~equal).
+2. **temp 0.0 is deterministic** — identical `.ai.md` across reps. This matters for the plugin's
+   checksum-based incremental model: re-indexing an unchanged file yields the *same* output, so there
+   is no diff churn.
+
+**Conclusion:** for code indexing, **temp 0.0 (or 0.3)** beats the card's 1.0 — same speed, more
+faithful, reproducible. *Small sample (2 reps); the direction is consistent and theory-backed, but
+worth more reps before locking in.* → **candidate default change (deferred to user).**
 
 ## Phase 3 — prompt variants for gpt-oss
 
@@ -105,3 +129,8 @@ _Results: pending._
 ## Decisions deferred to the user
 
 _(collected here as the session runs; nothing here is committed as a default change without sign-off.)_
+
+- **D1 — lower the gpt-oss temperature from 1.0 to 0.0 (or 0.3)?** Phase 2 shows temp 0.0 is more
+  faithful (exact counts) *and* deterministic (reproducible `.ai.md`, no incremental-diff churn), at no
+  speed cost. The gpt-oss card recommends 1.0 for general use; for this extraction task the data favors
+  0.0. Small sample — recommend confirming with more reps before changing the shipped presets.
