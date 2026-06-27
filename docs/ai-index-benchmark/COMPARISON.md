@@ -146,7 +146,10 @@ for a hybrid deterministic-structure + AI-prose design.
   across all models (scope was `config`+`provider`, max 414 lines); this extrapolates from that
   file, model architecture, and the 30B full-project baseline. Avoid `Qwen3-4B-2507` for large
   files specifically — it dropped members on the long list.
-- **Best permissive small dense coder: `Seed-Coder-8B-Instruct`** — MIT, clean output.
+- **Best permissive small dense coder: `Seed-Coder-8B-Instruct`** — MIT, clean output, no fence
+  issue. `Qwen2.5-Coder-7B` (Apache-2.0) matches it on *accuracy* once fences are post-stripped
+  (see §9 re-test) but is the slowest dense model — prefer Seed-Coder unless you specifically want
+  the Qwen tokenizer/ecosystem.
 - **Budget / laptop: `Qwen3-4B-Instruct-2507`** (non-thinking) over `Qwen3.5-4B` — faster, no
   thinking tax, equal-or-better output (but not for the largest files; see above).
 - **Avoid for *batch / throughput* work:** `gpt-oss-20b` (highest fidelity but slowest — reserve it
@@ -315,10 +318,19 @@ instruct-strict) and Qwen3-4B-Instruct-2507 ≈ **83.4**. The other six models h
 IFEval (gpt-oss-20b's official card has none; a ~69.5% figure circulating is unofficial).
 
 **Where we may be exposed:**
-- **Qwen2.5-Coder-7B may be under-ranked.** Public coding benchmarks rank it strongly (Qwen reports
-  it beats DeepSeek-Coder-V2-Lite and Codestral-22B; leads CRUXEval at its size). Our mid-pack
-  placement may reflect its **format drift (code fences)** rather than weaker comprehension — worth
-  a re-score after normalizing fences.
+- **Qwen2.5-Coder-7B was under-ranked — confirmed by a follow-up re-test.** Public coding
+  benchmarks rank it strongly (Qwen reports it beats DeepSeek-Coder-V2-Lite and Codestral-22B; leads
+  CRUXEval at its size). We re-scored its **v2** output across all 6 archetype files with the stray
+  code fences treated as the deterministically-fixable format error they are. Fence-normalized, its
+  **comprehension is top-tier (top-3, alongside gpt-oss-20b)**: it correctly reports the *non-final*
+  classes (no `final` hallucination — unlike most models), the full accessor set with the
+  unmodifiable-list nuance, the interface's default-delegation contract, the parser's three-branch
+  control flow + IOException trigger, and the JNI lazy-load/inference/`close()` chain — with no
+  invented members, hallucinated inheritance, or copied-example leads. Residual issues are cosmetic
+  (one null-handling phrasing slip in `AiCompletionParser`; an "implements vs extends" nit). **So its
+  mid-pack matrix placement was a *format* artifact, not a comprehension deficit** — with a one-line
+  fence-stripping post-process it is a strong, permissive (Apache-2.0) option. The remaining catch is
+  speed: it is the slowest *dense* model (~133–141 s/file).
 - **DeepSeek-Coder-V2-Lite low** agrees with the public record (its own paper concedes an
   instruction-following gap).
 
@@ -330,7 +342,26 @@ MNPL (non-commercial); the rest are Apache-2.0 (Qwen family, gpt-oss, Granite) o
 `Qwen3-Coder-30B-A3B` vs `Qwen3-30B-A3B-2507` (the 83.7 figure is the non-thinking 30B, *not* the
 Coder or the 4B) and `Qwen3.5-4B` vs `Qwen3-4B-Instruct-2507`. Anchors above are attributed carefully.
 
-## 10. Caveats
+## 10. Prompt-cache optimization (`cache_prompt`)
+
+The provider keeps the model loaded once and reuses the shared prompt-template prefix's KV across
+files via llama.cpp `cache_prompt` (pinned to one slot); only the differing per-file source is
+re-prefilled. A/B on the same model (Qwen3-Coder-30B-A3B @ 16K), file phase over `config`+`provider`
+(12 files):
+
+| `cachePrompt` | wall time (12 files) | ~ per file |
+|---|---|---|
+| `false` (baseline) | 1055 s | ~88 s |
+| `true` (default) | 950 s | ~79 s |
+
+**≈ 10 % faster (−105 s)**, output unchanged (prefix reuse is logit-exact). This is the *entire*
+cacheable share: the remainder — per-file source prefill + decode — is inherently uncacheable, so a
+system/user prompt split would add no further speed (only a possible, separate quality effect).
+Enabled by default (`cachePrompt=true` on each model definition; needs `net.ladenthin:llama`
+≥ 5.0.3 for the pinned-slot API). Measured at 16K context (the new CPU default — 64K's ~6 GB KV
+caused memory paging on the test box that confounded timing).
+
+## 11. Caveats
 
 - Quality tiers (§4) are from a **representative file sample**, not a full read of all 368
   summaries; metrics (§1) cover every file.
