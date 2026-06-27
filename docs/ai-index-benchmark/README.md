@@ -17,7 +17,9 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
 - **Maximum precision, CPU time no object (one-off index of a large/important project):
   `gpt-oss-20b`** — the per-file *accuracy* leader (won 5/6 in the per-file matrix), most faithful,
   no hallucinated `final`/examples. It is the slowest (~2× the 30B, harmony reasoning overhead), so
-  reserve it for precision runs, not bulk throughput.
+  reserve it for precision runs, not bulk throughput. Run it with `reasoningEffort=low` and one of the
+  three size-tiered presets (`gpt-oss-20B-c16k/c48k/c96k`, **default c96k**); context-window limits,
+  large-file (250 KB) validation, and the O(n²) timing model are in [COMPARISON.md §11](COMPARISON.md).
 - **Avoid:** `Qwen3.5-4B` (thinking tax, no quality gain) and `DeepSeek-Coder-V2-Lite` (copied the
   prompt's example as a summary).
 - **Cross-model caveat:** all models mis-state structural facts (e.g. `final`, annotations, exact

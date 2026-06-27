@@ -85,6 +85,7 @@ It creates structured `.ai.md` files per source file and aggregates them into pa
 - Exclude trivial or generated files with glob patterns
 - Uses local models via llama.cpp (no cloud dependency)
 - Incremental updates (skips unchanged files)
+- Logs a rough per-file duration estimate before each generation (size, token count, expected time)
 - Optimized for AI-assisted code understanding
 ## How It Works
 The plugin runs in three phases, building a navigable index from fine to coarse.
@@ -370,6 +371,26 @@ pros/cons, a source-faithfulness deep-dive, and reproduction steps in
 - `gpt-oss-20b` is the most *accurate* per file (won 5/6 in the per-file matrix) but the slowest
   (~2× the 30B) — use only when fidelity beats throughput; avoid `Qwen3.5-4B` (thinking tax, no
   quality gain).
+
+### gpt-oss-20b presets, large files, and timing
+
+`gpt-oss` is a *reasoning* model whose analysis tokens share the output budget, so use
+`reasoningEffort=low` for code summaries (best quality here) and size the budget to the file. The pom
+ships three ready presets, tiered by the largest file you must cover — full rationale and measurements
+in [COMPARISON.md §11](docs/ai-index-benchmark/COMPARISON.md):
+
+| Preset | context | covers up to | ~ time (CPU) |
+|---|---|---|---|
+| `gpt-oss-20B-c16k` | 16K | ~40 KB | ~1–2 min |
+| `gpt-oss-20B-c48k` | 48K | ~125 KB | ~25 min @ 100 KB |
+| **`gpt-oss-20B-c96k` (default)** | 96K | ~260 KB | ~80 min @ 250 KB |
+
+- **`c96k` is the default:** a measured A/B shows a wider context window costs only RAM, not per-file
+  time, so it covers every file up to ~250 KB with no trimming while small files stay just as fast.
+  Downshift only to save RAM. Hard ceiling is the 128K window (~480–500 KB of code).
+- **Timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt tokens),
+  because attention is O(n) per token — which is why throughput drops as files grow. The plugin logs
+  this estimate per file.
 ## Development
 
 Run full build:
