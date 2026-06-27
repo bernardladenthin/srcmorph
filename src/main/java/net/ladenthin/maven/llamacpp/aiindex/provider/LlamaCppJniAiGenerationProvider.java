@@ -5,16 +5,19 @@ package net.ladenthin.maven.llamacpp.aiindex.provider;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.llama.LlamaModel;
+import net.ladenthin.llama.args.ReasoningFormat;
 import net.ladenthin.llama.parameters.InferenceParameters;
 import net.ladenthin.llama.parameters.ModelParameters;
 import net.ladenthin.llama.value.Pair;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
+import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -42,6 +45,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     private final AiPromptSupport promptSupport;
     private final AiCompletionParser completionParser = new AiCompletionParser();
+    private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
      * Fixed llama.cpp server slot every request is pinned to. The model is loaded once and reused
@@ -50,6 +54,21 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
      * re-prefilling it for every file. Reuse is exact, so generated output is unchanged.
      */
     private static final int REUSE_SLOT_ID = 0;
+
+    /** Chat-template kwarg controlling Qwen-style thinking (ignored by non-Qwen templates). */
+    private static final String ENABLE_THINKING_KWARG = "enable_thinking";
+
+    /** Chat-template kwarg for the gpt-oss reasoning-effort level (ignored by non-gpt-oss templates). */
+    private static final String REASONING_EFFORT_KWARG = "reasoning_effort";
+
+    /**
+     * Reasoning effort for this task: {@code "low"} keeps the discarded chain-of-thought minimal for
+     * the short, structured summaries this plugin produces (the gpt-oss default would be medium).
+     */
+    private static final String REASONING_EFFORT_LOW = "low";
+
+    /** Number of chat-template kwargs put into the map (used for presizing). */
+    private static final int CHAT_TEMPLATE_KWARG_COUNT = 2;
 
     /**
      * Creates a new {@link LlamaCppJniAiGenerationProvider}; the GGUF model is loaded lazily on the first generate(...) call.
@@ -66,12 +85,20 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     private LlamaModel model() {
         LlamaModel current = model;
         if (current == null) {
+            final Map<String, String> chatTemplateKwargs =
+                    new HashMap<>(compatibilityHelper.hashMapCapacityFor(CHAT_TEMPLATE_KWARG_COUNT));
+            chatTemplateKwargs.put(ENABLE_THINKING_KWARG, String.valueOf(config.chatTemplateEnableThinking()));
+            // gpt-oss honors reasoning_effort; non-gpt-oss chat templates ignore it. "low" keeps the
+            // discarded chain-of-thought minimal for the short structured summaries this plugin produces.
+            chatTemplateKwargs.put(REASONING_EFFORT_KWARG, REASONING_EFFORT_LOW);
             final ModelParameters modelParameters = new ModelParameters()
                     .setModel(config.modelPath())
                     .setCtxSize(config.contextSize())
                     .setThreads(config.threads())
-                    .setChatTemplateKwargs(Collections.singletonMap(
-                            "enable_thinking", String.valueOf(config.chatTemplateEnableThinking())));
+                    // Parse reasoning channels (Qwen <think>, gpt-oss harmony analysis) into
+                    // reasoning_content so message content stays clean (final channel only).
+                    .setReasoningFormat(ReasoningFormat.AUTO)
+                    .setChatTemplateKwargs(chatTemplateKwargs);
             current = new LlamaModel(modelParameters);
             model = current;
         }
