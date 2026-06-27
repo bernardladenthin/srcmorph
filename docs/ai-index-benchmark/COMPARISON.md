@@ -455,8 +455,23 @@ headroom.
 The plugin routes the model per file by **extension, not by size** (`AiFieldGenerationSelector`), so
 one run cannot auto-pick a preset per file size. Key fact: **`contextSize` costs KV RAM (one-time),
 not per-small-file speed** — prefill and decode scale with each file's *actual* token count, not with
-the allocated window, so a small file stays fast even in a large context; you only pay the RAM
-(roughly: ~12 GB model + KV ~2 GB @16K / ~6 GB @48K / ~11 GB @96K). Two workable approaches:
+the allocated window, so a small file stays fast even in a large context; you only pay the RAM.
+
+This was confirmed by an A/B run: the **same 10 KB file**, gpt-oss, everything identical except
+`contextSize` (16K → 96K):
+
+| `contextSize` | proj. RAM (KV+compute) | prefill | decode | wall |
+|---|---|---|---|---|
+| 16384 | 2050 MiB | 26.67 ms/tok | 9.10 t/s | 159 s |
+| 32768 | 2450 MiB | 26.61 ms/tok | 9.16 t/s | 165 s |
+| 49152 | 2850 MiB | 26.55 ms/tok | 9.33 t/s | 159 s |
+| 98304 | 4050 MiB | 26.52 ms/tok | 9.20 t/s | 168 s |
+
+RAM rises ~linearly (**~+400 MiB per +16K**) while prefill/decode/wall stay flat — a wider window is
+**RAM-only** for small files. (These are the window-driven KV+compute figures at small *actual* input;
+when a wide window is genuinely filled — ~60 K tokens plus context checkpoints up to 8 GB — real usage
+climbs to the ~23 GB seen in the 250 KB run, but the *window-size* component scales as above.) Two
+workable approaches:
 
 1. **One preset, sized to your largest file (simplest).** If your biggest class fits ~125 KB and you
    have the RAM, run `c48k` for everything — small files are unaffected in speed.
