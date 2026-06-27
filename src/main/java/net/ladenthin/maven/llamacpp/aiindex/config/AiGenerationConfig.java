@@ -124,6 +124,15 @@ public class AiGenerationConfig {
      */
     public static final boolean DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING = true;
 
+    /**
+     * Default for whether llama.cpp prompt caching ({@code cache_prompt}) is enabled.
+     *
+     * <p>When {@code true}, the provider keeps the shared prompt-template prefix in the KV cache and
+     * reuses it across files — only the differing source text is re-prefilled per file. This is a
+     * pure speed optimisation: prefix reuse is exact, so the generated output is unchanged.</p>
+     */
+    public static final boolean DEFAULT_CACHE_PROMPT = true;
+
     private String modelPath;
     private int contextSize = DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS;
@@ -138,6 +147,7 @@ public class AiGenerationConfig {
     private int topK = DEFAULT_TOP_K;
     private float repeatPenalty = DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
+    private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
     private List<String> stopStrings = new ArrayList<>();
 
     /**
@@ -392,6 +402,24 @@ public class AiGenerationConfig {
      */
     public void setChatTemplateEnableThinking(final boolean chatTemplateEnableThinking) {
         this.chatTemplateEnableThinking = chatTemplateEnableThinking;
+    }
+
+    /**
+     * Returns whether llama.cpp prompt caching ({@code cache_prompt}) is enabled.
+     *
+     * @return {@code true} when prompt-prefix KV reuse across files is enabled
+     */
+    public boolean isCachePrompt() {
+        return cachePrompt;
+    }
+
+    /**
+     * Sets whether llama.cpp prompt caching ({@code cache_prompt}) is enabled.
+     *
+     * @param cachePrompt {@code true} to reuse the shared prompt-prefix KV across calls
+     */
+    public void setCachePrompt(final boolean cachePrompt) {
+        this.cachePrompt = cachePrompt;
     }
 
     /**

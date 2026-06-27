@@ -247,6 +247,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                     config.getTopK(),
                     config.getRepeatPenalty(),
                     config.isChatTemplateEnableThinking(),
+                    config.isCachePrompt(),
                     stopStrings != null ? stopStrings : Collections.emptyList());
         }
         return new LlamaCppJniConfig(
@@ -260,6 +261,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                 AiGenerationConfig.DEFAULT_TOP_K,
                 AiGenerationConfig.DEFAULT_REPEAT_PENALTY,
                 AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING,
+                AiGenerationConfig.DEFAULT_CACHE_PROMPT,
                 Collections.emptyList());
     }
 

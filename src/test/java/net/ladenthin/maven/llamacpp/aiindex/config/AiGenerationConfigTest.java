@@ -51,4 +51,15 @@ public class AiGenerationConfigTest {
         // null arg resets to an EMPTY (non-null) list — kills the negate mutant on the setter ternary.
         assertThat(c.getStopStrings(), is(Collections.<String>emptyList()));
     }
+
+    @Test
+    public void cachePromptDefaultsTrueAndTogglesFalse() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default true kills the false-default / "return false" getter mutants.
+        assertThat(c.isCachePrompt(), is(true));
+        c.setCachePrompt(false);
+        // Observing false after the setter kills the "return true" getter mutant and the
+        // removed-assignment setter mutant.
+        assertThat(c.isCachePrompt(), is(false));
+    }
 }

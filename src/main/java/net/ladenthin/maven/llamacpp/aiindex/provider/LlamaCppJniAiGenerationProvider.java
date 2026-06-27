@@ -44,6 +44,14 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     private final AiCompletionParser completionParser = new AiCompletionParser();
 
     /**
+     * Fixed llama.cpp server slot every request is pinned to. The model is loaded once and reused
+     * for all files; pinning each request to the same slot lets the prompt cache
+     * ({@code cache_prompt}) reuse the shared prompt-template prefix's KV across files instead of
+     * re-prefilling it for every file. Reuse is exact, so generated output is unchanged.
+     */
+    private static final int REUSE_SLOT_ID = 0;
+
+    /**
      * Creates a new {@link LlamaCppJniAiGenerationProvider}; the GGUF model is loaded lazily on the first generate(...) call.
      *
      * @param config        llama.cpp configuration
@@ -77,26 +85,30 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     @Override
     public String generate(final AiGenerationRequest request, final float temperatureOverride) throws IOException {
-        final String prompt = promptSupport.buildPrompt(request);
+        // Static instructions go in the SYSTEM message (byte-identical across files, so its KV
+        // prefix is reused by cache_prompt); the variable file name + source go in the USER message.
+        final String systemPrompt = promptSupport.systemPrompt(request.promptKey());
+        final String userMessage = promptSupport.userMessage(request.sourceFile(), request.sourceText());
 
         final List<Pair<String, String>> messages = new ArrayList<>();
-        messages.add(new Pair<>("user", prompt));
+        messages.add(new Pair<>("user", userMessage));
 
-        // withMessages(systemMessage, ...) accepts null upstream to omit the system message,
-        // but it is unannotated, so Checker Framework infers @NonNull.
-        // InferenceParameters uses immutable withers (jllama 5.0.2): each with* returns a new
-        // instance, so withStopStrings is folded into the single chain rather than a separate
-        // mutating call.
-        @SuppressWarnings("argument")
+        // InferenceParameters uses immutable withers: each with* returns a new instance, so the
+        // whole request is built as a single chain.
         final InferenceParameters inferenceParameters = new InferenceParameters("")
-                .withMessages(null, messages)
+                .withMessages(systemPrompt, messages)
                 .withUseChatTemplate(true)
                 .withTemperature(temperatureOverride)
                 .withNPredict(config.maxOutputTokens())
                 .withTopP(config.topP())
                 .withTopK(config.topK())
                 .withRepeatPenalty(config.repeatPenalty())
-                .withStopStrings(config.stopStrings().toArray(new String[0]));
+                .withStopStrings(config.stopStrings().toArray(new String[0]))
+                // Keep the shared prompt-template prefix warm in the KV cache and reuse it across
+                // files (pinned to one slot); only the differing source is re-prefilled.
+                // Reuse is exact -> output unchanged.
+                .withCachePrompt(config.cachePrompt())
+                .withSlotId(REUSE_SLOT_ID);
 
         return completionParser.parseCompletion(model().chatCompleteText(inferenceParameters));
     }

@@ -47,4 +47,15 @@ public class AiModelDefinitionTest {
         d.setStopStrings(null);
         assertThat(d.getStopStrings(), is(nullValue()));
     }
+
+    @Test
+    public void cachePromptDefaultsTrueAndTogglesFalse() {
+        AiModelDefinition d = new AiModelDefinition();
+        // Default true kills the false-default / "return false" getter mutants.
+        assertThat(d.isCachePrompt(), is(true));
+        d.setCachePrompt(false);
+        // Observing false after the setter kills the "return true" getter mutant and the
+        // removed-assignment setter mutant.
+        assertThat(d.isCachePrompt(), is(false));
+    }
 }

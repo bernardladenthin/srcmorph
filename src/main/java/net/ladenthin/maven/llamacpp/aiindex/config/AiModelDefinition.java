@@ -52,6 +52,7 @@ public class AiModelDefinition {
     private int topK = AiGenerationConfig.DEFAULT_TOP_K;
     private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
+    private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
     private @Nullable List<String> stopStrings;
 
     /**
@@ -315,6 +316,26 @@ public class AiModelDefinition {
      */
     public void setChatTemplateEnableThinking(final boolean chatTemplateEnableThinking) {
         this.chatTemplateEnableThinking = chatTemplateEnableThinking;
+    }
+
+    /**
+     * Returns whether llama.cpp prompt caching is enabled for this model.
+     *
+     * @return {@code true} to reuse the shared prompt-prefix KV across files;
+     *         defaults to {@link AiGenerationConfig#DEFAULT_CACHE_PROMPT}
+     */
+    public boolean isCachePrompt() {
+        return cachePrompt;
+    }
+
+    /**
+     * Sets whether llama.cpp prompt caching ({@code cache_prompt}) is enabled for this model.
+     *
+     * @param cachePrompt {@code true} keeps the prompt-template prefix warm in the KV cache and
+     *        reuses it per file (only the differing source is re-prefilled); output is unchanged
+     */
+    public void setCachePrompt(final boolean cachePrompt) {
+        this.cachePrompt = cachePrompt;
     }
 
     /**

@@ -59,7 +59,11 @@ SPDX-License-Identifier: Apache-2.0
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <maven.version>3.9.16</maven.version>
-        <llama.version>5.0.2</llama.version>
+        <!-- TEMPORARY: pinned to the 5.0.3 snapshot of net.ladenthin:llama for the prompt-cache /
+             slot APIs (withCachePrompt / withSlotId) used by the provider's per-file cache reuse.
+             Requires the maven-snapshots <repositories> block below. Switch to the 5.0.3 release
+             once published. (Release fallback: 5.0.2 has withCachePrompt but not withSlotId.) -->
+        <llama.version>5.0.3-SNAPSHOT</llama.version>
         <junit.version>6.1.0</junit.version>
         <hamcrest.version>3.0</hamcrest.version>
         <jmh.version>1.37</jmh.version>
@@ -87,6 +91,20 @@ SPDX-License-Identifier: Apache-2.0
         <palantir-java-format.version>2.92.0</palantir-java-format.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
+
+        <!-- Prompt-cache toggle (default on). Reuses the shared prompt-template prefix KV across
+             files. Override per run for benchmarking, e.g. -Dai.cachePrompt=false. -->
+        <ai.cachePrompt>true</ai.cachePrompt>
+
+        <!-- EXPERIMENT KNOBS (commented out, kept for re-runs). Re-enable these and switch
+             the executions' aiDefinitionKey/promptKey back to ${exp.model}/${exp.filePrompt}/
+             ${exp.pkgPrompt} to drive model + prompt per run via -D for benchmarking, e.g.:
+             -Dexp.model=EXP-Granite-4.0-H-Tiny -Dexp.filePrompt=file-body-java-v2
+             -Dexp.pkgPrompt=package-body-v2 -Dai.index.output.directory=.../src/site/ai__run1
+        <exp.model>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</exp.model>
+        <exp.filePrompt>file-body-java</exp.filePrompt>
+        <exp.pkgPrompt>package-body</exp.pkgPrompt>
+        -->
 
         <project.build.outputTimestamp>${git.commit.time}</project.build.outputTimestamp>
 
@@ -209,6 +227,22 @@ SPDX-License-Identifier: Apache-2.0
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!-- TEMPORARY: Sonatype Central snapshot repository to resolve net.ladenthin:llama
+         5.0.3-SNAPSHOT (pinned above). Releases disabled so stable artifacts keep resolving from
+         Maven Central. Remove together with the snapshot pin once 5.0.3 is released. -->
+    <repositories>
+        <repository>
+            <id>central-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <build>
         <pluginManagement>
@@ -686,6 +720,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdLeadExtractor</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
@@ -756,9 +791,20 @@ SPDX-License-Identifier: Apache-2.0
 
                         <configuration>
                             <outputDirectory>${ai.index.output.directory}</outputDirectory>
+                            <!-- EXPERIMENT SCOPE (claude2026_06_26_00): config + provider only,
+                                 a diverse 12-file mix for fast model/prompt comparison. Restore the
+                                 single aiindex subtree for a full self-index. -->
                             <subtrees>
-                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex</subtree>
+                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex/config</subtree>
+                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex/provider</subtree>
                             </subtrees>
+
+                            <!-- EXPERIMENT FILTERING (claude2026_06_26_00): drop package-info/module-info;
+                                 they carry no public API and only add padded near-empty summaries. -->
+                            <excludes>
+                                <exclude>**/package-info.java</exclude>
+                                <exclude>**/module-info.java</exclude>
+                            </excludes>
 
                             <generationProvider>llamacpp-jni</generationProvider>
 
@@ -1126,7 +1172,12 @@ SPDX-License-Identifier: Apache-2.0
                                 <aiDefinition>
                                     <key>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</key>
                                     <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
-                                    <contextSize>65536</contextSize>
+                                    <!-- Context 16384 is the practical CPU default on this machine: the 64K
+                                         KV cache (~6 GB) pushed total memory over the edge and caused paging,
+                                         while 16K fits comfortably (~18 GB total) and still covers every source
+                                         file here. Raise to 65536 only with enough free RAM headroom. The
+                                         "-C64k" key suffix is left as-is to avoid re-pointing the executions. -->
+                                    <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1136,6 +1187,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <topP>0.8</topP>
                                     <topK>20</topK>
                                     <repeatPenalty>1.05</repeatPenalty>
+                                    <cachePrompt>${ai.cachePrompt}</cachePrompt>
                                 </aiDefinition>
                                 <!-- Qwen2.5-Coder-14B-Instruct-Q4_K_M (32 K context)
                                      Dense 14B, the cited top local coding model at the 16 GB tier;
@@ -1210,6 +1262,129 @@ SPDX-License-Identifier: Apache-2.0
                                     <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
+                                <!-- ============================================================
+                                     EXPERIMENT MODELS (claude2026_06_26_00)
+                                     All at context 16384 for an apples-to-apples, RAM-safe,
+                                     fast comparison. Selected by -Dexp.model=<key>.
+                                     ============================================================ -->
+                                <aiDefinition>
+                                    <key>EXP-Qwen3.5-4B</key>
+                                    <modelPath>X:/Modelle/Qwen3.5-4B-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                    <chatTemplateEnableThinking>false</chatTemplateEnableThinking>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Qwen2.5-Coder-7B</key>
+                                    <modelPath>X:/Modelle/qwen2.5-coder-7b-instruct-q5_k_m.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-gpt-oss-20B</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>1.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Qwen3-Coder-30B</key>
+                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- ============================================================
+                                     EXPERIMENT MODELS — batch 2 (claude2026_06_26_00)
+                                     New shortlist candidates, all context 16384. Recommended
+                                     sampling per each model card.
+                                     ============================================================ -->
+                                <aiDefinition>
+                                    <key>EXP-DeepSeek-Coder-V2-Lite</key>
+                                    <modelPath>X:/Modelle/DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.3</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.9</topP>
+                                    <topK>40</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Seed-Coder-8B</key>
+                                    <modelPath>X:/Modelle/Seed-Coder-8B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.3</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.9</topP>
+                                    <topK>40</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Granite-4.0-H-Tiny</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Qwen3-4B-Instruct-2507</key>
+                                    <modelPath>X:/Modelle/Qwen3-4B-Instruct-2507-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
                             </aiDefinitions>
 
                             <!--
@@ -1264,10 +1439,8 @@ Threading, synchronization, immutability, or thread-safety notes, if any.
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, or behavior beyond the shown source.
 
-File: %s
-
-Source:
-%s
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1314,10 +1487,8 @@ Other tables, views, functions, or sequences referenced, as searchable names.
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any table, column, or relationship beyond the shown source.
 
-File: %s
-
-Source:
-%s
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1364,10 +1535,8 @@ Notable thrown/handled exceptions or error conditions.
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, table, or behavior beyond the shown source.
 
-File: %s
-
-Source:
-%s
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1409,10 +1578,8 @@ Recurring patterns across files: shared base types/interfaces, common exception/
 ## Critical
 If the input contains "[EOF - source was truncated]", summarize ONLY what is present. Never infer or invent files or content beyond the provided summaries.
 
-Package: %s
-
-File summaries:
-%s
+The package path and its already-generated per-file summaries are provided in the next (user)
+message: the path on the first line, then a blank line, then the summaries to synthesize.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1424,15 +1591,151 @@ subsystems and how they fit together, in 2 to 4 sentences. Use domain terms a de
 No headings, no bullet lists, no code fences, no XML tags, no formatter comments. Write in English. Base
 every statement only on the provided leads — never invent packages or behavior not present in them.
 
-Index file: %s
+The index file path and the per-package one-line leads are provided in the next (user) message:
+the path on the first line, then a blank line, then the leads to synthesize.
+                                    ]]></template>
+                                </promptDefinition>
+                                <!-- ============================================================
+                                     EXPERIMENT PROMPTS v2 (claude2026_06_26_00)
+                                     Targets issues found in the v1 output: section omission on
+                                     trivial files, accessor over-enumeration, invented "keywords",
+                                     and verbosity. Selected via -Dexp.filePrompt / -Dexp.pkgPrompt.
+                                     ============================================================ -->
+                                <promptDefinition>
+                                    <key>file-body-java-v2</key>
+                                    <template><![CDATA[
+You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index read by AI agents. Prioritize core logic, types, and data flow. Be terse. Write in English.
 
-%s
+## Output
+Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms (the searchable business/functional purpose, not class mechanics):
+> <one-sentence domain essence>
+
+Then output ONLY the sections below that carry real information. OMIT any section that would be empty, "none", or "not applicable" — do not emit a heading just to say nothing. Use '####' for section labels, never '###' or higher.
+
+TRIVIAL-FILE RULE: if the unit has no public behavior to describe (e.g. a marker/annotation, an enum that only lists constants, or a near-empty type), output ONLY the blockquote lead and a single '#### Purpose' line, and stop.
+
+#### Purpose
+One or two bullets: what the type is for.
+
+#### Type
+One line: kind (class/interface/enum/record/annotation) + modifiers; extends/implements; key generics; notable annotations (@Mojo, Lombok, etc.).
+
+#### Input
+What comes in: constructor/method parameters, injected dependencies, consumed fields, read resources.
+
+#### Output
+What comes out: return types, produced/mutated state, written resources, side effects.
+
+#### Core logic
+The essential steps/algorithm/responsibility as bullets. The most important section.
+
+#### Public API
+Each public/protected member as `name(params) -> returnType` + a <=6-word purpose clause. EXCEPTION: for plain data/config classes that are only getters/setters (e.g. Lombok beans), DO NOT list each accessor — write one line: "JavaBean getters/setters for: <comma-separated field names>".
+
+#### Dependencies
+Referenced types as searchable names. EXCLUDE this file's own type and java.lang.* .
+
+#### Exceptions / Errors
+Notable thrown/caught exceptions, null-handling, error conditions.
+
+#### Concurrency
+Threading, immutability, or thread-safety notes — only if the source actually shows them.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs.
+- Weave class/type/domain names into the bullets so they are searchable.
+- Describe ONLY what is literally in the source. NEVER invent units, fields, behavior, or concepts; in particular never mention keywords, tags, embeddings, search, or features the code does not contain.
+- No code fences, no ```markdown/```java, no XML tags, no formatter comments.
+- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
+
+## Critical
+If the source contains "[EOF - source was truncated]", index ONLY what is literally present.
+
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
+                                    ]]></template>
+                                </promptDefinition>
+                                <promptDefinition>
+                                    <key>package-body-v2</key>
+                                    <template><![CDATA[
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source). Produce one dense, structured markdown summary of the whole package for a searchable code index read by AI agents. Synthesize and group — do not concatenate. Be terse. Write in English.
+
+## Output
+Begin with a single blockquote line — one sentence capturing what this package does as a whole in DOMAIN terms:
+> <one-sentence domain essence>
+
+SINGLE-CHILD RULE: if the input describes only ONE child package/file and no other content, output ONLY the blockquote lead restating that child's responsibility, and stop — emit no sections.
+
+Otherwise output ONLY the sections below that carry real information. OMIT any that would be empty. Use '####' for labels, never '###' or higher.
+
+#### Purpose
+One or two bullets: the package's overall responsibility.
+
+#### Responsibilities
+The main functional groups inside the package, as bullets. Group files by role; do not list every file for large packages.
+
+#### Key units
+The central classes/interfaces/modules and their job, one clause each, with searchable names.
+
+#### Data flow
+How inputs move through the package to outputs, if a clear pipeline exists across the files.
+
+#### Dependencies
+Notable internal collaborations and external modules the package depends on. Focus on cross-unit/cross-package relationships, not raw JDK/Lombok imports.
+
+#### Cross-cutting
+Recurring patterns across files: shared base types, common error handling, concurrency, configuration.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs.
+- Weave type/module/domain names in as searchable terms.
+- Base every statement ONLY on the provided file summaries. NEVER invent units, methods, behavior, or concepts (in particular never mention keywords, tags, or embeddings) not present in them.
+- No code fences, no ```markdown, no XML tags, no formatter comments.
+- The package-name heading is already rendered above your output. Start immediately with the blockquote lead. Never empty.
+
+## Critical
+If the input contains "[EOF - source was truncated]", summarize ONLY what is present.
+
+The package path and its already-generated per-file summaries are provided in the next (user)
+message: the path on the first line, then a blank line, then the summaries to synthesize.
                                     ]]></template>
                                 </promptDefinition>
                             </promptDefinitions>
 
                         </configuration>
 
+                        <!--
+                            BENCHMARK MODE (example, disabled).
+                            The executions below use concrete production values
+                            (Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k + file-body-java /
+                            package-body). To sweep models/prompts per run instead, re-enable the
+                            commented exp.* properties near the top of <properties> and swap the
+                            execution values for these parameterized forms, then drive each run with
+                            -Dexp.model / -Dexp.filePrompt / -Dexp.pkgPrompt:
+
+                                <fieldGeneration>
+                                    <promptKey>${exp.filePrompt}</promptKey>
+                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
+                                    <fileExtensions>
+                                        <fileExtension>.java</fileExtension>
+                                    </fileExtensions>
+                                </fieldGeneration>
+                                ... (sql + fallback fieldGenerations: aiDefinitionKey ${exp.model})
+
+                                ai-aggregate-packages:
+                                    <promptKey>${exp.pkgPrompt}</promptKey>
+                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
+
+                                ai-aggregate-project:
+                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
+
+                            Example invocation:
+                                mvn prepare-package -P ai-index-selftest -DskipTests \
+                                  -Dexp.model=EXP-Granite-4.0-H-Tiny \
+                                  -Dexp.filePrompt=file-body-java-v2 \
+                                  -Dexp.pkgPrompt=package-body-v2 \
+                                  -Dai.index.output.directory=.../src/site/ai__run1
+                        -->
                         <executions>
                             <execution>
                                 <id>ai-generate</id>

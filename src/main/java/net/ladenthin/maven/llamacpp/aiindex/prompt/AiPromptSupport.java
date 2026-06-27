@@ -15,6 +15,16 @@ import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 @ToString
 public final class AiPromptSupport {
 
+    /** Separator between the name line and the body within the user message. */
+    private static final String USER_NAME_BODY_SEPARATOR = "\n\n";
+
+    /**
+     * Separator used only to concatenate the system instructions and the user message for length
+     * budgeting in {@link AiPromptPreparationSupport}; at inference time the provider sends the two
+     * parts as a separate system and user message.
+     */
+    private static final String SYSTEM_USER_SEPARATOR = "\n\n";
+
     private final Map<String, String> templates;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
@@ -73,24 +83,53 @@ public final class AiPromptSupport {
     }
 
     /**
-     * Builds the prompt string for the given key, file, and source text without
-     * requiring a full {@link net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest}. Useful when only template
-     * length measurement is needed and no {@link net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader} is available.
+     * Builds the combined system + user text for the given key, file, and source text.
      *
-     * @param promptKey  the key identifying the prompt template
-     * @param sourceFile the file path substituted as the filename argument
-     * @param sourceText the source text substituted into the template
-     * @return the rendered prompt string
+     * <p>This concatenation ({@code systemPrompt + separator + userMessage}) is used only for
+     * length budgeting / trimming by {@link AiPromptPreparationSupport} and for the
+     * {@code maxInputChars} calculation; at inference time the provider sends the two parts
+     * separately — see {@link #systemPrompt(String)} and {@link #userMessage(java.nio.file.Path, String)}.</p>
+     *
+     * @param promptKey  the key identifying the prompt template (system instructions)
+     * @param sourceFile the file path whose name heads the user message
+     * @param sourceText the source text delivered in the user message
+     * @return the combined system + user text
      * @throws IllegalArgumentException if no template is registered for {@code promptKey}
      */
     public String buildPrompt(final String promptKey, final java.nio.file.Path sourceFile, final String sourceText) {
+        return systemPrompt(promptKey) + SYSTEM_USER_SEPARATOR + userMessage(sourceFile, sourceText);
+    }
+
+    /**
+     * Returns the static system-instruction prompt (the registered template, verbatim) for the
+     * given key. The template carries no placeholders; the variable file name and content are
+     * delivered separately via {@link #userMessage(java.nio.file.Path, String)}.
+     *
+     * @param promptKey the key identifying the prompt template
+     * @return the system instructions registered for {@code promptKey}
+     * @throws IllegalArgumentException if no (non-blank) template is registered for {@code promptKey}
+     */
+    public String systemPrompt(final String promptKey) {
         final String template = templates.get(promptKey);
         if (template == null || compatibilityHelper.isBlank(template)) {
             throw new IllegalArgumentException("Missing prompt template for key: " + promptKey);
         }
+        return template;
+    }
 
+    /**
+     * Builds the user message carrying the variable data: the file (or package/project) name on
+     * the first line, a blank line, then the body (file source, child summaries, or package leads,
+     * depending on the prompt). Falls back to the full path when the file name is {@code null}
+     * (e.g. a filesystem root).
+     *
+     * @param sourceFile the file path whose name heads the message
+     * @param sourceText the body delivered after the name
+     * @return the user message text
+     */
+    public String userMessage(final java.nio.file.Path sourceFile, final String sourceText) {
         final java.nio.file.Path fileName = sourceFile.getFileName();
-        final Object fileNameArg = fileName != null ? fileName : sourceFile;
-        return compatibilityHelper.formatted(template, fileNameArg, sourceText);
+        final Object nameArg = fileName != null ? fileName : sourceFile;
+        return nameArg + USER_NAME_BODY_SEPARATOR + sourceText;
     }
 }

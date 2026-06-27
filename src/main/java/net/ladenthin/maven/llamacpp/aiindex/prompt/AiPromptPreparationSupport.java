@@ -110,7 +110,9 @@ public class AiPromptPreparationSupport {
      * @return the source trimmed at the last newline at or before {@code targetIndex},
      *         or the entire source if no newline is found before the index
      */
-    private String trimSourceAtLineBreak(final String sourceText, final int targetIndex) {
+    // Package-private (not private) so the line-boundary trimming branches can be unit-tested
+    // directly; the method is not part of the public API.
+    String trimSourceAtLineBreak(final String sourceText, final int targetIndex) {
         if (targetIndex >= sourceText.length()) {
             return sourceText;
         }
