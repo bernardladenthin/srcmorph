@@ -1297,24 +1297,45 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                                 <!-- ============================================================
-                                     gpt-oss-20B — three ready-to-use reasoning presets.
-                                     gpt-oss is a *reasoning* model: it emits an internal analysis
-                                     channel BEFORE the answer, and llama.cpp counts those reasoning
-                                     tokens IN-BAND against maxOutputTokens. So a higher reasoningEffort
-                                     needs a LARGER maxOutputTokens, or the final summary is truncated.
-                                     These three presets size the output budget to the effort and are
-                                     robust to large source files (~100 KB / >1000 lines):
-                                       - contextSize 49152 (48K) holds a ~100 KB file (~30K tokens)
-                                         plus prompt plus the output budget.
-                                       - charsPerToken 3 matches dense Java (the 4-char default is too
-                                         optimistic for code and risks real context overflow on big files).
-                                     For this short-summary task, "small" (low effort) is the best
-                                     default: fastest and the full budget goes to the summary. See
-                                     docs/ai-index-benchmark/COMPARISON.md §11.
-                                     gpt-oss sampling per model card: temp 1.0, top-p 1.0, top-k 0.
+                                     gpt-oss-20B — three ready-to-use presets, tiered by the LARGEST
+                                     source file you need to cover. All use reasoningEffort=low: the
+                                     benchmark (docs/ai-index-benchmark/COMPARISON.md §11) shows low is
+                                     best for dense code summaries — fastest, and the whole output
+                                     budget goes to the summary instead of in-band reasoning. Raise the
+                                     effort only for genuinely reasoning-heavy generation AND raise
+                                     maxOutputTokens with it, or the final answer is truncated.
+
+                                     Shared design:
+                                       - charsPerToken 3 matches dense Java (measured ~4.2 chars/token;
+                                         3 keeps the char-based pre-trim token-safe so a big file is never
+                                         silently over-fed past the real token window).
+                                       - gpt-oss sampling per model card: temp 1.0, top-p 1.0, top-k 0.
+
+                                     Sizing (measured: 96 KB code = ~24K tokens; model window = 131072):
+                                       c16k  -> files up to ~40 KB   (typical files; fast, ~1-2 min/file)
+                                       c48k  -> files up to ~125 KB  (large files; ~25 min for ~100 KB) [validated]
+                                       c96k  -> files up to ~260 KB  (huge files; ~1 h for ~250 KB, RAM-heavy)
+                                     Hard ceiling: the 128K window caps input at ~480-500 KB of code, but
+                                     CPU prefill+decode time and KV RAM make ~250 KB the practical limit.
+                                     Prefill is the dominant cost on big files, not the effort level.
                                      ============================================================ -->
                                 <aiDefinition>
-                                    <key>gpt-oss-20B-small-c48k</key>
+                                    <key>gpt-oss-20B-c16k</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>1.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-c48k</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>49152</contextSize>
                                     <maxOutputTokens>4096</maxOutputTokens>
@@ -1329,9 +1350,9 @@ SPDX-License-Identifier: Apache-2.0
                                     <reasoningEffort>low</reasoningEffort>
                                 </aiDefinition>
                                 <aiDefinition>
-                                    <key>gpt-oss-20B-medium-c48k</key>
+                                    <key>gpt-oss-20B-c96k</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
-                                    <contextSize>49152</contextSize>
+                                    <contextSize>98304</contextSize>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>1.0</temperature>
                                     <threads>8</threads>
@@ -1341,22 +1362,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <topP>1.0</topP>
                                     <topK>0</topK>
                                     <repeatPenalty>1.0</repeatPenalty>
-                                    <reasoningEffort>medium</reasoningEffort>
-                                </aiDefinition>
-                                <aiDefinition>
-                                    <key>gpt-oss-20B-high-c48k</key>
-                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
-                                    <contextSize>49152</contextSize>
-                                    <maxOutputTokens>8192</maxOutputTokens>
-                                    <temperature>1.0</temperature>
-                                    <threads>8</threads>
-                                    <charsPerToken>3</charsPerToken>
-                                    <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
-                                    <topP>1.0</topP>
-                                    <topK>0</topK>
-                                    <repeatPenalty>1.0</repeatPenalty>
-                                    <reasoningEffort>high</reasoningEffort>
+                                    <reasoningEffort>low</reasoningEffort>
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Qwen3-Coder-30B</key>
