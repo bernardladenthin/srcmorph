@@ -429,7 +429,12 @@ At ~4.2 chars/token that is the hard ceiling; the practical ceiling on CPU is *t
 |---|---|---|---|---|
 | `gpt-oss-20B-c16k` | 16384 | 2048 | ~40 KB | ~1–2 min |
 | `gpt-oss-20B-c48k` | 49152 | 4096 | ~125 KB | ~25 min @ 100 KB |
-| `gpt-oss-20B-c96k` | 98304 | 6144 | ~260 KB | ~80 min @ 250 KB |
+| **`gpt-oss-20B-c96k` (default)** | 98304 | 6144 | ~260 KB | ~80 min @ 250 KB |
+
+**`c96k` is the default.** The A/B above proves a wider window costs only RAM, not per-file time, so
+the widest practical window is the safe universal choice: one preset covers *every* file up to ~250 KB
+with no trimming and no truncation, while small files stay just as fast. Downshift to `c48k`/`c16k`
+only to save RAM on memory-constrained machines.
 
 **Validated end-to-end** (synthetic Java fixtures from
 [`tools/generate-fixture.sh`](tools/generate-fixture.sh); `mvn generate-resources`, CPU-only):
@@ -449,6 +454,41 @@ level** — at 96K context decode drops to **~1 t/s** (vs ~2.3 t/s at 48K, ~10 t
 and prefill is effectively O(n²). The output budget is barely used (738–1198 tokens), so for large
 files the knobs that matter are `contextSize` + `charsPerToken` (fit untrimmed); the budget just needs
 headroom.
+
+### Per-file timing model (why throughput "shrinks", and the logged ETA)
+
+There is no constant tokens/second. Prefill **per-token** cost grows *linearly* with the prompt
+length `n` (attention is O(n) per token), so total prefill is **O(n²)**. Fitting the three measured
+runs gives, on the reference CPU (Ryzen 7 5800H, 8 threads, gpt-oss-20b UD-Q4_K_XL):
+
+```
+prefill_ms(n) ≈ 24.4·n + 0.000674·n²          n = prompt tokens
+decode_ms(n, out) ≈ out·(56.8 + 0.01568·n)    out = generated tokens
+tokens n ≈ source_chars / 4.2 + ~400 (template)
+```
+
+The model reproduces every measured point to within ~0.5 %:
+
+| prompt tokens `n` | measured prefill | model prefill |
+|---|---|---|
+| 3 309 (~10 KB) | 88.3 s | 88.1 s |
+| 24 081 (~96 KB) | 978.0 s | 978.5 s |
+| 61 484 (~253 KB) | 4053 s | 4049 s |
+
+This is exactly why throughput "shrinks" as the prefill grows: per-token cost rises with `n`
+(26.7 → 40.6 → 65.9 ms/tok across the three runs), and decode slows the same way (9.1 → 2.3 → 1.0 t/s)
+because each generated token attends over the whole context.
+
+**The plugin logs this estimate per file** before generating, e.g.:
+
+```
+[INFO] Processing file '.../Foo.java' (96 KB source, ~24009 tokens) — estimated ~25 min (rough; ...)
+```
+
+implemented in `AiGenerationTimeEstimator` (the constants above are its calibration defaults, kept
+honest by a regression test that asserts they reproduce the three measured points). The numbers are a
+**rough, hardware-specific** order-of-magnitude hint: a different CPU/threads/model — or a GPU —
+shifts the coefficients; only the quadratic *shape* is universal.
 
 ### Strategy for a repo with mixed file sizes
 
