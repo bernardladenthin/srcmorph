@@ -408,10 +408,11 @@ Two independent limits must both be satisfied for a clean run:
 | `contextSize` | input (prompt + source) that fits the window | source **trimmed** before the model sees it |
 | `maxOutputTokens` | reasoning **+** final answer (gpt-oss reasons in-band) | summary **truncated** mid-output |
 
-`charsPerToken=3` is set on all presets: dense Java measured **~4.2 chars/token**, and using 3 keeps
-the char-based pre-trim conservative so a big file is never silently over-fed past the real token
-window. (The earlier 1536-budget truncation was a *budget* artifact, not a model limit — give the
-output room and the summary completes.)
+`charsPerToken=3` is set on all presets as a deliberately conservative *trim* guard (the synthetic
+fixture measured ~4.2 chars/token; a later real-Java regression found **~4.8** — see
+[gpt-oss-tuning.md](gpt-oss-tuning.md) Phase 5 — and 3 stays safely below both so a big file is never
+silently over-fed past the real token window). (The earlier 1536-budget truncation was a *budget*
+artifact, not a model limit — give the output room and the summary completes.)
 
 **How big can one file be?** gpt-oss-20b's native window is **`n_ctx_train = 131072` (128K tokens)**.
 At ~4.2 chars/token that is the hard ceiling; the practical ceiling on CPU is *time*, not the window:
@@ -465,8 +466,10 @@ runs gives, on the reference CPU (Ryzen 7 5800H, 8 threads, gpt-oss-20b UD-Q4_K_
 ```
 prefill_ms(n) ≈ 24.4·n + 0.000674·n²          n = prompt tokens
 decode_ms(n, out) ≈ out·(56.8 + 0.01568·n)    out = generated tokens
-tokens n ≈ source_chars / 4.2 + ~400 (template)
+tokens n ≈ source_chars / 4.8 + ~700 (template)   # real-Java fit; see gpt-oss-tuning.md Phase 5
 ```
+
+The plugin's `AiGenerationTimeEstimator` ships these constants (4.8 / 700) plus a +15 % display margin.
 
 The model reproduces every measured point to within ~0.5 %:
 

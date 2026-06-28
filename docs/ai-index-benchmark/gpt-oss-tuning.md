@@ -13,15 +13,17 @@ unattended, and document everything here.
 | Phase | Question | Answer |
 |---|---|---|
 | 1 | Is higher `reasoning_effort` more accurate at adequate budget? | **No** — low/medium/high are equally accurate when not truncated; higher effort just decodes 4–8× more reasoning tokens (2–3× slower). `low` confirmed as default. |
-| 2 | Lower temperature for extraction? | **Yes** — temp 0.0/0.3 are exact and 0.0 is deterministic; 0.7/1.0 introduce miscounts. → **D1** |
+| 2 | Lower temperature for extraction? | **Partly** — temp 0.0/0.3 were exact in my runs, BUT a web review found greedy/temp 0 triggers repetition "blackholes" in 81 % of gpt-oss prompts. Resolved to **temp 0.7 + min-p 0.05**. → **D1 (revised)** |
 | 3 | Can a prompt fix the large-file miscount? | **Yes** — a "count exactly" prompt turned a wrong "150" into the exact "195" at no cost. → **D3** |
-| 4 | Does the timing model hold? | **Yes** — `prefill ≈ 24.4·n + 0.000674·n²` within +1.1…+2.6 % over 25–150 KB. Count accuracy degrades with scale (exact ≤128 methods, off at 195). |
-| 5 | Real-Java chars/token? | **~4.8** (not the fixture's 4.2); template ~713 tokens. Estimator over-estimates time ~12 %. → **D2** |
+| 4 | Does the timing model hold? | **Yes** — `prefill ≈ 24.4·n + 0.000674·n²` within +1.1…+2.6 % over 25–150 KB (already the correct linear+quadratic SWA-aware shape). Count accuracy degrades with scale (exact ≤128 methods, off at 195). |
+| 5 | Real-Java chars/token? | **~4.8** (not the fixture's 4.2); template ~713 tokens. → **D2** |
 
-**Net:** the shipped defaults (gpt-oss, `reasoningEffort=low`, c96k) are validated. Three low-risk
-improvements are recommended but **held for sign-off** (see *Decisions deferred*): **D1** temp 0.0,
-**D2** estimator constants, **D3** count-exact prompt. The combination of D1 + D3 directly fixes the
-structural-count weakness that affects every model in the original benchmark.
+**Net:** the shipped model defaults (gpt-oss, `reasoningEffort=low`, c96k) are validated. After a
+two-round external web fact-check, three improvements were **implemented**: **D1** sampling →
+temp 0.7 + min-p 0.05 (NOT temp 0 — greedy is unsafe for gpt-oss), **D2** estimator constants
+4.8 / 700 + 15 % margin, **D3** count-exact prompt. D1 + D3 directly fix the structural-count
+weakness that affects every model in the original benchmark. See *Decisions* below for the full
+rationale and what was deferred.
 
 ## Method — objective scoring via ground-truth fixtures
 
@@ -203,20 +205,45 @@ Fit: **`promptTok ≈ 713 + bytes / 4.81`** → real Java is **~4.8 chars/token*
    produced non-monotonic data (a 6.5 KB file showing fewer tokens than a 3.7 KB one). Measuring
    chars/token requires one file per process (or `cache_prompt=false`).
 
-## Decisions deferred to the user
+## Decisions — resolved after two rounds of web verification, then implemented
 
-_(collected here as the session runs; nothing here is committed as a default change without sign-off.)_
+Each candidate change was put through a two-round external web fact-check (findings verification, then
+an adversarial challenge of the proposed changes). **The most important correction came from there, not
+from my runs:** my Phase 2 favoured temperature 0.0, but the web review found that **greedy/temp 0 is
+unsafe for gpt-oss** — a probing study reports greedy falls into "reasoning blackhole" repetition loops
+in **81 % (162/200)** of prompts, and the official repo recommends temp 1.0/top-p 1.0. So D1 was
+*revised*, not applied as I first proposed.
 
-- **D1 — lower the gpt-oss temperature from 1.0 to 0.0 (or 0.3)?** Phase 2 shows temp 0.0 is more
-  faithful (exact counts) *and* deterministic (reproducible `.ai.md`, no incremental-diff churn), at no
-  speed cost. The gpt-oss card recommends 1.0 for general use; for this extraction task the data favors
-  0.0. Small sample — recommend confirming with more reps before changing the shipped presets.
-- **D2 — refine the ETA estimator constants for real Java.** Phase 5 measured ~4.8 chars/token and
-  ~713 template tokens on real source, vs the estimator's `ESTIMATION_CHARS_PER_TOKEN=4.2` /
-  `PROMPT_TEMPLATE_TOKEN_OVERHEAD=400`. Bumping to 4.8 / ~700 makes the logged ETA ~12 % more accurate
-  (it currently over-estimates). Low-risk code change (`AiGenerationTimeEstimator` + its test); held for
-  sign-off only because it shifts the user-visible ETA numbers.
-- **D3 — fold the "count exactly" instructions into the production `file-body-java` prompt.** Phase 3
-  shows the variant fixes the large-file miscount (exact 195 vs the base's wrong "150") at no cost. The
-  change is two prompt lines (a *Public API* family-count instruction + a *COUNT EXACTLY* rule).
-  Strongest-evidence, lowest-risk of the three; recommended. Held only because it edits the shipped prompt.
+- **D1 — sampling. IMPLEMENTED (revised).** Not temp 0. The three gpt-oss presets now use
+  **temperature 0.7, top-p 1.0, top-k 0, min-p 0.05, repeat-penalty 1.0** — the faithful-but-safe middle
+  ground (0.7 < the card's 1.0 to cut wording/count variance, well clear of the greedy blackhole zone;
+  min-p 0.05 as the primary, confidence-scaled truncation). This required **adding `min_p` support** to
+  the config chain (the plugin previously could not set it, so it would inherit the server's 0.1
+  default). The bit-reproducibility goal was dropped (only achievable at unsafe temp 0); low *variance*
+  is pursued via the strict output schema + the D3 count rule instead.
+- **D2 — ETA estimator constants. IMPLEMENTED.** `ESTIMATION_CHARS_PER_TOKEN` 4.2→**4.8** and
+  `PROMPT_TEMPLATE_TOKEN_OVERHEAD` 400→**700** (real-Java regression), plus an explicit **+15 % display
+  margin** (`ETA_SAFETY_MARGIN`) since 4.8 removes the accidental conservatism 4.2 provided. The
+  `24.4·n + 0.000674·n²` timing model is kept — the web review confirmed it is *already* the correct
+  linear-plus-quadratic (SWA-aware) shape, not a pure quadratic.
+- **D3 — count-exact prompt. IMPLEMENTED.** Added to the production `file-body-java` prompt: a *Public
+  API* rule to **enumerate a near-identical member family in the analysis channel and emit only the
+  exact total + range in the final answer**, plus a global **COUNT EXACTLY** rule. (Phase 3: this turned
+  a wrong "150" into the exact "195" at no cost.)
+
+### Deferred (not implemented this session)
+- **Reasoning/think budget** (`withReasoningBudgetTokens` exists in the binding): a useful backstop to
+  stop a runaway analysis channel crowding out the answer, but both reviews flag it as version-specific
+  with a known upstream bug — defer until pinned to a tested llama.cpp build.
+- **Conditional `reasoning_effort=medium` for large-family files:** the count literature says counting
+  is the one sub-task where reasoning helps, but the plugin has no per-file-size routing (routing is by
+  extension only) — would need a new feature.
+- **`--swa-full` / llama.cpp build-pin / DRY fallback:** operational, not plugin-level; documented as
+  recommendations only.
+
+### Must re-test before fully trusting D1 (from the web review)
+1. **Loop/blackhole safety** of temp 0.7 + min-p 0.05 across a large, varied file set (≥200 files) —
+   target zero repetition blackholes and zero reasoning-overrun truncations.
+2. **Count faithfulness** of the revised D3 rule across known large-family counts (26/128/195) at low
+   and medium effort, checking the enumeration does not leak into the final output.
+3. **ETA accuracy + under-promise rate** with 4.8/700/+15 % on a fresh real-file set spanning 25–150 KB.
