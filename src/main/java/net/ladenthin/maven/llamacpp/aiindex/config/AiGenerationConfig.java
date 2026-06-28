@@ -75,23 +75,6 @@ public class AiGenerationConfig {
     public static final boolean DEFAULT_WARN_ON_TRIM = true;
 
     /**
-     * Default maximum number of retry attempts when the AI provider returns an empty body.
-     * A value of {@code 0} disables retries entirely.
-     * Each retry uses a temperature incremented by {@link #DEFAULT_RETRY_TEMPERATURE_INCREMENT}.
-     */
-    public static final int DEFAULT_MAX_RETRIES = 3;
-
-    /**
-     * Default temperature increment applied on each successive retry attempt.
-     * Added to {@link #temperature} per attempt: attempt 1 uses
-     * {@code temperature + retryTemperatureIncrement}, attempt 2 uses
-     * {@code temperature + 2 * retryTemperatureIncrement}, and so on.
-     * Higher temperatures make the model less deterministic and can break out of
-     * EOS-early failure modes.
-     */
-    public static final float DEFAULT_RETRY_TEMPERATURE_INCREMENT = 0.1f;
-
-    /**
      * Default nucleus-sampling probability threshold.
      * Matches the {@code net.ladenthin:llama} {@code InferenceParameters} library default so
      * that models which do not declare an explicit value retain the same output distribution
@@ -191,8 +174,6 @@ public class AiGenerationConfig {
     private int charsPerToken = DEFAULT_CHARS_PER_TOKEN;
     private int maxInputChars = DEFAULT_MAX_INPUT_CHARS;
     private boolean warnOnTrim = DEFAULT_WARN_ON_TRIM;
-    private int maxRetries = DEFAULT_MAX_RETRIES;
-    private float retryTemperatureIncrement = DEFAULT_RETRY_TEMPERATURE_INCREMENT;
     private float topP = DEFAULT_TOP_P;
     private int topK = DEFAULT_TOP_K;
     private float minP = DEFAULT_MIN_P;
@@ -350,42 +331,6 @@ public class AiGenerationConfig {
      */
     public void setWarnOnTrim(final boolean warnOnTrim) {
         this.warnOnTrim = warnOnTrim;
-    }
-
-    /**
-     * Returns the maximum number of retry attempts on empty-body responses.
-     *
-     * @return maximum retry attempts
-     */
-    public int getMaxRetries() {
-        return maxRetries;
-    }
-
-    /**
-     * Sets the maximum number of retry attempts on empty-body responses.
-     *
-     * @param maxRetries maximum retry attempts
-     */
-    public void setMaxRetries(final int maxRetries) {
-        this.maxRetries = maxRetries;
-    }
-
-    /**
-     * Returns the temperature increment added on each retry attempt.
-     *
-     * @return temperature increment per retry
-     */
-    public float getRetryTemperatureIncrement() {
-        return retryTemperatureIncrement;
-    }
-
-    /**
-     * Sets the temperature increment added on each retry attempt.
-     *
-     * @param retryTemperatureIncrement temperature increment per retry
-     */
-    public void setRetryTemperatureIncrement(final float retryTemperatureIncrement) {
-        this.retryTemperatureIncrement = retryTemperatureIncrement;
     }
 
     /**

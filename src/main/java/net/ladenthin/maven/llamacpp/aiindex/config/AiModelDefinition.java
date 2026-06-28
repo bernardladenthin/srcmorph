@@ -46,8 +46,6 @@ public class AiModelDefinition {
     private int threads = AiGenerationConfig.DEFAULT_THREADS;
     private int charsPerToken = AiGenerationConfig.DEFAULT_CHARS_PER_TOKEN;
     private boolean warnOnTrim = AiGenerationConfig.DEFAULT_WARN_ON_TRIM;
-    private int maxRetries = AiGenerationConfig.DEFAULT_MAX_RETRIES;
-    private float retryTemperatureIncrement = AiGenerationConfig.DEFAULT_RETRY_TEMPERATURE_INCREMENT;
     private float topP = AiGenerationConfig.DEFAULT_TOP_P;
     private int topK = AiGenerationConfig.DEFAULT_TOP_K;
     private float minP = AiGenerationConfig.DEFAULT_MIN_P;
@@ -210,42 +208,6 @@ public class AiModelDefinition {
      */
     public void setWarnOnTrim(final boolean warnOnTrim) {
         this.warnOnTrim = warnOnTrim;
-    }
-
-    /**
-     * Returns the maximum number of retry attempts when the provider returns an empty body.
-     *
-     * @return max retries, defaults to {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}
-     */
-    public int getMaxRetries() {
-        return maxRetries;
-    }
-
-    /**
-     * Sets the maximum number of retry attempts when the provider returns an empty body.
-     *
-     * @param maxRetries {@code 0} disables retries entirely
-     */
-    public void setMaxRetries(final int maxRetries) {
-        this.maxRetries = maxRetries;
-    }
-
-    /**
-     * Returns the temperature increment applied on each successive retry attempt.
-     *
-     * @return retry temperature increment, defaults to {@link AiGenerationConfig#DEFAULT_RETRY_TEMPERATURE_INCREMENT}
-     */
-    public float getRetryTemperatureIncrement() {
-        return retryTemperatureIncrement;
-    }
-
-    /**
-     * Sets the temperature increment applied on each successive retry attempt.
-     *
-     * @param retryTemperatureIncrement added to the base temperature on each retry
-     */
-    public void setRetryTemperatureIncrement(final float retryTemperatureIncrement) {
-        this.retryTemperatureIncrement = retryTemperatureIncrement;
     }
 
     /**

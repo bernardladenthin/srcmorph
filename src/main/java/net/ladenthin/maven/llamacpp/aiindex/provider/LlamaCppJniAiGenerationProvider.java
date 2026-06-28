@@ -112,11 +112,6 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
-        return generate(request, config.temperature());
-    }
-
-    @Override
-    public String generate(final AiGenerationRequest request, final float temperatureOverride) throws IOException {
         // Static instructions go in the SYSTEM message (byte-identical across files, so its KV
         // prefix is reused by cache_prompt); the variable file name + source go in the USER message.
         final String systemPrompt = promptSupport.systemPrompt(request.promptKey());
@@ -130,7 +125,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
         final InferenceParameters inferenceParameters = new InferenceParameters("")
                 .withMessages(systemPrompt, messages)
                 .withUseChatTemplate(true)
-                .withTemperature(temperatureOverride)
+                .withTemperature(config.temperature())
                 .withNPredict(config.maxOutputTokens())
                 .withTopP(config.topP())
                 .withTopK(config.topK())

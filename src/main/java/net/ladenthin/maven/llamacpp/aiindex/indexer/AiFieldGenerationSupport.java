@@ -60,52 +60,6 @@ public class AiFieldGenerationSupport {
     private static final String EMPTY_OUTPUT_WARN_PREFIX = "AI provider returned empty body for ";
 
     /**
-     * Log message prefix for info messages emitted at the start of each retry attempt,
-     * showing the attempt number and the escalated sampling temperature.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_ATTEMPT_INFO_PREFIX = "Retrying AI generation (attempt ";
-
-    /**
-     * Log message fragment inserted between the attempt index and the maximum retry count
-     * in retry-attempt info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_OF_INFIX = "/";
-
-    /**
-     * Log message fragment inserted before the prompt key in retry-attempt info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_FIELD_INFIX = ") for field '";
-
-    /**
-     * Log message fragment inserted before the escalated temperature value in retry-attempt
-     * info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_TEMPERATURE_INFIX = "' temperature=";
-
-    /**
-     * Log message suffix appended after temperature data in retry-attempt info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_CONTEXT_SUFFIX = " for ";
-
-    /**
-     * Log message fragment showing the temperature escalation calculation formula in
-     * retry-attempt info messages (e.g., " (baseTemp=0.15 + attempt 1 × 0.15)").
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_TEMPERATURE_CALCULATION_TEMPLATE = " (baseTemp={0} + attempt {1} × {2})";
-
-    /**
      * Separator used to construct the cache key for the computed {@code maxInputChars}
      * per {@code (aiDefinitionKey, promptKey)} pair.
      *
@@ -194,11 +148,11 @@ public class AiFieldGenerationSupport {
      *   <li>A trim warning is logged if the source was truncated and
      *       {@link net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig#isWarnOnTrim()} is {@code true}.</li>
      *   <li>The AI provider generates a value for the trimmed source.</li>
-     *   <li>If the provider returns a blank body, up to {@link net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig#getMaxRetries()}
-     *       retry attempts are made, each using a temperature of
-     *       {@code temperature + attempt * retryTemperatureIncrement} to escape
-     *       EOS-early failure modes. Each retry is logged at INFO level.
-     *       A warning is only emitted after all retries are exhausted.</li>
+     *   <li>If the provider returns a blank body, a single warning is emitted (fail-fast).
+     *       Blank output no longer occurs in normal operation with a non-greedy temperature
+     *       and an adequate output budget; the previous escalating-temperature retry loop was
+     *       removed after it was shown to waste full generations re-inferring to the same empty
+     *       result (see {@code docs/ai-index-benchmark/gpt-oss-tuning.md}, E2).</li>
      *   <li>The generated value is stored as the document body.</li>
      * </ol>
      *
@@ -264,44 +218,13 @@ public class AiFieldGenerationSupport {
                     + PROCESSING_LOG_DISCLAIMER);
 
             log.info("Generating field '" + fieldGeneration.getPromptKey() + "' with temperature="
-                    + generationConfig.getTemperature() + ", maxRetries="
-                    + generationConfig.getMaxRetries() + ", retryTemperatureIncrement="
-                    + generationConfig.getRetryTemperatureIncrement() + ", maxInputChars="
+                    + generationConfig.getTemperature() + ", maxInputChars="
                     + effectiveMaxInputChars);
             body = generationProvider.generate(generationRequest);
 
             if (compatibilityHelper.isBlank(body)) {
-                final int maxRetries = generationConfig.getMaxRetries();
-                for (int attempt = 1; attempt <= maxRetries && compatibilityHelper.isBlank(body); attempt++) {
-                    // Escalate temperature with each retry to break out of EOS-early failure modes.
-                    // Formula: baseTemp + (attempt * increment)
-                    // Example with baseTemp=0.4, increment=0.2:
-                    // - Attempt 1: 0.4 + (1 × 0.2) = 0.6
-                    // - Attempt 2: 0.4 + (2 × 0.2) = 0.8
-                    // - Attempt 3: 0.4 + (3 × 0.2) = 1.0
-                    final float retryTemperature = generationConfig.getTemperature()
-                            + attempt * generationConfig.getRetryTemperatureIncrement();
-                    final String temperatureCalculation = RETRY_TEMPERATURE_CALCULATION_TEMPLATE
-                            .replace("{0}", String.valueOf(generationConfig.getTemperature()))
-                            .replace("{1}", String.valueOf(attempt))
-                            .replace("{2}", String.valueOf(generationConfig.getRetryTemperatureIncrement()));
-                    log.info(RETRY_ATTEMPT_INFO_PREFIX
-                            + attempt
-                            + RETRY_OF_INFIX
-                            + maxRetries
-                            + RETRY_FIELD_INFIX
-                            + fieldGeneration.getPromptKey()
-                            + RETRY_TEMPERATURE_INFIX
-                            + retryTemperature
-                            + temperatureCalculation
-                            + RETRY_CONTEXT_SUFFIX
-                            + contextFile);
-                    body = generationProvider.generate(generationRequest, retryTemperature);
-                }
-                if (compatibilityHelper.isBlank(body)) {
-                    log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL
-                            + fieldGeneration.getPromptKey() + "': " + contextFile);
-                }
+                log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL + fieldGeneration.getPromptKey()
+                        + "': " + contextFile);
             }
         }
 

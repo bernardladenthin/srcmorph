@@ -103,7 +103,7 @@ public class CommonTestFixtures {
      *
      * <p>Provides a single definition keyed {@link #AI_DEFINITION_KEY_DEFAULT} that uses
      * all {@link AiGenerationConfig} default values. Tests that need custom values
-     * (e.g. different {@code maxRetries}) should build their own list.</p>
+     * (e.g. different {@code temperature}) should build their own list.</p>
      *
      * @return list with one default model definition
      */

@@ -11,14 +11,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.ladenthin.maven.llamacpp.aiindex.CommonTestFixtures;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
@@ -193,8 +188,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void processFieldGenerations_providerReturnEmptyThenNonEmpty_noWarningLoggedAndResultBodyIsNonEmpty()
-            throws Exception {
+    public void processFieldGenerations_providerReturnsEmpty_callsProviderOnceWarnsOnceAndBodyEmpty() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -208,23 +202,18 @@ public class AiFieldGenerationSupportTest {
                 AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AtomicInteger callCount = new AtomicInteger(0);
-        // Returns empty on the first call, a real summary on the first retry
-        final AiGenerationProvider eventualProvider = new AiGenerationProvider() {
+        // The retry mechanism was removed: an empty body now fails fast with a single warning
+        // instead of re-inferring (see docs/ai-index-benchmark/gpt-oss-tuning.md, E2).
+        final AiGenerationProvider alwaysEmptyProvider = new AiGenerationProvider() {
             @Override
             public String generate(final AiGenerationRequest request) {
                 callCount.incrementAndGet();
                 return "";
             }
-
-            @Override
-            public String generate(final AiGenerationRequest request, final float temperatureOverride) {
-                callCount.incrementAndGet();
-                return "Summary on retry.";
-            }
         };
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
                 capturingLog,
-                eventualProvider,
+                alwaysEmptyProvider,
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
@@ -232,54 +221,14 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = support.processFieldGenerations(
                 CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
-        // assert — warning suppressed because retry succeeded
-        assertThat(capturingLog.getCapturedWarnings().isEmpty(), is(true));
-        assertThat(result.body(), is(equalTo("Summary on retry.")));
+        // assert — provider invoked exactly once (no retries), one warning, empty body
+        assertThat(callCount.get(), is(equalTo(1)));
+        assertThat(capturingLog.getCapturedWarnings().size(), is(equalTo(1)));
+        assertThat(result.body(), is(equalTo("")));
     }
 
     @Test
-    public void processFieldGenerations_providerAlwaysEmpty_retriesDefaultMaxRetriesTimes() throws Exception {
-        // arrange
-        final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "Test.java",
-                "1.0",
-                "ABCD1234",
-                "2026-01-01T00:00:00Z",
-                "2026-01-01T00:01:00Z",
-                "0.1.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AtomicInteger retryCallCount = new AtomicInteger(0);
-        final AiGenerationProvider alwaysEmptyProvider = new AiGenerationProvider() {
-            @Override
-            public String generate(final AiGenerationRequest request) {
-                return "";
-            }
-
-            @Override
-            public String generate(final AiGenerationRequest request, final float temperatureOverride) {
-                retryCallCount.incrementAndGet();
-                return "";
-            }
-        };
-        final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog,
-                alwaysEmptyProvider,
-                new AiPromptPreparationSupport(promptSupport),
-                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
-
-        // act
-        support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
-
-        // assert — retry was invoked exactly DEFAULT_MAX_RETRIES times
-        assertThat(retryCallCount.get(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_RETRIES)));
-    }
-
-    @Test
-    public void processFieldGenerations_providerAlwaysEmpty_logsRetryInfoMessages() throws Exception {
+    public void processFieldGenerations_providerReturnsEmpty_logsProcessingAndGenerationOnlyNoRetry() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -297,11 +246,6 @@ public class AiFieldGenerationSupportTest {
             public String generate(final AiGenerationRequest request) {
                 return "";
             }
-
-            @Override
-            public String generate(final AiGenerationRequest request, final float temperatureOverride) {
-                return "";
-            }
         };
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
                 capturingLog,
@@ -313,9 +257,10 @@ public class AiFieldGenerationSupportTest {
         support.processFieldGenerations(
                 CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
-        // assert — one per-file processing/ETA line, one initial generation attempt, one per retry
+        // assert — exactly two INFO lines: the per-file processing/ETA line and the generation line.
+        // No retry lines are emitted (the retry mechanism was removed).
         final List<String> infos = capturingLog.getCapturedInfos();
-        assertThat(infos.size(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_RETRIES + 2)));
+        assertThat(infos.size(), is(equalTo(2)));
 
         // First message: the per-file processing line with size + token + duration estimate
         final String processingMsg = infos.get(0);
@@ -323,73 +268,18 @@ public class AiFieldGenerationSupportTest {
         assertThat(processingMsg, containsString("tokens"));
         assertThat(processingMsg, containsString("estimated"));
 
-        // Second message: initial generation attempt with config details
-        final String firstMsg = infos.get(1);
-        assertThat(firstMsg, containsString("Generating field '" + CommonTestFixtures.PROMPT_KEY_FILE_BODY + "'"));
-        assertThat(firstMsg, containsString("temperature=0.15"));
-        assertThat(firstMsg, containsString("maxRetries=3"));
-        assertThat(firstMsg, containsString("retryTemperatureIncrement=0.1"));
-        assertThat(firstMsg, containsString("maxInputChars="));
+        // Second message: the single generation line — temperature + maxInputChars, no retry config
+        final String generatingMsg = infos.get(1);
+        assertThat(generatingMsg, containsString("Generating field '" + CommonTestFixtures.PROMPT_KEY_FILE_BODY + "'"));
+        assertThat(generatingMsg, containsString("temperature=0.15"));
+        assertThat(generatingMsg, containsString("maxInputChars="));
+        assertThat(generatingMsg.contains("maxRetries"), is(false));
+        assertThat(generatingMsg.contains("retryTemperatureIncrement"), is(false));
 
-        // Remaining messages: retry attempts (attempt n is at info index n + 1)
-        for (int i = 2; i < infos.size(); i++) {
-            final int attempt = i - 1;
-            final String retryMsg = infos.get(i);
-            assertThat(retryMsg, containsString("Retrying AI generation (attempt " + attempt + "/3)"));
-            assertThat(retryMsg, containsString("field '" + CommonTestFixtures.PROMPT_KEY_FILE_BODY + "'"));
-            assertThat(retryMsg, containsString("temperature="));
-            assertThat(retryMsg, containsString("baseTemp=0.15"));
+        // No INFO line mentions a retry
+        for (final String info : infos) {
+            assertThat(info.contains("Retrying"), is(false));
         }
-    }
-
-    @Test
-    public void processFieldGenerations_zeroMaxRetries_providerCalledOnce() throws Exception {
-        // arrange
-        final Path contextFile = Files.createTempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "Test.java",
-                "1.0",
-                "ABCD1234",
-                "2026-01-01T00:00:00Z",
-                "2026-01-01T00:01:00Z",
-                "0.1.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AtomicInteger retryCallCount = new AtomicInteger(0);
-        final AiGenerationProvider alwaysEmptyProvider = new AiGenerationProvider() {
-            @Override
-            public String generate(final AiGenerationRequest request) {
-                return "";
-            }
-
-            @Override
-            public String generate(final AiGenerationRequest request, final float temperatureOverride) {
-                retryCallCount.incrementAndGet();
-                return "";
-            }
-        };
-        // Build a model definition with maxRetries=0 and reference it by key
-        final String zeroRetriesKey = "zero-retries";
-        final AiModelDefinition zeroRetriesDef = new AiModelDefinition();
-        zeroRetriesDef.setKey(zeroRetriesKey);
-        zeroRetriesDef.setMaxRetries(0);
-        final AiModelDefinitionSupport modelSupport = new AiModelDefinitionSupport(Arrays.asList(zeroRetriesDef));
-
-        final AiFieldGenerationConfig fieldConfig = new AiFieldGenerationConfig();
-        fieldConfig.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
-        fieldConfig.setAiDefinitionKey(zeroRetriesKey);
-
-        final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog, alwaysEmptyProvider, new AiPromptPreparationSupport(promptSupport), modelSupport);
-
-        // act
-        support.processFieldGenerations(
-                Arrays.asList(fieldConfig), contextFile, "file", "public class Test {}", header);
-
-        // assert — no retry calls when maxRetries=0
-        assertThat(retryCallCount.get(), is(equalTo(0)));
-        assertThat(capturingLog.getCapturedWarnings().size(), is(equalTo(1)));
     }
     // </editor-fold>
 }

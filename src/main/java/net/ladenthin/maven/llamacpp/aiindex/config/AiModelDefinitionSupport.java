@@ -109,8 +109,6 @@ public final class AiModelDefinitionSupport {
         config.setThreads(definition.getThreads());
         config.setCharsPerToken(definition.getCharsPerToken());
         config.setWarnOnTrim(definition.isWarnOnTrim());
-        config.setMaxRetries(definition.getMaxRetries());
-        config.setRetryTemperatureIncrement(definition.getRetryTemperatureIncrement());
         config.setTopP(definition.getTopP());
         config.setTopK(definition.getTopK());
         config.setMinP(definition.getMinP());

@@ -47,8 +47,6 @@ public class AiModelDefinitionSupportTest {
         definition.setThreads(4);
         definition.setCharsPerToken(3);
         definition.setWarnOnTrim(false);
-        definition.setMaxRetries(5);
-        definition.setRetryTemperatureIncrement(0.2f);
         definition.setChatTemplateEnableThinking(false);
         definition.setCachePrompt(false);
         definition.setSwaFull(true);
@@ -74,8 +72,6 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getThreads(), is(equalTo(4)));
         assertThat(config.getCharsPerToken(), is(equalTo(3)));
         assertThat(config.isWarnOnTrim(), is(false));
-        assertThat(config.getMaxRetries(), is(equalTo(5)));
-        assertThat(config.getRetryTemperatureIncrement(), is(equalTo(0.2f)));
         assertThat(config.isChatTemplateEnableThinking(), is(false));
         // topP/topK/repeatPenalty/stopStrings are propagated too — kills the void-call mutants
         // that would drop those setter calls from toConfig().
@@ -114,10 +110,6 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getCharsPerToken(), is(equalTo(AiGenerationConfig.DEFAULT_CHARS_PER_TOKEN)));
         assertThat(config.getMaxInputChars(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_INPUT_CHARS)));
         assertThat(config.isWarnOnTrim(), is(AiGenerationConfig.DEFAULT_WARN_ON_TRIM));
-        assertThat(config.getMaxRetries(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_RETRIES)));
-        assertThat(
-                config.getRetryTemperatureIncrement(),
-                is(equalTo(AiGenerationConfig.DEFAULT_RETRY_TEMPERATURE_INCREMENT)));
         assertThat(config.isChatTemplateEnableThinking(), is(AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
         assertThat(config.isCachePrompt(), is(AiGenerationConfig.DEFAULT_CACHE_PROMPT));
         assertThat(config.isSwaFull(), is(AiGenerationConfig.DEFAULT_SWA_FULL));
@@ -161,11 +153,11 @@ public class AiModelDefinitionSupportTest {
         // arrange
         final AiModelDefinition defA = new AiModelDefinition();
         defA.setKey("model-a");
-        defA.setMaxRetries(1);
+        defA.setMaxOutputTokens(1);
 
         final AiModelDefinition defB = new AiModelDefinition();
         defB.setKey("model-b");
-        defB.setMaxRetries(7);
+        defB.setMaxOutputTokens(7);
 
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(defA, defB));
 
@@ -174,8 +166,8 @@ public class AiModelDefinitionSupportTest {
         final AiGenerationConfig configB = support.getConfig("model-b");
 
         // assert
-        assertThat(configA.getMaxRetries(), is(equalTo(1)));
-        assertThat(configB.getMaxRetries(), is(equalTo(7)));
+        assertThat(configA.getMaxOutputTokens(), is(equalTo(1)));
+        assertThat(configB.getMaxOutputTokens(), is(equalTo(7)));
     }
 
     @Test

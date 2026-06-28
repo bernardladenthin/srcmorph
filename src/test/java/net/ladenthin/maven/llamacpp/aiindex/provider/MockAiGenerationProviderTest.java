@@ -38,12 +38,4 @@ public class MockAiGenerationProviderTest {
         AiGenerationRequest request = new AiGenerationRequest("summary", root, "src", HEADER);
         assertThat(provider.generate(request), is("Mock summary for " + root));
     }
-
-    @Test
-    public void temperatureOverrideDelegatesToPlainGenerate() throws IOException {
-        // Exercises AiGenerationProvider's default generate(request, temperature) which delegates
-        // to generate(request) — kills the empty-string return mutant on the interface default.
-        AiGenerationRequest request = new AiGenerationRequest("summary", Paths.get("Foo.java"), "src", HEADER);
-        assertThat(provider.generate(request, 0.9f), is("Mock summary for Foo.java"));
-    }
 }
