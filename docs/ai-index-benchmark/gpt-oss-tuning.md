@@ -411,6 +411,40 @@ sampling feature available for other models/users while never changing the shipp
 **When to enable:** a different model or a high-temperature/creative config that starts looping —
 set `dryMultiplier` to ~0.8 and tune from there.
 
+### E5 — quantization / "floating point vs 4-bit" — measured: **quant choice barely matters; F16 is the worst**
+
+**Question (user):** is a higher-precision (floating-point) gpt-oss build worth it over the shipped 4-bit?
+**Key fact:** gpt-oss-20b ships *natively* in MXFP4 (4-bit microscaling float) for the MoE experts — a
+"higher-precision" GGUF only upcasts the small non-expert tensors, so the F16 build is just 12.85 GB (not
+~42 GB). **Setup:** the same 30 KB / 30-method fixture through all six local GGUFs at identical settings
+(low effort, temp 0.7, min-p 0.05, ctx 32768, `maxOutputTokens=2048`), one model load per run, CPU.
+
+| GGUF | file | prefill t/s | decode t/s | sections | gens |
+|---|---|---|---|---|---|
+| `mxfp4` (native 4-bit) | 11.3 GB | 36.1 | 5.85 | **9/9** | 1 |
+| `UD-Q4_K_XL` (shipped default) | 11.1 GB | 35.1 | 6.30 | **9/9** | 1 |
+| `Q4_K_M` | 10.8 GB | 36.6 | **6.59** | **9/9** | 1 |
+| `Q5_K_M` | 10.9 GB | 32.1 | 5.96 | **9/9** | 1 |
+| `Q8_0` | 11.3 GB | 36.3 | 6.24 | **9/9** | 1 |
+| `F16` (floating point) | 12.85 GB | 39.1 | **5.40** | **9/9** | 1 |
+
+**Findings:**
+1. **Quality is quant-independent.** Every build produced a complete 9/9-section summary (and no retries,
+   `gens=1`). Going above 4-bit (Q8_0, F16) buys **nothing** in quality — exactly what the native-MXFP4
+   property predicts.
+2. **Speed is within run-to-run noise.** Decode spans 5.40–6.59 t/s (~18 %). No build is meaningfully
+   faster; the K-quants (`Q4_K_M`, `UD-Q4_K_XL`) edge out the rest, and **native `mxfp4` is not faster**
+   than them on this CPU.
+3. **F16 is the worst choice:** the largest file (most RAM), the slowest decode, and zero quality gain —
+   the "floating point instead of 4-bit" idea is empirically not worth it.
+4. **Decision: keep `UD-Q4_K_XL` as the default.** `Q4_K_M` is a hair faster + smaller, but the gap is
+   inside the noise, so it is not worth changing the shipped default. Avoid Q8_0/F16.
+
+*Caveat:* single fixture, single run per build, so the ~18 % decode spread is within plausible variance;
+the robust conclusion is the ranking-free one — *quant precision changes neither quality nor speed
+materially for this workload, and bigger-than-4-bit only costs RAM.* Run on the pre-session installed
+plugin build (sampling is POM-driven and no retries fired, so the quant comparison is unaffected).
+
 ---
 
 ## Opt-in sampling & cache knobs (reference for other models/users)
