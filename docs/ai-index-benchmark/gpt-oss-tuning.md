@@ -28,8 +28,8 @@ structural-count weakness that affects every model in the original benchmark.
 The benchmark cells run the real `generate` goal on a **synthetic Java fixture of known structure**
 (`docs/ai-index-benchmark/tools/generate-fixture.sh`: a ledger class with a known number of
 `adjustBucketN` methods, 40 weight fields, and 6 tail methods). A scorer parses the produced
-`.ai.md` plus the llama.cpp run log into objective metrics, so "quality" becomes numbers a script can
-compare:
+`.ai.md` plus the llama.cpp run log into objective metrics ([`tools/score.sh`](tools/score.sh)), so
+"quality" becomes numbers a script can compare:
 
 | Metric | Meaning |
 |---|---|
