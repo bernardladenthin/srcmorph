@@ -247,3 +247,54 @@ in **81 % (162/200)** of prompts, and the official repo recommends temp 1.0/top-
 2. **Count faithfulness** of the revised D3 rule across known large-family counts (26/128/195) at low
    and medium effort, checking the enumeration does not leak into the final output.
 3. **ETA accuracy + under-promise rate** with 4.8/700/+15 % on a fresh real-file set spanning 25–150 KB.
+
+## Round 3 — adversarial optimality review + on-machine re-test
+
+After D1/D2/D3 were implemented, a third external web review **challenged the optimality** of the
+shipped config (not just the findings), and the three "must re-test" items above were run on the machine.
+
+**Web review verdict:** the shipped config (temp 0.7 + min-p 0.05, top-p 1.0, top-k 0, repeat-penalty
+off; `reasoning_effort=low`; D3 prompt; c96k default; estimator 4.8/700/+15 %) is **sound and safe but
+not provably optimal**. Highlights:
+- temp 1.0/top-p 1.0 is OpenAI's *only* official rec; temp 0.7 + min-p 0.05 is a defensible community
+  deviation for faithful extraction (min-p 0.05–0.1 is the paper's recommended *primary* truncation,
+  and top-p 1.0 disables nucleus so there is no double-truncation). top-k 0 is *unconfirmed* community
+  guidance (fine to keep; ~1–2 % speed effect).
+- greedy/temp 0 is unsafe (81 % loop rate); temp 0.7 *reduces* it but that 81 % is greedy-only — no
+  measured curve at 0.3–0.7.
+- `reasoning_effort=low` confirmed; a **think/reasoning budget** is a recommended safety rail we omit.
+- D3 "enumerate in analysis, total in final" is sound — llama.cpp parses the analysis channel out of
+  the returned answer (`reasoning_format` deepseek/auto with `--jinja`).
+- the `24.4·n + 0.000674·n²` timing model is correctly **linear+quadratic (SWA-aware)**; ~4.8 chars/token
+  is reasonable for o200k_harmony.
+- **Correction to my premise:** "quant fever" ≠ quantization (it is *numerical-target fixation*);
+  UD-Q4_K_XL is low-risk and gpt-oss is natively MXFP4.
+
+**On-machine re-test (shipped config; 16 real files ×2 reps + 5 ground-truth fixtures):**
+
+| Test | Result |
+|---|---|
+| **T1 blackhole/safety** | **PASS** — all 21 cells complete (9/9 sections), 0 truncations, 0 loops (duplicate-line ratio ≥40 % in zero cells; only the 0.5 KB enum showed 6–10 %, harmless). temp 0.7 + min-p 0.05 produced no blackholes (small sample). |
+| **T2 count faithfulness** | **PASS** — exact count (error 0) at 26, 128, **and 195** methods, at **low AND medium** effort, all complete. The 195 case (previously "150") is robustly fixed by D3. |
+| **T3 ETA accuracy** | **PARTIAL / conservative** — predicted vs actual on 8 real files: within ±15 % in 4/8, under-promised (actual > ETA) in only 1/8. The estimator **over-predicts small files** (the fixed ~800-token decode assumption dominates a tiny prefill) → it errs on the safe side; ±15 % precision is not consistently met, consistent with its "rough, hardware-specific" label. |
+
+**DRY check (read-only, as requested):** DRY exists in the `net.ladenthin:llama` binding **only at the
+model/launch level** (`ModelParameters.setDry*` → `--dry-*`), not per-request (`InferenceParameters`
+has no `withDry`). The plugin builds a `ModelParameters`, so DRY could be enabled there with no binding
+change; for per-request control (uniform with min-p etc.) a `withDry*` addition to java-llama.cpp's
+`InferenceParameters` was specified for a separate implementing agent.
+
+### Optional enhancements from the optimality review (E1–E6, deferred)
+- **E1 — DRY loop-insurance.** Feasible at model level now; per-request pending the binding addition.
+  Belt-and-suspenders only (T1 already shows 0 loops).
+- **E2 — reasoning/think budget** (`withReasoningBudgetTokens`). Recommended safety rail; upstream-buggy
+  / version-specific → pin a llama.cpp build first.
+- **E3 — size context to file** (vs the c96k default). RAM-only saving (per-file time is flat per the
+  A/B); needs a smaller default or a size-routing feature.
+- **E4 — `--swa-full`** for multi-file batches with a shared prefix (enables prefix-cache reuse). Ops flag.
+- **E5 — native MXFP4 model file.** Cleanest faithfulness story; saves ~nothing over UD-Q4_K_XL.
+- **E6 — top-n-sigma vs min-p** (`withTopNSigma`, temperature-invariant). A separate A/B measurement.
+
+**Bottom line:** the shipped D1/D2/D3 config is **verified safe and faithful on-machine** and judged
+sound by an adversarial external review. No further default change is required; E1–E6 are optional
+enhancements held for sign-off.
