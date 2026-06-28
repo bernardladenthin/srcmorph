@@ -117,7 +117,27 @@ _Results: pending._
 **Question:** harden the `prefill_ms(n) ≈ 24.4·n + 0.000674·n²` fit with more file-size points and find
 the real practical/​hard ceiling empirically.
 
-_Results: pending._
+**Setup:** fixtures 25/50/100/150 KB, low effort, temp 0.0 (deterministic), context sized to fit.
+
+| file | prompt tok `n` | measured prefill | model prefill | error |
+|---|---|---|---|---|
+| 25 KB | 7 424 | 213 s | 218 s | +2.6 % |
+| 50 KB | 13 510 | 448 s | 453 s | +1.1 % |
+| 100 KB | 25 503 | 1 035 s | 1 061 s | +2.5 % |
+| 150 KB | 37 496 | 1 818 s | 1 863 s | +2.4 % |
+
+**Findings**
+
+1. **The quadratic model holds across 25–150 KB** — every new point is within **+1.1 % to +2.6 %**, and
+   the model consistently over-predicts by ~2 %. That bias is the *safe* direction for an ETA (it never
+   under-promises), so the shipped constants are kept as-is.
+2. **Count accuracy degrades with scale even at temp 0.** Exact (count error 0) up to **128 methods**
+   (100 KB), but at **195 methods (150 KB) the model reported "150" — off by 45 (−23 %)**. So the
+   earlier "260 vs 329" miscount is *both* a temperature effect (Phase 2) *and* a scale effect: beyond
+   ~130–200 members the model stops counting and estimates. This gives Phase 3 a concrete target.
+3. **Hard-ceiling probe deferred:** a ~450 KB file (~110 K tokens) would prefill for ~3 h on this CPU
+   (quadratic), so the 128 K-window ceiling (~480–500 KB) is left as the analytical bound from §11
+   rather than burned in unattended. 250 KB is the validated practical limit.
 
 ## Phase 5 — `charsPerToken` on real files
 
