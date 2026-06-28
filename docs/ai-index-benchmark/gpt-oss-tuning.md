@@ -347,3 +347,32 @@ plugin's normal mode (indexing a whole project, many files sharing one prompt). 
 RAM, and no benefit for single-file runs. **Decision: candidate default for batch/project indexing
 (deferred to sign-off); plumbing stays in, default off.** Worth a follow-up to make the reuse fire on
 every file (investigate the eviction).
+
+### E2 — reasoning/think budget as a safety rail — measured: **no-op for gpt-oss (negative result)**
+
+**Hypothesis:** at high effort the in-band reasoning (harmony `analysis` channel) overruns the output
+budget and starves the answer; capping it with `withReasoningBudgetTokens` should let the final answer
+complete. **Setup:** one 27 KB fixture (26 methods), gpt-oss, temp 0.7, min-p 0.05, **high effort**,
+`maxOutputTokens=2048`. **Arm A** = `reasoningBudgetTokens=-1` (unrestricted) vs **arm B** =
+`reasoningBudgetTokens=1024`.
+
+| arm | budget | wall | sections | decode tokens | generations (incl. retries) |
+|---|---|---|---|---|---|
+| A | −1 (off) | 1602 s | **0 / 9** | 2036 | 4 |
+| B | **1024** | 1663 s | **0 / 9** | 2040 | 4 |
+
+**Finding:** **the budget had no measurable effect.** Arm B ran straight into the same 2048 output cap
+as arm A (decode ≈ 2040 both), produced an empty body both times, and the result was identical
+(0 / 9 sections). `withReasoningBudgetTokens` is plumbed through to the binding, but it **does not
+constrain gpt-oss harmony reasoning in the current binding / llama.cpp build** — the `analysis` channel
+is not truncated at the budget. So the budget cannot be relied on as a safety rail for gpt-oss today.
+
+**Consequences:**
+1. **High effort stays unusable for large files** (D-series already ships **low effort** as the default);
+   the budget knob does not rescue it.
+2. The knob remains a plumbed **opt-in** (`reasoningBudgetTokens`, default −1) for future binding/model
+   support — harmless when off, ready if a later llama.cpp build honours it for harmony.
+3. Both arms wasted **4 full generations (~27 min each)** producing nothing — the blank body triggered
+   the old retry loop (initial + 3 retries), all blank. This made the **retry mechanism's
+   cost-without-benefit obvious and motivated removing it entirely** (see the retry-removal change): a
+   blank body now fails fast with a single `WARN` instead of re-inferring 3× to the same empty result.
