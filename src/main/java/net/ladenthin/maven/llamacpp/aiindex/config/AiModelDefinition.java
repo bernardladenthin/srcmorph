@@ -50,6 +50,7 @@ public class AiModelDefinition {
     private float retryTemperatureIncrement = AiGenerationConfig.DEFAULT_RETRY_TEMPERATURE_INCREMENT;
     private float topP = AiGenerationConfig.DEFAULT_TOP_P;
     private int topK = AiGenerationConfig.DEFAULT_TOP_K;
+    private float minP = AiGenerationConfig.DEFAULT_MIN_P;
     private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
@@ -295,6 +296,24 @@ public class AiModelDefinition {
      */
     public void setRepeatPenalty(final float repeatPenalty) {
         this.repeatPenalty = repeatPenalty;
+    }
+
+    /**
+     * Returns the min-p sampling threshold.
+     *
+     * @return min-p threshold; defaults to {@link AiGenerationConfig#DEFAULT_MIN_P} ({@code 0.0} = disabled)
+     */
+    public float getMinP() {
+        return minP;
+    }
+
+    /**
+     * Sets the min-p sampling threshold (keep tokens with probability ≥ minP × top-token probability).
+     *
+     * @param minP min-p threshold; {@code 0.0} disables min-p truncation
+     */
+    public void setMinP(final float minP) {
+        this.minP = minP;
     }
 
     /**

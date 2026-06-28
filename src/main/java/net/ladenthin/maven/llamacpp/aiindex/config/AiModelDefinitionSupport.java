@@ -113,6 +113,7 @@ public final class AiModelDefinitionSupport {
         config.setRetryTemperatureIncrement(definition.getRetryTemperatureIncrement());
         config.setTopP(definition.getTopP());
         config.setTopK(definition.getTopK());
+        config.setMinP(definition.getMinP());
         config.setRepeatPenalty(definition.getRepeatPenalty());
         config.setStopStrings(definition.getStopStrings());
         config.setChatTemplateEnableThinking(definition.isChatTemplateEnableThinking());

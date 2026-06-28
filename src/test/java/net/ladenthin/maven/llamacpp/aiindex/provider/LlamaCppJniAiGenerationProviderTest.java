@@ -43,6 +43,7 @@ public class LlamaCppJniAiGenerationProviderTest {
                 8,
                 AiGenerationConfig.DEFAULT_TOP_P,
                 AiGenerationConfig.DEFAULT_TOP_K,
+                AiGenerationConfig.DEFAULT_MIN_P,
                 AiGenerationConfig.DEFAULT_REPEAT_PENALTY,
                 AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING,
                 AiGenerationConfig.DEFAULT_CACHE_PROMPT,

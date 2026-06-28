@@ -108,6 +108,15 @@ public class AiGenerationConfig {
     public static final int DEFAULT_TOP_K = 40;
 
     /**
+     * Default min-p sampling threshold. A value of {@code 0.0} disables min-p truncation and
+     * preserves existing behaviour for models that do not specify it. min-p keeps only tokens whose
+     * probability is at least this fraction of the top token's probability; it is the recommended
+     * primary truncation for gpt-oss at a non-greedy temperature (scales the cut-off to the model's
+     * confidence — see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} D1).
+     */
+    public static final float DEFAULT_MIN_P = 0.0f;
+
+    /**
      * Default repetition penalty. A value of {@code 1.0} means no penalty and preserves
      * existing behaviour for models that do not specify it.
      */
@@ -155,6 +164,7 @@ public class AiGenerationConfig {
     private float retryTemperatureIncrement = DEFAULT_RETRY_TEMPERATURE_INCREMENT;
     private float topP = DEFAULT_TOP_P;
     private int topK = DEFAULT_TOP_K;
+    private float minP = DEFAULT_MIN_P;
     private float repeatPenalty = DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
@@ -395,6 +405,24 @@ public class AiGenerationConfig {
      */
     public void setRepeatPenalty(final float repeatPenalty) {
         this.repeatPenalty = repeatPenalty;
+    }
+
+    /**
+     * Returns the min-p sampling threshold.
+     *
+     * @return min-p threshold ({@code 0.0} = disabled)
+     */
+    public float getMinP() {
+        return minP;
+    }
+
+    /**
+     * Sets the min-p sampling threshold.
+     *
+     * @param minP min-p threshold ({@code 0.0} = disabled)
+     */
+    public void setMinP(final float minP) {
+        this.minP = minP;
     }
 
     /**

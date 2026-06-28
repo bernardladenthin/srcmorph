@@ -54,6 +54,7 @@ public class AiModelDefinitionSupportTest {
         definition.setReasoningEffort("high");
         definition.setTopP(0.55f);
         definition.setTopK(21);
+        definition.setMinP(0.09f);
         definition.setRepeatPenalty(1.15f);
         definition.setStopStrings(Arrays.asList("</s>", "STOP"));
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition));
@@ -76,6 +77,7 @@ public class AiModelDefinitionSupportTest {
         // that would drop those setter calls from toConfig().
         assertThat(config.getTopP(), is(equalTo(0.55f)));
         assertThat(config.getTopK(), is(equalTo(21)));
+        assertThat(config.getMinP(), is(equalTo(0.09f)));
         assertThat(config.getRepeatPenalty(), is(equalTo(1.15f)));
         assertThat(config.getStopStrings(), is(equalTo(Arrays.asList("</s>", "STOP"))));
         // Non-default cachePrompt propagates — kills the void-call mutant that would drop the
@@ -111,6 +113,7 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.isChatTemplateEnableThinking(), is(AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
         assertThat(config.isCachePrompt(), is(AiGenerationConfig.DEFAULT_CACHE_PROMPT));
         assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
+        assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));
     }
 
     @Test

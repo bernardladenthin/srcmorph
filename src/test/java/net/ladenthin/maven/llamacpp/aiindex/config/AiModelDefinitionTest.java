@@ -68,4 +68,14 @@ public class AiModelDefinitionTest {
         // Round-tripped value kills the removed-assignment setter mutant.
         assertThat(d.getReasoningEffort(), is("medium"));
     }
+
+    @Test
+    public void minPDefaultsDisabledAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        // Default 0.0 (disabled) kills the inline-constant / "return 1.0" getter mutants.
+        assertThat(d.getMinP(), is(0.0f));
+        d.setMinP(0.05f);
+        // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(d.getMinP(), is(0.05f));
+    }
 }
