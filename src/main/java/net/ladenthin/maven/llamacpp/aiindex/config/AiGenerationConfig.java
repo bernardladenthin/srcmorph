@@ -153,18 +153,22 @@ public class AiGenerationConfig {
 
     /**
      * Default for whether the full-size sliding-window-attention (SWA) KV cache is kept
-     * ({@code --swa-full}). {@code false} = llama.cpp default (window-sized SWA KV, ~half the RAM but
-     * not reusable across requests). Set {@code true} to keep the full SWA KV so the shared prompt
-     * prefix can be reused across files (pairs with {@link #DEFAULT_CACHE_REUSE}); see E4.
+     * ({@code --swa-full}). {@code true} = keep the full SWA KV so the shared prompt prefix is reusable
+     * across files (the llama.cpp default of window-sized SWA KV uses ~half the RAM but is not reusable
+     * across requests). Adopted as the shipped default (pairs with {@link #DEFAULT_CACHE_REUSE}) because
+     * project indexing is a multi-file batch sharing one prompt prefix, where E4 measured ~21% less
+     * prefill / ~12% less wall time; cost is ~2× SWA-layer KV RAM (acceptable for the typical overnight
+     * full-project run). Set {@code false} for RAM-constrained single-file use.
      */
-    public static final boolean DEFAULT_SWA_FULL = false;
+    public static final boolean DEFAULT_SWA_FULL = true;
 
     /**
      * Default minimum chunk size (tokens) for cross-request KV prefix reuse ({@code --cache-reuse}).
-     * {@code 0} = disabled (llama.cpp default). A positive value lets the server reuse a matching
-     * prompt prefix from a previous request instead of re-prefilling it.
+     * {@code 256} = the value E4 measured; lets the server reuse a matching prompt prefix from a previous
+     * request instead of re-prefilling it (exact-prefix match, so output is unchanged). Pairs with
+     * {@link #DEFAULT_SWA_FULL}; set {@code 0} to disable (the llama.cpp default).
      */
-    public static final int DEFAULT_CACHE_REUSE = 0;
+    public static final int DEFAULT_CACHE_REUSE = 256;
 
     /**
      * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).

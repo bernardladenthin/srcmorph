@@ -94,23 +94,23 @@ public class AiGenerationConfigTest {
     }
 
     @Test
-    public void swaFullDefaultsFalseAndTogglesTrue() {
+    public void swaFullDefaultsTrueAndTogglesFalse() {
         AiGenerationConfig c = new AiGenerationConfig();
-        // Default false kills the "return true" getter mutant.
-        assertThat(c.isSwaFull(), is(false));
-        c.setSwaFull(true);
-        // Observing true kills the "return false" getter and removed-assignment setter mutants.
+        // Default true (E4 batch default) kills the "return false" getter mutant.
         assertThat(c.isSwaFull(), is(true));
+        c.setSwaFull(false);
+        // Observing false kills the "return true" getter and removed-assignment setter mutants.
+        assertThat(c.isSwaFull(), is(false));
     }
 
     @Test
-    public void cacheReuseDefaultsZeroAndRoundTrips() {
+    public void cacheReuseDefaultsTwoFiftySixAndRoundTrips() {
         AiGenerationConfig c = new AiGenerationConfig();
-        // Default 0 (disabled) kills the inline-constant getter mutant.
-        assertThat(c.getCacheReuse(), is(0));
-        c.setCacheReuse(256);
-        // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
+        // Default 256 (E4 batch default) kills the inline-constant / "return 0" getter mutants.
         assertThat(c.getCacheReuse(), is(256));
+        c.setCacheReuse(128);
+        // Round-tripped distinct value kills the removed-assignment setter mutant.
+        assertThat(c.getCacheReuse(), is(128));
     }
 
     @Test

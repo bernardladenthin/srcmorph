@@ -344,9 +344,12 @@ gpt-oss, temp 0.7, min-p 0.05, low effort. Per-file prefill (tokens / ms) from t
 the shared prompt prefix across files (large savings on files 3 and 5; little on others — reuse fires
 inconsistently, likely slot/cache eviction within the run). This is a real throughput win for the
 plugin's normal mode (indexing a whole project, many files sharing one prompt). Cost: ~2× SWA-layer KV
-RAM, and no benefit for single-file runs. **Decision: candidate default for batch/project indexing
-(deferred to sign-off); plumbing stays in, default off.** Worth a follow-up to make the reuse fire on
-every file (investigate the eviction).
+RAM, and no benefit for single-file runs. **Decision (signed off 2026-06-28): adopted as the shipped
+default** — `DEFAULT_SWA_FULL=true` + `DEFAULT_CACHE_REUSE=256` — because the plugin's primary use is
+overnight full-project indexing on a machine with RAM to spare, where the ~12% wall-time win matters and
+the extra KV RAM is acceptable. Set `<swaFull>false</swaFull>` (and/or `<cacheReuse>0</cacheReuse>`) for
+RAM-constrained single-file use. Worth a follow-up to make the reuse fire on every file (investigate the
+eviction).
 
 ### E2 — reasoning/think budget as a safety rail — measured: **no-op for gpt-oss (negative result)**
 
@@ -420,8 +423,8 @@ is unchanged but the knob is one POM line away for a different model or workload
 |---|---|---|---|---|
 | `minP` | `0.05` (shipped) / `0.0` (lib default) | Confidence-scaled primary truncation; robust on large files | Primary sampler — already on for gpt-oss | Phase 1–5, E6 |
 | `topNSigma` | `-1.0` (off) | Temperature-invariant truncation, alternative to min-p | A model where top-n-sigma beats min-p | E6 (min-p won here) |
-| `swaFull` | `false` (off) | Keep full SWA KV so the shared prompt prefix is reusable across files | Batch/project indexing, RAM to spare | E4 (−12 % wall) |
-| `cacheReuse` | `0` (off) | Cross-request KV prefix reuse min chunk (tokens) | Pairs with `swaFull` for batch runs | E4 |
+| `swaFull` | **`true` (on, shipped)** | Keep full SWA KV so the shared prompt prefix is reusable across files | On by default for batch/project indexing; set `false` for RAM-constrained single-file use | E4 (−12 % wall) |
+| `cacheReuse` | **`256` (on, shipped)** | Cross-request KV prefix reuse min chunk (tokens) | On by default (pairs with `swaFull`); set `0` to disable | E4 |
 | `reasoningBudgetTokens` | `-1` (unrestricted) | Cap harmony analysis tokens | A future binding/build that honours it for harmony | E2 (no-op today) |
 | `dryMultiplier` (+ `dryBase`/`dryAllowedLength`/`dryPenaltyLastN`/`drySequenceBreakers`) | `0.0` (off) | Penalise verbatim n-gram repetition (break loops) | A model/config that loops (e.g. high temp) | E1 |
 

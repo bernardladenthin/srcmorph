@@ -90,19 +90,19 @@ public class AiModelDefinitionTest {
     }
 
     @Test
-    public void swaFullDefaultsFalseAndTogglesTrue() {
+    public void swaFullDefaultsTrueAndTogglesFalse() {
         AiModelDefinition d = new AiModelDefinition();
-        assertThat(d.isSwaFull(), is(false));
-        d.setSwaFull(true);
         assertThat(d.isSwaFull(), is(true));
+        d.setSwaFull(false);
+        assertThat(d.isSwaFull(), is(false));
     }
 
     @Test
-    public void cacheReuseDefaultsZeroAndRoundTrips() {
+    public void cacheReuseDefaultsTwoFiftySixAndRoundTrips() {
         AiModelDefinition d = new AiModelDefinition();
-        assertThat(d.getCacheReuse(), is(0));
-        d.setCacheReuse(256);
         assertThat(d.getCacheReuse(), is(256));
+        d.setCacheReuse(128);
+        assertThat(d.getCacheReuse(), is(128));
     }
 
     @Test

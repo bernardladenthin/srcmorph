@@ -49,7 +49,7 @@ public class AiModelDefinitionSupportTest {
         definition.setWarnOnTrim(false);
         definition.setChatTemplateEnableThinking(false);
         definition.setCachePrompt(false);
-        definition.setSwaFull(true);
+        definition.setSwaFull(false);
         definition.setCacheReuse(128);
         definition.setReasoningEffort("high");
         definition.setReasoningBudgetTokens(512);
@@ -89,7 +89,8 @@ public class AiModelDefinitionSupportTest {
         // Non-default cachePrompt propagates — kills the void-call mutant that would drop the
         // setCachePrompt(...) copy from toConfig().
         assertThat(config.isCachePrompt(), is(false));
-        assertThat(config.isSwaFull(), is(true));
+        // Non-default swaFull (false; the shipped default is now true) propagates.
+        assertThat(config.isSwaFull(), is(false));
         assertThat(config.getCacheReuse(), is(equalTo(128)));
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
