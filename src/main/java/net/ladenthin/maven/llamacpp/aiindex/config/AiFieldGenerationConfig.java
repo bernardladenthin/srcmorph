@@ -67,6 +67,71 @@ public class AiFieldGenerationConfig {
     private @Nullable List<String> fileExtensions;
 
     /**
+     * Optional exclusive lower file-size bound in bytes. When {@code > 0}, this entry applies only to
+     * files whose size is strictly greater than this. {@code 0} (default) disables the lower bound.
+     * Combined with {@link #maxFileSizeBytes} this lets the prompt be chosen by file size within a
+     * single run (e.g. a terse prompt for small files, a detailed one for large).
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private long minFileSizeBytes;
+
+    /**
+     * Optional inclusive upper file-size bound in bytes. When {@code > 0}, this entry applies only to
+     * files whose size is less than or equal to this. {@code 0} (default) disables the upper bound.
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private long maxFileSizeBytes;
+
+    /**
+     * Optional exclusive lower line-count bound. When {@code > 0}, this entry applies only to files
+     * with strictly more than this many lines. {@code 0} (default) disables the lower bound.
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private int minLines;
+
+    /**
+     * Optional inclusive upper line-count bound. When {@code > 0}, this entry applies only to files
+     * with at most this many lines. {@code 0} (default) disables the upper bound.
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private int maxLines;
+
+    /**
+     * Selection priority. When several rules match the same file, the one with the highest priority
+     * wins; ties are broken by declaration order (the earlier rule wins). Default {@code 0}. Lets a
+     * specific rule (e.g. a high-priority {@link #skip}) override a more general one regardless of XML
+     * order.
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private int priority;
+
+    /**
+     * Marks this rule as the explicit fallback: it applies to any file that no other (non-fallback)
+     * rule matched. At most one fallback may be configured. A fallback routes (needs
+     * {@link #promptKey} and {@link #aiDefinitionKey}); it cannot also be a {@link #skip}. When no rule
+     * matches a file and no fallback is configured, indexing fails with an error rather than silently
+     * skipping the file.
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private boolean fallback;
+
+    /**
+     * Marks this rule as a skip (ignore) rule: matching files are excluded from indexing entirely (no
+     * model, no prompt). A skip rule competes by {@link #priority} like any matching rule, so giving it
+     * a high priority lets it exclude files that a route rule or the fallback would otherwise pick up.
+     * Skip rules need filters but no {@link #promptKey}/{@link #aiDefinitionKey}.
+     *
+     * @see AiFieldGenerationSelector
+     */
+    private boolean skip;
+
+    /**
      * Returns the prompt template key.
      *
      * @return the key that identifies the prompt template to use for this field
@@ -120,5 +185,131 @@ public class AiFieldGenerationConfig {
      */
     public void setFileExtensions(final @Nullable Collection<String> fileExtensions) {
         this.fileExtensions = fileExtensions != null ? new ArrayList<>(fileExtensions) : null;
+    }
+
+    /**
+     * Returns the exclusive lower file-size bound in bytes ({@code 0} = no lower bound).
+     *
+     * @return exclusive lower file-size bound in bytes
+     */
+    public long getMinFileSizeBytes() {
+        return minFileSizeBytes;
+    }
+
+    /**
+     * Sets the exclusive lower file-size bound in bytes.
+     *
+     * @param minFileSizeBytes exclusive lower bound ({@code 0} disables it)
+     */
+    public void setMinFileSizeBytes(final long minFileSizeBytes) {
+        this.minFileSizeBytes = minFileSizeBytes;
+    }
+
+    /**
+     * Returns the inclusive upper file-size bound in bytes ({@code 0} = no upper bound).
+     *
+     * @return inclusive upper file-size bound in bytes
+     */
+    public long getMaxFileSizeBytes() {
+        return maxFileSizeBytes;
+    }
+
+    /**
+     * Sets the inclusive upper file-size bound in bytes.
+     *
+     * @param maxFileSizeBytes inclusive upper bound ({@code 0} disables it)
+     */
+    public void setMaxFileSizeBytes(final long maxFileSizeBytes) {
+        this.maxFileSizeBytes = maxFileSizeBytes;
+    }
+
+    /**
+     * Returns the exclusive lower line-count bound ({@code 0} = no lower bound).
+     *
+     * @return exclusive lower line-count bound
+     */
+    public int getMinLines() {
+        return minLines;
+    }
+
+    /**
+     * Sets the exclusive lower line-count bound.
+     *
+     * @param minLines exclusive lower bound ({@code 0} disables it)
+     */
+    public void setMinLines(final int minLines) {
+        this.minLines = minLines;
+    }
+
+    /**
+     * Returns the inclusive upper line-count bound ({@code 0} = no upper bound).
+     *
+     * @return inclusive upper line-count bound
+     */
+    public int getMaxLines() {
+        return maxLines;
+    }
+
+    /**
+     * Sets the inclusive upper line-count bound.
+     *
+     * @param maxLines inclusive upper bound ({@code 0} disables it)
+     */
+    public void setMaxLines(final int maxLines) {
+        this.maxLines = maxLines;
+    }
+
+    /**
+     * Returns the selection priority ({@code 0} = default).
+     *
+     * @return the selection priority
+     */
+    public int getPriority() {
+        return priority;
+    }
+
+    /**
+     * Sets the selection priority (higher wins when several rules match).
+     *
+     * @param priority the selection priority
+     */
+    public void setPriority(final int priority) {
+        this.priority = priority;
+    }
+
+    /**
+     * Returns whether this rule is the explicit fallback.
+     *
+     * @return {@code true} if this rule is the fallback
+     */
+    public boolean isFallback() {
+        return fallback;
+    }
+
+    /**
+     * Sets whether this rule is the explicit fallback.
+     *
+     * @param fallback {@code true} to mark this rule as the fallback
+     */
+    public void setFallback(final boolean fallback) {
+        this.fallback = fallback;
+    }
+
+    /**
+     * Returns whether this rule is a skip (ignore) rule.
+     *
+     * @return {@code true} if matching files should be skipped
+     */
+    public boolean isSkip() {
+        return skip;
+    }
+
+    /**
+     * Sets whether this rule is a skip (ignore) rule.
+     *
+     * @param skip {@code true} to skip files this rule matches
+     */
+    public void setSkip(final boolean skip) {
+        this.skip = skip;
     }
 }

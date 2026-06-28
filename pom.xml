@@ -1920,9 +1920,13 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                                 <fileExtension>.sql</fileExtension>
                                             </fileExtensions>
                                         </fieldGeneration>
+                                        <!-- Explicit fallback: applies to any file no rule above matched.
+                                             Exactly one fallback is allowed; without it an unmatched file
+                                             fails the build (see AiFieldGenerationSelector). -->
                                         <fieldGeneration>
                                             <promptKey>file-body-fallback</promptKey>
                                             <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+                                            <fallback>true</fallback>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>

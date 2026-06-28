@@ -233,34 +233,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      */
     protected LlamaCppJniConfig buildLlamaCppJniConfig() throws MojoExecutionException {
         if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
-            final AiFieldGenerationConfig first = fieldGenerations.get(0);
-            final AiGenerationConfig config = buildAiModelDefinitionSupport().getConfig(first.getAiDefinitionKey());
-            final List<String> stopStrings = config.getStopStrings();
-            final List<String> drySequenceBreakers = config.getDrySequenceBreakers();
-            return new LlamaCppJniConfig(
-                    llamaLibraryPath,
-                    config.getModelPath(),
-                    config.getContextSize(),
-                    config.getMaxOutputTokens(),
-                    config.getTemperature(),
-                    config.getThreads(),
-                    config.getTopP(),
-                    config.getTopK(),
-                    config.getMinP(),
-                    config.getTopNSigma(),
-                    config.getRepeatPenalty(),
-                    config.isChatTemplateEnableThinking(),
-                    config.isCachePrompt(),
-                    config.isSwaFull(),
-                    config.getCacheReuse(),
-                    config.getReasoningEffort(),
-                    config.getReasoningBudgetTokens(),
-                    config.getDryMultiplier(),
-                    config.getDryBase(),
-                    config.getDryAllowedLength(),
-                    config.getDryPenaltyLastN(),
-                    drySequenceBreakers != null ? drySequenceBreakers : Collections.emptyList(),
-                    stopStrings != null ? stopStrings : Collections.emptyList());
+            return buildLlamaCppJniConfig(fieldGenerations.get(0).getAiDefinitionKey());
         }
         return new LlamaCppJniConfig(
                 llamaLibraryPath,
@@ -286,6 +259,46 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                 AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N,
                 Collections.emptyList(),
                 Collections.emptyList());
+    }
+
+    /**
+     * Builds a {@link net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniConfig} from a specific
+     * AI model definition, identified by its key. Used by the {@code generate} goal to load a separate
+     * model per routing group (one provider per distinct {@code aiDefinitionKey}).
+     *
+     * @param aiDefinitionKey the {@link net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition} key
+     * @return fully populated llama.cpp configuration for that definition
+     * @throws IllegalArgumentException if {@code aiDefinitionKey} matches no registered definition
+     * @throws MojoExecutionException   propagated from {@link #buildAiModelDefinitionSupport()}
+     */
+    protected LlamaCppJniConfig buildLlamaCppJniConfig(final String aiDefinitionKey) throws MojoExecutionException {
+        final AiGenerationConfig config = buildAiModelDefinitionSupport().getConfig(aiDefinitionKey);
+        final List<String> stopStrings = config.getStopStrings();
+        final List<String> drySequenceBreakers = config.getDrySequenceBreakers();
+        return new LlamaCppJniConfig(
+                llamaLibraryPath,
+                config.getModelPath(),
+                config.getContextSize(),
+                config.getMaxOutputTokens(),
+                config.getTemperature(),
+                config.getThreads(),
+                config.getTopP(),
+                config.getTopK(),
+                config.getMinP(),
+                config.getTopNSigma(),
+                config.getRepeatPenalty(),
+                config.isChatTemplateEnableThinking(),
+                config.isCachePrompt(),
+                config.isSwaFull(),
+                config.getCacheReuse(),
+                config.getReasoningEffort(),
+                config.getReasoningBudgetTokens(),
+                config.getDryMultiplier(),
+                config.getDryBase(),
+                config.getDryAllowedLength(),
+                config.getDryPenaltyLastN(),
+                drySequenceBreakers != null ? drySequenceBreakers : Collections.emptyList(),
+                stopStrings != null ? stopStrings : Collections.emptyList());
     }
 
     /**

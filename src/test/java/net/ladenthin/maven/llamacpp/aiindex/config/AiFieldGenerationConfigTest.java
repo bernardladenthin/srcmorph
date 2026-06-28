@@ -58,4 +58,60 @@ public class AiFieldGenerationConfigTest {
                 UnsupportedOperationException.class,
                 () -> config.getFileExtensions().add(".sql"));
     }
+
+    @Test
+    public void minFileSizeBytes_defaultsZeroAndRoundTrips() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.getMinFileSizeBytes(), is(equalTo(0L)));
+        config.setMinFileSizeBytes(16384L);
+        assertThat(config.getMinFileSizeBytes(), is(equalTo(16384L)));
+    }
+
+    @Test
+    public void maxFileSizeBytes_defaultsZeroAndRoundTrips() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.getMaxFileSizeBytes(), is(equalTo(0L)));
+        config.setMaxFileSizeBytes(49152L);
+        assertThat(config.getMaxFileSizeBytes(), is(equalTo(49152L)));
+    }
+
+    @Test
+    public void minLines_defaultsZeroAndRoundTrips() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.getMinLines(), is(equalTo(0)));
+        config.setMinLines(100);
+        assertThat(config.getMinLines(), is(equalTo(100)));
+    }
+
+    @Test
+    public void maxLines_defaultsZeroAndRoundTrips() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.getMaxLines(), is(equalTo(0)));
+        config.setMaxLines(500);
+        assertThat(config.getMaxLines(), is(equalTo(500)));
+    }
+
+    @Test
+    public void priority_defaultsZeroAndRoundTrips() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.getPriority(), is(equalTo(0)));
+        config.setPriority(10);
+        assertThat(config.getPriority(), is(equalTo(10)));
+    }
+
+    @Test
+    public void fallback_defaultsFalseAndTogglesTrue() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.isFallback(), is(false));
+        config.setFallback(true);
+        assertThat(config.isFallback(), is(true));
+    }
+
+    @Test
+    public void skip_defaultsFalseAndTogglesTrue() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.isSkip(), is(false));
+        config.setSkip(true);
+        assertThat(config.isSkip(), is(true));
+    }
 }

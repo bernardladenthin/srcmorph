@@ -5,10 +5,16 @@ package net.ladenthin.maven.llamacpp.aiindex.mojo;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
+import net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport;
+import net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan;
 import net.ladenthin.maven.llamacpp.aiindex.indexer.SourceFileIndexer;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory;
@@ -94,6 +100,14 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     @Parameter(property = "aiIndex.llama.threads", defaultValue = "2")
     private int llamaThreads;
 
+    /**
+     * When {@code true}, only build and log the routing plan (which model indexes which files with which
+     * prompt) and then stop — no model is loaded and nothing is generated. Useful to verify routing
+     * before a long run.
+     */
+    @Parameter(property = "aiIndex.planOnly", defaultValue = "false")
+    private boolean planOnly;
+
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     @Override
@@ -126,47 +140,84 @@ public class GenerateMojo extends AbstractAiIndexMojo {
         logExecutionParameters(
                 "Starting AI index generation", basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
+        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
+            throw new MojoExecutionException("No <fieldGenerations> configured for the generate goal.");
+        }
+
+        final AiPromptSupport promptSupport = buildPromptSupport();
+        final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
+        final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
+        // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model).
+        selector.validate(fieldGenerations);
+
+        final SourceFileIndexer fileIndexer = new SourceFileIndexer(
+                getLog(),
+                basePath,
+                outputPath,
+                resolvedExtensions,
+                pluginVersion,
+                aiVersion,
+                resolvedSubtrees,
+                excludes,
+                minFileSizeBytes,
+                maxFileSizeBytes,
+                force);
+
         try {
-            final AiPromptSupport promptSupport = buildPromptSupport();
-            final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
-            final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
-
-            try (AiGenerationProvider provider =
-                    providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
-
-                final SourceFileIndexer fileIndexer = new SourceFileIndexer(
-                        getLog(),
-                        basePath,
-                        outputPath,
-                        resolvedExtensions,
-                        pluginVersion,
-                        aiVersion,
-                        resolvedSubtrees,
-                        excludes,
-                        minFileSizeBytes,
-                        maxFileSizeBytes,
-                        force,
-                        provider,
-                        fieldGenerations,
-                        promptSupport,
-                        modelDefinitionSupport);
-
-                int count = 0;
-
-                for (Path subtree : resolvedSubtrees.isEmpty()
-                        ? compatibilityHelper.listOf(basePath.resolve("src/main/java"))
-                        : resolvedSubtrees) {
-
-                    if (!subtree.toFile().exists()) {
-                        getLog().warn("Skipping missing subtree: " + subtree);
-                        continue;
-                    }
-
-                    count += fileIndexer.indexSourceRoot(subtree);
+            // 1. Collect candidate files across the configured subtrees.
+            final List<Path> candidates = new ArrayList<>();
+            for (final Path subtree : resolvedSubtrees.isEmpty()
+                    ? compatibilityHelper.listOf(basePath.resolve("src/main/java"))
+                    : resolvedSubtrees) {
+                if (!subtree.toFile().exists()) {
+                    getLog().warn("Skipping missing subtree: " + subtree);
+                    continue;
                 }
-
-                getLog().info("Generated AI files: " + count);
+                candidates.addAll(fileIndexer.collectCandidates(subtree));
             }
+
+            // 2. Plan the run: which model + prompt each file gets (or skip / unmatched).
+            final AiIndexPlan plan = fileIndexer.classify(candidates, fieldGenerations);
+            getLog().info(plan.renderTree(basePath));
+
+            // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
+            if (!plan.unmatched().isEmpty()) {
+                throw new MojoExecutionException(plan.unmatched().size()
+                        + " source file(s) matched no rule and no fallback is configured; "
+                        + "add a <fallback> rule or a matching rule (see the plan above).");
+            }
+
+            if (planOnly) {
+                getLog().info("planOnly=true: stopping after the plan; no model loaded, nothing generated.");
+                return;
+            }
+
+            // 4. Execute model group by model group: load each model once, index its files, close.
+            final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
+            final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
+            int wrote = 0;
+            int unchanged = 0;
+            for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
+                    plan.routesByModel().entrySet()) {
+                final String aiDefinitionKey = group.getKey();
+                getLog().info("Loading model '" + aiDefinitionKey + "' for "
+                        + group.getValue().size() + " file(s)");
+                try (AiGenerationProvider provider = providerFactory.create(
+                        generationProvider, buildLlamaCppJniConfig(aiDefinitionKey), promptSupport)) {
+                    final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
+                            getLog(), provider, promptPreparationSupport, modelDefinitionSupport);
+                    for (final AiIndexPlan.Entry entry : group.getValue()) {
+                        if (fileIndexer.indexFile(entry.file(), entry.rule(), support)) {
+                            wrote++;
+                        } else {
+                            unchanged++;
+                        }
+                    }
+                }
+            }
+
+            getLog().info("Generated AI files: " + wrote + " written, " + unchanged + " unchanged, "
+                    + plan.skipped().size() + " skipped");
 
         } catch (IOException e) {
             throw new MojoExecutionException(
