@@ -101,6 +101,25 @@ public class AiFieldGenerationSupport {
     private static final String PROCESSING_LOG_DISCLAIMER =
             " (rough; calibrated on reference CPU + gpt-oss-20b - actual depends on your hardware)";
 
+    /** Prefix of the per-file actual-duration log line emitted after generation completes. */
+    private static final String GENERATED_LOG_PREFIX = "Generated ";
+
+    /** Infix between the file path and the measured wall-clock duration in the actual-duration line. */
+    private static final String GENERATED_LOG_IN_INFIX = "' in ";
+
+    /**
+     * Infix introducing the estimate for side-by-side comparison in the actual-duration line, so a real
+     * run shows measured-vs-estimated per file (lets you compare models/quants in live runs without a
+     * separate benchmark). ASCII-only for CI logs.
+     */
+    private static final String GENERATED_LOG_ACTUAL_INFIX = " (actual; estimated ";
+
+    /** Suffix closing the actual-duration log line. */
+    private static final String GENERATED_LOG_SUFFIX = ")";
+
+    /** Nanoseconds per second, used to convert the measured generation duration to whole seconds. */
+    private static final long NANOS_PER_SECOND = 1_000_000_000L;
+
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
     @ToString.Exclude
@@ -210,17 +229,26 @@ public class AiFieldGenerationSupport {
             final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
                     ? SIZE_BELOW_ONE_KIB_LABEL
                     : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
+            final long estimatedSeconds = timeEstimator.estimateSeconds(processedSourceChars);
             log.info(PROCESSING_LOG_PREFIX + contextType + " '" + contextFile + "'"
                     + PROCESSING_LOG_SIZE_INFIX + sourceSizeKb
                     + PROCESSING_LOG_TOKENS_INFIX + timeEstimator.estimatePromptTokens(processedSourceChars)
                     + PROCESSING_LOG_ETA_INFIX
-                    + timeEstimator.formatDuration(timeEstimator.estimateSeconds(processedSourceChars))
+                    + timeEstimator.formatDuration(estimatedSeconds)
                     + PROCESSING_LOG_DISCLAIMER);
 
             log.info("Generating field '" + fieldGeneration.getPromptKey() + "' with temperature="
                     + generationConfig.getTemperature() + ", maxInputChars="
                     + effectiveMaxInputChars);
+            final long generationStartNanos = System.nanoTime();
             body = generationProvider.generate(generationRequest);
+            final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
+
+            // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
+            // comparable across models/quants without a separate benchmark harness.
+            log.info(GENERATED_LOG_PREFIX + contextType + " '" + contextFile + GENERATED_LOG_IN_INFIX
+                    + timeEstimator.formatDuration(actualSeconds) + GENERATED_LOG_ACTUAL_INFIX
+                    + timeEstimator.formatDuration(estimatedSeconds) + GENERATED_LOG_SUFFIX);
 
             if (compatibilityHelper.isBlank(body)) {
                 log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL + fieldGeneration.getPromptKey()

@@ -257,10 +257,10 @@ public class AiFieldGenerationSupportTest {
         support.processFieldGenerations(
                 CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
-        // assert — exactly two INFO lines: the per-file processing/ETA line and the generation line.
-        // No retry lines are emitted (the retry mechanism was removed).
+        // assert — exactly three INFO lines: the per-file processing/ETA line, the generation line,
+        // and the measured actual-duration line. No retry lines (the retry mechanism was removed).
         final List<String> infos = capturingLog.getCapturedInfos();
-        assertThat(infos.size(), is(equalTo(2)));
+        assertThat(infos.size(), is(equalTo(3)));
 
         // First message: the per-file processing line with size + token + duration estimate
         final String processingMsg = infos.get(0);
@@ -275,6 +275,12 @@ public class AiFieldGenerationSupportTest {
         assertThat(generatingMsg, containsString("maxInputChars="));
         assertThat(generatingMsg.contains("maxRetries"), is(false));
         assertThat(generatingMsg.contains("retryTemperatureIncrement"), is(false));
+
+        // Third message: the measured actual-duration line (real wall time vs the estimate)
+        final String generatedMsg = infos.get(2);
+        assertThat(generatedMsg, containsString("Generated file"));
+        assertThat(generatedMsg, containsString("in "));
+        assertThat(generatedMsg, containsString("(actual; estimated "));
 
         // No INFO line mentions a retry
         for (final String info : infos) {
