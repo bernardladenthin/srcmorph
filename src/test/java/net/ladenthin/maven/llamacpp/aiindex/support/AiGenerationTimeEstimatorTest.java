@@ -16,8 +16,8 @@ public class AiGenerationTimeEstimatorTest {
     // <editor-fold defaultstate="collapsed" desc="estimatePromptTokens">
     @Test
     public void estimatePromptTokens_addsTemplateOverheadToScaledChars() {
-        // 4200 / 4.2 = 1000 source tokens, + 400 template overhead = 1400.
-        assertThat(estimator.estimatePromptTokens(4200), is(1400));
+        // 4200 / 4.8 = 875 source tokens, + 700 template overhead = 1575.
+        assertThat(estimator.estimatePromptTokens(4200), is(1575));
     }
 
     @Test
@@ -43,8 +43,8 @@ public class AiGenerationTimeEstimatorTest {
     // <editor-fold defaultstate="collapsed" desc="estimateSeconds">
     @Test
     public void estimateSeconds_combinesPrefillAndDecodeRoundedToSeconds() {
-        // n=1400: prefill=35481.04 ms, decode(800)=63001.6 ms, total=98482.64 ms -> 98 s.
-        assertThat(estimator.estimateSeconds(4200, 800), is(98L));
+        // n=1575: prefill=40101.94 ms + decode(800)=65196.8 ms = 105298.74 ms; ×1.15 margin / 1000 -> 121 s.
+        assertThat(estimator.estimateSeconds(4200, 800), is(121L));
     }
 
     @Test

@@ -59,17 +59,25 @@ public class AiGenerationTimeEstimator {
     public static final double DECODE_MS_PER_TOKEN_PER_CONTEXT_TOKEN = 0.01568d;
 
     /**
-     * Measured characters per token for dense Java source (~4.2). Used only to estimate
-     * the token count from a character count; this is deliberately distinct from the
-     * conservative {@code charsPerToken} used for input trimming.
+     * Measured characters per token for real Java source (~4.8, from a linear regression over 7 real
+     * repo files; see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} Phase 5). Used only to estimate
+     * the token count from a character count; this is deliberately distinct from the conservative
+     * {@code charsPerToken} used for input trimming.
      */
-    public static final double ESTIMATION_CHARS_PER_TOKEN = 4.2d;
+    public static final double ESTIMATION_CHARS_PER_TOKEN = 4.8d;
 
     /**
-     * Approximate fixed prompt-template token overhead added on top of the source tokens
-     * (system instructions plus chat-template scaffolding).
+     * Approximate fixed prompt-template token overhead added on top of the source tokens (system +
+     * developer instructions plus chat-template scaffolding); ~700 from the same Phase 5 regression.
      */
-    public static final int PROMPT_TEMPLATE_TOKEN_OVERHEAD = 400;
+    public static final int PROMPT_TEMPLATE_TOKEN_OVERHEAD = 700;
+
+    /**
+     * Display safety margin applied to the final estimate. The chars/token and template constants are
+     * accurate central values (not conservative), so a +15 % margin keeps the logged ETA from
+     * under-promising on the per-file variance observed in the benchmark.
+     */
+    public static final double ETA_SAFETY_MARGIN = 1.15d;
 
     /**
      * Typical number of generated output tokens assumed for the decode part of the
@@ -154,7 +162,7 @@ public class AiGenerationTimeEstimator {
         final int promptTokens = estimatePromptTokens(sourceChars);
         final double millis =
                 estimatePrefillMillis(promptTokens) + estimateDecodeMillis(promptTokens, expectedOutputTokens);
-        return Math.round(millis / MILLIS_PER_SECOND);
+        return Math.round(millis / MILLIS_PER_SECOND * ETA_SAFETY_MARGIN);
     }
 
     /**
