@@ -322,3 +322,28 @@ summary. So top-n-sigma is *not* a safe drop-in here; it offers no accuracy gain
 large files. **Decision: keep `min_p 0.05` as the default; do not adopt top-n-sigma.** (Single rep on
 the 195 cell — could be sampling variance, but min-p is already perfect, so there is no incentive to
 switch.) The `top_n_sigma` plumbing stays in (default off) for future use.
+
+### E4 — swa-full + cache-reuse (batch prefix reuse) — measured: **helps batch runs**
+
+**Setup:** a 6-file batch sharing the system+developer prompt prefix, indexed in one model session.
+**Arm A = default SWA** (`swaFull=false`, `cacheReuse=0`) vs **arm B = `swaFull=true` + `cacheReuse=256`**;
+gpt-oss, temp 0.7, min-p 0.05, low effort. Per-file prefill (tokens / ms) from the llama.cpp log:
+
+| file (order) | A tokens | A prefill | B tokens | B prefill |
+|---|---|---|---|---|
+| 1 | 1585 | 44 s | 1585 | 40 s |
+| 2 | 5231 | 149 s | 4498 | 120 s |
+| 3 | 852 | 23 s | **118** | **3 s** |
+| 4 | 1926 | 51 s | 1926 | 49 s |
+| 5 | 628 | 17 s | **230** | **6 s** |
+| 6 | 1302 | 35 s | 1302 | 32 s |
+| **total prefill** | **11 524 tok / 319 s** | | **9 659 tok / 251 s (−21 %)** |
+| **wall (6 files)** | **710 s** | | **624 s (−12 %)** |
+
+**Finding:** `--swa-full` + `--cache-reuse` **cut batch prefill ~21 % and wall time ~12 %** by reusing
+the shared prompt prefix across files (large savings on files 3 and 5; little on others — reuse fires
+inconsistently, likely slot/cache eviction within the run). This is a real throughput win for the
+plugin's normal mode (indexing a whole project, many files sharing one prompt). Cost: ~2× SWA-layer KV
+RAM, and no benefit for single-file runs. **Decision: candidate default for batch/project indexing
+(deferred to sign-off); plumbing stays in, default off.** Worth a follow-up to make the reuse fire on
+every file (investigate the eviction).
