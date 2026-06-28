@@ -144,7 +144,32 @@ the real practical/​hard ceiling empirically.
 **Question:** the estimator assumes ~4.2 chars/token (from the synthetic fixture); what is it on real
 repo Java?
 
-_Results: pending._
+**Setup:** 7 real source files (966 B … 29 KB) each indexed in its **own** process (so `cache_prompt`
+can't undercount), recording bytes vs the llama.cpp full prompt-eval token count, then a linear fit
+`promptTok = template + bytes / charsPerToken`.
+
+| file | bytes | prompt tok |
+|---|---|---|
+| AiTimeSupport | 966 | 858 |
+| AiCompletionParser | 3 715 | 1 480 |
+| AiMdHeaderCodec | 8 637 | 2 598 |
+| AiModelDefinition | 12 921 | 3 476 |
+| AiGenerationConfig | 15 843 | 4 145 |
+| GenerateMojo | 6 510 | 1 929 |
+| PackageIndexer | 29 086 | 6 664 |
+
+Fit: **`promptTok ≈ 713 + bytes / 4.81`** → real Java is **~4.8 chars/token**, template ≈ **713 tokens**.
+
+**Findings**
+
+1. **Real Java tokenizes at ~4.8 chars/token, not the 4.2 of the synthetic fixture** (real code has
+   more long identifiers/keywords per token). Template overhead is ~713 tokens, not 400.
+2. The estimator's current `ESTIMATION_CHARS_PER_TOKEN=4.2` therefore **over-counts tokens** for real
+   Java → **over-estimates time** (the safe direction, but loose by ~12 %). → **candidate refinement D2.**
+3. **Methodology caveat (important):** with `cache_prompt` on, a multi-file run undercounts per-file
+   prompt-eval tokens (the shared prefix is reused and not re-counted) — the first Phase 5 attempt
+   produced non-monotonic data (a 6.5 KB file showing fewer tokens than a 3.7 KB one). Measuring
+   chars/token requires one file per process (or `cache_prompt=false`).
 
 ## Decisions deferred to the user
 
@@ -154,3 +179,8 @@ _(collected here as the session runs; nothing here is committed as a default cha
   faithful (exact counts) *and* deterministic (reproducible `.ai.md`, no incremental-diff churn), at no
   speed cost. The gpt-oss card recommends 1.0 for general use; for this extraction task the data favors
   0.0. Small sample — recommend confirming with more reps before changing the shipped presets.
+- **D2 — refine the ETA estimator constants for real Java.** Phase 5 measured ~4.8 chars/token and
+  ~713 template tokens on real source, vs the estimator's `ESTIMATION_CHARS_PER_TOKEN=4.2` /
+  `PROMPT_TEMPLATE_TOKEN_OVERHEAD=400`. Bumping to 4.8 / ~700 makes the logged ETA ~12 % more accurate
+  (it currently over-estimates). Low-risk code change (`AiGenerationTimeEstimator` + its test); held for
+  sign-off only because it shifts the user-visible ETA numbers.
