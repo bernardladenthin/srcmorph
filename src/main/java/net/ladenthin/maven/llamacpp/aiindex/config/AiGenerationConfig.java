@@ -166,6 +166,33 @@ public class AiGenerationConfig {
      */
     public static final int DEFAULT_CACHE_REUSE = 0;
 
+    /**
+     * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
+     * {@code 0.0} = disabled (llama.cpp default). A positive value penalises verbatim n-gram
+     * repetition, which can break runaway repetition loops; the other {@code dry*} knobs only take
+     * effect when this is non-zero. Opt-in safety knob for repetition-prone models/configs.
+     */
+    public static final float DEFAULT_DRY_MULTIPLIER = 0.0f;
+
+    /**
+     * Default DRY base ({@code --dry-base}); the exponential growth base of the repetition penalty.
+     * {@code 1.75} = llama.cpp default. Only takes effect when {@link #DEFAULT_DRY_MULTIPLIER} is non-zero.
+     */
+    public static final float DEFAULT_DRY_BASE = 1.75f;
+
+    /**
+     * Default DRY allowed length ({@code --dry-allowed-length}); the longest n-gram that may repeat
+     * without penalty. {@code 2} = llama.cpp default. Only takes effect when DRY is enabled.
+     */
+    public static final int DEFAULT_DRY_ALLOWED_LENGTH = 2;
+
+    /**
+     * Default DRY penalty look-back window in tokens ({@code --dry-penalty-last-n}).
+     * {@code -1} = whole context (llama.cpp default), {@code 0} = disabled. Only takes effect when DRY
+     * is enabled.
+     */
+    public static final int DEFAULT_DRY_PENALTY_LAST_N = -1;
+
     private String modelPath;
     private int contextSize = DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS;
@@ -185,6 +212,11 @@ public class AiGenerationConfig {
     private int cacheReuse = DEFAULT_CACHE_REUSE;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
+    private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
+    private float dryBase = DEFAULT_DRY_BASE;
+    private int dryAllowedLength = DEFAULT_DRY_ALLOWED_LENGTH;
+    private int dryPenaltyLastN = DEFAULT_DRY_PENALTY_LAST_N;
+    private List<String> drySequenceBreakers = new ArrayList<>();
     private List<String> stopStrings = new ArrayList<>();
 
     /**
@@ -530,6 +562,96 @@ public class AiGenerationConfig {
      */
     public void setReasoningBudgetTokens(final int reasoningBudgetTokens) {
         this.reasoningBudgetTokens = reasoningBudgetTokens;
+    }
+
+    /**
+     * Returns the DRY sampling multiplier.
+     *
+     * @return DRY multiplier ({@code 0.0} = disabled)
+     */
+    public float getDryMultiplier() {
+        return dryMultiplier;
+    }
+
+    /**
+     * Sets the DRY sampling multiplier.
+     *
+     * @param dryMultiplier DRY multiplier ({@code 0.0} = disabled)
+     */
+    public void setDryMultiplier(final float dryMultiplier) {
+        this.dryMultiplier = dryMultiplier;
+    }
+
+    /**
+     * Returns the DRY base.
+     *
+     * @return DRY base
+     */
+    public float getDryBase() {
+        return dryBase;
+    }
+
+    /**
+     * Sets the DRY base.
+     *
+     * @param dryBase DRY base
+     */
+    public void setDryBase(final float dryBase) {
+        this.dryBase = dryBase;
+    }
+
+    /**
+     * Returns the DRY allowed length (longest unpenalised repeating n-gram).
+     *
+     * @return DRY allowed length
+     */
+    public int getDryAllowedLength() {
+        return dryAllowedLength;
+    }
+
+    /**
+     * Sets the DRY allowed length.
+     *
+     * @param dryAllowedLength DRY allowed length
+     */
+    public void setDryAllowedLength(final int dryAllowedLength) {
+        this.dryAllowedLength = dryAllowedLength;
+    }
+
+    /**
+     * Returns the DRY penalty look-back window in tokens.
+     *
+     * @return DRY penalty last-n ({@code -1} = whole context, {@code 0} = disabled)
+     */
+    public int getDryPenaltyLastN() {
+        return dryPenaltyLastN;
+    }
+
+    /**
+     * Sets the DRY penalty look-back window in tokens.
+     *
+     * @param dryPenaltyLastN DRY penalty last-n ({@code -1} = whole context, {@code 0} = disabled)
+     */
+    public void setDryPenaltyLastN(final int dryPenaltyLastN) {
+        this.dryPenaltyLastN = dryPenaltyLastN;
+    }
+
+    /**
+     * Returns an unmodifiable view of the configured DRY sequence breakers.
+     *
+     * @return unmodifiable list of DRY sequence breakers (empty = use the model/binding default)
+     */
+    public List<String> getDrySequenceBreakers() {
+        return Collections.unmodifiableList(drySequenceBreakers);
+    }
+
+    /**
+     * Sets the DRY sequence breakers (tokens that reset n-gram matching).
+     *
+     * @param drySequenceBreakers sequence breakers, or {@code null} to reset to empty
+     */
+    public void setDrySequenceBreakers(final @Nullable List<String> drySequenceBreakers) {
+        this.drySequenceBreakers = drySequenceBreakers != null ? drySequenceBreakers : new ArrayList<>();
     }
 
     /**

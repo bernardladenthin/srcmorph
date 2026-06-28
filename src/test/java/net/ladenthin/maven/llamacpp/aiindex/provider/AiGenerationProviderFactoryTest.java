@@ -36,6 +36,11 @@ public class AiGenerationProviderFactoryTest {
                 0,
                 "low",
                 -1,
+                0.0f,
+                1.75f,
+                2,
+                -1,
+                Collections.emptyList(),
                 Collections.emptyList());
     }
 

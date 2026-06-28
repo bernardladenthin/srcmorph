@@ -112,4 +112,57 @@ public class AiModelDefinitionTest {
         d.setReasoningBudgetTokens(2048);
         assertThat(d.getReasoningBudgetTokens(), is(2048));
     }
+
+    @Test
+    public void dryMultiplierDefaultsDisabledAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getDryMultiplier(), is(0.0f));
+        d.setDryMultiplier(0.8f);
+        assertThat(d.getDryMultiplier(), is(0.8f));
+    }
+
+    @Test
+    public void dryBaseDefaultsAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getDryBase(), is(1.75f));
+        d.setDryBase(1.5f);
+        assertThat(d.getDryBase(), is(1.5f));
+    }
+
+    @Test
+    public void dryAllowedLengthDefaultsAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getDryAllowedLength(), is(2));
+        d.setDryAllowedLength(5);
+        assertThat(d.getDryAllowedLength(), is(5));
+    }
+
+    @Test
+    public void dryPenaltyLastNDefaultsWholeContextAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getDryPenaltyLastN(), is(-1));
+        d.setDryPenaltyLastN(256);
+        assertThat(d.getDryPenaltyLastN(), is(256));
+    }
+
+    @Test
+    public void drySequenceBreakersNullByDefault() {
+        assertThat(new AiModelDefinition().getDrySequenceBreakers(), is(nullValue()));
+    }
+
+    @Test
+    public void drySequenceBreakersRoundTrip() {
+        AiModelDefinition d = new AiModelDefinition();
+        d.setDrySequenceBreakers(Arrays.asList("\n", ":"));
+        assertThat(d.getDrySequenceBreakers(), hasItem("\n"));
+        assertThat(d.getDrySequenceBreakers(), hasItem(":"));
+    }
+
+    @Test
+    public void setDrySequenceBreakersNullClearsToNull() {
+        AiModelDefinition d = new AiModelDefinition();
+        d.setDrySequenceBreakers(Arrays.asList("a"));
+        d.setDrySequenceBreakers(null);
+        assertThat(d.getDrySequenceBreakers(), is(nullValue()));
+    }
 }

@@ -52,6 +52,11 @@ public class LlamaCppJniAiGenerationProviderTest {
                 AiGenerationConfig.DEFAULT_CACHE_REUSE,
                 AiGenerationConfig.DEFAULT_REASONING_EFFORT,
                 AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS,
+                AiGenerationConfig.DEFAULT_DRY_MULTIPLIER,
+                AiGenerationConfig.DEFAULT_DRY_BASE,
+                AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH,
+                AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N,
+                Collections.emptyList(),
                 Collections.emptyList());
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
 

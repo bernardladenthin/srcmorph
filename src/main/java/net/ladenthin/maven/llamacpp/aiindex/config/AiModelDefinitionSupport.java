@@ -121,6 +121,11 @@ public final class AiModelDefinitionSupport {
         config.setCacheReuse(definition.getCacheReuse());
         config.setReasoningEffort(definition.getReasoningEffort());
         config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
+        config.setDryMultiplier(definition.getDryMultiplier());
+        config.setDryBase(definition.getDryBase());
+        config.setDryAllowedLength(definition.getDryAllowedLength());
+        config.setDryPenaltyLastN(definition.getDryPenaltyLastN());
+        config.setDrySequenceBreakers(definition.getDrySequenceBreakers());
         return config;
     }
 }

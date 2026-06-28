@@ -236,6 +236,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
             final AiFieldGenerationConfig first = fieldGenerations.get(0);
             final AiGenerationConfig config = buildAiModelDefinitionSupport().getConfig(first.getAiDefinitionKey());
             final List<String> stopStrings = config.getStopStrings();
+            final List<String> drySequenceBreakers = config.getDrySequenceBreakers();
             return new LlamaCppJniConfig(
                     llamaLibraryPath,
                     config.getModelPath(),
@@ -254,6 +255,11 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                     config.getCacheReuse(),
                     config.getReasoningEffort(),
                     config.getReasoningBudgetTokens(),
+                    config.getDryMultiplier(),
+                    config.getDryBase(),
+                    config.getDryAllowedLength(),
+                    config.getDryPenaltyLastN(),
+                    drySequenceBreakers != null ? drySequenceBreakers : Collections.emptyList(),
                     stopStrings != null ? stopStrings : Collections.emptyList());
         }
         return new LlamaCppJniConfig(
@@ -274,6 +280,11 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                 AiGenerationConfig.DEFAULT_CACHE_REUSE,
                 AiGenerationConfig.DEFAULT_REASONING_EFFORT,
                 AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS,
+                AiGenerationConfig.DEFAULT_DRY_MULTIPLIER,
+                AiGenerationConfig.DEFAULT_DRY_BASE,
+                AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH,
+                AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N,
+                Collections.emptyList(),
                 Collections.emptyList());
     }
 

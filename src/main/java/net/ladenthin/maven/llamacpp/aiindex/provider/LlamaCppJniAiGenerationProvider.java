@@ -122,7 +122,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
         // InferenceParameters uses immutable withers: each with* returns a new instance, so the
         // whole request is built as a single chain.
-        final InferenceParameters inferenceParameters = new InferenceParameters("")
+        final InferenceParameters baseParameters = new InferenceParameters("")
                 .withMessages(systemPrompt, messages)
                 .withUseChatTemplate(true)
                 .withTemperature(config.temperature())
@@ -135,12 +135,26 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
                 // Cap harmony analysis (reasoning) tokens so a runaway chain-of-thought cannot
                 // starve the final answer; -1 (default) = unrestricted, so behaviour is unchanged.
                 .withReasoningBudgetTokens(config.reasoningBudgetTokens())
+                // DRY (Don't Repeat Yourself) repetition suppression; multiplier 0.0 (default) = off,
+                // so the base/allowed-length/penalty-last-n knobs have no effect unless opted in.
+                .withDryMultiplier(config.dryMultiplier())
+                .withDryBase(config.dryBase())
+                .withDryAllowedLength(config.dryAllowedLength())
+                .withDryPenaltyLastN(config.dryPenaltyLastN())
                 .withStopStrings(config.stopStrings().toArray(new String[0]))
                 // Keep the shared prompt-template prefix warm in the KV cache and reuse it across
                 // files (pinned to one slot); only the differing source is re-prefilled.
                 // Reuse is exact -> output unchanged.
                 .withCachePrompt(config.cachePrompt())
                 .withSlotId(REUSE_SLOT_ID);
+
+        // Only override the DRY sequence breakers when explicitly configured; an empty list keeps
+        // the binding/model default set instead of clearing it.
+        final InferenceParameters inferenceParameters =
+                config.drySequenceBreakers().isEmpty()
+                        ? baseParameters
+                        : baseParameters.withDrySequenceBreakers(
+                                config.drySequenceBreakers().toArray(new String[0]));
 
         return completionParser.parseCompletion(model().chatCompleteText(inferenceParameters));
     }

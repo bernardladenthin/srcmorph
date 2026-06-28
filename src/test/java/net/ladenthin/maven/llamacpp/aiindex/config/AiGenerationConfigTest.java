@@ -122,4 +122,65 @@ public class AiGenerationConfigTest {
         // Round-tripped value kills the "return 0" getter and removed-assignment setter mutants.
         assertThat(c.getReasoningBudgetTokens(), is(2048));
     }
+
+    @Test
+    public void dryMultiplierDefaultsDisabledAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default 0.0 (disabled) kills the inline-constant / "return 1.0" getter mutants.
+        assertThat(c.getDryMultiplier(), is(0.0f));
+        c.setDryMultiplier(0.8f);
+        // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getDryMultiplier(), is(0.8f));
+    }
+
+    @Test
+    public void dryBaseDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getDryBase(), is(1.75f));
+        c.setDryBase(1.5f);
+        assertThat(c.getDryBase(), is(1.5f));
+    }
+
+    @Test
+    public void dryAllowedLengthDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getDryAllowedLength(), is(2));
+        c.setDryAllowedLength(5);
+        assertThat(c.getDryAllowedLength(), is(5));
+    }
+
+    @Test
+    public void dryPenaltyLastNDefaultsWholeContextAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getDryPenaltyLastN(), is(-1));
+        c.setDryPenaltyLastN(256);
+        assertThat(c.getDryPenaltyLastN(), is(256));
+    }
+
+    @Test
+    public void drySequenceBreakersEmptyByDefault() {
+        // Defaults to an empty (non-null) list. Asserting non-null/empty kills the negate mutant
+        // on the getDrySequenceBreakers null path and the setter ternary.
+        assertThat(new AiGenerationConfig().getDrySequenceBreakers(), is(Collections.<String>emptyList()));
+    }
+
+    @Test
+    public void drySequenceBreakersRoundTripUnmodifiable() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setDrySequenceBreakers(Arrays.asList("\n", ":"));
+        assertThat(c.getDrySequenceBreakers(), hasItem("\n"));
+        assertThat(c.getDrySequenceBreakers(), hasItem(":"));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> c.getDrySequenceBreakers().add("x"));
+    }
+
+    @Test
+    public void setDrySequenceBreakersNullResetsToEmptyList() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setDrySequenceBreakers(Collections.singletonList("a"));
+        c.setDrySequenceBreakers(null);
+        // null arg resets to an EMPTY (non-null) list — kills the negate mutant on the setter ternary.
+        assertThat(c.getDrySequenceBreakers(), is(Collections.<String>emptyList()));
+    }
 }

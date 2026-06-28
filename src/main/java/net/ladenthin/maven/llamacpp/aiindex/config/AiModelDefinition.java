@@ -57,6 +57,11 @@ public class AiModelDefinition {
     private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
+    private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
+    private float dryBase = AiGenerationConfig.DEFAULT_DRY_BASE;
+    private int dryAllowedLength = AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH;
+    private int dryPenaltyLastN = AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N;
+    private @Nullable List<String> drySequenceBreakers;
     private @Nullable List<String> stopStrings;
 
     /**
@@ -414,6 +419,96 @@ public class AiModelDefinition {
      */
     public void setReasoningBudgetTokens(final int reasoningBudgetTokens) {
         this.reasoningBudgetTokens = reasoningBudgetTokens;
+    }
+
+    /**
+     * Returns the DRY sampling multiplier for this model.
+     *
+     * @return DRY multiplier; defaults to {@link AiGenerationConfig#DEFAULT_DRY_MULTIPLIER} (0.0 = off)
+     */
+    public float getDryMultiplier() {
+        return dryMultiplier;
+    }
+
+    /**
+     * Sets the DRY sampling multiplier for this model.
+     *
+     * @param dryMultiplier DRY multiplier ({@code 0.0} = disabled)
+     */
+    public void setDryMultiplier(final float dryMultiplier) {
+        this.dryMultiplier = dryMultiplier;
+    }
+
+    /**
+     * Returns the DRY base for this model.
+     *
+     * @return DRY base; defaults to {@link AiGenerationConfig#DEFAULT_DRY_BASE}
+     */
+    public float getDryBase() {
+        return dryBase;
+    }
+
+    /**
+     * Sets the DRY base for this model.
+     *
+     * @param dryBase DRY base
+     */
+    public void setDryBase(final float dryBase) {
+        this.dryBase = dryBase;
+    }
+
+    /**
+     * Returns the DRY allowed length for this model.
+     *
+     * @return DRY allowed length; defaults to {@link AiGenerationConfig#DEFAULT_DRY_ALLOWED_LENGTH}
+     */
+    public int getDryAllowedLength() {
+        return dryAllowedLength;
+    }
+
+    /**
+     * Sets the DRY allowed length for this model.
+     *
+     * @param dryAllowedLength DRY allowed length
+     */
+    public void setDryAllowedLength(final int dryAllowedLength) {
+        this.dryAllowedLength = dryAllowedLength;
+    }
+
+    /**
+     * Returns the DRY penalty look-back window for this model.
+     *
+     * @return DRY penalty last-n; defaults to {@link AiGenerationConfig#DEFAULT_DRY_PENALTY_LAST_N}
+     */
+    public int getDryPenaltyLastN() {
+        return dryPenaltyLastN;
+    }
+
+    /**
+     * Sets the DRY penalty look-back window for this model.
+     *
+     * @param dryPenaltyLastN DRY penalty last-n ({@code -1} = whole context, {@code 0} = disabled)
+     */
+    public void setDryPenaltyLastN(final int dryPenaltyLastN) {
+        this.dryPenaltyLastN = dryPenaltyLastN;
+    }
+
+    /**
+     * Returns the DRY sequence breakers for this model.
+     *
+     * @return DRY sequence breakers, or {@code null} if not configured (use the model/binding default)
+     */
+    public @Nullable List<String> getDrySequenceBreakers() {
+        return drySequenceBreakers != null ? Collections.unmodifiableList(drySequenceBreakers) : null;
+    }
+
+    /**
+     * Sets the DRY sequence breakers (tokens that reset n-gram matching) for this model.
+     *
+     * @param drySequenceBreakers collection of sequence breakers, or {@code null} to clear
+     */
+    public void setDrySequenceBreakers(final @Nullable Collection<String> drySequenceBreakers) {
+        this.drySequenceBreakers = drySequenceBreakers != null ? new ArrayList<>(drySequenceBreakers) : null;
     }
 
     /**

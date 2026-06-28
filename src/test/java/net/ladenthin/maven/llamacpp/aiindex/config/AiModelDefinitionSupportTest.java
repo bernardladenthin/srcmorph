@@ -53,6 +53,11 @@ public class AiModelDefinitionSupportTest {
         definition.setCacheReuse(128);
         definition.setReasoningEffort("high");
         definition.setReasoningBudgetTokens(512);
+        definition.setDryMultiplier(0.7f);
+        definition.setDryBase(1.5f);
+        definition.setDryAllowedLength(4);
+        definition.setDryPenaltyLastN(128);
+        definition.setDrySequenceBreakers(Arrays.asList("\n", ":"));
         definition.setTopP(0.55f);
         definition.setTopK(21);
         definition.setMinP(0.09f);
@@ -89,6 +94,12 @@ public class AiModelDefinitionSupportTest {
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(512)));
+        // DRY knobs propagate — kill the dropped-setter void-call mutants in toConfig().
+        assertThat(config.getDryMultiplier(), is(equalTo(0.7f)));
+        assertThat(config.getDryBase(), is(equalTo(1.5f)));
+        assertThat(config.getDryAllowedLength(), is(equalTo(4)));
+        assertThat(config.getDryPenaltyLastN(), is(equalTo(128)));
+        assertThat(config.getDrySequenceBreakers(), is(equalTo(Arrays.asList("\n", ":"))));
     }
 
     @Test
@@ -118,6 +129,11 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
         assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));
         assertThat(config.getTopNSigma(), is(equalTo(AiGenerationConfig.DEFAULT_TOP_N_SIGMA)));
+        assertThat(config.getDryMultiplier(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER)));
+        assertThat(config.getDryBase(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_BASE)));
+        assertThat(config.getDryAllowedLength(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH)));
+        assertThat(config.getDryPenaltyLastN(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N)));
+        assertThat(config.getDrySequenceBreakers(), is(Collections.<String>emptyList()));
     }
 
     @Test
