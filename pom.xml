@@ -1364,6 +1364,106 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.0</repeatPenalty>
                                     <reasoningEffort>low</reasoningEffort>
                                 </aiDefinition>
+
+                                <!-- ============================================================
+                                     gpt-oss-20b QUANTIZATION MENU (measured: docs/.../gpt-oss-tuning.md E5)
+                                     ============================================================
+                                     Same 30 KB fixture, identical settings (low effort, temp 0.7,
+                                     min-p 0.05, ctx 32768), one model load each, CPU. All produced a
+                                     complete 9/9-section summary with no retries, so QUALITY IS
+                                     QUANT-INDEPENDENT (gpt-oss is natively MXFP4 -> higher precision
+                                     adds no information). Speed is within run-to-run noise.
+
+                                       quant         file     prefill t/s  decode t/s  sections
+                                       mxfp4(native) 11.3 GB     36.1         5.85        9/9
+                                       UD-Q4_K_XL    11.1 GB     35.1         6.30        9/9   <- DEFAULT (the c16k/c48k/c96k presets above)
+                                       Q4_K_M        10.8 GB     36.6         6.59        9/9   <- smallest + fastest decode (marginal)
+                                       Q5_K_M        10.9 GB     32.1         5.96        9/9
+                                       Q8_0          11.3 GB     36.3         6.24        9/9
+                                       F16           12.85 GB    39.1         5.40        9/9   <- NOT recommended: biggest + slowest, no quality gain
+
+                                     Guidance: keep UD-Q4_K_XL (default). Q4_K_M is a hair smaller/faster
+                                     if you want it. Do NOT use Q8_0/F16 - more RAM, no quality benefit.
+                                     The five defs below are c96k-context quant swaps of the default; pick
+                                     one by referencing its key as <aiDefinitionKey>. UD-Q4_K_XL is already
+                                     covered by gpt-oss-20B-c96k above.
+                                     ============================================================ -->
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-mxfp4</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-mxfp4.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-Q4_K_M</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-Q4_K_M.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-Q5_K_M</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-Q5_K_M.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-Q8_0</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-Q8_0.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-F16</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-F16.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+
                                 <aiDefinition>
                                     <key>EXP-Qwen3-Coder-30B</key>
                                     <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
