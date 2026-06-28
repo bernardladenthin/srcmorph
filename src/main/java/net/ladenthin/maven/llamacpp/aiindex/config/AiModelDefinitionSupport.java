@@ -114,6 +114,7 @@ public final class AiModelDefinitionSupport {
         config.setTopP(definition.getTopP());
         config.setTopK(definition.getTopK());
         config.setMinP(definition.getMinP());
+        config.setTopNSigma(definition.getTopNSigma());
         config.setRepeatPenalty(definition.getRepeatPenalty());
         config.setStopStrings(definition.getStopStrings());
         config.setChatTemplateEnableThinking(definition.isChatTemplateEnableThinking());

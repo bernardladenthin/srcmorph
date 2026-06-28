@@ -28,6 +28,7 @@ public class AiGenerationProviderFactoryTest {
                 0.9f,
                 40,
                 0.0f,
+                -1.0f,
                 1.1f,
                 false,
                 true,

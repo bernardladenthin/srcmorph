@@ -51,6 +51,7 @@ public class AiModelDefinition {
     private float topP = AiGenerationConfig.DEFAULT_TOP_P;
     private int topK = AiGenerationConfig.DEFAULT_TOP_K;
     private float minP = AiGenerationConfig.DEFAULT_MIN_P;
+    private float topNSigma = AiGenerationConfig.DEFAULT_TOP_N_SIGMA;
     private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
@@ -314,6 +315,24 @@ public class AiModelDefinition {
      */
     public void setMinP(final float minP) {
         this.minP = minP;
+    }
+
+    /**
+     * Returns the top-n-sigma sampling threshold.
+     *
+     * @return top-n-sigma threshold; defaults to {@link AiGenerationConfig#DEFAULT_TOP_N_SIGMA} ({@code -1.0} = disabled)
+     */
+    public float getTopNSigma() {
+        return topNSigma;
+    }
+
+    /**
+     * Sets the top-n-sigma sampling threshold (temperature-invariant truncation; -1.0 disables it).
+     *
+     * @param topNSigma top-n-sigma threshold; {@code -1.0} disables it
+     */
+    public void setTopNSigma(final float topNSigma) {
+        this.topNSigma = topNSigma;
     }
 
     /**

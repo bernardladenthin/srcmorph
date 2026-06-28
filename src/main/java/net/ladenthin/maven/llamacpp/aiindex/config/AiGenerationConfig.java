@@ -117,6 +117,14 @@ public class AiGenerationConfig {
     public static final float DEFAULT_MIN_P = 0.0f;
 
     /**
+     * Default top-n-sigma sampling threshold. A value of {@code -1.0} disables it and preserves
+     * existing behaviour. top-n-sigma keeps tokens within n standard deviations of the max logit;
+     * unlike top-p/min-p its candidate set is temperature-invariant, which can make structured
+     * extraction more reproducible (see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} E6).
+     */
+    public static final float DEFAULT_TOP_N_SIGMA = -1.0f;
+
+    /**
      * Default repetition penalty. A value of {@code 1.0} means no penalty and preserves
      * existing behaviour for models that do not specify it.
      */
@@ -165,6 +173,7 @@ public class AiGenerationConfig {
     private float topP = DEFAULT_TOP_P;
     private int topK = DEFAULT_TOP_K;
     private float minP = DEFAULT_MIN_P;
+    private float topNSigma = DEFAULT_TOP_N_SIGMA;
     private float repeatPenalty = DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
@@ -423,6 +432,24 @@ public class AiGenerationConfig {
      */
     public void setMinP(final float minP) {
         this.minP = minP;
+    }
+
+    /**
+     * Returns the top-n-sigma sampling threshold.
+     *
+     * @return top-n-sigma threshold ({@code -1.0} = disabled)
+     */
+    public float getTopNSigma() {
+        return topNSigma;
+    }
+
+    /**
+     * Sets the top-n-sigma sampling threshold.
+     *
+     * @param topNSigma top-n-sigma threshold ({@code -1.0} = disabled)
+     */
+    public void setTopNSigma(final float topNSigma) {
+        this.topNSigma = topNSigma;
     }
 
     /**

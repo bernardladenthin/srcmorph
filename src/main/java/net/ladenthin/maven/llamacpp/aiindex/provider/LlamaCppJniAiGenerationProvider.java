@@ -126,6 +126,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
                 .withTopP(config.topP())
                 .withTopK(config.topK())
                 .withMinP(config.minP())
+                .withTopNSigma(config.topNSigma())
                 .withRepeatPenalty(config.repeatPenalty())
                 .withStopStrings(config.stopStrings().toArray(new String[0]))
                 // Keep the shared prompt-template prefix warm in the KV cache and reuse it across

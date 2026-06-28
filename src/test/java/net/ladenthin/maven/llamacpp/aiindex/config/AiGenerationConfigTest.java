@@ -82,4 +82,14 @@ public class AiGenerationConfigTest {
         // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
         assertThat(c.getMinP(), is(0.05f));
     }
+
+    @Test
+    public void topNSigmaDefaultsDisabledAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1.0 (disabled) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getTopNSigma(), is(-1.0f));
+        c.setTopNSigma(1.5f);
+        // Round-tripped value kills the getter "return 0" and removed-assignment setter mutants.
+        assertThat(c.getTopNSigma(), is(1.5f));
+    }
 }

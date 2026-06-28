@@ -78,4 +78,14 @@ public class AiModelDefinitionTest {
         // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
         assertThat(d.getMinP(), is(0.05f));
     }
+
+    @Test
+    public void topNSigmaDefaultsDisabledAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        // Default -1.0 (disabled) kills the inline-constant / "return 0" getter mutants.
+        assertThat(d.getTopNSigma(), is(-1.0f));
+        d.setTopNSigma(1.5f);
+        // Round-tripped value kills the getter "return 0" and removed-assignment setter mutants.
+        assertThat(d.getTopNSigma(), is(1.5f));
+    }
 }
