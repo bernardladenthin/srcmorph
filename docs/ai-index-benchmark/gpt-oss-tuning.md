@@ -8,6 +8,21 @@ unattended, and document everything here.
 - **Git baseline before the session:** `f14819b` (branch `claude2026_06_26_00`).
 - **Date:** 2026-06-27.
 
+## Summary (TL;DR)
+
+| Phase | Question | Answer |
+|---|---|---|
+| 1 | Is higher `reasoning_effort` more accurate at adequate budget? | **No** — low/medium/high are equally accurate when not truncated; higher effort just decodes 4–8× more reasoning tokens (2–3× slower). `low` confirmed as default. |
+| 2 | Lower temperature for extraction? | **Yes** — temp 0.0/0.3 are exact and 0.0 is deterministic; 0.7/1.0 introduce miscounts. → **D1** |
+| 3 | Can a prompt fix the large-file miscount? | **Yes** — a "count exactly" prompt turned a wrong "150" into the exact "195" at no cost. → **D3** |
+| 4 | Does the timing model hold? | **Yes** — `prefill ≈ 24.4·n + 0.000674·n²` within +1.1…+2.6 % over 25–150 KB. Count accuracy degrades with scale (exact ≤128 methods, off at 195). |
+| 5 | Real-Java chars/token? | **~4.8** (not the fixture's 4.2); template ~713 tokens. Estimator over-estimates time ~12 %. → **D2** |
+
+**Net:** the shipped defaults (gpt-oss, `reasoningEffort=low`, c96k) are validated. Three low-risk
+improvements are recommended but **held for sign-off** (see *Decisions deferred*): **D1** temp 0.0,
+**D2** estimator constants, **D3** count-exact prompt. The combination of D1 + D3 directly fixes the
+structural-count weakness that affects every model in the original benchmark.
+
 ## Method — objective scoring via ground-truth fixtures
 
 The benchmark cells run the real `generate` goal on a **synthetic Java fixture of known structure**
@@ -110,7 +125,24 @@ worth more reps before locking in.* → **candidate default change (deferred to 
 **Question:** can a gpt-oss-tuned prompt (explicit "state exact counts; recount before finalizing")
 cut the structural-count error we observed ("260 vs 329 methods")?
 
-_Results: pending._
+**Setup:** the case where the base prompt *fails* — 150 KB fixture (195 methods), temp 0 (deterministic),
+low effort. Base prompt (`file-body-java`) vs a count-focused variant (`file-body-java-count`) that adds
+two instructions: in *Public API*, "give the EXACT total count and index range for a member family", and
+a *Rule* "COUNT EXACTLY … recount … never approximate or write 'similar'".
+
+| prompt | what it wrote | true | count error | wall | sections |
+|---|---|---|---|---|---|
+| `file-body-java` (base) | "150 bucket methods (1–150)" | 195 | **45** | 2239 s | 9/9 |
+| `file-body-java-count` | "adjustBucket1..adjustBucket195 (**195 total**)" | 195 | **0** | 2254 s | 9/9 |
+
+**Findings**
+
+1. **The count-focused prompt eliminates the large-file miscount.** The base prompt rounded to a wrong
+   "150"; the variant reported the exact 195 — at the **same speed and completeness**. So the miscount is
+   not a hard model limit; an explicit "count exactly / give the range" instruction fixes it.
+2. Combined with Phase 2 (temp) and Phase 4 (scale), the structural-count error has **two cheap
+   mitigations** — low temperature and an exact-count prompt — that together should keep counts correct
+   well beyond where the stock setup fails. → **candidate prompt improvement D3.**
 
 ## Phase 4 — timing model + context ceiling refinement
 
@@ -184,3 +216,7 @@ _(collected here as the session runs; nothing here is committed as a default cha
   `PROMPT_TEMPLATE_TOKEN_OVERHEAD=400`. Bumping to 4.8 / ~700 makes the logged ETA ~12 % more accurate
   (it currently over-estimates). Low-risk code change (`AiGenerationTimeEstimator` + its test); held for
   sign-off only because it shifts the user-visible ETA numbers.
+- **D3 — fold the "count exactly" instructions into the production `file-body-java` prompt.** Phase 3
+  shows the variant fixes the large-file miscount (exact 195 vs the base's wrong "150") at no cost. The
+  change is two prompt lines (a *Public API* family-count instruction + a *COUNT EXACTLY* rule).
+  Strongest-evidence, lowest-risk of the three; recommended. Held only because it edits the shipped prompt.
