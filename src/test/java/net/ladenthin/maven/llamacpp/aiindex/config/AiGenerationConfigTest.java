@@ -92,4 +92,24 @@ public class AiGenerationConfigTest {
         // Round-tripped value kills the getter "return 0" and removed-assignment setter mutants.
         assertThat(c.getTopNSigma(), is(1.5f));
     }
+
+    @Test
+    public void swaFullDefaultsFalseAndTogglesTrue() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default false kills the "return true" getter mutant.
+        assertThat(c.isSwaFull(), is(false));
+        c.setSwaFull(true);
+        // Observing true kills the "return false" getter and removed-assignment setter mutants.
+        assertThat(c.isSwaFull(), is(true));
+    }
+
+    @Test
+    public void cacheReuseDefaultsZeroAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default 0 (disabled) kills the inline-constant getter mutant.
+        assertThat(c.getCacheReuse(), is(0));
+        c.setCacheReuse(256);
+        // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getCacheReuse(), is(256));
+    }
 }

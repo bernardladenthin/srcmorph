@@ -51,6 +51,8 @@ public class AiModelDefinitionSupportTest {
         definition.setRetryTemperatureIncrement(0.2f);
         definition.setChatTemplateEnableThinking(false);
         definition.setCachePrompt(false);
+        definition.setSwaFull(true);
+        definition.setCacheReuse(128);
         definition.setReasoningEffort("high");
         definition.setTopP(0.55f);
         definition.setTopK(21);
@@ -85,6 +87,8 @@ public class AiModelDefinitionSupportTest {
         // Non-default cachePrompt propagates — kills the void-call mutant that would drop the
         // setCachePrompt(...) copy from toConfig().
         assertThat(config.isCachePrompt(), is(false));
+        assertThat(config.isSwaFull(), is(true));
+        assertThat(config.getCacheReuse(), is(equalTo(128)));
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
     }
@@ -114,6 +118,8 @@ public class AiModelDefinitionSupportTest {
                 is(equalTo(AiGenerationConfig.DEFAULT_RETRY_TEMPERATURE_INCREMENT)));
         assertThat(config.isChatTemplateEnableThinking(), is(AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
         assertThat(config.isCachePrompt(), is(AiGenerationConfig.DEFAULT_CACHE_PROMPT));
+        assertThat(config.isSwaFull(), is(AiGenerationConfig.DEFAULT_SWA_FULL));
+        assertThat(config.getCacheReuse(), is(equalTo(AiGenerationConfig.DEFAULT_CACHE_REUSE)));
         assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
         assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));
         assertThat(config.getTopNSigma(), is(equalTo(AiGenerationConfig.DEFAULT_TOP_N_SIGMA)));

@@ -160,6 +160,21 @@ public class AiGenerationConfig {
      */
     public static final String DEFAULT_REASONING_EFFORT = "low";
 
+    /**
+     * Default for whether the full-size sliding-window-attention (SWA) KV cache is kept
+     * ({@code --swa-full}). {@code false} = llama.cpp default (window-sized SWA KV, ~half the RAM but
+     * not reusable across requests). Set {@code true} to keep the full SWA KV so the shared prompt
+     * prefix can be reused across files (pairs with {@link #DEFAULT_CACHE_REUSE}); see E4.
+     */
+    public static final boolean DEFAULT_SWA_FULL = false;
+
+    /**
+     * Default minimum chunk size (tokens) for cross-request KV prefix reuse ({@code --cache-reuse}).
+     * {@code 0} = disabled (llama.cpp default). A positive value lets the server reuse a matching
+     * prompt prefix from a previous request instead of re-prefilling it.
+     */
+    public static final int DEFAULT_CACHE_REUSE = 0;
+
     private String modelPath;
     private int contextSize = DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS;
@@ -177,6 +192,8 @@ public class AiGenerationConfig {
     private float repeatPenalty = DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
+    private boolean swaFull = DEFAULT_SWA_FULL;
+    private int cacheReuse = DEFAULT_CACHE_REUSE;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private List<String> stopStrings = new ArrayList<>();
 
@@ -477,6 +494,42 @@ public class AiGenerationConfig {
      */
     public boolean isCachePrompt() {
         return cachePrompt;
+    }
+
+    /**
+     * Returns whether the full-size SWA KV cache is kept ({@code --swa-full}).
+     *
+     * @return {@code true} when full SWA KV is kept
+     */
+    public boolean isSwaFull() {
+        return swaFull;
+    }
+
+    /**
+     * Sets whether the full-size SWA KV cache is kept ({@code --swa-full}).
+     *
+     * @param swaFull {@code true} to keep full SWA KV (enables cross-request prefix reuse, more RAM)
+     */
+    public void setSwaFull(final boolean swaFull) {
+        this.swaFull = swaFull;
+    }
+
+    /**
+     * Returns the KV prefix-reuse minimum chunk size ({@code --cache-reuse}).
+     *
+     * @return cache-reuse chunk size ({@code 0} = disabled)
+     */
+    public int getCacheReuse() {
+        return cacheReuse;
+    }
+
+    /**
+     * Sets the KV prefix-reuse minimum chunk size ({@code --cache-reuse}).
+     *
+     * @param cacheReuse chunk size in tokens ({@code 0} = disabled)
+     */
+    public void setCacheReuse(final int cacheReuse) {
+        this.cacheReuse = cacheReuse;
     }
 
     /**

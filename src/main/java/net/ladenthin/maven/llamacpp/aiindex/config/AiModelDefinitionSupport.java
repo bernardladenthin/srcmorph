@@ -119,6 +119,8 @@ public final class AiModelDefinitionSupport {
         config.setStopStrings(definition.getStopStrings());
         config.setChatTemplateEnableThinking(definition.isChatTemplateEnableThinking());
         config.setCachePrompt(definition.isCachePrompt());
+        config.setSwaFull(definition.isSwaFull());
+        config.setCacheReuse(definition.getCacheReuse());
         config.setReasoningEffort(definition.getReasoningEffort());
         return config;
     }

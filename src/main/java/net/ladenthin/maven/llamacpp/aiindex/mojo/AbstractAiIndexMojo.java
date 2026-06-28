@@ -250,6 +250,8 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                     config.getRepeatPenalty(),
                     config.isChatTemplateEnableThinking(),
                     config.isCachePrompt(),
+                    config.isSwaFull(),
+                    config.getCacheReuse(),
                     config.getReasoningEffort(),
                     stopStrings != null ? stopStrings : Collections.emptyList());
         }
@@ -267,6 +269,8 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
                 AiGenerationConfig.DEFAULT_REPEAT_PENALTY,
                 AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING,
                 AiGenerationConfig.DEFAULT_CACHE_PROMPT,
+                AiGenerationConfig.DEFAULT_SWA_FULL,
+                AiGenerationConfig.DEFAULT_CACHE_REUSE,
                 AiGenerationConfig.DEFAULT_REASONING_EFFORT,
                 Collections.emptyList());
     }

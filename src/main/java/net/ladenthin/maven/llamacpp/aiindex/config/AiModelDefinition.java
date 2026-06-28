@@ -55,6 +55,8 @@ public class AiModelDefinition {
     private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
     private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
+    private boolean swaFull = AiGenerationConfig.DEFAULT_SWA_FULL;
+    private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private @Nullable List<String> stopStrings;
 
@@ -375,6 +377,42 @@ public class AiModelDefinition {
      */
     public void setCachePrompt(final boolean cachePrompt) {
         this.cachePrompt = cachePrompt;
+    }
+
+    /**
+     * Returns whether the full-size SWA KV cache is kept ({@code --swa-full}) for this model.
+     *
+     * @return {@code true} to keep full SWA KV; defaults to {@link AiGenerationConfig#DEFAULT_SWA_FULL}
+     */
+    public boolean isSwaFull() {
+        return swaFull;
+    }
+
+    /**
+     * Sets whether the full-size SWA KV cache is kept ({@code --swa-full}) for this model.
+     *
+     * @param swaFull {@code true} keeps full SWA KV (enables cross-request prefix reuse, more RAM)
+     */
+    public void setSwaFull(final boolean swaFull) {
+        this.swaFull = swaFull;
+    }
+
+    /**
+     * Returns the KV prefix-reuse minimum chunk size ({@code --cache-reuse}) for this model.
+     *
+     * @return cache-reuse chunk size; defaults to {@link AiGenerationConfig#DEFAULT_CACHE_REUSE} (0 = off)
+     */
+    public int getCacheReuse() {
+        return cacheReuse;
+    }
+
+    /**
+     * Sets the KV prefix-reuse minimum chunk size ({@code --cache-reuse}) for this model.
+     *
+     * @param cacheReuse chunk size in tokens ({@code 0} = disabled)
+     */
+    public void setCacheReuse(final int cacheReuse) {
+        this.cacheReuse = cacheReuse;
     }
 
     /**

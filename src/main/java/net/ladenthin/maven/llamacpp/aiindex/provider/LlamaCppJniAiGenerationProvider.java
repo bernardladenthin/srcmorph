@@ -95,6 +95,15 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
                     // reasoning_content so message content stays clean (final channel only).
                     .setReasoningFormat(ReasoningFormat.AUTO)
                     .setChatTemplateKwargs(chatTemplateKwargs);
+            // Keep the full-size SWA KV cache so the sliding-window layers' KV is reusable across
+            // files (restores prompt-prefix reuse for gpt-oss), at the cost of more KV RAM.
+            if (config.swaFull()) {
+                modelParameters.enableSwaFull();
+            }
+            // Enable cross-request KV prefix reuse (min chunk size in tokens) when configured.
+            if (config.cacheReuse() > 0) {
+                modelParameters.setCacheReuse(config.cacheReuse());
+            }
             current = new LlamaModel(modelParameters);
             model = current;
         }

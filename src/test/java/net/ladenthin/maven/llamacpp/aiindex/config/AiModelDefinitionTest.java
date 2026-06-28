@@ -88,4 +88,20 @@ public class AiModelDefinitionTest {
         // Round-tripped value kills the getter "return 0" and removed-assignment setter mutants.
         assertThat(d.getTopNSigma(), is(1.5f));
     }
+
+    @Test
+    public void swaFullDefaultsFalseAndTogglesTrue() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.isSwaFull(), is(false));
+        d.setSwaFull(true);
+        assertThat(d.isSwaFull(), is(true));
+    }
+
+    @Test
+    public void cacheReuseDefaultsZeroAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getCacheReuse(), is(0));
+        d.setCacheReuse(256);
+        assertThat(d.getCacheReuse(), is(256));
+    }
 }
