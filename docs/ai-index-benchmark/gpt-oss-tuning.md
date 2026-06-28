@@ -298,3 +298,27 @@ change; for per-request control (uniform with min-p etc.) a `withDry*` addition 
 **Bottom line:** the shipped D1/D2/D3 config is **verified safe and faithful on-machine** and judged
 sound by an adversarial external review. No further default change is required; E1–E6 are optional
 enhancements held for sign-off.
+
+## E-series enhancement experiments (CPU)
+
+The binding gained per-request `top_n_sigma`, `dry*`, `reasoning_budget`, and model-level `--swa-full`
+(snapshot `5.0.3-20260628.125715-10`). Each enhancement is plumbed into the plugin behind a
+default-off switch (production config unchanged) and measured.
+
+### E6 — top-n-sigma vs min-p — measured: **keep min-p**
+
+**Setup:** shipped config except sampling: **arm A = min-p 0.05** (top-n-sigma off), **arm B =
+top-n-sigma 1.0** (min-p off); temp 0.7, low effort, ground-truth fixtures 26/128/195 methods.
+
+| file | arm A (min-p 0.05) | arm B (top-n-sigma 1.0) |
+|---|---|---|
+| 24 KB / 26 ×2 | count 0 err, complete | count 0 err, complete |
+| 100 KB / 128 | count 0 err, complete | count 0 err, complete |
+| **150 KB / 195** | **count 0 err, complete** | **INCOMPLETE — lead only, 0/9 sections** (early stop after the blockquote; no loop, no trim) |
+
+**Finding:** top-n-sigma ties min-p on small/medium files but **failed the hardest case** — on the
+195-method file it emitted only the one-line lead and stopped, where min-p produced the full, exact
+summary. So top-n-sigma is *not* a safe drop-in here; it offers no accuracy gain and is riskier on
+large files. **Decision: keep `min_p 0.05` as the default; do not adopt top-n-sigma.** (Single rep on
+the 195 cell — could be sampling variance, but min-p is already perfect, so there is no incentive to
+switch.) The `top_n_sigma` plumbing stays in (default off) for future use.
