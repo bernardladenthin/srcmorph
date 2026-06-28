@@ -178,7 +178,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
 
             // 2. Plan the run: which model + prompt each file gets (or skip / unmatched).
             final AiIndexPlan plan = fileIndexer.classify(candidates, fieldGenerations);
-            getLog().info(plan.renderTree(basePath));
+            getLog().info("AI index plan (Markdown):\n" + plan.renderMarkdown(basePath));
 
             // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
             if (!plan.unmatched().isEmpty()) {

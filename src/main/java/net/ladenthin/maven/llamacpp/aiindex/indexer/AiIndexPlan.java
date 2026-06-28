@@ -9,32 +9,36 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
 
 /**
  * The routing plan for one {@code generate} run: which files each AI model will index (with which
  * prompt), which files are skipped, and which matched no rule.
  *
  * <p>Built in a planning pass <em>before</em> any inference so the user sees the full mapping up front
- * (see {@link #renderTree}) and a misconfiguration fails fast. Routed files are grouped by
+ * (see {@link #renderMarkdown}) and a misconfiguration fails fast. Routed files are grouped by
  * {@code aiDefinitionKey} (the model id, which carries the full parameter set) so the executor can load
  * each model exactly once.</p>
  */
 public final class AiIndexPlan {
 
-    /** A single planned file together with the rule that routed it. */
+    /** A single planned file together with the rule that routed it and its rough time estimate. */
     public static final class Entry {
         private final Path file;
         private final AiFieldGenerationConfig rule;
+        private final long estimatedSeconds;
 
         /**
          * Creates a plan entry.
          *
-         * @param file the source file
-         * @param rule the rule that selected it
+         * @param file             the source file
+         * @param rule             the rule that selected it
+         * @param estimatedSeconds the rough estimated generation time in seconds
          */
-        public Entry(final Path file, final AiFieldGenerationConfig rule) {
+        public Entry(final Path file, final AiFieldGenerationConfig rule, final long estimatedSeconds) {
             this.file = file;
             this.rule = rule;
+            this.estimatedSeconds = estimatedSeconds;
         }
 
         /**
@@ -54,6 +58,15 @@ public final class AiIndexPlan {
         public AiFieldGenerationConfig rule() {
             return rule;
         }
+
+        /**
+         * Returns the rough estimated generation time in seconds.
+         *
+         * @return the estimated seconds
+         */
+        public long estimatedSeconds() {
+            return estimatedSeconds;
+        }
     }
 
     private final Map<String, List<Entry>> routesByModel = new LinkedHashMap<>();
@@ -68,12 +81,19 @@ public final class AiIndexPlan {
     /**
      * Records a routed file under its model id.
      *
-     * @param aiDefinitionKey the model id (rule's {@code aiDefinitionKey})
-     * @param file            the source file
-     * @param rule            the routing rule
+     * @param aiDefinitionKey  the model id (rule's {@code aiDefinitionKey})
+     * @param file             the source file
+     * @param rule             the routing rule
+     * @param estimatedSeconds the rough estimated generation time in seconds
      */
-    public void addRoute(final String aiDefinitionKey, final Path file, final AiFieldGenerationConfig rule) {
-        routesByModel.computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>()).add(new Entry(file, rule));
+    public void addRoute(
+            final String aiDefinitionKey,
+            final Path file,
+            final AiFieldGenerationConfig rule,
+            final long estimatedSeconds) {
+        routesByModel
+                .computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>())
+                .add(new Entry(file, rule, estimatedSeconds));
     }
 
     /**
@@ -135,48 +155,87 @@ public final class AiIndexPlan {
     }
 
     /**
-     * Renders a human-readable tree of the plan: each model id, the files it will index and their
-     * prompt ids, then the skipped and unmatched files. Paths are shown relative to {@code baseDir}.
+     * Returns the summed estimated seconds for one model's entries.
+     *
+     * @param entries the model's planned entries
+     * @return the total estimated seconds
+     */
+    private long modelSeconds(final List<Entry> entries) {
+        long total = 0;
+        for (final Entry entry : entries) {
+            total += entry.estimatedSeconds();
+        }
+        return total;
+    }
+
+    /**
+     * Returns the grand total of estimated seconds across all routed files.
+     *
+     * @return the total estimated seconds
+     */
+    public long totalEstimatedSeconds() {
+        long total = 0;
+        for (final List<Entry> entries : routesByModel.values()) {
+            total += modelSeconds(entries);
+        }
+        return total;
+    }
+
+    /**
+     * Renders the plan as a Markdown document for the build log: a summary, one section + table per
+     * model (file → prompt → rough time estimate) with a per-model subtotal, a grand total, and the
+     * skipped / unmatched lists. Markdown so it can be copied straight out of the console. Paths are
+     * relative to {@code baseDir}; the time column is a rough estimate (see {@code AiGenerationTimeEstimator}).
      *
      * @param baseDir directory to relativize file paths against for readability
-     * @return the multi-line tree
+     * @return the Markdown document
      */
-    public String renderTree(final Path baseDir) {
+    public String renderMarkdown(final Path baseDir) {
+        final AiGenerationTimeEstimator estimator = new AiGenerationTimeEstimator();
         final StringBuilder sb = new StringBuilder();
-        sb.append("AI index plan: ")
+        sb.append("## AI index plan\n\n");
+        sb.append("**Total:** ")
                 .append(routedCount())
                 .append(" file(s) across ")
                 .append(routesByModel.size())
-                .append(" model(s), ")
+                .append(" model(s), est. ")
+                .append(estimator.formatDuration(totalEstimatedSeconds()))
+                .append(" - ")
                 .append(skipped.size())
                 .append(" skipped, ")
                 .append(unmatched.size())
-                .append(" unmatched");
+                .append(" unmatched _(time is a rough estimate)_\n");
         for (final Map.Entry<String, List<Entry>> group : routesByModel.entrySet()) {
-            sb.append("\n  model ")
+            final List<Entry> entries = group.getValue();
+            sb.append("\n### Model `")
                     .append(group.getKey())
-                    .append(" (")
-                    .append(group.getValue().size())
-                    .append("):");
-            for (final Entry entry : group.getValue()) {
-                sb.append("\n    - ")
+                    .append("` - ")
+                    .append(entries.size())
+                    .append(" file(s), est. ")
+                    .append(estimator.formatDuration(modelSeconds(entries)))
+                    .append("\n\n| File | Prompt | Est. |\n|---|---|---|\n");
+            for (final Entry entry : entries) {
+                sb.append("| ")
                         .append(relativize(baseDir, entry.file()))
-                        .append(" : prompt ")
-                        .append(entry.rule().getPromptKey());
+                        .append(" | ")
+                        .append(entry.rule().getPromptKey())
+                        .append(" | ")
+                        .append(estimator.formatDuration(entry.estimatedSeconds()))
+                        .append(" |\n");
             }
         }
         if (!skipped.isEmpty()) {
-            sb.append("\n  skipped (").append(skipped.size()).append("):");
+            sb.append("\n### Skipped (").append(skipped.size()).append(")\n\n");
             for (final Path file : skipped) {
-                sb.append("\n    - ").append(relativize(baseDir, file));
+                sb.append("- ").append(relativize(baseDir, file)).append("\n");
             }
         }
         if (!unmatched.isEmpty()) {
-            sb.append("\n  UNMATCHED - no rule and no fallback (")
+            sb.append("\n### (!) Unmatched - no rule and no fallback (")
                     .append(unmatched.size())
-                    .append("):");
+                    .append(")\n\n");
             for (final Path file : unmatched) {
-                sb.append("\n    ! ").append(relativize(baseDir, file));
+                sb.append("- ").append(relativize(baseDir, file)).append("\n");
             }
         }
         return sb.toString();

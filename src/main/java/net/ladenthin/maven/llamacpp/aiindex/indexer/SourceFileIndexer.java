@@ -21,6 +21,7 @@ import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport;
@@ -78,6 +79,7 @@ public class SourceFileIndexer {
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
     private final AiFieldGenerationSelector fieldGenerationSelector = new AiFieldGenerationSelector();
+    private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
 
     /**
      * Creates a new {@link SourceFileIndexer}. The AI provider and rules are supplied later
@@ -185,7 +187,9 @@ public class SourceFileIndexer {
             } else if (rule.isSkip()) {
                 plan.addSkipped(file);
             } else {
-                plan.addRoute(rule.getAiDefinitionKey(), file, rule);
+                final long estimatedSeconds =
+                        timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
+                plan.addRoute(rule.getAiDefinitionKey(), file, rule, estimatedSeconds);
             }
         }
         return plan;
