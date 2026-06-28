@@ -376,3 +376,53 @@ is not truncated at the budget. So the budget cannot be relied on as a safety ra
    the old retry loop (initial + 3 retries), all blank. This made the **retry mechanism's
    cost-without-benefit obvious and motivated removing it entirely** (see the retry-removal change): a
    blank body now fails fast with a single `WARN` instead of re-inferring 3× to the same empty result.
+
+### Retry mechanism removed (follow-up from E2)
+
+The empty-body retry loop (initial generation + up to `maxRetries` re-inferences at an escalating
+temperature) was an early band-aid for EOS-early empty responses. With the shipped config (non-greedy
+temp 0.7, system/user prompt split, adequate output budget) empty bodies no longer occur in normal
+operation, and E2 showed that when they *do* occur (reasoning overrun) the retry is deterministically
+counterproductive — it re-infers to the same empty result, wasting ~27 min for nothing. The whole
+mechanism (loop, `maxRetries`, `retryTemperatureIncrement`, the `generate(request, temperatureOverride)`
+provider overload) was removed; a blank body now fails fast with one `WARN`. There is no replacement
+knob: fail-fast is unconditional.
+
+### E1 — DRY repetition suppression — plumbed as an opt-in safety knob (default off)
+
+**What it is:** DRY (Don't Repeat Yourself) penalises verbatim n-gram repetition during sampling, which
+is the standard mitigation for runaway repetition loops (the degenerate "stuck repeating the same line"
+failure mode). The binding exposes it per-request (`withDryMultiplier/Base/AllowedLength/PenaltyLastN/
+SequenceBreakers`), so unlike E2's reasoning budget it is **actually wired through to llama.cpp's
+sampler**, not a no-op.
+
+**Decision — plumbed, default off, no measurement run.** The shipped gpt-oss config (low effort,
+temp 0.7, min-p 0.05) does **not** exhibit repetition loops in any of the Phase 1–5 / E-series runs, so
+there is no loop for DRY to fix on the default path; a with/without-DRY A/B would only confirm the
+obvious on a contrived loop-prone config (e.g. greedy / temp 0, which we deliberately do not ship —
+see D1 and the "reasoning blackhole" note). Rather than burn model time demonstrating that, DRY is
+shipped as five **opt-in, per-request knobs that are completely neutral by default**
+(`dryMultiplier=0.0` disables the sampler; `dryBase=1.75`, `dryAllowedLength=2`, `dryPenaltyLastN=-1`,
+`drySequenceBreakers=∅` mirror the llama.cpp defaults). This matches the project rule of keeping every
+sampling feature available for other models/users while never changing the shipped default behaviour.
+**When to enable:** a different model or a high-temperature/creative config that starts looping —
+set `dryMultiplier` to ~0.8 and tune from there.
+
+---
+
+## Opt-in sampling & cache knobs (reference for other models/users)
+
+Every experiment above left its feature **plumbed and default-neutral**, so the shipped gpt-oss behaviour
+is unchanged but the knob is one POM line away for a different model or workload. All are settable on an
+`<aiDefinition>` (per-model) and flow through `AiGenerationConfig`.
+
+| Knob (`<aiDefinition>` element) | Default (neutral) | What it does | Enable when… | Evidence |
+|---|---|---|---|---|
+| `minP` | `0.05` (shipped) / `0.0` (lib default) | Confidence-scaled primary truncation; robust on large files | Primary sampler — already on for gpt-oss | Phase 1–5, E6 |
+| `topNSigma` | `-1.0` (off) | Temperature-invariant truncation, alternative to min-p | A model where top-n-sigma beats min-p | E6 (min-p won here) |
+| `swaFull` | `false` (off) | Keep full SWA KV so the shared prompt prefix is reusable across files | Batch/project indexing, RAM to spare | E4 (−12 % wall) |
+| `cacheReuse` | `0` (off) | Cross-request KV prefix reuse min chunk (tokens) | Pairs with `swaFull` for batch runs | E4 |
+| `reasoningBudgetTokens` | `-1` (unrestricted) | Cap harmony analysis tokens | A future binding/build that honours it for harmony | E2 (no-op today) |
+| `dryMultiplier` (+ `dryBase`/`dryAllowedLength`/`dryPenaltyLastN`/`drySequenceBreakers`) | `0.0` (off) | Penalise verbatim n-gram repetition (break loops) | A model/config that loops (e.g. high temp) | E1 |
+
+Removed (no knob): the empty-body **retry** — a blank body fails fast with one `WARN` (see above).
