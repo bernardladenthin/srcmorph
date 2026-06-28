@@ -253,6 +253,8 @@ header block, so a `- F:` line in the body is never read as a link.
 | `subtrees` | `aiIndex.subtrees` | *(all)* | Limit to specific source subdirectories |
 | `fileExtensions` | `aiIndex.fileExtensions` | `.java` | File extensions to index |
 | `excludes` | `aiIndex.excludes` | *(none)* | Glob patterns (base-relative, `/` separators) for source files to skip, e.g. `**/package-info.java`, `**/generated/**` (`AiSourceExcludeFilter`) |
+| `minFileSizeBytes` | `aiIndex.file.minSizeBytes` | `0` | Exclusive lower size bound; files `<=` this are skipped (`0` = no lower bound). For size-tiering across multiple `generate` executions |
+| `maxFileSizeBytes` | `aiIndex.file.maxSizeBytes` | `0` | Inclusive upper size bound; files `>` this are skipped (`0` = unlimited). Pairs with `minFileSizeBytes` to form a band |
 | `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
 | `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
 | `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |

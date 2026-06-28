@@ -438,6 +438,35 @@ the widest practical window is the safe universal choice: one preset covers *eve
 with no trimming and no truncation, while small files stay just as fast. Downshift to `c48k`/`c16k`
 only to save RAM on memory-constrained machines.
 
+### Size-tiering: one model per execution, routed by file size (E3)
+
+If you want the *RAM economy* of small contexts on small files **and** the reach of a big context on the
+few large ones, split the `generate` goal into several executions, each filtered to a size band by
+`minFileSizeBytes` (exclusive lower) / `maxFileSizeBytes` (inclusive upper) and pointed at the matching
+preset (and, if you like, its own prompt). The model loads **once per execution** — no per-file reload —
+and the source-checksum skip means each file is indexed exactly once: a small file done by the c16k band
+is skipped by the later bands.
+
+```xml
+<!-- bind all three before aggregate-packages (e.g. process-classes); Maven runs same-phase
+     executions in declaration order, so file indexing is complete before packages aggregate -->
+<execution><id>idx-small</id><goals><goal>generate</goal></goals>
+  <configuration><maxFileSizeBytes>16384</maxFileSizeBytes>
+    <fieldGenerations>… aiDefinitionKey=gpt-oss-20B-c16k …</fieldGenerations></configuration></execution>
+<execution><id>idx-medium</id><goals><goal>generate</goal></goals>
+  <configuration><minFileSizeBytes>16384</minFileSizeBytes><maxFileSizeBytes>49152</maxFileSizeBytes>
+    <fieldGenerations>… gpt-oss-20B-c48k …</fieldGenerations></configuration></execution>
+<execution><id>idx-large</id><goals><goal>generate</goal></goals>
+  <configuration><minFileSizeBytes>49152</minFileSizeBytes>   <!-- maxFileSizeBytes=0 → catch the rest -->
+    <fieldGenerations>… gpt-oss-20B-c96k …</fieldGenerations></configuration></execution>
+```
+
+Two rules: (1) use **non-overlapping** bands (`band2.min == band1.max`) — the skip is by source checksum
+only, so it can't tell which prompt produced an existing `.ai.md`, and an overlapping band would leave
+the first writer's output in place; (2) make the **last band unbounded** (`maxFileSizeBytes=0`) so files
+above every band still get indexed (otherwise they get no `.ai.md` and vanish from the package listing).
+Defaults are `0`/`0` (no size filter), so a single-execution setup is unaffected.
+
 **Validated end-to-end** (synthetic Java fixtures from
 [`tools/generate-fixture.sh`](tools/generate-fixture.sh); `mvn generate-resources`, CPU-only):
 

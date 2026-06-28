@@ -65,6 +65,8 @@ public class SourceFileIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 Collections.<String>emptyList(),
+                0L,
+                0L,
                 false,
                 new MockAiGenerationProvider(),
                 CommonTestFixtures.createFileFieldGenerations(),
@@ -124,6 +126,8 @@ public class SourceFileIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 Collections.<String>emptyList(),
+                0L,
+                0L,
                 false,
                 provider,
                 Arrays.asList(
@@ -162,6 +166,8 @@ public class SourceFileIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 Collections.<String>emptyList(),
+                0L,
+                0L,
                 false,
                 new MockAiGenerationProvider(),
                 Collections.singletonList(fieldGeneration("file-body-sql", Arrays.asList(".sql"))),
@@ -198,6 +204,8 @@ public class SourceFileIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 Arrays.asList("**/package-info.java"),
+                0L,
+                0L,
                 false,
                 new MockAiGenerationProvider(),
                 CommonTestFixtures.createFileFieldGenerations(),
@@ -213,6 +221,105 @@ public class SourceFileIndexerTest {
         assertThat(Files.exists(outputRoot.resolve("main/java/com/example/package-info.java.ai.md")), is(false));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="size-band filter">
+    @Test
+    public void indexSourceRoot_maxFileSizeBytes_skipsLargerFiles() throws Exception {
+        // arrange: a 100-byte and a 5000-byte .java file; max band = 1000 bytes
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        Files.createDirectories(sourceRoot.resolve("com/example"));
+        writeSizedJava(sourceRoot.resolve("com/example/Small.java"), 100);
+        writeSizedJava(sourceRoot.resolve("com/example/Big.java"), 5000);
+
+        final SourceFileIndexer indexer = sizeBandIndexer(temp, outputRoot, 0L, 1000L);
+
+        // act
+        final int indexed = indexer.indexSourceRoot(sourceRoot);
+
+        // assert: only the small file (<= 1000) was indexed
+        assertThat(indexed, is(equalTo(1)));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Small.java.ai.md")), is(true));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Big.java.ai.md")), is(false));
+    }
+
+    @Test
+    public void indexSourceRoot_minFileSizeBytes_skipsSmallerFiles() throws Exception {
+        // arrange: a 100-byte and a 5000-byte .java file; min band = 1000 bytes (exclusive)
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        Files.createDirectories(sourceRoot.resolve("com/example"));
+        writeSizedJava(sourceRoot.resolve("com/example/Small.java"), 100);
+        writeSizedJava(sourceRoot.resolve("com/example/Big.java"), 5000);
+
+        final SourceFileIndexer indexer = sizeBandIndexer(temp, outputRoot, 1000L, 0L);
+
+        // act
+        final int indexed = indexer.indexSourceRoot(sourceRoot);
+
+        // assert: only the big file (> 1000) was indexed
+        assertThat(indexed, is(equalTo(1)));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Big.java.ai.md")), is(true));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Small.java.ai.md")), is(false));
+    }
+
+    @Test
+    public void indexSourceRoot_boundaryFile_minExclusiveMaxInclusive() throws Exception {
+        // arrange: a file of EXACTLY 1000 bytes. A band with max=1000 includes it (inclusive upper);
+        // a band with min=1000 excludes it (exclusive lower). This pins the boundary semantics that make
+        // band2.min == band1.max non-overlapping.
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        Files.createDirectories(sourceRoot.resolve("com/example"));
+        writeSizedJava(sourceRoot.resolve("com/example/Edge.java"), 1000);
+
+        final Path outMax = temp.resolve("out-max");
+        final Path outMin = temp.resolve("out-min");
+
+        // act
+        final int includedByMax = sizeBandIndexer(temp, outMax, 0L, 1000L).indexSourceRoot(sourceRoot);
+        final int includedByMin = sizeBandIndexer(temp, outMin, 1000L, 0L).indexSourceRoot(sourceRoot);
+
+        // assert
+        assertThat(includedByMax, is(equalTo(1)));
+        assertThat(includedByMin, is(equalTo(0)));
+    }
+    // </editor-fold>
+
+    /** Writes a {@code .java} file padded with a line comment to exactly {@code totalBytes} bytes. */
+    private static void writeSizedJava(final Path file, final int totalBytes) throws java.io.IOException {
+        final String prefix = "// ";
+        final StringBuilder sb = new StringBuilder(totalBytes);
+        sb.append(prefix);
+        while (sb.length() < totalBytes) {
+            sb.append('x');
+        }
+        sb.setLength(totalBytes);
+        Files.write(file, sb.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private SourceFileIndexer sizeBandIndexer(
+            final Path baseDirectory, final Path outputRoot, final long minSizeBytes, final long maxSizeBytes) {
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        return new SourceFileIndexer(
+                new SystemStreamLog(),
+                baseDirectory,
+                outputRoot,
+                Arrays.asList(".java"),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
+                minSizeBytes,
+                maxSizeBytes,
+                false,
+                new MockAiGenerationProvider(),
+                CommonTestFixtures.createFileFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+    }
 
     private static AiPromptDefinition promptDefinition(final String key) {
         final AiPromptDefinition definition = new AiPromptDefinition();

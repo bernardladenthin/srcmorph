@@ -62,6 +62,8 @@ public class SourceFileIndexer {
     private final String aiVersion;
     private final List<Path> subtrees;
     private final AiSourceExcludeFilter excludeFilter;
+    private final long minFileSizeBytes;
+    private final long maxFileSizeBytes;
     private final boolean force;
 
     private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
@@ -88,6 +90,12 @@ public class SourceFileIndexer {
      * @param subtrees               source subtrees in scope; may be empty
      * @param excludes               glob patterns (relative to {@code baseDirectory}, {@code /}
      *                               separators) for source files to skip; may be {@code null} or empty
+     * @param minFileSizeBytes       exclusive lower size bound in bytes; files whose size is
+     *                               {@code <= minFileSizeBytes} are skipped. {@code 0} (or negative)
+     *                               disables the lower bound. Lets one execution target a size band.
+     * @param maxFileSizeBytes       inclusive upper size bound in bytes; files whose size is
+     *                               {@code > maxFileSizeBytes} are skipped. {@code 0} (or negative)
+     *                               disables the upper bound (unlimited).
      * @param force                  when {@code true}, regenerate even when fields are populated
      * @param generationProvider     AI provider used to generate fields
      * @param fieldGenerations       field generation configurations; may be {@code null}
@@ -103,6 +111,8 @@ public class SourceFileIndexer {
             final String aiVersion,
             final Collection<Path> subtrees,
             final @Nullable Collection<String> excludes,
+            final long minFileSizeBytes,
+            final long maxFileSizeBytes,
             final boolean force,
             final AiGenerationProvider generationProvider,
             final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
@@ -116,6 +126,8 @@ public class SourceFileIndexer {
         this.aiVersion = aiVersion;
         this.subtrees = new ArrayList<>(subtrees);
         this.excludeFilter = new AiSourceExcludeFilter(excludes);
+        this.minFileSizeBytes = minFileSizeBytes;
+        this.maxFileSizeBytes = maxFileSizeBytes;
         this.force = force;
         this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
@@ -147,6 +159,11 @@ public class SourceFileIndexer {
                     continue;
                 }
 
+                if (!matchesSize(path)) {
+                    log.debug("Outside configured size band, skipped: " + path);
+                    continue;
+                }
+
                 writeAiFile(path);
                 count++;
             }
@@ -166,6 +183,32 @@ public class SourceFileIndexer {
     private boolean isExcluded(final Path path) {
         final String relative = baseDirectory.relativize(path).toString().replace('\\', '/');
         return excludeFilter.isExcluded(relative);
+    }
+
+    /**
+     * Returns {@code true} when {@code path}'s size on disk falls within the configured size band.
+     *
+     * <p>The lower bound {@link #minFileSizeBytes} is <em>exclusive</em> and the upper bound
+     * {@link #maxFileSizeBytes} is <em>inclusive</em>; either is disabled when {@code <= 0}. Adjacent,
+     * non-overlapping bands are therefore expressed as {@code band2.min == band1.max}: a file of
+     * exactly {@code band1.max} bytes belongs to band&nbsp;1 only (size {@code <= max} there, and
+     * {@code size > min} fails in band&nbsp;2). This lets several {@code generate} executions split the
+     * tree into size tiers (each with its own model/context/prompt) while the source-checksum skip keeps
+     * every file indexed exactly once.</p>
+     *
+     * @param path absolute source file path encountered during the walk
+     * @return {@code true} if the file is within the band and should be indexed
+     * @throws IOException if the file size cannot be read
+     */
+    private boolean matchesSize(final Path path) throws IOException {
+        final long size = Files.size(path);
+        if (minFileSizeBytes > 0 && size <= minFileSizeBytes) {
+            return false;
+        }
+        if (maxFileSizeBytes > 0 && size > maxFileSizeBytes) {
+            return false;
+        }
+        return true;
     }
 
     private boolean matchesExtension(final Path path) {

@@ -67,6 +67,25 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     @Parameter(property = "aiIndex.excludes")
     private List<String> excludes;
 
+    /**
+     * Exclusive lower file-size bound in bytes: source files whose size is {@code <= this} are skipped.
+     * {@code 0} (default) disables the lower bound. Together with {@link #maxFileSizeBytes} this lets one
+     * {@code generate} execution target a size band, so several executions (each with its own model,
+     * context size and prompt) can tier a project by file size while the source-checksum skip indexes
+     * every file exactly once. Use non-overlapping bands ({@code band2.min == band1.max}); make the last
+     * band unbounded ({@code maxFileSizeBytes=0}) so files above all bands still get indexed.
+     */
+    @Parameter(property = "aiIndex.file.minSizeBytes", defaultValue = "0")
+    private long minFileSizeBytes;
+
+    /**
+     * Inclusive upper file-size bound in bytes: source files whose size is {@code > this} are skipped.
+     * {@code 0} (default) disables the upper bound (unlimited). See {@link #minFileSizeBytes} for the
+     * size-tiering pattern.
+     */
+    @Parameter(property = "aiIndex.file.maxSizeBytes", defaultValue = "0")
+    private long maxFileSizeBytes;
+
     /** llama.cpp context window size; smaller default suits the fast generate pass. */
     @Parameter(property = "aiIndex.llama.contextSize", defaultValue = "2048")
     private int llamaContextSize;
@@ -124,6 +143,8 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         aiVersion,
                         resolvedSubtrees,
                         excludes,
+                        minFileSizeBytes,
+                        maxFileSizeBytes,
                         force,
                         provider,
                         fieldGenerations,
