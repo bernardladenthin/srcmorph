@@ -104,4 +104,12 @@ public class AiModelDefinitionTest {
         d.setCacheReuse(256);
         assertThat(d.getCacheReuse(), is(256));
     }
+
+    @Test
+    public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getReasoningBudgetTokens(), is(-1));
+        d.setReasoningBudgetTokens(2048);
+        assertThat(d.getReasoningBudgetTokens(), is(2048));
+    }
 }

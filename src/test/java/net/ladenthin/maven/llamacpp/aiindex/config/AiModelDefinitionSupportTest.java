@@ -54,6 +54,7 @@ public class AiModelDefinitionSupportTest {
         definition.setSwaFull(true);
         definition.setCacheReuse(128);
         definition.setReasoningEffort("high");
+        definition.setReasoningBudgetTokens(512);
         definition.setTopP(0.55f);
         definition.setTopK(21);
         definition.setMinP(0.09f);
@@ -91,6 +92,7 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getCacheReuse(), is(equalTo(128)));
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
+        assertThat(config.getReasoningBudgetTokens(), is(equalTo(512)));
     }
 
     @Test
@@ -121,6 +123,7 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.isSwaFull(), is(AiGenerationConfig.DEFAULT_SWA_FULL));
         assertThat(config.getCacheReuse(), is(equalTo(AiGenerationConfig.DEFAULT_CACHE_REUSE)));
         assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
+        assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
         assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));
         assertThat(config.getTopNSigma(), is(equalTo(AiGenerationConfig.DEFAULT_TOP_N_SIGMA)));
     }

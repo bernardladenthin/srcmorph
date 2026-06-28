@@ -161,6 +161,14 @@ public class AiGenerationConfig {
     public static final String DEFAULT_REASONING_EFFORT = "low";
 
     /**
+     * Default reasoning/think-token budget ({@code thinking_budget_tokens} / {@code --reasoning-budget}).
+     * {@code -1} = unrestricted (llama.cpp default). A value {@code >= 0} caps the harmony analysis
+     * (reasoning) tokens so a runaway chain-of-thought cannot starve the final answer of output budget;
+     * see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} E2.
+     */
+    public static final int DEFAULT_REASONING_BUDGET_TOKENS = -1;
+
+    /**
      * Default for whether the full-size sliding-window-attention (SWA) KV cache is kept
      * ({@code --swa-full}). {@code false} = llama.cpp default (window-sized SWA KV, ~half the RAM but
      * not reusable across requests). Set {@code true} to keep the full SWA KV so the shared prompt
@@ -195,6 +203,7 @@ public class AiGenerationConfig {
     private boolean swaFull = DEFAULT_SWA_FULL;
     private int cacheReuse = DEFAULT_CACHE_REUSE;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
+    private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
     private List<String> stopStrings = new ArrayList<>();
 
     /**
@@ -558,6 +567,24 @@ public class AiGenerationConfig {
      */
     public void setReasoningEffort(final String reasoningEffort) {
         this.reasoningEffort = reasoningEffort;
+    }
+
+    /**
+     * Returns the reasoning/think-token budget.
+     *
+     * @return reasoning budget tokens ({@code -1} = unrestricted)
+     */
+    public int getReasoningBudgetTokens() {
+        return reasoningBudgetTokens;
+    }
+
+    /**
+     * Sets the reasoning/think-token budget (caps harmony analysis tokens).
+     *
+     * @param reasoningBudgetTokens budget in tokens ({@code -1} = unrestricted, {@code 0} = no thinking)
+     */
+    public void setReasoningBudgetTokens(final int reasoningBudgetTokens) {
+        this.reasoningBudgetTokens = reasoningBudgetTokens;
     }
 
     /**

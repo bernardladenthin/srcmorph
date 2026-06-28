@@ -122,6 +122,7 @@ public final class AiModelDefinitionSupport {
         config.setSwaFull(definition.isSwaFull());
         config.setCacheReuse(definition.getCacheReuse());
         config.setReasoningEffort(definition.getReasoningEffort());
+        config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
         return config;
     }
 }

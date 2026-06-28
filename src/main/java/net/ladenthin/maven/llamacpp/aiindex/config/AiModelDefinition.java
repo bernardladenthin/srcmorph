@@ -58,6 +58,7 @@ public class AiModelDefinition {
     private boolean swaFull = AiGenerationConfig.DEFAULT_SWA_FULL;
     private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
+    private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private @Nullable List<String> stopStrings;
 
     /**
@@ -433,6 +434,24 @@ public class AiModelDefinition {
      */
     public void setReasoningEffort(final String reasoningEffort) {
         this.reasoningEffort = reasoningEffort;
+    }
+
+    /**
+     * Returns the reasoning/think-token budget for this model.
+     *
+     * @return budget tokens; defaults to {@link AiGenerationConfig#DEFAULT_REASONING_BUDGET_TOKENS} (-1 = off)
+     */
+    public int getReasoningBudgetTokens() {
+        return reasoningBudgetTokens;
+    }
+
+    /**
+     * Sets the reasoning/think-token budget for this model (caps harmony analysis tokens).
+     *
+     * @param reasoningBudgetTokens budget in tokens ({@code -1} = unrestricted, {@code 0} = no thinking)
+     */
+    public void setReasoningBudgetTokens(final int reasoningBudgetTokens) {
+        this.reasoningBudgetTokens = reasoningBudgetTokens;
     }
 
     /**

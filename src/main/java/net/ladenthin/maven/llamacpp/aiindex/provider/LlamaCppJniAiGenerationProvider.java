@@ -137,6 +137,9 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
                 .withMinP(config.minP())
                 .withTopNSigma(config.topNSigma())
                 .withRepeatPenalty(config.repeatPenalty())
+                // Cap harmony analysis (reasoning) tokens so a runaway chain-of-thought cannot
+                // starve the final answer; -1 (default) = unrestricted, so behaviour is unchanged.
+                .withReasoningBudgetTokens(config.reasoningBudgetTokens())
                 .withStopStrings(config.stopStrings().toArray(new String[0]))
                 // Keep the shared prompt-template prefix warm in the KV cache and reuse it across
                 // files (pinned to one slot); only the differing source is re-prefilled.

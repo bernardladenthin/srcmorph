@@ -112,4 +112,14 @@ public class AiGenerationConfigTest {
         // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
         assertThat(c.getCacheReuse(), is(256));
     }
+
+    @Test
+    public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1 (unrestricted) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getReasoningBudgetTokens(), is(-1));
+        c.setReasoningBudgetTokens(2048);
+        // Round-tripped value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getReasoningBudgetTokens(), is(2048));
+    }
 }
