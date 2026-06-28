@@ -1322,7 +1322,13 @@ SPDX-License-Identifier: Apache-2.0
                                        - charsPerToken 3 matches dense Java (measured ~4.2 chars/token;
                                          3 keeps the char-based pre-trim token-safe so a big file is never
                                          silently over-fed past the real token window).
-                                       - gpt-oss sampling per model card: temp 1.0, top-p 1.0, top-k 0.
+                                       - Sampling: temp 0.7, top-p 1.0, top-k 0, min-p 0.05. This is a
+                                         deliberate task-specific deviation from the model card's
+                                         temp 1.0/top-p 1.0: a fact-check (docs/.../gpt-oss-tuning.md D1)
+                                         found temp 1.0 loses faithfulness while greedy/temp 0 triggers
+                                         "reasoning blackhole" loops in ~81% of probed prompts; temp 0.7
+                                         with min-p 0.05 as the primary truncation is the faithful-but-safe
+                                         middle ground (min-p scales the cut-off to model confidence).
 
                                      Sizing (measured: 96 KB code = ~24K tokens; model window = 131072):
                                        c16k  -> files up to ~40 KB   (typical files; fast, ~1-2 min/file)
@@ -1338,13 +1344,14 @@ SPDX-License-Identifier: Apache-2.0
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
-                                    <temperature>1.0</temperature>
+                                    <temperature>0.7</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>3</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
                                     <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>1.0</topP>
                                     <topK>0</topK>
+                                    <minP>0.05</minP>
                                     <repeatPenalty>1.0</repeatPenalty>
                                     <reasoningEffort>low</reasoningEffort>
                                 </aiDefinition>
@@ -1353,13 +1360,14 @@ SPDX-License-Identifier: Apache-2.0
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>49152</contextSize>
                                     <maxOutputTokens>4096</maxOutputTokens>
-                                    <temperature>1.0</temperature>
+                                    <temperature>0.7</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>3</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
                                     <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>1.0</topP>
                                     <topK>0</topK>
+                                    <minP>0.05</minP>
                                     <repeatPenalty>1.0</repeatPenalty>
                                     <reasoningEffort>low</reasoningEffort>
                                 </aiDefinition>
@@ -1368,13 +1376,14 @@ SPDX-License-Identifier: Apache-2.0
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <maxOutputTokens>6144</maxOutputTokens>
-                                    <temperature>1.0</temperature>
+                                    <temperature>0.7</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>3</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
                                     <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>1.0</topP>
                                     <topK>0</topK>
+                                    <minP>0.05</minP>
                                     <repeatPenalty>1.0</repeatPenalty>
                                     <reasoningEffort>low</reasoningEffort>
                                 </aiDefinition>
@@ -1487,7 +1496,7 @@ What comes out: return types, produced state, mutated fields, written resources,
 The essential steps / algorithm / responsibility as bullets. This is the most important section.
 
 #### Public API
-Each public/protected member as `name(params) -> returnType` + a clause (max 6 words) on its purpose.
+Each public/protected member as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For a FAMILY of near-identical members (e.g. `fooN`), do not list them all: in the analysis channel enumerate and count them one per line, then in the final answer emit only the exact total and index range, e.g. `foo1..fooN (N total)`.
 
 #### Dependencies
 Imports and referenced types, as searchable names.
@@ -1502,6 +1511,7 @@ Threading, synchronization, immutability, or thread-safety notes, if any.
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Weave class / type / domain names into the bullets so they are searchable.
 - No code fences, no ```markdown / ```java, no XML tags, no formatter comments.
+- COUNT EXACTLY. When you state a count of methods/fields/members, count them precisely from the source and recount before finalizing. Never round, approximate, or write "similar"/"~".
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 
 ## Critical
