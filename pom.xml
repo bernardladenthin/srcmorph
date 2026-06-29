@@ -1555,7 +1555,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
 
                                 <!-- ============================================================
-                                     BIG-WINDOW FALLBACK for oversized files.
+                                     BIG-WINDOW FALLBACK for oversized files (covers up to ~1 MB).
                                      ============================================================
                                      A source larger than the default model's window (~275 KB for the 96K
                                      gpt-oss presets at charsPerToken 3) hard-fails the build; the plugin
@@ -1564,27 +1564,33 @@ SPDX-License-Identifier: Apache-2.0
                                        - Apache-2.0 (same license family as gpt-oss), IBM (not China).
                                        - Hybrid Mamba-2/Transformer (9:1, NoPE): the KV cache grows only
                                          LINEARLY with context, so a huge file fits ungekuerzt even on an
-                                         8 GB GPU (a classic transformer's KV would blow up at 128K).
-                                       - 128K context (validated; trained to 512K), 7B total / ~1B active MoE.
-                                     Verified on this machine: it loaded the full 131072 ctx and summarized a
-                                     ~482 KB / ~124K-token Java file on an 8 GB RTX 3070 with no OOM (prefill
-                                     ~2560 t/s, decode ~97 t/s) into a correct Markdown overview. It is less
-                                     accurate than gpt-oss, but a whole-file summary beats a trimmed one.
-                                     charsPerToken 4 is measured (~482 KB -> ~124K tokens). reasoningEffort is
-                                     empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
-                                     sent. The size-routing rule that targets this key lives in the
-                                     ai-generate <fieldGenerations> below (id big-window). -->
+                                         8 GB GPU (a classic transformer's KV would blow up at this size).
+                                       - Trained to 512K tokens (IBM validates quality to 128K), 7B/~1B-active MoE.
+                                     contextSize is set to 384K (393216) to cover files up to ~1 MB. Verified
+                                     on this machine (RTX 3070, 8 GB, CUDA, build 11): it allocated the full
+                                     393216 ctx with NO OOM (it even allocates 512K) and summarized a
+                                     ~995 KB / ~268K-token Java file (prefill ~1150 t/s, ~4 min one-time;
+                                     decode ~45 t/s). Quality is best within Granite's validated 128K (~500 KB)
+                                     and degrades gradually beyond it, but a whole-file summary beats a trimmed
+                                     one. charsPerToken 3 is deliberately CONSERVATIVE (real Java is ~3.8, so
+                                     the window check over-counts tokens and never lets a file overflow the
+                                     window at run time); the cpt-3 check admits up to ~1.16 MB. reasoningEffort
+                                     is empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
+                                     sent. The size-routing rule that targets this key lives in the ai-generate
+                                     <fieldGenerations> below (id big-window). For >~1 MB files, split them or
+                                     add a still-larger preset (Granite allocates up to its 512K training limit
+                                     here, with further quality loss). -->
                                 <aiDefinition>
                                     <key>granite-4.0-h-tiny-bigwindow</key>
                                     <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
-                                    <contextSize>131072</contextSize>
+                                    <contextSize>393216</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
                                     <devices>${ai.devices}</devices>
                                     <maxOutputTokens>4096</maxOutputTokens>
                                     <temperature>0.2</temperature>
                                     <threads>8</threads>
-                                    <charsPerToken>4</charsPerToken>
+                                    <charsPerToken>3</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
                                     <topP>1.0</topP>
                                     <topK>0</topK>
@@ -2038,8 +2044,8 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <!-- Big-window fallback rule: a .java file larger than the default
                                              model's window (~275 KB at 96K/charsPerToken 3) would be trimmed,
                                              so route it to the large-context granite-4.0-h-tiny-bigwindow
-                                             model instead (Granite's ~128K window covers up to ~500 KB at
-                                             charsPerToken 4). Higher priority than the plain java rule so it
+                                             model instead (Granite's 384K window covers up to ~1 MB; the
+                                             cpt-3 window check admits up to ~1.16 MB). Higher priority than the plain java rule so it
                                              wins for oversized files; normal-sized files never match (size
                                              min) and fall through to the java rule. Without a rule like this,
                                              a file larger than the default model's window hard-fails the build

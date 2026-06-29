@@ -169,8 +169,10 @@ The plugin is configured from three building blocks, declared on the plugin insi
    abort). The fix is **configuration only** — the plugin never picks a model for you: add a
    `<fieldGeneration>` rule with a size `<condition>` that routes oversized files to a model with a large
    enough window (see the `granite-4.0-h-tiny-bigwindow` definition + the `big-window` rule in the POM —
-   IBM Granite 4.0-H-Tiny, Apache-2.0, a 128K hybrid Mamba model whose KV cache grows only linearly, so a
-   huge file fits ungekürzt even on an 8 GB GPU; verified summarizing a ~124K-token file with no OOM).
+   IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid Mamba model whose KV cache grows only linearly, configured
+   at a 384K window to cover files up to ~1 MB; verified summarizing a ~995 KB / ~268K-token file on an
+   8 GB GPU with no OOM. Quality is best within Granite's validated 128K (~500 KB) and degrades gradually
+   beyond it — a whole-file summary still beats a trimmed one).
 
 ```xml
 <plugin>
