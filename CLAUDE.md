@@ -10,7 +10,7 @@ This document provides guidance for AI assistants working on the llamacpp-ai-ind
 
 - **Group ID:** `net.ladenthin`
 - **Artifact ID:** `llamacpp-ai-index-maven-plugin`
-- **Version:** 1.0.1-SNAPSHOT
+- **Version:** 1.0.1
 - **Java:** target bytecode 1.8, built with JDK 21
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)

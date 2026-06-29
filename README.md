@@ -178,7 +178,7 @@ The plugin is configured from three building blocks, declared on the plugin insi
 <plugin>
     <groupId>net.ladenthin</groupId>
     <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 
     <configuration>
         <!-- outputDirectory defaults to ${project.basedir}/src/site/ai -->
