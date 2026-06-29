@@ -108,17 +108,6 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     @Parameter(property = "aiIndex.planOnly", defaultValue = "false")
     private boolean planOnly;
 
-    /**
-     * When {@code true} (default), the build fails if any matched source file is larger than its routed
-     * model's context window (it would otherwise be silently trimmed). This forces an explicit choice:
-     * route oversized files to a larger-context model (a higher-context preset or a fast big-window
-     * fallback) rather than feeding a truncated source. The plan always shows which files exceed the
-     * window; set this to {@code false} to downgrade the failure to the run-time trim warning
-     * ({@code warnOnTrim}) and trim instead.
-     */
-    @Parameter(property = "aiIndex.failOnWindowExceeded", defaultValue = "true")
-    private boolean failOnWindowExceeded;
-
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     @Override
@@ -202,16 +191,19 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         + "add a <fallback> rule or a matching rule (see the plan above).");
             }
 
-            // 3b. A file larger than its routed model's window would be silently trimmed. By default this
-            //     fails the build (planOnly and real run alike) so oversized files are routed to a larger
-            //     model instead; set aiIndex.failOnWindowExceeded=false to trim with a warning instead.
+            // 3b. A file larger than its routed model's window would lose content if trimmed. This is
+            //     ALWAYS a hard failure (planOnly and real run alike). The fix is user configuration,
+            //     never an automatic model choice: the user must add a routing rule (<fieldGeneration>
+            //     with a size <condition>) that sends oversized files to a model with a large enough
+            //     context window. The plugin deliberately does not pick a model for you.
             final int overWindowCount = plan.windowExceededCount();
-            if (failOnWindowExceeded && overWindowCount > 0) {
+            if (overWindowCount > 0) {
                 throw new MojoExecutionException(overWindowCount
-                        + " source file(s) exceed their routed model's context window and would be trimmed "
-                        + "(see the 'Over window' section in the plan above). Route them to a larger-context "
-                        + "model (a higher-context preset or a big-window fallback), or set "
-                        + "-DaiIndex.failOnWindowExceeded=false to trim them instead.");
+                        + " source file(s) exceed their routed model's context window (see the 'Over window' "
+                        + "section in the plan above). Add a <fieldGeneration> rule with a size <condition> "
+                        + "that routes these files to a model with a large enough context window (see the "
+                        + "big-window fallback example in the POM). The build does not pick a model for you; "
+                        + "this is configuration only.");
             }
 
             if (planOnly) {

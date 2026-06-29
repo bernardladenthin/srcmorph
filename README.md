@@ -165,10 +165,10 @@ The plugin is configured from three building blocks, declared on the plugin insi
    `-DaiIndex.planOnly=true` to print the routing plan (a copy-pasteable Markdown table: file → rule id →
    prompt → context-window fit → rough time estimate, summed per model and overall) and stop before
    loading any model. The plan also checks each file against its routed model's **context window**: a
-   file too large for the window would be trimmed, so by default (`aiIndex.failOnWindowExceeded=true`) the
-   build **fails** and tells you to route it to a larger-context model (e.g. a higher-context preset or a
-   fast big-window fallback — see the `phi-4-mini-bigwindow` example + `big-window` rule in the POM); set
-   `-DaiIndex.failOnWindowExceeded=false` to trim with a warning instead.
+   file too large for the window would lose content if trimmed, so the build **always fails** (a hard
+   abort). The fix is **configuration only** — the plugin never picks a model for you: add a
+   `<fieldGeneration>` rule with a size `<condition>` that routes oversized files to a model with a large
+   enough window (see the `phi-4-mini-bigwindow` definition + the `big-window` rule in the POM).
 
 ```xml
 <plugin>

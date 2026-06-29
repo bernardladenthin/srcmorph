@@ -372,8 +372,9 @@ public final class AiIndexPlan {
                 }
             }
         }
-        sb.append("\nRoute these to a larger-context model (a higher-context preset or a big-window")
-                .append(" fallback), or disable the check with -DaiIndex.failOnWindowExceeded=false to trim.\n");
+        sb.append("\nThis fails the build. Add a <fieldGeneration> rule with a size <condition> that routes")
+                .append(" these files to a model with a large enough context window (config only; the build")
+                .append(" never picks a model for you).\n");
     }
 
     /**

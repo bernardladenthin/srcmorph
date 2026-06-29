@@ -1556,10 +1556,10 @@ SPDX-License-Identifier: Apache-2.0
                                 <!-- ============================================================
                                      BIG-WINDOW FALLBACK for oversized files (example).
                                      ============================================================
-                                     With aiIndex.failOnWindowExceeded=true (default), a source larger
-                                     than the default model's window (~275 KB for the 96K gpt-oss presets
-                                     at charsPerToken 3) fails the build instead of being silently trimmed.
-                                     Route such rare large files here: a fast, large-context model. It may
+                                     A source larger than the default model's window (~275 KB for the 96K
+                                     gpt-oss presets at charsPerToken 3) hard-fails the build; the plugin
+                                     never auto-picks a model, so YOU route such files here via the
+                                     big-window rule below. This model is a fast, large-context one. It may
                                      be less accurate than gpt-oss, but a whole-file summary beats a
                                      trimmed one. Phi-4-mini-instruct ships a 128K window and is small/fast
                                      (~3.8B). NOTE: download the GGUF and verify before relying on it; the
@@ -2031,9 +2031,10 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                              trimmed, so route it to the large-context phi-4-mini-bigwindow
                                              model instead. Higher priority than the plain java rule so it wins
                                              for oversized files; normal-sized files never match (size min) and
-                                             fall through to the java rule. This is what lets the default
-                                             aiIndex.failOnWindowExceeded=true pass even if a huge file appears.
-                                             Threshold is conservative; tune to your model's actual window. -->
+                                             fall through to the java rule. Without a rule like this, a file
+                                             larger than the default model's window hard-fails the build (the
+                                             plugin never auto-selects a model) - this is how YOU satisfy that
+                                             check. Threshold is conservative; tune to your model's window. -->
                                         <fieldGeneration>
                                             <id>big-window</id>
                                             <promptKey>file-body-java</promptKey>

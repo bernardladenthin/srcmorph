@@ -141,9 +141,10 @@ rest; a file matching no rule and no fallback **fails the build**. `aiIndex.plan
 Markdown plan (file → rule id → prompt → rough time estimate, summed per model and overall) and stops
 (no model loaded). The plan also computes each routed file's **context-window fit** up front (via
 `AiInputWindowCalculator`, the same threshold the run uses to trim): a file larger than its routed
-model's window is flagged in the plan and, by default (`aiIndex.failOnWindowExceeded=true`), **fails the
-build** so it is routed to a larger-context model instead of being silently trimmed (set the flag to
-`false` to trim with a warning). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+model's window is flagged in the plan and **always fails the build** (a hard abort). The resolution is
+**configuration only** — the plugin never auto-picks a model: the user must add a `<fieldGeneration>`
+rule with a size `<condition>` that routes oversized files to a model with a large enough context window
+(see the big-window fallback example in the POM). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
 different file kinds/sizes with different models *and* prompts.
 
@@ -280,7 +281,6 @@ header block, so a `- F:` line in the body is never read as a link.
 | `minFileSizeBytes` | `aiIndex.file.minSizeBytes` | `0` | Exclusive lower size bound; files `<=` this are skipped (`0` = no lower bound). For size-tiering across multiple `generate` executions |
 | `maxFileSizeBytes` | `aiIndex.file.maxSizeBytes` | `0` | Inclusive upper size bound; files `>` this are skipped (`0` = unlimited). Pairs with `minFileSizeBytes` to form a band |
 | `planOnly` | `aiIndex.planOnly` | `false` | Print the routing plan tree (model → files → prompt → window fit) and stop; no model loaded, nothing generated |
-| `failOnWindowExceeded` | `aiIndex.failOnWindowExceeded` | `true` | Fail the build when a matched file is larger than its routed model's context window (would be trimmed). Forces routing oversized files to a larger-context model. `false` = warn and trim instead. Same threshold the run uses (`AiInputWindowCalculator`) |
 | `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
 | `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
 | `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |
