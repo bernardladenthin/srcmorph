@@ -163,7 +163,12 @@ The plugin is configured from three building blocks, declared on the plugin insi
    matches no rule and no fallback **fails the build**. So one `generate` run can index different file
    kinds/sizes with **different models *and* prompts**; it loads each model once. Run with
    `-DaiIndex.planOnly=true` to print the routing plan (a copy-pasteable Markdown table: file → rule id →
-   prompt → rough time estimate, summed per model and overall) and stop before loading any model.
+   prompt → context-window fit → rough time estimate, summed per model and overall) and stop before
+   loading any model. The plan also checks each file against its routed model's **context window**: a
+   file too large for the window would be trimmed, so by default (`aiIndex.failOnWindowExceeded=true`) the
+   build **fails** and tells you to route it to a larger-context model (e.g. a higher-context preset or a
+   fast big-window fallback — see the `phi-4-mini-bigwindow` example + `big-window` rule in the POM); set
+   `-DaiIndex.failOnWindowExceeded=false` to trim with a warning instead.
 
 ```xml
 <plugin>

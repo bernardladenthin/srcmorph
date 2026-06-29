@@ -17,12 +17,15 @@ import net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderSupport;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport;
@@ -176,6 +179,31 @@ public class SourceFileIndexer {
      */
     public AiIndexPlan classify(final Collection<Path> candidates, final List<AiFieldGenerationConfig> rules)
             throws IOException {
+        return classify(candidates, rules, null, null);
+    }
+
+    /**
+     * Plans the run as {@link #classify(Collection, List)} and, when both supports are provided, also
+     * computes each routed file's <em>context-window fit</em>: it resolves the routed model's
+     * {@code contextSize}/sampling config and the prompt template length, derives the source-character
+     * budget via {@link AiInputWindowCalculator} (the same threshold the run uses to trim), and records
+     * whether the file would be trimmed. This lets the plan flag over-window files up front (and the
+     * goal fail fast) instead of silently trimming them at run time. Pass {@code null} supports to skip
+     * the window check.
+     *
+     * @param candidates               the candidate files (typically from {@link #collectCandidates(Path)})
+     * @param rules                    the routing rules in declaration order
+     * @param modelDefinitionSupport   model-config lookup by key, or {@code null} to skip the window check
+     * @param promptPreparationSupport prompt-template helper, or {@code null} to skip the window check
+     * @return the routing plan
+     * @throws IOException if a file size or content cannot be read
+     */
+    public AiIndexPlan classify(
+            final Collection<Path> candidates,
+            final List<AiFieldGenerationConfig> rules,
+            final @Nullable AiModelDefinitionSupport modelDefinitionSupport,
+            final @Nullable AiPromptPreparationSupport promptPreparationSupport)
+            throws IOException {
         final boolean lineFiltersUsed = anyRuleUsesLines(rules);
         final AiIndexPlan plan = new AiIndexPlan();
         for (final Path file : candidates) {
@@ -197,7 +225,19 @@ public class SourceFileIndexer {
             } else {
                 final long estimatedSeconds =
                         timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
-                plan.addRoute(rule.getAiDefinitionKey(), file, rule, estimatedSeconds);
+                if (modelDefinitionSupport != null && promptPreparationSupport != null) {
+                    final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.getAiDefinitionKey());
+                    final int basePromptLength =
+                            promptPreparationSupport.getBasePromptLength(rule.getPromptKey(), file);
+                    final long availableSourceChars =
+                            AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
+                    final long sourceChars =
+                            compatibilityHelper.readString(file).length();
+                    plan.addRoute(
+                            rule.getAiDefinitionKey(), file, rule, estimatedSeconds, sourceChars, availableSourceChars);
+                } else {
+                    plan.addRoute(rule.getAiDefinitionKey(), file, rule, estimatedSeconds);
+                }
             }
         }
         return plan;

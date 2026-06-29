@@ -108,6 +108,17 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     @Parameter(property = "aiIndex.planOnly", defaultValue = "false")
     private boolean planOnly;
 
+    /**
+     * When {@code true} (default), the build fails if any matched source file is larger than its routed
+     * model's context window (it would otherwise be silently trimmed). This forces an explicit choice:
+     * route oversized files to a larger-context model (a higher-context preset or a fast big-window
+     * fallback) rather than feeding a truncated source. The plan always shows which files exceed the
+     * window; set this to {@code false} to downgrade the failure to the run-time trim warning
+     * ({@code warnOnTrim}) and trim instead.
+     */
+    @Parameter(property = "aiIndex.failOnWindowExceeded", defaultValue = "true")
+    private boolean failOnWindowExceeded;
+
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     @Override
@@ -146,6 +157,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
 
         final AiPromptSupport promptSupport = buildPromptSupport();
         final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
+        final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
         final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model).
         selector.validate(fieldGenerations);
@@ -176,8 +188,11 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                 candidates.addAll(fileIndexer.collectCandidates(subtree));
             }
 
-            // 2. Plan the run: which model + prompt each file gets (or skip / unmatched).
-            final AiIndexPlan plan = fileIndexer.classify(candidates, fieldGenerations);
+            // 2. Plan the run: which model + prompt each file gets (or skip / unmatched), and whether
+            //    each file fits its routed model's context window (computed up front, same threshold the
+            //    run uses to trim — see AiInputWindowCalculator).
+            final AiIndexPlan plan = fileIndexer.classify(
+                    candidates, fieldGenerations, modelDefinitionSupport, promptPreparationSupport);
             getLog().info("AI index plan (Markdown):\n" + plan.renderMarkdown(basePath));
 
             // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
@@ -187,6 +202,18 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         + "add a <fallback> rule or a matching rule (see the plan above).");
             }
 
+            // 3b. A file larger than its routed model's window would be silently trimmed. By default this
+            //     fails the build (planOnly and real run alike) so oversized files are routed to a larger
+            //     model instead; set aiIndex.failOnWindowExceeded=false to trim with a warning instead.
+            final int overWindowCount = plan.windowExceededCount();
+            if (failOnWindowExceeded && overWindowCount > 0) {
+                throw new MojoExecutionException(overWindowCount
+                        + " source file(s) exceed their routed model's context window and would be trimmed "
+                        + "(see the 'Over window' section in the plan above). Route them to a larger-context "
+                        + "model (a higher-context preset or a big-window fallback), or set "
+                        + "-DaiIndex.failOnWindowExceeded=false to trim them instead.");
+            }
+
             if (planOnly) {
                 getLog().info("planOnly=true: stopping after the plan; no model loaded, nothing generated.");
                 return;
@@ -194,7 +221,6 @@ public class GenerateMojo extends AbstractAiIndexMojo {
 
             // 4. Execute model group by model group: load each model once, index its files, close.
             final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
-            final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
             int wrote = 0;
             int unchanged = 0;
             for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :

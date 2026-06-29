@@ -27,18 +27,33 @@ public final class AiIndexPlan {
         private final Path file;
         private final AiFieldGenerationConfig rule;
         private final long estimatedSeconds;
+        private final boolean windowChecked;
+        private final long sourceChars;
+        private final long availableSourceChars;
 
         /**
          * Creates a plan entry.
          *
-         * @param file             the source file
-         * @param rule             the rule that selected it
-         * @param estimatedSeconds the rough estimated generation time in seconds
+         * @param file                 the source file
+         * @param rule                 the rule that selected it
+         * @param estimatedSeconds     the rough estimated generation time in seconds
+         * @param windowChecked        whether the context-window fit was computed for this entry
+         * @param sourceChars          the source length in characters fed to the model (when checked)
+         * @param availableSourceChars the source-character budget of the routed model+prompt (when checked)
          */
-        public Entry(final Path file, final AiFieldGenerationConfig rule, final long estimatedSeconds) {
+        public Entry(
+                final Path file,
+                final AiFieldGenerationConfig rule,
+                final long estimatedSeconds,
+                final boolean windowChecked,
+                final long sourceChars,
+                final long availableSourceChars) {
             this.file = file;
             this.rule = rule;
             this.estimatedSeconds = estimatedSeconds;
+            this.windowChecked = windowChecked;
+            this.sourceChars = sourceChars;
+            this.availableSourceChars = availableSourceChars;
         }
 
         /**
@@ -67,6 +82,44 @@ public final class AiIndexPlan {
         public long estimatedSeconds() {
             return estimatedSeconds;
         }
+
+        /**
+         * Returns whether the context-window fit was computed for this entry.
+         *
+         * @return {@code true} when window data is available
+         */
+        public boolean windowChecked() {
+            return windowChecked;
+        }
+
+        /**
+         * Returns the source length in characters fed to the model (meaningful only when
+         * {@link #windowChecked()} is {@code true}).
+         *
+         * @return the source character count
+         */
+        public long sourceChars() {
+            return sourceChars;
+        }
+
+        /**
+         * Returns the source-character budget of the routed model+prompt (meaningful only when
+         * {@link #windowChecked()} is {@code true}).
+         *
+         * @return the available source-character budget
+         */
+        public long availableSourceChars() {
+            return availableSourceChars;
+        }
+
+        /**
+         * Returns whether this file exceeds the routed model's context window and would be trimmed.
+         *
+         * @return {@code true} when checked and the source exceeds the window budget
+         */
+        public boolean exceedsWindow() {
+            return windowChecked && sourceChars > availableSourceChars;
+        }
     }
 
     private final Map<String, List<Entry>> routesByModel = new LinkedHashMap<>();
@@ -93,7 +146,29 @@ public final class AiIndexPlan {
             final long estimatedSeconds) {
         routesByModel
                 .computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>())
-                .add(new Entry(file, rule, estimatedSeconds));
+                .add(new Entry(file, rule, estimatedSeconds, false, 0L, 0L));
+    }
+
+    /**
+     * Records a routed file under its model id together with its context-window fit.
+     *
+     * @param aiDefinitionKey      the model id (rule's {@code aiDefinitionKey})
+     * @param file                 the source file
+     * @param rule                 the routing rule
+     * @param estimatedSeconds     the rough estimated generation time in seconds
+     * @param sourceChars          the source length in characters fed to the model
+     * @param availableSourceChars the source-character budget of the routed model+prompt
+     */
+    public void addRoute(
+            final String aiDefinitionKey,
+            final Path file,
+            final AiFieldGenerationConfig rule,
+            final long estimatedSeconds,
+            final long sourceChars,
+            final long availableSourceChars) {
+        routesByModel
+                .computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>())
+                .add(new Entry(file, rule, estimatedSeconds, true, sourceChars, availableSourceChars));
     }
 
     /**
@@ -155,6 +230,24 @@ public final class AiIndexPlan {
     }
 
     /**
+     * Returns the number of routed files whose source exceeds the routed model's context window
+     * (would be trimmed). Zero when no window check was performed.
+     *
+     * @return the count of over-window files
+     */
+    public int windowExceededCount() {
+        int total = 0;
+        for (final List<Entry> entries : routesByModel.values()) {
+            for (final Entry entry : entries) {
+                if (entry.exceedsWindow()) {
+                    total++;
+                }
+            }
+        }
+        return total;
+    }
+
+    /**
      * Returns the summed estimated seconds for one model's entries.
      *
      * @param entries the model's planned entries
@@ -204,7 +297,9 @@ public final class AiIndexPlan {
                 .append(skipped.size())
                 .append(" skipped, ")
                 .append(unmatched.size())
-                .append(" unmatched _(time is a rough estimate)_\n");
+                .append(" unmatched, ")
+                .append(windowExceededCount())
+                .append(" over window _(time is a rough estimate)_\n");
         for (final Map.Entry<String, List<Entry>> group : routesByModel.entrySet()) {
             final List<Entry> entries = group.getValue();
             sb.append("\n### Model `")
@@ -213,7 +308,7 @@ public final class AiIndexPlan {
                     .append(entries.size())
                     .append(" file(s), est. ")
                     .append(estimator.formatDuration(modelSeconds(entries)))
-                    .append("\n\n| File | Rule | Prompt | Est. |\n|---|---|---|---|\n");
+                    .append("\n\n| File | Rule | Prompt | Window | Est. |\n|---|---|---|---|---|\n");
             for (final Entry entry : entries) {
                 sb.append("| ")
                         .append(relativize(baseDir, entry.file()))
@@ -221,6 +316,8 @@ public final class AiIndexPlan {
                         .append(ruleId(entry.rule()))
                         .append(" | ")
                         .append(entry.rule().getPromptKey())
+                        .append(" | ")
+                        .append(windowCell(entry))
                         .append(" | ")
                         .append(estimator.formatDuration(entry.estimatedSeconds()))
                         .append(" |\n");
@@ -240,7 +337,60 @@ public final class AiIndexPlan {
                 sb.append("- ").append(relativize(baseDir, file)).append("\n");
             }
         }
+        appendWindowExceededSection(sb, baseDir);
         return sb.toString();
+    }
+
+    /**
+     * Appends the section listing files whose source exceeds the routed model's context window (would be
+     * trimmed): each file with its model, source chars and the window budget, so the user can route it to
+     * a larger-window model.
+     *
+     * @param sb      the buffer to append to
+     * @param baseDir the base directory for relativizing paths
+     */
+    private void appendWindowExceededSection(final StringBuilder sb, final Path baseDir) {
+        final int count = windowExceededCount();
+        if (count == 0) {
+            return;
+        }
+        sb.append("\n### (!) Over window - source exceeds the model's context window, would be trimmed (")
+                .append(count)
+                .append(")\n\n");
+        for (final Map.Entry<String, List<Entry>> group : routesByModel.entrySet()) {
+            for (final Entry entry : group.getValue()) {
+                if (entry.exceedsWindow()) {
+                    sb.append("- ")
+                            .append(relativize(baseDir, entry.file()))
+                            .append(" -> model `")
+                            .append(group.getKey())
+                            .append("` (source ")
+                            .append(entry.sourceChars())
+                            .append(" chars > window ")
+                            .append(entry.availableSourceChars())
+                            .append(" chars)\n");
+                }
+            }
+        }
+        sb.append("\nRoute these to a larger-context model (a higher-context preset or a big-window")
+                .append(" fallback), or disable the check with -DaiIndex.failOnWindowExceeded=false to trim.\n");
+    }
+
+    /**
+     * Returns the per-entry "Window" cell: {@code "-"} when not checked, {@code "ok"} when it fits, or a
+     * {@code "(!) X>Y"} marker (source chars vs budget) when the source exceeds the window.
+     *
+     * @param entry the plan entry
+     * @return the window cell text
+     */
+    private String windowCell(final Entry entry) {
+        if (!entry.windowChecked()) {
+            return "-";
+        }
+        if (entry.exceedsWindow()) {
+            return "(!) " + entry.sourceChars() + ">" + entry.availableSourceChars();
+        }
+        return "ok";
     }
 
     /**

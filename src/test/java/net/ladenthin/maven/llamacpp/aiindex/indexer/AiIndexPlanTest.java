@@ -63,7 +63,7 @@ public class AiIndexPlanTest {
         assertThat(md, containsString("## AI index plan"));
         assertThat(md, containsString("**Total:**"));
         assertThat(md, containsString("### Model `modelA`"));
-        assertThat(md, containsString("| File | Rule | Prompt | Est. |"));
+        assertThat(md, containsString("| File | Rule | Prompt | Window | Est. |"));
         assertThat(md, containsString("Foo.java"));
         assertThat(md, containsString("java-small")); // the rule id shows in its own column
         assertThat(md, containsString("file-body-java"));
@@ -71,5 +71,48 @@ public class AiIndexPlanTest {
         assertThat(md, containsString("Generated.java"));
         assertThat(md, containsString("Unmatched"));
         assertThat(md, containsString("weird.txt"));
+    }
+
+    @Test
+    public void windowExceededCount_countsOnlyOverWindowEntries() {
+        final AiIndexPlan plan = new AiIndexPlan();
+        // fits: source 1000 <= budget 5000
+        plan.addRoute("modelA", Paths.get("Small.java"), rule("p1"), 10, 1000L, 5000L);
+        // exceeds: source 9000 > budget 5000
+        plan.addRoute("modelA", Paths.get("Huge.java"), rule("p1"), 20, 9000L, 5000L);
+        // unchecked (4-arg) never counts as over-window
+        plan.addRoute("modelB", Paths.get("Plain.java"), rule("p2"), 5);
+
+        assertThat(plan.windowExceededCount(), is(equalTo(1)));
+        assertThat(plan.routesByModel().get("modelA").get(0).exceedsWindow(), is(false));
+        assertThat(plan.routesByModel().get("modelA").get(1).exceedsWindow(), is(true));
+        assertThat(plan.routesByModel().get("modelB").get(0).windowChecked(), is(false));
+    }
+
+    @Test
+    public void renderMarkdown_flagsOverWindowFilesAndCells() {
+        final Path base = Paths.get("");
+        final AiIndexPlan plan = new AiIndexPlan();
+        plan.addRoute("modelA", Paths.get("Small.java"), rule("r1", "p1"), 10, 1000L, 5000L);
+        plan.addRoute("modelA", Paths.get("Huge.java"), rule("r1", "p1"), 20, 9000L, 5000L);
+
+        final String md = plan.renderMarkdown(base);
+
+        assertThat(md, containsString("1 over window"));
+        assertThat(md, containsString("ok")); // the fitting file's window cell
+        assertThat(md, containsString("(!) 9000>5000")); // the over-window file's window cell
+        assertThat(md, containsString("Over window"));
+        assertThat(md, containsString("Huge.java -> model `modelA`"));
+    }
+
+    @Test
+    public void renderMarkdown_noWindowSectionWhenNothingExceeds() {
+        final AiIndexPlan plan = new AiIndexPlan();
+        plan.addRoute("modelA", Paths.get("Small.java"), rule("r1", "p1"), 10, 1000L, 5000L);
+
+        final String md = plan.renderMarkdown(Paths.get(""));
+
+        assertThat(md, containsString("0 over window"));
+        assertThat(md.contains("### (!) Over window"), is(false));
     }
 }

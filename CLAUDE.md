@@ -139,7 +139,11 @@ against an `AiFileContext`; new leaf kinds are one field + one branch. Among mat
 skip beats routes and the fallback); exactly one `<fallback>true</fallback>` (no condition) catches the
 rest; a file matching no rule and no fallback **fails the build**. `aiIndex.planOnly=true` prints the
 Markdown plan (file → rule id → prompt → rough time estimate, summed per model and overall) and stops
-(no model loaded). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+(no model loaded). The plan also computes each routed file's **context-window fit** up front (via
+`AiInputWindowCalculator`, the same threshold the run uses to trim): a file larger than its routed
+model's window is flagged in the plan and, by default (`aiIndex.failOnWindowExceeded=true`), **fails the
+build** so it is routed to a larger-context model instead of being silently trimmed (set the flag to
+`false` to trim with a warning). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
 different file kinds/sizes with different models *and* prompts.
 
@@ -182,7 +186,8 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `SourceFileIndexer` | `collectCandidates` (walk + filters) / `classify` (→ `AiIndexPlan`) / `indexFile` (write one file with a given rule + provider) — split so a run plans first and loads one model per group |
 | `AiFieldGenerationSelector` | Routes a file to a rule by its `<condition>` + priority; explicit fallback; `skip`; plus `validate(rules)` (fail-fast config check) |
 | `AiCondition` / `AiConditionEvaluator` | Composable and/or/not condition tree (leaves: extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob) + its evaluator (`matches`/`validate`/`usesLines`) |
-| `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched; renders the up-front tree |
+| `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched, per-file context-window fit; renders the up-front tree |
+| `AiInputWindowCalculator` | Pure calculator for the input window (max source chars before trimming + whether a source exceeds it); single source of truth shared by the run-time trim (`AiFieldGenerationSupport`) and the plan-time over-window check (`SourceFileIndexer.classify`) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
 | `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
 | `AiMdLeadExtractor` | Pure extraction of the one-line blockquote lead from an `.ai.md` body (fallback: first non-blank line) |
@@ -274,7 +279,8 @@ header block, so a `- F:` line in the body is never read as a link.
 | `excludes` | `aiIndex.excludes` | *(none)* | Glob patterns (base-relative, `/` separators) for source files to skip, e.g. `**/package-info.java`, `**/generated/**` (`AiSourceExcludeFilter`) |
 | `minFileSizeBytes` | `aiIndex.file.minSizeBytes` | `0` | Exclusive lower size bound; files `<=` this are skipped (`0` = no lower bound). For size-tiering across multiple `generate` executions |
 | `maxFileSizeBytes` | `aiIndex.file.maxSizeBytes` | `0` | Inclusive upper size bound; files `>` this are skipped (`0` = unlimited). Pairs with `minFileSizeBytes` to form a band |
-| `planOnly` | `aiIndex.planOnly` | `false` | Print the routing plan tree (model → files → prompt) and stop; no model loaded, nothing generated |
+| `planOnly` | `aiIndex.planOnly` | `false` | Print the routing plan tree (model → files → prompt → window fit) and stop; no model loaded, nothing generated |
+| `failOnWindowExceeded` | `aiIndex.failOnWindowExceeded` | `true` | Fail the build when a matched file is larger than its routed model's context window (would be trimmed). Forces routing oversized files to a larger-context model. `false` = warn and trim instead. Same threshold the run uses (`AiInputWindowCalculator`) |
 | `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
 | `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
 | `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |

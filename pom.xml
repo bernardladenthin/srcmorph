@@ -740,6 +740,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdChildEntryLineFormatter</param>
@@ -1552,6 +1553,37 @@ SPDX-License-Identifier: Apache-2.0
                                     <reasoningEffort>low</reasoningEffort>
                                 </aiDefinition>
 
+                                <!-- ============================================================
+                                     BIG-WINDOW FALLBACK for oversized files (example).
+                                     ============================================================
+                                     With aiIndex.failOnWindowExceeded=true (default), a source larger
+                                     than the default model's window (~275 KB for the 96K gpt-oss presets
+                                     at charsPerToken 3) fails the build instead of being silently trimmed.
+                                     Route such rare large files here: a fast, large-context model. It may
+                                     be less accurate than gpt-oss, but a whole-file summary beats a
+                                     trimmed one. Phi-4-mini-instruct ships a 128K window and is small/fast
+                                     (~3.8B). NOTE: download the GGUF and verify before relying on it; the
+                                     path below is an example. The size-routing rule that targets this key
+                                     lives in the ai-generate <fieldGenerations> below (id big-window). -->
+                                <aiDefinition>
+                                    <key>phi-4-mini-bigwindow</key>
+                                    <modelPath>X:/Modelle/Phi-4-mini-instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>131072</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+
                                 <aiDefinition>
                                     <key>EXP-Qwen3-Coder-30B</key>
                                     <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
@@ -1994,6 +2026,32 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
                                     <fieldGenerations>
+                                        <!-- Big-window fallback rule (example): a .java file larger than the
+                                             default model's window (~275 KB at 96K/charsPerToken 3) would be
+                                             trimmed, so route it to the large-context phi-4-mini-bigwindow
+                                             model instead. Higher priority than the plain java rule so it wins
+                                             for oversized files; normal-sized files never match (size min) and
+                                             fall through to the java rule. This is what lets the default
+                                             aiIndex.failOnWindowExceeded=true pass even if a huge file appears.
+                                             Threshold is conservative; tune to your model's actual window. -->
+                                        <fieldGeneration>
+                                            <id>big-window</id>
+                                            <promptKey>file-body-java</promptKey>
+                                            <aiDefinitionKey>phi-4-mini-bigwindow</aiDefinitionKey>
+                                            <priority>100</priority>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.java</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>275000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
                                         <fieldGeneration>
                                             <id>java</id>
                                             <promptKey>file-body-java</promptKey>

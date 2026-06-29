@@ -67,15 +67,6 @@ public class AiFieldGenerationSupport {
      */
     private static final String CACHE_KEY_SEPARATOR = ":";
 
-    /**
-     * Rounding granularity applied when computing the final {@code maxInputChars} value.
-     * The available character count is rounded DOWN to the nearest multiple of this value
-     * to produce a conservative, human-readable result.
-     *
-     * @see #calculateAndLogMaxInputChars
-     */
-    private static final int MAX_INPUT_CHARS_ROUNDING = 100;
-
     /** Bytes per kibibyte, used to render the source size in the per-file processing log. */
     private static final int KIBIBYTES_DIVISOR = 1024;
 
@@ -327,7 +318,8 @@ public class AiFieldGenerationSupport {
         final int safetyChars = AiGenerationConfig.DEFAULT_SAFETY_MARGIN_CHARS;
         final int overheadTotal = promptChars + eofChars + outputChars + safetyChars;
         final int availableChars = totalChars - overheadTotal;
-        final int finalChars = Math.max(0, (availableChars / MAX_INPUT_CHARS_ROUNDING) * MAX_INPUT_CHARS_ROUNDING);
+        // Single source of truth for the threshold shared with the planning path (SourceFileIndexer.classify).
+        final int finalChars = AiInputWindowCalculator.maxInputChars(config, basePromptLength);
 
         log.info("Maximum input characters for source code before trimming. Calculated as: (context_size x "
                 + charsPerToken + ") - overhead");
