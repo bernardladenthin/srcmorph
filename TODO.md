@@ -20,7 +20,7 @@ recorded in git history and `crossrepostatus.md`, not here.
 
 - **Expand PIT mutation scope (optional).** `pom.xml` wires `<mutationThreshold>100</mutationThreshold>` over an explicit `<targetClasses>` list (config / document / prompt / provider / support value+logic classes, plus `indexer.AiInputWindowCalculator` and `support.AiProgressBar`), all killed at 100%. Still out (optional, need careful fixtures): `document.AiMdDocumentCodec` / `AiMdHeaderCodec`, `prompt.AiPromptPreparationSupport`, and the newer `indexer.AiIndexPlan` / `config.AiConditionGroup`. The orchestration layers (`indexer.*` walk, `mojo.*`) and the JNI provider stay out of PIT — they need a Maven/native context rather than pure-unit mutation (see crossrepostatus "Deliberate non-parity").
 
-- **README docs polish.** (a) The consumer install example pins `<version>1.0.0` — confirm `1.0.0` is actually published on Maven Central, or update the example. (b) The `minP` (min-p) sampling parameter is configurable per model definition but is not documented in the README.
+- **README install example version.** The consumer install example pins `<version>1.0.0` — confirm `1.0.0` is actually published on Maven Central, or update the example. (The per-model `<aiDefinition>` parameters, incl. `minP`, are now fully documented in README "Per-model `<aiDefinition>` parameters".)
 
 - **Big-window fallback beyond ~1 MB.** The `granite-4.0-h-tiny-bigwindow` preset (384K context) covers source files up to ~1 MB; larger files hard-fail by design. If genuinely needed, add a still-larger preset (Granite allocates up to its 512K training limit, with further quality loss) or document a file-splitting workflow.
 

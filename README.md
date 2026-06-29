@@ -383,8 +383,43 @@ Run-level parameters (set in `<configuration>`):
 - `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
 - `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
 
-Per-model parameters — model path, context size, output tokens, temperature, top-p / top-k,
-repeat penalty, threads — live inside each `<aiDefinition>`, not as top-level parameters.
+### Per-model `<aiDefinition>` parameters
+
+Every model knob lives inside its `<aiDefinition>` (referenced by `aiDefinitionKey`), not as a top-level
+plugin parameter. Only `key` and `modelPath` are required; everything else has a default. The defaults
+below are the shipped values (`AiGenerationConfig.DEFAULT_*`).
+
+| Element | Default | Description |
+|---|---|---|
+| `key` | *(required)* | Identifier referenced by a rule's `aiDefinitionKey` |
+| `modelPath` | *(required)* | Path to the GGUF model file |
+| `contextSize` | `32768` | Context window in tokens |
+| `maxOutputTokens` | `128` | Max generated tokens per call |
+| `threads` | `8` | CPU threads for inference |
+| `temperature` | `0.15` | Sampling temperature |
+| `topP` | `0.9` | Nucleus (top-p) sampling threshold |
+| `topK` | `40` | Top-k sampling limit (`0` = disabled) |
+| `minP` | `0.0` | Min-p sampling threshold (`0.0` = disabled) |
+| `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
+| `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
+| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field). Use a value at or below your model's real ratio so the budget stays conservative |
+| `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
+| `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
+| `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |
+| `cacheReuse` | `256` | KV prefix-reuse minimum chunk size in tokens (`--cache-reuse`; `0` = off) |
+| `gpuLayers` | `-1` | GPU layers to offload (`--gpu-layers`); `-1` = auto-fit to free VRAM, `0` = force CPU, `>0` = partial. GPU native only |
+| `mainGpu` | `-1` | Primary GPU index (`--main-gpu`); `-1` = leave default. Matters on multi-GPU hosts (e.g. a Vulkan build enumerates every GPU) |
+| `devices` | *(empty)* | Explicit device selection (`--device`), comma-separated backend device names (e.g. `Vulkan1`); takes precedence over `mainGpu` |
+| `chatTemplateEnableThinking` | `true` | Enable the chat template's thinking mode |
+| `reasoningEffort` | `low` | gpt-oss harmony reasoning effort (`low`/`medium`/`high`); empty omits the kwarg (e.g. for non-gpt-oss models) |
+| `reasoningBudgetTokens` | `-1` | Cap on harmony reasoning tokens (`-1` = unrestricted) |
+| `dryMultiplier` | `0.0` | DRY repetition-penalty multiplier (`0.0` = disabled); the other `dry*` knobs only apply when this is `> 0` |
+| `dryBase` | `1.75` | DRY exponential base |
+| `dryAllowedLength` | `2` | Longest n-gram that may repeat without DRY penalty |
+| `dryPenaltyLastN` | `-1` | DRY look-back window in tokens (`-1` = whole context, `0` = off) |
+| `drySequenceBreakers` | *(empty)* | DRY sequence-breaker strings; empty = the binding defaults |
+| `stopStrings` | *(empty)* | Extra stop strings that end generation |
+
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
 from `<fieldGenerations>`. The self-test profile defines five:
