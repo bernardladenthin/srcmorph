@@ -39,3 +39,10 @@ replay_pid*
 src/siteGusto/
 src/siteMistral3/
 src/siteQwenBRUTAL/
+
+# IDE config
+.idea/
+
+# Generated AI-index output from the self-index run (keep the tracked placeholder)
+/src/site/ai/*
+!/src/site/ai/empty.md

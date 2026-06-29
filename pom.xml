@@ -1337,7 +1337,9 @@ SPDX-License-Identifier: Apache-2.0
                                      effort only for genuinely reasoning-heavy generation AND raise
                                      maxOutputTokens with it, or the final answer is truncated.
 
-                                     >>> DEFAULT: gpt-oss-20B-c96k <<<
+                                     >>> DEFAULT MODEL: gpt-oss-20B-mxfp4 (native MXFP4), 96K window <<<
+                                     (set via the ai.model property; the c16k/c48k/c96k presets are the
+                                     same model family at narrower windows.)
                                      Why the widest practical window is the default: a measured A/B
                                      (§11) proved that a larger contextSize costs ONLY KV RAM, NOT
                                      per-file time — for the same small file, 16K vs 96K had identical
@@ -1350,9 +1352,12 @@ SPDX-License-Identifier: Apache-2.0
                                      a fully filled 96K window plus context checkpoints peaks ~23 GB).
 
                                      Shared design:
-                                       - charsPerToken 3 matches dense Java (measured ~4.2 chars/token;
-                                         3 keeps the char-based pre-trim token-safe so a big file is never
-                                         silently over-fed past the real token window).
+                                       - charsPerToken 3 is a conservative pre-trim safety ratio: real
+                                         Java tokenizes at ~4.8 chars/token (D2; the synthetic fixture was
+                                         ~4.2), so 3 under-counts on purpose, keeping the char-based pre-trim
+                                         token-safe so a big file is never silently over-fed past the real
+                                         token window. (The ETA estimator uses the measured 4.8 separately;
+                                         see AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN.)
                                        - Sampling: temp 0.7, top-p 1.0, top-k 0, min-p 0.05. This is a
                                          deliberate task-specific deviation from the model card's
                                          temp 1.0/top-p 1.0: a fact-check (docs/.../gpt-oss-tuning.md D1)

@@ -421,9 +421,12 @@ Based on an 8-model × 2-prompt benchmark run against this codebase — full res
 pros/cons, a source-faithfulness deep-dive, and reproduction steps in
 [docs/ai-index-benchmark](docs/ai-index-benchmark/COMPARISON.md):
 
-- **`gpt-oss-20B-c96k` — the production default.** Most *accurate* per file (won 5/6 in the per-file
-  matrix), run at `reasoningEffort=low` and a 96K window so it covers files up to ~250 KB untrimmed.
-  Slowest of the set (~2× the 30B) — the accepted cost for accuracy. See the preset/timing details below.
+- **`gpt-oss-20B-mxfp4` — the production default** (switch with `-Dai.model=<key>`). The native MXFP4
+  quant at a 96K window; it inherits the benchmark's accuracy lead (gpt-oss-20b was most *accurate* per
+  file, won 5/6 in the per-file matrix — measured on the `c96k`/UD-Q4_K_XL quant, but E5 shows quant
+  choice is within noise so the native MXFP4 is the better-quality swap), run at `reasoningEffort=low`
+  and a 96K window so it covers files up to ~250 KB untrimmed. Slowest of the set (~2× the 30B) — the
+  accepted cost for accuracy. See the preset/timing details below.
 - **Qwen3-Coder-30B-A3B-Instruct** — throughput alternative (and best of the non-reasoning models for
   large Java files): most complete/faithful of the fast models, code-specialized, Apache-2.0,
   ~3.3B-active MoE, 262K context. Pick it when throughput beats the last points of fidelity.

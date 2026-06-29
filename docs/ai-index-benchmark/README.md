@@ -8,9 +8,11 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
 
 ## Bottom line
 
-- **Production default: `gpt-oss-20B-c96k`** — most faithful per file (won 5/6 in the per-file
-  matrix), run at `reasoningEffort=low` and a 96K window so it covers files up to ~250 KB untrimmed
-  (§11). Slowest of the set; chosen because per-file accuracy is the priority.
+- **Production default: `gpt-oss-20B-mxfp4`** (the native-MXFP4 swap of the benchmarked `c96k`/UD-Q4_K_XL
+  — same 96K window; E5 shows quant choice is within noise, so the native quant is the better-quality
+  pick). Most faithful per file (gpt-oss-20b won 5/6 in the per-file matrix), run at `reasoningEffort=low`
+  and a 96K window so it covers files up to ~250 KB untrimmed (§11). Slowest of the set; chosen because
+  per-file accuracy is the priority.
 - **Throughput alternative (and best of the non-reasoning models for large files):
   `Qwen3-Coder-30B-A3B-Instruct`** — most complete & faithful of the fast models, code-specialized,
   Apache-2.0, ~71 s/file (~3.3B-active MoE, 262K ctx).
