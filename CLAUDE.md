@@ -130,13 +130,17 @@ The `generate` goal is **plan-then-execute** and **rule-routed**: it first walks
 routes each via the `<fieldGeneration>` rules to a `(model, prompt)` — or a *skip*, or the explicit
 *fallback* — and logs a tree grouped by model (which file gets which model + prompt). It then loads
 **each model once** (groups sharing an `aiDefinitionKey`, sequentially → one model resident at a time,
-bounded RAM) and indexes that group's files. A rule matches by `fileExtensions` + `minFileSizeBytes`/
-`maxFileSizeBytes` + `minLines`/`maxLines`; among matches the highest `priority` wins (ties by
-declaration order). `<skip>true</skip>` ignores matching files (a high-priority skip beats routes and
-the fallback); exactly one `<fallback>true</fallback>` catches the rest; a file matching no rule and no
-fallback **fails the build**. `aiIndex.planOnly=true` prints the plan and stops (no model loaded). See
-`AiFieldGenerationSelector` (selection + validation) and `AiIndexPlan` (the tree). This is how one run
-can index different file kinds/sizes with different models *and* prompts.
+bounded RAM) and indexes that group's files. A rule matches by a composable **`<condition>` tree** — `<and>`/`<or>`/`<not>` over leaves
+`<extensions>`, `<size>` (`min`/`max` bytes), `<lines>` (`min`/`max`), `<modifiedAfter>`/`<modifiedBefore>`
+(ISO-8601 instant vs file mtime), `<pathGlob>` (base-relative glob) — evaluated by `AiConditionEvaluator`
+against an `AiFileContext`; new leaf kinds are one field + one branch. Among matches the highest
+`priority` wins (ties by declaration order). `<skip>true</skip>` ignores matching files (a high-priority
+skip beats routes and the fallback); exactly one `<fallback>true</fallback>` (no condition) catches the
+rest; a file matching no rule and no fallback **fails the build**. `aiIndex.planOnly=true` prints the
+Markdown plan (file → rule id → prompt → rough time estimate, summed per model and overall) and stops
+(no model loaded). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+`AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
+different file kinds/sizes with different models *and* prompts.
 
 **Phase 2 — Package Aggregation & Summarization**
 ```
@@ -175,7 +179,8 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `AggregatePackagesMojo` | Phase 2: aggregate + summarize package index files |
 | `AggregateProjectMojo` | Phase 3: build the single `project.ai.md` (deterministic listing; extends `AbstractAiIndexMojo` and builds a provider **only** when a `<fieldGeneration>` opts into the AI overview) |
 | `SourceFileIndexer` | `collectCandidates` (walk + filters) / `classify` (→ `AiIndexPlan`) / `indexFile` (write one file with a given rule + provider) — split so a run plans first and loads one model per group |
-| `AiFieldGenerationSelector` | Routes a file to a rule by extension/size/lines + priority; explicit fallback; `skip`; plus `validate(rules)` (fail-fast config check) |
+| `AiFieldGenerationSelector` | Routes a file to a rule by its `<condition>` + priority; explicit fallback; `skip`; plus `validate(rules)` (fail-fast config check) |
+| `AiCondition` / `AiConditionEvaluator` | Composable and/or/not condition tree (leaves: extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob) + its evaluator (`matches`/`validate`/`usesLines`) |
 | `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched; renders the up-front tree |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
 | `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
@@ -384,7 +389,7 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
 3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums detect source changes.
 4. **Unified indexing and summarization** — each indexer (`SourceFileIndexer`, `PackageIndexer`) both creates the `.ai.md` skeleton and fills in AI fields in a single pass; no separate summarization step is needed.
 5. **Provider abstraction** — AI backends are pluggable through `AiGenerationProvider`; mock provider enables fully deterministic tests.
-6. **Configuration-driven prompts & rule-based routing** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change. For the `generate` goal each `<fieldGeneration>` is a routing **rule** (`AiFieldGenerationSelector`): filters `<fileExtensions>` + `<minFileSizeBytes>`/`<maxFileSizeBytes>` + `<minLines>`/`<maxLines>`, a `<priority>` (highest matching wins, ties by order), and a kind — route (`<promptKey>`+`<aiDefinitionKey>`), `<skip>true</skip>` (ignore), or exactly one explicit `<fallback>true</fallback>`. So one run can route different file kinds/sizes to different models **and** prompts; the model id (`aiDefinitionKey`) carries the full parameter set (path, context, sampling…), and the run loads each model once. A file matching no rule and no fallback fails the build; `aiIndex.planOnly=true` previews the plan tree without loading a model. Prompts live once in a shared plugin-level `<promptDefinitions>` and are referenced by id across all rules/executions (no duplication).
+6. **Configuration-driven prompts & rule-based routing** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change. For the `generate` goal each `<fieldGeneration>` is a routing **rule** (`AiFieldGenerationSelector`): a composable `<condition>` tree (`<and>`/`<or>`/`<not>` over leaves extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob — `AiCondition`/`AiConditionEvaluator`), a `<priority>` (highest matching wins, ties by order), and a kind — route (`<promptKey>`+`<aiDefinitionKey>`), `<skip>true</skip>` (ignore), or exactly one explicit `<fallback>true</fallback>`. So one run can route different file kinds/sizes to different models **and** prompts; the model id (`aiDefinitionKey`) carries the full parameter set (path, context, sampling…), and the run loads each model once. A file matching no rule and no fallback fails the build; `aiIndex.planOnly=true` previews the plan tree without loading a model. Prompts live once in a shared plugin-level `<promptDefinitions>` and are referenced by id across all rules/executions (no duplication).
 
 ## Javadoc Conventions
 
