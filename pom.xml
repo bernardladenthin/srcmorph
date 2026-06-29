@@ -759,6 +759,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper</param>

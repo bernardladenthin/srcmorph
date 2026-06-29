@@ -303,6 +303,17 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        OPM_OVERLY_PERMISSIVE_METHOD on AiProgressBar.render. fb-contrib flags the public render(...)
+        overloads as "could be more restrictive" from bytecode shape, but they are the class's public API
+        (a reusable progress-bar renderer) and are called from GenerateMojo and exercised directly by unit
+        tests. Same rationale as the AiGenerationTimeEstimator OPM suppression above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+    <!--
         EI_EXPOSE_REP / EI_EXPOSE_REP2 on the rule-routing config beans and the routing-plan model.
 
         AiCondition / AiConditionGroup / AiFieldGenerationConfig are mutable Maven @Parameter

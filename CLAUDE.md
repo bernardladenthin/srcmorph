@@ -189,6 +189,7 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `AiCondition` / `AiConditionEvaluator` | Composable and/or/not condition tree (leaves: extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob) + its evaluator (`matches`/`validate`/`usesLines`) |
 | `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched, per-file context-window fit; renders the up-front tree |
 | `AiInputWindowCalculator` | Pure calculator for the input window (max source chars before trimming + whether a source exceeds it); single source of truth shared by the run-time trim (`AiFieldGenerationSupport`) and the plan-time over-window check (`SourceFileIndexer.classify`) |
+| `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
 | `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
 | `AiMdLeadExtractor` | Pure extraction of the one-line blockquote lead from an `.ai.md` body (fallback: first non-blank line) |

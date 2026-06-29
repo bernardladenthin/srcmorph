@@ -18,6 +18,8 @@ import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -45,6 +47,9 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      * is configured. Only files whose names end with this extension are indexed.
      */
     private static final String DEFAULT_FILE_EXTENSION = ".java";
+
+    /** Nanoseconds per second, for converting the measured run elapsed time to whole seconds. */
+    private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
     /**
      * Phase switch for the <strong>file</strong> phase (the {@code generate} goal): when {@code true},
@@ -212,7 +217,16 @@ public class GenerateMojo extends AbstractAiIndexMojo {
             }
 
             // 4. Execute model group by model group: load each model once, index its files, close.
+            //    Progress is the running sum of each finished file's PLAN estimate over the grand total
+            //    (no re-estimation), logged as a bar + percent after every file, with the estimated time
+            //    left and the actual wall-clock elapsed for comparison.
             final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
+            final AiGenerationTimeEstimator estimator = new AiGenerationTimeEstimator();
+            final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
+            final int totalFiles = plan.routedCount();
+            final long runStartNanos = System.nanoTime();
+            long doneEstimatedSeconds = 0;
+            int doneFiles = 0;
             int wrote = 0;
             int unchanged = 0;
             for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
@@ -230,6 +244,16 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         } else {
                             unchanged++;
                         }
+                        doneEstimatedSeconds += entry.estimatedSeconds();
+                        doneFiles++;
+                        final long elapsedSeconds = (System.nanoTime() - runStartNanos) / NANOS_PER_SECOND;
+                        final long remainingSeconds = Math.max(0L, totalEstimatedSeconds - doneEstimatedSeconds);
+                        getLog().info(AiProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds)
+                                + " " + doneFiles + "/" + totalFiles + " files - est. "
+                                + estimator.formatDuration(doneEstimatedSeconds) + "/"
+                                + estimator.formatDuration(totalEstimatedSeconds) + " done, ~"
+                                + estimator.formatDuration(remainingSeconds) + " left (estimate) | "
+                                + estimator.formatDuration(elapsedSeconds) + " elapsed (actual)");
                     }
                 }
             }
