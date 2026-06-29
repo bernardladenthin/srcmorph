@@ -213,10 +213,12 @@ public final class AiIndexPlan {
                     .append(entries.size())
                     .append(" file(s), est. ")
                     .append(estimator.formatDuration(modelSeconds(entries)))
-                    .append("\n\n| File | Prompt | Est. |\n|---|---|---|\n");
+                    .append("\n\n| File | Rule | Prompt | Est. |\n|---|---|---|---|\n");
             for (final Entry entry : entries) {
                 sb.append("| ")
                         .append(relativize(baseDir, entry.file()))
+                        .append(" | ")
+                        .append(ruleId(entry.rule()))
                         .append(" | ")
                         .append(entry.rule().getPromptKey())
                         .append(" | ")
@@ -239,6 +241,16 @@ public final class AiIndexPlan {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Returns the rule's id for display, or {@code "-"} when the rule has no id set.
+     *
+     * @param rule the routing rule
+     * @return the rule id, or {@code "-"}
+     */
+    private String ruleId(final AiFieldGenerationConfig rule) {
+        return rule.getId() != null ? rule.getId() : "-";
     }
 
     /**

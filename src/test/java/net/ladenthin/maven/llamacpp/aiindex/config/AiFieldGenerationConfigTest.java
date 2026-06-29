@@ -92,6 +92,14 @@ public class AiFieldGenerationConfigTest {
     }
 
     @Test
+    public void id_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        assertThat(config.getId(), is(nullValue()));
+        config.setId("java-small");
+        assertThat(config.getId(), is(equalTo("java-small")));
+    }
+
+    @Test
     public void priority_defaultsZeroAndRoundTrips() {
         final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
         assertThat(config.getPriority(), is(equalTo(0)));

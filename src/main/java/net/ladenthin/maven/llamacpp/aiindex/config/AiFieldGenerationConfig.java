@@ -44,6 +44,14 @@ public class AiFieldGenerationConfig {
         // no-op
     }
 
+    /**
+     * Optional human-readable id for this routing rule (e.g. {@code java-small}, {@code skip-generated}).
+     * Purely a label: it is shown in the plan tree so you can see <em>which</em> rule routed each file
+     * (handy when several rules share a prompt), and it appears in validation error messages. {@code null}
+     * when not set.
+     */
+    private String id;
+
     private String promptKey;
 
     /**
@@ -130,6 +138,24 @@ public class AiFieldGenerationConfig {
      * @see AiFieldGenerationSelector
      */
     private boolean skip;
+
+    /**
+     * Returns the optional rule id (label), or {@code null} when not set.
+     *
+     * @return the rule id, or {@code null}
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * Sets the optional rule id (label).
+     *
+     * @param id the rule id
+     */
+    public void setId(final String id) {
+        this.id = id;
+    }
 
     /**
      * Returns the prompt template key.

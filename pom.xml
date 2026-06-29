@@ -1907,6 +1907,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                     </fileExtensions>
                                     <fieldGenerations>
                                         <fieldGeneration>
+                                            <id>java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                             <fileExtensions>
@@ -1914,6 +1915,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             </fileExtensions>
                                         </fieldGeneration>
                                         <fieldGeneration>
+                                            <id>sql</id>
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                             <fileExtensions>
@@ -1924,6 +1926,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                              Exactly one fallback is allowed; without it an unmatched file
                                              fails the build (see AiFieldGenerationSelector). -->
                                         <fieldGeneration>
+                                            <id>fallback</id>
                                             <promptKey>file-body-fallback</promptKey>
                                             <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
                                             <fallback>true</fallback>

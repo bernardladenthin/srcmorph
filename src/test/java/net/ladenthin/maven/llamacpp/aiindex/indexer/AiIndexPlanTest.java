@@ -21,6 +21,13 @@ public class AiIndexPlanTest {
         return config;
     }
 
+    private static AiFieldGenerationConfig rule(final String id, final String promptKey) {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        config.setId(id);
+        config.setPromptKey(promptKey);
+        return config;
+    }
+
     @Test
     public void routedCountAndPerModelGrouping() {
         final AiIndexPlan plan = new AiIndexPlan();
@@ -47,7 +54,7 @@ public class AiIndexPlanTest {
     public void renderMarkdown_containsModelSectionsFilesAndTotals() {
         final Path base = Paths.get("");
         final AiIndexPlan plan = new AiIndexPlan();
-        plan.addRoute("modelA", Paths.get("Foo.java"), rule("file-body-java"), 60);
+        plan.addRoute("modelA", Paths.get("Foo.java"), rule("java-small", "file-body-java"), 60);
         plan.addSkipped(Paths.get("Generated.java"));
         plan.addUnmatched(Paths.get("weird.txt"));
 
@@ -56,8 +63,9 @@ public class AiIndexPlanTest {
         assertThat(md, containsString("## AI index plan"));
         assertThat(md, containsString("**Total:**"));
         assertThat(md, containsString("### Model `modelA`"));
-        assertThat(md, containsString("| File | Prompt | Est. |"));
+        assertThat(md, containsString("| File | Rule | Prompt | Est. |"));
         assertThat(md, containsString("Foo.java"));
+        assertThat(md, containsString("java-small")); // the rule id shows in its own column
         assertThat(md, containsString("file-body-java"));
         assertThat(md, containsString("Skipped (1)"));
         assertThat(md, containsString("Generated.java"));
