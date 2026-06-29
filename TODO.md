@@ -15,7 +15,7 @@ cross-cutting initiative.
 
 - **SpotBugs `effort=Max` + `threshold=Low`** — ✅ **enforced at the gate** (`0bddf2a`). `pom.xml` `<effort>Max</effort>` + `<threshold>Low</threshold>`; `spotbugs:check` is part of `mvn verify` and fails on any unsuppressed finding. The full clearing chain is recorded in [`../workspace/crossrepostatus.md`](../workspace/crossrepostatus.md) under "SpotBugs Max+Low". `spotbugs-exclude.xml` carries narrow `<Match>` blocks with rationale: Lombok-USBR, HelpMojo auto-gen family, Maven `@Parameter` SPP, identity-IMC, prompt-template `FORMAT_STRING`, fb-contrib flow-coarseness sites, NPE→`MojoExecutionException` bridge.
 
-- **Mutation-testing threshold enforcement (PIT)** — `pom.xml` wires `<mutationThreshold>100</mutationThreshold>`. The explicit `<targetClasses>` list now covers **24 classes** (config / document / prompt / provider / support value + support classes; **200 mutations, all killed**). Latest additions landed with the three-level index work: `document.AiMdLeadExtractor` (project index), `config.AiFieldGenerationSelector` (extension-based prompt selection), and `support.AiSourceExcludeFilter` (exclude globs). Still open (optional): `document.AiMdDocumentCodec` / `AiMdHeaderCodec` / `prompt.AiPromptPreparationSupport` (need careful codec fixtures). The orchestration layers (`indexer.*`, `mojo.*`) and the JNI provider stay out of PIT — they need a Maven/native context rather than pure-unit mutation (see crossrepostatus "Deliberate non-parity").
+- **Mutation-testing threshold enforcement (PIT)** — `pom.xml` wires `<mutationThreshold>100</mutationThreshold>`. The explicit `<targetClasses>` list covers the config / document / prompt / provider / support logic + value classes; **426 mutations, all killed (100%)**. The condition-routing work added `config.AiCondition`, `AiConditionGroup`, `AiConditionEvaluator`, `AiFileContext`, `AiRangeCondition` to the gate. Still open (optional): `document.AiMdDocumentCodec` / `AiMdHeaderCodec` / `prompt.AiPromptPreparationSupport` (need careful codec fixtures). The orchestration layers (`indexer.*`, `mojo.*`) and the JNI provider stay out of PIT — they need a Maven/native context rather than pure-unit mutation (see crossrepostatus "Deliberate non-parity").
 
 - **Additional ArchUnit rules to consider** — the full **`layeredArchitecture()`** rule and **per-module banned-imports** (`jniConfinedToProvider`, `mavenMojoAnnotationsConfinedToMojo`, `foundationIsMavenFree`) are now DONE (see "Done" below). No further ArchUnit rules outstanding.
 
@@ -24,6 +24,23 @@ cross-cutting initiative.
 - **Cross-repo code-quality TODOs** — see [`../workspace/policies/code-quality-todos.md`](../workspace/policies/code-quality-todos.md) for the canonical `@VisibleForTesting` design-fit review, package hierarchy review, and class/method naming review. This repo has no `@VisibleForTesting` usages today; the package and naming reviews are still open here.
 
 ## Done (kept for history)
+
+### Rule-based file routing + general-purpose condition tree
+
+- **Plan-then-execute `generate`** — walk candidates, route each via the rules, log a copy-pasteable
+  **Markdown plan** (model → file → rule id → prompt → rough time estimate, summed per model + overall),
+  then load **each model once** (grouped by `aiDefinitionKey`, one resident at a time). `aiIndex.planOnly`
+  previews without loading a model. Unmatched file (no rule, no fallback) **fails the build**. See
+  `AiIndexPlan`, `SourceFileIndexer` (`collectCandidates`/`classify`/`indexFile`), `GenerateMojo`.
+- **Routing rules** (`AiFieldGenerationConfig` + `AiFieldGenerationSelector`) — `<id>`, `<priority>`
+  (highest matching wins, ties by order), route / `<skip>` / single explicit `<fallback>`, and a
+  composable **`<condition>` tree** (`AiCondition`/`AiConditionGroup`/`AiConditionEvaluator`): `<and>`/
+  `<or>` (children in `<conditions><condition>`), `<not>`, leaves `<extensions>`/`<size>`/`<lines>`/
+  `<modifiedAfter>`/`<modifiedBefore>`/`<pathGlob>`. Replaced the old flat per-rule filters
+  (not backward compatible). All new config classes at 100% PIT.
+- **Per-file actual generation time** logged next to the estimate; **gpt-oss quant menu** in the pom
+  (mxfp4/Q4_K_M/Q5_K_M/Q8_0/F16 + E5 measurements). Findings: `docs/ai-index-benchmark/gpt-oss-tuning.md`
+  (E1–E6 + retry-removal + opt-in knobs) and `COMPARISON.md`.
 
 ### Three-level hierarchical index + per-phase switches
 
