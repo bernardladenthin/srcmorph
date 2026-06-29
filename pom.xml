@@ -1555,26 +1555,34 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
 
                                 <!-- ============================================================
-                                     BIG-WINDOW FALLBACK for oversized files (example).
+                                     BIG-WINDOW FALLBACK for oversized files.
                                      ============================================================
                                      A source larger than the default model's window (~275 KB for the 96K
                                      gpt-oss presets at charsPerToken 3) hard-fails the build; the plugin
                                      never auto-picks a model, so YOU route such files here via the
-                                     big-window rule below. This model is a fast, large-context one. It may
-                                     be less accurate than gpt-oss, but a whole-file summary beats a
-                                     trimmed one. Phi-4-mini-instruct ships a 128K window and is small/fast
-                                     (~3.8B). NOTE: download the GGUF and verify before relying on it; the
-                                     path below is an example. The size-routing rule that targets this key
-                                     lives in the ai-generate <fieldGenerations> below (id big-window). -->
+                                     big-window rule below. IBM Granite 4.0-H-Tiny is the chosen fallback:
+                                       - Apache-2.0 (same license family as gpt-oss), IBM (not China).
+                                       - Hybrid Mamba-2/Transformer (9:1, NoPE): the KV cache grows only
+                                         LINEARLY with context, so a huge file fits ungekuerzt even on an
+                                         8 GB GPU (a classic transformer's KV would blow up at 128K).
+                                       - 128K context (validated; trained to 512K), 7B total / ~1B active MoE.
+                                     Verified on this machine: it loaded the full 131072 ctx and summarized a
+                                     ~482 KB / ~124K-token Java file on an 8 GB RTX 3070 with no OOM (prefill
+                                     ~2560 t/s, decode ~97 t/s) into a correct Markdown overview. It is less
+                                     accurate than gpt-oss, but a whole-file summary beats a trimmed one.
+                                     charsPerToken 4 is measured (~482 KB -> ~124K tokens). reasoningEffort is
+                                     empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
+                                     sent. The size-routing rule that targets this key lives in the
+                                     ai-generate <fieldGenerations> below (id big-window). -->
                                 <aiDefinition>
-                                    <key>phi-4-mini-bigwindow</key>
-                                    <modelPath>X:/Modelle/Phi-4-mini-instruct-Q4_K_M.gguf</modelPath>
+                                    <key>granite-4.0-h-tiny-bigwindow</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
                                     <contextSize>131072</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
                                     <devices>${ai.devices}</devices>
-                                    <maxOutputTokens>6144</maxOutputTokens>
-                                    <temperature>0.7</temperature>
+                                    <maxOutputTokens>4096</maxOutputTokens>
+                                    <temperature>0.2</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
@@ -1582,7 +1590,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <topK>0</topK>
                                     <minP>0.05</minP>
                                     <repeatPenalty>1.0</repeatPenalty>
-                                    <reasoningEffort>low</reasoningEffort>
+                                    <reasoningEffort></reasoningEffort>
                                 </aiDefinition>
 
                                 <aiDefinition>
@@ -2027,19 +2035,22 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
                                     <fieldGenerations>
-                                        <!-- Big-window fallback rule (example): a .java file larger than the
-                                             default model's window (~275 KB at 96K/charsPerToken 3) would be
-                                             trimmed, so route it to the large-context phi-4-mini-bigwindow
-                                             model instead. Higher priority than the plain java rule so it wins
-                                             for oversized files; normal-sized files never match (size min) and
-                                             fall through to the java rule. Without a rule like this, a file
-                                             larger than the default model's window hard-fails the build (the
-                                             plugin never auto-selects a model) - this is how YOU satisfy that
-                                             check. Threshold is conservative; tune to your model's window. -->
+                                        <!-- Big-window fallback rule: a .java file larger than the default
+                                             model's window (~275 KB at 96K/charsPerToken 3) would be trimmed,
+                                             so route it to the large-context granite-4.0-h-tiny-bigwindow
+                                             model instead (Granite's ~128K window covers up to ~500 KB at
+                                             charsPerToken 4). Higher priority than the plain java rule so it
+                                             wins for oversized files; normal-sized files never match (size
+                                             min) and fall through to the java rule. Without a rule like this,
+                                             a file larger than the default model's window hard-fails the build
+                                             (the plugin never auto-selects a model) - this is how YOU satisfy
+                                             that check. Threshold is conservative; tune to your model's
+                                             window. (A file beyond Granite's window fails too: split it or add
+                                             a still-larger fallback.) -->
                                         <fieldGeneration>
                                             <id>big-window</id>
                                             <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>phi-4-mini-bigwindow</aiDefinitionKey>
+                                            <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
                                             <condition>
                                                 <and>

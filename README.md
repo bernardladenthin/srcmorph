@@ -168,7 +168,9 @@ The plugin is configured from three building blocks, declared on the plugin insi
    file too large for the window would lose content if trimmed, so the build **always fails** (a hard
    abort). The fix is **configuration only** — the plugin never picks a model for you: add a
    `<fieldGeneration>` rule with a size `<condition>` that routes oversized files to a model with a large
-   enough window (see the `phi-4-mini-bigwindow` definition + the `big-window` rule in the POM).
+   enough window (see the `granite-4.0-h-tiny-bigwindow` definition + the `big-window` rule in the POM —
+   IBM Granite 4.0-H-Tiny, Apache-2.0, a 128K hybrid Mamba model whose KV cache grows only linearly, so a
+   huge file fits ungekürzt even on an 8 GB GPU; verified summarizing a ~124K-token file with no OOM).
 
 ```xml
 <plugin>
