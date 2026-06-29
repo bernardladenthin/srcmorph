@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 # Objective scorer for one AI-index benchmark cell.
 # Usage: score.sh <ai_md_path> <run_log_path> <expected_bucket_count>
 # Prints a single TSV row: sections\treachesConc\bytes\claimedMaxBucket\parenCount\countErr\truncated\promptTok\prefillMs\decodeTok\decodeMs
