@@ -458,28 +458,62 @@ RTX 3070 a CUDA build measured **~4.5× the CPU decode speed**; Vulkan also work
 a one-time shader-compilation cost on the first run. OpenCL is intentionally not offered (llama.cpp's
 OpenCL backend does not support NVIDIA GPUs).
 
-**Reliable way (any build, incl. indexing your own project) — runtime library override.** The native
-loader (`net.ladenthin.llama.loader.LlamaLoader`) loads from `net.ladenthin.llama.lib.path` before the
-bundled native, so point it at a folder holding the GPU `jllama.dll`:
+How the native is found: `net.ladenthin.llama.loader.LlamaLoader` tries `net.ladenthin.llama.lib.path`,
+then `java.library.path`, then **extracts the native bundled in whatever `net.ladenthin:llama` jar is on
+the classpath**. So there are two ways to enable a GPU when running the *published* plugin in your own
+build.
+
+**Recommended — add the GPU classifier to the plugin's own classpath.** Declare the matching
+`net.ladenthin:llama` classifier as a dependency of the plugin in your POM; the loader then extracts the
+GPU `jllama.dll` from it — no library path to manage:
+
+```xml
+<plugin>
+  <groupId>net.ladenthin</groupId>
+  <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+  <version>...</version>
+  <dependencies>
+    <dependency>
+      <groupId>net.ladenthin</groupId>
+      <artifactId>llama</artifactId>
+      <version>5.0.3</version>
+      <classifier>cuda13-windows-x86-64</classifier> <!-- NVIDIA; or vulkan-windows-x86-64 -->
+    </dependency>
+  </dependencies>
+</plugin>
+```
 
 ```
-# 1) extract the GPU jllama.dll once (from the classifier jar in your local repo)
-#    cuda13-windows-x86-64  -> NVIDIA;  vulkan-windows-x86-64 -> AMD/NVIDIA
-# 2) run with the lib path set + the GPU runtime on PATH:
+mvn ai-index:generate -Dai.gpuLayers=20      # + the GPU runtime on PATH (see below)
+```
+
+**Alternative — runtime library override (no POM change).** Point `net.ladenthin.llama.lib.path` at a
+folder holding the GPU `jllama.dll` (extracted once from the classifier jar); it is tried before the
+bundled native:
+
+```
 mvn ai-index:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dai.gpuLayers=20
 ```
+
+In both cases:
 
 - **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
   `cublas64_13.dll`) on `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
 - **`ai.gpuLayers`** (on the gpt-oss presets): `-1` (default) lets the build decide (a GPU native
   auto-offloads everything); set a positive number for **partial** offload when the model does not fit
   in VRAM (e.g. gpt-oss-20b ≈ 11 GB on an 8 GB card), or `0` to force CPU.
+- **Picking a GPU on a multi-GPU host** (`ai.mainGpu` / `ai.devices` on the gpt-oss presets): a **CUDA**
+  build only enumerates NVIDIA devices, so a single-NVIDIA host needs nothing. A **Vulkan** build
+  enumerates *every* GPU (an integrated GPU is often device `0`), so the default may pick the slower one —
+  set `-Dai.mainGpu=1` to select the discrete GPU, or `-Dai.devices=Vulkan1` for explicit device names
+  (these map to the binding's `--main-gpu` / `--device`). On any model definition the same knobs are the
+  `<mainGpu>` / `<devices>` elements.
 
 **Profiles (this repo's own reactor build only — test/benchmark).** `-P gpu-cuda` / `-P gpu-vulkan`
 swap the `net.ladenthin:llama` classifier (via the `llama.classifier` property) for the reactor's
 test/compile classpath — handy for the native test or benchmarking on GPU here. They do **not** change
 the native used when the *published* plugin runs in another build (the POM is not flattened, so the
-classifier stays a property that resolves to the CPU default downstream) — use the `lib.path` override
+classifier stays a property that resolves to the CPU default downstream) — use one of the two methods
 above for real indexing.
 
 ## Development

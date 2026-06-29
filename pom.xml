@@ -73,6 +73,14 @@ SPDX-License-Identifier: Apache-2.0
              default (CPU build stays CPU; GPU build auto-offloads). Set e.g. -Dai.gpuLayers=20 for partial
              offload when the model does not fit in VRAM. Only effective with a GPU classifier above. -->
         <ai.gpuLayers>-1</ai.gpuLayers>
+        <!-- Primary GPU index for the gpt-oss presets (the main-gpu flag). -1 = leave default. Matters on
+             multi-GPU hosts: a Vulkan build enumerates every GPU (an integrated GPU may be device 0), so
+             the default can pick the slower one. Set e.g. -Dai.mainGpu=1 to force the discrete GPU. A CUDA
+             build only enumerates NVIDIA devices, so a single-NVIDIA host needs no setting. -->
+        <ai.mainGpu>-1</ai.mainGpu>
+        <!-- Explicit device selection for the gpt-oss presets (the device flag); comma-separated backend
+             device names (e.g. Vulkan1). Empty = leave default. Takes precedence over ai.mainGpu. -->
+        <ai.devices></ai.devices>
         <junit.version>6.1.0</junit.version>
         <hamcrest.version>3.0</hamcrest.version>
         <jmh.version>1.37</jmh.version>
@@ -1360,6 +1368,8 @@ SPDX-License-Identifier: Apache-2.0
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1376,6 +1386,8 @@ SPDX-License-Identifier: Apache-2.0
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>49152</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>4096</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1392,6 +1404,8 @@ SPDX-License-Identifier: Apache-2.0
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>

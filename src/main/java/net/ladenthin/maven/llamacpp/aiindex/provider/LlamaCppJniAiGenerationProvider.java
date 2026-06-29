@@ -109,6 +109,17 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
             if (config.gpuLayers() >= 0) {
                 modelParameters.setGpuLayers(config.gpuLayers());
             }
+            // Pick a specific GPU when configured (>= 0). Matters on multi-GPU hosts: a Vulkan build
+            // enumerates every GPU (an integrated GPU may be device 0), so the default can select the
+            // slower one. -1 leaves the binding/native-build default.
+            if (config.mainGpu() >= 0) {
+                modelParameters.setMainGpu(config.mainGpu());
+            }
+            // Explicit device selection (comma-separated backend device names, e.g. "Vulkan1") takes
+            // precedence over a single main-GPU index. Empty leaves the binding/native-build default.
+            if (!config.devices().isEmpty()) {
+                modelParameters.setDevices(config.devices());
+            }
             current = new LlamaModel(modelParameters);
             model = current;
         }

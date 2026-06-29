@@ -56,6 +56,8 @@ public class AiModelDefinition {
     private boolean swaFull = AiGenerationConfig.DEFAULT_SWA_FULL;
     private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
     private int gpuLayers = AiGenerationConfig.DEFAULT_GPU_LAYERS;
+    private int mainGpu = AiGenerationConfig.DEFAULT_MAIN_GPU;
+    private String devices = AiGenerationConfig.DEFAULT_DEVICES;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -400,6 +402,42 @@ public class AiModelDefinition {
      */
     public void setGpuLayers(final int gpuLayers) {
         this.gpuLayers = gpuLayers;
+    }
+
+    /**
+     * Returns the primary GPU index ({@code --main-gpu}) for this model.
+     *
+     * @return the GPU index; defaults to {@link AiGenerationConfig#DEFAULT_MAIN_GPU} (-1 = leave default)
+     */
+    public int getMainGpu() {
+        return mainGpu;
+    }
+
+    /**
+     * Sets the primary GPU index ({@code --main-gpu}) for this model.
+     *
+     * @param mainGpu the GPU index ({@code -1} = leave default; a non-negative value selects that device)
+     */
+    public void setMainGpu(final int mainGpu) {
+        this.mainGpu = mainGpu;
+    }
+
+    /**
+     * Returns the device selection ({@code --device}) for this model.
+     *
+     * @return the comma-separated device list; defaults to {@link AiGenerationConfig#DEFAULT_DEVICES} (empty = leave default)
+     */
+    public String getDevices() {
+        return devices;
+    }
+
+    /**
+     * Sets the device selection ({@code --device}) for this model. A {@code null} argument resets to the empty default.
+     *
+     * @param devices the comma-separated backend device names (e.g. {@code Vulkan1}), or {@code null}/empty to leave default
+     */
+    public void setDevices(final String devices) {
+        this.devices = devices == null ? AiGenerationConfig.DEFAULT_DEVICES : devices;
     }
 
     /**

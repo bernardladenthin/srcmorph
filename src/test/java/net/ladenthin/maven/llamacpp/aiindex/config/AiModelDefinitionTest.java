@@ -114,6 +114,30 @@ public class AiModelDefinitionTest {
     }
 
     @Test
+    public void mainGpuDefaultsMinusOneAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getMainGpu(), is(-1));
+        d.setMainGpu(1);
+        assertThat(d.getMainGpu(), is(1));
+    }
+
+    @Test
+    public void devicesDefaultsEmptyAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getDevices(), is(""));
+        d.setDevices("Vulkan1");
+        assertThat(d.getDevices(), is("Vulkan1"));
+    }
+
+    @Test
+    public void setDevicesNullResetsToEmpty() {
+        AiModelDefinition d = new AiModelDefinition();
+        d.setDevices("CUDA0");
+        d.setDevices(null);
+        assertThat(d.getDevices(), is(""));
+    }
+
+    @Test
     public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
         AiModelDefinition d = new AiModelDefinition();
         assertThat(d.getReasoningBudgetTokens(), is(-1));

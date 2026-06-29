@@ -180,6 +180,25 @@ public class AiGenerationConfig {
     public static final int DEFAULT_GPU_LAYERS = -1;
 
     /**
+     * Default primary GPU index ({@code --main-gpu}). {@code -1} (default) means "do not set it" — the
+     * binding/native build decides (llama.cpp's own default is device {@code 0}). Set a non-negative
+     * index to pick a specific device. This matters on machines with more than one GPU visible to the
+     * backend: a Vulkan build enumerates <em>all</em> GPUs (e.g. an integrated GPU as device {@code 0}
+     * and a discrete GPU as device {@code 1}), so the default may select the slower one; a CUDA build
+     * only enumerates NVIDIA devices. Only effective with a GPU native. See also {@link #DEFAULT_DEVICES}.
+     */
+    public static final int DEFAULT_MAIN_GPU = -1;
+
+    /**
+     * Default device selection ({@code --device}). Empty (default) means "do not set it" — the
+     * binding/native build decides. A non-empty value is a comma-separated list of backend device
+     * names to use (e.g. {@code Vulkan1} or {@code CUDA0}); it takes precedence over a single
+     * {@link #DEFAULT_MAIN_GPU} index when finer control across multiple devices is needed. Only
+     * effective with a GPU native.
+     */
+    public static final String DEFAULT_DEVICES = "";
+
+    /**
      * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
      * {@code 0.0} = disabled (llama.cpp default). A positive value penalises verbatim n-gram
      * repetition, which can break runaway repetition loops; the other {@code dry*} knobs only take
@@ -224,6 +243,8 @@ public class AiGenerationConfig {
     private boolean swaFull = DEFAULT_SWA_FULL;
     private int cacheReuse = DEFAULT_CACHE_REUSE;
     private int gpuLayers = DEFAULT_GPU_LAYERS;
+    private int mainGpu = DEFAULT_MAIN_GPU;
+    private String devices = DEFAULT_DEVICES;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
@@ -548,6 +569,42 @@ public class AiGenerationConfig {
      */
     public void setGpuLayers(final int gpuLayers) {
         this.gpuLayers = gpuLayers;
+    }
+
+    /**
+     * Returns the primary GPU index ({@code --main-gpu}).
+     *
+     * @return the GPU index, or {@code -1} to leave the binding/build default
+     */
+    public int getMainGpu() {
+        return mainGpu;
+    }
+
+    /**
+     * Sets the primary GPU index ({@code --main-gpu}).
+     *
+     * @param mainGpu the GPU index ({@code -1} = leave default; a non-negative value selects that device)
+     */
+    public void setMainGpu(final int mainGpu) {
+        this.mainGpu = mainGpu;
+    }
+
+    /**
+     * Returns the device selection ({@code --device}).
+     *
+     * @return the comma-separated device list, or an empty string to leave the binding/build default
+     */
+    public String getDevices() {
+        return devices;
+    }
+
+    /**
+     * Sets the device selection ({@code --device}). A {@code null} argument resets to the empty default.
+     *
+     * @param devices the comma-separated backend device names (e.g. {@code Vulkan1}), or {@code null}/empty to leave default
+     */
+    public void setDevices(final String devices) {
+        this.devices = devices == null ? DEFAULT_DEVICES : devices;
     }
 
     /**

@@ -51,6 +51,8 @@ public class LlamaCppJniAiGenerationProviderTest {
                 AiGenerationConfig.DEFAULT_SWA_FULL,
                 AiGenerationConfig.DEFAULT_CACHE_REUSE,
                 AiGenerationConfig.DEFAULT_GPU_LAYERS,
+                AiGenerationConfig.DEFAULT_MAIN_GPU,
+                AiGenerationConfig.DEFAULT_DEVICES,
                 AiGenerationConfig.DEFAULT_REASONING_EFFORT,
                 AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS,
                 AiGenerationConfig.DEFAULT_DRY_MULTIPLIER,

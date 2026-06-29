@@ -35,6 +35,8 @@ public class AiGenerationProviderFactoryTest {
                 false,
                 0,
                 -1,
+                -1,
+                "",
                 "low",
                 -1,
                 0.0f,

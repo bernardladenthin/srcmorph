@@ -124,6 +124,35 @@ public class AiGenerationConfigTest {
     }
 
     @Test
+    public void mainGpuDefaultsMinusOneAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1 (leave binding/build default) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getMainGpu(), is(-1));
+        c.setMainGpu(1);
+        // Round-tripped value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getMainGpu(), is(1));
+    }
+
+    @Test
+    public void devicesDefaultsEmptyAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default "" (leave binding/build default) kills the null/non-empty return mutants on the getter.
+        assertThat(c.getDevices(), is(""));
+        c.setDevices("Vulkan1");
+        // Round-tripped value kills the empty-return getter and removed-assignment setter mutants.
+        assertThat(c.getDevices(), is("Vulkan1"));
+    }
+
+    @Test
+    public void setDevicesNullResetsToEmpty() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setDevices("CUDA0");
+        c.setDevices(null);
+        // null arg resets to "" — kills the negate mutant on the setter ternary (which would store null).
+        assertThat(c.getDevices(), is(""));
+    }
+
+    @Test
     public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
         AiGenerationConfig c = new AiGenerationConfig();
         // Default -1 (unrestricted) kills the inline-constant / "return 0" getter mutants.

@@ -120,6 +120,8 @@ public final class AiModelDefinitionSupport {
         config.setSwaFull(definition.isSwaFull());
         config.setCacheReuse(definition.getCacheReuse());
         config.setGpuLayers(definition.getGpuLayers());
+        config.setMainGpu(definition.getMainGpu());
+        config.setDevices(definition.getDevices());
         config.setReasoningEffort(definition.getReasoningEffort());
         config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
         config.setDryMultiplier(definition.getDryMultiplier());
