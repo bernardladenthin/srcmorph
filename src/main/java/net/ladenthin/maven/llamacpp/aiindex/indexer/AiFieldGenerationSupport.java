@@ -18,6 +18,7 @@ import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.logging.Log;
 
@@ -59,52 +60,6 @@ public class AiFieldGenerationSupport {
     private static final String EMPTY_OUTPUT_WARN_PREFIX = "AI provider returned empty body for ";
 
     /**
-     * Log message prefix for info messages emitted at the start of each retry attempt,
-     * showing the attempt number and the escalated sampling temperature.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_ATTEMPT_INFO_PREFIX = "Retrying AI generation (attempt ";
-
-    /**
-     * Log message fragment inserted between the attempt index and the maximum retry count
-     * in retry-attempt info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_OF_INFIX = "/";
-
-    /**
-     * Log message fragment inserted before the prompt key in retry-attempt info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_FIELD_INFIX = ") for field '";
-
-    /**
-     * Log message fragment inserted before the escalated temperature value in retry-attempt
-     * info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_TEMPERATURE_INFIX = "' temperature=";
-
-    /**
-     * Log message suffix appended after temperature data in retry-attempt info messages.
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_CONTEXT_SUFFIX = " for ";
-
-    /**
-     * Log message fragment showing the temperature escalation calculation formula in
-     * retry-attempt info messages (e.g., " (baseTemp=0.15 + attempt 1 × 0.15)").
-     *
-     * @see #processFieldGenerations
-     */
-    private static final String RETRY_TEMPERATURE_CALCULATION_TEMPLATE = " (baseTemp={0} + attempt {1} × {2})";
-
-    /**
      * Separator used to construct the cache key for the computed {@code maxInputChars}
      * per {@code (aiDefinitionKey, promptKey)} pair.
      *
@@ -112,14 +67,49 @@ public class AiFieldGenerationSupport {
      */
     private static final String CACHE_KEY_SEPARATOR = ":";
 
+    /** Bytes per kibibyte, used to render the source size in the per-file processing log. */
+    private static final int KIBIBYTES_DIVISOR = 1024;
+
+    /** Size label used in the processing log line for sources smaller than one kibibyte. */
+    private static final String SIZE_BELOW_ONE_KIB_LABEL = "<1";
+
+    /** Prefix of the per-file processing/ETA log line. */
+    private static final String PROCESSING_LOG_PREFIX = "Processing ";
+
+    /** Infix introducing the estimated source size in the processing log line. */
+    private static final String PROCESSING_LOG_SIZE_INFIX = " (";
+
+    /** Unit/infix for the source size and token estimate in the processing log line. */
+    private static final String PROCESSING_LOG_TOKENS_INFIX = " KB source, ~";
+
+    /** Infix introducing the estimated duration in the processing log line. ASCII-only for CI logs. */
+    private static final String PROCESSING_LOG_ETA_INFIX = " tokens) - estimated ";
+
     /**
-     * Rounding granularity applied when computing the final {@code maxInputChars} value.
-     * The available character count is rounded DOWN to the nearest multiple of this value
-     * to produce a conservative, human-readable result.
-     *
-     * @see #calculateAndLogMaxInputChars
+     * Suffix on the processing log line stressing that the duration is a rough,
+     * hardware-specific estimate (see {@link AiGenerationTimeEstimator}). ASCII-only for CI logs.
      */
-    private static final int MAX_INPUT_CHARS_ROUNDING = 100;
+    private static final String PROCESSING_LOG_DISCLAIMER =
+            " (rough; calibrated on reference CPU + gpt-oss-20b - actual depends on your hardware)";
+
+    /** Prefix of the per-file actual-duration log line emitted after generation completes. */
+    private static final String GENERATED_LOG_PREFIX = "Generated ";
+
+    /** Infix between the file path and the measured wall-clock duration in the actual-duration line. */
+    private static final String GENERATED_LOG_IN_INFIX = "' in ";
+
+    /**
+     * Infix introducing the estimate for side-by-side comparison in the actual-duration line, so a real
+     * run shows measured-vs-estimated per file (lets you compare models/quants in live runs without a
+     * separate benchmark). ASCII-only for CI logs.
+     */
+    private static final String GENERATED_LOG_ACTUAL_INFIX = " (actual; estimated ";
+
+    /** Suffix closing the actual-duration log line. */
+    private static final String GENERATED_LOG_SUFFIX = ")";
+
+    /** Nanoseconds per second, used to convert the measured generation duration to whole seconds. */
+    private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
@@ -130,6 +120,7 @@ public class AiFieldGenerationSupport {
     private final AiPromptPreparationSupport promptPreparationSupport;
     private final AiModelDefinitionSupport modelDefinitionSupport;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+    private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
 
     /**
      * Per-{@code (aiDefinitionKey, promptKey)} cache of the computed {@code maxInputChars}
@@ -167,11 +158,11 @@ public class AiFieldGenerationSupport {
      *   <li>A trim warning is logged if the source was truncated and
      *       {@link net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig#isWarnOnTrim()} is {@code true}.</li>
      *   <li>The AI provider generates a value for the trimmed source.</li>
-     *   <li>If the provider returns a blank body, up to {@link net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig#getMaxRetries()}
-     *       retry attempts are made, each using a temperature of
-     *       {@code temperature + attempt * retryTemperatureIncrement} to escape
-     *       EOS-early failure modes. Each retry is logged at INFO level.
-     *       A warning is only emitted after all retries are exhausted.</li>
+     *   <li>If the provider returns a blank body, a single warning is emitted (fail-fast).
+     *       Blank output no longer occurs in normal operation with a non-greedy temperature
+     *       and an adequate output budget; the previous escalating-temperature retry loop was
+     *       removed after it was shown to waste full generations re-inferring to the same empty
+     *       result (see {@code docs/ai-index-benchmark/gpt-oss-tuning.md}, E2).</li>
      *   <li>The generated value is stored as the document body.</li>
      * </ol>
      *
@@ -225,45 +216,34 @@ public class AiFieldGenerationSupport {
             final AiGenerationRequest generationRequest = new AiGenerationRequest(
                     fieldGeneration.getPromptKey(), contextFile, preparedPrompt.sourceText(), baseHeader);
 
+            final int processedSourceChars = preparedPrompt.sourceText().length();
+            final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
+                    ? SIZE_BELOW_ONE_KIB_LABEL
+                    : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
+            final long estimatedSeconds = timeEstimator.estimateSeconds(processedSourceChars);
+            log.info(PROCESSING_LOG_PREFIX + contextType + " '" + contextFile + "'"
+                    + PROCESSING_LOG_SIZE_INFIX + sourceSizeKb
+                    + PROCESSING_LOG_TOKENS_INFIX + timeEstimator.estimatePromptTokens(processedSourceChars)
+                    + PROCESSING_LOG_ETA_INFIX
+                    + timeEstimator.formatDuration(estimatedSeconds)
+                    + PROCESSING_LOG_DISCLAIMER);
+
             log.info("Generating field '" + fieldGeneration.getPromptKey() + "' with temperature="
-                    + generationConfig.getTemperature() + ", maxRetries="
-                    + generationConfig.getMaxRetries() + ", retryTemperatureIncrement="
-                    + generationConfig.getRetryTemperatureIncrement() + ", maxInputChars="
+                    + generationConfig.getTemperature() + ", maxInputChars="
                     + effectiveMaxInputChars);
+            final long generationStartNanos = System.nanoTime();
             body = generationProvider.generate(generationRequest);
+            final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
+
+            // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
+            // comparable across models/quants without a separate benchmark harness.
+            log.info(GENERATED_LOG_PREFIX + contextType + " '" + contextFile + GENERATED_LOG_IN_INFIX
+                    + timeEstimator.formatDuration(actualSeconds) + GENERATED_LOG_ACTUAL_INFIX
+                    + timeEstimator.formatDuration(estimatedSeconds) + GENERATED_LOG_SUFFIX);
 
             if (compatibilityHelper.isBlank(body)) {
-                final int maxRetries = generationConfig.getMaxRetries();
-                for (int attempt = 1; attempt <= maxRetries && compatibilityHelper.isBlank(body); attempt++) {
-                    // Escalate temperature with each retry to break out of EOS-early failure modes.
-                    // Formula: baseTemp + (attempt * increment)
-                    // Example with baseTemp=0.4, increment=0.2:
-                    // - Attempt 1: 0.4 + (1 × 0.2) = 0.6
-                    // - Attempt 2: 0.4 + (2 × 0.2) = 0.8
-                    // - Attempt 3: 0.4 + (3 × 0.2) = 1.0
-                    final float retryTemperature = generationConfig.getTemperature()
-                            + attempt * generationConfig.getRetryTemperatureIncrement();
-                    final String temperatureCalculation = RETRY_TEMPERATURE_CALCULATION_TEMPLATE
-                            .replace("{0}", String.valueOf(generationConfig.getTemperature()))
-                            .replace("{1}", String.valueOf(attempt))
-                            .replace("{2}", String.valueOf(generationConfig.getRetryTemperatureIncrement()));
-                    log.info(RETRY_ATTEMPT_INFO_PREFIX
-                            + attempt
-                            + RETRY_OF_INFIX
-                            + maxRetries
-                            + RETRY_FIELD_INFIX
-                            + fieldGeneration.getPromptKey()
-                            + RETRY_TEMPERATURE_INFIX
-                            + retryTemperature
-                            + temperatureCalculation
-                            + RETRY_CONTEXT_SUFFIX
-                            + contextFile);
-                    body = generationProvider.generate(generationRequest, retryTemperature);
-                }
-                if (compatibilityHelper.isBlank(body)) {
-                    log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL
-                            + fieldGeneration.getPromptKey() + "': " + contextFile);
-                }
+                log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL + fieldGeneration.getPromptKey()
+                        + "': " + contextFile);
             }
         }
 
@@ -338,7 +318,8 @@ public class AiFieldGenerationSupport {
         final int safetyChars = AiGenerationConfig.DEFAULT_SAFETY_MARGIN_CHARS;
         final int overheadTotal = promptChars + eofChars + outputChars + safetyChars;
         final int availableChars = totalChars - overheadTotal;
-        final int finalChars = Math.max(0, (availableChars / MAX_INPUT_CHARS_ROUNDING) * MAX_INPUT_CHARS_ROUNDING);
+        // Single source of truth for the threshold shared with the planning path (SourceFileIndexer.classify).
+        final int finalChars = AiInputWindowCalculator.maxInputChars(config, basePromptLength);
 
         log.info("Maximum input characters for source code before trimming. Calculated as: (context_size x "
                 + charsPerToken + ") - overhead");

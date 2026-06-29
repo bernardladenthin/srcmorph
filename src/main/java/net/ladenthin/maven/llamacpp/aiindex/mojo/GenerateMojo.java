@@ -5,13 +5,21 @@ package net.ladenthin.maven.llamacpp.aiindex.mojo;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
+import net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport;
+import net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan;
 import net.ladenthin.maven.llamacpp.aiindex.indexer.SourceFileIndexer;
+import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -40,6 +48,9 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      */
     private static final String DEFAULT_FILE_EXTENSION = ".java";
 
+    /** Nanoseconds per second, for converting the measured run elapsed time to whole seconds. */
+    private static final long NANOS_PER_SECOND = 1_000_000_000L;
+
     /**
      * Phase switch for the <strong>file</strong> phase (the {@code generate} goal): when {@code true},
      * only this phase is skipped. The global {@link #skip} still skips every phase.
@@ -67,6 +78,25 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     @Parameter(property = "aiIndex.excludes")
     private List<String> excludes;
 
+    /**
+     * Exclusive lower file-size bound in bytes: source files whose size is {@code <= this} are skipped.
+     * {@code 0} (default) disables the lower bound. Together with {@link #maxFileSizeBytes} this lets one
+     * {@code generate} execution target a size band, so several executions (each with its own model,
+     * context size and prompt) can tier a project by file size while the source-checksum skip indexes
+     * every file exactly once. Use non-overlapping bands ({@code band2.min == band1.max}); make the last
+     * band unbounded ({@code maxFileSizeBytes=0}) so files above all bands still get indexed.
+     */
+    @Parameter(property = "aiIndex.file.minSizeBytes", defaultValue = "0")
+    private long minFileSizeBytes;
+
+    /**
+     * Inclusive upper file-size bound in bytes: source files whose size is {@code > this} are skipped.
+     * {@code 0} (default) disables the upper bound (unlimited). See {@link #minFileSizeBytes} for the
+     * size-tiering pattern.
+     */
+    @Parameter(property = "aiIndex.file.maxSizeBytes", defaultValue = "0")
+    private long maxFileSizeBytes;
+
     /** llama.cpp context window size; smaller default suits the fast generate pass. */
     @Parameter(property = "aiIndex.llama.contextSize", defaultValue = "2048")
     private int llamaContextSize;
@@ -74,6 +104,14 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     /** CPU threads for llama.cpp inference during the generate pass. */
     @Parameter(property = "aiIndex.llama.threads", defaultValue = "2")
     private int llamaThreads;
+
+    /**
+     * When {@code true}, only build and log the routing plan (which model indexes which files with which
+     * prompt) and then stop — no model is loaded and nothing is generated. Useful to verify routing
+     * before a long run.
+     */
+    @Parameter(property = "aiIndex.planOnly", defaultValue = "false")
+    private boolean planOnly;
 
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
@@ -107,45 +145,121 @@ public class GenerateMojo extends AbstractAiIndexMojo {
         logExecutionParameters(
                 "Starting AI index generation", basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
+        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
+            throw new MojoExecutionException("No <fieldGenerations> configured for the generate goal.");
+        }
+
+        final AiPromptSupport promptSupport = buildPromptSupport();
+        final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
+        final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
+        final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
+        // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model).
+        selector.validate(fieldGenerations);
+
+        final SourceFileIndexer fileIndexer = new SourceFileIndexer(
+                getLog(),
+                basePath,
+                outputPath,
+                resolvedExtensions,
+                pluginVersion,
+                aiVersion,
+                resolvedSubtrees,
+                excludes,
+                minFileSizeBytes,
+                maxFileSizeBytes,
+                force);
+
         try {
-            final AiPromptSupport promptSupport = buildPromptSupport();
-            final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
-            final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
-
-            try (AiGenerationProvider provider =
-                    providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
-
-                final SourceFileIndexer fileIndexer = new SourceFileIndexer(
-                        getLog(),
-                        basePath,
-                        outputPath,
-                        resolvedExtensions,
-                        pluginVersion,
-                        aiVersion,
-                        resolvedSubtrees,
-                        excludes,
-                        force,
-                        provider,
-                        fieldGenerations,
-                        promptSupport,
-                        modelDefinitionSupport);
-
-                int count = 0;
-
-                for (Path subtree : resolvedSubtrees.isEmpty()
-                        ? compatibilityHelper.listOf(basePath.resolve("src/main/java"))
-                        : resolvedSubtrees) {
-
-                    if (!subtree.toFile().exists()) {
-                        getLog().warn("Skipping missing subtree: " + subtree);
-                        continue;
-                    }
-
-                    count += fileIndexer.indexSourceRoot(subtree);
+            // 1. Collect candidate files across the configured subtrees.
+            final List<Path> candidates = new ArrayList<>();
+            for (final Path subtree : resolvedSubtrees.isEmpty()
+                    ? compatibilityHelper.listOf(basePath.resolve("src/main/java"))
+                    : resolvedSubtrees) {
+                if (!subtree.toFile().exists()) {
+                    getLog().warn("Skipping missing subtree: " + subtree);
+                    continue;
                 }
-
-                getLog().info("Generated AI files: " + count);
+                candidates.addAll(fileIndexer.collectCandidates(subtree));
             }
+
+            // 2. Plan the run: which model + prompt each file gets (or skip / unmatched), and whether
+            //    each file fits its routed model's context window (computed up front, same threshold the
+            //    run uses to trim — see AiInputWindowCalculator).
+            final AiIndexPlan plan = fileIndexer.classify(
+                    candidates, fieldGenerations, modelDefinitionSupport, promptPreparationSupport);
+            getLog().info("AI index plan (Markdown):\n" + plan.renderMarkdown(basePath));
+
+            // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
+            if (!plan.unmatched().isEmpty()) {
+                throw new MojoExecutionException(plan.unmatched().size()
+                        + " source file(s) matched no rule and no fallback is configured; "
+                        + "add a <fallback> rule or a matching rule (see the plan above).");
+            }
+
+            // 3b. A file larger than its routed model's window would lose content if trimmed. This is
+            //     ALWAYS a hard failure (planOnly and real run alike). The fix is user configuration,
+            //     never an automatic model choice: the user must add a routing rule (<fieldGeneration>
+            //     with a size <condition>) that sends oversized files to a model with a large enough
+            //     context window. The plugin deliberately does not pick a model for you.
+            final int overWindowCount = plan.windowExceededCount();
+            if (overWindowCount > 0) {
+                throw new MojoExecutionException(overWindowCount
+                        + " source file(s) exceed their routed model's context window (see the 'Over window' "
+                        + "section in the plan above). Add a <fieldGeneration> rule with a size <condition> "
+                        + "that routes these files to a model with a large enough context window (see the "
+                        + "big-window fallback example in the POM). The build does not pick a model for you; "
+                        + "this is configuration only.");
+            }
+
+            if (planOnly) {
+                getLog().info("planOnly=true: stopping after the plan; no model loaded, nothing generated.");
+                return;
+            }
+
+            // 4. Execute model group by model group: load each model once, index its files, close.
+            //    Progress is the running sum of each finished file's PLAN estimate over the grand total
+            //    (no re-estimation), logged as a bar + percent after every file, with the estimated time
+            //    left and the actual wall-clock elapsed for comparison.
+            final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
+            final AiGenerationTimeEstimator estimator = new AiGenerationTimeEstimator();
+            final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
+            final int totalFiles = plan.routedCount();
+            final long runStartNanos = System.nanoTime();
+            long doneEstimatedSeconds = 0;
+            int doneFiles = 0;
+            int wrote = 0;
+            int unchanged = 0;
+            for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
+                    plan.routesByModel().entrySet()) {
+                final String aiDefinitionKey = group.getKey();
+                getLog().info("Loading model '" + aiDefinitionKey + "' for "
+                        + group.getValue().size() + " file(s)");
+                try (AiGenerationProvider provider = providerFactory.create(
+                        generationProvider, buildLlamaCppJniConfig(aiDefinitionKey), promptSupport)) {
+                    final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
+                            getLog(), provider, promptPreparationSupport, modelDefinitionSupport);
+                    for (final AiIndexPlan.Entry entry : group.getValue()) {
+                        if (fileIndexer.indexFile(entry.file(), entry.rule(), support)) {
+                            wrote++;
+                        } else {
+                            unchanged++;
+                        }
+                        doneEstimatedSeconds += entry.estimatedSeconds();
+                        doneFiles++;
+                        final long elapsedSeconds = (System.nanoTime() - runStartNanos) / NANOS_PER_SECOND;
+                        final long remainingSeconds = Math.max(0L, totalEstimatedSeconds - doneEstimatedSeconds);
+                        getLog().info(AiProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds)
+                                + " " + doneFiles + "/" + totalFiles + " files - est. "
+                                + estimator.formatDuration(doneEstimatedSeconds) + "/"
+                                + estimator.formatDuration(totalEstimatedSeconds) + " done, "
+                                + estimator.formatDuration(remainingSeconds) + " left (estimate) | "
+                                + estimator.formatDuration(elapsedSeconds) + " elapsed (actual)");
+                    }
+                }
+            }
+
+            getLog().info("Generated AI files: " + wrote + " written, " + unchanged + " unchanged, "
+                    + plan.skipped().size() + " skipped");
 
         } catch (IOException e) {
             throw new MojoExecutionException(

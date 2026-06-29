@@ -46,12 +46,25 @@ public class AiModelDefinition {
     private int threads = AiGenerationConfig.DEFAULT_THREADS;
     private int charsPerToken = AiGenerationConfig.DEFAULT_CHARS_PER_TOKEN;
     private boolean warnOnTrim = AiGenerationConfig.DEFAULT_WARN_ON_TRIM;
-    private int maxRetries = AiGenerationConfig.DEFAULT_MAX_RETRIES;
-    private float retryTemperatureIncrement = AiGenerationConfig.DEFAULT_RETRY_TEMPERATURE_INCREMENT;
     private float topP = AiGenerationConfig.DEFAULT_TOP_P;
     private int topK = AiGenerationConfig.DEFAULT_TOP_K;
+    private float minP = AiGenerationConfig.DEFAULT_MIN_P;
+    private float topNSigma = AiGenerationConfig.DEFAULT_TOP_N_SIGMA;
     private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
+    private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
+    private boolean swaFull = AiGenerationConfig.DEFAULT_SWA_FULL;
+    private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
+    private int gpuLayers = AiGenerationConfig.DEFAULT_GPU_LAYERS;
+    private int mainGpu = AiGenerationConfig.DEFAULT_MAIN_GPU;
+    private String devices = AiGenerationConfig.DEFAULT_DEVICES;
+    private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
+    private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
+    private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
+    private float dryBase = AiGenerationConfig.DEFAULT_DRY_BASE;
+    private int dryAllowedLength = AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH;
+    private int dryPenaltyLastN = AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N;
+    private @Nullable List<String> drySequenceBreakers;
     private @Nullable List<String> stopStrings;
 
     /**
@@ -206,42 +219,6 @@ public class AiModelDefinition {
     }
 
     /**
-     * Returns the maximum number of retry attempts when the provider returns an empty body.
-     *
-     * @return max retries, defaults to {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}
-     */
-    public int getMaxRetries() {
-        return maxRetries;
-    }
-
-    /**
-     * Sets the maximum number of retry attempts when the provider returns an empty body.
-     *
-     * @param maxRetries {@code 0} disables retries entirely
-     */
-    public void setMaxRetries(final int maxRetries) {
-        this.maxRetries = maxRetries;
-    }
-
-    /**
-     * Returns the temperature increment applied on each successive retry attempt.
-     *
-     * @return retry temperature increment, defaults to {@link AiGenerationConfig#DEFAULT_RETRY_TEMPERATURE_INCREMENT}
-     */
-    public float getRetryTemperatureIncrement() {
-        return retryTemperatureIncrement;
-    }
-
-    /**
-     * Sets the temperature increment applied on each successive retry attempt.
-     *
-     * @param retryTemperatureIncrement added to the base temperature on each retry
-     */
-    public void setRetryTemperatureIncrement(final float retryTemperatureIncrement) {
-        this.retryTemperatureIncrement = retryTemperatureIncrement;
-    }
-
-    /**
      * Returns the nucleus-sampling probability threshold.
      *
      * @return top-p value; defaults to {@link AiGenerationConfig#DEFAULT_TOP_P}
@@ -296,6 +273,42 @@ public class AiModelDefinition {
     }
 
     /**
+     * Returns the min-p sampling threshold.
+     *
+     * @return min-p threshold; defaults to {@link AiGenerationConfig#DEFAULT_MIN_P} ({@code 0.0} = disabled)
+     */
+    public float getMinP() {
+        return minP;
+    }
+
+    /**
+     * Sets the min-p sampling threshold (keep tokens with probability ≥ minP × top-token probability).
+     *
+     * @param minP min-p threshold; {@code 0.0} disables min-p truncation
+     */
+    public void setMinP(final float minP) {
+        this.minP = minP;
+    }
+
+    /**
+     * Returns the top-n-sigma sampling threshold.
+     *
+     * @return top-n-sigma threshold; defaults to {@link AiGenerationConfig#DEFAULT_TOP_N_SIGMA} ({@code -1.0} = disabled)
+     */
+    public float getTopNSigma() {
+        return topNSigma;
+    }
+
+    /**
+     * Sets the top-n-sigma sampling threshold (temperature-invariant truncation; -1.0 disables it).
+     *
+     * @param topNSigma top-n-sigma threshold; {@code -1.0} disables it
+     */
+    public void setTopNSigma(final float topNSigma) {
+        this.topNSigma = topNSigma;
+    }
+
+    /**
      * Returns whether the model's chat-template thinking mode is enabled.
      *
      * @return {@code true} to keep thinking enabled via the model's chat-template default;
@@ -315,6 +328,244 @@ public class AiModelDefinition {
      */
     public void setChatTemplateEnableThinking(final boolean chatTemplateEnableThinking) {
         this.chatTemplateEnableThinking = chatTemplateEnableThinking;
+    }
+
+    /**
+     * Returns whether llama.cpp prompt caching is enabled for this model.
+     *
+     * @return {@code true} to reuse the shared prompt-prefix KV across files;
+     *         defaults to {@link AiGenerationConfig#DEFAULT_CACHE_PROMPT}
+     */
+    public boolean isCachePrompt() {
+        return cachePrompt;
+    }
+
+    /**
+     * Sets whether llama.cpp prompt caching ({@code cache_prompt}) is enabled for this model.
+     *
+     * @param cachePrompt {@code true} keeps the prompt-template prefix warm in the KV cache and
+     *        reuses it per file (only the differing source is re-prefilled); output is unchanged
+     */
+    public void setCachePrompt(final boolean cachePrompt) {
+        this.cachePrompt = cachePrompt;
+    }
+
+    /**
+     * Returns whether the full-size SWA KV cache is kept ({@code --swa-full}) for this model.
+     *
+     * @return {@code true} to keep full SWA KV; defaults to {@link AiGenerationConfig#DEFAULT_SWA_FULL}
+     */
+    public boolean isSwaFull() {
+        return swaFull;
+    }
+
+    /**
+     * Sets whether the full-size SWA KV cache is kept ({@code --swa-full}) for this model.
+     *
+     * @param swaFull {@code true} keeps full SWA KV (enables cross-request prefix reuse, more RAM)
+     */
+    public void setSwaFull(final boolean swaFull) {
+        this.swaFull = swaFull;
+    }
+
+    /**
+     * Returns the KV prefix-reuse minimum chunk size ({@code --cache-reuse}) for this model.
+     *
+     * @return cache-reuse chunk size; defaults to {@link AiGenerationConfig#DEFAULT_CACHE_REUSE} (0 = off)
+     */
+    public int getCacheReuse() {
+        return cacheReuse;
+    }
+
+    /**
+     * Sets the KV prefix-reuse minimum chunk size ({@code --cache-reuse}) for this model.
+     *
+     * @param cacheReuse chunk size in tokens ({@code 0} = disabled)
+     */
+    public void setCacheReuse(final int cacheReuse) {
+        this.cacheReuse = cacheReuse;
+    }
+
+    /**
+     * Returns the GPU layer offload count ({@code --gpu-layers}) for this model.
+     *
+     * @return GPU layers; defaults to {@link AiGenerationConfig#DEFAULT_GPU_LAYERS} (-1 = leave default)
+     */
+    public int getGpuLayers() {
+        return gpuLayers;
+    }
+
+    /**
+     * Sets the GPU layer offload count ({@code --gpu-layers}) for this model.
+     *
+     * @param gpuLayers GPU layers ({@code -1} = leave default, {@code 0} = force CPU, {@code >0} = offload)
+     */
+    public void setGpuLayers(final int gpuLayers) {
+        this.gpuLayers = gpuLayers;
+    }
+
+    /**
+     * Returns the primary GPU index ({@code --main-gpu}) for this model.
+     *
+     * @return the GPU index; defaults to {@link AiGenerationConfig#DEFAULT_MAIN_GPU} (-1 = leave default)
+     */
+    public int getMainGpu() {
+        return mainGpu;
+    }
+
+    /**
+     * Sets the primary GPU index ({@code --main-gpu}) for this model.
+     *
+     * @param mainGpu the GPU index ({@code -1} = leave default; a non-negative value selects that device)
+     */
+    public void setMainGpu(final int mainGpu) {
+        this.mainGpu = mainGpu;
+    }
+
+    /**
+     * Returns the device selection ({@code --device}) for this model.
+     *
+     * @return the comma-separated device list; defaults to {@link AiGenerationConfig#DEFAULT_DEVICES} (empty = leave default)
+     */
+    public String getDevices() {
+        return devices;
+    }
+
+    /**
+     * Sets the device selection ({@code --device}) for this model. A {@code null} argument resets to the empty default.
+     *
+     * @param devices the comma-separated backend device names (e.g. {@code Vulkan1}), or {@code null}/empty to leave default
+     */
+    public void setDevices(final String devices) {
+        this.devices = devices == null ? AiGenerationConfig.DEFAULT_DEVICES : devices;
+    }
+
+    /**
+     * Returns the gpt-oss reasoning-effort level for this model.
+     *
+     * @return reasoning effort ({@code "low"}/{@code "medium"}/{@code "high"}), or empty to omit it;
+     *         defaults to {@link AiGenerationConfig#DEFAULT_REASONING_EFFORT}
+     */
+    public String getReasoningEffort() {
+        return reasoningEffort;
+    }
+
+    /**
+     * Sets the gpt-oss reasoning-effort level for this model.
+     *
+     * @param reasoningEffort {@code "low"}/{@code "medium"}/{@code "high"} (passed as the
+     *        {@code reasoning_effort} chat-template kwarg), or empty/blank to omit it
+     */
+    public void setReasoningEffort(final String reasoningEffort) {
+        this.reasoningEffort = reasoningEffort;
+    }
+
+    /**
+     * Returns the reasoning/think-token budget for this model.
+     *
+     * @return budget tokens; defaults to {@link AiGenerationConfig#DEFAULT_REASONING_BUDGET_TOKENS} (-1 = off)
+     */
+    public int getReasoningBudgetTokens() {
+        return reasoningBudgetTokens;
+    }
+
+    /**
+     * Sets the reasoning/think-token budget for this model (caps harmony analysis tokens).
+     *
+     * @param reasoningBudgetTokens budget in tokens ({@code -1} = unrestricted, {@code 0} = no thinking)
+     */
+    public void setReasoningBudgetTokens(final int reasoningBudgetTokens) {
+        this.reasoningBudgetTokens = reasoningBudgetTokens;
+    }
+
+    /**
+     * Returns the DRY sampling multiplier for this model.
+     *
+     * @return DRY multiplier; defaults to {@link AiGenerationConfig#DEFAULT_DRY_MULTIPLIER} (0.0 = off)
+     */
+    public float getDryMultiplier() {
+        return dryMultiplier;
+    }
+
+    /**
+     * Sets the DRY sampling multiplier for this model.
+     *
+     * @param dryMultiplier DRY multiplier ({@code 0.0} = disabled)
+     */
+    public void setDryMultiplier(final float dryMultiplier) {
+        this.dryMultiplier = dryMultiplier;
+    }
+
+    /**
+     * Returns the DRY base for this model.
+     *
+     * @return DRY base; defaults to {@link AiGenerationConfig#DEFAULT_DRY_BASE}
+     */
+    public float getDryBase() {
+        return dryBase;
+    }
+
+    /**
+     * Sets the DRY base for this model.
+     *
+     * @param dryBase DRY base
+     */
+    public void setDryBase(final float dryBase) {
+        this.dryBase = dryBase;
+    }
+
+    /**
+     * Returns the DRY allowed length for this model.
+     *
+     * @return DRY allowed length; defaults to {@link AiGenerationConfig#DEFAULT_DRY_ALLOWED_LENGTH}
+     */
+    public int getDryAllowedLength() {
+        return dryAllowedLength;
+    }
+
+    /**
+     * Sets the DRY allowed length for this model.
+     *
+     * @param dryAllowedLength DRY allowed length
+     */
+    public void setDryAllowedLength(final int dryAllowedLength) {
+        this.dryAllowedLength = dryAllowedLength;
+    }
+
+    /**
+     * Returns the DRY penalty look-back window for this model.
+     *
+     * @return DRY penalty last-n; defaults to {@link AiGenerationConfig#DEFAULT_DRY_PENALTY_LAST_N}
+     */
+    public int getDryPenaltyLastN() {
+        return dryPenaltyLastN;
+    }
+
+    /**
+     * Sets the DRY penalty look-back window for this model.
+     *
+     * @param dryPenaltyLastN DRY penalty last-n ({@code -1} = whole context, {@code 0} = disabled)
+     */
+    public void setDryPenaltyLastN(final int dryPenaltyLastN) {
+        this.dryPenaltyLastN = dryPenaltyLastN;
+    }
+
+    /**
+     * Returns the DRY sequence breakers for this model.
+     *
+     * @return DRY sequence breakers, or {@code null} if not configured (use the model/binding default)
+     */
+    public @Nullable List<String> getDrySequenceBreakers() {
+        return drySequenceBreakers != null ? Collections.unmodifiableList(drySequenceBreakers) : null;
+    }
+
+    /**
+     * Sets the DRY sequence breakers (tokens that reset n-gram matching) for this model.
+     *
+     * @param drySequenceBreakers collection of sequence breakers, or {@code null} to clear
+     */
+    public void setDrySequenceBreakers(final @Nullable Collection<String> drySequenceBreakers) {
+        this.drySequenceBreakers = drySequenceBreakers != null ? new ArrayList<>(drySequenceBreakers) : null;
     }
 
     /**

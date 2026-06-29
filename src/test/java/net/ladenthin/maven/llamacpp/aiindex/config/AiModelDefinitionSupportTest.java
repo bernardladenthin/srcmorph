@@ -47,11 +47,24 @@ public class AiModelDefinitionSupportTest {
         definition.setThreads(4);
         definition.setCharsPerToken(3);
         definition.setWarnOnTrim(false);
-        definition.setMaxRetries(5);
-        definition.setRetryTemperatureIncrement(0.2f);
         definition.setChatTemplateEnableThinking(false);
+        definition.setCachePrompt(false);
+        definition.setSwaFull(false);
+        definition.setCacheReuse(128);
+        definition.setGpuLayers(20);
+        definition.setMainGpu(1);
+        definition.setDevices("Vulkan1");
+        definition.setReasoningEffort("high");
+        definition.setReasoningBudgetTokens(512);
+        definition.setDryMultiplier(0.7f);
+        definition.setDryBase(1.5f);
+        definition.setDryAllowedLength(4);
+        definition.setDryPenaltyLastN(128);
+        definition.setDrySequenceBreakers(Arrays.asList("\n", ":"));
         definition.setTopP(0.55f);
         definition.setTopK(21);
+        definition.setMinP(0.09f);
+        definition.setTopNSigma(1.3f);
         definition.setRepeatPenalty(1.15f);
         definition.setStopStrings(Arrays.asList("</s>", "STOP"));
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition));
@@ -67,15 +80,34 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getThreads(), is(equalTo(4)));
         assertThat(config.getCharsPerToken(), is(equalTo(3)));
         assertThat(config.isWarnOnTrim(), is(false));
-        assertThat(config.getMaxRetries(), is(equalTo(5)));
-        assertThat(config.getRetryTemperatureIncrement(), is(equalTo(0.2f)));
         assertThat(config.isChatTemplateEnableThinking(), is(false));
         // topP/topK/repeatPenalty/stopStrings are propagated too — kills the void-call mutants
         // that would drop those setter calls from toConfig().
         assertThat(config.getTopP(), is(equalTo(0.55f)));
         assertThat(config.getTopK(), is(equalTo(21)));
+        assertThat(config.getMinP(), is(equalTo(0.09f)));
+        assertThat(config.getTopNSigma(), is(equalTo(1.3f)));
         assertThat(config.getRepeatPenalty(), is(equalTo(1.15f)));
         assertThat(config.getStopStrings(), is(equalTo(Arrays.asList("</s>", "STOP"))));
+        // Non-default cachePrompt propagates — kills the void-call mutant that would drop the
+        // setCachePrompt(...) copy from toConfig().
+        assertThat(config.isCachePrompt(), is(false));
+        // Non-default swaFull (false; the shipped default is now true) propagates.
+        assertThat(config.isSwaFull(), is(false));
+        assertThat(config.getCacheReuse(), is(equalTo(128)));
+        assertThat(config.getGpuLayers(), is(equalTo(20)));
+        // mainGpu/devices propagate — kill the dropped-setter void-call mutants in toConfig().
+        assertThat(config.getMainGpu(), is(equalTo(1)));
+        assertThat(config.getDevices(), is(equalTo("Vulkan1")));
+        // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
+        assertThat(config.getReasoningEffort(), is(equalTo("high")));
+        assertThat(config.getReasoningBudgetTokens(), is(equalTo(512)));
+        // DRY knobs propagate — kill the dropped-setter void-call mutants in toConfig().
+        assertThat(config.getDryMultiplier(), is(equalTo(0.7f)));
+        assertThat(config.getDryBase(), is(equalTo(1.5f)));
+        assertThat(config.getDryAllowedLength(), is(equalTo(4)));
+        assertThat(config.getDryPenaltyLastN(), is(equalTo(128)));
+        assertThat(config.getDrySequenceBreakers(), is(equalTo(Arrays.asList("\n", ":"))));
     }
 
     @Test
@@ -97,11 +129,22 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getCharsPerToken(), is(equalTo(AiGenerationConfig.DEFAULT_CHARS_PER_TOKEN)));
         assertThat(config.getMaxInputChars(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_INPUT_CHARS)));
         assertThat(config.isWarnOnTrim(), is(AiGenerationConfig.DEFAULT_WARN_ON_TRIM));
-        assertThat(config.getMaxRetries(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_RETRIES)));
-        assertThat(
-                config.getRetryTemperatureIncrement(),
-                is(equalTo(AiGenerationConfig.DEFAULT_RETRY_TEMPERATURE_INCREMENT)));
         assertThat(config.isChatTemplateEnableThinking(), is(AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
+        assertThat(config.isCachePrompt(), is(AiGenerationConfig.DEFAULT_CACHE_PROMPT));
+        assertThat(config.isSwaFull(), is(AiGenerationConfig.DEFAULT_SWA_FULL));
+        assertThat(config.getCacheReuse(), is(equalTo(AiGenerationConfig.DEFAULT_CACHE_REUSE)));
+        assertThat(config.getGpuLayers(), is(equalTo(AiGenerationConfig.DEFAULT_GPU_LAYERS)));
+        assertThat(config.getMainGpu(), is(equalTo(AiGenerationConfig.DEFAULT_MAIN_GPU)));
+        assertThat(config.getDevices(), is(equalTo(AiGenerationConfig.DEFAULT_DEVICES)));
+        assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
+        assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
+        assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));
+        assertThat(config.getTopNSigma(), is(equalTo(AiGenerationConfig.DEFAULT_TOP_N_SIGMA)));
+        assertThat(config.getDryMultiplier(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER)));
+        assertThat(config.getDryBase(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_BASE)));
+        assertThat(config.getDryAllowedLength(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH)));
+        assertThat(config.getDryPenaltyLastN(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N)));
+        assertThat(config.getDrySequenceBreakers(), is(Collections.<String>emptyList()));
     }
 
     @Test
@@ -137,11 +180,11 @@ public class AiModelDefinitionSupportTest {
         // arrange
         final AiModelDefinition defA = new AiModelDefinition();
         defA.setKey("model-a");
-        defA.setMaxRetries(1);
+        defA.setMaxOutputTokens(1);
 
         final AiModelDefinition defB = new AiModelDefinition();
         defB.setKey("model-b");
-        defB.setMaxRetries(7);
+        defB.setMaxOutputTokens(7);
 
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(defA, defB));
 
@@ -150,8 +193,8 @@ public class AiModelDefinitionSupportTest {
         final AiGenerationConfig configB = support.getConfig("model-b");
 
         // assert
-        assertThat(configA.getMaxRetries(), is(equalTo(1)));
-        assertThat(configB.getMaxRetries(), is(equalTo(7)));
+        assertThat(configA.getMaxOutputTokens(), is(equalTo(1)));
+        assertThat(configB.getMaxOutputTokens(), is(equalTo(7)));
     }
 
     @Test

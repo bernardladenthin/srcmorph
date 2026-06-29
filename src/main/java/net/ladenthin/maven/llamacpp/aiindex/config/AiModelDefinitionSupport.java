@@ -109,13 +109,26 @@ public final class AiModelDefinitionSupport {
         config.setThreads(definition.getThreads());
         config.setCharsPerToken(definition.getCharsPerToken());
         config.setWarnOnTrim(definition.isWarnOnTrim());
-        config.setMaxRetries(definition.getMaxRetries());
-        config.setRetryTemperatureIncrement(definition.getRetryTemperatureIncrement());
         config.setTopP(definition.getTopP());
         config.setTopK(definition.getTopK());
+        config.setMinP(definition.getMinP());
+        config.setTopNSigma(definition.getTopNSigma());
         config.setRepeatPenalty(definition.getRepeatPenalty());
         config.setStopStrings(definition.getStopStrings());
         config.setChatTemplateEnableThinking(definition.isChatTemplateEnableThinking());
+        config.setCachePrompt(definition.isCachePrompt());
+        config.setSwaFull(definition.isSwaFull());
+        config.setCacheReuse(definition.getCacheReuse());
+        config.setGpuLayers(definition.getGpuLayers());
+        config.setMainGpu(definition.getMainGpu());
+        config.setDevices(definition.getDevices());
+        config.setReasoningEffort(definition.getReasoningEffort());
+        config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
+        config.setDryMultiplier(definition.getDryMultiplier());
+        config.setDryBase(definition.getDryBase());
+        config.setDryAllowedLength(definition.getDryAllowedLength());
+        config.setDryPenaltyLastN(definition.getDryPenaltyLastN());
+        config.setDrySequenceBreakers(definition.getDrySequenceBreakers());
         return config;
     }
 }

@@ -75,23 +75,6 @@ public class AiGenerationConfig {
     public static final boolean DEFAULT_WARN_ON_TRIM = true;
 
     /**
-     * Default maximum number of retry attempts when the AI provider returns an empty body.
-     * A value of {@code 0} disables retries entirely.
-     * Each retry uses a temperature incremented by {@link #DEFAULT_RETRY_TEMPERATURE_INCREMENT}.
-     */
-    public static final int DEFAULT_MAX_RETRIES = 3;
-
-    /**
-     * Default temperature increment applied on each successive retry attempt.
-     * Added to {@link #temperature} per attempt: attempt 1 uses
-     * {@code temperature + retryTemperatureIncrement}, attempt 2 uses
-     * {@code temperature + 2 * retryTemperatureIncrement}, and so on.
-     * Higher temperatures make the model less deterministic and can break out of
-     * EOS-early failure modes.
-     */
-    public static final float DEFAULT_RETRY_TEMPERATURE_INCREMENT = 0.1f;
-
-    /**
      * Default nucleus-sampling probability threshold.
      * Matches the {@code net.ladenthin:llama} {@code InferenceParameters} library default so
      * that models which do not declare an explicit value retain the same output distribution
@@ -106,6 +89,23 @@ public class AiGenerationConfig {
      * as before this field was introduced.
      */
     public static final int DEFAULT_TOP_K = 40;
+
+    /**
+     * Default min-p sampling threshold. A value of {@code 0.0} disables min-p truncation and
+     * preserves existing behaviour for models that do not specify it. min-p keeps only tokens whose
+     * probability is at least this fraction of the top token's probability; it is the recommended
+     * primary truncation for gpt-oss at a non-greedy temperature (scales the cut-off to the model's
+     * confidence — see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} D1).
+     */
+    public static final float DEFAULT_MIN_P = 0.0f;
+
+    /**
+     * Default top-n-sigma sampling threshold. A value of {@code -1.0} disables it and preserves
+     * existing behaviour. top-n-sigma keeps tokens within n standard deviations of the max logit;
+     * unlike top-p/min-p its candidate set is temperature-invariant, which can make structured
+     * extraction more reproducible (see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} E6).
+     */
+    public static final float DEFAULT_TOP_N_SIGMA = -1.0f;
 
     /**
      * Default repetition penalty. A value of {@code 1.0} means no penalty and preserves
@@ -124,6 +124,107 @@ public class AiGenerationConfig {
      */
     public static final boolean DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING = true;
 
+    /**
+     * Default for whether llama.cpp prompt caching ({@code cache_prompt}) is enabled.
+     *
+     * <p>When {@code true}, the provider keeps the shared prompt-template prefix in the KV cache and
+     * reuses it across files — only the differing source text is re-prefilled per file. This is a
+     * pure speed optimisation: prefix reuse is exact, so the generated output is unchanged.</p>
+     */
+    public static final boolean DEFAULT_CACHE_PROMPT = true;
+
+    /**
+     * Default gpt-oss reasoning-effort level ({@code "low"} / {@code "medium"} / {@code "high"}).
+     *
+     * <p>{@code "low"} keeps the discarded chain-of-thought minimal for the short, structured
+     * summaries this plugin produces (the gpt-oss model default would be {@code "medium"}). It is
+     * passed as the {@code reasoning_effort} chat-template kwarg; non-gpt-oss chat templates ignore
+     * it. An empty value omits the kwarg entirely so the model's own template default applies.</p>
+     */
+    public static final String DEFAULT_REASONING_EFFORT = "low";
+
+    /**
+     * Default reasoning/think-token budget ({@code thinking_budget_tokens} / {@code --reasoning-budget}).
+     * {@code -1} = unrestricted (llama.cpp default). A value {@code >= 0} caps the harmony analysis
+     * (reasoning) tokens so a runaway chain-of-thought cannot starve the final answer of output budget;
+     * see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} E2.
+     */
+    public static final int DEFAULT_REASONING_BUDGET_TOKENS = -1;
+
+    /**
+     * Default for whether the full-size sliding-window-attention (SWA) KV cache is kept
+     * ({@code --swa-full}). {@code true} = keep the full SWA KV so the shared prompt prefix is reusable
+     * across files (the llama.cpp default of window-sized SWA KV uses ~half the RAM but is not reusable
+     * across requests). Adopted as the shipped default (pairs with {@link #DEFAULT_CACHE_REUSE}) because
+     * project indexing is a multi-file batch sharing one prompt prefix, where E4 measured ~21% less
+     * prefill / ~12% less wall time; cost is ~2× SWA-layer KV RAM (acceptable for the typical overnight
+     * full-project run). Set {@code false} for RAM-constrained single-file use.
+     */
+    public static final boolean DEFAULT_SWA_FULL = true;
+
+    /**
+     * Default minimum chunk size (tokens) for cross-request KV prefix reuse ({@code --cache-reuse}).
+     * {@code 256} = the value E4 measured; lets the server reuse a matching prompt prefix from a previous
+     * request instead of re-prefilling it (exact-prefix match, so output is unchanged). Pairs with
+     * {@link #DEFAULT_SWA_FULL}; set {@code 0} to disable (the llama.cpp default).
+     */
+    public static final int DEFAULT_CACHE_REUSE = 256;
+
+    /**
+     * Default number of model layers to offload to the GPU ({@code --gpu-layers}). {@code -1} (default)
+     * means "do not set it" — the binding/native build decides (a CPU build stays on CPU; a GPU build
+     * uses its own default). {@code 0} forces CPU even on a GPU build; a positive value offloads that
+     * many layers (use partial offload when the model does not fit in VRAM). Only effective with a GPU
+     * native (e.g. the {@code cuda13-windows-x86-64} / {@code vulkan-windows-x86-64} classifier).
+     */
+    public static final int DEFAULT_GPU_LAYERS = -1;
+
+    /**
+     * Default primary GPU index ({@code --main-gpu}). {@code -1} (default) means "do not set it" — the
+     * binding/native build decides (llama.cpp's own default is device {@code 0}). Set a non-negative
+     * index to pick a specific device. This matters on machines with more than one GPU visible to the
+     * backend: a Vulkan build enumerates <em>all</em> GPUs (e.g. an integrated GPU as device {@code 0}
+     * and a discrete GPU as device {@code 1}), so the default may select the slower one; a CUDA build
+     * only enumerates NVIDIA devices. Only effective with a GPU native. See also {@link #DEFAULT_DEVICES}.
+     */
+    public static final int DEFAULT_MAIN_GPU = -1;
+
+    /**
+     * Default device selection ({@code --device}). Empty (default) means "do not set it" — the
+     * binding/native build decides. A non-empty value is a comma-separated list of backend device
+     * names to use (e.g. {@code Vulkan1} or {@code CUDA0}); it takes precedence over a single
+     * {@link #DEFAULT_MAIN_GPU} index when finer control across multiple devices is needed. Only
+     * effective with a GPU native.
+     */
+    public static final String DEFAULT_DEVICES = "";
+
+    /**
+     * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
+     * {@code 0.0} = disabled (llama.cpp default). A positive value penalises verbatim n-gram
+     * repetition, which can break runaway repetition loops; the other {@code dry*} knobs only take
+     * effect when this is non-zero. Opt-in safety knob for repetition-prone models/configs.
+     */
+    public static final float DEFAULT_DRY_MULTIPLIER = 0.0f;
+
+    /**
+     * Default DRY base ({@code --dry-base}); the exponential growth base of the repetition penalty.
+     * {@code 1.75} = llama.cpp default. Only takes effect when {@link #DEFAULT_DRY_MULTIPLIER} is non-zero.
+     */
+    public static final float DEFAULT_DRY_BASE = 1.75f;
+
+    /**
+     * Default DRY allowed length ({@code --dry-allowed-length}); the longest n-gram that may repeat
+     * without penalty. {@code 2} = llama.cpp default. Only takes effect when DRY is enabled.
+     */
+    public static final int DEFAULT_DRY_ALLOWED_LENGTH = 2;
+
+    /**
+     * Default DRY penalty look-back window in tokens ({@code --dry-penalty-last-n}).
+     * {@code -1} = whole context (llama.cpp default), {@code 0} = disabled. Only takes effect when DRY
+     * is enabled.
+     */
+    public static final int DEFAULT_DRY_PENALTY_LAST_N = -1;
+
     private String modelPath;
     private int contextSize = DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS;
@@ -132,12 +233,25 @@ public class AiGenerationConfig {
     private int charsPerToken = DEFAULT_CHARS_PER_TOKEN;
     private int maxInputChars = DEFAULT_MAX_INPUT_CHARS;
     private boolean warnOnTrim = DEFAULT_WARN_ON_TRIM;
-    private int maxRetries = DEFAULT_MAX_RETRIES;
-    private float retryTemperatureIncrement = DEFAULT_RETRY_TEMPERATURE_INCREMENT;
     private float topP = DEFAULT_TOP_P;
     private int topK = DEFAULT_TOP_K;
+    private float minP = DEFAULT_MIN_P;
+    private float topNSigma = DEFAULT_TOP_N_SIGMA;
     private float repeatPenalty = DEFAULT_REPEAT_PENALTY;
     private boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
+    private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
+    private boolean swaFull = DEFAULT_SWA_FULL;
+    private int cacheReuse = DEFAULT_CACHE_REUSE;
+    private int gpuLayers = DEFAULT_GPU_LAYERS;
+    private int mainGpu = DEFAULT_MAIN_GPU;
+    private String devices = DEFAULT_DEVICES;
+    private String reasoningEffort = DEFAULT_REASONING_EFFORT;
+    private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
+    private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
+    private float dryBase = DEFAULT_DRY_BASE;
+    private int dryAllowedLength = DEFAULT_DRY_ALLOWED_LENGTH;
+    private int dryPenaltyLastN = DEFAULT_DRY_PENALTY_LAST_N;
+    private List<String> drySequenceBreakers = new ArrayList<>();
     private List<String> stopStrings = new ArrayList<>();
 
     /**
@@ -287,42 +401,6 @@ public class AiGenerationConfig {
     }
 
     /**
-     * Returns the maximum number of retry attempts on empty-body responses.
-     *
-     * @return maximum retry attempts
-     */
-    public int getMaxRetries() {
-        return maxRetries;
-    }
-
-    /**
-     * Sets the maximum number of retry attempts on empty-body responses.
-     *
-     * @param maxRetries maximum retry attempts
-     */
-    public void setMaxRetries(final int maxRetries) {
-        this.maxRetries = maxRetries;
-    }
-
-    /**
-     * Returns the temperature increment added on each retry attempt.
-     *
-     * @return temperature increment per retry
-     */
-    public float getRetryTemperatureIncrement() {
-        return retryTemperatureIncrement;
-    }
-
-    /**
-     * Sets the temperature increment added on each retry attempt.
-     *
-     * @param retryTemperatureIncrement temperature increment per retry
-     */
-    public void setRetryTemperatureIncrement(final float retryTemperatureIncrement) {
-        this.retryTemperatureIncrement = retryTemperatureIncrement;
-    }
-
-    /**
      * Returns the nucleus-sampling probability threshold.
      *
      * @return top-p value
@@ -377,6 +455,42 @@ public class AiGenerationConfig {
     }
 
     /**
+     * Returns the min-p sampling threshold.
+     *
+     * @return min-p threshold ({@code 0.0} = disabled)
+     */
+    public float getMinP() {
+        return minP;
+    }
+
+    /**
+     * Sets the min-p sampling threshold.
+     *
+     * @param minP min-p threshold ({@code 0.0} = disabled)
+     */
+    public void setMinP(final float minP) {
+        this.minP = minP;
+    }
+
+    /**
+     * Returns the top-n-sigma sampling threshold.
+     *
+     * @return top-n-sigma threshold ({@code -1.0} = disabled)
+     */
+    public float getTopNSigma() {
+        return topNSigma;
+    }
+
+    /**
+     * Sets the top-n-sigma sampling threshold.
+     *
+     * @param topNSigma top-n-sigma threshold ({@code -1.0} = disabled)
+     */
+    public void setTopNSigma(final float topNSigma) {
+        this.topNSigma = topNSigma;
+    }
+
+    /**
      * Returns whether the model's chat-template thinking mode is enabled.
      *
      * @return {@code true} if chat-template thinking mode is enabled
@@ -392,6 +506,241 @@ public class AiGenerationConfig {
      */
     public void setChatTemplateEnableThinking(final boolean chatTemplateEnableThinking) {
         this.chatTemplateEnableThinking = chatTemplateEnableThinking;
+    }
+
+    /**
+     * Returns whether llama.cpp prompt caching ({@code cache_prompt}) is enabled.
+     *
+     * @return {@code true} when prompt-prefix KV reuse across files is enabled
+     */
+    public boolean isCachePrompt() {
+        return cachePrompt;
+    }
+
+    /**
+     * Returns whether the full-size SWA KV cache is kept ({@code --swa-full}).
+     *
+     * @return {@code true} when full SWA KV is kept
+     */
+    public boolean isSwaFull() {
+        return swaFull;
+    }
+
+    /**
+     * Sets whether the full-size SWA KV cache is kept ({@code --swa-full}).
+     *
+     * @param swaFull {@code true} to keep full SWA KV (enables cross-request prefix reuse, more RAM)
+     */
+    public void setSwaFull(final boolean swaFull) {
+        this.swaFull = swaFull;
+    }
+
+    /**
+     * Returns the KV prefix-reuse minimum chunk size ({@code --cache-reuse}).
+     *
+     * @return cache-reuse chunk size ({@code 0} = disabled)
+     */
+    public int getCacheReuse() {
+        return cacheReuse;
+    }
+
+    /**
+     * Sets the KV prefix-reuse minimum chunk size ({@code --cache-reuse}).
+     *
+     * @param cacheReuse chunk size in tokens ({@code 0} = disabled)
+     */
+    public void setCacheReuse(final int cacheReuse) {
+        this.cacheReuse = cacheReuse;
+    }
+
+    /**
+     * Returns the number of model layers to offload to the GPU ({@code --gpu-layers}).
+     *
+     * @return GPU layers ({@code -1} = leave the binding/build default)
+     */
+    public int getGpuLayers() {
+        return gpuLayers;
+    }
+
+    /**
+     * Sets the number of model layers to offload to the GPU ({@code --gpu-layers}).
+     *
+     * @param gpuLayers GPU layers ({@code -1} = leave default, {@code 0} = force CPU, {@code >0} = offload)
+     */
+    public void setGpuLayers(final int gpuLayers) {
+        this.gpuLayers = gpuLayers;
+    }
+
+    /**
+     * Returns the primary GPU index ({@code --main-gpu}).
+     *
+     * @return the GPU index, or {@code -1} to leave the binding/build default
+     */
+    public int getMainGpu() {
+        return mainGpu;
+    }
+
+    /**
+     * Sets the primary GPU index ({@code --main-gpu}).
+     *
+     * @param mainGpu the GPU index ({@code -1} = leave default; a non-negative value selects that device)
+     */
+    public void setMainGpu(final int mainGpu) {
+        this.mainGpu = mainGpu;
+    }
+
+    /**
+     * Returns the device selection ({@code --device}).
+     *
+     * @return the comma-separated device list, or an empty string to leave the binding/build default
+     */
+    public String getDevices() {
+        return devices;
+    }
+
+    /**
+     * Sets the device selection ({@code --device}). A {@code null} argument resets to the empty default.
+     *
+     * @param devices the comma-separated backend device names (e.g. {@code Vulkan1}), or {@code null}/empty to leave default
+     */
+    public void setDevices(final String devices) {
+        this.devices = devices == null ? DEFAULT_DEVICES : devices;
+    }
+
+    /**
+     * Sets whether llama.cpp prompt caching ({@code cache_prompt}) is enabled.
+     *
+     * @param cachePrompt {@code true} to reuse the shared prompt-prefix KV across calls
+     */
+    public void setCachePrompt(final boolean cachePrompt) {
+        this.cachePrompt = cachePrompt;
+    }
+
+    /**
+     * Returns the gpt-oss reasoning-effort level passed as the {@code reasoning_effort} kwarg.
+     *
+     * @return reasoning effort ({@code "low"}/{@code "medium"}/{@code "high"}), or empty to omit it
+     */
+    public String getReasoningEffort() {
+        return reasoningEffort;
+    }
+
+    /**
+     * Sets the gpt-oss reasoning-effort level.
+     *
+     * @param reasoningEffort {@code "low"}/{@code "medium"}/{@code "high"}, or empty/blank to omit
+     *                        the kwarg (the model's own chat-template default then applies)
+     */
+    public void setReasoningEffort(final String reasoningEffort) {
+        this.reasoningEffort = reasoningEffort;
+    }
+
+    /**
+     * Returns the reasoning/think-token budget.
+     *
+     * @return reasoning budget tokens ({@code -1} = unrestricted)
+     */
+    public int getReasoningBudgetTokens() {
+        return reasoningBudgetTokens;
+    }
+
+    /**
+     * Sets the reasoning/think-token budget (caps harmony analysis tokens).
+     *
+     * @param reasoningBudgetTokens budget in tokens ({@code -1} = unrestricted, {@code 0} = no thinking)
+     */
+    public void setReasoningBudgetTokens(final int reasoningBudgetTokens) {
+        this.reasoningBudgetTokens = reasoningBudgetTokens;
+    }
+
+    /**
+     * Returns the DRY sampling multiplier.
+     *
+     * @return DRY multiplier ({@code 0.0} = disabled)
+     */
+    public float getDryMultiplier() {
+        return dryMultiplier;
+    }
+
+    /**
+     * Sets the DRY sampling multiplier.
+     *
+     * @param dryMultiplier DRY multiplier ({@code 0.0} = disabled)
+     */
+    public void setDryMultiplier(final float dryMultiplier) {
+        this.dryMultiplier = dryMultiplier;
+    }
+
+    /**
+     * Returns the DRY base.
+     *
+     * @return DRY base
+     */
+    public float getDryBase() {
+        return dryBase;
+    }
+
+    /**
+     * Sets the DRY base.
+     *
+     * @param dryBase DRY base
+     */
+    public void setDryBase(final float dryBase) {
+        this.dryBase = dryBase;
+    }
+
+    /**
+     * Returns the DRY allowed length (longest unpenalised repeating n-gram).
+     *
+     * @return DRY allowed length
+     */
+    public int getDryAllowedLength() {
+        return dryAllowedLength;
+    }
+
+    /**
+     * Sets the DRY allowed length.
+     *
+     * @param dryAllowedLength DRY allowed length
+     */
+    public void setDryAllowedLength(final int dryAllowedLength) {
+        this.dryAllowedLength = dryAllowedLength;
+    }
+
+    /**
+     * Returns the DRY penalty look-back window in tokens.
+     *
+     * @return DRY penalty last-n ({@code -1} = whole context, {@code 0} = disabled)
+     */
+    public int getDryPenaltyLastN() {
+        return dryPenaltyLastN;
+    }
+
+    /**
+     * Sets the DRY penalty look-back window in tokens.
+     *
+     * @param dryPenaltyLastN DRY penalty last-n ({@code -1} = whole context, {@code 0} = disabled)
+     */
+    public void setDryPenaltyLastN(final int dryPenaltyLastN) {
+        this.dryPenaltyLastN = dryPenaltyLastN;
+    }
+
+    /**
+     * Returns an unmodifiable view of the configured DRY sequence breakers.
+     *
+     * @return unmodifiable list of DRY sequence breakers (empty = use the model/binding default)
+     */
+    public List<String> getDrySequenceBreakers() {
+        return Collections.unmodifiableList(drySequenceBreakers);
+    }
+
+    /**
+     * Sets the DRY sequence breakers (tokens that reset n-gram matching).
+     *
+     * @param drySequenceBreakers sequence breakers, or {@code null} to reset to empty
+     */
+    public void setDrySequenceBreakers(final @Nullable List<String> drySequenceBreakers) {
+        this.drySequenceBreakers = drySequenceBreakers != null ? drySequenceBreakers : new ArrayList<>();
     }
 
     /**

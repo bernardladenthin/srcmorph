@@ -85,6 +85,7 @@ It creates structured `.ai.md` files per source file and aggregates them into pa
 - Exclude trivial or generated files with glob patterns
 - Uses local models via llama.cpp (no cloud dependency)
 - Incremental updates (skips unchanged files)
+- Logs a rough per-file duration estimate before each generation (size, token count, expected time)
 - Optimized for AI-assisted code understanding
 ## How It Works
 The plugin runs in three phases, building a navigable index from fine to coarse.
@@ -140,7 +141,7 @@ It is published on Maven Central and resolves automatically — no manual instal
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>llama</artifactId>
-    <version>5.0.2</version>
+    <version>5.0.3</version>
 </dependency>
 ```
 ## Configuration
@@ -151,11 +152,27 @@ The plugin is configured from three building blocks, declared on the plugin insi
 2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
    two `%s` placeholders: the file/package name and the source (for packages, the child summaries; for
    the optional project overview, the per-package leads).
-3. **`<fieldGenerations>`** — per goal, map one `<promptKey>` to one `<aiDefinitionKey>`. This is
-   **required**: a goal with no field generation fails fast. The `generate` goal may list several
-   field generations and give each an optional `<fileExtensions>` filter so the per-file prompt is
-   chosen by source language (`.java` → a Java prompt, `.sql` → a SQL-schema prompt); an entry with
-   no `<fileExtensions>` is the fallback applied to any file no extension-specific entry matched.
+3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
+   `<aiDefinitionKey>` (model id, which carries the full parameter set) and selects files with a
+   composable **`<condition>`** tree: `<and>`/`<or>`/`<not>` over the leaves `<extensions>`, `<size>`
+   (`<min>`/`<max>` bytes), `<lines>` (`<min>`/`<max>`), `<modifiedAfter>`/`<modifiedBefore>` (ISO-8601
+   instant vs the file's last-modified time), and `<pathGlob>` (base-relative glob). When several rules
+   match, the highest `<priority>` wins (ties by declaration order). A rule may instead be
+   `<skip>true</skip>` (ignore matching files — a high-priority skip beats routes and the fallback), and
+   **exactly one** `<fallback>true</fallback>` (no condition) catches everything else. A file that
+   matches no rule and no fallback **fails the build**. So one `generate` run can index different file
+   kinds/sizes with **different models *and* prompts**; it loads each model once. Run with
+   `-DaiIndex.planOnly=true` to print the routing plan (a copy-pasteable Markdown table: file → rule id →
+   prompt → context-window fit → rough time estimate, summed per model and overall) and stop before
+   loading any model. The plan also checks each file against its routed model's **context window**: a
+   file too large for the window would lose content if trimmed, so the build **always fails** (a hard
+   abort). The fix is **configuration only** — the plugin never picks a model for you: add a
+   `<fieldGeneration>` rule with a size `<condition>` that routes oversized files to a model with a large
+   enough window (see the `granite-4.0-h-tiny-bigwindow` definition + the `big-window` rule in the POM —
+   IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid Mamba model whose KV cache grows only linearly, configured
+   at a 384K window to cover files up to ~1 MB; verified summarizing a ~995 KB / ~268K-token file on an
+   8 GB GPU with no OOM. Quality is best within Granite's validated 128K (~500 KB) and degrades gradually
+   beyond it — a whole-file summary still beats a trimmed one).
 
 ```xml
 <plugin>
@@ -234,18 +251,21 @@ Index file: %s
             <phase>generate-resources</phase>
             <goals><goal>generate</goal></goals>
             <configuration>
-                <!-- .java picks the Java prompt; any other file falls back. Add a
-                     file-body-sql entry with <fileExtensions>.sql</fileExtensions> to
-                     index SQL schema the same way. -->
+                <!-- A .java rule (matched by its <condition>) and the explicit fallback for
+                     everything else. See "Routing rules" below for size/lines/modified/glob
+                     conditions, priority, and skip. -->
                 <fieldGenerations>
                     <fieldGeneration>
+                        <id>java</id>
                         <promptKey>file-body-java</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
-                        <fileExtensions>
-                            <fileExtension>.java</fileExtension>
-                        </fileExtensions>
+                        <condition>
+                            <extensions><extension>.java</extension></extensions>
+                        </condition>
                     </fieldGeneration>
                     <fieldGeneration>
+                        <id>fallback</id>
+                        <fallback>true</fallback>
                         <promptKey>file-body-fallback</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
                     </fieldGeneration>
@@ -284,6 +304,54 @@ Index file: %s
     </executions>
 </plugin>
 ```
+
+### Routing rules (conditions, priority, skip, plan)
+Within one `generate` run you can route files to different models **and** prompts by size, language,
+age or path. Example — small/medium/large Java files to three context presets, skip generated sources,
+and a fallback for everything else:
+
+```xml
+<fieldGenerations>
+  <fieldGeneration>                                  <!-- skip wins by priority -->
+    <id>skip-generated</id><skip>true</skip><priority>100</priority>
+    <condition><pathGlob>**/generated/**</pathGlob></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>java-small</id><promptKey>file-body-java-terse</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
+    <condition><and><conditions>
+      <condition><extensions><extension>.java</extension></extensions></condition>
+      <condition><size><max>16384</max></size></condition>
+    </conditions></and></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>java-mid</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c48k</aiDefinitionKey>
+    <condition><and><conditions>
+      <condition><extensions><extension>.java</extension></extensions></condition>
+      <condition><size><min>16384</min><max>49152</max></size></condition>
+    </conditions></and></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>java-large</id><promptKey>file-body-java-detailed</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+    <condition><and><conditions>
+      <condition><extensions><extension>.java</extension></extensions></condition>
+      <condition><size><min>49152</min></size></condition>
+    </conditions></and></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>fallback</id><fallback>true</fallback>
+    <promptKey>file-body-fallback</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+  </fieldGeneration>
+</fieldGenerations>
+```
+
+Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
+`<lines>` works the same way; `<modifiedAfter>2026-01-01T00:00:00Z</modifiedAfter>` only (re)indexes
+recently changed files. Preview the mapping without running a model:
+
+```
+mvn ai-index:generate -DaiIndex.planOnly=true
+```
+
 ## Usage
 Run AI index generation:
 ```
@@ -315,8 +383,43 @@ Run-level parameters (set in `<configuration>`):
 - `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
 - `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
 
-Per-model parameters — model path, context size, output tokens, temperature, top-p / top-k,
-repeat penalty, threads — live inside each `<aiDefinition>`, not as top-level parameters.
+### Per-model `<aiDefinition>` parameters
+
+Every model knob lives inside its `<aiDefinition>` (referenced by `aiDefinitionKey`), not as a top-level
+plugin parameter. Only `key` and `modelPath` are required; everything else has a default. The defaults
+below are the shipped values (`AiGenerationConfig.DEFAULT_*`).
+
+| Element | Default | Description |
+|---|---|---|
+| `key` | *(required)* | Identifier referenced by a rule's `aiDefinitionKey` |
+| `modelPath` | *(required)* | Path to the GGUF model file |
+| `contextSize` | `32768` | Context window in tokens |
+| `maxOutputTokens` | `128` | Max generated tokens per call |
+| `threads` | `8` | CPU threads for inference |
+| `temperature` | `0.15` | Sampling temperature |
+| `topP` | `0.9` | Nucleus (top-p) sampling threshold |
+| `topK` | `40` | Top-k sampling limit (`0` = disabled) |
+| `minP` | `0.0` | Min-p sampling threshold (`0.0` = disabled) |
+| `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
+| `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
+| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field). Use a value at or below your model's real ratio so the budget stays conservative |
+| `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
+| `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
+| `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |
+| `cacheReuse` | `256` | KV prefix-reuse minimum chunk size in tokens (`--cache-reuse`; `0` = off) |
+| `gpuLayers` | `-1` | GPU layers to offload (`--gpu-layers`); `-1` = auto-fit to free VRAM, `0` = force CPU, `>0` = partial. GPU native only |
+| `mainGpu` | `-1` | Primary GPU index (`--main-gpu`); `-1` = leave default. Matters on multi-GPU hosts (e.g. a Vulkan build enumerates every GPU) |
+| `devices` | *(empty)* | Explicit device selection (`--device`), comma-separated backend device names (e.g. `Vulkan1`); takes precedence over `mainGpu` |
+| `chatTemplateEnableThinking` | `true` | Enable the chat template's thinking mode |
+| `reasoningEffort` | `low` | gpt-oss harmony reasoning effort (`low`/`medium`/`high`); empty omits the kwarg (e.g. for non-gpt-oss models) |
+| `reasoningBudgetTokens` | `-1` | Cap on harmony reasoning tokens (`-1` = unrestricted) |
+| `dryMultiplier` | `0.0` | DRY repetition-penalty multiplier (`0.0` = disabled); the other `dry*` knobs only apply when this is `> 0` |
+| `dryBase` | `1.75` | DRY exponential base |
+| `dryAllowedLength` | `2` | Longest n-gram that may repeat without DRY penalty |
+| `dryPenaltyLastN` | `-1` | DRY look-back window in tokens (`-1` = whole context, `0` = off) |
+| `drySequenceBreakers` | *(empty)* | DRY sequence-breaker strings; empty = the binding defaults |
+| `stopStrings` | *(empty)* | Extra stop strings that end generation |
+
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
 from `<fieldGenerations>`. The self-test profile defines five:
@@ -358,8 +461,111 @@ src/site/ai/
 ## TODO
 - **Expand PIT mutation-testing scope.** `<targetClasses>` in `pom.xml` lists an explicit subset of classes verified at 100% mutation parity; widen it incrementally toward the whole `net.ladenthin.maven.llamacpp.aiindex.*` tree (the streambuffer whole-package model) as more classes reach parity. Generic PIT setup and invocation: see the [PIT policy](../workspace/policies/pit-mutation-testing.md).
 ## Recommended Models
-- Qwen2.5 Coder (balanced quality and speed)
-- Smaller instruct models for faster indexing
+Based on an 8-model × 2-prompt benchmark run against this codebase — full results, per-model
+pros/cons, a source-faithfulness deep-dive, and reproduction steps in
+[docs/ai-index-benchmark](docs/ai-index-benchmark/COMPARISON.md):
+
+- **`gpt-oss-20B-mxfp4` — the production default** (switch with `-Dai.model=<key>`). The native MXFP4
+  quant at a 96K window; it inherits the benchmark's accuracy lead (gpt-oss-20b was most *accurate* per
+  file, won 5/6 in the per-file matrix — measured on the `c96k`/UD-Q4_K_XL quant, but E5 shows quant
+  choice is within noise so the native MXFP4 is the better-quality swap), run at `reasoningEffort=low`
+  and a 96K window so it covers files up to ~250 KB untrimmed. Slowest of the set (~2× the 30B) — the
+  accepted cost for accuracy. See the preset/timing details below.
+- **Qwen3-Coder-30B-A3B-Instruct** — throughput alternative (and best of the non-reasoning models for
+  large Java files): most complete/faithful of the fast models, code-specialized, Apache-2.0,
+  ~3.3B-active MoE, 262K context. Pick it when throughput beats the last points of fidelity.
+- **Granite-4.0-H-Tiny** — fastest on CPU (~4×, flat-KV hybrid, Apache-2.0); best for very large
+  or many files when throughput beats the last points of fidelity.
+- **Seed-Coder-8B-Instruct** — clean, permissive (MIT) small dense coder.
+- Avoid `Qwen3.5-4B` (thinking tax, no quality gain).
+
+### gpt-oss-20b presets, large files, and timing
+
+`gpt-oss` is a *reasoning* model whose analysis tokens share the output budget, so use
+`reasoningEffort=low` for code summaries (best quality here) and size the budget to the file. The pom
+ships three ready presets, tiered by the largest file you must cover — full rationale and measurements
+in [COMPARISON.md §11](docs/ai-index-benchmark/COMPARISON.md):
+
+| Preset | context | covers up to | ~ time (CPU) |
+|---|---|---|---|
+| `gpt-oss-20B-c16k` | 16K | ~40 KB | ~1–2 min |
+| `gpt-oss-20B-c48k` | 48K | ~125 KB | ~25 min @ 100 KB |
+| **`gpt-oss-20B-c96k` (default)** | 96K | ~260 KB | ~80 min @ 250 KB |
+
+- **`c96k` is the default:** a measured A/B shows a wider context window costs only RAM, not per-file
+  time, so it covers every file up to ~250 KB with no trimming while small files stay just as fast.
+  Downshift only to save RAM. Hard ceiling is the 128K window (~480–500 KB of code).
+- **Timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt tokens),
+  because attention is O(n) per token — which is why throughput drops as files grow. The plugin logs
+  this estimate per file.
+
+## GPU acceleration (opt-in)
+The default native is CPU (Ninja build, bundled in the main `net.ladenthin:llama` jar). On an NVIDIA
+RTX 3070 a CUDA build measured **~4.5× the CPU decode speed**; Vulkan also works (AMD + NVIDIA) but pays
+a one-time shader-compilation cost on the first run. OpenCL is intentionally not offered (llama.cpp's
+OpenCL backend does not support NVIDIA GPUs).
+
+How the native is found: `net.ladenthin.llama.loader.LlamaLoader` tries `net.ladenthin.llama.lib.path`,
+then `java.library.path`, then **extracts the native bundled in whatever `net.ladenthin:llama` jar is on
+the classpath**. So there are two ways to enable a GPU when running the *published* plugin in your own
+build.
+
+**Recommended — add the GPU classifier to the plugin's own classpath.** Declare the matching
+`net.ladenthin:llama` classifier as a dependency of the plugin in your POM; the loader then extracts the
+GPU `jllama.dll` from it — no library path to manage:
+
+```xml
+<plugin>
+  <groupId>net.ladenthin</groupId>
+  <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+  <version>...</version>
+  <dependencies>
+    <dependency>
+      <groupId>net.ladenthin</groupId>
+      <artifactId>llama</artifactId>
+      <version>5.0.3</version>
+      <classifier>cuda13-windows-x86-64</classifier> <!-- NVIDIA; or vulkan-windows-x86-64 -->
+    </dependency>
+  </dependencies>
+</plugin>
+```
+
+```
+mvn ai-index:generate -Dai.gpuLayers=20      # + the GPU runtime on PATH (see below)
+```
+
+**Alternative — runtime library override (no POM change).** Point `net.ladenthin.llama.lib.path` at a
+folder holding the GPU `jllama.dll` (extracted once from the classifier jar); it is tried before the
+bundled native:
+
+```
+mvn ai-index:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dai.gpuLayers=20
+```
+
+In both cases:
+
+- **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
+  `cublas64_13.dll`) on `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
+- **`ai.gpuLayers`** (on the gpt-oss presets): `-1` (default) does **not** pin a layer count, so
+  llama.cpp **auto-fits** as many layers as fit the card's free VRAM — the robust "runs on any card"
+  setting (it never over-commits, so no OOM on a 6 GB card, and uses more layers on a bigger one). Pin a
+  positive number only to force a specific **partial** split (a fixed count disables auto-fit), or `0` to
+  force CPU. Measured on an 8 GB RTX 3070, auto-fit gpt-oss-20b ≈ 29 decode t/s (vs ≈ 8 on CPU); a card
+  with ≥ 16 GB fits all layers and is far faster.
+- **Picking a GPU on a multi-GPU host** (`ai.mainGpu` / `ai.devices` on the gpt-oss presets): a **CUDA**
+  build only enumerates NVIDIA devices, so a single-NVIDIA host needs nothing. A **Vulkan** build
+  enumerates *every* GPU (an integrated GPU is often device `0`), so the default may pick the slower one —
+  set `-Dai.mainGpu=1` to select the discrete GPU, or `-Dai.devices=Vulkan1` for explicit device names
+  (these map to the binding's `--main-gpu` / `--device`). On any model definition the same knobs are the
+  `<mainGpu>` / `<devices>` elements.
+
+**Profiles (this repo's own reactor build only — test/benchmark).** `-P gpu-cuda` / `-P gpu-vulkan`
+swap the `net.ladenthin:llama` classifier (via the `llama.classifier` property) for the reactor's
+test/compile classpath — handy for the native test or benchmarking on GPU here. They do **not** change
+the native used when the *published* plugin runs in another build (the POM is not flattened, so the
+classifier stays a property that resolves to the CPU default downstream) — use one of the two methods
+above for real indexing.
+
 ## Development
 
 Run full build:

@@ -3,40 +3,23 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex.config;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Maven plugin configuration POJO that associates a prompt template (by key) with an
- * AI model definition (also by key) for a single field-generation step.
+ * One routing rule for the {@code generate} goal: a {@link #condition} that selects files, a
+ * {@link #priority} to break ties when several rules match, and an action — route the matched files to
+ * a {@code (promptKey, aiDefinitionKey)}, mark them {@link #skip skipped}, or act as the single explicit
+ * {@link #fallback}.
  *
- * <p>Instances are declared inside the {@code <fieldGenerations>} list in the plugin
- * configuration. Each entry causes one AI generation call per indexed file or package:
- * the prompt identified by {@link #promptKey} is prepared and sent to the AI provider
- * configured by the {@link AiModelDefinition} identified by {@link #aiDefinitionKey}.</p>
+ * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters because the Maven
+ * plugin framework populates it via reflection.</p>
  *
- * <p>Example POM fragment:</p>
- * <pre>{@code
- * <fieldGeneration>
- *     <promptKey>file-body</promptKey>
- *     <aiDefinitionKey>codestral-32k</aiDefinitionKey>
- * </fieldGeneration>
- * }</pre>
- *
- * <p><strong>Note:</strong> This class must remain a mutable JavaBean with setters because
- * Maven's plugin framework instantiates configuration objects via reflection and injects
- * values through setters.</p>
- *
- * @see AiModelDefinition
- * @see AiModelDefinitionSupport
- * @see net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition
+ * @see AiFieldGenerationSelector
+ * @see AiCondition
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
+@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiFieldGenerationConfig {
 
     /** Creates a new {@link AiFieldGenerationConfig}. */
@@ -44,32 +27,76 @@ public class AiFieldGenerationConfig {
         // no-op
     }
 
+    /**
+     * Optional human-readable id for this routing rule (e.g. {@code java-small}, {@code skip-generated}).
+     * Purely a label: it is shown in the plan tree so you can see <em>which</em> rule routed each file,
+     * and it appears in validation error messages. {@code null} when not set.
+     */
+    private @Nullable String id;
+
     private String promptKey;
 
     /**
-     * Key that references an {@link AiModelDefinition} registered in the
-     * {@code <aiDefinitions>} list.
-     *
-     * <p>The referenced definition supplies all AI generation parameters (model path,
-     * context size, temperature, retry policy, input trimming limits, etc.) for this
-     * field-generation step.</p>
+     * Key that references an {@link AiModelDefinition} registered in the {@code <aiDefinitions>} list;
+     * that definition supplies all AI generation parameters (model path, context size, sampling, …).
      */
     private String aiDefinitionKey;
 
     /**
-     * Optional source file extensions (e.g. {@code .java}, {@code .sql}) that select this field
-     * generation for a file. When non-empty, this entry applies only to files whose name ends with
-     * one of the listed extensions. When {@code null} or empty, this entry is the fallback applied to
-     * any file that no extension-specific entry matched.
+     * The file-matching condition (a composable and/or/not tree of leaves — extension, size, lines,
+     * modified-after/before, path glob). Required for route and skip rules; the {@link #fallback} has
+     * none (it catches everything else).
      *
-     * @see AiFieldGenerationSelector
+     * @see AiCondition
+     * @see AiConditionEvaluator
      */
-    private @Nullable List<String> fileExtensions;
+    private @Nullable AiCondition condition;
+
+    /**
+     * Selection priority. When several rules match the same file, the highest priority wins; ties are
+     * broken by declaration order (the earlier rule wins). Default {@code 0}. Lets a specific rule
+     * (e.g. a high-priority {@link #skip}) override a more general one regardless of XML order.
+     */
+    private int priority;
+
+    /**
+     * Marks this rule as the explicit fallback: it applies to any file no other rule matched. At most
+     * one fallback may be configured. A fallback routes (needs {@link #promptKey} and
+     * {@link #aiDefinitionKey}), has no {@link #condition}, and cannot be a {@link #skip}. When no rule
+     * matches a file and no fallback is configured, indexing fails rather than silently skipping it.
+     */
+    private boolean fallback;
+
+    /**
+     * Marks this rule as a skip (ignore) rule: matching files are excluded from indexing entirely. A
+     * skip competes by {@link #priority} like any matching rule, so a high-priority skip excludes files
+     * a route rule or the fallback would otherwise pick up. Skip rules need a {@link #condition} but no
+     * prompt/model.
+     */
+    private boolean skip;
+
+    /**
+     * Returns the optional rule id (label), or {@code null} when not set.
+     *
+     * @return the rule id, or {@code null}
+     */
+    public @Nullable String getId() {
+        return id;
+    }
+
+    /**
+     * Sets the optional rule id (label).
+     *
+     * @param id the rule id
+     */
+    public void setId(final @Nullable String id) {
+        this.id = id;
+    }
 
     /**
      * Returns the prompt template key.
      *
-     * @return the key that identifies the prompt template to use for this field
+     * @return the key that identifies the prompt template ({@code null} only on an unconfigured skip rule)
      */
     public String getPromptKey() {
         return promptKey;
@@ -87,7 +114,7 @@ public class AiFieldGenerationConfig {
     /**
      * Returns the AI model definition key.
      *
-     * @return the key that references the {@link AiModelDefinition} to use
+     * @return the key that references the {@link AiModelDefinition} ({@code null} only on a skip rule)
      */
     public String getAiDefinitionKey() {
         return aiDefinitionKey;
@@ -103,22 +130,74 @@ public class AiFieldGenerationConfig {
     }
 
     /**
-     * Returns the source file extensions that select this entry, or {@code null} when this entry is
-     * the extension-agnostic fallback.
+     * Returns the file-matching condition, or {@code null} (the fallback has none).
      *
-     * @return the selecting file extensions, or {@code null}
+     * @return the condition, or {@code null}
      */
-    public @Nullable List<String> getFileExtensions() {
-        return fileExtensions != null ? Collections.unmodifiableList(fileExtensions) : null;
+    public @Nullable AiCondition getCondition() {
+        return condition;
     }
 
     /**
-     * Sets the source file extensions that select this entry. The list is defensively copied.
+     * Sets the file-matching condition.
      *
-     * @param fileExtensions selecting file extensions (e.g. {@code .java}); {@code null} or empty
-     *                       makes this entry the fallback
+     * @param condition the condition tree
      */
-    public void setFileExtensions(final @Nullable Collection<String> fileExtensions) {
-        this.fileExtensions = fileExtensions != null ? new ArrayList<>(fileExtensions) : null;
+    public void setCondition(final @Nullable AiCondition condition) {
+        this.condition = condition;
+    }
+
+    /**
+     * Returns the selection priority ({@code 0} = default).
+     *
+     * @return the selection priority
+     */
+    public int getPriority() {
+        return priority;
+    }
+
+    /**
+     * Sets the selection priority (higher wins when several rules match).
+     *
+     * @param priority the selection priority
+     */
+    public void setPriority(final int priority) {
+        this.priority = priority;
+    }
+
+    /**
+     * Returns whether this rule is the explicit fallback.
+     *
+     * @return {@code true} if this rule is the fallback
+     */
+    public boolean isFallback() {
+        return fallback;
+    }
+
+    /**
+     * Sets whether this rule is the explicit fallback.
+     *
+     * @param fallback {@code true} to mark this rule as the fallback
+     */
+    public void setFallback(final boolean fallback) {
+        this.fallback = fallback;
+    }
+
+    /**
+     * Returns whether this rule is a skip (ignore) rule.
+     *
+     * @return {@code true} if matching files should be skipped
+     */
+    public boolean isSkip() {
+        return skip;
+    }
+
+    /**
+     * Sets whether this rule is a skip (ignore) rule.
+     *
+     * @param skip {@code true} to skip files this rule matches
+     */
+    public void setSkip(final boolean skip) {
+        this.skip = skip;
     }
 }

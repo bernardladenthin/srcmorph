@@ -59,7 +59,34 @@ SPDX-License-Identifier: Apache-2.0
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <maven.version>3.9.16</maven.version>
-        <llama.version>5.0.2</llama.version>
+        <!-- net.ladenthin:llama release on Maven Central. 5.0.3 carries the prompt-cache / slot APIs
+             (withCachePrompt / withSlotId) used by the provider's per-file cache reuse, plus the GPU
+             classifier jars (cuda13/vulkan/opencl). -->
+        <llama.version>5.0.3</llama.version>
+        <!-- Native build selector for net.ladenthin:llama. Empty = the main jar (CPU, Ninja default).
+             The gpu-cuda / gpu-vulkan profiles set a GPU classifier; or override with
+             -Dllama.classifier=cuda13-windows-x86-64. GPU builds need their runtime on PATH
+             (CUDA: the toolkit's bin\x64 with cudart64_13.dll/cublas64_13.dll). -->
+        <llama.classifier></llama.classifier>
+        <!-- Default AI model definition (key) used by the gpt-oss profile's generate/aggregate executions.
+             gpt-oss-20B-mxfp4 is the native MXFP4 format: same ~12 GB size and decode speed as the Q4/Q5/Q8
+             variants (the MoE experts are MXFP4 regardless), but no double-quantization of the experts ->
+             best quality. Override with -Dai.model=gpt-oss-20B-Q4_K_M (or any key in <aiDefinitions>). -->
+        <ai.model>gpt-oss-20B-mxfp4</ai.model>
+        <!-- GPU layer offload for the gpt-oss presets (the gpu-layers / n_gpu_layers flag). -1 (default) =
+             do NOT pin a count, so llama.cpp AUTO-FITS as many layers as fit the card's free VRAM. This is
+             the robust "runs on any card" setting: it never over-commits (no OOM on a 6 GB card) and uses
+             more layers on a bigger card. A CPU build stays on CPU. Pin a count only to force a specific
+             partial split (e.g. -Dai.gpuLayers=12); a fixed count disables auto-fit. GPU classifier only. -->
+        <ai.gpuLayers>-1</ai.gpuLayers>
+        <!-- Primary GPU index for the gpt-oss presets (the main-gpu flag). -1 = leave default. Matters on
+             multi-GPU hosts: a Vulkan build enumerates every GPU (an integrated GPU may be device 0), so
+             the default can pick the slower one. Set e.g. -Dai.mainGpu=1 to force the discrete GPU. A CUDA
+             build only enumerates NVIDIA devices, so a single-NVIDIA host needs no setting. -->
+        <ai.mainGpu>-1</ai.mainGpu>
+        <!-- Explicit device selection for the gpt-oss presets (the device flag); comma-separated backend
+             device names (e.g. Vulkan1). Empty = leave default. Takes precedence over ai.mainGpu. -->
+        <ai.devices></ai.devices>
         <junit.version>6.1.0</junit.version>
         <hamcrest.version>3.0</hamcrest.version>
         <jmh.version>1.37</jmh.version>
@@ -87,6 +114,20 @@ SPDX-License-Identifier: Apache-2.0
         <palantir-java-format.version>2.92.0</palantir-java-format.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
+
+        <!-- Prompt-cache toggle (default on). Reuses the shared prompt-template prefix KV across
+             files. Override per run for benchmarking, e.g. -Dai.cachePrompt=false. -->
+        <ai.cachePrompt>true</ai.cachePrompt>
+
+        <!-- EXPERIMENT KNOBS (commented out, kept for re-runs). Re-enable these and switch
+             the executions' aiDefinitionKey/promptKey back to ${exp.model}/${exp.filePrompt}/
+             ${exp.pkgPrompt} to drive model + prompt per run via -D for benchmarking, e.g.:
+             -Dexp.model=EXP-Granite-4.0-H-Tiny -Dexp.filePrompt=file-body-java-v2
+             -Dexp.pkgPrompt=package-body-v2 -Dai.index.output.directory=.../src/site/ai__run1
+        <exp.model>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</exp.model>
+        <exp.filePrompt>file-body-java</exp.filePrompt>
+        <exp.pkgPrompt>package-body</exp.pkgPrompt>
+        -->
 
         <project.build.outputTimestamp>${git.commit.time}</project.build.outputTimestamp>
 
@@ -128,6 +169,7 @@ SPDX-License-Identifier: Apache-2.0
             <groupId>net.ladenthin</groupId>
             <artifactId>llama</artifactId>
             <version>${llama.version}</version>
+            <classifier>${llama.classifier}</classifier>
         </dependency>
 
         <dependency>
@@ -672,11 +714,16 @@ SPDX-License-Identifier: Apache-2.0
                 <configuration>
                     <targetClasses>
                         <!-- Classes verified at 100% PIT mutation parity. Expand as more reach it. -->
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCondition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdChildEntryLineFormatter</param>
@@ -686,13 +733,16 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdLeadExtractor</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper</param>
@@ -708,6 +758,28 @@ SPDX-License-Identifier: Apache-2.0
     </build>
 
     <profiles>
+        <!-- Opt-in GPU acceleration: select a GPU native build of net.ladenthin:llama instead of the
+             default CPU (Ninja) main jar. The GPU build auto-offloads; set -Dai.gpuLayers=N for partial
+             offload when the model does not fit in VRAM. The GPU runtime must be on PATH:
+               CUDA  -> the CUDA Toolkit's bin\x64 (cudart64_13.dll, cublas64_13.dll); needs a matching
+                        CUDA 13 toolkit + NVIDIA driver. Fastest on NVIDIA (measured ~4.5x CPU).
+               Vulkan-> a Vulkan loader (ships with GPU drivers); works on AMD + NVIDIA, but the first
+                        run pays a one-time shader-compilation cost.
+             Example: mvn ai-index:generate -P gpu-cuda -Dai.gpuLayers=20
+             (OpenCL is intentionally not offered: llama.cpp's OpenCL backend does not support NVIDIA.) -->
+        <profile>
+            <id>gpu-cuda</id>
+            <properties>
+                <llama.classifier>cuda13-windows-x86-64</llama.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>gpu-vulkan</id>
+            <properties>
+                <llama.classifier>vulkan-windows-x86-64</llama.classifier>
+            </properties>
+        </profile>
+
         <profile>
             <id>release</id>
             <build>
@@ -756,9 +828,20 @@ SPDX-License-Identifier: Apache-2.0
 
                         <configuration>
                             <outputDirectory>${ai.index.output.directory}</outputDirectory>
+                            <!-- EXPERIMENT SCOPE (claude2026_06_26_00): config + provider only,
+                                 a diverse 12-file mix for fast model/prompt comparison. Restore the
+                                 single aiindex subtree for a full self-index. -->
                             <subtrees>
-                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex</subtree>
+                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex/config</subtree>
+                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex/provider</subtree>
                             </subtrees>
+
+                            <!-- EXPERIMENT FILTERING (claude2026_06_26_00): drop package-info/module-info;
+                                 they carry no public API and only add padded near-empty summaries. -->
+                            <excludes>
+                                <exclude>**/package-info.java</exclude>
+                                <exclude>**/module-info.java</exclude>
+                            </excludes>
 
                             <generationProvider>llamacpp-jni</generationProvider>
 
@@ -841,7 +924,7 @@ SPDX-License-Identifier: Apache-2.0
                                       Gemma 4 entries; only pick Q6_K_P if Q4_K_M quality is visibly short.
                                     Use when: a light model keeps refusing, or you need the lightest Gemma 4.
 
-                                  Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k   (RECOMMENDED default for code; ACTIVE for both phases)
+                                  Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k   (throughput-optimal alternative; gpt-oss-20B-c96k is now the ACTIVE default)
                                     + MoE 30B total / ~3.3B active: code-specialized AND fast on CPU; fewer
                                       active params than Gemma-4-26B-A4B; non-thinking; Apache-2.0.
                                     + Locally present (X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf,
@@ -883,7 +966,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
@@ -897,7 +979,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Codestral-22B-v0.1-Q4_K_M (32 K context)
@@ -911,7 +992,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Codestral-22B-v0.1-Q6_K (32 K context)
@@ -925,7 +1005,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Qwen2.5-Coder-7B-Instruct-Q5_K_M (16 K context)
@@ -939,7 +1018,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Ministral-3-8B-Instruct-2512-Q4_K_M (32 K context)
@@ -956,7 +1034,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Ministral-3-14B-Instruct-2512-Q4_K_M (32 K context)
@@ -974,7 +1051,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Ministral-3-8B-Instruct-2512-Q5_K_M (32 K context)
@@ -991,7 +1067,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Ministral-3-14B-Instruct-2512-Q5_K_M (32 K context)
@@ -1009,7 +1084,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- gemma-4-26B-A4B-it-UD-Q4_K_M (32 K context)
@@ -1027,7 +1101,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>0.95</topP>
                                     <topK>64</topK>
                                     <repeatPenalty>1.1</repeatPenalty>
@@ -1050,7 +1123,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>0.95</topP>
                                     <topK>64</topK>
                                     <repeatPenalty>1.1</repeatPenalty>
@@ -1073,7 +1145,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>0.95</topP>
                                     <topK>64</topK>
                                     <repeatPenalty>1.1</repeatPenalty>
@@ -1098,7 +1169,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>0.95</topP>
                                     <topK>64</topK>
                                     <repeatPenalty>1.1</repeatPenalty>
@@ -1126,16 +1196,21 @@ SPDX-License-Identifier: Apache-2.0
                                 <aiDefinition>
                                     <key>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</key>
                                     <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
-                                    <contextSize>65536</contextSize>
+                                    <!-- Context 16384 is the practical CPU default on this machine: the 64K
+                                         KV cache (~6 GB) pushed total memory over the edge and caused paging,
+                                         while 16K fits comfortably (~18 GB total) and still covers every source
+                                         file here. Raise to 65536 only with enough free RAM headroom. The
+                                         "-C64k" key suffix is left as-is to avoid re-pointing the executions. -->
+                                    <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>0.8</topP>
                                     <topK>20</topK>
                                     <repeatPenalty>1.05</repeatPenalty>
+                                    <cachePrompt>${ai.cachePrompt}</cachePrompt>
                                 </aiDefinition>
                                 <!-- Qwen2.5-Coder-14B-Instruct-Q4_K_M (32 K context)
                                      Dense 14B, the cited top local coding model at the 16 GB tier;
@@ -1151,7 +1226,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>0.8</topP>
                                     <topK>20</topK>
                                     <repeatPenalty>1.05</repeatPenalty>
@@ -1170,7 +1244,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <topP>0.8</topP>
                                     <topK>20</topK>
                                     <repeatPenalty>1.05</repeatPenalty>
@@ -1190,7 +1263,6 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Granite-4.0-H-Small-Q4_K_M (128 K context)
@@ -1207,8 +1279,378 @@ SPDX-License-Identifier: Apache-2.0
                                     <threads>8</threads>
                                     <charsPerToken>4</charsPerToken>
                                     <warnOnTrim>true</warnOnTrim>
-                                    <retryTemperatureIncrement>0.0</retryTemperatureIncrement>
                                     <repeatPenalty>1.1</repeatPenalty>
+                                </aiDefinition>
+                                <!-- ============================================================
+                                     EXPERIMENT MODELS (claude2026_06_26_00)
+                                     All at context 16384 for an apples-to-apples, RAM-safe,
+                                     fast comparison. Selected by -Dexp.model=<key>.
+                                     ============================================================ -->
+                                <aiDefinition>
+                                    <key>EXP-Qwen3.5-4B</key>
+                                    <modelPath>X:/Modelle/Qwen3.5-4B-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                    <chatTemplateEnableThinking>false</chatTemplateEnableThinking>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Qwen2.5-Coder-7B</key>
+                                    <modelPath>X:/Modelle/qwen2.5-coder-7b-instruct-q5_k_m.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- ============================================================
+                                     gpt-oss-20B — three ready-to-use presets, tiered by the LARGEST
+                                     source file you need to cover. All use reasoningEffort=low: the
+                                     benchmark (docs/ai-index-benchmark/COMPARISON.md §11) shows low is
+                                     best for dense code summaries — fastest, and the whole output
+                                     budget goes to the summary instead of in-band reasoning. Raise the
+                                     effort only for genuinely reasoning-heavy generation AND raise
+                                     maxOutputTokens with it, or the final answer is truncated.
+
+                                     >>> DEFAULT MODEL: gpt-oss-20B-mxfp4 (native MXFP4), 96K window <<<
+                                     (set via the ai.model property; the c16k/c48k/c96k presets are the
+                                     same model family at narrower windows.)
+                                     Why the widest practical window is the default: a measured A/B
+                                     (§11) proved that a larger contextSize costs ONLY KV RAM, NOT
+                                     per-file time — for the same small file, 16K vs 96K had identical
+                                     prefill/decode/wall time; only RAM grew (~+400 MiB per +16K). So
+                                     defaulting to 96K means one preset covers EVERY file up to ~250 KB
+                                     with no trimming and no truncation, while small files stay just as
+                                     fast. The only cost is RAM you must have anyway for the big files.
+                                     Downshift to c48k / c16k ONLY to save RAM on memory-constrained
+                                     machines (model ~12 GB + KV ~2 GB @16K / ~6 GB @48K / ~11 GB @96K;
+                                     a fully filled 96K window plus context checkpoints peaks ~23 GB).
+
+                                     Shared design:
+                                       - charsPerToken 3 is a conservative pre-trim safety ratio: real
+                                         Java tokenizes at ~4.8 chars/token (D2; the synthetic fixture was
+                                         ~4.2), so 3 under-counts on purpose, keeping the char-based pre-trim
+                                         token-safe so a big file is never silently over-fed past the real
+                                         token window. (The ETA estimator uses the measured 4.8 separately;
+                                         see AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN.)
+                                       - Sampling: temp 0.7, top-p 1.0, top-k 0, min-p 0.05. This is a
+                                         deliberate task-specific deviation from the model card's
+                                         temp 1.0/top-p 1.0: a fact-check (docs/.../gpt-oss-tuning.md D1)
+                                         found temp 1.0 loses faithfulness while greedy/temp 0 triggers
+                                         "reasoning blackhole" loops in ~81% of probed prompts; temp 0.7
+                                         with min-p 0.05 as the primary truncation is the faithful-but-safe
+                                         middle ground (min-p scales the cut-off to model confidence).
+
+                                     Sizing (measured: 96 KB code = ~24K tokens; model window = 131072):
+                                       c16k  -> files up to ~40 KB   (typical files; fast, ~1-2 min/file)
+                                       c48k  -> files up to ~125 KB  (large files; ~25 min for ~100 KB) [validated]
+                                       c96k  -> files up to ~260 KB  (DEFAULT; ~1 h for ~250 KB) [validated]
+                                     Hard ceiling: the 128K window caps input at ~480-500 KB of code, but
+                                     CPU prefill+decode time and KV RAM make ~250 KB the practical limit.
+                                     Prefill is the dominant cost on big files (O(n^2)), not the effort
+                                     level — see the estimate the plugin logs per file.
+                                     ============================================================ -->
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-c16k</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>2048</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-c48k</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>49152</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>4096</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-c96k</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+
+                                <!-- ============================================================
+                                     gpt-oss-20b QUANTIZATION MENU (measured: docs/.../gpt-oss-tuning.md E5)
+                                     ============================================================
+                                     Same 30 KB fixture, identical settings (low effort, temp 0.7,
+                                     min-p 0.05, ctx 32768), one model load each, CPU. All produced a
+                                     complete 9/9-section summary with no retries, so QUALITY IS
+                                     QUANT-INDEPENDENT (gpt-oss is natively MXFP4 -> higher precision
+                                     adds no information). Speed is within run-to-run noise.
+
+                                       quant         file     prefill t/s  decode t/s  sections
+                                       mxfp4(native) 11.3 GB     36.1         5.85        9/9   <- DEFAULT (ai.model); native MXFP4, best quality
+                                       UD-Q4_K_XL    11.1 GB     35.1         6.30        9/9   <- the c16k/c48k/c96k presets above
+                                       Q4_K_M        10.8 GB     36.6         6.59        9/9   <- smallest + fastest decode (marginal)
+                                       Q5_K_M        10.9 GB     32.1         5.96        9/9
+                                       Q8_0          11.3 GB     36.3         6.24        9/9
+                                       F16           12.85 GB    39.1         5.40        9/9   <- NOT recommended: biggest + slowest, no quality gain
+
+                                     GPU cross-check (RTX 3070 8 GB, partial offload ngl=16, ctx 4096,
+                                     128 tok): Q4_K_M 25.4 / Q8_0 24.9 / mxfp4 23.9 decode t/s -> quant
+                                     choice is within noise on GPU too (all ~12 GB, experts are MXFP4).
+                                     Backend (mxfp4): CUDA 23.9 > Vulkan-discrete 18.1 > Vulkan-iGPU 10.0
+                                     ~ CPU 8.25; with auto-fit (ngl=-1) CUDA reached 29.2. OpenCL drops
+                                     NVIDIA (unsupported) -> CPU fallback, so it is not offered.
+
+                                     Guidance: default is now gpt-oss-20B-mxfp4 (native format, same size +
+                                     speed as the others, no expert double-quantization -> best quality).
+                                     Switch with -Dai.model=<key> (e.g. gpt-oss-20B-Q4_K_M for a hair less
+                                     RAM). Do NOT use Q8_0/F16 - more RAM, no quality benefit. UD-Q4_K_XL is
+                                     covered by the gpt-oss-20B-c96k preset above. All defs below carry the
+                                     ${ai.gpuLayers}/${ai.mainGpu}/${ai.devices} GPU knobs (ngl auto-fits).
+                                     ============================================================ -->
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-mxfp4</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-mxfp4.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-Q4_K_M</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-Q4_K_M.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-Q5_K_M</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-Q5_K_M.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-Q8_0</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-Q8_0.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>gpt-oss-20B-F16</key>
+                                    <modelPath>X:/Modelle/gpt-oss-20b-F16.gguf</modelPath>
+                                    <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>6144</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort>low</reasoningEffort>
+                                </aiDefinition>
+
+                                <!-- ============================================================
+                                     BIG-WINDOW FALLBACK for oversized files (covers up to ~1 MB).
+                                     ============================================================
+                                     A source larger than the default model's window (~275 KB for the 96K
+                                     gpt-oss presets at charsPerToken 3) hard-fails the build; the plugin
+                                     never auto-picks a model, so YOU route such files here via the
+                                     big-window rule below. IBM Granite 4.0-H-Tiny is the chosen fallback:
+                                       - Apache-2.0 (same license family as gpt-oss), IBM (not China).
+                                       - Hybrid Mamba-2/Transformer (9:1, NoPE): the KV cache grows only
+                                         LINEARLY with context, so a huge file fits ungekuerzt even on an
+                                         8 GB GPU (a classic transformer's KV would blow up at this size).
+                                       - Trained to 512K tokens (IBM validates quality to 128K), 7B/~1B-active MoE.
+                                     contextSize is set to 384K (393216) to cover files up to ~1 MB. Verified
+                                     on this machine (RTX 3070, 8 GB, CUDA, build 11): it allocated the full
+                                     393216 ctx with NO OOM (it even allocates 512K) and summarized a
+                                     ~995 KB / ~268K-token Java file (prefill ~1150 t/s, ~4 min one-time;
+                                     decode ~45 t/s). Quality is best within Granite's validated 128K (~500 KB)
+                                     and degrades gradually beyond it, but a whole-file summary beats a trimmed
+                                     one. charsPerToken 3 is deliberately CONSERVATIVE (real Java is ~3.8, so
+                                     the window check over-counts tokens and never lets a file overflow the
+                                     window at run time); the cpt-3 check admits up to ~1.16 MB. reasoningEffort
+                                     is empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
+                                     sent. The size-routing rule that targets this key lives in the ai-generate
+                                     <fieldGenerations> below (id big-window). For >~1 MB files, split them or
+                                     add a still-larger preset (Granite allocates up to its 512K training limit
+                                     here, with further quality loss). -->
+                                <aiDefinition>
+                                    <key>granite-4.0-h-tiny-bigwindow</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <contextSize>393216</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>4096</maxOutputTokens>
+                                    <temperature>0.2</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort></reasoningEffort>
+                                </aiDefinition>
+
+                                <aiDefinition>
+                                    <key>EXP-Qwen3-Coder-30B</key>
+                                    <modelPath>X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <!-- ============================================================
+                                     EXPERIMENT MODELS — batch 2 (claude2026_06_26_00)
+                                     New shortlist candidates, all context 16384. Recommended
+                                     sampling per each model card.
+                                     ============================================================ -->
+                                <aiDefinition>
+                                    <key>EXP-DeepSeek-Coder-V2-Lite</key>
+                                    <modelPath>X:/Modelle/DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.3</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>0.9</topP>
+                                    <topK>40</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Seed-Coder-8B</key>
+                                    <modelPath>X:/Modelle/Seed-Coder-8B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.3</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>0.9</topP>
+                                    <topK>40</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Granite-4.0-H-Tiny</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                </aiDefinition>
+                                <aiDefinition>
+                                    <key>EXP-Qwen3-4B-Instruct-2507</key>
+                                    <modelPath>X:/Modelle/Qwen3-4B-Instruct-2507-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.7</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>0.8</topP>
+                                    <topK>20</topK>
+                                    <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                             </aiDefinitions>
 
@@ -1244,7 +1686,7 @@ What comes out: return types, produced state, mutated fields, written resources,
 The essential steps / algorithm / responsibility as bullets. This is the most important section.
 
 #### Public API
-Each public/protected member as `name(params) -> returnType` + a clause (max 6 words) on its purpose.
+Each public/protected member as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For a FAMILY of near-identical members (e.g. `fooN`), do not list them all: in the analysis channel enumerate and count them one per line, then in the final answer emit only the exact total and index range, e.g. `foo1..fooN (N total)`.
 
 #### Dependencies
 Imports and referenced types, as searchable names.
@@ -1259,15 +1701,14 @@ Threading, synchronization, immutability, or thread-safety notes, if any.
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Weave class / type / domain names into the bullets so they are searchable.
 - No code fences, no ```markdown / ```java, no XML tags, no formatter comments.
+- COUNT EXACTLY. When you state a count of methods/fields/members, count them precisely from the source and recount before finalizing. Never round, approximate, or write "similar"/"~".
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, or behavior beyond the shown source.
 
-File: %s
-
-Source:
-%s
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1314,10 +1755,8 @@ Other tables, views, functions, or sequences referenced, as searchable names.
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any table, column, or relationship beyond the shown source.
 
-File: %s
-
-Source:
-%s
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1364,10 +1803,8 @@ Notable thrown/handled exceptions or error conditions.
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, table, or behavior beyond the shown source.
 
-File: %s
-
-Source:
-%s
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1409,10 +1846,8 @@ Recurring patterns across files: shared base types/interfaces, common exception/
 ## Critical
 If the input contains "[EOF - source was truncated]", summarize ONLY what is present. Never infer or invent files or content beyond the provided summaries.
 
-Package: %s
-
-File summaries:
-%s
+The package path and its already-generated per-file summaries are provided in the next (user)
+message: the path on the first line, then a blank line, then the summaries to synthesize.
                                     ]]></template>
                                 </promptDefinition>
                                 <promptDefinition>
@@ -1424,15 +1859,151 @@ subsystems and how they fit together, in 2 to 4 sentences. Use domain terms a de
 No headings, no bullet lists, no code fences, no XML tags, no formatter comments. Write in English. Base
 every statement only on the provided leads — never invent packages or behavior not present in them.
 
-Index file: %s
+The index file path and the per-package one-line leads are provided in the next (user) message:
+the path on the first line, then a blank line, then the leads to synthesize.
+                                    ]]></template>
+                                </promptDefinition>
+                                <!-- ============================================================
+                                     EXPERIMENT PROMPTS v2 (claude2026_06_26_00)
+                                     Targets issues found in the v1 output: section omission on
+                                     trivial files, accessor over-enumeration, invented "keywords",
+                                     and verbosity. Selected via -Dexp.filePrompt / -Dexp.pkgPrompt.
+                                     ============================================================ -->
+                                <promptDefinition>
+                                    <key>file-body-java-v2</key>
+                                    <template><![CDATA[
+You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index read by AI agents. Prioritize core logic, types, and data flow. Be terse. Write in English.
 
-%s
+## Output
+Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms (the searchable business/functional purpose, not class mechanics):
+> <one-sentence domain essence>
+
+Then output ONLY the sections below that carry real information. OMIT any section that would be empty, "none", or "not applicable" — do not emit a heading just to say nothing. Use '####' for section labels, never '###' or higher.
+
+TRIVIAL-FILE RULE: if the unit has no public behavior to describe (e.g. a marker/annotation, an enum that only lists constants, or a near-empty type), output ONLY the blockquote lead and a single '#### Purpose' line, and stop.
+
+#### Purpose
+One or two bullets: what the type is for.
+
+#### Type
+One line: kind (class/interface/enum/record/annotation) + modifiers; extends/implements; key generics; notable annotations (@Mojo, Lombok, etc.).
+
+#### Input
+What comes in: constructor/method parameters, injected dependencies, consumed fields, read resources.
+
+#### Output
+What comes out: return types, produced/mutated state, written resources, side effects.
+
+#### Core logic
+The essential steps/algorithm/responsibility as bullets. The most important section.
+
+#### Public API
+Each public/protected member as `name(params) -> returnType` + a <=6-word purpose clause. EXCEPTION: for plain data/config classes that are only getters/setters (e.g. Lombok beans), DO NOT list each accessor — write one line: "JavaBean getters/setters for: <comma-separated field names>".
+
+#### Dependencies
+Referenced types as searchable names. EXCLUDE this file's own type and java.lang.* .
+
+#### Exceptions / Errors
+Notable thrown/caught exceptions, null-handling, error conditions.
+
+#### Concurrency
+Threading, immutability, or thread-safety notes — only if the source actually shows them.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs.
+- Weave class/type/domain names into the bullets so they are searchable.
+- Describe ONLY what is literally in the source. NEVER invent units, fields, behavior, or concepts; in particular never mention keywords, tags, embeddings, search, or features the code does not contain.
+- No code fences, no ```markdown/```java, no XML tags, no formatter comments.
+- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
+
+## Critical
+If the source contains "[EOF - source was truncated]", index ONLY what is literally present.
+
+The file path and its full source are provided in the next (user) message: the path on the first
+line, then a blank line, then the source. Index only what is literally present there.
+                                    ]]></template>
+                                </promptDefinition>
+                                <promptDefinition>
+                                    <key>package-body-v2</key>
+                                    <template><![CDATA[
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source). Produce one dense, structured markdown summary of the whole package for a searchable code index read by AI agents. Synthesize and group — do not concatenate. Be terse. Write in English.
+
+## Output
+Begin with a single blockquote line — one sentence capturing what this package does as a whole in DOMAIN terms:
+> <one-sentence domain essence>
+
+SINGLE-CHILD RULE: if the input describes only ONE child package/file and no other content, output ONLY the blockquote lead restating that child's responsibility, and stop — emit no sections.
+
+Otherwise output ONLY the sections below that carry real information. OMIT any that would be empty. Use '####' for labels, never '###' or higher.
+
+#### Purpose
+One or two bullets: the package's overall responsibility.
+
+#### Responsibilities
+The main functional groups inside the package, as bullets. Group files by role; do not list every file for large packages.
+
+#### Key units
+The central classes/interfaces/modules and their job, one clause each, with searchable names.
+
+#### Data flow
+How inputs move through the package to outputs, if a clear pipeline exists across the files.
+
+#### Dependencies
+Notable internal collaborations and external modules the package depends on. Focus on cross-unit/cross-package relationships, not raw JDK/Lombok imports.
+
+#### Cross-cutting
+Recurring patterns across files: shared base types, common error handling, concurrency, configuration.
+
+## Rules
+- Markdown bullets and short clauses, not prose paragraphs.
+- Weave type/module/domain names in as searchable terms.
+- Base every statement ONLY on the provided file summaries. NEVER invent units, methods, behavior, or concepts (in particular never mention keywords, tags, or embeddings) not present in them.
+- No code fences, no ```markdown, no XML tags, no formatter comments.
+- The package-name heading is already rendered above your output. Start immediately with the blockquote lead. Never empty.
+
+## Critical
+If the input contains "[EOF - source was truncated]", summarize ONLY what is present.
+
+The package path and its already-generated per-file summaries are provided in the next (user)
+message: the path on the first line, then a blank line, then the summaries to synthesize.
                                     ]]></template>
                                 </promptDefinition>
                             </promptDefinitions>
 
                         </configuration>
 
+                        <!--
+                            BENCHMARK MODE (example, disabled).
+                            The executions below use concrete production values
+                            (gpt-oss-20B-c96k + file-body-java / package-body). To sweep
+                            models/prompts per run instead, re-enable the
+                            commented exp.* properties near the top of <properties> and swap the
+                            execution values for these parameterized forms, then drive each run with
+                            -Dexp.model / -Dexp.filePrompt / -Dexp.pkgPrompt:
+
+                                <fieldGeneration>
+                                    <promptKey>${exp.filePrompt}</promptKey>
+                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
+                                    <fileExtensions>
+                                        <fileExtension>.java</fileExtension>
+                                    </fileExtensions>
+                                </fieldGeneration>
+                                ... (sql + fallback fieldGenerations: aiDefinitionKey ${exp.model})
+
+                                ai-aggregate-packages:
+                                    <promptKey>${exp.pkgPrompt}</promptKey>
+                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
+
+                                ai-aggregate-project:
+                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
+
+                            Example invocation:
+                                mvn prepare-package -P ai-index-selftest -DskipTests \
+                                  -Dexp.model=EXP-Granite-4.0-H-Tiny \
+                                  -Dexp.filePrompt=file-body-java-v2 \
+                                  -Dexp.pkgPrompt=package-body-v2 \
+                                  -Dai.index.output.directory=.../src/site/ai__run1
+                        -->
                         <executions>
                             <execution>
                                 <id>ai-generate</id>
@@ -1453,23 +2024,60 @@ Index file: %s
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
                                     <fieldGenerations>
+                                        <!-- Big-window fallback rule: a .java file larger than the default
+                                             model's window (~275 KB at 96K/charsPerToken 3) would be trimmed,
+                                             so route it to the large-context granite-4.0-h-tiny-bigwindow
+                                             model instead (Granite's 384K window covers up to ~1 MB; the
+                                             cpt-3 window check admits up to ~1.16 MB). Higher priority than the plain java rule so it
+                                             wins for oversized files; normal-sized files never match (size
+                                             min) and fall through to the java rule. Without a rule like this,
+                                             a file larger than the default model's window hard-fails the build
+                                             (the plugin never auto-selects a model) - this is how YOU satisfy
+                                             that check. Threshold is conservative; tune to your model's
+                                             window. (A file beyond Granite's window fails too: split it or add
+                                             a still-larger fallback.) -->
                                         <fieldGeneration>
+                                            <id>big-window</id>
                                             <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
-                                            <fileExtensions>
-                                                <fileExtension>.java</fileExtension>
-                                            </fileExtensions>
+                                            <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
+                                            <priority>100</priority>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.java</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>275000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
                                         </fieldGeneration>
                                         <fieldGeneration>
+                                            <id>java</id>
+                                            <promptKey>file-body-java</promptKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <condition>
+                                                <extensions><extension>.java</extension></extensions>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>sql</id>
                                             <promptKey>file-body-sql</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
-                                            <fileExtensions>
-                                                <fileExtension>.sql</fileExtension>
-                                            </fileExtensions>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <condition>
+                                                <extensions><extension>.sql</extension></extensions>
+                                            </condition>
                                         </fieldGeneration>
+                                        <!-- Explicit fallback: applies to any file no rule above matched.
+                                             Exactly one fallback is allowed; without it an unmatched file
+                                             fails the build (see AiFieldGenerationSelector). -->
                                         <fieldGeneration>
+                                            <id>fallback</id>
                                             <promptKey>file-body-fallback</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <fallback>true</fallback>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
@@ -1485,7 +2093,7 @@ Index file: %s
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>package-body</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
@@ -1511,7 +2119,7 @@ Index file: %s
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>project-body</promptKey>
-                                            <aiDefinitionKey>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>

@@ -7,116 +7,193 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 public class AiFieldGenerationSelectorTest {
 
+    private static final String MODEL = "model-x";
     private final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
 
-    private static AiFieldGenerationConfig config(final String promptKey, final List<String> extensions) {
-        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
-        config.setPromptKey(promptKey);
-        config.setFileExtensions(extensions);
-        return config;
+    private static AiCondition extCond(final String... ext) {
+        final AiCondition c = new AiCondition();
+        c.setExtensions(Arrays.asList(ext));
+        return c;
     }
 
-    // <editor-fold defaultstate="collapsed" desc="specific match">
+    private static AiFieldGenerationConfig route(final String prompt, final AiCondition cond, final int priority) {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setPromptKey(prompt);
+        c.setAiDefinitionKey(MODEL);
+        c.setCondition(cond);
+        c.setPriority(priority);
+        return c;
+    }
+
+    private static AiFieldGenerationConfig skipRule(final AiCondition cond, final int priority) {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setSkip(true);
+        c.setCondition(cond);
+        c.setPriority(priority);
+        return c;
+    }
+
+    private static AiFieldGenerationConfig fallback(final String prompt) {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setPromptKey(prompt);
+        c.setAiDefinitionKey(MODEL);
+        c.setFallback(true);
+        return c;
+    }
+
+    private static AiFileContext ctx(final String fileName) {
+        return new AiFileContext(fileName, "src/" + fileName, 500L, 10, 1000L);
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="select">
     @Test
-    public void selectForFileName_extensionMatch_returnsSpecificEntry() {
-        final AiFieldGenerationConfig java = config("java", Arrays.asList(".java"));
-        final AiFieldGenerationConfig fallback = config("fallback", null);
-
-        final AiFieldGenerationConfig selected = selector.selectForFileName(Arrays.asList(java, fallback), "Foo.java");
-
-        assertThat(selected.getPromptKey(), is(equalTo("java")));
+    public void select_conditionMatch() {
+        final AiFieldGenerationConfig java = route("java", extCond(".java"), 0);
+        assertThat(
+                selector.select(Arrays.asList(java, fallback("fb")), ctx("Foo.java"))
+                        .getPromptKey(),
+                is(equalTo("java")));
     }
 
     @Test
-    public void selectForFileName_specificWinsOverEarlierFallback() {
-        final AiFieldGenerationConfig fallback = config("fallback", null);
-        final AiFieldGenerationConfig java = config("java", Arrays.asList(".java"));
-
-        final AiFieldGenerationConfig selected = selector.selectForFileName(Arrays.asList(fallback, java), "Foo.java");
-
-        assertThat(selected.getPromptKey(), is(equalTo("java")));
+    public void select_higherPriorityWinsRegardlessOfOrder() {
+        final AiFieldGenerationConfig low = route("low", extCond(".java"), 1);
+        final AiFieldGenerationConfig high = route("high", extCond(".java"), 10);
+        assertThat(selector.select(Arrays.asList(low, high), ctx("Foo.java")).getPromptKey(), is(equalTo("high")));
+        assertThat(selector.select(Arrays.asList(high, low), ctx("Foo.java")).getPromptKey(), is(equalTo("high")));
     }
 
     @Test
-    public void selectForFileName_firstSpecificMatchWins() {
-        final AiFieldGenerationConfig first = config("first", Arrays.asList(".java"));
-        final AiFieldGenerationConfig second = config("second", Arrays.asList(".java"));
-
-        final AiFieldGenerationConfig selected = selector.selectForFileName(Arrays.asList(first, second), "Foo.java");
-
-        assertThat(selected.getPromptKey(), is(equalTo("first")));
+    public void select_tieBrokenByDeclarationOrder() {
+        final AiFieldGenerationConfig first = route("first", extCond(".java"), 5);
+        final AiFieldGenerationConfig second = route("second", extCond(".java"), 5);
+        assertThat(
+                selector.select(Arrays.asList(first, second), ctx("Foo.java")).getPromptKey(), is(equalTo("first")));
     }
 
     @Test
-    public void selectForFileName_anyOfMultipleExtensionsMatches() {
-        final AiFieldGenerationConfig sql = config("sql", Arrays.asList(".sql", ".ddl"));
+    public void select_skipRuleCanWinByPriority() {
+        final AiFieldGenerationConfig route = route("route", extCond(".java"), 0);
+        final AiFieldGenerationConfig skip = skipRule(extCond(".java"), 10);
+        assertThat(selector.select(Arrays.asList(route, skip), ctx("Foo.java")).isSkip(), is(true));
+    }
 
-        final AiFieldGenerationConfig selected =
-                selector.selectForFileName(Collections.singletonList(sql), "schema.ddl");
+    @Test
+    public void select_fallbackUsedWhenNoMatch() {
+        final AiFieldGenerationConfig java = route("java", extCond(".java"), 0);
+        assertThat(
+                selector.select(Arrays.asList(java, fallback("fb")), ctx("data.json"))
+                        .getPromptKey(),
+                is(equalTo("fb")));
+    }
 
-        assertThat(selected.getPromptKey(), is(equalTo("sql")));
+    @Test
+    public void select_noMatchNoFallback_returnsNull() {
+        final AiFieldGenerationConfig java = route("java", extCond(".java"), 0);
+        assertThat(selector.select(Collections.singletonList(java), ctx("data.json")), is(nullValue()));
+    }
+
+    @Test
+    public void select_nullEntrySkipped() {
+        final AiFieldGenerationConfig java = route("java", extCond(".java"), 0);
+        assertThat(
+                selector.select(Arrays.<AiFieldGenerationConfig>asList(null, java), ctx("Foo.java"))
+                        .getPromptKey(),
+                is(equalTo("java")));
+    }
+
+    @Test
+    public void select_firstFallbackWinsWhenSeveral() {
+        assertThat(
+                selector.select(Arrays.asList(fallback("first"), fallback("second")), ctx("x.txt"))
+                        .getPromptKey(),
+                is(equalTo("first")));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="fallback">
+    // <editor-fold defaultstate="collapsed" desc="validate">
     @Test
-    public void selectForFileName_noSpecificMatch_returnsFallback() {
-        final AiFieldGenerationConfig java = config("java", Arrays.asList(".java"));
-        final AiFieldGenerationConfig fallback = config("fallback", null);
-
-        final AiFieldGenerationConfig selected = selector.selectForFileName(Arrays.asList(java, fallback), "data.json");
-
-        assertThat(selected.getPromptKey(), is(equalTo("fallback")));
+    public void validate_validRuleSetPasses() {
+        assertDoesNotThrow(() -> selector.validate(
+                Arrays.asList(route("java", extCond(".java"), 0), skipRule(extCond(".tmp"), 10), fallback("fb"))));
     }
 
     @Test
-    public void selectForFileName_emptyExtensionListIsFallback() {
-        final AiFieldGenerationConfig empty = config("empty", Collections.<String>emptyList());
-
-        final AiFieldGenerationConfig selected =
-                selector.selectForFileName(Collections.singletonList(empty), "anything.xyz");
-
-        assertThat(selected.getPromptKey(), is(equalTo("empty")));
+    public void validate_nullEntryIgnored() {
+        assertDoesNotThrow(() ->
+                selector.validate(Arrays.<AiFieldGenerationConfig>asList(null, route("java", extCond(".java"), 0))));
     }
 
     @Test
-    public void selectForFileName_firstFallbackWins() {
-        final AiFieldGenerationConfig first = config("first", null);
-        final AiFieldGenerationConfig second = config("second", Collections.<String>emptyList());
-
-        final AiFieldGenerationConfig selected = selector.selectForFileName(Arrays.asList(first, second), "data.json");
-
-        assertThat(selected.getPromptKey(), is(equalTo("first")));
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="no match / null entries">
-    @Test
-    public void selectForFileName_noMatchNoFallback_returnsNull() {
-        final AiFieldGenerationConfig java = config("java", Arrays.asList(".java"));
-
-        final AiFieldGenerationConfig selected =
-                selector.selectForFileName(Collections.singletonList(java), "data.json");
-
-        assertThat(selected, is(nullValue()));
+    public void validate_moreThanOneFallback_throws() {
+        assertThrows(
+                IllegalArgumentException.class, () -> selector.validate(Arrays.asList(fallback("a"), fallback("b"))));
     }
 
     @Test
-    public void selectForFileName_nullEntrySkipped() {
-        final AiFieldGenerationConfig java = config("java", Arrays.asList(".java"));
+    public void validate_nonFallbackWithoutCondition_throws() {
+        final AiFieldGenerationConfig noCond = new AiFieldGenerationConfig();
+        noCond.setPromptKey("p");
+        noCond.setAiDefinitionKey(MODEL);
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(noCond)));
+    }
 
-        final AiFieldGenerationConfig selected =
-                selector.selectForFileName(Arrays.<AiFieldGenerationConfig>asList(null, java), "Foo.java");
+    @Test
+    public void validate_fallbackWithCondition_throws() {
+        final AiFieldGenerationConfig fb = fallback("p");
+        fb.setCondition(extCond(".java"));
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(fb)));
+    }
 
-        assertThat(selected.getPromptKey(), is(equalTo("java")));
+    @Test
+    public void validate_fallbackThatIsAlsoSkip_throws() {
+        final AiFieldGenerationConfig fb = fallback("p");
+        fb.setSkip(true);
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(fb)));
+    }
+
+    @Test
+    public void validate_routeMissingPromptKey_throws() {
+        final AiFieldGenerationConfig bad = new AiFieldGenerationConfig();
+        bad.setAiDefinitionKey(MODEL);
+        bad.setCondition(extCond(".java"));
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(bad)));
+    }
+
+    @Test
+    public void validate_routeMissingModel_throws() {
+        final AiFieldGenerationConfig bad = new AiFieldGenerationConfig();
+        bad.setPromptKey("p");
+        bad.setCondition(extCond(".java"));
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(bad)));
+    }
+
+    @Test
+    public void validate_fallbackMissingKeys_throws() {
+        final AiFieldGenerationConfig bad = new AiFieldGenerationConfig();
+        bad.setFallback(true);
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(bad)));
+    }
+
+    @Test
+    public void validate_skipRuleNeedsNoKeysButNeedsCondition() {
+        assertDoesNotThrow(() -> selector.validate(Collections.singletonList(skipRule(extCond(".tmp"), 0))));
+    }
+
+    @Test
+    public void validate_invalidConditionInRule_throws() {
+        // a condition with no branch set is invalid -> selector.validate must propagate the error
+        final AiFieldGenerationConfig bad = route("p", new AiCondition(), 0);
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(bad)));
     }
     // </editor-fold>
 }

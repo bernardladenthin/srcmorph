@@ -43,8 +43,23 @@ public class LlamaCppJniAiGenerationProviderTest {
                 8,
                 AiGenerationConfig.DEFAULT_TOP_P,
                 AiGenerationConfig.DEFAULT_TOP_K,
+                AiGenerationConfig.DEFAULT_MIN_P,
+                AiGenerationConfig.DEFAULT_TOP_N_SIGMA,
                 AiGenerationConfig.DEFAULT_REPEAT_PENALTY,
                 AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING,
+                AiGenerationConfig.DEFAULT_CACHE_PROMPT,
+                AiGenerationConfig.DEFAULT_SWA_FULL,
+                AiGenerationConfig.DEFAULT_CACHE_REUSE,
+                AiGenerationConfig.DEFAULT_GPU_LAYERS,
+                AiGenerationConfig.DEFAULT_MAIN_GPU,
+                AiGenerationConfig.DEFAULT_DEVICES,
+                AiGenerationConfig.DEFAULT_REASONING_EFFORT,
+                AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS,
+                AiGenerationConfig.DEFAULT_DRY_MULTIPLIER,
+                AiGenerationConfig.DEFAULT_DRY_BASE,
+                AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH,
+                AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N,
+                Collections.emptyList(),
                 Collections.emptyList());
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
 

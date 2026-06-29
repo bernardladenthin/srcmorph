@@ -5,16 +5,19 @@ package net.ladenthin.maven.llamacpp.aiindex.provider;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.llama.LlamaModel;
+import net.ladenthin.llama.args.ReasoningFormat;
 import net.ladenthin.llama.parameters.InferenceParameters;
 import net.ladenthin.llama.parameters.ModelParameters;
 import net.ladenthin.llama.value.Pair;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
+import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -42,6 +45,24 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     private final AiPromptSupport promptSupport;
     private final AiCompletionParser completionParser = new AiCompletionParser();
+    private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+
+    /**
+     * Fixed llama.cpp server slot every request is pinned to. The model is loaded once and reused
+     * for all files; pinning each request to the same slot lets the prompt cache
+     * ({@code cache_prompt}) reuse the shared prompt-template prefix's KV across files instead of
+     * re-prefilling it for every file. Reuse is exact, so generated output is unchanged.
+     */
+    private static final int REUSE_SLOT_ID = 0;
+
+    /** Chat-template kwarg controlling Qwen-style thinking (ignored by non-Qwen templates). */
+    private static final String ENABLE_THINKING_KWARG = "enable_thinking";
+
+    /** Chat-template kwarg for the gpt-oss reasoning-effort level (ignored by non-gpt-oss templates). */
+    private static final String REASONING_EFFORT_KWARG = "reasoning_effort";
+
+    /** Number of chat-template kwargs put into the map (used for presizing). */
+    private static final int CHAT_TEMPLATE_KWARG_COUNT = 2;
 
     /**
      * Creates a new {@link LlamaCppJniAiGenerationProvider}; the GGUF model is loaded lazily on the first generate(...) call.
@@ -58,12 +79,47 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     private LlamaModel model() {
         LlamaModel current = model;
         if (current == null) {
+            final Map<String, String> chatTemplateKwargs =
+                    new HashMap<>(compatibilityHelper.hashMapCapacityFor(CHAT_TEMPLATE_KWARG_COUNT));
+            chatTemplateKwargs.put(ENABLE_THINKING_KWARG, String.valueOf(config.chatTemplateEnableThinking()));
+            // gpt-oss honors reasoning_effort; non-gpt-oss chat templates ignore it. An empty
+            // configured value omits the kwarg so the model's own template default applies.
+            if (!compatibilityHelper.isBlank(config.reasoningEffort())) {
+                chatTemplateKwargs.put(REASONING_EFFORT_KWARG, config.reasoningEffort());
+            }
             final ModelParameters modelParameters = new ModelParameters()
                     .setModel(config.modelPath())
                     .setCtxSize(config.contextSize())
                     .setThreads(config.threads())
-                    .setChatTemplateKwargs(Collections.singletonMap(
-                            "enable_thinking", String.valueOf(config.chatTemplateEnableThinking())));
+                    // Parse reasoning channels (Qwen <think>, gpt-oss harmony analysis) into
+                    // reasoning_content so message content stays clean (final channel only).
+                    .setReasoningFormat(ReasoningFormat.AUTO)
+                    .setChatTemplateKwargs(chatTemplateKwargs);
+            // Keep the full-size SWA KV cache so the sliding-window layers' KV is reusable across
+            // files (restores prompt-prefix reuse for gpt-oss), at the cost of more KV RAM.
+            if (config.swaFull()) {
+                modelParameters.enableSwaFull();
+            }
+            // Enable cross-request KV prefix reuse (min chunk size in tokens) when configured.
+            if (config.cacheReuse() > 0) {
+                modelParameters.setCacheReuse(config.cacheReuse());
+            }
+            // Offload model layers to the GPU when explicitly configured (>= 0). -1 leaves the
+            // binding/native-build default (CPU build stays CPU; GPU build uses its own default).
+            if (config.gpuLayers() >= 0) {
+                modelParameters.setGpuLayers(config.gpuLayers());
+            }
+            // Pick a specific GPU when configured (>= 0). Matters on multi-GPU hosts: a Vulkan build
+            // enumerates every GPU (an integrated GPU may be device 0), so the default can select the
+            // slower one. -1 leaves the binding/native-build default.
+            if (config.mainGpu() >= 0) {
+                modelParameters.setMainGpu(config.mainGpu());
+            }
+            // Explicit device selection (comma-separated backend device names, e.g. "Vulkan1") takes
+            // precedence over a single main-GPU index. Empty leaves the binding/native-build default.
+            if (!config.devices().isEmpty()) {
+                modelParameters.setDevices(config.devices());
+            }
             current = new LlamaModel(modelParameters);
             model = current;
         }
@@ -72,31 +128,49 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
-        return generate(request, config.temperature());
-    }
-
-    @Override
-    public String generate(final AiGenerationRequest request, final float temperatureOverride) throws IOException {
-        final String prompt = promptSupport.buildPrompt(request);
+        // Static instructions go in the SYSTEM message (byte-identical across files, so its KV
+        // prefix is reused by cache_prompt); the variable file name + source go in the USER message.
+        final String systemPrompt = promptSupport.systemPrompt(request.promptKey());
+        final String userMessage = promptSupport.userMessage(request.sourceFile(), request.sourceText());
 
         final List<Pair<String, String>> messages = new ArrayList<>();
-        messages.add(new Pair<>("user", prompt));
+        messages.add(new Pair<>("user", userMessage));
 
-        // withMessages(systemMessage, ...) accepts null upstream to omit the system message,
-        // but it is unannotated, so Checker Framework infers @NonNull.
-        // InferenceParameters uses immutable withers (jllama 5.0.2): each with* returns a new
-        // instance, so withStopStrings is folded into the single chain rather than a separate
-        // mutating call.
-        @SuppressWarnings("argument")
-        final InferenceParameters inferenceParameters = new InferenceParameters("")
-                .withMessages(null, messages)
+        // InferenceParameters uses immutable withers: each with* returns a new instance, so the
+        // whole request is built as a single chain.
+        final InferenceParameters baseParameters = new InferenceParameters("")
+                .withMessages(systemPrompt, messages)
                 .withUseChatTemplate(true)
-                .withTemperature(temperatureOverride)
+                .withTemperature(config.temperature())
                 .withNPredict(config.maxOutputTokens())
                 .withTopP(config.topP())
                 .withTopK(config.topK())
+                .withMinP(config.minP())
+                .withTopNSigma(config.topNSigma())
                 .withRepeatPenalty(config.repeatPenalty())
-                .withStopStrings(config.stopStrings().toArray(new String[0]));
+                // Cap harmony analysis (reasoning) tokens so a runaway chain-of-thought cannot
+                // starve the final answer; -1 (default) = unrestricted, so behaviour is unchanged.
+                .withReasoningBudgetTokens(config.reasoningBudgetTokens())
+                // DRY (Don't Repeat Yourself) repetition suppression; multiplier 0.0 (default) = off,
+                // so the base/allowed-length/penalty-last-n knobs have no effect unless opted in.
+                .withDryMultiplier(config.dryMultiplier())
+                .withDryBase(config.dryBase())
+                .withDryAllowedLength(config.dryAllowedLength())
+                .withDryPenaltyLastN(config.dryPenaltyLastN())
+                .withStopStrings(config.stopStrings().toArray(new String[0]))
+                // Keep the shared prompt-template prefix warm in the KV cache and reuse it across
+                // files (pinned to one slot); only the differing source is re-prefilled.
+                // Reuse is exact -> output unchanged.
+                .withCachePrompt(config.cachePrompt())
+                .withSlotId(REUSE_SLOT_ID);
+
+        // Only override the DRY sequence breakers when explicitly configured; an empty list keeps
+        // the binding/model default set instead of clearing it.
+        final InferenceParameters inferenceParameters =
+                config.drySequenceBreakers().isEmpty()
+                        ? baseParameters
+                        : baseParameters.withDrySequenceBreakers(
+                                config.drySequenceBreakers().toArray(new String[0]));
 
         return completionParser.parseCompletion(model().chatCompleteText(inferenceParameters));
     }

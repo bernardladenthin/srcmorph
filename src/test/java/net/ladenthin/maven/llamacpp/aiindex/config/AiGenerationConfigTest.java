@@ -51,4 +51,175 @@ public class AiGenerationConfigTest {
         // null arg resets to an EMPTY (non-null) list — kills the negate mutant on the setter ternary.
         assertThat(c.getStopStrings(), is(Collections.<String>emptyList()));
     }
+
+    @Test
+    public void cachePromptDefaultsTrueAndTogglesFalse() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default true kills the false-default / "return false" getter mutants.
+        assertThat(c.isCachePrompt(), is(true));
+        c.setCachePrompt(false);
+        // Observing false after the setter kills the "return true" getter mutant and the
+        // removed-assignment setter mutant.
+        assertThat(c.isCachePrompt(), is(false));
+    }
+
+    @Test
+    public void reasoningEffortDefaultsLowAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default "low" kills the empty/null return mutants on the getter.
+        assertThat(c.getReasoningEffort(), is("low"));
+        c.setReasoningEffort("high");
+        // Round-tripped value kills the removed-assignment setter mutant.
+        assertThat(c.getReasoningEffort(), is("high"));
+    }
+
+    @Test
+    public void minPDefaultsDisabledAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default 0.0 (disabled) kills the inline-constant and "return 1.0" getter mutants.
+        assertThat(c.getMinP(), is(0.0f));
+        c.setMinP(0.05f);
+        // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getMinP(), is(0.05f));
+    }
+
+    @Test
+    public void topNSigmaDefaultsDisabledAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1.0 (disabled) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getTopNSigma(), is(-1.0f));
+        c.setTopNSigma(1.5f);
+        // Round-tripped value kills the getter "return 0" and removed-assignment setter mutants.
+        assertThat(c.getTopNSigma(), is(1.5f));
+    }
+
+    @Test
+    public void swaFullDefaultsTrueAndTogglesFalse() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default true (E4 batch default) kills the "return false" getter mutant.
+        assertThat(c.isSwaFull(), is(true));
+        c.setSwaFull(false);
+        // Observing false kills the "return true" getter and removed-assignment setter mutants.
+        assertThat(c.isSwaFull(), is(false));
+    }
+
+    @Test
+    public void cacheReuseDefaultsTwoFiftySixAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default 256 (E4 batch default) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getCacheReuse(), is(256));
+        c.setCacheReuse(128);
+        // Round-tripped distinct value kills the removed-assignment setter mutant.
+        assertThat(c.getCacheReuse(), is(128));
+    }
+
+    @Test
+    public void gpuLayersDefaultsMinusOneAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1 (leave binding/build default) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getGpuLayers(), is(-1));
+        c.setGpuLayers(33);
+        // Round-tripped value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getGpuLayers(), is(33));
+    }
+
+    @Test
+    public void mainGpuDefaultsMinusOneAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1 (leave binding/build default) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getMainGpu(), is(-1));
+        c.setMainGpu(1);
+        // Round-tripped value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getMainGpu(), is(1));
+    }
+
+    @Test
+    public void devicesDefaultsEmptyAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default "" (leave binding/build default) kills the null/non-empty return mutants on the getter.
+        assertThat(c.getDevices(), is(""));
+        c.setDevices("Vulkan1");
+        // Round-tripped value kills the empty-return getter and removed-assignment setter mutants.
+        assertThat(c.getDevices(), is("Vulkan1"));
+    }
+
+    @Test
+    public void setDevicesNullResetsToEmpty() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setDevices("CUDA0");
+        c.setDevices(null);
+        // null arg resets to "" — kills the negate mutant on the setter ternary (which would store null).
+        assertThat(c.getDevices(), is(""));
+    }
+
+    @Test
+    public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1 (unrestricted) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getReasoningBudgetTokens(), is(-1));
+        c.setReasoningBudgetTokens(2048);
+        // Round-tripped value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getReasoningBudgetTokens(), is(2048));
+    }
+
+    @Test
+    public void dryMultiplierDefaultsDisabledAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default 0.0 (disabled) kills the inline-constant / "return 1.0" getter mutants.
+        assertThat(c.getDryMultiplier(), is(0.0f));
+        c.setDryMultiplier(0.8f);
+        // Round-tripped non-zero value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getDryMultiplier(), is(0.8f));
+    }
+
+    @Test
+    public void dryBaseDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getDryBase(), is(1.75f));
+        c.setDryBase(1.5f);
+        assertThat(c.getDryBase(), is(1.5f));
+    }
+
+    @Test
+    public void dryAllowedLengthDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getDryAllowedLength(), is(2));
+        c.setDryAllowedLength(5);
+        assertThat(c.getDryAllowedLength(), is(5));
+    }
+
+    @Test
+    public void dryPenaltyLastNDefaultsWholeContextAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getDryPenaltyLastN(), is(-1));
+        c.setDryPenaltyLastN(256);
+        assertThat(c.getDryPenaltyLastN(), is(256));
+    }
+
+    @Test
+    public void drySequenceBreakersEmptyByDefault() {
+        // Defaults to an empty (non-null) list. Asserting non-null/empty kills the negate mutant
+        // on the getDrySequenceBreakers null path and the setter ternary.
+        assertThat(new AiGenerationConfig().getDrySequenceBreakers(), is(Collections.<String>emptyList()));
+    }
+
+    @Test
+    public void drySequenceBreakersRoundTripUnmodifiable() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setDrySequenceBreakers(Arrays.asList("\n", ":"));
+        assertThat(c.getDrySequenceBreakers(), hasItem("\n"));
+        assertThat(c.getDrySequenceBreakers(), hasItem(":"));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> c.getDrySequenceBreakers().add("x"));
+    }
+
+    @Test
+    public void setDrySequenceBreakersNullResetsToEmptyList() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setDrySequenceBreakers(Collections.singletonList("a"));
+        c.setDrySequenceBreakers(null);
+        // null arg resets to an EMPTY (non-null) list — kills the negate mutant on the setter ternary.
+        assertThat(c.getDrySequenceBreakers(), is(Collections.<String>emptyList()));
+    }
 }

@@ -10,7 +10,7 @@ This document provides guidance for AI assistants working on the llamacpp-ai-ind
 
 - **Group ID:** `net.ladenthin`
 - **Artifact ID:** `llamacpp-ai-index-maven-plugin`
-- **Version:** 1.0.0
+- **Version:** 1.0.1-SNAPSHOT
 - **Java:** target bytecode 1.8, built with JDK 21
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)
@@ -126,6 +126,27 @@ The plugin operates in three logical phases, building a navigable index from fin
 ```
 [Source .java files] → SourceFileIndexer → [*.java.ai.md files (deterministic header + AI body)]
 ```
+The `generate` goal is **plan-then-execute** and **rule-routed**: it first walks all candidate files,
+routes each via the `<fieldGeneration>` rules to a `(model, prompt)` — or a *skip*, or the explicit
+*fallback* — and logs a tree grouped by model (which file gets which model + prompt). It then loads
+**each model once** (groups sharing an `aiDefinitionKey`, sequentially → one model resident at a time,
+bounded RAM) and indexes that group's files. A rule matches by a composable **`<condition>` tree** — `<and>`/`<or>` (each wraps its children in
+`<conditions><condition>…</condition></conditions>`), `<not>` (a single nested condition), over leaves
+`<extensions>`, `<size>` (`min`/`max` bytes), `<lines>` (`min`/`max`), `<modifiedAfter>`/`<modifiedBefore>`
+(ISO-8601 instant vs file mtime), `<pathGlob>` (base-relative glob) — evaluated by `AiConditionEvaluator`
+against an `AiFileContext`; new leaf kinds are one field + one branch. Among matches the highest
+`priority` wins (ties by declaration order). `<skip>true</skip>` ignores matching files (a high-priority
+skip beats routes and the fallback); exactly one `<fallback>true</fallback>` (no condition) catches the
+rest; a file matching no rule and no fallback **fails the build**. `aiIndex.planOnly=true` prints the
+Markdown plan (file → rule id → prompt → rough time estimate, summed per model and overall) and stops
+(no model loaded). The plan also computes each routed file's **context-window fit** up front (via
+`AiInputWindowCalculator`, the same threshold the run uses to trim): a file larger than its routed
+model's window is flagged in the plan and **always fails the build** (a hard abort). The resolution is
+**configuration only** — the plugin never auto-picks a model: the user must add a `<fieldGeneration>`
+rule with a size `<condition>` that routes oversized files to a model with a large enough context window
+(see the big-window fallback example in the POM). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+`AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
+different file kinds/sizes with different models *and* prompts.
 
 **Phase 2 — Package Aggregation & Summarization**
 ```
@@ -163,7 +184,12 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `GenerateMojo` | Phase 1: index + summarize source files |
 | `AggregatePackagesMojo` | Phase 2: aggregate + summarize package index files |
 | `AggregateProjectMojo` | Phase 3: build the single `project.ai.md` (deterministic listing; extends `AbstractAiIndexMojo` and builds a provider **only** when a `<fieldGeneration>` opts into the AI overview) |
-| `SourceFileIndexer` | Walks source trees, creates `.ai.md` files, calls AI to fill the document body |
+| `SourceFileIndexer` | `collectCandidates` (walk + filters) / `classify` (→ `AiIndexPlan`) / `indexFile` (write one file with a given rule + provider) — split so a run plans first and loads one model per group |
+| `AiFieldGenerationSelector` | Routes a file to a rule by its `<condition>` + priority; explicit fallback; `skip`; plus `validate(rules)` (fail-fast config check) |
+| `AiCondition` / `AiConditionEvaluator` | Composable and/or/not condition tree (leaves: extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob) + its evaluator (`matches`/`validate`/`usesLines`) |
+| `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched, per-file context-window fit; renders the up-front tree |
+| `AiInputWindowCalculator` | Pure calculator for the input window (max source chars before trimming + whether a source exceeds it); single source of truth shared by the run-time trim (`AiFieldGenerationSupport`) and the plan-time over-window check (`SourceFileIndexer.classify`) |
+| `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
 | `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
 | `AiMdLeadExtractor` | Pure extraction of the one-line blockquote lead from an `.ai.md` body (fallback: first non-blank line) |
@@ -253,6 +279,9 @@ header block, so a `- F:` line in the body is never read as a link.
 | `subtrees` | `aiIndex.subtrees` | *(all)* | Limit to specific source subdirectories |
 | `fileExtensions` | `aiIndex.fileExtensions` | `.java` | File extensions to index |
 | `excludes` | `aiIndex.excludes` | *(none)* | Glob patterns (base-relative, `/` separators) for source files to skip, e.g. `**/package-info.java`, `**/generated/**` (`AiSourceExcludeFilter`) |
+| `minFileSizeBytes` | `aiIndex.file.minSizeBytes` | `0` | Exclusive lower size bound; files `<=` this are skipped (`0` = no lower bound). For size-tiering across multiple `generate` executions |
+| `maxFileSizeBytes` | `aiIndex.file.maxSizeBytes` | `0` | Inclusive upper size bound; files `>` this are skipped (`0` = unlimited). Pairs with `minFileSizeBytes` to form a band |
+| `planOnly` | `aiIndex.planOnly` | `false` | Print the routing plan tree (model → files → prompt → window fit) and stop; no model loaded, nothing generated |
 | `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
 | `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
 | `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |
@@ -326,7 +355,7 @@ Immutable value types are implemented as Java `record` types (e.g., `AiMdDocumen
 
 | Dependency | Version | Purpose |
 |---|---|---|
-| `net.ladenthin:llama` | 5.0.2 | llama.cpp JNI binding (GGUF inference); pinned to the layered-package + immutable-wither API. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
+| `net.ladenthin:llama` | 5.0.3 | llama.cpp JNI binding (GGUF inference); released on Maven Central, carries the prompt-cache/slot APIs + GPU classifier jars. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
 | `org.apache.maven:maven-plugin-api` | 3.9.13 | Maven plugin API (provided) |
 | `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.1 | `@Mojo`, `@Parameter` annotations (provided) |
 
@@ -368,7 +397,7 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
 3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums detect source changes.
 4. **Unified indexing and summarization** — each indexer (`SourceFileIndexer`, `PackageIndexer`) both creates the `.ai.md` skeleton and fills in AI fields in a single pass; no separate summarization step is needed.
 5. **Provider abstraction** — AI backends are pluggable through `AiGenerationProvider`; mock provider enables fully deterministic tests.
-6. **Configuration-driven prompts** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change. For the `generate` goal the per-file prompt is chosen by source extension (`AiFieldGenerationSelector`): each `<fieldGeneration>` may carry an optional `<fileExtensions>` filter (e.g. `.java`/`.sql`), and an entry without one is the fallback — so a Java prompt, a SQL-schema prompt, and a generic fallback can coexist while one model stays loaded.
+6. **Configuration-driven prompts & rule-based routing** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change. For the `generate` goal each `<fieldGeneration>` is a routing **rule** (`AiFieldGenerationSelector`): a composable `<condition>` tree (`<and>`/`<or>`/`<not>` over leaves extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob — `AiCondition`/`AiConditionEvaluator`), a `<priority>` (highest matching wins, ties by order), and a kind — route (`<promptKey>`+`<aiDefinitionKey>`), `<skip>true</skip>` (ignore), or exactly one explicit `<fallback>true</fallback>`. So one run can route different file kinds/sizes to different models **and** prompts; the model id (`aiDefinitionKey`) carries the full parameter set (path, context, sampling…), and the run loads each model once. A file matching no rule and no fallback fails the build; `aiIndex.planOnly=true` previews the plan tree without loading a model. Prompts live once in a shared plugin-level `<promptDefinitions>` and are referenced by id across all rules/executions (no duplication).
 
 ## Javadoc Conventions
 

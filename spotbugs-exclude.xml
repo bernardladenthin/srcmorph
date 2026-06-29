@@ -302,4 +302,130 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
     </Match>
 
+    <!--
+        OPM_OVERLY_PERMISSIVE_METHOD on AiProgressBar.render. fb-contrib flags the public render(...)
+        overloads as "could be more restrictive" from bytecode shape, but they are the class's public API
+        (a reusable progress-bar renderer) and are called from GenerateMojo and exercised directly by unit
+        tests. Same rationale as the AiGenerationTimeEstimator OPM suppression above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+    <!--
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the rule-routing config beans and the routing-plan model.
+
+        AiCondition / AiConditionGroup / AiFieldGenerationConfig are mutable Maven @Parameter
+        JavaBeans: the plugin framework instantiates them via reflection and populates the nested
+        condition tree (and/or/not groups, the AiRangeCondition size/lines, the extensions list)
+        through setters during Mojo configuration. The "exposed representation" IS the configuration
+        by contract - the indexer reads the very tree Maven built and never mutates or shares it
+        across threads (the build is single-threaded and the beans are discarded after the run).
+        Defensive copies in the getters/setters would deep-clone an immutable-after-injection config
+        tree for no safety gain and would break the "read the configured tree" model.
+
+        AiIndexPlan (+ its nested Entry) is a build-time DTO produced by SourceFileIndexer.classify
+        and consumed only by AiIndexPlan.renderMarkdown and the unit tests. Its routesByModel / skipped
+        / unmatched collections and Entry.rule reference the same single-threaded, throwaway data; the
+        Entry.rule is the shared routing rule (an AiFieldGenerationConfig) and is intentionally aliased,
+        not copied. No untrusted caller can mutate shared state through these accessors.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiCondition"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionGroup"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan$Entry"/>
+        </Or>
+        <Or>
+            <Bug pattern="EI_EXPOSE_REP"/>
+            <Bug pattern="EI_EXPOSE_REP2"/>
+        </Or>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on routing value/config helpers, matching the existing
+        suppressions for the other Maven @Parameter POJOs and stateless helpers above.
+
+        AiConditionGroup and AiRangeCondition are mutable Maven @Parameter beans (populated via
+        setters, never compared by value). AiFileContext is a build-time per-file context record
+        built by the indexer and read once during classification; nothing stores two of them in a
+        Set/Map keyed by value. Identity is the correct semantics; a value-equality equals would
+        falsely imply these are interned value objects.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionGroup"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext"/>
+        </Or>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_TOSTRING on AiIndexPlan: it is an internal DTO whose human-readable
+        form is the purpose-built renderMarkdown(...) (a structured Markdown plan), not a debug
+        toString. A generated toString over its nested maps would duplicate that intent and never
+        be called. Matches the HelpMojo IMC suppression rationale above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_TOSTRING"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_WRONG_FIELD_ORDER on LlamaCppJniAiGenerationProvider: fb-contrib wants
+        the static REUSE_SLOT_ID constant declared before the instance fields. The current order
+        (the constant sits with the slot-reuse logic it documents) is a deliberate readability
+        choice and has no runtime effect.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniAiGenerationProvider"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_WRONG_FIELD_ORDER"/>
+    </Match>
+
+    <!--
+        fb-contrib stylistic/opinion detectors on the routing + plan + estimator code. These are
+        bytecode-shape heuristics that source changes cannot resolve without harming readability or
+        the class's intended API, scoped narrowly to the affected classes:
+
+          - CE_CLASS_ENVY: buildLlamaCppJniConfig copies the resolved AiGenerationConfig field-by-field
+            into the immutable LlamaCppJniConfig (it necessarily touches that config's getters more than
+            its own state); AiConditionEvaluator.branchCount walks the AiCondition tree. Both are
+            translation/traversal methods - referencing the other type heavily is the point.
+          - OCP_OVERLY_CONCRETE_PARAMETER: parameters typed to the concrete collaborator the method
+            actually needs (AiCondition / Map) rather than an over-abstracted supertype.
+          - OPM_OVERLY_PERMISSIVE_METHOD: the estimator's estimate* helpers and the plan's
+            routedCount/totalEstimatedSeconds are public by design - they are the class API and are
+            exercised directly by unit tests.
+          - UCPM_USE_CHARACTER_PARAMETERIZED_METHOD: renderMarkdown appends short literal strings
+            for the Markdown template; spelling them as String literals keeps the template readable.
+          - WEM_WEAK_EXCEPTION_MESSAGING: the AiConditionEvaluator.validate and GenerateMojo.execute
+            messages describe a POM configuration error in operator terms; they intentionally read as
+            user-facing config diagnostics rather than carrying internal state.
+          - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: arises from the Objects.requireNonNull /
+            @NullMarked validation style (see the DCN rationale above); the explicit guards are the
+            deliberate fail-fast contract, not dead checks.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+        </Or>
+        <Or>
+            <Bug pattern="CE_CLASS_ENVY"/>
+            <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+            <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+            <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
+            <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
+            <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+        </Or>
+    </Match>
+
 </FindBugsFilter>
