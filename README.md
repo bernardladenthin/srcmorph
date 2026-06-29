@@ -451,6 +451,29 @@ in [COMPARISON.md §11](docs/ai-index-benchmark/COMPARISON.md):
 - **Timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt tokens),
   because attention is O(n) per token — which is why throughput drops as files grow. The plugin logs
   this estimate per file.
+
+## GPU acceleration (opt-in)
+The default native is CPU (Ninja build, bundled in the main `net.ladenthin:llama` jar). To use a GPU
+build, select a classifier via a profile and (optionally) set how many layers to offload:
+
+```
+mvn ai-index:generate -P gpu-cuda   -Dai.gpuLayers=20    # NVIDIA, partial offload (limited VRAM)
+mvn ai-index:generate -P gpu-vulkan                      # AMD or NVIDIA
+```
+
+- `gpu-cuda` (`cuda13-windows-x86-64`) — **fastest** on NVIDIA (measured ~4.5× CPU decode). Requires a
+  CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`, `cublas64_13.dll`) on
+  `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
+- `gpu-vulkan` (`vulkan-windows-x86-64`) — works on AMD **and** NVIDIA; the Vulkan loader ships with GPU
+  drivers. First run pays a one-time shader-compilation cost (amortized over a batch).
+- `ai.gpuLayers`: `-1` (default) lets the build decide (a GPU build auto-offloads everything); set a
+  positive number for **partial** offload when the model does not fit in VRAM (e.g. gpt-oss-20b ≈ 11 GB
+  on an 8 GB card), or `0` to force CPU.
+- OpenCL is intentionally not offered: llama.cpp's OpenCL backend does not support NVIDIA GPUs.
+
+Note: this selects the GPU native for the plugin's own (self-index) build; to ship a GPU-capable plugin
+to other projects, build/install it with the GPU profile (`mvn install -P gpu-cuda`).
+
 ## Development
 
 Run full build:

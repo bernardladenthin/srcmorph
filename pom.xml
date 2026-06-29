@@ -64,6 +64,15 @@ SPDX-License-Identifier: Apache-2.0
              Requires the maven-snapshots <repositories> block below. Switch to the 5.0.3 release
              once published. (Release fallback: 5.0.2 has withCachePrompt but not withSlotId.) -->
         <llama.version>5.0.3-SNAPSHOT</llama.version>
+        <!-- Native build selector for net.ladenthin:llama. Empty = the main jar (CPU, Ninja default).
+             The gpu-cuda / gpu-vulkan profiles set a GPU classifier; or override with
+             -Dllama.classifier=cuda13-windows-x86-64. GPU builds need their runtime on PATH
+             (CUDA: the toolkit's bin\x64 with cudart64_13.dll/cublas64_13.dll). -->
+        <llama.classifier></llama.classifier>
+        <!-- GPU layer offload for the gpt-oss presets (the gpu-layers / n_gpu_layers flag). -1 = leave
+             default (CPU build stays CPU; GPU build auto-offloads). Set e.g. -Dai.gpuLayers=20 for partial
+             offload when the model does not fit in VRAM. Only effective with a GPU classifier above. -->
+        <ai.gpuLayers>-1</ai.gpuLayers>
         <junit.version>6.1.0</junit.version>
         <hamcrest.version>3.0</hamcrest.version>
         <jmh.version>1.37</jmh.version>
@@ -146,6 +155,7 @@ SPDX-License-Identifier: Apache-2.0
             <groupId>net.ladenthin</groupId>
             <artifactId>llama</artifactId>
             <version>${llama.version}</version>
+            <classifier>${llama.classifier}</classifier>
         </dependency>
 
         <dependency>
@@ -748,6 +758,28 @@ SPDX-License-Identifier: Apache-2.0
     </build>
 
     <profiles>
+        <!-- Opt-in GPU acceleration: select a GPU native build of net.ladenthin:llama instead of the
+             default CPU (Ninja) main jar. The GPU build auto-offloads; set -Dai.gpuLayers=N for partial
+             offload when the model does not fit in VRAM. The GPU runtime must be on PATH:
+               CUDA  -> the CUDA Toolkit's bin\x64 (cudart64_13.dll, cublas64_13.dll); needs a matching
+                        CUDA 13 toolkit + NVIDIA driver. Fastest on NVIDIA (measured ~4.5x CPU).
+               Vulkan-> a Vulkan loader (ships with GPU drivers); works on AMD + NVIDIA, but the first
+                        run pays a one-time shader-compilation cost.
+             Example: mvn ai-index:generate -P gpu-cuda -Dai.gpuLayers=20
+             (OpenCL is intentionally not offered: llama.cpp's OpenCL backend does not support NVIDIA.) -->
+        <profile>
+            <id>gpu-cuda</id>
+            <properties>
+                <llama.classifier>cuda13-windows-x86-64</llama.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>gpu-vulkan</id>
+            <properties>
+                <llama.classifier>vulkan-windows-x86-64</llama.classifier>
+            </properties>
+        </profile>
+
         <profile>
             <id>release</id>
             <build>
@@ -1327,6 +1359,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>gpt-oss-20B-c16k</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>16384</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1342,6 +1375,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>gpt-oss-20B-c48k</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>49152</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <maxOutputTokens>4096</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1357,6 +1391,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>gpt-oss-20B-c96k</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
