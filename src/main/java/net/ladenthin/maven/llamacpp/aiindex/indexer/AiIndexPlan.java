@@ -250,7 +250,8 @@ public final class AiIndexPlan {
      * @return the rule id, or {@code "-"}
      */
     private String ruleId(final AiFieldGenerationConfig rule) {
-        return rule.getId() != null ? rule.getId() : "-";
+        final String id = rule.getId();
+        return id != null ? id : "-";
     }
 
     /**
