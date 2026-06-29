@@ -208,7 +208,8 @@ public class ProjectIndexer {
         final AiFieldGenerationConfig copy = new AiFieldGenerationConfig();
         copy.setPromptKey(source.getPromptKey());
         copy.setAiDefinitionKey(source.getAiDefinitionKey());
-        copy.setFileExtensions(source.getFileExtensions());
+        // The project-overview generation uses a single field generation; per-file routing fields
+        // (condition/priority/skip/fallback) do not apply, so only prompt + model are copied.
         return copy;
     }
 

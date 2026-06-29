@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import net.ladenthin.maven.llamacpp.aiindex.CommonTestFixtures;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiCondition;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
@@ -80,9 +81,14 @@ public class SourceFileIndexerTest {
         final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
         config.setPromptKey(promptKey);
         config.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setFileExtensions(extensions);
         config.setSkip(skip);
         config.setFallback(fallback);
+        // fallback rules carry no condition; route/skip rules match by extension
+        if (!fallback) {
+            final AiCondition condition = new AiCondition();
+            condition.setExtensions(extensions);
+            config.setCondition(condition);
+        }
         return config;
     }
 

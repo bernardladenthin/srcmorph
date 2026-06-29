@@ -12,8 +12,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiCondition;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
@@ -79,6 +82,7 @@ public class SourceFileIndexer {
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
     private final AiFieldGenerationSelector fieldGenerationSelector = new AiFieldGenerationSelector();
+    private final AiConditionEvaluator conditionEvaluator = new AiConditionEvaluator();
     private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
 
     /**
@@ -179,9 +183,13 @@ public class SourceFileIndexer {
             final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
             final long fileSizeBytes = Files.size(file);
             final int lineCount = lineFiltersUsed ? countLines(compatibilityHelper.readString(file)) : 0;
+            final String relativePath =
+                    baseDirectory.relativize(file).toString().replace('\\', '/');
+            final long lastModified = Files.getLastModifiedTime(file).toMillis();
+            final AiFileContext context =
+                    new AiFileContext(fileName, relativePath, fileSizeBytes, lineCount, lastModified);
 
-            final AiFieldGenerationConfig rule =
-                    fieldGenerationSelector.select(rules, fileName, fileSizeBytes, lineCount);
+            final AiFieldGenerationConfig rule = fieldGenerationSelector.select(rules, context);
             if (rule == null) {
                 plan.addUnmatched(file);
             } else if (rule.isSkip()) {
@@ -254,15 +262,19 @@ public class SourceFileIndexer {
     }
 
     /**
-     * Returns {@code true} when at least one rule declares a line-count bound, so planning knows whether
-     * it must read file contents to count lines.
+     * Returns {@code true} when at least one rule's condition uses a {@code lines} leaf, so planning
+     * knows whether it must read file contents to count lines.
      *
      * @param rules the routing rules
-     * @return {@code true} if any rule uses {@code minLines}/{@code maxLines}
+     * @return {@code true} if any rule's condition uses a line count
      */
     private boolean anyRuleUsesLines(final List<AiFieldGenerationConfig> rules) {
         for (final AiFieldGenerationConfig rule : rules) {
-            if (rule != null && (rule.getMinLines() > 0 || rule.getMaxLines() > 0)) {
+            if (rule == null) {
+                continue;
+            }
+            final AiCondition condition = rule.getCondition();
+            if (condition != null && conditionEvaluator.usesLines(condition)) {
                 return true;
             }
         }

@@ -706,9 +706,13 @@ SPDX-License-Identifier: Apache-2.0
                 <configuration>
                     <targetClasses>
                         <!-- Classes verified at 100% PIT mutation parity. Expand as more reach it. -->
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCondition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest</param>
@@ -1910,17 +1914,17 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <id>java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
-                                            <fileExtensions>
-                                                <fileExtension>.java</fileExtension>
-                                            </fileExtensions>
+                                            <condition>
+                                                <extensions><extension>.java</extension></extensions>
+                                            </condition>
                                         </fieldGeneration>
                                         <fieldGeneration>
                                             <id>sql</id>
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
-                                            <fileExtensions>
-                                                <fileExtension>.sql</fileExtension>
-                                            </fileExtensions>
+                                            <condition>
+                                                <extensions><extension>.sql</extension></extensions>
+                                            </condition>
                                         </fieldGeneration>
                                         <!-- Explicit fallback: applies to any file no rule above matched.
                                              Exactly one fallback is allowed; without it an unmatched file
