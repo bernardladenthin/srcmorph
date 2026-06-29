@@ -380,6 +380,26 @@ is not truncated at the budget. So the budget cannot be relied on as a safety ra
    cost-without-benefit obvious and motivated removing it entirely** (see the retry-removal change): a
    blank body now fails fast with a single `WARN` instead of re-inferring 3× to the same empty result.
 
+**Build 11 re-test (Ninja native, CUDA, mxfp4) — the empty-body blackhole no longer reproduces; budget
+still unproven.** Re-ran both arms on the newer `net.ladenthin:llama` build 11 native via CUDA (auto-fit
+GPU): a ~27 KB / many-method fixture (`AiGenerationConfig.java`), gpt-oss-20b mxfp4, temp 0.7, **high
+effort**, `maxOutputTokens=2048`, `contextSize=16384`.
+
+| arm | budget | prefill | decode tokens | decode t/s | body |
+|---|---|---|---|---|---|
+| A | −1 (off) | 6471 tok @ 446 t/s | **1604** (stopped < 2048 cap) | 20.4 | **non-empty**, 2615 chars, ~12 `#` headings |
+| B | **1024** | 6471 tok @ 462 t/s | 1350 | 20.6 | non-empty, 2055 chars, 0 `#` headings |
+
+Two changes vs the original CPU run: (1) **high effort now completes a substantive answer** — neither arm
+is blank and arm A stops naturally at 1604 tokens *below* the 2048 cap, so the original "reasoning
+blackhole → 0/9 empty body, decode pinned at the cap" does **not** reproduce on build 11. (2) The
+**reasoning budget is still not a demonstrable safety rail**: arm B decoded somewhat fewer tokens
+(1350 vs 1604) but there is no clean truncation at 1024, and the structure difference (0 vs 12 headings)
+is content variance at temp 0.7 from a single sample, not a budget effect. Conclusion unchanged:
+`reasoningBudgetTokens` stays **opt-in, default −1**; low effort stays the shipped default (faster and
+adequate). The only material update is that high effort is no longer outright broken for larger files on
+build 11.
+
 ### Retry mechanism removed (follow-up from E2)
 
 The empty-body retry loop (initial generation + up to `maxRetries` re-inferences at an escalating
