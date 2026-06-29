@@ -499,9 +499,12 @@ In both cases:
 
 - **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
   `cublas64_13.dll`) on `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
-- **`ai.gpuLayers`** (on the gpt-oss presets): `-1` (default) lets the build decide (a GPU native
-  auto-offloads everything); set a positive number for **partial** offload when the model does not fit
-  in VRAM (e.g. gpt-oss-20b ≈ 11 GB on an 8 GB card), or `0` to force CPU.
+- **`ai.gpuLayers`** (on the gpt-oss presets): `-1` (default) does **not** pin a layer count, so
+  llama.cpp **auto-fits** as many layers as fit the card's free VRAM — the robust "runs on any card"
+  setting (it never over-commits, so no OOM on a 6 GB card, and uses more layers on a bigger one). Pin a
+  positive number only to force a specific **partial** split (a fixed count disables auto-fit), or `0` to
+  force CPU. Measured on an 8 GB RTX 3070, auto-fit gpt-oss-20b ≈ 29 decode t/s (vs ≈ 8 on CPU); a card
+  with ≥ 16 GB fits all layers and is far faster.
 - **Picking a GPU on a multi-GPU host** (`ai.mainGpu` / `ai.devices` on the gpt-oss presets): a **CUDA**
   build only enumerates NVIDIA devices, so a single-NVIDIA host needs nothing. A **Vulkan** build
   enumerates *every* GPU (an integrated GPU is often device `0`), so the default may pick the slower one —

@@ -69,9 +69,16 @@ SPDX-License-Identifier: Apache-2.0
              -Dllama.classifier=cuda13-windows-x86-64. GPU builds need their runtime on PATH
              (CUDA: the toolkit's bin\x64 with cudart64_13.dll/cublas64_13.dll). -->
         <llama.classifier></llama.classifier>
-        <!-- GPU layer offload for the gpt-oss presets (the gpu-layers / n_gpu_layers flag). -1 = leave
-             default (CPU build stays CPU; GPU build auto-offloads). Set e.g. -Dai.gpuLayers=20 for partial
-             offload when the model does not fit in VRAM. Only effective with a GPU classifier above. -->
+        <!-- Default AI model definition (key) used by the gpt-oss profile's generate/aggregate executions.
+             gpt-oss-20B-mxfp4 is the native MXFP4 format: same ~12 GB size and decode speed as the Q4/Q5/Q8
+             variants (the MoE experts are MXFP4 regardless), but no double-quantization of the experts ->
+             best quality. Override with -Dai.model=gpt-oss-20B-Q4_K_M (or any key in <aiDefinitions>). -->
+        <ai.model>gpt-oss-20B-mxfp4</ai.model>
+        <!-- GPU layer offload for the gpt-oss presets (the gpu-layers / n_gpu_layers flag). -1 (default) =
+             do NOT pin a count, so llama.cpp AUTO-FITS as many layers as fit the card's free VRAM. This is
+             the robust "runs on any card" setting: it never over-commits (no OOM on a 6 GB card) and uses
+             more layers on a bigger card. A CPU build stays on CPU. Pin a count only to force a specific
+             partial split (e.g. -Dai.gpuLayers=12); a fixed count disables auto-fit. GPU classifier only. -->
         <ai.gpuLayers>-1</ai.gpuLayers>
         <!-- Primary GPU index for the gpt-oss presets (the main-gpu flag). -1 = leave default. Matters on
              multi-GPU hosts: a Vulkan build enumerates every GPU (an integrated GPU may be device 0), so
@@ -1428,23 +1435,34 @@ SPDX-License-Identifier: Apache-2.0
                                      adds no information). Speed is within run-to-run noise.
 
                                        quant         file     prefill t/s  decode t/s  sections
-                                       mxfp4(native) 11.3 GB     36.1         5.85        9/9
-                                       UD-Q4_K_XL    11.1 GB     35.1         6.30        9/9   <- DEFAULT (the c16k/c48k/c96k presets above)
+                                       mxfp4(native) 11.3 GB     36.1         5.85        9/9   <- DEFAULT (ai.model); native MXFP4, best quality
+                                       UD-Q4_K_XL    11.1 GB     35.1         6.30        9/9   <- the c16k/c48k/c96k presets above
                                        Q4_K_M        10.8 GB     36.6         6.59        9/9   <- smallest + fastest decode (marginal)
                                        Q5_K_M        10.9 GB     32.1         5.96        9/9
                                        Q8_0          11.3 GB     36.3         6.24        9/9
                                        F16           12.85 GB    39.1         5.40        9/9   <- NOT recommended: biggest + slowest, no quality gain
 
-                                     Guidance: keep UD-Q4_K_XL (default). Q4_K_M is a hair smaller/faster
-                                     if you want it. Do NOT use Q8_0/F16 - more RAM, no quality benefit.
-                                     The five defs below are c96k-context quant swaps of the default; pick
-                                     one by referencing its key as <aiDefinitionKey>. UD-Q4_K_XL is already
-                                     covered by gpt-oss-20B-c96k above.
+                                     GPU cross-check (RTX 3070 8 GB, partial offload ngl=16, ctx 4096,
+                                     128 tok): Q4_K_M 25.4 / Q8_0 24.9 / mxfp4 23.9 decode t/s -> quant
+                                     choice is within noise on GPU too (all ~12 GB, experts are MXFP4).
+                                     Backend (mxfp4): CUDA 23.9 > Vulkan-discrete 18.1 > Vulkan-iGPU 10.0
+                                     ~ CPU 8.25; with auto-fit (ngl=-1) CUDA reached 29.2. OpenCL drops
+                                     NVIDIA (unsupported) -> CPU fallback, so it is not offered.
+
+                                     Guidance: default is now gpt-oss-20B-mxfp4 (native format, same size +
+                                     speed as the others, no expert double-quantization -> best quality).
+                                     Switch with -Dai.model=<key> (e.g. gpt-oss-20B-Q4_K_M for a hair less
+                                     RAM). Do NOT use Q8_0/F16 - more RAM, no quality benefit. UD-Q4_K_XL is
+                                     covered by the gpt-oss-20B-c96k preset above. All defs below carry the
+                                     ${ai.gpuLayers}/${ai.mainGpu}/${ai.devices} GPU knobs (ngl auto-fits).
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>gpt-oss-20B-mxfp4</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-mxfp4.gguf</modelPath>
                                     <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1460,6 +1478,9 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>gpt-oss-20B-Q4_K_M</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-Q4_K_M.gguf</modelPath>
                                     <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1475,6 +1496,9 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>gpt-oss-20B-Q5_K_M</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-Q5_K_M.gguf</modelPath>
                                     <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1490,6 +1514,9 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>gpt-oss-20B-Q8_0</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-Q8_0.gguf</modelPath>
                                     <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1505,6 +1532,9 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>gpt-oss-20B-F16</key>
                                     <modelPath>X:/Modelle/gpt-oss-20b-F16.gguf</modelPath>
                                     <contextSize>98304</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
                                     <maxOutputTokens>6144</maxOutputTokens>
                                     <temperature>0.7</temperature>
                                     <threads>8</threads>
@@ -1962,7 +1992,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fieldGeneration>
                                             <id>java</id>
                                             <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <condition>
                                                 <extensions><extension>.java</extension></extensions>
                                             </condition>
@@ -1970,7 +2000,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fieldGeneration>
                                             <id>sql</id>
                                             <promptKey>file-body-sql</promptKey>
-                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <condition>
                                                 <extensions><extension>.sql</extension></extensions>
                                             </condition>
@@ -1981,7 +2011,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fieldGeneration>
                                             <id>fallback</id>
                                             <promptKey>file-body-fallback</promptKey>
-                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <fallback>true</fallback>
                                         </fieldGeneration>
                                     </fieldGenerations>
@@ -1998,7 +2028,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>package-body</promptKey>
-                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
@@ -2024,7 +2054,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                     <fieldGenerations>
                                         <fieldGeneration>
                                             <promptKey>project-body</promptKey>
-                                            <aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                         </fieldGeneration>
                                     </fieldGenerations>
                                 </configuration>
