@@ -48,15 +48,21 @@ public class AiConditionEvaluatorTest {
         return c;
     }
 
+    private static AiConditionGroup group(final AiCondition... kids) {
+        final AiConditionGroup g = new AiConditionGroup();
+        g.setConditions(Arrays.asList(kids));
+        return g;
+    }
+
     private static AiCondition and(final AiCondition... kids) {
         final AiCondition c = new AiCondition();
-        c.setAnd(Arrays.asList(kids));
+        c.setAnd(group(kids));
         return c;
     }
 
     private static AiCondition or(final AiCondition... kids) {
         final AiCondition c = new AiCondition();
-        c.setOr(Arrays.asList(kids));
+        c.setOr(group(kids));
         return c;
     }
 
@@ -142,6 +148,20 @@ public class AiConditionEvaluatorTest {
         final AiCondition nested = and(ext(".java"), or(size(0L, 1000L), size(9999L, 0L)), not(glob));
         assertThat(evaluator.matches(nested, javaCtx()), is(true));
         assertThat(evaluator.matches(nested, ctx("X.java", "src/generated/X.java", 500L, 0, 0L)), is(false));
+    }
+
+    @Test
+    public void matches_groupWithNullConditions_isVacuous() {
+        // a group whose <conditions> list is null: AND is vacuously true, OR vacuously false
+        final AiCondition andNull = new AiCondition();
+        andNull.setAnd(new AiConditionGroup());
+        assertThat(evaluator.matches(andNull, javaCtx()), is(true));
+        final AiCondition orNull = new AiCondition();
+        orNull.setOr(new AiConditionGroup());
+        assertThat(evaluator.matches(orNull, javaCtx()), is(false));
+        // and usesLines tolerates a null-conditions group
+        assertThat(evaluator.usesLines(andNull), is(false));
+        assertThat(evaluator.usesLines(orNull), is(false));
     }
 
     @Test

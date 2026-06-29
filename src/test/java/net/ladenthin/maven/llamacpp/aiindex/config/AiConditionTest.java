@@ -10,7 +10,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
-import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 public class AiConditionTest {
@@ -33,10 +32,12 @@ public class AiConditionTest {
     public void andOrNotRoundTrip() {
         final AiCondition leaf = new AiCondition();
         final AiCondition c = new AiCondition();
-        c.setAnd(Arrays.asList(leaf));
-        assertThat(c.getAnd().size(), is(equalTo(1)));
-        c.setOr(Arrays.asList(leaf, leaf));
-        assertThat(c.getOr().size(), is(equalTo(2)));
+        final AiConditionGroup g = new AiConditionGroup();
+        g.setConditions(Arrays.asList(leaf));
+        c.setAnd(g);
+        assertThat(c.getAnd().getConditions().size(), is(equalTo(1)));
+        c.setOr(g);
+        assertThat(c.getOr().getConditions().size(), is(equalTo(1)));
         c.setNot(leaf);
         assertThat(c.getNot(), is(leaf));
         c.setAnd(null);
@@ -78,9 +79,12 @@ public class AiConditionTest {
     }
 
     @Test
-    public void orDefensivelyCopiedFromArbitraryCollection() {
+    public void notRoundTripAndClear() {
         final AiCondition c = new AiCondition();
-        c.setOr(Collections.singletonList(new AiCondition()));
-        assertThat(c.getOr().size(), is(equalTo(1)));
+        final AiCondition child = new AiCondition();
+        c.setNot(child);
+        assertThat(c.getNot(), is(child));
+        c.setNot(null);
+        assertThat(c.getNot(), is(nullValue()));
     }
 }

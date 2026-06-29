@@ -34,3 +34,8 @@ replay_pid*
 
 # jcstress / jqwik test outputs (generated in repo root)
 /.jqwik-database
+
+# Benchmark/experiment scratch output dirs (not part of the build)
+src/siteGusto/
+src/siteMistral3/
+src/siteQwenBRUTAL/

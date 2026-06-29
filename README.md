@@ -152,11 +152,18 @@ The plugin is configured from three building blocks, declared on the plugin insi
 2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
    two `%s` placeholders: the file/package name and the source (for packages, the child summaries; for
    the optional project overview, the per-package leads).
-3. **`<fieldGenerations>`** — per goal, map one `<promptKey>` to one `<aiDefinitionKey>`. This is
-   **required**: a goal with no field generation fails fast. The `generate` goal may list several
-   field generations and give each an optional `<fileExtensions>` filter so the per-file prompt is
-   chosen by source language (`.java` → a Java prompt, `.sql` → a SQL-schema prompt); an entry with
-   no `<fileExtensions>` is the fallback applied to any file no extension-specific entry matched.
+3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
+   `<aiDefinitionKey>` (model id, which carries the full parameter set) and selects files with a
+   composable **`<condition>`** tree: `<and>`/`<or>`/`<not>` over the leaves `<extensions>`, `<size>`
+   (`<min>`/`<max>` bytes), `<lines>` (`<min>`/`<max>`), `<modifiedAfter>`/`<modifiedBefore>` (ISO-8601
+   instant vs the file's last-modified time), and `<pathGlob>` (base-relative glob). When several rules
+   match, the highest `<priority>` wins (ties by declaration order). A rule may instead be
+   `<skip>true</skip>` (ignore matching files — a high-priority skip beats routes and the fallback), and
+   **exactly one** `<fallback>true</fallback>` (no condition) catches everything else. A file that
+   matches no rule and no fallback **fails the build**. So one `generate` run can index different file
+   kinds/sizes with **different models *and* prompts**; it loads each model once. Run with
+   `-DaiIndex.planOnly=true` to print the routing plan (a copy-pasteable Markdown table: file → rule id →
+   prompt → rough time estimate, summed per model and overall) and stop before loading any model.
 
 ```xml
 <plugin>
@@ -235,18 +242,21 @@ Index file: %s
             <phase>generate-resources</phase>
             <goals><goal>generate</goal></goals>
             <configuration>
-                <!-- .java picks the Java prompt; any other file falls back. Add a
-                     file-body-sql entry with <fileExtensions>.sql</fileExtensions> to
-                     index SQL schema the same way. -->
+                <!-- A .java rule (matched by its <condition>) and the explicit fallback for
+                     everything else. See "Routing rules" below for size/lines/modified/glob
+                     conditions, priority, and skip. -->
                 <fieldGenerations>
                     <fieldGeneration>
+                        <id>java</id>
                         <promptKey>file-body-java</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
-                        <fileExtensions>
-                            <fileExtension>.java</fileExtension>
-                        </fileExtensions>
+                        <condition>
+                            <extensions><extension>.java</extension></extensions>
+                        </condition>
                     </fieldGeneration>
                     <fieldGeneration>
+                        <id>fallback</id>
+                        <fallback>true</fallback>
                         <promptKey>file-body-fallback</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
                     </fieldGeneration>
@@ -285,6 +295,54 @@ Index file: %s
     </executions>
 </plugin>
 ```
+
+### Routing rules (conditions, priority, skip, plan)
+Within one `generate` run you can route files to different models **and** prompts by size, language,
+age or path. Example — small/medium/large Java files to three context presets, skip generated sources,
+and a fallback for everything else:
+
+```xml
+<fieldGenerations>
+  <fieldGeneration>                                  <!-- skip wins by priority -->
+    <id>skip-generated</id><skip>true</skip><priority>100</priority>
+    <condition><pathGlob>**/generated/**</pathGlob></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>java-small</id><promptKey>file-body-java-terse</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
+    <condition><and><conditions>
+      <condition><extensions><extension>.java</extension></extensions></condition>
+      <condition><size><max>16384</max></size></condition>
+    </conditions></and></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>java-mid</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c48k</aiDefinitionKey>
+    <condition><and><conditions>
+      <condition><extensions><extension>.java</extension></extensions></condition>
+      <condition><size><min>16384</min><max>49152</max></size></condition>
+    </conditions></and></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>java-large</id><promptKey>file-body-java-detailed</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+    <condition><and><conditions>
+      <condition><extensions><extension>.java</extension></extensions></condition>
+      <condition><size><min>49152</min></size></condition>
+    </conditions></and></condition>
+  </fieldGeneration>
+  <fieldGeneration>
+    <id>fallback</id><fallback>true</fallback>
+    <promptKey>file-body-fallback</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+  </fieldGeneration>
+</fieldGenerations>
+```
+
+Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
+`<lines>` works the same way; `<modifiedAfter>2026-01-01T00:00:00Z</modifiedAfter>` only (re)indexes
+recently changed files. Preview the mapping without running a model:
+
+```
+mvn ai-index:generate -DaiIndex.planOnly=true
+```
+
 ## Usage
 Run AI index generation:
 ```

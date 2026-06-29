@@ -32,8 +32,8 @@ import org.jspecify.annotations.Nullable;
 @ToString
 public class AiCondition {
 
-    private @Nullable List<AiCondition> and;
-    private @Nullable List<AiCondition> or;
+    private @Nullable AiConditionGroup and;
+    private @Nullable AiConditionGroup or;
     private @Nullable AiCondition not;
     private @Nullable List<String> extensions;
     private @Nullable AiRangeCondition size;
@@ -48,39 +48,39 @@ public class AiCondition {
     }
 
     /**
-     * Returns the AND children, or {@code null} when this is not an AND node.
+     * Returns the AND group, or {@code null} when this is not an AND node.
      *
-     * @return the AND children, or {@code null}
+     * @return the AND group, or {@code null}
      */
-    public @Nullable List<AiCondition> getAnd() {
+    public @Nullable AiConditionGroup getAnd() {
         return and;
     }
 
     /**
-     * Sets the AND children.
+     * Sets the AND group (all children must match).
      *
-     * @param and the AND children
+     * @param and the AND group
      */
-    public void setAnd(final @Nullable Collection<AiCondition> and) {
-        this.and = and != null ? new ArrayList<>(and) : null;
+    public void setAnd(final @Nullable AiConditionGroup and) {
+        this.and = and;
     }
 
     /**
-     * Returns the OR children, or {@code null} when this is not an OR node.
+     * Returns the OR group, or {@code null} when this is not an OR node.
      *
-     * @return the OR children, or {@code null}
+     * @return the OR group, or {@code null}
      */
-    public @Nullable List<AiCondition> getOr() {
+    public @Nullable AiConditionGroup getOr() {
         return or;
     }
 
     /**
-     * Sets the OR children.
+     * Sets the OR group (any child may match).
      *
-     * @param or the OR children
+     * @param or the OR group
      */
-    public void setOr(final @Nullable Collection<AiCondition> or) {
-        this.or = or != null ? new ArrayList<>(or) : null;
+    public void setOr(final @Nullable AiConditionGroup or) {
+        this.or = or;
     }
 
     /**

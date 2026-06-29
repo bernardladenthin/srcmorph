@@ -130,7 +130,8 @@ The `generate` goal is **plan-then-execute** and **rule-routed**: it first walks
 routes each via the `<fieldGeneration>` rules to a `(model, prompt)` — or a *skip*, or the explicit
 *fallback* — and logs a tree grouped by model (which file gets which model + prompt). It then loads
 **each model once** (groups sharing an `aiDefinitionKey`, sequentially → one model resident at a time,
-bounded RAM) and indexes that group's files. A rule matches by a composable **`<condition>` tree** — `<and>`/`<or>`/`<not>` over leaves
+bounded RAM) and indexes that group's files. A rule matches by a composable **`<condition>` tree** — `<and>`/`<or>` (each wraps its children in
+`<conditions><condition>…</condition></conditions>`), `<not>` (a single nested condition), over leaves
 `<extensions>`, `<size>` (`min`/`max` bytes), `<lines>` (`min`/`max`), `<modifiedAfter>`/`<modifiedBefore>`
 (ISO-8601 instant vs file mtime), `<pathGlob>` (base-relative glob) — evaluated by `AiConditionEvaluator`
 against an `AiFileContext`; new leaf kinds are one field + one branch. Among matches the highest

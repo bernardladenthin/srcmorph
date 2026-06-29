@@ -39,20 +39,26 @@ public final class AiConditionEvaluator {
      * @return {@code true} if the file matches
      */
     public boolean matches(final AiCondition condition, final AiFileContext context) {
-        final List<AiCondition> and = condition.getAnd();
+        final AiConditionGroup and = condition.getAnd();
         if (and != null) {
-            for (final AiCondition child : and) {
-                if (!matches(child, context)) {
-                    return false;
+            final List<AiCondition> children = and.getConditions();
+            if (children != null) {
+                for (final AiCondition child : children) {
+                    if (!matches(child, context)) {
+                        return false;
+                    }
                 }
             }
             return true;
         }
-        final List<AiCondition> or = condition.getOr();
+        final AiConditionGroup or = condition.getOr();
         if (or != null) {
-            for (final AiCondition child : or) {
-                if (matches(child, context)) {
-                    return true;
+            final List<AiCondition> children = or.getConditions();
+            if (children != null) {
+                for (final AiCondition child : children) {
+                    if (matches(child, context)) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -98,8 +104,8 @@ public final class AiConditionEvaluator {
         if (branchCount(condition) != 1) {
             throw new IllegalArgumentException(ERROR_ONE_BRANCH + condition);
         }
-        final List<AiCondition> and = condition.getAnd();
-        final List<AiCondition> or = condition.getOr();
+        final AiConditionGroup and = condition.getAnd();
+        final AiConditionGroup or = condition.getOr();
         final AiCondition not = condition.getNot();
         final List<String> extensions = condition.getExtensions();
         final AiRangeCondition size = condition.getSize();
@@ -108,19 +114,9 @@ public final class AiConditionEvaluator {
         final String modifiedBefore = condition.getModifiedBefore();
         final String pathGlob = condition.getPathGlob();
         if (and != null) {
-            if (and.isEmpty()) {
-                throw new IllegalArgumentException("an <and> condition must have at least one child");
-            }
-            for (final AiCondition child : and) {
-                validate(child);
-            }
+            validateGroup(and, "<and>");
         } else if (or != null) {
-            if (or.isEmpty()) {
-                throw new IllegalArgumentException("an <or> condition must have at least one child");
-            }
-            for (final AiCondition child : or) {
-                validate(child);
-            }
+            validateGroup(or, "<or>");
         } else if (not != null) {
             validate(not);
         } else if (extensions != null) {
@@ -155,13 +151,13 @@ public final class AiConditionEvaluator {
         if (condition.getLines() != null) {
             return true;
         }
-        final List<AiCondition> and = condition.getAnd();
+        final AiConditionGroup and = condition.getAnd();
         if (and != null) {
-            return anyUsesLines(and);
+            return anyUsesLines(and.getConditions());
         }
-        final List<AiCondition> or = condition.getOr();
+        final AiConditionGroup or = condition.getOr();
         if (or != null) {
-            return anyUsesLines(or);
+            return anyUsesLines(or.getConditions());
         }
         final AiCondition not = condition.getNot();
         if (not != null) {
@@ -170,13 +166,33 @@ public final class AiConditionEvaluator {
         return false;
     }
 
-    private boolean anyUsesLines(final List<AiCondition> children) {
+    private boolean anyUsesLines(final @Nullable List<AiCondition> children) {
+        if (children == null) {
+            return false;
+        }
         for (final AiCondition child : children) {
             if (usesLines(child)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Validates an {@code <and>}/{@code <or>} group: it must hold at least one child, and each child is
+     * validated recursively.
+     *
+     * @param group the combinator group
+     * @param label the element label for error messages
+     */
+    private void validateGroup(final AiConditionGroup group, final String label) {
+        final List<AiCondition> children = group.getConditions();
+        if (children == null || children.isEmpty()) {
+            throw new IllegalArgumentException("an " + label + " condition must have at least one child");
+        }
+        for (final AiCondition child : children) {
+            validate(child);
+        }
     }
 
     /**
