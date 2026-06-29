@@ -141,7 +141,7 @@ It is published on Maven Central and resolves automatically — no manual instal
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>llama</artifactId>
-    <version>5.0.2</version>
+    <version>5.0.3</version>
 </dependency>
 ```
 ## Configuration

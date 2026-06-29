@@ -59,11 +59,10 @@ SPDX-License-Identifier: Apache-2.0
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <maven.version>3.9.16</maven.version>
-        <!-- TEMPORARY: pinned to the 5.0.3 snapshot of net.ladenthin:llama for the prompt-cache /
-             slot APIs (withCachePrompt / withSlotId) used by the provider's per-file cache reuse.
-             Requires the maven-snapshots <repositories> block below. Switch to the 5.0.3 release
-             once published. (Release fallback: 5.0.2 has withCachePrompt but not withSlotId.) -->
-        <llama.version>5.0.3-SNAPSHOT</llama.version>
+        <!-- net.ladenthin:llama release on Maven Central. 5.0.3 carries the prompt-cache / slot APIs
+             (withCachePrompt / withSlotId) used by the provider's per-file cache reuse, plus the GPU
+             classifier jars (cuda13/vulkan/opencl). -->
+        <llama.version>5.0.3</llama.version>
         <!-- Native build selector for net.ladenthin:llama. Empty = the main jar (CPU, Ninja default).
              The gpu-cuda / gpu-vulkan profiles set a GPU classifier; or override with
              -Dllama.classifier=cuda13-windows-x86-64. GPU builds need their runtime on PATH
@@ -252,22 +251,6 @@ SPDX-License-Identifier: Apache-2.0
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <!-- TEMPORARY: Sonatype Central snapshot repository to resolve net.ladenthin:llama
-         5.0.3-SNAPSHOT (pinned above). Releases disabled so stable artifacts keep resolving from
-         Maven Central. Remove together with the snapshot pin once 5.0.3 is released. -->
-    <repositories>
-        <repository>
-            <id>central-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
 
     <build>
         <pluginManagement>

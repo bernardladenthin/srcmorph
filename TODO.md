@@ -7,11 +7,6 @@ recorded in git history and `crossrepostatus.md`, not here.
 
 ## Open
 
-- **Pin `net.ladenthin:llama` to a released version (release blocker).** `<llama.version>`
-  in `pom.xml` is `5.0.3-SNAPSHOT`; a SNAPSHOT cannot be published to Maven Central. Pin
-  to the final `5.0.3` once the java-llama.cpp build (current: build 11) is released. The
-  comment in `pom.xml` already flags this as a temporary pin.
-
 - **jqwik pin policy** — see [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md). `jqwik.version ≤ 1.9.3` is mandatory.
 
 - **`@VisibleForTesting` audit.** No usages currently. Walk the production tree for package-private/protected methods or fields that exist purely so tests can reach them, and either annotate (`com.google.common.annotations.VisibleForTesting`) or move into the test source tree.
