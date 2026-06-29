@@ -453,26 +453,34 @@ in [COMPARISON.md §11](docs/ai-index-benchmark/COMPARISON.md):
   this estimate per file.
 
 ## GPU acceleration (opt-in)
-The default native is CPU (Ninja build, bundled in the main `net.ladenthin:llama` jar). To use a GPU
-build, select a classifier via a profile and (optionally) set how many layers to offload:
+The default native is CPU (Ninja build, bundled in the main `net.ladenthin:llama` jar). On an NVIDIA
+RTX 3070 a CUDA build measured **~4.5× the CPU decode speed**; Vulkan also works (AMD + NVIDIA) but pays
+a one-time shader-compilation cost on the first run. OpenCL is intentionally not offered (llama.cpp's
+OpenCL backend does not support NVIDIA GPUs).
+
+**Reliable way (any build, incl. indexing your own project) — runtime library override.** The native
+loader (`net.ladenthin.llama.loader.LlamaLoader`) loads from `net.ladenthin.llama.lib.path` before the
+bundled native, so point it at a folder holding the GPU `jllama.dll`:
 
 ```
-mvn ai-index:generate -P gpu-cuda   -Dai.gpuLayers=20    # NVIDIA, partial offload (limited VRAM)
-mvn ai-index:generate -P gpu-vulkan                      # AMD or NVIDIA
+# 1) extract the GPU jllama.dll once (from the classifier jar in your local repo)
+#    cuda13-windows-x86-64  -> NVIDIA;  vulkan-windows-x86-64 -> AMD/NVIDIA
+# 2) run with the lib path set + the GPU runtime on PATH:
+mvn ai-index:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dai.gpuLayers=20
 ```
 
-- `gpu-cuda` (`cuda13-windows-x86-64`) — **fastest** on NVIDIA (measured ~4.5× CPU decode). Requires a
-  CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`, `cublas64_13.dll`) on
-  `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
-- `gpu-vulkan` (`vulkan-windows-x86-64`) — works on AMD **and** NVIDIA; the Vulkan loader ships with GPU
-  drivers. First run pays a one-time shader-compilation cost (amortized over a batch).
-- `ai.gpuLayers`: `-1` (default) lets the build decide (a GPU build auto-offloads everything); set a
-  positive number for **partial** offload when the model does not fit in VRAM (e.g. gpt-oss-20b ≈ 11 GB
-  on an 8 GB card), or `0` to force CPU.
-- OpenCL is intentionally not offered: llama.cpp's OpenCL backend does not support NVIDIA GPUs.
+- **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
+  `cublas64_13.dll`) on `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
+- **`ai.gpuLayers`** (on the gpt-oss presets): `-1` (default) lets the build decide (a GPU native
+  auto-offloads everything); set a positive number for **partial** offload when the model does not fit
+  in VRAM (e.g. gpt-oss-20b ≈ 11 GB on an 8 GB card), or `0` to force CPU.
 
-Note: this selects the GPU native for the plugin's own (self-index) build; to ship a GPU-capable plugin
-to other projects, build/install it with the GPU profile (`mvn install -P gpu-cuda`).
+**Profiles (this repo's own reactor build only — test/benchmark).** `-P gpu-cuda` / `-P gpu-vulkan`
+swap the `net.ladenthin:llama` classifier (via the `llama.classifier` property) for the reactor's
+test/compile classpath — handy for the native test or benchmarking on GPU here. They do **not** change
+the native used when the *published* plugin runs in another build (the POM is not flattened, so the
+classifier stays a property that resolves to the CPU default downstream) — use the `lib.path` override
+above for real indexing.
 
 ## Development
 
