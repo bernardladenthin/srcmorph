@@ -55,6 +55,7 @@ public class AiModelDefinition {
     private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
     private boolean swaFull = AiGenerationConfig.DEFAULT_SWA_FULL;
     private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
+    private int gpuLayers = AiGenerationConfig.DEFAULT_GPU_LAYERS;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -381,6 +382,24 @@ public class AiModelDefinition {
      */
     public void setCacheReuse(final int cacheReuse) {
         this.cacheReuse = cacheReuse;
+    }
+
+    /**
+     * Returns the GPU layer offload count ({@code --gpu-layers}) for this model.
+     *
+     * @return GPU layers; defaults to {@link AiGenerationConfig#DEFAULT_GPU_LAYERS} (-1 = leave default)
+     */
+    public int getGpuLayers() {
+        return gpuLayers;
+    }
+
+    /**
+     * Sets the GPU layer offload count ({@code --gpu-layers}) for this model.
+     *
+     * @param gpuLayers GPU layers ({@code -1} = leave default, {@code 0} = force CPU, {@code >0} = offload)
+     */
+    public void setGpuLayers(final int gpuLayers) {
+        this.gpuLayers = gpuLayers;
     }
 
     /**

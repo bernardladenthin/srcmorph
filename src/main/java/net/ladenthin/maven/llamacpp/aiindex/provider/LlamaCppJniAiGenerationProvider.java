@@ -104,6 +104,11 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
             if (config.cacheReuse() > 0) {
                 modelParameters.setCacheReuse(config.cacheReuse());
             }
+            // Offload model layers to the GPU when explicitly configured (>= 0). -1 leaves the
+            // binding/native-build default (CPU build stays CPU; GPU build uses its own default).
+            if (config.gpuLayers() >= 0) {
+                modelParameters.setGpuLayers(config.gpuLayers());
+            }
             current = new LlamaModel(modelParameters);
             model = current;
         }

@@ -51,6 +51,7 @@ public class AiModelDefinitionSupportTest {
         definition.setCachePrompt(false);
         definition.setSwaFull(false);
         definition.setCacheReuse(128);
+        definition.setGpuLayers(20);
         definition.setReasoningEffort("high");
         definition.setReasoningBudgetTokens(512);
         definition.setDryMultiplier(0.7f);
@@ -92,6 +93,7 @@ public class AiModelDefinitionSupportTest {
         // Non-default swaFull (false; the shipped default is now true) propagates.
         assertThat(config.isSwaFull(), is(false));
         assertThat(config.getCacheReuse(), is(equalTo(128)));
+        assertThat(config.getGpuLayers(), is(equalTo(20)));
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(512)));
@@ -126,6 +128,7 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.isCachePrompt(), is(AiGenerationConfig.DEFAULT_CACHE_PROMPT));
         assertThat(config.isSwaFull(), is(AiGenerationConfig.DEFAULT_SWA_FULL));
         assertThat(config.getCacheReuse(), is(equalTo(AiGenerationConfig.DEFAULT_CACHE_REUSE)));
+        assertThat(config.getGpuLayers(), is(equalTo(AiGenerationConfig.DEFAULT_GPU_LAYERS)));
         assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
         assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));

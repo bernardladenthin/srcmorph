@@ -171,6 +171,15 @@ public class AiGenerationConfig {
     public static final int DEFAULT_CACHE_REUSE = 256;
 
     /**
+     * Default number of model layers to offload to the GPU ({@code --gpu-layers}). {@code -1} (default)
+     * means "do not set it" — the binding/native build decides (a CPU build stays on CPU; a GPU build
+     * uses its own default). {@code 0} forces CPU even on a GPU build; a positive value offloads that
+     * many layers (use partial offload when the model does not fit in VRAM). Only effective with a GPU
+     * native (e.g. the {@code cuda13-windows-x86-64} / {@code vulkan-windows-x86-64} classifier).
+     */
+    public static final int DEFAULT_GPU_LAYERS = -1;
+
+    /**
      * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
      * {@code 0.0} = disabled (llama.cpp default). A positive value penalises verbatim n-gram
      * repetition, which can break runaway repetition loops; the other {@code dry*} knobs only take
@@ -214,6 +223,7 @@ public class AiGenerationConfig {
     private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
     private boolean swaFull = DEFAULT_SWA_FULL;
     private int cacheReuse = DEFAULT_CACHE_REUSE;
+    private int gpuLayers = DEFAULT_GPU_LAYERS;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
@@ -520,6 +530,24 @@ public class AiGenerationConfig {
      */
     public void setCacheReuse(final int cacheReuse) {
         this.cacheReuse = cacheReuse;
+    }
+
+    /**
+     * Returns the number of model layers to offload to the GPU ({@code --gpu-layers}).
+     *
+     * @return GPU layers ({@code -1} = leave the binding/build default)
+     */
+    public int getGpuLayers() {
+        return gpuLayers;
+    }
+
+    /**
+     * Sets the number of model layers to offload to the GPU ({@code --gpu-layers}).
+     *
+     * @param gpuLayers GPU layers ({@code -1} = leave default, {@code 0} = force CPU, {@code >0} = offload)
+     */
+    public void setGpuLayers(final int gpuLayers) {
+        this.gpuLayers = gpuLayers;
     }
 
     /**

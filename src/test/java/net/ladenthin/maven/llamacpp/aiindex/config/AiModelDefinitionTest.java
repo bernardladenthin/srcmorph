@@ -106,6 +106,14 @@ public class AiModelDefinitionTest {
     }
 
     @Test
+    public void gpuLayersDefaultsMinusOneAndRoundTrips() {
+        AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getGpuLayers(), is(-1));
+        d.setGpuLayers(33);
+        assertThat(d.getGpuLayers(), is(33));
+    }
+
+    @Test
     public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
         AiModelDefinition d = new AiModelDefinition();
         assertThat(d.getReasoningBudgetTokens(), is(-1));

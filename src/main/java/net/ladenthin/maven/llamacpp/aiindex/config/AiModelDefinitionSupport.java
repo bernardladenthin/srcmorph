@@ -119,6 +119,7 @@ public final class AiModelDefinitionSupport {
         config.setCachePrompt(definition.isCachePrompt());
         config.setSwaFull(definition.isSwaFull());
         config.setCacheReuse(definition.getCacheReuse());
+        config.setGpuLayers(definition.getGpuLayers());
         config.setReasoningEffort(definition.getReasoningEffort());
         config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
         config.setDryMultiplier(definition.getDryMultiplier());

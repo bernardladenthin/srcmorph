@@ -114,6 +114,16 @@ public class AiGenerationConfigTest {
     }
 
     @Test
+    public void gpuLayersDefaultsMinusOneAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        // Default -1 (leave binding/build default) kills the inline-constant / "return 0" getter mutants.
+        assertThat(c.getGpuLayers(), is(-1));
+        c.setGpuLayers(33);
+        // Round-tripped value kills the "return 0" getter and removed-assignment setter mutants.
+        assertThat(c.getGpuLayers(), is(33));
+    }
+
+    @Test
     public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
         AiGenerationConfig c = new AiGenerationConfig();
         // Default -1 (unrestricted) kills the inline-constant / "return 0" getter mutants.
