@@ -251,7 +251,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         getLog().info(AiProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds)
                                 + " " + doneFiles + "/" + totalFiles + " files - est. "
                                 + estimator.formatDuration(doneEstimatedSeconds) + "/"
-                                + estimator.formatDuration(totalEstimatedSeconds) + " done, ~"
+                                + estimator.formatDuration(totalEstimatedSeconds) + " done, "
                                 + estimator.formatDuration(remainingSeconds) + " left (estimate) | "
                                 + estimator.formatDuration(elapsedSeconds) + " elapsed (actual)");
                     }
