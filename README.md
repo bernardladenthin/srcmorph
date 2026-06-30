@@ -132,6 +132,45 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - Maven 3.6.3+
 - Local GGUF model (llama.cpp compatible)
 
+### Running under Java 8: override `checker-qual`
+
+The plugin itself is compiled to Java 8 bytecode, but it pulls in
+[`org.checkerframework:checker-qual`](https://central.sonatype.com/artifact/org.checkerframework/checker-qual)
+transitively, and the version it builds against (`4.2.0`) ships its classes as **Java 11
+bytecode** (class-file major version 55). On a **Java 8** JVM, loading those annotation
+classes fails with `UnsupportedClassVersionError`.
+
+If you run the plugin under a Java 8 Maven/JVM, **override `checker-qual` to `3.55.1`** — the
+**last release whose runtime classes are Java 8 bytecode** (major 52). The `checker-qual` line
+switched to Java 11 bytecode in `4.0.0`; every `3.x` release (`3.42.0` … `3.55.1`) is Java 8
+loadable, and `3.55.1` is the newest of them. (`checker-qual` `3.43.0`–`3.55.1` additionally
+carry a root `module-info.class`, which a Java 8 classpath simply ignores; if you want a jar
+with no `module-info.class` at all, `3.42.0` is the last such release.)
+
+Because this is a *plugin* dependency, the override goes inside the plugin's own
+`<dependencies>` block (a project-level `<dependencyManagement>` does **not** affect a plugin's
+classpath):
+
+```xml
+<plugin>
+    <groupId>net.ladenthin</groupId>
+    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+    <!-- ... version + configuration ... -->
+    <dependencies>
+        <!-- Java 8 execution: pin the last Java-8-bytecode checker-qual.
+             The plugin builds against 4.2.0, which is Java 11 bytecode and
+             cannot be loaded by a Java 8 JVM. -->
+        <dependency>
+            <groupId>org.checkerframework</groupId>
+            <artifactId>checker-qual</artifactId>
+            <version>3.55.1</version>
+        </dependency>
+    </dependencies>
+</plugin>
+```
+
+Running the plugin under Java 11 or newer needs no override.
+
 ## Dependency
 
 The plugin depends on [`net.ladenthin:llama`](https://central.sonatype.com/artifact/net.ladenthin/llama), the Java/JNI binding for llama.cpp.
@@ -168,7 +207,7 @@ The plugin is configured from three building blocks, declared on the plugin insi
    file too large for the window would lose content if trimmed, so the build **always fails** (a hard
    abort). The fix is **configuration only** — the plugin never picks a model for you: add a
    `<fieldGeneration>` rule with a size `<condition>` that routes oversized files to a model with a large
-   enough window (see the `granite-4.0-h-tiny-bigwindow` definition + the `big-window` rule in the POM —
+   enough window (see the `granite-4.0-h-tiny-bigwindow` definition + the `big-window-java` / `big-window-sql` rules in the POM —
    IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid Mamba model whose KV cache grows only linearly, configured
    at a 384K window to cover files up to ~1 MB; verified summarizing a ~995 KB / ~268K-token file on an
    8 GB GPU with no OOM. Quality is best within Granite's validated 128K (~500 KB) and degrades gradually

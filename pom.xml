@@ -1559,8 +1559,8 @@ SPDX-License-Identifier: Apache-2.0
                                      the window check over-counts tokens and never lets a file overflow the
                                      window at run time); the cpt-3 check admits up to ~1.16 MB. reasoningEffort
                                      is empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
-                                     sent. The size-routing rule that targets this key lives in the ai-generate
-                                     <fieldGenerations> below (id big-window). For >~1 MB files, split them or
+                                     sent. The size-routing rules that target this key live in the ai-generate
+                                     <fieldGenerations> below (ids big-window-java and big-window-sql). For >~1 MB files, split them or
                                      add a still-larger preset (Granite allocates up to its 512K training limit
                                      here, with further quality loss). -->
                                 <aiDefinition>
@@ -2024,20 +2024,22 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
                                     <fieldGenerations>
-                                        <!-- Big-window fallback rule: a .java file larger than the default
+                                        <!-- Big-window fallback rules: a source larger than the default
                                              model's window (~275 KB at 96K/charsPerToken 3) would be trimmed,
                                              so route it to the large-context granite-4.0-h-tiny-bigwindow
                                              model instead (Granite's 384K window covers up to ~1 MB; the
-                                             cpt-3 window check admits up to ~1.16 MB). Higher priority than the plain java rule so it
-                                             wins for oversized files; normal-sized files never match (size
-                                             min) and fall through to the java rule. Without a rule like this,
-                                             a file larger than the default model's window hard-fails the build
-                                             (the plugin never auto-selects a model) - this is how YOU satisfy
-                                             that check. Threshold is conservative; tune to your model's
-                                             window. (A file beyond Granite's window fails too: split it or add
-                                             a still-larger fallback.) -->
+                                             cpt-3 window check admits up to ~1.16 MB). There is one big-window
+                                             rule per source kind so each keeps its own prompt: big-window-java
+                                             (file-body-java) and big-window-sql (file-body-sql). Each has higher
+                                             priority than its plain java/sql counterpart so it wins for oversized
+                                             files; normal-sized files never match (size min) and fall through to
+                                             the plain rule. Without rules like these, a file larger than the
+                                             default model's window hard-fails the build (the plugin never
+                                             auto-selects a model) - this is how YOU satisfy that check. Threshold
+                                             is conservative; tune to your model's window. (A file beyond Granite's
+                                             window fails too: split it or add a still-larger fallback.) -->
                                         <fieldGeneration>
-                                            <id>big-window</id>
+                                            <id>big-window-java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
@@ -2046,6 +2048,24 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                                     <conditions>
                                                         <condition>
                                                             <extensions><extension>.java</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>275000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>big-window-sql</id>
+                                            <promptKey>file-body-sql</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
+                                            <priority>100</priority>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.sql</extension></extensions>
                                                         </condition>
                                                         <condition>
                                                             <size><min>275000</min></size>
