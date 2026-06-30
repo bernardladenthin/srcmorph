@@ -19,6 +19,7 @@ import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
@@ -222,25 +223,57 @@ public class SourceFileIndexer {
                 plan.addUnmatched(file);
             } else if (rule.isSkip()) {
                 plan.addSkipped(file);
+            } else if (modelDefinitionSupport != null && promptPreparationSupport != null) {
+                final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.getAiDefinitionKey());
+                final int basePromptLength = promptPreparationSupport.getBasePromptLength(rule.getPromptKey(), file);
+                final long availableSourceChars =
+                        AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
+                final long sourceChars = compatibilityHelper.readString(file).length();
+                final long routeSeconds = estimateRouteSeconds(rule, fileSizeBytes, sourceChars, availableSourceChars);
+                plan.addRoute(rule.getAiDefinitionKey(), file, rule, routeSeconds, sourceChars, availableSourceChars);
             } else {
                 final long estimatedSeconds =
                         timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
-                if (modelDefinitionSupport != null && promptPreparationSupport != null) {
-                    final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.getAiDefinitionKey());
-                    final int basePromptLength =
-                            promptPreparationSupport.getBasePromptLength(rule.getPromptKey(), file);
-                    final long availableSourceChars =
-                            AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
-                    final long sourceChars =
-                            compatibilityHelper.readString(file).length();
-                    plan.addRoute(
-                            rule.getAiDefinitionKey(), file, rule, estimatedSeconds, sourceChars, availableSourceChars);
-                } else {
-                    plan.addRoute(rule.getAiDefinitionKey(), file, rule, estimatedSeconds);
-                }
+                plan.addRoute(rule.getAiDefinitionKey(), file, rule, estimatedSeconds);
             }
         }
         return plan;
+    }
+
+    /**
+     * Estimates the generation time for one routed file, accounting for the rule's oversize strategy so
+     * the plan ETA stays realistic for huge files (the per-call cost is bounded by the model window, not
+     * the raw file size). A file that fits the window uses the normal size-based estimate; an over-window
+     * file is estimated per strategy: {@code deterministic} is free, {@code sample}/{@code fail} cost one
+     * window pass, and {@code mapReduce} costs (chunks + reduce) window passes (capped by {@code maxChunks}).
+     *
+     * @param rule                 the routing rule
+     * @param fileSizeBytes        the file size in bytes
+     * @param sourceChars          the source length in characters
+     * @param availableSourceChars the per-call source-character budget of the routed model+prompt
+     * @return the estimated seconds
+     */
+    private long estimateRouteSeconds(
+            final AiFieldGenerationConfig rule,
+            final long fileSizeBytes,
+            final long sourceChars,
+            final long availableSourceChars) {
+        if (sourceChars <= availableSourceChars) {
+            return timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
+        }
+        final long windowSeconds =
+                timeEstimator.estimateSeconds((int) Math.min(availableSourceChars, Integer.MAX_VALUE));
+        final AiOversizeStrategy strategy = rule.getOversizeStrategy();
+        if (strategy == AiOversizeStrategy.DETERMINISTIC) {
+            return 0L;
+        }
+        if (strategy == AiOversizeStrategy.MAP_REDUCE) {
+            final long denom = Math.max(1L, availableSourceChars);
+            final long naturalChunks = Math.max(1L, (sourceChars + denom - 1) / denom);
+            final long chunks = rule.getMaxChunks() > 0 ? Math.min(rule.getMaxChunks(), naturalChunks) : naturalChunks;
+            return (chunks + 1) * windowSeconds;
+        }
+        return windowSeconds;
     }
 
     /**

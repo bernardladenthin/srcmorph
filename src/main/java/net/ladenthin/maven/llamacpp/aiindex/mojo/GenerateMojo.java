@@ -196,19 +196,18 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         + "add a <fallback> rule or a matching rule (see the plan above).");
             }
 
-            // 3b. A file larger than its routed model's window would lose content if trimmed. This is
-            //     ALWAYS a hard failure (planOnly and real run alike). The fix is user configuration,
-            //     never an automatic model choice: the user must add a routing rule (<fieldGeneration>
-            //     with a size <condition>) that sends oversized files to a model with a large enough
-            //     context window. The plugin deliberately does not pick a model for you.
-            final int overWindowCount = plan.windowExceededCount();
-            if (overWindowCount > 0) {
-                throw new MojoExecutionException(overWindowCount
-                        + " source file(s) exceed their routed model's context window (see the 'Over window' "
-                        + "section in the plan above). Add a <fieldGeneration> rule with a size <condition> "
-                        + "that routes these files to a model with a large enough context window (see the "
-                        + "big-window fallback example in the POM). The build does not pick a model for you; "
-                        + "this is configuration only.");
+            // 3b. A file larger than its routed model's window would lose content if trimmed. By default
+            //     (onOversize=fail) this is a hard failure: the fix is user configuration, never an
+            //     automatic model choice — route oversized files to a larger-context model, or set the
+            //     rule's onOversize (sample/mapReduce/deterministic) to handle them at run time. Only the
+            //     fail entries abort here; the handled ones are processed during generation.
+            final int overWindowFailCount = plan.windowFailCount();
+            if (overWindowFailCount > 0) {
+                throw new MojoExecutionException(overWindowFailCount
+                        + " source file(s) exceed their routed model's context window with onOversize=fail "
+                        + "(see the 'Over window' section in the plan above). Route them to a model with a "
+                        + "large enough context window, or set onOversize=sample|mapReduce|deterministic on "
+                        + "the rule. The build does not pick a model for you; this is configuration only.");
             }
 
             if (planOnly) {

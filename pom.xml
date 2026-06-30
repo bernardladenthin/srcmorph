@@ -739,7 +739,9 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiDeterministicSummary</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar</param>
@@ -2036,13 +2038,23 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                              the plain rule. Without rules like these, a file larger than the
                                              default model's window hard-fails the build (the plugin never
                                              auto-selects a model) - this is how YOU satisfy that check. Threshold
-                                             is conservative; tune to your model's window. (A file beyond Granite's
-                                             window fails too: split it or add a still-larger fallback.) -->
+                                             is conservative; tune to your model's window. Files larger than even
+                                             Granite's window do NOT fail here: these rules set onOversize=mapReduce
+                                             (chunk + summarize + combine, maxChunks-bounded), so arbitrarily large
+                                             data files are handled. (Default onOversize=fail still aborts for any
+                                             rule that does not opt into sample/mapReduce/deterministic.) -->
                                         <fieldGeneration>
                                             <id>big-window-java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
+                                            <!-- Files that fit Granite's window are summarized in one pass; files larger
+                                                 than the window (e.g. multi-MB data files) are map-reduced: chunked at
+                                                 line boundaries, each chunk summarized, then combined. maxChunks bounds
+                                                 the run time (samples representative chunks). Alternatives: sample (head
+                                                 only, fastest) or deterministic (no model). -->
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
                                             <condition>
                                                 <and>
                                                     <conditions>
@@ -2061,6 +2073,8 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
                                             <condition>
                                                 <and>
                                                     <conditions>

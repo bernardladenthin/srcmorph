@@ -428,4 +428,18 @@ SPDX-License-Identifier: Apache-2.0
         </Or>
     </Match>
 
+    <!--
+        IMPROPER_UNICODE on AiOversizeStrategy.fromConfig. The findsecbugs detector flags any
+        case-insensitive comparison (equalsIgnoreCase, and likewise toLowerCase/toUpperCase) because
+        Unicode case folding can change string length for some scripts. Here the compared values are a
+        fixed, closed set of ASCII config tokens (fail/sample/mapReduce/deterministic) authored by the
+        operator in POM XML, not user/locale text; matching a configured &lt;onOversize&gt; value
+        case-insensitively is the intended, safe behaviour. Scoped to the one parsing method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy"/>
+        <Method name="fromConfig"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+
 </FindBugsFilter>

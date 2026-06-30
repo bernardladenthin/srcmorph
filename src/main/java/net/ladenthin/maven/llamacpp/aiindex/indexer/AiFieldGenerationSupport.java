@@ -12,13 +12,16 @@ import lombok.ToString;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiDeterministicSummary;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiSourceChunker;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.logging.Log;
 
@@ -110,6 +113,18 @@ public class AiFieldGenerationSupport {
 
     /** Nanoseconds per second, used to convert the measured generation duration to whole seconds. */
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
+
+    /** Leading/trailing lines shown in a {@link AiOversizeStrategy#DETERMINISTIC} body. */
+    private static final int DETERMINISTIC_SAMPLE_LINES = 20;
+
+    /** Upper bound on the character overlap between map-reduce chunks. */
+    private static final int MAP_REDUCE_OVERLAP_CHARS = 2000;
+
+    /** Fraction (1/n) of the chunk size used as overlap when smaller than {@link #MAP_REDUCE_OVERLAP_CHARS}. */
+    private static final int MAP_REDUCE_OVERLAP_DIVISOR = 20;
+
+    /** Minimum per-chunk source budget, so a tiny window never yields zero-length chunks. */
+    private static final int MIN_CHUNK_CHARS = 1000;
 
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
@@ -205,6 +220,25 @@ public class AiFieldGenerationSupport {
             final AiPreparedPrompt preparedPrompt =
                     promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
+            // An oversized file (the source did not fit the window) is handled per the rule's onOversize
+            // strategy. DETERMINISTIC/MAP_REDUCE replace the single generation entirely; FAIL/SAMPLE fall
+            // through to the single-shot path below (the source was already trimmed to the window head).
+            if (preparedPrompt.trimmed()) {
+                final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
+                if (oversize == AiOversizeStrategy.DETERMINISTIC) {
+                    body = AiDeterministicSummary.body(
+                            sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
+                    log.info("Oversize " + contextType + " '" + contextFile + "' -> deterministic body (no model), "
+                            + sourceText.length() + " chars");
+                    continue;
+                }
+                if (oversize == AiOversizeStrategy.MAP_REDUCE) {
+                    body = mapReduceSummarize(
+                            fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
+                    continue;
+                }
+            }
+
             if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
                 log.warn("Trimmed AI input for " + contextType + TRIM_WARN_FIELD_LABEL + "body': " + contextFile
                         + " (source chars " + preparedPrompt.originalSourceLength()
@@ -248,6 +282,88 @@ public class AiFieldGenerationSupport {
         }
 
         return new AiGenerationResult(body);
+    }
+
+    /**
+     * Summarizes an oversized source via map-reduce: split it into window-sized chunks at line boundaries
+     * (with overlap), summarize each chunk with the rule's prompt, then summarize the concatenated partial
+     * summaries into the final body. The {@code maxChunks} cap (when set) bounds the run time by sampling
+     * representative chunks across the file.
+     *
+     * @param fieldGeneration        the routing rule (prompt key + {@code maxChunks})
+     * @param contextFile            the source file path
+     * @param sourceText             the full source text
+     * @param baseHeader             the header passed through to each request
+     * @param effectiveMaxInputChars the per-call window budget
+     * @return the combined summary body
+     * @throws IOException if the provider throws during generation
+     */
+    private String mapReduceSummarize(
+            final AiFieldGenerationConfig fieldGeneration,
+            final Path contextFile,
+            final String sourceText,
+            final AiMdHeader baseHeader,
+            final int effectiveMaxInputChars)
+            throws IOException {
+        final int basePromptLength =
+                promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
+        final int sourceBudget = Math.max(MIN_CHUNK_CHARS, effectiveMaxInputChars - basePromptLength);
+        final int overlap = Math.min(MAP_REDUCE_OVERLAP_CHARS, sourceBudget / MAP_REDUCE_OVERLAP_DIVISOR);
+        final List<String> chunks =
+                AiSourceChunker.chunk(sourceText, sourceBudget, overlap, fieldGeneration.getMaxChunks());
+        log.info("Oversize file '" + contextFile + "' -> mapReduce: " + sourceText.length() + " chars in "
+                + chunks.size() + " chunk(s)");
+        final StringBuilder partials = new StringBuilder();
+        int index = 0;
+        for (final String chunk : chunks) {
+            index++;
+            final String partial = summarizeChunk(
+                    fieldGeneration.getPromptKey(), contextFile, chunk, baseHeader, effectiveMaxInputChars);
+            partials.append("Chunk ")
+                    .append(index)
+                    .append(":\n")
+                    .append(partial.trim())
+                    .append("\n\n");
+            log.info("  mapReduce chunk " + index + "/" + chunks.size() + " summarized (" + chunk.length() + " chars)");
+        }
+        // Reduce: summarize the partial summaries (trimmed to the window) into the final body.
+        return summarizeChunk(
+                fieldGeneration.getPromptKey(), contextFile, partials.toString(), baseHeader, effectiveMaxInputChars);
+    }
+
+    /**
+     * Prepares the prompt for one chunk (trimming to the window) and returns the provider's summary.
+     *
+     * @param promptKey              the prompt template key
+     * @param contextFile            the source file path
+     * @param chunk                  the chunk (or concatenated partials) to summarize
+     * @param baseHeader             the header passed through to the request
+     * @param effectiveMaxInputChars the per-call window budget
+     * @return the provider's summary for the chunk
+     * @throws IOException if the provider throws during generation
+     */
+    private String summarizeChunk(
+            final String promptKey,
+            final Path contextFile,
+            final String chunk,
+            final AiMdHeader baseHeader,
+            final int effectiveMaxInputChars)
+            throws IOException {
+        final AiGenerationRequest request = new AiGenerationRequest(promptKey, contextFile, chunk, baseHeader);
+        final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
+        return generationProvider.generate(
+                new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
+    }
+
+    /**
+     * Returns a short display name for a context file (its file name, or the full path as a fallback).
+     *
+     * @param contextFile the file path
+     * @return the display name
+     */
+    private static String contextName(final Path contextFile) {
+        final Path fileName = contextFile.getFileName();
+        return fileName != null ? fileName.toString() : contextFile.toString();
     }
 
     /**

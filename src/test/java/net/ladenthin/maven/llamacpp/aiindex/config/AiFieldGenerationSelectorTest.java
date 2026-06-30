@@ -162,6 +162,20 @@ public class AiFieldGenerationSelectorTest {
     }
 
     @Test
+    public void validate_invalidOnOversize_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("nonsense");
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_validOnOversize_passes() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("mapReduce");
+        assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
     public void validate_routeMissingPromptKey_throws() {
         final AiFieldGenerationConfig bad = new AiFieldGenerationConfig();
         bad.setAiDefinitionKey(MODEL);

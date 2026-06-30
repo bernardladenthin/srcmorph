@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
 
 /**
@@ -248,6 +249,36 @@ public final class AiIndexPlan {
     }
 
     /**
+     * Returns the number of over-window files whose rule's {@code onOversize} strategy is
+     * {@link AiOversizeStrategy#FAIL} — i.e. the ones that abort the build. Over-window files with a
+     * {@code sample}/{@code mapReduce}/{@code deterministic} strategy are handled at run time and do not
+     * count here.
+     *
+     * @return the count of over-window files that fail the build
+     */
+    public int windowFailCount() {
+        int total = 0;
+        for (final List<Entry> entries : routesByModel.values()) {
+            for (final Entry entry : entries) {
+                if (entry.exceedsWindow() && strategyOf(entry) == AiOversizeStrategy.FAIL) {
+                    total++;
+                }
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Returns the oversize strategy configured on an entry's rule.
+     *
+     * @param entry the plan entry
+     * @return the parsed oversize strategy
+     */
+    private static AiOversizeStrategy strategyOf(final Entry entry) {
+        return entry.rule().getOversizeStrategy();
+    }
+
+    /**
      * Returns the summed estimated seconds for one model's entries.
      *
      * @param entries the model's planned entries
@@ -299,7 +330,9 @@ public final class AiIndexPlan {
                 .append(unmatched.size())
                 .append(" unmatched, ")
                 .append(windowExceededCount())
-                .append(" over window _(time is a rough estimate)_\n");
+                .append(" over window (")
+                .append(windowFailCount())
+                .append(" will fail) _(time is a rough estimate)_\n");
         for (final Map.Entry<String, List<Entry>> group : routesByModel.entrySet()) {
             final List<Entry> entries = group.getValue();
             sb.append("\n### Model `")
@@ -360,6 +393,7 @@ public final class AiIndexPlan {
         for (final Map.Entry<String, List<Entry>> group : routesByModel.entrySet()) {
             for (final Entry entry : group.getValue()) {
                 if (entry.exceedsWindow()) {
+                    final AiOversizeStrategy strategy = strategyOf(entry);
                     sb.append("- ")
                             .append(relativize(baseDir, entry.file()))
                             .append(" -> model `")
@@ -368,13 +402,18 @@ public final class AiIndexPlan {
                             .append(entry.sourceChars())
                             .append(" chars > window ")
                             .append(entry.availableSourceChars())
-                            .append(" chars)\n");
+                            .append(" chars) onOversize=")
+                            .append(strategy.configValue())
+                            .append(strategy == AiOversizeStrategy.FAIL ? " -> FAILS BUILD" : " -> handled")
+                            .append('\n');
                 }
             }
         }
-        sb.append("\nThis fails the build. Add a <fieldGeneration> rule with a size <condition> that routes")
-                .append(" these files to a model with a large enough context window (config only; the build")
-                .append(" never picks a model for you).\n");
+        if (windowFailCount() > 0) {
+            sb.append("\nThe onOversize=fail entries fail the build. Either route them to a model with a large")
+                    .append(" enough context window, or set onOversize on the rule (sample/mapReduce/deterministic)")
+                    .append(" to handle oversized files (config only; the build never picks a model for you).\n");
+        }
     }
 
     /**
@@ -389,7 +428,8 @@ public final class AiIndexPlan {
             return "-";
         }
         if (entry.exceedsWindow()) {
-            return "(!) " + entry.sourceChars() + ">" + entry.availableSourceChars();
+            return "(!) " + entry.sourceChars() + ">" + entry.availableSourceChars() + " "
+                    + strategyOf(entry).configValue();
         }
         return "ok";
     }

@@ -204,14 +204,26 @@ The plugin is configured from three building blocks, declared on the plugin insi
    `-DaiIndex.planOnly=true` to print the routing plan (a copy-pasteable Markdown table: file → rule id →
    prompt → context-window fit → rough time estimate, summed per model and overall) and stop before
    loading any model. The plan also checks each file against its routed model's **context window**: a
-   file too large for the window would lose content if trimmed, so the build **always fails** (a hard
-   abort). The fix is **configuration only** — the plugin never picks a model for you: add a
-   `<fieldGeneration>` rule with a size `<condition>` that routes oversized files to a model with a large
-   enough window (see the `granite-4.0-h-tiny-bigwindow` definition + the `big-window-java` / `big-window-sql` rules in the POM —
-   IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid Mamba model whose KV cache grows only linearly, configured
-   at a 384K window to cover files up to ~1 MB; verified summarizing a ~995 KB / ~268K-token file on an
-   8 GB GPU with no OOM. Quality is best within Granite's validated 128K (~500 KB) and degrades gradually
-   beyond it — a whole-file summary still beats a trimmed one).
+   file too large for the window would lose content if trimmed. What happens then is **configuration
+   only** — the plugin never picks a model for you — and is chosen per rule with `<onOversize>`:
+   - **`fail`** *(default)* — abort the build (a hard fail). The fix is to add a `<fieldGeneration>` rule
+     with a size `<condition>` that routes oversized files to a model with a large enough window (see the
+     `granite-4.0-h-tiny-bigwindow` definition + the `big-window-java` / `big-window-sql` rules in the
+     POM — IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid Mamba model whose KV cache grows only linearly,
+     configured at a 384K window to cover files up to ~1 MB; verified summarizing a ~995 KB / ~268K-token
+     file on an 8 GB GPU with no OOM).
+   - **`sample`** — feed only the head of the file (trimmed to the window) in a single call. Fast and
+     bounded; good for repetitive data where the head represents the whole.
+   - **`mapReduce`** — split the file into window-sized chunks at line boundaries (with overlap so
+     records are never torn mid-syntax), summarize each chunk, then combine the partial summaries in one
+     final call. A `<maxChunks>` cap bounds the time (a representative subset — always head + tail,
+     evenly spaced — is summarized when the file would exceed the cap), so an arbitrarily large file
+     (e.g. 7 MB) stays within a chosen per-file budget.
+   - **`deterministic`** — no model at all: emit a deterministic body (size, line count, head/tail
+     sample). Instant; for pure data where no AI analysis is needed.
+
+   Quality from a real model is best within Granite's validated 128K (~500 KB) and degrades gradually
+   beyond it — a whole-file (or chunked) summary still beats a trimmed one.
 
 ```xml
 <plugin>
@@ -376,6 +388,14 @@ and a fallback for everything else:
       <condition><size><min>49152</min></size></condition>
     </conditions></and></condition>
   </fieldGeneration>
+  <fieldGeneration>                                  <!-- huge files: chunk + combine instead of failing -->
+    <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
+    <onOversize>mapReduce</onOversize><maxChunks>6</maxChunks>
+    <condition><and><conditions>
+      <condition><extensions><extension>.java</extension></extensions></condition>
+      <condition><size><min>1048576</min></size></condition>
+    </conditions></and></condition>
+  </fieldGeneration>
   <fieldGeneration>
     <id>fallback</id><fallback>true</fallback>
     <promptKey>file-body-fallback</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
@@ -385,7 +405,10 @@ and a fallback for everything else:
 
 Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
 `<lines>` works the same way; `<modifiedAfter>2026-01-01T00:00:00Z</modifiedAfter>` only (re)indexes
-recently changed files. Preview the mapping without running a model:
+recently changed files. `<onOversize>` (`fail` *(default)* / `sample` / `mapReduce` / `deterministic` —
+see the context-window note above) chooses what a rule does when a file is still larger than its routed
+model's window; `<maxChunks>` caps how many chunks `mapReduce` summarizes. Preview the mapping without
+running a model:
 
 ```
 mvn ai-index:generate -DaiIndex.planOnly=true

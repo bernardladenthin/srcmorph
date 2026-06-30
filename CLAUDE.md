@@ -141,10 +141,13 @@ rest; a file matching no rule and no fallback **fails the build**. `aiIndex.plan
 Markdown plan (file → rule id → prompt → rough time estimate, summed per model and overall) and stops
 (no model loaded). The plan also computes each routed file's **context-window fit** up front (via
 `AiInputWindowCalculator`, the same threshold the run uses to trim): a file larger than its routed
-model's window is flagged in the plan and **always fails the build** (a hard abort). The resolution is
-**configuration only** — the plugin never auto-picks a model: the user must add a `<fieldGeneration>`
-rule with a size `<condition>` that routes oversized files to a model with a large enough context window
-(see the big-window fallback example in the POM). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+model's window is flagged in the plan and, **by default (`onOversize=fail`), fails the build** (a hard
+abort) — the plugin never auto-picks a model. The resolution is **configuration only**, via the rule's
+**`<onOversize>`** strategy (`AiOversizeStrategy`): `fail` (default), `sample` (trim to the window head,
+one call), `mapReduce` (chunk at line boundaries → summarize each → combine; `<maxChunks>` bounds the
+time — `AiSourceChunker`), or `deterministic` (model-free metadata+sample body — `AiDeterministicSummary`).
+So oversized files are either routed to a larger-context model or handled by a strategy; only `fail`
+entries abort. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
 different file kinds/sizes with different models *and* prompts.
 
@@ -189,6 +192,9 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `AiCondition` / `AiConditionEvaluator` | Composable and/or/not condition tree (leaves: extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob) + its evaluator (`matches`/`validate`/`usesLines`) |
 | `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched, per-file context-window fit; renders the up-front tree |
 | `AiInputWindowCalculator` | Pure calculator for the input window (max source chars before trimming + whether a source exceeds it); single source of truth shared by the run-time trim (`AiFieldGenerationSupport`) and the plan-time over-window check (`SourceFileIndexer.classify`) |
+| `AiOversizeStrategy` | Enum of the per-rule `<onOversize>` strategies (`fail`/`sample`/`mapReduce`/`deterministic`) + case-insensitive parser; default `fail` |
+| `AiSourceChunker` | Pure line-boundary chunker for `mapReduce` (overlap + `maxChunks` representative sampling) |
+| `AiDeterministicSummary` | Pure model-free body builder for `deterministic` (size, line count, head/tail sample) |
 | `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
 | `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
