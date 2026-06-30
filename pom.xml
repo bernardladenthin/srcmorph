@@ -1562,9 +1562,11 @@ SPDX-License-Identifier: Apache-2.0
                                      window at run time); the cpt-3 check admits up to ~1.16 MB. reasoningEffort
                                      is empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
                                      sent. The size-routing rules that target this key live in the ai-generate
-                                     <fieldGenerations> below (ids big-window-java and big-window-sql). For >~1 MB files, split them or
-                                     add a still-larger preset (Granite allocates up to its 512K training limit
-                                     here, with further quality loss). -->
+                                     <fieldGenerations> below (ids big-window-java and big-window-sql), for the
+                                     ~275 KB .. ~1 MB band (one pass). Files > ~1 MB are NOT summarized in one
+                                     giant pass here (O(n^2) prefill makes that far too slow); they route to the
+                                     small-window granite-4.0-h-tiny-fastchunk preset via the huge-java/huge-sql
+                                     rules and are map-reduced (cheap small chunks, maxChunks-bounded). -->
                                 <aiDefinition>
                                     <key>granite-4.0-h-tiny-bigwindow</key>
                                     <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
@@ -1573,6 +1575,35 @@ SPDX-License-Identifier: Apache-2.0
                                     <mainGpu>${ai.mainGpu}</mainGpu>
                                     <devices>${ai.devices}</devices>
                                     <maxOutputTokens>4096</maxOutputTokens>
+                                    <temperature>0.2</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort></reasoningEffort>
+                                </aiDefinition>
+
+                                <!-- Small/fast window for the map-reduce of VERY large files (multi-MB data).
+                                     Same Granite model file as the big-window preset (already downloaded), but a
+                                     SMALL 16K window on purpose. Prefill cost is O(n^2) in prompt length, so one
+                                     big 384K pass is far slower than many small 16K passes: a single big-window
+                                     pass is enormous, whereas chunking at ~48 KB (16K*cpt3 minus the prompt) and
+                                     capping <maxChunks> keeps a multi-MB file to a handful of cheap calls. With
+                                     maxChunks 6 a 7 MB file is ~7 calls (~1 h order on the reference CPU; less on
+                                     GPU), sampling a representative head/tail/spread - the right trade-off for
+                                     repetitive data where no precise whole-file analysis is needed. Routed via the
+                                     huge-java / huge-sql rules below (priority above big-window). -->
+                                <aiDefinition>
+                                    <key>granite-4.0-h-tiny-fastchunk</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.2</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>3</charsPerToken>
@@ -2026,35 +2057,80 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
                                     <fieldGenerations>
-                                        <!-- Big-window fallback rules: a source larger than the default
-                                             model's window (~275 KB at 96K/charsPerToken 3) would be trimmed,
-                                             so route it to the large-context granite-4.0-h-tiny-bigwindow
-                                             model instead (Granite's 384K window covers up to ~1 MB; the
-                                             cpt-3 window check admits up to ~1.16 MB). There is one big-window
-                                             rule per source kind so each keeps its own prompt: big-window-java
-                                             (file-body-java) and big-window-sql (file-body-sql). Each has higher
-                                             priority than its plain java/sql counterpart so it wins for oversized
-                                             files; normal-sized files never match (size min) and fall through to
-                                             the plain rule. Without rules like these, a file larger than the
-                                             default model's window hard-fails the build (the plugin never
-                                             auto-selects a model) - this is how YOU satisfy that check. Threshold
-                                             is conservative; tune to your model's window. Files larger than even
-                                             Granite's window do NOT fail here: these rules set onOversize=mapReduce
-                                             (chunk + summarize + combine, maxChunks-bounded), so arbitrarily large
-                                             data files are handled. (Default onOversize=fail still aborts for any
-                                             rule that does not opt into sample/mapReduce/deterministic.) -->
+                                        <!-- Size-tiered routing for large files. THREE bands per source kind, by
+                                             ascending priority so the most specific (largest) wins:
+
+                                               plain java/sql (no priority)  files up to ~275 KB  -> ${ai.model}, one pass
+                                               big-window-*   (priority 100) ~275 KB .. ~1 MB     -> granite bigwindow, ONE 384K pass
+                                               huge-*         (priority 200) > ~1 MB              -> granite fastchunk, mapReduce
+
+                                             Why a separate huge band instead of just map-reducing on the big window?
+                                             Prefill is O(n^2) in prompt length, so ONE big 384K pass over a multi-MB file
+                                             is catastrophically slow, and map-reducing AT the big window (6 x 384K passes)
+                                             is worse still. The fast path is the opposite: chunk with a SMALL window
+                                             (granite-4.0-h-tiny-fastchunk, 16K) so each prefill is cheap, and cap
+                                             <maxChunks> so a 7 MB file stays a handful of calls (~1 h order on the
+                                             reference CPU; less on GPU) - sampling a representative head/tail/spread, which
+                                             is the right trade-off for repetitive data needing no precise whole-file read.
+
+                                             Each band has its own prompt (file-body-java / file-body-sql). Without the
+                                             big-window/huge rules a file larger than ${ai.model}'s window hard-fails the
+                                             build (the plugin never auto-selects a model) - these rules are how YOU satisfy
+                                             that check. Default onOversize=fail still aborts any rule that does not opt into
+                                             sample/mapReduce/deterministic. Thresholds are conservative; tune to your models. -->
+                                        <fieldGeneration>
+                                            <id>huge-java</id>
+                                            <promptKey>file-body-java</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-tiny-fastchunk</aiDefinitionKey>
+                                            <priority>200</priority>
+                                            <!-- Map-reduce on a SMALL fast window: chunk at line boundaries, summarize each,
+                                                 then combine. maxChunks bounds the run time to ~60-90 min/file by sampling a
+                                                 representative subset (head + tail + evenly spaced). Alternatives for pure
+                                                 data: sample (head only, one call) or deterministic (no model, instant). -->
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.java</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>1000000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>huge-sql</id>
+                                            <promptKey>file-body-sql</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-tiny-fastchunk</aiDefinitionKey>
+                                            <priority>200</priority>
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.sql</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>1000000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
                                         <fieldGeneration>
                                             <id>big-window-java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
-                                            <!-- Files that fit Granite's window are summarized in one pass; files larger
-                                                 than the window (e.g. multi-MB data files) are map-reduced: chunked at
-                                                 line boundaries, each chunk summarized, then combined. maxChunks bounds
-                                                 the run time (samples representative chunks). Alternatives: sample (head
-                                                 only, fastest) or deterministic (no model). -->
-                                            <onOversize>mapReduce</onOversize>
-                                            <maxChunks>6</maxChunks>
+                                            <!-- ~275 KB .. ~1 MB: fits Granite's 384K window, summarized in ONE pass
+                                                 (fast on GPU). Files > ~1 MB are caught by huge-java above (priority 200),
+                                                 so this rule never needs to handle the oversize case; default
+                                                 onOversize=fail is the safe floor if the huge rule is removed. -->
                                             <condition>
                                                 <and>
                                                     <conditions>
@@ -2073,8 +2149,6 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
-                                            <onOversize>mapReduce</onOversize>
-                                            <maxChunks>6</maxChunks>
                                             <condition>
                                                 <and>
                                                     <conditions>

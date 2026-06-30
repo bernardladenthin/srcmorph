@@ -218,7 +218,12 @@ The plugin is configured from three building blocks, declared on the plugin insi
      records are never torn mid-syntax), summarize each chunk, then combine the partial summaries in one
      final call. A `<maxChunks>` cap bounds the time (a representative subset — always head + tail,
      evenly spaced — is summarized when the file would exceed the cap), so an arbitrarily large file
-     (e.g. 7 MB) stays within a chosen per-file budget.
+     (e.g. 7 MB) stays within a chosen per-file budget. **Route oversized files to a *small*, fast model
+     for this — not the big-window one.** Prefill is `O(n²)` in prompt length, so chunks should be small:
+     many cheap small-window passes are far faster than a few giant ones (one 384K-token pass alone can
+     dwarf a whole run). E.g. a 16K-window model with `maxChunks=6` is ~7 calls (~1 h order on a
+     reference CPU; less on GPU) and samples a representative slice — the right trade-off for repetitive
+     data. mapReduce *on* a big window is the slowest possible combination; avoid it.
    - **`deterministic`** — no model at all: emit a deterministic body (size, line count, head/tail
      sample). Instant; for pure data where no AI analysis is needed.
 
@@ -388,9 +393,9 @@ and a fallback for everything else:
       <condition><size><min>49152</min></size></condition>
     </conditions></and></condition>
   </fieldGeneration>
-  <fieldGeneration>                                  <!-- huge files: chunk + combine instead of failing -->
-    <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
-    <onOversize>mapReduce</onOversize><maxChunks>6</maxChunks>
+  <fieldGeneration>                                  <!-- huge files: chunk over a SMALL fast window + combine -->
+    <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
+    <onOversize>mapReduce</onOversize><maxChunks>6</maxChunks>   <!-- ~7 cheap calls; bounds time to ~1 h/file -->
     <condition><and><conditions>
       <condition><extensions><extension>.java</extension></extensions></condition>
       <condition><size><min>1048576</min></size></condition>
