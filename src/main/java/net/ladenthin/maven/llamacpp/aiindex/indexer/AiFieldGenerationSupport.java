@@ -5,6 +5,7 @@ package net.ladenthin.maven.llamacpp.aiindex.indexer;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +126,32 @@ public class AiFieldGenerationSupport {
 
     /** Minimum per-chunk source budget, so a tiny window never yields zero-length chunks. */
     private static final int MIN_CHUNK_CHARS = 1000;
+
+    /**
+     * Safety headroom (percent) subtracted from the map-reduce window before sizing chunks and reduce
+     * batches. {@code charsPerToken} is only an <em>estimate</em>; token-dense content (e.g. SQL with
+     * many digits/punctuation, ~2.8 chars/token) tokenizes to more tokens than a char budget computed
+     * from a higher {@code charsPerToken} assumes, which would otherwise let a chunk overflow the model's
+     * context window at run time (the native layer then rejects the request). Shrinking the map-reduce
+     * window by this margin keeps chunks safely inside the window even when real density is up to this
+     * percent below the configured {@code charsPerToken}.
+     */
+    private static final int MAP_REDUCE_TOKEN_HEADROOM_PERCENT = 20;
+
+    /**
+     * Maximum number of partial summaries combined into a single reduce call. Bounds the reduce prompt
+     * size and guarantees the hierarchical reduce makes progress (fan-in {@code >= 2}) so it terminates.
+     */
+    private static final int MAX_REDUCE_FANIN = 16;
+
+    /** Label prefix for one partial summary inside a reduce prompt. */
+    private static final String REDUCE_PART_LABEL = "Part ";
+
+    /** Approximate per-partial label + separator overhead when packing a reduce batch to the window. */
+    private static final int REDUCE_LABEL_OVERHEAD_CHARS = 16;
+
+    /** Percent divisor used when applying {@link #MAP_REDUCE_TOKEN_HEADROOM_PERCENT}. */
+    private static final int PERCENT = 100;
 
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
@@ -286,9 +313,13 @@ public class AiFieldGenerationSupport {
 
     /**
      * Summarizes an oversized source via map-reduce: split it into window-sized chunks at line boundaries
-     * (with overlap), summarize each chunk with the rule's prompt, then summarize the concatenated partial
-     * summaries into the final body. The {@code maxChunks} cap (when set) bounds the run time by sampling
-     * representative chunks across the file.
+     * (with overlap), summarize each chunk with the rule's prompt (the <em>map</em>), then combine the
+     * partial summaries via a {@link #reducePartials hierarchical reduce}. The {@code maxChunks} cap (when
+     * set) bounds the run time by sampling representative chunks across the file; {@code maxChunks <= 0}
+     * processes every chunk (the whole file).
+     *
+     * <p>The chunk window is shrunk by {@link #MAP_REDUCE_TOKEN_HEADROOM_PERCENT} so a token-dense chunk
+     * cannot overflow the model's context (see that constant's Javadoc).</p>
      *
      * @param fieldGeneration        the routing rule (prompt key + {@code maxChunks})
      * @param contextFile            the source file path
@@ -307,28 +338,100 @@ public class AiFieldGenerationSupport {
             throws IOException {
         final int basePromptLength =
                 promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
-        final int sourceBudget = Math.max(MIN_CHUNK_CHARS, effectiveMaxInputChars - basePromptLength);
+        // Reserve token-safety headroom: real chars/token can be below the configured charsPerToken for
+        // dense content, so size chunks (and every map/reduce prompt) against a shrunken window.
+        final int safeWindow =
+                effectiveMaxInputChars - (effectiveMaxInputChars * MAP_REDUCE_TOKEN_HEADROOM_PERCENT / PERCENT);
+        final int sourceBudget = Math.max(MIN_CHUNK_CHARS, safeWindow - basePromptLength);
         final int overlap = Math.min(MAP_REDUCE_OVERLAP_CHARS, sourceBudget / MAP_REDUCE_OVERLAP_DIVISOR);
         final List<String> chunks =
                 AiSourceChunker.chunk(sourceText, sourceBudget, overlap, fieldGeneration.getMaxChunks());
         log.info("Oversize file '" + contextFile + "' -> mapReduce: " + sourceText.length() + " chars in "
                 + chunks.size() + " chunk(s)");
-        final StringBuilder partials = new StringBuilder();
+        final List<String> partials = new ArrayList<>(chunks.size());
         int index = 0;
         for (final String chunk : chunks) {
             index++;
-            final String partial = summarizeChunk(
-                    fieldGeneration.getPromptKey(), contextFile, chunk, baseHeader, effectiveMaxInputChars);
-            partials.append("Chunk ")
-                    .append(index)
-                    .append(":\n")
-                    .append(partial.trim())
-                    .append("\n\n");
+            partials.add(summarizeChunk(fieldGeneration.getPromptKey(), contextFile, chunk, baseHeader, safeWindow)
+                    .trim());
             log.info("  mapReduce chunk " + index + "/" + chunks.size() + " summarized (" + chunk.length() + " chars)");
         }
-        // Reduce: summarize the partial summaries (trimmed to the window) into the final body.
-        return summarizeChunk(
-                fieldGeneration.getPromptKey(), contextFile, partials.toString(), baseHeader, effectiveMaxInputChars);
+        return reducePartials(
+                fieldGeneration.getPromptKey(), contextFile, baseHeader, partials, sourceBudget, safeWindow);
+    }
+
+    /**
+     * Combines per-chunk partial summaries into one body via a <strong>hierarchical</strong> reduce:
+     * partials are packed into batches that fit the window (each batch at most {@link #MAX_REDUCE_FANIN}
+     * partials), every batch is summarized, and the process repeats on the batch summaries until a single
+     * summary remains. This avoids the single-reduce trap where hundreds of partials overflow one call
+     * and the file's tail is silently trimmed away, so {@code maxChunks <= 0} (whole-file) coverage
+     * actually reaches the final summary.
+     *
+     * @param promptKey   the prompt template key (shared by map and reduce)
+     * @param contextFile the source file path
+     * @param baseHeader  the header passed through to each request
+     * @param partials    the per-chunk partial summaries (already trimmed); may be empty
+     * @param sourceBudget the source-character budget used to pack a reduce batch
+     * @param safeWindow  the per-call window budget passed to each reduce generation
+     * @return the single combined summary, or an empty string when there are no partials
+     * @throws IOException if the provider throws during generation
+     */
+    private String reducePartials(
+            final String promptKey,
+            final Path contextFile,
+            final AiMdHeader baseHeader,
+            final List<String> partials,
+            final int sourceBudget,
+            final int safeWindow)
+            throws IOException {
+        if (partials.isEmpty()) {
+            return "";
+        }
+        List<String> level = partials;
+        int round = 0;
+        while (level.size() > 1) {
+            round++;
+            final List<String> next = new ArrayList<>(level.size());
+            int i = 0;
+            while (i < level.size()) {
+                final StringBuilder batch = new StringBuilder();
+                int inBatch = 0;
+                while (inBatch < MAX_REDUCE_FANIN
+                        && i < level.size()
+                        && (inBatch == 0
+                                || batch.length() + level.get(i).length() + REDUCE_LABEL_OVERHEAD_CHARS
+                                        <= sourceBudget)) {
+                    batch.append(REDUCE_PART_LABEL)
+                            .append(inBatch + 1)
+                            .append(":\n")
+                            .append(level.get(i))
+                            .append("\n\n");
+                    inBatch++;
+                    i++;
+                }
+                next.add(summarizeChunk(promptKey, contextFile, batch.toString(), baseHeader, safeWindow)
+                        .trim());
+            }
+            log.info("  mapReduce reduce round " + round + ": " + level.size() + " -> " + next.size() + " partial(s)");
+            if (next.size() >= level.size()) {
+                // Pathological: partials too large to combine two-at-a-time. Collapse to one trimmed reduce
+                // so the method always terminates rather than looping without shrinking.
+                final StringBuilder all = new StringBuilder();
+                int n = 0;
+                for (final String partial : level) {
+                    all.append(REDUCE_PART_LABEL)
+                            .append(++n)
+                            .append(":\n")
+                            .append(partial)
+                            .append("\n\n");
+                }
+                return summarizeChunk(promptKey, contextFile, all.toString(), baseHeader, safeWindow)
+                        .trim();
+            }
+            level = next;
+        }
+        return level.get(0);
     }
 
     /**

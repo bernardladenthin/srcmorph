@@ -62,6 +62,12 @@ public class AiFieldGenerationSupportTest {
         }
     }
 
+    /**
+     * Lower bound on chunks needed to force a second reduce round: strictly above the production
+     * {@code MAX_REDUCE_FANIN} (16) so the reduce cannot combine every partial in a single call.
+     */
+    private static final long MIN_CHUNKS_FOR_TWO_REDUCE_ROUNDS = 16L;
+
     private WarnCapturingLog capturingLog;
 
     @BeforeEach
@@ -372,6 +378,40 @@ public class AiFieldGenerationSupportTest {
                 anyHeader());
 
         assertThat(calls.get(), is(equalTo(3)));
+        assertThat(result.body(), is(equalTo("PARTIAL")));
+    }
+
+    @Test
+    public void onOversize_mapReduce_unbounded_reducesHierarchicallyInMultipleRounds() throws Exception {
+        final Path contextFile = Files.createTempFile("Huge", ".java");
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            return "PARTIAL";
+        };
+        final AiFieldGenerationSupport support = supportWith(provider, "m");
+
+        // maxChunks=0 (unbounded) over a large source -> far more than MAX_REDUCE_FANIN chunks, so the
+        // reduce cannot combine every partial in one call and must recurse: a second reduce round appears.
+        final AiGenerationResult result = support.processFieldGenerations(
+                Collections.singletonList(oversizeRule("m", "mapReduce", 0)),
+                contextFile,
+                "file",
+                largeSource(3000),
+                anyHeader());
+
+        final List<String> infos = capturingLog.getCapturedInfos();
+        final long mapChunks =
+                infos.stream().filter(m -> m.contains("summarized (")).count();
+        final boolean hasRound1 = infos.stream().anyMatch(m -> m.contains("reduce round 1:"));
+        final boolean hasRound2 = infos.stream().anyMatch(m -> m.contains("reduce round 2:"));
+
+        // Whole file mapped (many chunks) and the reduce ran in at least two rounds (hierarchical).
+        assertThat(mapChunks > MIN_CHUNKS_FOR_TWO_REDUCE_ROUNDS, is(true));
+        assertThat(hasRound1, is(true));
+        assertThat(hasRound2, is(true));
+        // More provider calls than a single-level reduce (chunks + 1) would make.
+        assertThat(calls.get() > mapChunks + 1, is(true));
         assertThat(result.body(), is(equalTo("PARTIAL")));
     }
 

@@ -144,8 +144,11 @@ Markdown plan (file → rule id → prompt → rough time estimate, summed per m
 model's window is flagged in the plan and, **by default (`onOversize=fail`), fails the build** (a hard
 abort) — the plugin never auto-picks a model. The resolution is **configuration only**, via the rule's
 **`<onOversize>`** strategy (`AiOversizeStrategy`): `fail` (default), `sample` (trim to the window head,
-one call), `mapReduce` (chunk at line boundaries → summarize each → combine; `<maxChunks>` bounds the
-time — `AiSourceChunker`), or `deterministic` (model-free metadata+sample body — `AiDeterministicSummary`).
+one call), `mapReduce` (chunk at line boundaries → summarize each → combine via a **hierarchical reduce**
+that batches partials to fit the window so whole-file `<maxChunks>=0` coverage isn't trimmed away;
+`<maxChunks>` bounds the time — `AiSourceChunker`; the chunk window carries a token-safety headroom so a
+token-dense chunk can't overflow the model context), or `deterministic` (model-free metadata+sample body
+— `AiDeterministicSummary`).
 So oversized files are either routed to a larger-context model or handled by a strategy; only `fail`
 entries abort. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
