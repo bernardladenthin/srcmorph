@@ -1565,7 +1565,7 @@ SPDX-License-Identifier: Apache-2.0
                                      <fieldGenerations> below (ids big-window-java and big-window-sql), for the
                                      ~275 KB .. ~1 MB band (one pass). Files > ~1 MB are NOT summarized in one
                                      giant pass here (O(n^2) prefill makes that far too slow); they route to the
-                                     small-window granite-4.0-h-tiny-fastchunk preset via the huge-java/huge-sql
+                                     small-window granite-4.0-h-1b-fastchunk preset via the huge-java/huge-sql
                                      rules and are map-reduced (cheap small chunks, maxChunks-bounded). -->
                                 <aiDefinition>
                                     <key>granite-4.0-h-tiny-bigwindow</key>
@@ -1586,19 +1586,27 @@ SPDX-License-Identifier: Apache-2.0
                                     <reasoningEffort></reasoningEffort>
                                 </aiDefinition>
 
-                                <!-- Small/fast window for the map-reduce of VERY large files (multi-MB data).
-                                     Same Granite model file as the big-window preset (already downloaded), but a
-                                     SMALL 16K window on purpose. Prefill cost is O(n^2) in prompt length, so one
-                                     big 384K pass is far slower than many small 16K passes: a single big-window
-                                     pass is enormous, whereas chunking at ~48 KB (16K*cpt3 minus the prompt) and
-                                     capping <maxChunks> keeps a multi-MB file to a handful of cheap calls. With
-                                     maxChunks 6 a 7 MB file is ~7 calls (~1 h order on the reference CPU; less on
-                                     GPU), sampling a representative head/tail/spread - the right trade-off for
-                                     repetitive data where no precise whole-file analysis is needed. Routed via the
+                                <!-- Small/fast window for the map-reduce of VERY large files (multi-MB data),
+                                     the default fallback for oversized sources. Uses the SMALLEST Granite 4.0
+                                     hybrid (H-1B, ~1.5B, Apache-2.0, IBM) at a SMALL 16K window on purpose.
+                                     Rationale: prefill cost is O(n^2) in prompt length, so one big 384K pass is
+                                     far slower than many small 16K passes; and a tiny 1.5B model roughly doubles
+                                     CPU throughput vs the 7B/3B siblings. Chunking at ~48 KB (16K*cpt3 minus the
+                                     prompt) and capping <maxChunks> keeps a file of ANY size to a handful of cheap
+                                     calls, sampling a representative head/tail/spread - the right trade-off for
+                                     repetitive data where no precise whole-file read is needed.
+
+                                     MEASURED on this machine (CPU-only, 16 threads, Q4_K_M): ~175 tok/s prefill,
+                                     ~85 s per full 16K chunk, so a maxChunks=6 run is ~8.5 min PER FILE regardless
+                                     of file size (1 MB or 1 GB - you sample 6 windows). On GPU the same run is
+                                     ~40 s. H-1B loads on the existing llama 5.0.3 native (granitehybrid arch, no
+                                     rebuild). Note: reading EVERY byte of a GB-scale file is not minutes on any
+                                     CPU (~135 h at this rate); raise <maxChunks> to read more (~85 s/chunk added)
+                                     or use onOversize=deterministic/sample for the repetitive bulk. Routed via the
                                      huge-java / huge-sql rules below (priority above big-window). -->
                                 <aiDefinition>
-                                    <key>granite-4.0-h-tiny-fastchunk</key>
-                                    <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <key>granite-4.0-h-1b-fastchunk</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-1b-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -2068,7 +2076,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                              Prefill is O(n^2) in prompt length, so ONE big 384K pass over a multi-MB file
                                              is catastrophically slow, and map-reducing AT the big window (6 x 384K passes)
                                              is worse still. The fast path is the opposite: chunk with a SMALL window
-                                             (granite-4.0-h-tiny-fastchunk, 16K) so each prefill is cheap, and cap
+                                             (granite-4.0-h-1b-fastchunk, 16K) so each prefill is cheap, and cap
                                              <maxChunks> so a 7 MB file stays a handful of calls (~1 h order on the
                                              reference CPU; less on GPU) - sampling a representative head/tail/spread, which
                                              is the right trade-off for repetitive data needing no precise whole-file read.
@@ -2081,7 +2089,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fieldGeneration>
                                             <id>huge-java</id>
                                             <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>granite-4.0-h-tiny-fastchunk</aiDefinitionKey>
+                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
                                             <priority>200</priority>
                                             <!-- Map-reduce on a SMALL fast window: chunk at line boundaries, summarize each,
                                                  then combine. maxChunks bounds the run time to ~60-90 min/file by sampling a
@@ -2105,7 +2113,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fieldGeneration>
                                             <id>huge-sql</id>
                                             <promptKey>file-body-sql</promptKey>
-                                            <aiDefinitionKey>granite-4.0-h-tiny-fastchunk</aiDefinitionKey>
+                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
                                             <priority>200</priority>
                                             <onOversize>mapReduce</onOversize>
                                             <maxChunks>6</maxChunks>
