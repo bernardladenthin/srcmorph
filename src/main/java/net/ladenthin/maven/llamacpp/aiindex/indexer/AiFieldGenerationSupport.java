@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiCalibration;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
@@ -306,7 +307,9 @@ public class AiFieldGenerationSupport {
             final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
                     ? SIZE_BELOW_ONE_KIB_LABEL
                     : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
-            final long estimatedSeconds = timeEstimator.estimateSeconds(processedSourceChars);
+            // Use the model's measured <calibration> when present, so the live per-file ETA matches the
+            // (already calibrated) plan ETA instead of the built-in reference-CPU model.
+            final long estimatedSeconds = estimateSeconds(processedSourceChars, generationConfig);
             log.info(PROCESSING_LOG_PREFIX + contextType + " '" + contextFile + "'"
                     + PROCESSING_LOG_SIZE_INFIX + sourceSizeKb
                     + PROCESSING_LOG_TOKENS_INFIX + timeEstimator.estimatePromptTokens(processedSourceChars)
@@ -541,6 +544,27 @@ public class AiFieldGenerationSupport {
             }
         }
         return false;
+    }
+
+    /**
+     * Estimates one generation's seconds for the given char count, using the model's {@code <calibration>}
+     * (measured per-machine throughput) when present, otherwise the estimator's built-in model. Mirrors
+     * {@code SourceFileIndexer}'s plan-time estimate so the live per-file ETA agrees with the plan.
+     *
+     * @param sourceChars the processed source character count
+     * @param config      the model's generation config (may carry a calibration)
+     * @return the estimated seconds
+     */
+    private long estimateSeconds(final int sourceChars, final AiGenerationConfig config) {
+        final AiCalibration calibration = config.getCalibration();
+        if (calibration == null) {
+            return timeEstimator.estimateSeconds(sourceChars);
+        }
+        return timeEstimator.estimateSecondsCalibrated(
+                sourceChars,
+                calibration.getPrefillTokensPerSecond(),
+                calibration.getDecodeTokensPerSecond(),
+                calibration.getCharsPerToken());
     }
 
     /**
