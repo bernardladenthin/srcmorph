@@ -209,5 +209,25 @@ public class AiFieldGenerationSelectorTest {
         final AiFieldGenerationConfig bad = route("p", new AiCondition(), 0);
         assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(bad)));
     }
+
+    @Test
+    public void validate_invalidFactPattern_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        final AiFactCounter bad = new AiFactCounter();
+        bad.setLabel("broken");
+        bad.setPattern("[");
+        r.setFacts(Collections.singletonList(bad));
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_validFactPattern_passes() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        final AiFactCounter ok = new AiFactCounter();
+        ok.setLabel("rows");
+        ok.setPattern("(?m)^INSERT");
+        r.setFacts(Collections.singletonList(ok));
+        assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
     // </editor-fold>
 }

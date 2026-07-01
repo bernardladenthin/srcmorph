@@ -6,6 +6,7 @@ package net.ladenthin.maven.llamacpp.aiindex.indexer;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.file.Files;
@@ -16,6 +17,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.ladenthin.maven.llamacpp.aiindex.CommonTestFixtures;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
@@ -379,6 +382,28 @@ public class AiFieldGenerationSupportTest {
 
         assertThat(calls.get(), is(equalTo(3)));
         assertThat(result.body(), is(equalTo("PARTIAL")));
+    }
+
+    @Test
+    public void onOversize_mapReduce_withFacts_prependsExactWholeFileCountsToBody() throws Exception {
+        final Path contextFile = Files.createTempFile("Huge", ".java");
+        final AiGenerationProvider provider = request -> "PARTIAL";
+        final AiFieldGenerationSupport support = supportWith(provider, "m");
+
+        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 2);
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("lines");
+        counter.setPattern("(?m)^line ");
+        rule.setFacts(Collections.singletonList(counter));
+
+        // largeSource(600) has exactly 600 lines beginning with "line "; the AI (mock) never sees them all,
+        // but the deterministic facts block counts every one over the FULL source and is prepended.
+        final AiGenerationResult result = support.processFieldGenerations(
+                Collections.singletonList(rule), contextFile, "file", largeSource(600), anyHeader());
+
+        assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
+        assertThat(result.body(), containsString("lines: 600"));
+        assertThat(result.body(), containsString("PARTIAL"));
     }
 
     @Test

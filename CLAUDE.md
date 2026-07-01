@@ -150,7 +150,10 @@ that batches partials to fit the window so whole-file `<maxChunks>=0` coverage i
 token-dense chunk can't overflow the model context), or `deterministic` (model-free metadata+sample body
 — `AiDeterministicSummary`).
 So oversized files are either routed to a larger-context model or handled by a strategy; only `fail`
-entries abort. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+entries abort. A rule may also carry an orthogonal, language-agnostic **`<facts>`** list (`AiFactCounter`
++ `AiFactExtractor`): each `{label, pattern}` reports its regex match count over the **whole** source,
+prepended to the body on the oversize path — exact counts (SQL `INSERT` rows, Java `\bboolean\b` fields,
+…) the sampled AI prose cannot reliably produce. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
 different file kinds/sizes with different models *and* prompts.
 
@@ -197,6 +200,8 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `AiInputWindowCalculator` | Pure calculator for the input window (max source chars before trimming + whether a source exceeds it); single source of truth shared by the run-time trim (`AiFieldGenerationSupport`) and the plan-time over-window check (`SourceFileIndexer.classify`) |
 | `AiOversizeStrategy` | Enum of the per-rule `<onOversize>` strategies (`fail`/`sample`/`mapReduce`/`deterministic`) + case-insensitive parser; default `fail` |
 | `AiSourceChunker` | Pure line-boundary chunker for `mapReduce` (overlap + `maxChunks` representative sampling) |
+| `AiFactCounter` | Maven `@Parameter` POJO for one `<fact>` — a `{label, pattern}` deterministic counter |
+| `AiFactExtractor` | Pure: counts each `<facts>` regex over the whole source → the exact "facts" block prepended to the oversize body (+ fail-fast pattern validation) |
 | `AiDeterministicSummary` | Pure model-free body builder for `deterministic` (size, line count, head/tail sample) |
 | `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |

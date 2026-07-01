@@ -92,4 +92,14 @@ public class AiFieldGenerationConfigTest {
         c.setMaxChunks(7);
         assertThat(c.getMaxChunks(), is(equalTo(7)));
     }
+
+    @Test
+    public void facts_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getFacts(), is(nullValue()));
+        final AiFactCounter counter = new AiFactCounter();
+        c.setFacts(java.util.Collections.singletonList(counter));
+        assertThat(c.getFacts(), is(notNullValue()));
+        assertThat(c.getFacts().size(), is(equalTo(1)));
+    }
 }

@@ -740,6 +740,8 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiDeterministicSummary</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator</param>
@@ -2117,6 +2119,17 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <priority>200</priority>
                                             <onOversize>mapReduce</onOversize>
                                             <maxChunks>6</maxChunks>
+                                            <!-- Deterministic, EXACT whole-file counts prepended to the AI body. The
+                                                 sampled map-reduce prose can't count reliably (no call sees the whole
+                                                 file), so each <fact> reports its regex match count over the FULL
+                                                 source. Fully generic/language-agnostic - the meaning is in the regex,
+                                                 so the same mechanism counts INSERT rows here or `\bboolean\b` fields
+                                                 in Java. Multi-line matching is opt-in via the inline (?m) flag. -->
+                                            <facts>
+                                                <fact><label>INSERT rows</label><pattern>(?m)^\s*INSERT\b</pattern></fact>
+                                                <fact><label>CREATE TABLE</label><pattern>(?m)^\s*CREATE TABLE\b</pattern></fact>
+                                                <fact><label>CREATE VIEW</label><pattern>(?m)^\s*CREATE VIEW\b</pattern></fact>
+                                            </facts>
                                             <condition>
                                                 <and>
                                                     <conditions>

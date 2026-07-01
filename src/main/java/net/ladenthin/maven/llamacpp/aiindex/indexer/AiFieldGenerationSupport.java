@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
@@ -247,23 +248,31 @@ public class AiFieldGenerationSupport {
             final AiPreparedPrompt preparedPrompt =
                     promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
+            // Deterministic, whole-file "facts" (exact counts the sampled AI body cannot produce) are
+            // prepended to the body on the oversize path; computed once here over the FULL source.
+            String factsPrefix = "";
+
             // An oversized file (the source did not fit the window) is handled per the rule's onOversize
             // strategy. DETERMINISTIC/MAP_REDUCE replace the single generation entirely; FAIL/SAMPLE fall
             // through to the single-shot path below (the source was already trimmed to the window head).
             if (preparedPrompt.trimmed()) {
+                final String factsBlock = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
                 final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
                 if (oversize == AiOversizeStrategy.DETERMINISTIC) {
-                    body = AiDeterministicSummary.body(
-                            sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
+                    body = factsBlock
+                            + AiDeterministicSummary.body(
+                                    sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
                     log.info("Oversize " + contextType + " '" + contextFile + "' -> deterministic body (no model), "
                             + sourceText.length() + " chars");
                     continue;
                 }
                 if (oversize == AiOversizeStrategy.MAP_REDUCE) {
-                    body = mapReduceSummarize(
-                            fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
+                    body = factsBlock
+                            + mapReduceSummarize(
+                                    fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
                     continue;
                 }
+                factsPrefix = factsBlock;
             }
 
             if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
@@ -293,8 +302,9 @@ public class AiFieldGenerationSupport {
                     + generationConfig.getTemperature() + ", maxInputChars="
                     + effectiveMaxInputChars);
             final long generationStartNanos = System.nanoTime();
-            body = generationProvider.generate(generationRequest);
+            final String generated = generationProvider.generate(generationRequest);
             final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
+            body = factsPrefix + generated;
 
             // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
             // comparable across models/quants without a separate benchmark harness.
@@ -302,7 +312,7 @@ public class AiFieldGenerationSupport {
                     + timeEstimator.formatDuration(actualSeconds) + GENERATED_LOG_ACTUAL_INFIX
                     + timeEstimator.formatDuration(estimatedSeconds) + GENERATED_LOG_SUFFIX);
 
-            if (compatibilityHelper.isBlank(body)) {
+            if (compatibilityHelper.isBlank(generated)) {
                 log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL + fieldGeneration.getPromptKey()
                         + "': " + contextFile);
             }

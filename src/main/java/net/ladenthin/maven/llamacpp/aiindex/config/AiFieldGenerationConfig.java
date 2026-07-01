@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex.config;
 
+import java.util.List;
 import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
@@ -89,6 +90,15 @@ public class AiFieldGenerationConfig {
      * many representative chunks (head + evenly spaced + tail) across the file.
      */
     private int maxChunks;
+
+    /**
+     * Optional deterministic "fact" counters ({@code <facts>}). When set and the file takes an oversize
+     * path (sample/mapReduce/deterministic), each counter's {@code label: <match count over the whole
+     * file>} is prepended to the generated body — exact, language-agnostic counts (e.g. SQL {@code INSERT}
+     * rows, Java {@code boolean} fields) the sampled AI summary cannot reliably produce. {@code null}/empty
+     * = no facts block. See {@link AiFactExtractor}.
+     */
+    private @Nullable List<AiFactCounter> facts;
 
     /**
      * Returns the optional rule id (label), or {@code null} when not set.
@@ -260,5 +270,23 @@ public class AiFieldGenerationConfig {
      */
     public void setMaxChunks(final int maxChunks) {
         this.maxChunks = maxChunks;
+    }
+
+    /**
+     * Returns the optional deterministic fact counters, or {@code null} when none are configured.
+     *
+     * @return the fact counters, or {@code null}
+     */
+    public @Nullable List<AiFactCounter> getFacts() {
+        return facts;
+    }
+
+    /**
+     * Sets the deterministic fact counters.
+     *
+     * @param facts the fact counters
+     */
+    public void setFacts(final @Nullable List<AiFactCounter> facts) {
+        this.facts = facts;
     }
 }

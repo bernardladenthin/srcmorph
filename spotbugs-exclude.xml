@@ -360,6 +360,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionGroup"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
@@ -413,6 +414,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
@@ -421,6 +423,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Bug pattern="CE_CLASS_ENVY"/>
             <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+            <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
             <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
             <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
             <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>

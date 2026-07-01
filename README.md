@@ -230,6 +230,13 @@ The plugin is configured from three building blocks, declared on the plugin insi
    Quality from a real model is best within Granite's validated 128K (~500 KB) and degrades gradually
    beyond it — a whole-file (or chunked) summary still beats a trimmed one.
 
+   **Exact counts with `<facts>` (optional, any strategy).** A sampled/chunked AI summary can't reliably
+   *count* things (no single call sees the whole file — it will guess "25 rows"). Add a `<facts>` list to
+   the rule and each `{label, pattern}` reports its regex match count over the **whole** source, prepended
+   to the body as an exact facts line. It's fully generic — the meaning is in the regex, so the same
+   mechanism counts SQL `INSERT` rows or Java `\bboolean\b` fields; multi-line matching is opt-in via the
+   inline `(?m)` flag. Example output: `**Facts (exact, whole file):** INSERT rows: 36738; tables: 122; views: 4`.
+
 ```xml
 <plugin>
     <groupId>net.ladenthin</groupId>
@@ -396,6 +403,10 @@ and a fallback for everything else:
   <fieldGeneration>                                  <!-- huge files: chunk over a SMALL fast window + combine -->
     <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
     <onOversize>mapReduce</onOversize><maxChunks>6</maxChunks>   <!-- ~7 cheap calls; bounds time to ~1 h/file -->
+    <facts>                                          <!-- exact whole-file counts, prepended to the body -->
+      <fact><label>boolean fields</label><pattern>\bboolean\b</pattern></fact>
+      <fact><label>methods</label><pattern>(?m)^\s+(public|private|protected).*\(</pattern></fact>
+    </facts>
     <condition><and><conditions>
       <condition><extensions><extension>.java</extension></extensions></condition>
       <condition><size><min>1048576</min></size></condition>
