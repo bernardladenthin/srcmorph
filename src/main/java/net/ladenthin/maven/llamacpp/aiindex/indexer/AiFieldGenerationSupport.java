@@ -154,6 +154,26 @@ public class AiFieldGenerationSupport {
     /** Percent divisor used when applying {@link #MAP_REDUCE_TOKEN_HEADROOM_PERCENT}. */
     private static final int PERCENT = 100;
 
+    /**
+     * Maximum number of times a single generation is retried with a smaller window after the provider
+     * rejects the prompt for exceeding the model's context. The char-based window is an estimate; on
+     * token-dense content that estimate can undershoot even outside map-reduce (e.g. a dense file that
+     * just "fits", or a {@code sample} head), so this is the last-resort safety net for the single-shot
+     * path — it degrades gracefully (trims a little more) instead of failing the whole build.
+     */
+    private static final int MAX_OVERFLOW_RETRIES = 3;
+
+    /** Window multiplier (percent) applied on each context-overflow retry, shrinking the prompt. */
+    private static final int OVERFLOW_RETRY_BACKOFF_PERCENT = 75;
+
+    /**
+     * Substring identifying a context-overflow error in the provider's exception message chain
+     * (llama.cpp: "request (N tokens) exceeds the available context size (M tokens)…"). Matched on the
+     * message rather than a binding-specific exception type to keep the indexer decoupled from the JNI
+     * binding.
+     */
+    private static final String CONTEXT_OVERFLOW_MARKER = "exceeds the available context size";
+
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
     @ToString.Exclude
@@ -282,9 +302,6 @@ public class AiFieldGenerationSupport {
                         + ", max input chars " + effectiveMaxInputChars + ")");
             }
 
-            final AiGenerationRequest generationRequest = new AiGenerationRequest(
-                    fieldGeneration.getPromptKey(), contextFile, preparedPrompt.sourceText(), baseHeader);
-
             final int processedSourceChars = preparedPrompt.sourceText().length();
             final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
                     ? SIZE_BELOW_ONE_KIB_LABEL
@@ -301,7 +318,8 @@ public class AiFieldGenerationSupport {
                     + generationConfig.getTemperature() + ", maxInputChars="
                     + effectiveMaxInputChars);
             final long generationStartNanos = System.nanoTime();
-            final String generated = generationProvider.generate(generationRequest);
+            final String generated = generateWithOverflowRetry(
+                    fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader, effectiveMaxInputChars);
             final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
             body = factsPrefix + generated;
 
@@ -461,10 +479,68 @@ public class AiFieldGenerationSupport {
             final AiMdHeader baseHeader,
             final int effectiveMaxInputChars)
             throws IOException {
-        final AiGenerationRequest request = new AiGenerationRequest(promptKey, contextFile, chunk, baseHeader);
-        final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
-        return generationProvider.generate(
-                new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
+        return generateWithOverflowRetry(promptKey, contextFile, chunk, baseHeader, effectiveMaxInputChars);
+    }
+
+    /**
+     * Trims {@code source} to {@code window} and generates, retrying with a progressively smaller window
+     * (up to {@link #MAX_OVERFLOW_RETRIES}) when the provider rejects the prompt for exceeding the model's
+     * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
+     * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
+     * exception propagates immediately.
+     *
+     * @param promptKey   the prompt template key
+     * @param contextFile the source file path
+     * @param source      the source text to trim and summarize
+     * @param baseHeader  the header passed through to the request
+     * @param window      the initial per-call window budget (characters)
+     * @return the provider's generated text
+     * @throws IOException if the provider throws an {@link IOException} during generation
+     */
+    private String generateWithOverflowRetry(
+            final String promptKey,
+            final Path contextFile,
+            final String source,
+            final AiMdHeader baseHeader,
+            final int window)
+            throws IOException {
+        int budget = window;
+        for (int attempt = 0; ; attempt++) {
+            final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
+                    new AiGenerationRequest(promptKey, contextFile, source, baseHeader), budget);
+            try {
+                return generationProvider.generate(
+                        new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
+            } catch (final RuntimeException e) {
+                final int reduced = Math.max(MIN_CHUNK_CHARS, budget * OVERFLOW_RETRY_BACKOFF_PERCENT / PERCENT);
+                // Rethrow (giving up) once the retries are exhausted, when the window is already at the
+                // floor (shrinking further would not help), or on a non-overflow error. The cheap
+                // comparisons are checked before the cause-chain walk of isContextOverflow(e).
+                if (attempt >= MAX_OVERFLOW_RETRIES || reduced >= budget || !isContextOverflow(e)) {
+                    throw e;
+                }
+                log.warn("AI provider rejected the prompt (context overflow) for " + contextFile
+                        + "; retrying with a smaller window (" + budget + " -> " + reduced + " chars)");
+                budget = reduced;
+            }
+        }
+    }
+
+    /**
+     * Returns whether {@code error} (or any cause in its chain) is a model context-overflow, matched on
+     * the provider's message ({@link #CONTEXT_OVERFLOW_MARKER}).
+     *
+     * @param error the thrown error
+     * @return {@code true} when the error indicates the prompt exceeded the context window
+     */
+    private static boolean isContextOverflow(final Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            final String message = cause.getMessage();
+            if (message != null && message.contains(CONTEXT_OVERFLOW_MARKER)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -8,6 +8,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -444,6 +445,69 @@ public class AiFieldGenerationSupportTest {
         assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("boolean fields: 2"));
         assertThat(result.body(), containsString("AI SUMMARY"));
+    }
+
+    private static AiFieldGenerationConfig plainRoute(final String modelKey) {
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
+        rule.setAiDefinitionKey(modelKey);
+        return rule;
+    }
+
+    @Test
+    public void generate_contextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
+        final Path contextFile = Files.createTempFile("Dense", ".sql");
+        final AtomicInteger calls = new AtomicInteger();
+        // Fits the char window but the provider rejects the first prompt as over-context (token-dense);
+        // the retry with a smaller window then succeeds.
+        final AiGenerationProvider provider = request -> {
+            if (calls.getAndIncrement() == 0) {
+                throw new RuntimeException("request (16549 tokens) exceeds the available context size (16384 tokens)");
+            }
+            return "OK";
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        final AiGenerationResult result = support.processFieldGenerations(
+                Collections.singletonList(plainRoute("m")), contextFile, "file", "small source", anyHeader());
+
+        assertThat(result.body(), is(equalTo("OK")));
+        assertThat(calls.get(), is(equalTo(2)));
+    }
+
+    @Test
+    public void generate_persistentContextOverflow_rethrowsAfterRetrying() throws Exception {
+        final Path contextFile = Files.createTempFile("Dense", ".sql");
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            throw new RuntimeException("request exceeds the available context size (16384 tokens)");
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        assertThrows(
+                RuntimeException.class,
+                () -> support.processFieldGenerations(
+                        Collections.singletonList(plainRoute("m")), contextFile, "file", "small source", anyHeader()));
+        // Retried before giving up (more than the single initial attempt).
+        assertThat(calls.get() > 1, is(true));
+    }
+
+    @Test
+    public void generate_nonOverflowRuntimeException_propagatesWithoutRetry() throws Exception {
+        final Path contextFile = Files.createTempFile("X", ".sql");
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            throw new RuntimeException("some unrelated failure");
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        assertThrows(
+                RuntimeException.class,
+                () -> support.processFieldGenerations(
+                        Collections.singletonList(plainRoute("m")), contextFile, "file", "small source", anyHeader()));
+        assertThat(calls.get(), is(equalTo(1)));
     }
 
     @Test

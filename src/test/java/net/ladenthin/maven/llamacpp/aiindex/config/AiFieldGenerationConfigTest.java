@@ -102,4 +102,12 @@ public class AiFieldGenerationConfigTest {
         assertThat(c.getFacts(), is(notNullValue()));
         assertThat(c.getFacts().size(), is(equalTo(1)));
     }
+
+    @Test
+    public void factsKey_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getFactsKey(), is(nullValue()));
+        c.setFactsKey("java-facts");
+        assertThat(c.getFactsKey(), is(equalTo("java-facts")));
+    }
 }

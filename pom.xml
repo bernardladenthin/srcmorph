@@ -741,6 +741,8 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiDeterministicSummary</param>
@@ -2066,6 +2068,36 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fileExtension>.java</fileExtension>
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
+                                    <!--
+                                        Reusable fact-counter groups. Each <fact> reports its regex match count
+                                        over the WHOLE source (exact, language-agnostic structural counts the
+                                        sampled AI prose cannot reliably produce). Defined ONCE here and referenced
+                                        from rules below via <factsKey>, instead of repeating the same <facts>
+                                        block inline on the normal + huge rule for each language. Keep patterns
+                                        robust (line-anchored / unambiguous) - a fact that miscounts is worse than
+                                        none. (?m) opts into multi-line matching; (?i) case-insensitive for SQL.
+                                    -->
+                                    <factDefinitions>
+                                        <factDefinition>
+                                            <key>java-facts</key>
+                                            <facts>
+                                                <fact><label>type declarations</label><pattern>(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w</pattern></fact>
+                                                <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
+                                                <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
+                                                <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
+                                            </facts>
+                                        </factDefinition>
+                                        <factDefinition>
+                                            <key>sql-facts</key>
+                                            <facts>
+                                                <fact><label>INSERT rows</label><pattern>(?im)^\s*INSERT\s+INTO\b</pattern></fact>
+                                                <fact><label>tables</label><pattern>(?im)^\s*CREATE\s+TABLE\b</pattern></fact>
+                                                <fact><label>views</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b</pattern></fact>
+                                                <fact><label>indexes</label><pattern>(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b</pattern></fact>
+                                                <fact><label>functions/procedures</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b</pattern></fact>
+                                            </facts>
+                                        </factDefinition>
+                                    </factDefinitions>
                                     <fieldGenerations>
                                         <!-- Size-tiered routing for large files. THREE bands per source kind, by
                                              ascending priority so the most specific (largest) wins:
@@ -2099,13 +2131,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                                  data: sample (head only, one call) or deterministic (no model, instant). -->
                                             <onOversize>mapReduce</onOversize>
                                             <maxChunks>6</maxChunks>
-                                            <!-- Exact whole-file structural counts (see java rule below for the rationale). -->
-                                            <facts>
-                                                <fact><label>type declarations</label><pattern>(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w</pattern></fact>
-                                                <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
-                                                <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
-                                                <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
-                                            </facts>
+                                            <factsKey>java-facts</factsKey>
                                             <condition>
                                                 <and>
                                                     <conditions>
@@ -2132,13 +2158,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                                  source. Fully generic/language-agnostic - the meaning is in the regex,
                                                  so the same mechanism counts INSERT rows here or `\bboolean\b` fields
                                                  in Java. Multi-line matching is opt-in via the inline (?m) flag. -->
-                                            <facts>
-                                                <fact><label>INSERT rows</label><pattern>(?im)^\s*INSERT\s+INTO\b</pattern></fact>
-                                                <fact><label>tables</label><pattern>(?im)^\s*CREATE\s+TABLE\b</pattern></fact>
-                                                <fact><label>views</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b</pattern></fact>
-                                                <fact><label>indexes</label><pattern>(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b</pattern></fact>
-                                                <fact><label>functions/procedures</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b</pattern></fact>
-                                            </facts>
+                                            <factsKey>sql-facts</factsKey>
                                             <condition>
                                                 <and>
                                                     <conditions>
@@ -2198,15 +2218,9 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <!-- Exact, whole-file structural counts prepended to EVERY Java summary (not just
                                                  oversize files), giving downstream agents authoritative numbers the prose need
-                                                 not restate. Language-agnostic: the meaning is entirely in each regex. Keep the
-                                                 patterns robust (line-anchored / unambiguous keywords) - a fact that miscounts
-                                                 is worse than no fact. All four here are stable across Java styles. -->
-                                            <facts>
-                                                <fact><label>type declarations</label><pattern>(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w</pattern></fact>
-                                                <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
-                                                <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
-                                                <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
-                                            </facts>
+                                                 not restate. Shared, defined once in <factDefinitions> above and referenced by
+                                                 key here (and by huge-java) instead of repeating the block inline. -->
+                                            <factsKey>java-facts</factsKey>
                                             <condition>
                                                 <extensions><extension>.java</extension></extensions>
                                             </condition>
@@ -2215,13 +2229,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <id>sql</id>
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
-                                            <facts>
-                                                <fact><label>INSERT rows</label><pattern>(?im)^\s*INSERT\s+INTO\b</pattern></fact>
-                                                <fact><label>tables</label><pattern>(?im)^\s*CREATE\s+TABLE\b</pattern></fact>
-                                                <fact><label>views</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b</pattern></fact>
-                                                <fact><label>indexes</label><pattern>(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b</pattern></fact>
-                                                <fact><label>functions/procedures</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b</pattern></fact>
-                                            </facts>
+                                            <factsKey>sql-facts</factsKey>
                                             <condition>
                                                 <extensions><extension>.sql</extension></extensions>
                                             </condition>

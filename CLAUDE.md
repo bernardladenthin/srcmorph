@@ -154,7 +154,12 @@ entries abort. A rule may also carry an orthogonal, language-agnostic **`<facts>
 + `AiFactExtractor`): each `{label, pattern}` reports its regex match count over the **whole** source,
 prepended to the body of **every** file the rule matches (oversize or not) — exact structural counts
 (SQL `INSERT` rows / tables / views, Java type declarations / `\bboolean\b` fields, …) that give
-downstream agents authoritative numbers the (possibly sampled) AI prose cannot reliably produce. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+downstream agents authoritative numbers the (possibly sampled) AI prose cannot reliably produce. A fact
+set can be defined once in a shared `<factDefinitions>` group and referenced from many rules by
+`<factsKey>` (`AiFactDefinition` + `AiFactDefinitionSupport`, resolved onto each rule before indexing),
+instead of repeating the `<facts>` block inline. Generation is also guarded by a **retry-on-overflow**:
+if the provider rejects a prompt as exceeding the context (the char-based trim under-counted tokens on
+dense content), the call is re-trimmed to a smaller window and retried rather than failing the build. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
 different file kinds/sizes with different models *and* prompts.
 
@@ -202,7 +207,9 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `AiOversizeStrategy` | Enum of the per-rule `<onOversize>` strategies (`fail`/`sample`/`mapReduce`/`deterministic`) + case-insensitive parser; default `fail` |
 | `AiSourceChunker` | Pure line-boundary chunker for `mapReduce` (overlap + `maxChunks` representative sampling) |
 | `AiFactCounter` | Maven `@Parameter` POJO for one `<fact>` — a `{label, pattern}` deterministic counter |
-| `AiFactExtractor` | Pure: counts each `<facts>` regex over the whole source → the exact "facts" block prepended to the oversize body (+ fail-fast pattern validation) |
+| `AiFactExtractor` | Pure: counts each `<facts>` regex over the whole source → the exact "facts" block prepended to the body (+ fail-fast pattern validation) |
+| `AiFactDefinition` | Maven `@Parameter` POJO for a named, reusable `<factDefinitions>` group `{key, facts}` |
+| `AiFactDefinitionSupport` | Key-indexed lookup: resolves each rule's `<factsKey>` to its shared group's counters (copies onto the rule) |
 | `AiDeterministicSummary` | Pure model-free body builder for `deterministic` (size, line count, head/tail sample) |
 | `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |

@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport;
@@ -77,6 +79,16 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      */
     @Parameter(property = "aiIndex.excludes")
     private List<String> excludes;
+
+    /**
+     * Reusable, named {@code <factDefinitions>} groups referenced from a rule's {@code <factsKey>}, so a
+     * fact set (e.g. {@code java-facts}, {@code sql-facts}) is defined once and shared across rules
+     * instead of repeated inline. Resolved onto each rule's {@code facts} before indexing.
+     *
+     * @see net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport
+     */
+    @Parameter
+    private List<AiFactDefinition> factDefinitions;
 
     /**
      * Exclusive lower file-size bound in bytes: source files whose size is {@code <= this} are skipped.
@@ -152,6 +164,10 @@ public class GenerateMojo extends AbstractAiIndexMojo {
         final AiPromptSupport promptSupport = buildPromptSupport();
         final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
         final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
+        // Resolve each rule's factsKey to its shared factDefinitions group (copies the counters onto the
+        // rule's facts) BEFORE validation, so the resolved fact patterns are validated too.
+        resolveSharedFacts();
+
         final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model).
         selector.validate(fieldGenerations);
@@ -274,5 +290,20 @@ public class GenerateMojo extends AbstractAiIndexMojo {
             return compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION);
         }
         return configured;
+    }
+
+    /**
+     * Resolves each rule's {@code factsKey} to its shared {@code <factDefinitions>} group, copying the
+     * counters onto the rule's {@code facts}. Translates a misconfiguration (unknown key, or a definition
+     * with a null key) into a {@link MojoExecutionException} so Maven reports a user configuration error.
+     *
+     * @throws MojoExecutionException if a {@code factsKey} matches no group or a definition has a null key
+     */
+    private void resolveSharedFacts() throws MojoExecutionException {
+        try {
+            new AiFactDefinitionSupport(factDefinitions).resolveFactsKeys(fieldGenerations);
+        } catch (final IllegalArgumentException | NullPointerException e) {
+            throw new MojoExecutionException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
+        }
     }
 }

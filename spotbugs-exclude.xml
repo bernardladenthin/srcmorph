@@ -314,6 +314,45 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        THROWS_METHOD_THROWS_RUNTIMEEXCEPTION on AiFieldGenerationSupport.generateWithOverflowRetry.
+        fb-contrib flags the `throw e` as a method throwing a RuntimeException, but this is not raising a
+        new unchecked exception as control flow - it RE-THROWS the provider's own caught exception to
+        propagate it unchanged (the retry loop only intercepts a context-overflow, identified by message,
+        and otherwise gives up by rethrowing). The provider (JNI binding) throws an unchecked
+        LlamaException; catching a more specific type would couple the indexer to the binding, which the
+        message-based detection deliberately avoids. Scoped to the one retry method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport"/>
+        <Method name="generateWithOverflowRetry"/>
+        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
+    </Match>
+
+    <!--
+        OPM_OVERLY_PERMISSIVE_METHOD on AiFactDefinitionSupport.facts. fb-contrib flags the public facts(key)
+        as "could be more restrictive" from bytecode shape (it is called from resolveFactsKeys in the same
+        class), but it is the class's public lookup API and is exercised directly by unit tests. Same
+        rationale as the AiGenerationTimeEstimator / AiProgressBar OPM suppressions.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+    <!--
+        DCN_NULLPOINTER_EXCEPTION on GenerateMojo.resolveSharedFacts. Same deliberate translation bridge as
+        AbstractAiIndexMojo.buildPromptSupport (see that suppression's rationale): AiFactDefinitionSupport's
+        Objects.requireNonNull validation throws NPE by Java convention on a null definition key, which this
+        method catches and rethrows as a Maven MojoExecutionException (a user configuration error) rather
+        than a plugin bug. Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+        <Method name="resolveSharedFacts"/>
+        <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
+    </Match>
+
+    <!--
         EI_EXPOSE_REP / EI_EXPOSE_REP2 on the rule-routing config beans and the routing-plan model.
 
         AiCondition / AiConditionGroup / AiFieldGenerationConfig are mutable Maven @Parameter
@@ -336,6 +375,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiCondition"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionGroup"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan$Entry"/>
         </Or>
@@ -361,6 +401,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>

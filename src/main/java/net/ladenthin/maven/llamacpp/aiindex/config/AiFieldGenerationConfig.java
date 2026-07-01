@@ -102,6 +102,15 @@ public class AiFieldGenerationConfig {
     private @Nullable List<AiFactCounter> facts;
 
     /**
+     * Optional reference to a shared {@code <factDefinitions>} group by its key ({@code <factsKey>}),
+     * instead of repeating an inline {@link #facts} block. Resolved before indexing by
+     * {@link AiFactDefinitionSupport#resolveFactsKeys(Iterable)}, which copies the referenced counters
+     * onto {@link #facts} (overwriting any inline value). {@code null} = use the inline {@code <facts>}
+     * (or none).
+     */
+    private @Nullable String factsKey;
+
+    /**
      * Returns the optional rule id (label), or {@code null} when not set.
      *
      * @return the rule id, or {@code null}
@@ -289,5 +298,23 @@ public class AiFieldGenerationConfig {
      */
     public void setFacts(final @Nullable List<AiFactCounter> facts) {
         this.facts = facts;
+    }
+
+    /**
+     * Returns the shared fact-definition reference key, or {@code null} when not set.
+     *
+     * @return the facts key, or {@code null}
+     */
+    public @Nullable String getFactsKey() {
+        return factsKey;
+    }
+
+    /**
+     * Sets the shared fact-definition reference key.
+     *
+     * @param factsKey the facts key
+     */
+    public void setFactsKey(final @Nullable String factsKey) {
+        this.factsKey = factsKey;
     }
 }
