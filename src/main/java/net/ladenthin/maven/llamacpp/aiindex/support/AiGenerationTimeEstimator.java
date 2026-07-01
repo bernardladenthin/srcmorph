@@ -166,6 +166,60 @@ public class AiGenerationTimeEstimator {
     }
 
     /**
+     * Calibrated estimate assuming {@link #DEFAULT_EXPECTED_OUTPUT_TOKENS} of output. Delegates to
+     * {@link #estimateSecondsCalibrated(int, int, double, double, double)}.
+     *
+     * @param sourceChars             number of source characters that will be sent to the model
+     * @param prefillTokensPerSecond  measured prefill throughput, or {@code <= 0} to fall back
+     * @param decodeTokensPerSecond   measured decode throughput, or {@code <= 0} to fall back
+     * @param calibratedCharsPerToken measured characters per token, or {@code <= 0} to use the default
+     * @return estimated total time in seconds, rounded to the nearest second
+     */
+    public long estimateSecondsCalibrated(
+            final int sourceChars,
+            final double prefillTokensPerSecond,
+            final double decodeTokensPerSecond,
+            final double calibratedCharsPerToken) {
+        return estimateSecondsCalibrated(
+                sourceChars,
+                DEFAULT_EXPECTED_OUTPUT_TOKENS,
+                prefillTokensPerSecond,
+                decodeTokensPerSecond,
+                calibratedCharsPerToken);
+    }
+
+    /**
+     * Estimates total generation time (seconds) using measured per-machine calibration when available.
+     *
+     * <p>When both {@code prefillTokensPerSecond} and {@code decodeTokensPerSecond} are {@code > 0}, uses
+     * the linear model {@code promptTokens / prefillTps + outputTokens / decodeTps} (with
+     * {@code calibratedCharsPerToken} for the token estimate when {@code > 0}); otherwise falls back to the
+     * built-in reference-CPU model in {@link #estimateSeconds(int, int)}.</p>
+     *
+     * @param sourceChars              number of source characters that will be sent to the model
+     * @param expectedOutputTokens     number of tokens the model is expected to generate
+     * @param prefillTokensPerSecond   measured prefill throughput, or {@code <= 0} to fall back
+     * @param decodeTokensPerSecond    measured decode throughput, or {@code <= 0} to fall back
+     * @param calibratedCharsPerToken  measured characters per token, or {@code <= 0} to use the default
+     * @return estimated total time in seconds, rounded to the nearest second
+     */
+    public long estimateSecondsCalibrated(
+            final int sourceChars,
+            final int expectedOutputTokens,
+            final double prefillTokensPerSecond,
+            final double decodeTokensPerSecond,
+            final double calibratedCharsPerToken) {
+        if (prefillTokensPerSecond <= 0.0d || decodeTokensPerSecond <= 0.0d) {
+            return estimateSeconds(sourceChars, expectedOutputTokens);
+        }
+        final double charsPerToken =
+                calibratedCharsPerToken > 0.0d ? calibratedCharsPerToken : ESTIMATION_CHARS_PER_TOKEN;
+        final int promptTokens = (int) Math.round(sourceChars / charsPerToken) + PROMPT_TEMPLATE_TOKEN_OVERHEAD;
+        final double seconds = promptTokens / prefillTokensPerSecond + expectedOutputTokens / decodeTokensPerSecond;
+        return Math.round(seconds * ETA_SAFETY_MARGIN);
+    }
+
+    /**
      * Formats a second count as a short human-readable string: "{@code ~N s}" below
      * {@link #MINUTE_FORMAT_THRESHOLD_SECONDS}, otherwise "{@code ~N min}".
      *

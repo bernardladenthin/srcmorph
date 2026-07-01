@@ -7,6 +7,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -67,6 +68,11 @@ public class AiModelDefinitionSupportTest {
         definition.setTopNSigma(1.3f);
         definition.setRepeatPenalty(1.15f);
         definition.setStopStrings(Arrays.asList("</s>", "STOP"));
+        final AiCalibration calibration = new AiCalibration();
+        calibration.setPrefillTokensPerSecond(900.0d);
+        calibration.setDecodeTokensPerSecond(45.0d);
+        calibration.setCharsPerToken(4.2d);
+        definition.setCalibration(calibration);
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition));
 
         // act
@@ -89,6 +95,9 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getTopNSigma(), is(equalTo(1.3f)));
         assertThat(config.getRepeatPenalty(), is(equalTo(1.15f)));
         assertThat(config.getStopStrings(), is(equalTo(Arrays.asList("</s>", "STOP"))));
+        // The calibration is propagated — kills the void-call mutant that would drop the
+        // setCalibration(...) copy from toConfig().
+        assertThat(config.getCalibration(), is(sameInstance(calibration)));
         // Non-default cachePrompt propagates — kills the void-call mutant that would drop the
         // setCachePrompt(...) copy from toConfig().
         assertThat(config.isCachePrompt(), is(false));

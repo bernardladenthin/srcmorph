@@ -84,6 +84,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregateProjectMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
         </Or>
         <Bug pattern="SPP_FIELD_COULD_BE_STATIC"/>
     </Match>
@@ -116,6 +117,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
@@ -353,6 +355,29 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the <calibration> accessors of the Maven @Parameter config beans
+        (AiModelDefinition, AiGenerationConfig). Same rationale as the routing-config EI suppression above:
+        these are mutable JavaBeans the plugin framework populates via reflection; the AiCalibration the
+        getter returns / the setter stores IS the configuration, read once during the run and never shared
+        across threads. A defensive copy would deep-clone an immutable-after-injection value for no gain.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig"/>
+        </Or>
+        <Or>
+            <Method name="getCalibration"/>
+            <Method name="setCalibration"/>
+        </Or>
+        <Or>
+            <Bug pattern="EI_EXPOSE_REP"/>
+            <Bug pattern="EI_EXPOSE_REP2"/>
+        </Or>
+    </Match>
+
+
+    <!--
         EI_EXPOSE_REP / EI_EXPOSE_REP2 on the rule-routing config beans and the routing-plan model.
 
         AiCondition / AiConditionGroup / AiFieldGenerationConfig are mutable Maven @Parameter
@@ -460,6 +485,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
         </Or>
         <Or>
             <Bug pattern="CE_CLASS_ENVY"/>

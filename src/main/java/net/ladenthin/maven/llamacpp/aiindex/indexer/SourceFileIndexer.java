@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiCalibration;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiCondition;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
@@ -229,7 +230,8 @@ public class SourceFileIndexer {
                 final long availableSourceChars =
                         AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = compatibilityHelper.readString(file).length();
-                final long routeSeconds = estimateRouteSeconds(rule, fileSizeBytes, sourceChars, availableSourceChars);
+                final long routeSeconds =
+                        estimateRouteSeconds(rule, modelConfig, fileSizeBytes, sourceChars, availableSourceChars);
                 plan.addRoute(rule.getAiDefinitionKey(), file, rule, routeSeconds, sourceChars, availableSourceChars);
             } else {
                 final long estimatedSeconds =
@@ -248,6 +250,7 @@ public class SourceFileIndexer {
      * window pass, and {@code mapReduce} costs (chunks + reduce) window passes (capped by {@code maxChunks}).
      *
      * @param rule                 the routing rule
+     * @param modelConfig          the routed model's config (its {@code <calibration>} is used when present)
      * @param fileSizeBytes        the file size in bytes
      * @param sourceChars          the source length in characters
      * @param availableSourceChars the per-call source-character budget of the routed model+prompt
@@ -255,14 +258,14 @@ public class SourceFileIndexer {
      */
     private long estimateRouteSeconds(
             final AiFieldGenerationConfig rule,
+            final AiGenerationConfig modelConfig,
             final long fileSizeBytes,
             final long sourceChars,
             final long availableSourceChars) {
         if (sourceChars <= availableSourceChars) {
-            return timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
+            return estimateSeconds(fileSizeBytes, modelConfig);
         }
-        final long windowSeconds =
-                timeEstimator.estimateSeconds((int) Math.min(availableSourceChars, Integer.MAX_VALUE));
+        final long windowSeconds = estimateSeconds(availableSourceChars, modelConfig);
         final AiOversizeStrategy strategy = rule.getOversizeStrategy();
         if (strategy == AiOversizeStrategy.DETERMINISTIC) {
             return 0L;
@@ -274,6 +277,27 @@ public class SourceFileIndexer {
             return (chunks + 1) * windowSeconds;
         }
         return windowSeconds;
+    }
+
+    /**
+     * Estimates one generation's seconds for the given char count, using the model's {@code <calibration>}
+     * (measured per-machine throughput) when present and valid, otherwise the estimator's built-in model.
+     *
+     * @param chars       the character count to estimate for
+     * @param modelConfig the routed model's config (may carry a calibration)
+     * @return the estimated seconds
+     */
+    private long estimateSeconds(final long chars, final AiGenerationConfig modelConfig) {
+        final int cappedChars = (int) Math.min(chars, Integer.MAX_VALUE);
+        final AiCalibration calibration = modelConfig.getCalibration();
+        if (calibration == null) {
+            return timeEstimator.estimateSeconds(cappedChars);
+        }
+        return timeEstimator.estimateSecondsCalibrated(
+                cappedChars,
+                calibration.getPrefillTokensPerSecond(),
+                calibration.getDecodeTokensPerSecond(),
+                calibration.getCharsPerToken());
     }
 
     /**

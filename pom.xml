@@ -714,6 +714,7 @@ SPDX-License-Identifier: Apache-2.0
                 <configuration>
                     <targetClasses>
                         <!-- Classes verified at 100% PIT mutation parity. Expand as more reach it. -->
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCalibration</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCondition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig</param>
@@ -723,6 +724,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiCalibrationMeasurement</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult</param>
@@ -736,6 +738,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationTimings</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>

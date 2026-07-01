@@ -67,6 +67,9 @@ public class AiModelDefinition {
     private @Nullable List<String> drySequenceBreakers;
     private @Nullable List<String> stopStrings;
 
+    /** Optional per-machine timing calibration ({@code <calibration>}), measured by {@code ai-index:calibrate}. */
+    private @Nullable AiCalibration calibration;
+
     /**
      * Returns the unique lookup key for this definition.
      *
@@ -584,5 +587,23 @@ public class AiModelDefinition {
      */
     public void setStopStrings(final @Nullable Collection<String> stopStrings) {
         this.stopStrings = stopStrings != null ? new ArrayList<>(stopStrings) : null;
+    }
+
+    /**
+     * Returns the per-machine timing calibration, or {@code null} when not calibrated.
+     *
+     * @return the calibration, or {@code null}
+     */
+    public @Nullable AiCalibration getCalibration() {
+        return calibration;
+    }
+
+    /**
+     * Sets the per-machine timing calibration.
+     *
+     * @param calibration the calibration
+     */
+    public void setCalibration(final @Nullable AiCalibration calibration) {
+        this.calibration = calibration;
     }
 }

@@ -210,6 +210,8 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `AiFactExtractor` | Pure: counts each `<facts>` regex over the whole source → the exact "facts" block prepended to the body (+ fail-fast pattern validation) |
 | `AiFactDefinition` | Maven `@Parameter` POJO for a named, reusable `<factDefinitions>` group `{key, facts}` |
 | `AiFactDefinitionSupport` | Key-indexed lookup: resolves each rule's `<factsKey>` to its shared group's counters (copies onto the rule) |
+| `CalibrateMojo` / `AiCalibrationRunner` | `ai-index:calibrate` goal (thin orchestration) + the indexer-layer measurer (warmup + two sized generations, prefers the binding's reported throughput, else a wall-clock differential) → `AiCalibrationMeasurement` |
+| `AiCalibration` | `<calibration>` `@Parameter` POJO on `<aiDefinition>` (`prefillTokensPerSecond`/`decodeTokensPerSecond`/`charsPerToken`); makes `AiGenerationTimeEstimator` use measured per-machine rates instead of the built-in reference-CPU model |
 | `AiDeterministicSummary` | Pure model-free body builder for `deterministic` (size, line count, head/tail sample) |
 | `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
@@ -287,6 +289,7 @@ header block, so a `- F:` line in the body is never read as a link.
 | `ai-index:generate` | Phase 1: index source files and fill the AI-generated document body |
 | `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill the AI-generated document body |
 | `ai-index:aggregate-project` | Phase 3: harvest per-package leads into one `project.ai.md` (deterministic listing; optional one-call AI `#### Overview` when a `<fieldGeneration>` is configured) |
+| `ai-index:calibrate` | Preflight + per-machine timing (between `planOnly` and a real run): loads each routed model once (catches bad path / OOM / wrong native), measures prefill/decode throughput, and prints a paste-ready `<calibration>` block per `<aiDefinition>` |
 
 ### Key Parameters (`GenerateMojo`)
 

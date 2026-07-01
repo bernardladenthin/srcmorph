@@ -6,6 +6,7 @@ package net.ladenthin.maven.llamacpp.aiindex.config;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
@@ -28,6 +29,18 @@ public class AiModelDefinitionTest {
     @Test
     public void stopStringsNullByDefault() {
         assertThat(new AiModelDefinition().getStopStrings(), is(nullValue()));
+    }
+
+    @Test
+    public void calibrationNullByDefaultAndRoundTrips() {
+        final AiModelDefinition d = new AiModelDefinition();
+        assertThat(d.getCalibration(), is(nullValue()));
+        final AiCalibration calibration = new AiCalibration();
+        calibration.setPrefillTokensPerSecond(1000.0d);
+        d.setCalibration(calibration);
+        // Asserting the same instance kills the empty-return mutant on the getter and the
+        // assignment-removal mutant on the setter.
+        assertThat(d.getCalibration(), is(sameInstance(calibration)));
     }
 
     @Test

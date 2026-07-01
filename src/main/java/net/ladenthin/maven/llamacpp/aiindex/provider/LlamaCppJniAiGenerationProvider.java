@@ -128,6 +128,22 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
+        return completionParser.parseCompletion(model().chatCompleteText(buildInferenceParameters(request)));
+    }
+
+    // generateWithTimings is intentionally NOT overridden: the binding's stats-returning completion path
+    // does not do prompt-size-proportional work here (near-window runs match mid-window ones), so it
+    // yields no usable prefill/decode rates. The interface default returns the real generated text with
+    // zero rates; ai-index:calibrate then derives throughput from the wall-clock differential of two
+    // sized generations (see AiCalibrationRunner), which uses this same real chatCompleteText path.
+
+    /**
+     * Builds the immutable {@link InferenceParameters} for the given request from the resolved config.
+     *
+     * @param request the generation request
+     * @return the inference parameters
+     */
+    private InferenceParameters buildInferenceParameters(final AiGenerationRequest request) {
         // Static instructions go in the SYSTEM message (byte-identical across files, so its KV
         // prefix is reused by cache_prompt); the variable file name + source go in the USER message.
         final String systemPrompt = promptSupport.systemPrompt(request.promptKey());
@@ -166,13 +182,10 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
         // Only override the DRY sequence breakers when explicitly configured; an empty list keeps
         // the binding/model default set instead of clearing it.
-        final InferenceParameters inferenceParameters =
-                config.drySequenceBreakers().isEmpty()
-                        ? baseParameters
-                        : baseParameters.withDrySequenceBreakers(
-                                config.drySequenceBreakers().toArray(new String[0]));
-
-        return completionParser.parseCompletion(model().chatCompleteText(inferenceParameters));
+        return config.drySequenceBreakers().isEmpty()
+                ? baseParameters
+                : baseParameters.withDrySequenceBreakers(
+                        config.drySequenceBreakers().toArray(new String[0]));
     }
 
     @Override
