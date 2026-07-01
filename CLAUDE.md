@@ -152,8 +152,9 @@ token-dense chunk can't overflow the model context), or `deterministic` (model-f
 So oversized files are either routed to a larger-context model or handled by a strategy; only `fail`
 entries abort. A rule may also carry an orthogonal, language-agnostic **`<facts>`** list (`AiFactCounter`
 + `AiFactExtractor`): each `{label, pattern}` reports its regex match count over the **whole** source,
-prepended to the body on the oversize path — exact counts (SQL `INSERT` rows, Java `\bboolean\b` fields,
-…) the sampled AI prose cannot reliably produce. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+prepended to the body of **every** file the rule matches (oversize or not) — exact structural counts
+(SQL `INSERT` rows / tables / views, Java type declarations / `\bboolean\b` fields, …) that give
+downstream agents authoritative numbers the (possibly sampled) AI prose cannot reliably produce. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
 different file kinds/sizes with different models *and* prompts.
 

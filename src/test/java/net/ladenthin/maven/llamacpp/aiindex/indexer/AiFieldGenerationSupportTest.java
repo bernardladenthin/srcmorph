@@ -318,9 +318,25 @@ public class AiFieldGenerationSupportTest {
     }
 
     private AiFieldGenerationSupport supportWith(final AiGenerationProvider provider, final String modelKey) {
+        return supportWithModels(provider, tinyWindowModel(modelKey));
+    }
+
+    private AiFieldGenerationSupport supportWithModels(
+            final AiGenerationProvider provider, final AiModelDefinitionSupport models) {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         return new AiFieldGenerationSupport(
-                capturingLog, provider, new AiPromptPreparationSupport(promptSupport), tinyWindowModel(modelKey));
+                capturingLog, provider, new AiPromptPreparationSupport(promptSupport), models);
+    }
+
+    /** A model with a normal window, so a small source fits and is NOT treated as over-window. */
+    private static AiModelDefinitionSupport normalWindowModel(final String key) {
+        final AiModelDefinition def = new AiModelDefinition();
+        def.setKey(key);
+        def.setModelPath("unused.gguf");
+        def.setContextSize(2048);
+        def.setCharsPerToken(4);
+        def.setMaxOutputTokens(64);
+        return new AiModelDefinitionSupport(Arrays.asList(def));
     }
 
     private static AiFieldGenerationConfig oversizeRule(
@@ -404,6 +420,30 @@ public class AiFieldGenerationSupportTest {
         assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("lines: 600"));
         assertThat(result.body(), containsString("PARTIAL"));
+    }
+
+    @Test
+    public void facts_prependedOnNonOversizeFile() throws Exception {
+        // A small source that fits the window (NOT oversize) still gets the exact facts block prepended,
+        // so downstream agents get authoritative counts in every summary, not just huge-file ones.
+        final Path contextFile = Files.createTempFile("Small", ".java");
+        final AiGenerationProvider provider = request -> "AI SUMMARY";
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
+        rule.setAiDefinitionKey("m");
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("boolean fields");
+        counter.setPattern("\\bboolean\\b");
+        rule.setFacts(Collections.singletonList(counter));
+
+        final AiGenerationResult result = support.processFieldGenerations(
+                Collections.singletonList(rule), contextFile, "file", "boolean a; boolean b; int c;", anyHeader());
+
+        assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
+        assertThat(result.body(), containsString("boolean fields: 2"));
+        assertThat(result.body(), containsString("AI SUMMARY"));
     }
 
     @Test

@@ -2099,6 +2099,13 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                                  data: sample (head only, one call) or deterministic (no model, instant). -->
                                             <onOversize>mapReduce</onOversize>
                                             <maxChunks>6</maxChunks>
+                                            <!-- Exact whole-file structural counts (see java rule below for the rationale). -->
+                                            <facts>
+                                                <fact><label>type declarations</label><pattern>(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w</pattern></fact>
+                                                <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
+                                                <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
+                                                <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
+                                            </facts>
                                             <condition>
                                                 <and>
                                                     <conditions>
@@ -2126,9 +2133,11 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                                  so the same mechanism counts INSERT rows here or `\bboolean\b` fields
                                                  in Java. Multi-line matching is opt-in via the inline (?m) flag. -->
                                             <facts>
-                                                <fact><label>INSERT rows</label><pattern>(?m)^\s*INSERT\b</pattern></fact>
-                                                <fact><label>CREATE TABLE</label><pattern>(?m)^\s*CREATE TABLE\b</pattern></fact>
-                                                <fact><label>CREATE VIEW</label><pattern>(?m)^\s*CREATE VIEW\b</pattern></fact>
+                                                <fact><label>INSERT rows</label><pattern>(?im)^\s*INSERT\s+INTO\b</pattern></fact>
+                                                <fact><label>tables</label><pattern>(?im)^\s*CREATE\s+TABLE\b</pattern></fact>
+                                                <fact><label>views</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b</pattern></fact>
+                                                <fact><label>indexes</label><pattern>(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b</pattern></fact>
+                                                <fact><label>functions/procedures</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b</pattern></fact>
                                             </facts>
                                             <condition>
                                                 <and>
@@ -2187,6 +2196,17 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <id>java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <!-- Exact, whole-file structural counts prepended to EVERY Java summary (not just
+                                                 oversize files), giving downstream agents authoritative numbers the prose need
+                                                 not restate. Language-agnostic: the meaning is entirely in each regex. Keep the
+                                                 patterns robust (line-anchored / unambiguous keywords) - a fact that miscounts
+                                                 is worse than no fact. All four here are stable across Java styles. -->
+                                            <facts>
+                                                <fact><label>type declarations</label><pattern>(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w</pattern></fact>
+                                                <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
+                                                <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
+                                                <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
+                                            </facts>
                                             <condition>
                                                 <extensions><extension>.java</extension></extensions>
                                             </condition>
@@ -2195,6 +2215,13 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <id>sql</id>
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <facts>
+                                                <fact><label>INSERT rows</label><pattern>(?im)^\s*INSERT\s+INTO\b</pattern></fact>
+                                                <fact><label>tables</label><pattern>(?im)^\s*CREATE\s+TABLE\b</pattern></fact>
+                                                <fact><label>views</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b</pattern></fact>
+                                                <fact><label>indexes</label><pattern>(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b</pattern></fact>
+                                                <fact><label>functions/procedures</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b</pattern></fact>
+                                            </facts>
                                             <condition>
                                                 <extensions><extension>.sql</extension></extensions>
                                             </condition>

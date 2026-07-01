@@ -92,11 +92,12 @@ public class AiFieldGenerationConfig {
     private int maxChunks;
 
     /**
-     * Optional deterministic "fact" counters ({@code <facts>}). When set and the file takes an oversize
-     * path (sample/mapReduce/deterministic), each counter's {@code label: <match count over the whole
-     * file>} is prepended to the generated body — exact, language-agnostic counts (e.g. SQL {@code INSERT}
-     * rows, Java {@code boolean} fields) the sampled AI summary cannot reliably produce. {@code null}/empty
-     * = no facts block. See {@link AiFactExtractor}.
+     * Optional deterministic "fact" counters ({@code <facts>}). When set, each counter's
+     * {@code label: <match count over the whole file>} is prepended to the generated body of <em>every</em>
+     * file this rule matches (oversize or not) — exact, language-agnostic structural counts (e.g. SQL
+     * {@code INSERT} rows / tables / views, Java types / {@code boolean} fields) that give downstream
+     * agents authoritative numbers a sampled AI summary cannot reliably produce. {@code null}/empty = no
+     * facts block. See {@link AiFactExtractor}.
      */
     private @Nullable List<AiFactCounter> facts;
 

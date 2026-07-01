@@ -248,18 +248,18 @@ public class AiFieldGenerationSupport {
             final AiPreparedPrompt preparedPrompt =
                     promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
-            // Deterministic, whole-file "facts" (exact counts the sampled AI body cannot produce) are
-            // prepended to the body on the oversize path; computed once here over the FULL source.
-            String factsPrefix = "";
+            // Deterministic, whole-file "facts" (exact regex counts) are prepended to the body of EVERY
+            // file that configures <facts> - not just oversize ones - so downstream agents get exact
+            // structural counts in the summary. Computed once here over the FULL source ("" when unset).
+            final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
 
             // An oversized file (the source did not fit the window) is handled per the rule's onOversize
             // strategy. DETERMINISTIC/MAP_REDUCE replace the single generation entirely; FAIL/SAMPLE fall
             // through to the single-shot path below (the source was already trimmed to the window head).
             if (preparedPrompt.trimmed()) {
-                final String factsBlock = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
                 final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
                 if (oversize == AiOversizeStrategy.DETERMINISTIC) {
-                    body = factsBlock
+                    body = factsPrefix
                             + AiDeterministicSummary.body(
                                     sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
                     log.info("Oversize " + contextType + " '" + contextFile + "' -> deterministic body (no model), "
@@ -267,12 +267,11 @@ public class AiFieldGenerationSupport {
                     continue;
                 }
                 if (oversize == AiOversizeStrategy.MAP_REDUCE) {
-                    body = factsBlock
+                    body = factsPrefix
                             + mapReduceSummarize(
                                     fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
                     continue;
                 }
-                factsPrefix = factsBlock;
             }
 
             if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {

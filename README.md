@@ -230,12 +230,14 @@ The plugin is configured from three building blocks, declared on the plugin insi
    Quality from a real model is best within Granite's validated 128K (~500 KB) and degrades gradually
    beyond it — a whole-file (or chunked) summary still beats a trimmed one.
 
-   **Exact counts with `<facts>` (optional, any strategy).** A sampled/chunked AI summary can't reliably
-   *count* things (no single call sees the whole file — it will guess "25 rows"). Add a `<facts>` list to
-   the rule and each `{label, pattern}` reports its regex match count over the **whole** source, prepended
-   to the body as an exact facts line. It's fully generic — the meaning is in the regex, so the same
-   mechanism counts SQL `INSERT` rows or Java `\bboolean\b` fields; multi-line matching is opt-in via the
-   inline `(?m)` flag. Example output: `**Facts (exact, whole file):** INSERT rows: 36738; tables: 122; views: 4`.
+   **Exact counts with `<facts>` (optional, every file — not just oversize).** A sampled/chunked AI
+   summary can't reliably *count* things (no single call sees the whole file — it will guess "25 rows").
+   Add a `<facts>` list to a rule and each `{label, pattern}` reports its regex match count over the
+   **whole** source, prepended to the body of every file the rule matches as an exact facts line — so
+   downstream agents get authoritative structural counts in every summary. It's fully generic — the
+   meaning is in the regex, so the same mechanism counts SQL `INSERT` rows or Java `\bboolean\b` fields;
+   multi-line matching is opt-in via the inline `(?m)` flag. Keep patterns robust (a fact that miscounts
+   is worse than none). Example: `**Facts (exact, whole file):** INSERT rows: 36738; tables: 122; views: 4`.
 
 ```xml
 <plugin>
