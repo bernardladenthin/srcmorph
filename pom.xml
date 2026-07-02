@@ -1325,7 +1325,7 @@ SPDX-License-Identifier: Apache-2.0
                                 <!-- ============================================================
                                      gpt-oss-20B - three ready-to-use presets, tiered by the LARGEST
                                      source file you need to cover. All use reasoningEffort=low: the
-                                     benchmark (docs/ai-index-benchmark/COMPARISON.md §11) shows low is
+                                     benchmark (docs/ai-index-benchmark/COMPARISON.md section 11) shows low is
                                      best for dense code summaries - fastest, and the whole output
                                      budget goes to the summary instead of in-band reasoning. Raise the
                                      effort only for genuinely reasoning-heavy generation AND raise
@@ -1335,7 +1335,7 @@ SPDX-License-Identifier: Apache-2.0
                                      (set via the ai.model property; the c16k/c48k/c96k presets are the
                                      same model family at narrower windows.)
                                      Why the widest practical window is the default: a measured A/B
-                                     (§11) proved that a larger contextSize costs ONLY KV RAM, NOT
+                                     (section 11) proved that a larger contextSize costs ONLY KV RAM, NOT
                                      per-file time - for the same small file, 16K vs 96K had identical
                                      prefill/decode/wall time; only RAM grew (~+400 MiB per +16K). So
                                      defaulting to 96K means one preset covers EVERY file up to ~250 KB
