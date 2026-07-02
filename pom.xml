@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <groupId>net.ladenthin</groupId>
     <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <name>llamacpp-ai-index-maven-plugin</name>
