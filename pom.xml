@@ -700,7 +700,7 @@ SPDX-License-Identifier: Apache-2.0
                   see ../workspace/policies/pit-mutation-testing.md.
                   Repo-specific: targetTests is the whole aiindex tree (any unit test may
                   kill a mutant); all gated classes are covered by pure-Java tests
-                  (MockAiGenerationProvider — no GGUF model needed).
+                  (MockAiGenerationProvider - no GGUF model needed).
                 -->
                 <groupId>org.pitest</groupId>
                 <artifactId>pitest-maven</artifactId>
@@ -863,7 +863,7 @@ SPDX-License-Identifier: Apache-2.0
                             <aiDefinitions>
                                 <!--
                                   ============================================================
-                                   MODEL SELECTION GUIDE — pros / cons / when to pick each
+                                   MODEL SELECTION GUIDE - pros / cons / when to pick each
                                   ============================================================
                                   This plugin runs local GGUF models, typically CPU-only, to
                                   summarize source files (Phase 1) and packages (Phase 2). The
@@ -899,7 +899,7 @@ SPDX-License-Identifier: Apache-2.0
                                     + Purpose-built code model (FIM-aware), excellent at code structure.
                                     - 22B DENSE = heavy/slow on CPU; Q6_K variant is higher fidelity but
                                       even slower and larger (pick Q4_K for speed, Q6_K only if quality
-                                      gaps show). Non-commercial license (MNPL) — check before shipping.
+                                      gaps show). Non-commercial license (MNPL) - check before shipping.
                                     Use when: code quality matters more than speed and you have RAM.
 
                                   Qwen2.5-Coder-7B-Instruct-Q5_K_M-C16k
@@ -937,7 +937,7 @@ SPDX-License-Identifier: Apache-2.0
                                     + MoE 30B total / ~3.3B active: code-specialized AND fast on CPU; fewer
                                       active params than Gemma-4-26B-A4B; non-thinking; Apache-2.0.
                                     + Locally present (X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf,
-                                      17.7 GB); 64K context — generous but CPU-feasible (256K prefill is unusable on CPU).
+                                      17.7 GB); 64K context - generous but CPU-feasible (256K prefill is unusable on CPU).
                                     - Needs Qwen sampling (temp 0.7 / top_p 0.8 / top_k 20 / repeat 1.05).
                                     Use when: this is the go-to for most code summarization on CPU.
 
@@ -1098,7 +1098,7 @@ SPDX-License-Identifier: Apache-2.0
                                 <!-- gemma-4-26B-A4B-it-UD-Q4_K_M (32 K context)
                                      26B total / ~4B active parameters (MoE: 128 experts, 8+1 active per token).
                                      Runs at the computational cost of a ~4B dense model; quality near 27B dense.
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF -->
                                 <aiDefinition>
@@ -1120,7 +1120,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <!-- gemma-4-12B-it-Q4_K_M (32 K context)
                                      12B dense instruction-tuned model from Google DeepMind.
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/bartowski/gemma-4-12B-it-GGUF -->
                                 <aiDefinition>
@@ -1142,7 +1142,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <!-- Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q4_K_M (32 K context)
                                      ~4B effective parameters (MoE); uncensored derivative of gemma-4-E4B-it.
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive -->
                                 <aiDefinition>
@@ -1166,7 +1166,7 @@ SPDX-License-Identifier: Apache-2.0
                                      Same model as Q4_K_M above; Q6_K_P is a custom lossless quantization by HauhauCS
                                      that preserves quality where it matters most (effectively 1-2 quant levels higher
                                      at only 5-15 % larger file size).
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive -->
                                 <aiDefinition>
@@ -1186,7 +1186,7 @@ SPDX-License-Identifier: Apache-2.0
                                         <stopString>&lt;end_of_turn&gt;</stopString>
                                     </stopStrings>
                                 </aiDefinition>
-                                <!-- Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL (64 K context) — the
+                                <!-- Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL (64 K context) - the
                                      locally-present file and the active model for BOTH AI phases
                                      (file-body + package-body). MoE 30B total / ~3.3B active,
                                      non-thinking (emits no <think> blocks, so no enable_thinking flag
@@ -1196,7 +1196,7 @@ SPDX-License-Identifier: Apache-2.0
                                      Official Qwen3-Coder sampling (model card): temperature 0.7,
                                      top_p 0.8, top_k 20, repetition_penalty 1.05.
                                      Context: native window is 262144; 64 K is a deliberate, generous
-                                     yet CPU-feasible cap — 256 K prefill is unusable on CPU.
+                                     yet CPU-feasible cap - 256 K prefill is unusable on CPU.
                                      maxOutputTokens is deliberately 1536 (NOT the model card's generic
                                      65536): the purpose here is short, dense bullet-point summaries,
                                      not long code generations, so a tight output cap keeps each
@@ -1240,7 +1240,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Qwen3-4B-Instruct-2507-Q5_K_M (32 K context)
-                                     Dense 4B, Apache-2.0, NON-thinking instruct variant (no &lt;think&gt; blocks) —
+                                     Dense 4B, Apache-2.0, NON-thinking instruct variant (no &lt;think&gt; blocks) -
                                      the fast/low-RAM tier for short structured summaries on a laptop.
                                      Single-file GGUF (2.89 GB). Download:
                                      https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q5_K_M.gguf -->
@@ -1323,10 +1323,10 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                                 <!-- ============================================================
-                                     gpt-oss-20B — three ready-to-use presets, tiered by the LARGEST
+                                     gpt-oss-20B - three ready-to-use presets, tiered by the LARGEST
                                      source file you need to cover. All use reasoningEffort=low: the
                                      benchmark (docs/ai-index-benchmark/COMPARISON.md §11) shows low is
-                                     best for dense code summaries — fastest, and the whole output
+                                     best for dense code summaries - fastest, and the whole output
                                      budget goes to the summary instead of in-band reasoning. Raise the
                                      effort only for genuinely reasoning-heavy generation AND raise
                                      maxOutputTokens with it, or the final answer is truncated.
@@ -1336,7 +1336,7 @@ SPDX-License-Identifier: Apache-2.0
                                      same model family at narrower windows.)
                                      Why the widest practical window is the default: a measured A/B
                                      (§11) proved that a larger contextSize costs ONLY KV RAM, NOT
-                                     per-file time — for the same small file, 16K vs 96K had identical
+                                     per-file time - for the same small file, 16K vs 96K had identical
                                      prefill/decode/wall time; only RAM grew (~+400 MiB per +16K). So
                                      defaulting to 96K means one preset covers EVERY file up to ~250 KB
                                      with no trimming and no truncation, while small files stay just as
@@ -1367,7 +1367,7 @@ SPDX-License-Identifier: Apache-2.0
                                      Hard ceiling: the 128K window caps input at ~480-500 KB of code, but
                                      CPU prefill+decode time and KV RAM make ~250 KB the practical limit.
                                      Prefill is the dominant cost on big files (O(n^2)), not the effort
-                                     level — see the estimate the plugin logs per file.
+                                     level - see the estimate the plugin logs per file.
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>gpt-oss-20B-c16k</key>
@@ -1644,7 +1644,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                                 <!-- ============================================================
-                                     EXPERIMENT MODELS — batch 2 (claude2026_06_26_00)
+                                     EXPERIMENT MODELS - batch 2 (claude2026_06_26_00)
                                      New shortlist candidates, all context 16384. Recommended
                                      sampling per each model card.
                                      ============================================================ -->
@@ -1713,7 +1713,7 @@ SPDX-License-Identifier: Apache-2.0
 You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index. Prioritize core logic, types, and data flow. Avoid filler words. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
@@ -1765,7 +1765,7 @@ line, then a blank line, then the source. Index only what is literally present t
 You are a SQL schema indexer. Produce a dense, structured markdown summary of ONE SQL source file (DDL/DML: tables, views, procedures, functions, triggers) for a searchable code index. Prioritize the schema shape, the tables read vs written, columns, and relationships. Avoid filler words. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what data it models or what operation it performs), not how it is named:
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what data it models or what operation it performs), not how it is named:
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
@@ -1813,7 +1813,7 @@ line, then a blank line, then the source. Index only what is literally present t
 You are a multi-language code indexer. Produce a dense, structured markdown summary of ONE source file (Java, C/C++, OpenCL, SQL, or similar) for a searchable code index. Prioritize core logic and data flow. Avoid filler words. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
@@ -1858,10 +1858,10 @@ line, then a blank line, then the source. Index only what is literally present t
                                 <promptDefinition>
                                     <key>package-body</key>
                                     <template><![CDATA[
-You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group — do not just concatenate the file summaries. Avoid filler. Write in English.
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group - do not just concatenate the file summaries. Avoid filler. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this package does as a whole in DOMAIN terms: the business/functional responsibility a developer would search for, not how it is named or layered:
+Begin with a single blockquote line - one sentence capturing what this package does as a whole in DOMAIN terms: the business/functional responsibility a developer would search for, not how it is named or layered:
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any that do not apply. Use '####' for labels. Never '###' or higher.
@@ -1905,7 +1905,7 @@ You are writing a short overview for the very top of a project's code index. You
 per-package one-line leads (already generated, one sentence per package). Synthesize them: name the main
 subsystems and how they fit together, in 2 to 4 sentences. Use domain terms a developer would search for.
 No headings, no bullet lists, no code fences, no XML tags, no formatter comments. Write in English. Base
-every statement only on the provided leads — never invent packages or behavior not present in them.
+every statement only on the provided leads - never invent packages or behavior not present in them.
 
 The index file path and the per-package one-line leads are provided in the next (user) message:
 the path on the first line, then a blank line, then the leads to synthesize.
@@ -1923,10 +1923,10 @@ the path on the first line, then a blank line, then the leads to synthesize.
 You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index read by AI agents. Prioritize core logic, types, and data flow. Be terse. Write in English.
 
 ## Output
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms (the searchable business/functional purpose, not class mechanics):
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms (the searchable business/functional purpose, not class mechanics):
 > <one-sentence domain essence>
 
-Then output ONLY the sections below that carry real information. OMIT any section that would be empty, "none", or "not applicable" — do not emit a heading just to say nothing. Use '####' for section labels, never '###' or higher.
+Then output ONLY the sections below that carry real information. OMIT any section that would be empty, "none", or "not applicable" - do not emit a heading just to say nothing. Use '####' for section labels, never '###' or higher.
 
 TRIVIAL-FILE RULE: if the unit has no public behavior to describe (e.g. a marker/annotation, an enum that only lists constants, or a near-empty type), output ONLY the blockquote lead and a single '#### Purpose' line, and stop.
 
@@ -1946,7 +1946,7 @@ What comes out: return types, produced/mutated state, written resources, side ef
 The essential steps/algorithm/responsibility as bullets. The most important section.
 
 #### Public API
-Each public/protected member as `name(params) -> returnType` + a <=6-word purpose clause. EXCEPTION: for plain data/config classes that are only getters/setters (e.g. Lombok beans), DO NOT list each accessor — write one line: "JavaBean getters/setters for: <comma-separated field names>".
+Each public/protected member as `name(params) -> returnType` + a <=6-word purpose clause. EXCEPTION: for plain data/config classes that are only getters/setters (e.g. Lombok beans), DO NOT list each accessor - write one line: "JavaBean getters/setters for: <comma-separated field names>".
 
 #### Dependencies
 Referenced types as searchable names. EXCLUDE this file's own type and java.lang.* .
@@ -1955,7 +1955,7 @@ Referenced types as searchable names. EXCLUDE this file's own type and java.lang
 Notable thrown/caught exceptions, null-handling, error conditions.
 
 #### Concurrency
-Threading, immutability, or thread-safety notes — only if the source actually shows them.
+Threading, immutability, or thread-safety notes - only if the source actually shows them.
 
 ## Rules
 - Markdown bullets and short clauses, not prose paragraphs.
@@ -1974,13 +1974,13 @@ line, then a blank line, then the source. Index only what is literally present t
                                 <promptDefinition>
                                     <key>package-body-v2</key>
                                     <template><![CDATA[
-You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source). Produce one dense, structured markdown summary of the whole package for a searchable code index read by AI agents. Synthesize and group — do not concatenate. Be terse. Write in English.
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source). Produce one dense, structured markdown summary of the whole package for a searchable code index read by AI agents. Synthesize and group - do not concatenate. Be terse. Write in English.
 
 ## Output
-Begin with a single blockquote line — one sentence capturing what this package does as a whole in DOMAIN terms:
+Begin with a single blockquote line - one sentence capturing what this package does as a whole in DOMAIN terms:
 > <one-sentence domain essence>
 
-SINGLE-CHILD RULE: if the input describes only ONE child package/file and no other content, output ONLY the blockquote lead restating that child's responsibility, and stop — emit no sections.
+SINGLE-CHILD RULE: if the input describes only ONE child package/file and no other content, output ONLY the blockquote lead restating that child's responsibility, and stop - emit no sections.
 
 Otherwise output ONLY the sections below that carry real information. OMIT any that would be empty. Use '####' for labels, never '###' or higher.
 
@@ -2276,7 +2276,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                             </execution>
 
                             <!--
-                                Phase 3 — project index. Harvests the per-package lead already produced by
+                                Phase 3 - project index. Harvests the per-package lead already produced by
                                 aggregate-packages into a single project.ai.md. Bound to prepare-package so it
                                 runs after process-resources (aggregate-packages).
 
