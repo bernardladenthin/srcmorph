@@ -5,20 +5,26 @@ package net.ladenthin.maven.llamacpp.aiindex.indexer;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiCalibration;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiDeterministicSummary;
 import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
+import net.ladenthin.maven.llamacpp.aiindex.support.AiSourceChunker;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.logging.Log;
 
@@ -110,6 +116,64 @@ public class AiFieldGenerationSupport {
 
     /** Nanoseconds per second, used to convert the measured generation duration to whole seconds. */
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
+
+    /** Leading/trailing lines shown in a {@link AiOversizeStrategy#DETERMINISTIC} body. */
+    private static final int DETERMINISTIC_SAMPLE_LINES = 20;
+
+    /** Upper bound on the character overlap between map-reduce chunks. */
+    private static final int MAP_REDUCE_OVERLAP_CHARS = 2000;
+
+    /** Fraction (1/n) of the chunk size used as overlap when smaller than {@link #MAP_REDUCE_OVERLAP_CHARS}. */
+    private static final int MAP_REDUCE_OVERLAP_DIVISOR = 20;
+
+    /** Minimum per-chunk source budget, so a tiny window never yields zero-length chunks. */
+    private static final int MIN_CHUNK_CHARS = 1000;
+
+    /**
+     * Safety headroom (percent) subtracted from the map-reduce window before sizing chunks and reduce
+     * batches. {@code charsPerToken} is only an <em>estimate</em>; token-dense content (e.g. SQL with
+     * many digits/punctuation, ~2.8 chars/token) tokenizes to more tokens than a char budget computed
+     * from a higher {@code charsPerToken} assumes, which would otherwise let a chunk overflow the model's
+     * context window at run time (the native layer then rejects the request). Shrinking the map-reduce
+     * window by this margin keeps chunks safely inside the window even when real density is up to this
+     * percent below the configured {@code charsPerToken}.
+     */
+    private static final int MAP_REDUCE_TOKEN_HEADROOM_PERCENT = 20;
+
+    /**
+     * Maximum number of partial summaries combined into a single reduce call. Bounds the reduce prompt
+     * size and guarantees the hierarchical reduce makes progress (fan-in {@code >= 2}) so it terminates.
+     */
+    private static final int MAX_REDUCE_FANIN = 16;
+
+    /** Label prefix for one partial summary inside a reduce prompt. */
+    private static final String REDUCE_PART_LABEL = "Part ";
+
+    /** Approximate per-partial label + separator overhead when packing a reduce batch to the window. */
+    private static final int REDUCE_LABEL_OVERHEAD_CHARS = 16;
+
+    /** Percent divisor used when applying {@link #MAP_REDUCE_TOKEN_HEADROOM_PERCENT}. */
+    private static final int PERCENT = 100;
+
+    /**
+     * Maximum number of times a single generation is retried with a smaller window after the provider
+     * rejects the prompt for exceeding the model's context. The char-based window is an estimate; on
+     * token-dense content that estimate can undershoot even outside map-reduce (e.g. a dense file that
+     * just "fits", or a {@code sample} head), so this is the last-resort safety net for the single-shot
+     * path — it degrades gracefully (trims a little more) instead of failing the whole build.
+     */
+    private static final int MAX_OVERFLOW_RETRIES = 3;
+
+    /** Window multiplier (percent) applied on each context-overflow retry, shrinking the prompt. */
+    private static final int OVERFLOW_RETRY_BACKOFF_PERCENT = 75;
+
+    /**
+     * Substring identifying a context-overflow error in the provider's exception message chain
+     * (llama.cpp: "request (N tokens) exceeds the available context size (M tokens)…"). Matched on the
+     * message rather than a binding-specific exception type to keep the indexer decoupled from the JNI
+     * binding.
+     */
+    private static final String CONTEXT_OVERFLOW_MARKER = "exceeds the available context size";
 
     // Maven plugin Log — its default toString prints implementation details
     // (logger configuration, output stream state); excluded from the rendered output.
@@ -205,6 +269,32 @@ public class AiFieldGenerationSupport {
             final AiPreparedPrompt preparedPrompt =
                     promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
+            // Deterministic, whole-file "facts" (exact regex counts) are prepended to the body of EVERY
+            // file that configures <facts> - not just oversize ones - so downstream agents get exact
+            // structural counts in the summary. Computed once here over the FULL source ("" when unset).
+            final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
+
+            // An oversized file (the source did not fit the window) is handled per the rule's onOversize
+            // strategy. DETERMINISTIC/MAP_REDUCE replace the single generation entirely; FAIL/SAMPLE fall
+            // through to the single-shot path below (the source was already trimmed to the window head).
+            if (preparedPrompt.trimmed()) {
+                final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
+                if (oversize == AiOversizeStrategy.DETERMINISTIC) {
+                    body = factsPrefix
+                            + AiDeterministicSummary.body(
+                                    sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
+                    log.info("Oversize " + contextType + " '" + contextFile + "' -> deterministic body (no model), "
+                            + sourceText.length() + " chars");
+                    continue;
+                }
+                if (oversize == AiOversizeStrategy.MAP_REDUCE) {
+                    body = factsPrefix
+                            + mapReduceSummarize(
+                                    fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
+                    continue;
+                }
+            }
+
             if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
                 log.warn("Trimmed AI input for " + contextType + TRIM_WARN_FIELD_LABEL + "body': " + contextFile
                         + " (source chars " + preparedPrompt.originalSourceLength()
@@ -213,14 +303,13 @@ public class AiFieldGenerationSupport {
                         + ", max input chars " + effectiveMaxInputChars + ")");
             }
 
-            final AiGenerationRequest generationRequest = new AiGenerationRequest(
-                    fieldGeneration.getPromptKey(), contextFile, preparedPrompt.sourceText(), baseHeader);
-
             final int processedSourceChars = preparedPrompt.sourceText().length();
             final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
                     ? SIZE_BELOW_ONE_KIB_LABEL
                     : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
-            final long estimatedSeconds = timeEstimator.estimateSeconds(processedSourceChars);
+            // Use the model's measured <calibration> when present, so the live per-file ETA matches the
+            // (already calibrated) plan ETA instead of the built-in reference-CPU model.
+            final long estimatedSeconds = estimateSeconds(processedSourceChars, generationConfig);
             log.info(PROCESSING_LOG_PREFIX + contextType + " '" + contextFile + "'"
                     + PROCESSING_LOG_SIZE_INFIX + sourceSizeKb
                     + PROCESSING_LOG_TOKENS_INFIX + timeEstimator.estimatePromptTokens(processedSourceChars)
@@ -232,8 +321,10 @@ public class AiFieldGenerationSupport {
                     + generationConfig.getTemperature() + ", maxInputChars="
                     + effectiveMaxInputChars);
             final long generationStartNanos = System.nanoTime();
-            body = generationProvider.generate(generationRequest);
+            final String generated = generateWithOverflowRetry(
+                    fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader, effectiveMaxInputChars);
             final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
+            body = factsPrefix + generated;
 
             // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
             // comparable across models/quants without a separate benchmark harness.
@@ -241,13 +332,250 @@ public class AiFieldGenerationSupport {
                     + timeEstimator.formatDuration(actualSeconds) + GENERATED_LOG_ACTUAL_INFIX
                     + timeEstimator.formatDuration(estimatedSeconds) + GENERATED_LOG_SUFFIX);
 
-            if (compatibilityHelper.isBlank(body)) {
+            if (compatibilityHelper.isBlank(generated)) {
                 log.warn(EMPTY_OUTPUT_WARN_PREFIX + contextType + TRIM_WARN_FIELD_LABEL + fieldGeneration.getPromptKey()
                         + "': " + contextFile);
             }
         }
 
         return new AiGenerationResult(body);
+    }
+
+    /**
+     * Summarizes an oversized source via map-reduce: split it into window-sized chunks at line boundaries
+     * (with overlap), summarize each chunk with the rule's prompt (the <em>map</em>), then combine the
+     * partial summaries via a {@link #reducePartials hierarchical reduce}. The {@code maxChunks} cap (when
+     * set) bounds the run time by sampling representative chunks across the file; {@code maxChunks <= 0}
+     * processes every chunk (the whole file).
+     *
+     * <p>The chunk window is shrunk by {@link #MAP_REDUCE_TOKEN_HEADROOM_PERCENT} so a token-dense chunk
+     * cannot overflow the model's context (see that constant's Javadoc).</p>
+     *
+     * @param fieldGeneration        the routing rule (prompt key + {@code maxChunks})
+     * @param contextFile            the source file path
+     * @param sourceText             the full source text
+     * @param baseHeader             the header passed through to each request
+     * @param effectiveMaxInputChars the per-call window budget
+     * @return the combined summary body
+     * @throws IOException if the provider throws during generation
+     */
+    private String mapReduceSummarize(
+            final AiFieldGenerationConfig fieldGeneration,
+            final Path contextFile,
+            final String sourceText,
+            final AiMdHeader baseHeader,
+            final int effectiveMaxInputChars)
+            throws IOException {
+        final int basePromptLength =
+                promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
+        // Reserve token-safety headroom: real chars/token can be below the configured charsPerToken for
+        // dense content, so size chunks (and every map/reduce prompt) against a shrunken window.
+        final int safeWindow =
+                effectiveMaxInputChars - (effectiveMaxInputChars * MAP_REDUCE_TOKEN_HEADROOM_PERCENT / PERCENT);
+        final int sourceBudget = Math.max(MIN_CHUNK_CHARS, safeWindow - basePromptLength);
+        final int overlap = Math.min(MAP_REDUCE_OVERLAP_CHARS, sourceBudget / MAP_REDUCE_OVERLAP_DIVISOR);
+        final List<String> chunks =
+                AiSourceChunker.chunk(sourceText, sourceBudget, overlap, fieldGeneration.getMaxChunks());
+        log.info("Oversize file '" + contextFile + "' -> mapReduce: " + sourceText.length() + " chars in "
+                + chunks.size() + " chunk(s)");
+        final List<String> partials = new ArrayList<>(chunks.size());
+        int index = 0;
+        for (final String chunk : chunks) {
+            index++;
+            partials.add(summarizeChunk(fieldGeneration.getPromptKey(), contextFile, chunk, baseHeader, safeWindow)
+                    .trim());
+            log.info("  mapReduce chunk " + index + "/" + chunks.size() + " summarized (" + chunk.length() + " chars)");
+        }
+        return reducePartials(
+                fieldGeneration.getPromptKey(), contextFile, baseHeader, partials, sourceBudget, safeWindow);
+    }
+
+    /**
+     * Combines per-chunk partial summaries into one body via a <strong>hierarchical</strong> reduce:
+     * partials are packed into batches that fit the window (each batch at most {@link #MAX_REDUCE_FANIN}
+     * partials), every batch is summarized, and the process repeats on the batch summaries until a single
+     * summary remains. This avoids the single-reduce trap where hundreds of partials overflow one call
+     * and the file's tail is silently trimmed away, so {@code maxChunks <= 0} (whole-file) coverage
+     * actually reaches the final summary.
+     *
+     * @param promptKey   the prompt template key (shared by map and reduce)
+     * @param contextFile the source file path
+     * @param baseHeader  the header passed through to each request
+     * @param partials    the per-chunk partial summaries (already trimmed); may be empty
+     * @param sourceBudget the source-character budget used to pack a reduce batch
+     * @param safeWindow  the per-call window budget passed to each reduce generation
+     * @return the single combined summary, or an empty string when there are no partials
+     * @throws IOException if the provider throws during generation
+     */
+    private String reducePartials(
+            final String promptKey,
+            final Path contextFile,
+            final AiMdHeader baseHeader,
+            final List<String> partials,
+            final int sourceBudget,
+            final int safeWindow)
+            throws IOException {
+        if (partials.isEmpty()) {
+            return "";
+        }
+        List<String> level = partials;
+        int round = 0;
+        while (level.size() > 1) {
+            round++;
+            final List<String> next = new ArrayList<>(level.size());
+            int i = 0;
+            while (i < level.size()) {
+                final StringBuilder batch = new StringBuilder();
+                int inBatch = 0;
+                while (inBatch < MAX_REDUCE_FANIN
+                        && i < level.size()
+                        && (inBatch == 0
+                                || batch.length() + level.get(i).length() + REDUCE_LABEL_OVERHEAD_CHARS
+                                        <= sourceBudget)) {
+                    batch.append(REDUCE_PART_LABEL)
+                            .append(inBatch + 1)
+                            .append(":\n")
+                            .append(level.get(i))
+                            .append("\n\n");
+                    inBatch++;
+                    i++;
+                }
+                next.add(summarizeChunk(promptKey, contextFile, batch.toString(), baseHeader, safeWindow)
+                        .trim());
+            }
+            log.info("  mapReduce reduce round " + round + ": " + level.size() + " -> " + next.size() + " partial(s)");
+            if (next.size() >= level.size()) {
+                // Pathological: partials too large to combine two-at-a-time. Collapse to one trimmed reduce
+                // so the method always terminates rather than looping without shrinking.
+                final StringBuilder all = new StringBuilder();
+                int n = 0;
+                for (final String partial : level) {
+                    all.append(REDUCE_PART_LABEL)
+                            .append(++n)
+                            .append(":\n")
+                            .append(partial)
+                            .append("\n\n");
+                }
+                return summarizeChunk(promptKey, contextFile, all.toString(), baseHeader, safeWindow)
+                        .trim();
+            }
+            level = next;
+        }
+        return level.get(0);
+    }
+
+    /**
+     * Prepares the prompt for one chunk (trimming to the window) and returns the provider's summary.
+     *
+     * @param promptKey              the prompt template key
+     * @param contextFile            the source file path
+     * @param chunk                  the chunk (or concatenated partials) to summarize
+     * @param baseHeader             the header passed through to the request
+     * @param effectiveMaxInputChars the per-call window budget
+     * @return the provider's summary for the chunk
+     * @throws IOException if the provider throws during generation
+     */
+    private String summarizeChunk(
+            final String promptKey,
+            final Path contextFile,
+            final String chunk,
+            final AiMdHeader baseHeader,
+            final int effectiveMaxInputChars)
+            throws IOException {
+        return generateWithOverflowRetry(promptKey, contextFile, chunk, baseHeader, effectiveMaxInputChars);
+    }
+
+    /**
+     * Trims {@code source} to {@code window} and generates, retrying with a progressively smaller window
+     * (up to {@link #MAX_OVERFLOW_RETRIES}) when the provider rejects the prompt for exceeding the model's
+     * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
+     * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
+     * exception propagates immediately.
+     *
+     * @param promptKey   the prompt template key
+     * @param contextFile the source file path
+     * @param source      the source text to trim and summarize
+     * @param baseHeader  the header passed through to the request
+     * @param window      the initial per-call window budget (characters)
+     * @return the provider's generated text
+     * @throws IOException if the provider throws an {@link IOException} during generation
+     */
+    private String generateWithOverflowRetry(
+            final String promptKey,
+            final Path contextFile,
+            final String source,
+            final AiMdHeader baseHeader,
+            final int window)
+            throws IOException {
+        int budget = window;
+        for (int attempt = 0; ; attempt++) {
+            final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
+                    new AiGenerationRequest(promptKey, contextFile, source, baseHeader), budget);
+            try {
+                return generationProvider.generate(
+                        new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
+            } catch (final RuntimeException e) {
+                final int reduced = Math.max(MIN_CHUNK_CHARS, budget * OVERFLOW_RETRY_BACKOFF_PERCENT / PERCENT);
+                // Rethrow (giving up) once the retries are exhausted, when the window is already at the
+                // floor (shrinking further would not help), or on a non-overflow error. The cheap
+                // comparisons are checked before the cause-chain walk of isContextOverflow(e).
+                if (attempt >= MAX_OVERFLOW_RETRIES || reduced >= budget || !isContextOverflow(e)) {
+                    throw e;
+                }
+                log.warn("AI provider rejected the prompt (context overflow) for " + contextFile
+                        + "; retrying with a smaller window (" + budget + " -> " + reduced + " chars)");
+                budget = reduced;
+            }
+        }
+    }
+
+    /**
+     * Returns whether {@code error} (or any cause in its chain) is a model context-overflow, matched on
+     * the provider's message ({@link #CONTEXT_OVERFLOW_MARKER}).
+     *
+     * @param error the thrown error
+     * @return {@code true} when the error indicates the prompt exceeded the context window
+     */
+    private static boolean isContextOverflow(final Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            final String message = cause.getMessage();
+            if (message != null && message.contains(CONTEXT_OVERFLOW_MARKER)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Estimates one generation's seconds for the given char count, using the model's {@code <calibration>}
+     * (measured per-machine throughput) when present, otherwise the estimator's built-in model. Mirrors
+     * {@code SourceFileIndexer}'s plan-time estimate so the live per-file ETA agrees with the plan.
+     *
+     * @param sourceChars the processed source character count
+     * @param config      the model's generation config (may carry a calibration)
+     * @return the estimated seconds
+     */
+    private long estimateSeconds(final int sourceChars, final AiGenerationConfig config) {
+        final AiCalibration calibration = config.getCalibration();
+        if (calibration == null) {
+            return timeEstimator.estimateSeconds(sourceChars);
+        }
+        return timeEstimator.estimateSecondsCalibrated(
+                sourceChars,
+                calibration.getPrefillTokensPerSecond(),
+                calibration.getDecodeTokensPerSecond(),
+                calibration.getCharsPerToken());
+    }
+
+    /**
+     * Returns a short display name for a context file (its file name, or the full path as a fallback).
+     *
+     * @param contextFile the file path
+     * @return the display name
+     */
+    private static String contextName(final Path contextFile) {
+        final Path fileName = contextFile.getFileName();
+        return fileName != null ? fileName.toString() : contextFile.toString();
     }
 
     /**

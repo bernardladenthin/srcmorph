@@ -129,6 +129,7 @@ public final class AiModelDefinitionSupport {
         config.setDryAllowedLength(definition.getDryAllowedLength());
         config.setDryPenaltyLastN(definition.getDryPenaltyLastN());
         config.setDrySequenceBreakers(definition.getDrySequenceBreakers());
+        config.setCalibration(definition.getCalibration());
         return config;
     }
 }

@@ -38,4 +38,17 @@ public class MockAiGenerationProviderTest {
         AiGenerationRequest request = new AiGenerationRequest("summary", root, "src", HEADER);
         assertThat(provider.generate(request), is("Mock summary for " + root));
     }
+
+    @Test
+    public void generateWithTimings_reportsDeterministicSyntheticTimings() throws IOException {
+        // 16 chars of source / 4 chars-per-token -> 4 mock prompt tokens; positive synthetic rates so a
+        // calibrate run works without a real model.
+        final AiGenerationRequest request =
+                new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123456789012345", HEADER);
+        final AiGenerationTimings timings = provider.generateWithTimings(request);
+        assertThat(timings.text(), is("Mock summary for Foo.java"));
+        assertThat(timings.promptTokens(), is(4));
+        assertThat(timings.prefillTokensPerSecond() > 0.0d, is(true));
+        assertThat(timings.decodeTokensPerSecond() > 0.0d, is(true));
+    }
 }

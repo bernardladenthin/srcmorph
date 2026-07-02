@@ -141,10 +141,25 @@ rest; a file matching no rule and no fallback **fails the build**. `aiIndex.plan
 Markdown plan (file → rule id → prompt → rough time estimate, summed per model and overall) and stops
 (no model loaded). The plan also computes each routed file's **context-window fit** up front (via
 `AiInputWindowCalculator`, the same threshold the run uses to trim): a file larger than its routed
-model's window is flagged in the plan and **always fails the build** (a hard abort). The resolution is
-**configuration only** — the plugin never auto-picks a model: the user must add a `<fieldGeneration>`
-rule with a size `<condition>` that routes oversized files to a model with a large enough context window
-(see the big-window fallback example in the POM). See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
+model's window is flagged in the plan and, **by default (`onOversize=fail`), fails the build** (a hard
+abort) — the plugin never auto-picks a model. The resolution is **configuration only**, via the rule's
+**`<onOversize>`** strategy (`AiOversizeStrategy`): `fail` (default), `sample` (trim to the window head,
+one call), `mapReduce` (chunk at line boundaries → summarize each → combine via a **hierarchical reduce**
+that batches partials to fit the window so whole-file `<maxChunks>=0` coverage isn't trimmed away;
+`<maxChunks>` bounds the time — `AiSourceChunker`; the chunk window carries a token-safety headroom so a
+token-dense chunk can't overflow the model context), or `deterministic` (model-free metadata+sample body
+— `AiDeterministicSummary`).
+So oversized files are either routed to a larger-context model or handled by a strategy; only `fail`
+entries abort. A rule may also carry an orthogonal, language-agnostic **`<facts>`** list (`AiFactCounter`
++ `AiFactExtractor`): each `{label, pattern}` reports its regex match count over the **whole** source,
+prepended to the body of **every** file the rule matches (oversize or not) — exact structural counts
+(SQL `INSERT` rows / tables / views, Java type declarations / `\bboolean\b` fields, …) that give
+downstream agents authoritative numbers the (possibly sampled) AI prose cannot reliably produce. A fact
+set can be defined once in a shared `<factDefinitions>` group and referenced from many rules by
+`<factsKey>` (`AiFactDefinition` + `AiFactDefinitionSupport`, resolved onto each rule before indexing),
+instead of repeating the `<facts>` block inline. Generation is also guarded by a **retry-on-overflow**:
+if the provider rejects a prompt as exceeding the context (the char-based trim under-counted tokens on
+dense content), the call is re-trimmed to a smaller window and retried rather than failing the build. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
 `AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
 different file kinds/sizes with different models *and* prompts.
 
@@ -189,6 +204,15 @@ the top of `execute()`. Covered by `MojoPhaseSkipTest`.
 | `AiCondition` / `AiConditionEvaluator` | Composable and/or/not condition tree (leaves: extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob) + its evaluator (`matches`/`validate`/`usesLines`) |
 | `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched, per-file context-window fit; renders the up-front tree |
 | `AiInputWindowCalculator` | Pure calculator for the input window (max source chars before trimming + whether a source exceeds it); single source of truth shared by the run-time trim (`AiFieldGenerationSupport`) and the plan-time over-window check (`SourceFileIndexer.classify`) |
+| `AiOversizeStrategy` | Enum of the per-rule `<onOversize>` strategies (`fail`/`sample`/`mapReduce`/`deterministic`) + case-insensitive parser; default `fail` |
+| `AiSourceChunker` | Pure line-boundary chunker for `mapReduce` (overlap + `maxChunks` representative sampling) |
+| `AiFactCounter` | Maven `@Parameter` POJO for one `<fact>` — a `{label, pattern}` deterministic counter |
+| `AiFactExtractor` | Pure: counts each `<facts>` regex over the whole source → the exact "facts" block prepended to the body (+ fail-fast pattern validation) |
+| `AiFactDefinition` | Maven `@Parameter` POJO for a named, reusable `<factDefinitions>` group `{key, facts}` |
+| `AiFactDefinitionSupport` | Key-indexed lookup: resolves each rule's `<factsKey>` to its shared group's counters (copies onto the rule) |
+| `CalibrateMojo` / `AiCalibrationRunner` | `ai-index:calibrate` goal (thin orchestration) + the indexer-layer measurer (warmup + two sized generations, prefers the binding's reported throughput, else a wall-clock differential) → `AiCalibrationMeasurement` |
+| `AiCalibration` | `<calibration>` `@Parameter` POJO on `<aiDefinition>` (`prefillTokensPerSecond`/`decodeTokensPerSecond`/`charsPerToken`); makes `AiGenerationTimeEstimator` use measured per-machine rates instead of the built-in reference-CPU model |
+| `AiDeterministicSummary` | Pure model-free body builder for `deterministic` (size, line count, head/tail sample) |
 | `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
 | `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
 | `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
@@ -265,6 +289,7 @@ header block, so a `- F:` line in the body is never read as a link.
 | `ai-index:generate` | Phase 1: index source files and fill the AI-generated document body |
 | `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill the AI-generated document body |
 | `ai-index:aggregate-project` | Phase 3: harvest per-package leads into one `project.ai.md` (deterministic listing; optional one-call AI `#### Overview` when a `<fieldGeneration>` is configured) |
+| `ai-index:calibrate` | Preflight + per-machine timing (between `planOnly` and a real run): loads each routed model once (catches bad path / OOM / wrong native), measures prefill/decode throughput, and prints a paste-ready `<calibration>` block per `<aiDefinition>` |
 
 ### Key Parameters (`GenerateMojo`)
 
@@ -355,7 +380,7 @@ Immutable value types are implemented as Java `record` types (e.g., `AiMdDocumen
 
 | Dependency | Version | Purpose |
 |---|---|---|
-| `net.ladenthin:llama` | 5.0.3 | llama.cpp JNI binding (GGUF inference); released on Maven Central, carries the prompt-cache/slot APIs + GPU classifier jars. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
+| `net.ladenthin:llama` | 5.0.4 | llama.cpp JNI binding (GGUF inference); released on Maven Central, carries the prompt-cache/slot APIs + GPU classifier jars. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
 | `org.apache.maven:maven-plugin-api` | 3.9.13 | Maven plugin API (provided) |
 | `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.1 | `@Mojo`, `@Parameter` annotations (provided) |
 

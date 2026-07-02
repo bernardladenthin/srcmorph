@@ -162,6 +162,20 @@ public class AiFieldGenerationSelectorTest {
     }
 
     @Test
+    public void validate_invalidOnOversize_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("nonsense");
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_validOnOversize_passes() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("mapReduce");
+        assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
     public void validate_routeMissingPromptKey_throws() {
         final AiFieldGenerationConfig bad = new AiFieldGenerationConfig();
         bad.setAiDefinitionKey(MODEL);
@@ -194,6 +208,26 @@ public class AiFieldGenerationSelectorTest {
         // a condition with no branch set is invalid -> selector.validate must propagate the error
         final AiFieldGenerationConfig bad = route("p", new AiCondition(), 0);
         assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(bad)));
+    }
+
+    @Test
+    public void validate_invalidFactPattern_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        final AiFactCounter bad = new AiFactCounter();
+        bad.setLabel("broken");
+        bad.setPattern("[");
+        r.setFacts(Collections.singletonList(bad));
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_validFactPattern_passes() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        final AiFactCounter ok = new AiFactCounter();
+        ok.setLabel("rows");
+        ok.setPattern("(?m)^INSERT");
+        r.setFacts(Collections.singletonList(ok));
+        assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
     }
     // </editor-fold>
 }

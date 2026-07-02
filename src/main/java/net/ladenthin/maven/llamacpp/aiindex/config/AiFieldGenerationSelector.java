@@ -79,6 +79,10 @@ public final class AiFieldGenerationSelector {
             if (config == null) {
                 continue;
             }
+            // Fail fast on an unknown onOversize token (throws IllegalArgumentException naming the value).
+            config.getOversizeStrategy();
+            // Fail fast on a malformed <facts> counter (missing label/pattern or an invalid regex).
+            AiFactExtractor.validate(config.getFacts());
             if (config.isFallback()) {
                 fallbackCount++;
                 if (config.isSkip()) {

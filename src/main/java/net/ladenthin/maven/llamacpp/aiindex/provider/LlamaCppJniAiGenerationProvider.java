@@ -12,9 +12,12 @@ import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.llama.LlamaModel;
 import net.ladenthin.llama.args.ReasoningFormat;
+import net.ladenthin.llama.json.ChatResponseParser;
 import net.ladenthin.llama.parameters.InferenceParameters;
 import net.ladenthin.llama.parameters.ModelParameters;
+import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Pair;
+import net.ladenthin.llama.value.Timings;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
@@ -45,6 +48,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     private final AiPromptSupport promptSupport;
     private final AiCompletionParser completionParser = new AiCompletionParser();
+    private final ChatResponseParser chatResponseParser = new ChatResponseParser();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -128,6 +132,42 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
+        return completionParser.parseCompletion(model().chatCompleteText(buildInferenceParameters(request)));
+    }
+
+    // Narrows away the interface's checked IOException: the chat path (chatComplete + parse) throws only
+    // unchecked exceptions, so declaring IOException here would be bogus (BED).
+    @Override
+    public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
+        // chatComplete(...) returns the full OpenAI-compatible JSON, which the server populates with a
+        // "timings" object (prompt_n / predicted_n / prompt_per_second / predicted_per_second) for every
+        // real generation. chatCompleteText(...) discards it; here we parse it into a ChatResponse and
+        // surface the model's OWN measured throughput (no chars/token estimate).
+        final ChatResponse response =
+                chatResponseParser.parseResponse(model().chatComplete(buildInferenceParameters(request)));
+        final String text = response.getChoices().isEmpty()
+                ? ""
+                : response.getChoices().get(0).getMessage().getContent();
+        final Timings timings = response.getTimings();
+        if (timings == null) {
+            // A build/response without timings degrades to zero rates so the caller's fallback can act.
+            return new AiGenerationTimings(text, 0, 0.0d, 0, 0.0d);
+        }
+        return new AiGenerationTimings(
+                text,
+                (int) timings.getPromptN(),
+                timings.getPromptPerSecond(),
+                (int) timings.getPredictedN(),
+                timings.getPredictedPerSecond());
+    }
+
+    /**
+     * Builds the immutable {@link InferenceParameters} for the given request from the resolved config.
+     *
+     * @param request the generation request
+     * @return the inference parameters
+     */
+    private InferenceParameters buildInferenceParameters(final AiGenerationRequest request) {
         // Static instructions go in the SYSTEM message (byte-identical across files, so its KV
         // prefix is reused by cache_prompt); the variable file name + source go in the USER message.
         final String systemPrompt = promptSupport.systemPrompt(request.promptKey());
@@ -166,13 +206,10 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
         // Only override the DRY sequence breakers when explicitly configured; an empty list keeps
         // the binding/model default set instead of clearing it.
-        final InferenceParameters inferenceParameters =
-                config.drySequenceBreakers().isEmpty()
-                        ? baseParameters
-                        : baseParameters.withDrySequenceBreakers(
-                                config.drySequenceBreakers().toArray(new String[0]));
-
-        return completionParser.parseCompletion(model().chatCompleteText(inferenceParameters));
+        return config.drySequenceBreakers().isEmpty()
+                ? baseParameters
+                : baseParameters.withDrySequenceBreakers(
+                        config.drySequenceBreakers().toArray(new String[0]));
     }
 
     @Override

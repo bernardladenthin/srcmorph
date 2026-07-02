@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.llamacpp.aiindex.config;
 
+import java.util.List;
 import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
@@ -74,6 +75,40 @@ public class AiFieldGenerationConfig {
      * prompt/model.
      */
     private boolean skip;
+
+    /**
+     * What to do when a matched file is larger than its routed model's context window. One of
+     * {@code fail} (default — abort the build), {@code sample} (trim to the window, summarize the head),
+     * {@code mapReduce} (chunk + summarize each + combine), {@code deterministic} (model-free metadata
+     * body). Parsed by {@link AiOversizeStrategy#fromConfig(String)}; {@code null}/blank = {@code fail}.
+     */
+    private @Nullable String onOversize;
+
+    /**
+     * For {@link AiOversizeStrategy#MAP_REDUCE}: the maximum number of chunks to summarize. {@code 0}
+     * (default) = unbounded (process every chunk). A positive value bounds the run time by sampling that
+     * many representative chunks (head + evenly spaced + tail) across the file.
+     */
+    private int maxChunks;
+
+    /**
+     * Optional deterministic "fact" counters ({@code <facts>}). When set, each counter's
+     * {@code label: <match count over the whole file>} is prepended to the generated body of <em>every</em>
+     * file this rule matches (oversize or not) — exact, language-agnostic structural counts (e.g. SQL
+     * {@code INSERT} rows / tables / views, Java types / {@code boolean} fields) that give downstream
+     * agents authoritative numbers a sampled AI summary cannot reliably produce. {@code null}/empty = no
+     * facts block. See {@link AiFactExtractor}.
+     */
+    private @Nullable List<AiFactCounter> facts;
+
+    /**
+     * Optional reference to a shared {@code <factDefinitions>} group by its key ({@code <factsKey>}),
+     * instead of repeating an inline {@link #facts} block. Resolved before indexing by
+     * {@link AiFactDefinitionSupport#resolveFactsKeys(Iterable)}, which copies the referenced counters
+     * onto {@link #facts} (overwriting any inline value). {@code null} = use the inline {@code <facts>}
+     * (or none).
+     */
+    private @Nullable String factsKey;
 
     /**
      * Returns the optional rule id (label), or {@code null} when not set.
@@ -199,5 +234,87 @@ public class AiFieldGenerationConfig {
      */
     public void setSkip(final boolean skip) {
         this.skip = skip;
+    }
+
+    /**
+     * Returns the raw {@code onOversize} config token, or {@code null} when not set.
+     *
+     * @return the oversize-strategy token, or {@code null}
+     */
+    public @Nullable String getOnOversize() {
+        return onOversize;
+    }
+
+    /**
+     * Sets the {@code onOversize} config token (one of {@code fail}/{@code sample}/{@code mapReduce}/{@code deterministic}).
+     *
+     * @param onOversize the oversize-strategy token
+     */
+    public void setOnOversize(final @Nullable String onOversize) {
+        this.onOversize = onOversize;
+    }
+
+    /**
+     * Returns the parsed oversize strategy ({@link AiOversizeStrategy#FAIL} when unset/blank).
+     *
+     * @return the oversize strategy
+     * @throws IllegalArgumentException if {@code onOversize} is non-blank and matches no strategy
+     */
+    public AiOversizeStrategy getOversizeStrategy() {
+        return AiOversizeStrategy.fromConfig(onOversize);
+    }
+
+    /**
+     * Returns the map-reduce chunk cap ({@code 0} = unbounded).
+     *
+     * @return the maximum number of chunks
+     */
+    public int getMaxChunks() {
+        return maxChunks;
+    }
+
+    /**
+     * Sets the map-reduce chunk cap ({@code 0} = unbounded).
+     *
+     * @param maxChunks the maximum number of chunks
+     */
+    public void setMaxChunks(final int maxChunks) {
+        this.maxChunks = maxChunks;
+    }
+
+    /**
+     * Returns the optional deterministic fact counters, or {@code null} when none are configured.
+     *
+     * @return the fact counters, or {@code null}
+     */
+    public @Nullable List<AiFactCounter> getFacts() {
+        return facts;
+    }
+
+    /**
+     * Sets the deterministic fact counters.
+     *
+     * @param facts the fact counters
+     */
+    public void setFacts(final @Nullable List<AiFactCounter> facts) {
+        this.facts = facts;
+    }
+
+    /**
+     * Returns the shared fact-definition reference key, or {@code null} when not set.
+     *
+     * @return the facts key, or {@code null}
+     */
+    public @Nullable String getFactsKey() {
+        return factsKey;
+    }
+
+    /**
+     * Sets the shared fact-definition reference key.
+     *
+     * @param factsKey the facts key
+     */
+    public void setFactsKey(final @Nullable String factsKey) {
+        this.factsKey = factsKey;
     }
 }

@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition;
+import net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
 import net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport;
@@ -77,6 +79,16 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      */
     @Parameter(property = "aiIndex.excludes")
     private List<String> excludes;
+
+    /**
+     * Reusable, named {@code <factDefinitions>} groups referenced from a rule's {@code <factsKey>}, so a
+     * fact set (e.g. {@code java-facts}, {@code sql-facts}) is defined once and shared across rules
+     * instead of repeated inline. Resolved onto each rule's {@code facts} before indexing.
+     *
+     * @see net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport
+     */
+    @Parameter
+    private List<AiFactDefinition> factDefinitions;
 
     /**
      * Exclusive lower file-size bound in bytes: source files whose size is {@code <= this} are skipped.
@@ -152,6 +164,10 @@ public class GenerateMojo extends AbstractAiIndexMojo {
         final AiPromptSupport promptSupport = buildPromptSupport();
         final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
         final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
+        // Resolve each rule's factsKey to its shared factDefinitions group (copies the counters onto the
+        // rule's facts) BEFORE validation, so the resolved fact patterns are validated too.
+        resolveSharedFacts();
+
         final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model).
         selector.validate(fieldGenerations);
@@ -196,19 +212,18 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         + "add a <fallback> rule or a matching rule (see the plan above).");
             }
 
-            // 3b. A file larger than its routed model's window would lose content if trimmed. This is
-            //     ALWAYS a hard failure (planOnly and real run alike). The fix is user configuration,
-            //     never an automatic model choice: the user must add a routing rule (<fieldGeneration>
-            //     with a size <condition>) that sends oversized files to a model with a large enough
-            //     context window. The plugin deliberately does not pick a model for you.
-            final int overWindowCount = plan.windowExceededCount();
-            if (overWindowCount > 0) {
-                throw new MojoExecutionException(overWindowCount
-                        + " source file(s) exceed their routed model's context window (see the 'Over window' "
-                        + "section in the plan above). Add a <fieldGeneration> rule with a size <condition> "
-                        + "that routes these files to a model with a large enough context window (see the "
-                        + "big-window fallback example in the POM). The build does not pick a model for you; "
-                        + "this is configuration only.");
+            // 3b. A file larger than its routed model's window would lose content if trimmed. By default
+            //     (onOversize=fail) this is a hard failure: the fix is user configuration, never an
+            //     automatic model choice — route oversized files to a larger-context model, or set the
+            //     rule's onOversize (sample/mapReduce/deterministic) to handle them at run time. Only the
+            //     fail entries abort here; the handled ones are processed during generation.
+            final int overWindowFailCount = plan.windowFailCount();
+            if (overWindowFailCount > 0) {
+                throw new MojoExecutionException(overWindowFailCount
+                        + " source file(s) exceed their routed model's context window with onOversize=fail "
+                        + "(see the 'Over window' section in the plan above). Route them to a model with a "
+                        + "large enough context window, or set onOversize=sample|mapReduce|deterministic on "
+                        + "the rule. The build does not pick a model for you; this is configuration only.");
             }
 
             if (planOnly) {
@@ -275,5 +290,20 @@ public class GenerateMojo extends AbstractAiIndexMojo {
             return compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION);
         }
         return configured;
+    }
+
+    /**
+     * Resolves each rule's {@code factsKey} to its shared {@code <factDefinitions>} group, copying the
+     * counters onto the rule's {@code facts}. Translates a misconfiguration (unknown key, or a definition
+     * with a null key) into a {@link MojoExecutionException} so Maven reports a user configuration error.
+     *
+     * @throws MojoExecutionException if a {@code factsKey} matches no group or a definition has a null key
+     */
+    private void resolveSharedFacts() throws MojoExecutionException {
+        try {
+            new AiFactDefinitionSupport(factDefinitions).resolveFactsKeys(fieldGenerations);
+        } catch (final IllegalArgumentException | NullPointerException e) {
+            throw new MojoExecutionException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
+        }
     }
 }

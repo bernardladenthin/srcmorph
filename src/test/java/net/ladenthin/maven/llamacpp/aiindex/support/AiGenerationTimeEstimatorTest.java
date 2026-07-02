@@ -55,6 +55,44 @@ public class AiGenerationTimeEstimatorTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="estimateSecondsCalibrated">
+    @Test
+    public void calibrated_usesLinearMeasuredThroughput() {
+        // sourceChars 4800 / cpt 4.8 = 1000 + 700 template = 1700 prompt tokens.
+        // (1700/1000 prefill + 800/100 decode) = 9.7 s; ×1.15 margin -> 11 s.
+        assertThat(estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 4.8d), is(11L));
+    }
+
+    @Test
+    public void calibrated_zeroPrefillRate_fallsBackToBuiltInModel() {
+        assertThat(
+                estimator.estimateSecondsCalibrated(4800, 800, 0.0d, 100.0d, 4.8d),
+                is(estimator.estimateSeconds(4800, 800)));
+    }
+
+    @Test
+    public void calibrated_zeroDecodeRate_fallsBackToBuiltInModel() {
+        assertThat(
+                estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 0.0d, 4.8d),
+                is(estimator.estimateSeconds(4800, 800)));
+    }
+
+    @Test
+    public void calibrated_zeroCharsPerToken_usesDefaultEstimationRate() {
+        assertThat(
+                estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 0.0d),
+                is(estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 4.8d)));
+    }
+
+    @Test
+    public void calibrated_defaultOverload_usesDefaultExpectedOutputTokens() {
+        assertThat(
+                estimator.estimateSecondsCalibrated(4800, 1000.0d, 100.0d, 4.8d),
+                is(estimator.estimateSecondsCalibrated(
+                        4800, AiGenerationTimeEstimator.DEFAULT_EXPECTED_OUTPUT_TOKENS, 1000.0d, 100.0d, 4.8d)));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="formatDuration">
     @Test
     public void formatDuration_belowThreshold_rendersSeconds() {

@@ -68,4 +68,46 @@ public class AiFieldGenerationConfigTest {
         c.setSkip(true);
         assertThat(c.isSkip(), is(true));
     }
+
+    @Test
+    public void onOversize_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getOnOversize(), is(nullValue()));
+        c.setOnOversize("mapReduce");
+        assertThat(c.getOnOversize(), is(equalTo("mapReduce")));
+    }
+
+    @Test
+    public void oversizeStrategy_defaultsFailAndReflectsToken() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getOversizeStrategy(), is(AiOversizeStrategy.FAIL));
+        c.setOnOversize("deterministic");
+        assertThat(c.getOversizeStrategy(), is(AiOversizeStrategy.DETERMINISTIC));
+    }
+
+    @Test
+    public void maxChunks_defaultsZeroAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getMaxChunks(), is(equalTo(0)));
+        c.setMaxChunks(7);
+        assertThat(c.getMaxChunks(), is(equalTo(7)));
+    }
+
+    @Test
+    public void facts_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getFacts(), is(nullValue()));
+        final AiFactCounter counter = new AiFactCounter();
+        c.setFacts(java.util.Collections.singletonList(counter));
+        assertThat(c.getFacts(), is(notNullValue()));
+        assertThat(c.getFacts().size(), is(equalTo(1)));
+    }
+
+    @Test
+    public void factsKey_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getFactsKey(), is(nullValue()));
+        c.setFactsKey("java-facts");
+        assertThat(c.getFactsKey(), is(equalTo("java-facts")));
+    }
 }

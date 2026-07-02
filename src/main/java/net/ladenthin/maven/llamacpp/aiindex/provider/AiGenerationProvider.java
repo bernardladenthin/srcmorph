@@ -21,6 +21,19 @@ public interface AiGenerationProvider extends AutoCloseable {
      */
     String generate(AiGenerationRequest request) throws IOException;
 
+    /**
+     * Generates text and returns it together with the model's measured timing, for the
+     * {@code ai-index:calibrate} goal. The default implementation delegates to {@link #generate} and
+     * reports no timings (rates {@code 0}); providers that expose timings override this.
+     *
+     * @param request the generation request
+     * @return the generated text plus timing (rates {@code 0} when unavailable)
+     * @throws IOException if the underlying provider fails
+     */
+    default AiGenerationTimings generateWithTimings(final AiGenerationRequest request) throws IOException {
+        return new AiGenerationTimings(generate(request), 0, 0.0d, 0, 0.0d);
+    }
+
     @Override
     default void close() throws IOException {}
 }

@@ -62,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
         <!-- net.ladenthin:llama release on Maven Central. 5.0.3 carries the prompt-cache / slot APIs
              (withCachePrompt / withSlotId) used by the provider's per-file cache reuse, plus the GPU
              classifier jars (cuda13/vulkan/opencl). -->
-        <llama.version>5.0.3</llama.version>
+        <llama.version>5.0.4</llama.version>
         <!-- Native build selector for net.ladenthin:llama. Empty = the main jar (CPU, Ninja default).
              The gpu-cuda / gpu-vulkan profiles set a GPU classifier; or override with
              -Dllama.classifier=cuda13-windows-x86-64. GPU builds need their runtime on PATH
@@ -700,7 +700,7 @@ SPDX-License-Identifier: Apache-2.0
                   see ../workspace/policies/pit-mutation-testing.md.
                   Repo-specific: targetTests is the whole aiindex tree (any unit test may
                   kill a mutant); all gated classes are covered by pure-Java tests
-                  (MockAiGenerationProvider — no GGUF model needed).
+                  (MockAiGenerationProvider - no GGUF model needed).
                 -->
                 <groupId>org.pitest</groupId>
                 <artifactId>pitest-maven</artifactId>
@@ -714,6 +714,7 @@ SPDX-License-Identifier: Apache-2.0
                 <configuration>
                     <targetClasses>
                         <!-- Classes verified at 100% PIT mutation parity. Expand as more reach it. -->
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCalibration</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCondition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig</param>
@@ -723,6 +724,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiCalibrationMeasurement</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult</param>
@@ -736,10 +738,17 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationTimings</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
+                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiDeterministicSummary</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport</param>
                         <param>net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar</param>
@@ -854,7 +863,7 @@ SPDX-License-Identifier: Apache-2.0
                             <aiDefinitions>
                                 <!--
                                   ============================================================
-                                   MODEL SELECTION GUIDE — pros / cons / when to pick each
+                                   MODEL SELECTION GUIDE - pros / cons / when to pick each
                                   ============================================================
                                   This plugin runs local GGUF models, typically CPU-only, to
                                   summarize source files (Phase 1) and packages (Phase 2). The
@@ -890,7 +899,7 @@ SPDX-License-Identifier: Apache-2.0
                                     + Purpose-built code model (FIM-aware), excellent at code structure.
                                     - 22B DENSE = heavy/slow on CPU; Q6_K variant is higher fidelity but
                                       even slower and larger (pick Q4_K for speed, Q6_K only if quality
-                                      gaps show). Non-commercial license (MNPL) — check before shipping.
+                                      gaps show). Non-commercial license (MNPL) - check before shipping.
                                     Use when: code quality matters more than speed and you have RAM.
 
                                   Qwen2.5-Coder-7B-Instruct-Q5_K_M-C16k
@@ -928,7 +937,7 @@ SPDX-License-Identifier: Apache-2.0
                                     + MoE 30B total / ~3.3B active: code-specialized AND fast on CPU; fewer
                                       active params than Gemma-4-26B-A4B; non-thinking; Apache-2.0.
                                     + Locally present (X:/Modelle/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf,
-                                      17.7 GB); 64K context — generous but CPU-feasible (256K prefill is unusable on CPU).
+                                      17.7 GB); 64K context - generous but CPU-feasible (256K prefill is unusable on CPU).
                                     - Needs Qwen sampling (temp 0.7 / top_p 0.8 / top_k 20 / repeat 1.05).
                                     Use when: this is the go-to for most code summarization on CPU.
 
@@ -1089,7 +1098,7 @@ SPDX-License-Identifier: Apache-2.0
                                 <!-- gemma-4-26B-A4B-it-UD-Q4_K_M (32 K context)
                                      26B total / ~4B active parameters (MoE: 128 experts, 8+1 active per token).
                                      Runs at the computational cost of a ~4B dense model; quality near 27B dense.
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF -->
                                 <aiDefinition>
@@ -1111,7 +1120,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <!-- gemma-4-12B-it-Q4_K_M (32 K context)
                                      12B dense instruction-tuned model from Google DeepMind.
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/bartowski/gemma-4-12B-it-GGUF -->
                                 <aiDefinition>
@@ -1133,7 +1142,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <!-- Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q4_K_M (32 K context)
                                      ~4B effective parameters (MoE); uncensored derivative of gemma-4-E4B-it.
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive -->
                                 <aiDefinition>
@@ -1157,7 +1166,7 @@ SPDX-License-Identifier: Apache-2.0
                                      Same model as Q4_K_M above; Q6_K_P is a custom lossless quantization by HauhauCS
                                      that preserves quality where it matters most (effectively 1-2 quant levels higher
                                      at only 5-15 % larger file size).
-                                     Temperature 1.0 is critical for Gemma 4 — lowering degrades quality.
+                                     Temperature 1.0 is critical for Gemma 4 - lowering degrades quality.
                                      32k context is a practical sweet spot for code summarization on local hardware.
                                      https://huggingface.co/HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive -->
                                 <aiDefinition>
@@ -1177,7 +1186,7 @@ SPDX-License-Identifier: Apache-2.0
                                         <stopString>&lt;end_of_turn&gt;</stopString>
                                     </stopStrings>
                                 </aiDefinition>
-                                <!-- Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL (64 K context) — the
+                                <!-- Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL (64 K context) - the
                                      locally-present file and the active model for BOTH AI phases
                                      (file-body + package-body). MoE 30B total / ~3.3B active,
                                      non-thinking (emits no <think> blocks, so no enable_thinking flag
@@ -1187,7 +1196,7 @@ SPDX-License-Identifier: Apache-2.0
                                      Official Qwen3-Coder sampling (model card): temperature 0.7,
                                      top_p 0.8, top_k 20, repetition_penalty 1.05.
                                      Context: native window is 262144; 64 K is a deliberate, generous
-                                     yet CPU-feasible cap — 256 K prefill is unusable on CPU.
+                                     yet CPU-feasible cap - 256 K prefill is unusable on CPU.
                                      maxOutputTokens is deliberately 1536 (NOT the model card's generic
                                      65536): the purpose here is short, dense bullet-point summaries,
                                      not long code generations, so a tight output cap keeps each
@@ -1231,7 +1240,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                                 <!-- Qwen3-4B-Instruct-2507-Q5_K_M (32 K context)
-                                     Dense 4B, Apache-2.0, NON-thinking instruct variant (no &lt;think&gt; blocks) —
+                                     Dense 4B, Apache-2.0, NON-thinking instruct variant (no &lt;think&gt; blocks) -
                                      the fast/low-RAM tier for short structured summaries on a laptop.
                                      Single-file GGUF (2.89 GB). Download:
                                      https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q5_K_M.gguf -->
@@ -1314,10 +1323,10 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                                 <!-- ============================================================
-                                     gpt-oss-20B — three ready-to-use presets, tiered by the LARGEST
+                                     gpt-oss-20B - three ready-to-use presets, tiered by the LARGEST
                                      source file you need to cover. All use reasoningEffort=low: the
-                                     benchmark (docs/ai-index-benchmark/COMPARISON.md §11) shows low is
-                                     best for dense code summaries — fastest, and the whole output
+                                     benchmark (docs/ai-index-benchmark/COMPARISON.md section 11) shows low is
+                                     best for dense code summaries - fastest, and the whole output
                                      budget goes to the summary instead of in-band reasoning. Raise the
                                      effort only for genuinely reasoning-heavy generation AND raise
                                      maxOutputTokens with it, or the final answer is truncated.
@@ -1326,8 +1335,8 @@ SPDX-License-Identifier: Apache-2.0
                                      (set via the ai.model property; the c16k/c48k/c96k presets are the
                                      same model family at narrower windows.)
                                      Why the widest practical window is the default: a measured A/B
-                                     (§11) proved that a larger contextSize costs ONLY KV RAM, NOT
-                                     per-file time — for the same small file, 16K vs 96K had identical
+                                     (section 11) proved that a larger contextSize costs ONLY KV RAM, NOT
+                                     per-file time - for the same small file, 16K vs 96K had identical
                                      prefill/decode/wall time; only RAM grew (~+400 MiB per +16K). So
                                      defaulting to 96K means one preset covers EVERY file up to ~250 KB
                                      with no trimming and no truncation, while small files stay just as
@@ -1358,7 +1367,7 @@ SPDX-License-Identifier: Apache-2.0
                                      Hard ceiling: the 128K window caps input at ~480-500 KB of code, but
                                      CPU prefill+decode time and KV RAM make ~250 KB the practical limit.
                                      Prefill is the dominant cost on big files (O(n^2)), not the effort
-                                     level — see the estimate the plugin logs per file.
+                                     level - see the estimate the plugin logs per file.
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>gpt-oss-20B-c16k</key>
@@ -1560,9 +1569,11 @@ SPDX-License-Identifier: Apache-2.0
                                      window at run time); the cpt-3 check admits up to ~1.16 MB. reasoningEffort
                                      is empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
                                      sent. The size-routing rules that target this key live in the ai-generate
-                                     <fieldGenerations> below (ids big-window-java and big-window-sql). For >~1 MB files, split them or
-                                     add a still-larger preset (Granite allocates up to its 512K training limit
-                                     here, with further quality loss). -->
+                                     <fieldGenerations> below (ids big-window-java and big-window-sql), for the
+                                     ~275 KB .. ~1 MB band (one pass). Files > ~1 MB are NOT summarized in one
+                                     giant pass here (O(n^2) prefill makes that far too slow); they route to the
+                                     small-window granite-4.0-h-1b-fastchunk preset via the huge-java/huge-sql
+                                     rules and are map-reduced (cheap small chunks, maxChunks-bounded). -->
                                 <aiDefinition>
                                     <key>granite-4.0-h-tiny-bigwindow</key>
                                     <modelPath>X:/Modelle/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
@@ -1571,6 +1582,43 @@ SPDX-License-Identifier: Apache-2.0
                                     <mainGpu>${ai.mainGpu}</mainGpu>
                                     <devices>${ai.devices}</devices>
                                     <maxOutputTokens>4096</maxOutputTokens>
+                                    <temperature>0.2</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>3</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <minP>0.05</minP>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                    <reasoningEffort></reasoningEffort>
+                                </aiDefinition>
+
+                                <!-- Small/fast window for the map-reduce of VERY large files (multi-MB data),
+                                     the default fallback for oversized sources. Uses the SMALLEST Granite 4.0
+                                     hybrid (H-1B, ~1.5B, Apache-2.0, IBM) at a SMALL 16K window on purpose.
+                                     Rationale: prefill cost is O(n^2) in prompt length, so one big 384K pass is
+                                     far slower than many small 16K passes; and a tiny 1.5B model roughly doubles
+                                     CPU throughput vs the 7B/3B siblings. Chunking at ~48 KB (16K*cpt3 minus the
+                                     prompt) and capping <maxChunks> keeps a file of ANY size to a handful of cheap
+                                     calls, sampling a representative head/tail/spread - the right trade-off for
+                                     repetitive data where no precise whole-file read is needed.
+
+                                     MEASURED on this machine (CPU-only, 16 threads, Q4_K_M): ~175 tok/s prefill,
+                                     ~85 s per full 16K chunk, so a maxChunks=6 run is ~8.5 min PER FILE regardless
+                                     of file size (1 MB or 1 GB - you sample 6 windows). On GPU the same run is
+                                     ~40 s. H-1B loads on the existing llama 5.0.3 native (granitehybrid arch, no
+                                     rebuild). Note: reading EVERY byte of a GB-scale file is not minutes on any
+                                     CPU (~135 h at this rate); raise <maxChunks> to read more (~85 s/chunk added)
+                                     or use onOversize=deterministic/sample for the repetitive bulk. Routed via the
+                                     huge-java / huge-sql rules below (priority above big-window). -->
+                                <aiDefinition>
+                                    <key>granite-4.0-h-1b-fastchunk</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-1b-Q4_K_M.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
+                                    <mainGpu>${ai.mainGpu}</mainGpu>
+                                    <devices>${ai.devices}</devices>
+                                    <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.2</temperature>
                                     <threads>8</threads>
                                     <charsPerToken>3</charsPerToken>
@@ -1596,7 +1644,7 @@ SPDX-License-Identifier: Apache-2.0
                                     <repeatPenalty>1.05</repeatPenalty>
                                 </aiDefinition>
                                 <!-- ============================================================
-                                     EXPERIMENT MODELS — batch 2 (claude2026_06_26_00)
+                                     EXPERIMENT MODELS - batch 2 (claude2026_06_26_00)
                                      New shortlist candidates, all context 16384. Recommended
                                      sampling per each model card.
                                      ============================================================ -->
@@ -1665,7 +1713,7 @@ SPDX-License-Identifier: Apache-2.0
 You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index. Prioritize core logic, types, and data flow. Avoid filler words. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
@@ -1717,7 +1765,7 @@ line, then a blank line, then the source. Index only what is literally present t
 You are a SQL schema indexer. Produce a dense, structured markdown summary of ONE SQL source file (DDL/DML: tables, views, procedures, functions, triggers) for a searchable code index. Prioritize the schema shape, the tables read vs written, columns, and relationships. Avoid filler words. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what data it models or what operation it performs), not how it is named:
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what data it models or what operation it performs), not how it is named:
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
@@ -1765,7 +1813,7 @@ line, then a blank line, then the source. Index only what is literally present t
 You are a multi-language code indexer. Produce a dense, structured markdown summary of ONE source file (Java, C/C++, OpenCL, SQL, or similar) for a searchable code index. Prioritize core logic and data flow. Avoid filler words. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
@@ -1810,10 +1858,10 @@ line, then a blank line, then the source. Index only what is literally present t
                                 <promptDefinition>
                                     <key>package-body</key>
                                     <template><![CDATA[
-You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group — do not just concatenate the file summaries. Avoid filler. Write in English.
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group - do not just concatenate the file summaries. Avoid filler. Write in English.
 
 ## Output: start with the lead, then the sections below.
-Begin with a single blockquote line — one sentence capturing what this package does as a whole in DOMAIN terms: the business/functional responsibility a developer would search for, not how it is named or layered:
+Begin with a single blockquote line - one sentence capturing what this package does as a whole in DOMAIN terms: the business/functional responsibility a developer would search for, not how it is named or layered:
 > <one-sentence domain essence>
 
 Then output these sections as markdown. Omit any that do not apply. Use '####' for labels. Never '###' or higher.
@@ -1857,7 +1905,7 @@ You are writing a short overview for the very top of a project's code index. You
 per-package one-line leads (already generated, one sentence per package). Synthesize them: name the main
 subsystems and how they fit together, in 2 to 4 sentences. Use domain terms a developer would search for.
 No headings, no bullet lists, no code fences, no XML tags, no formatter comments. Write in English. Base
-every statement only on the provided leads — never invent packages or behavior not present in them.
+every statement only on the provided leads - never invent packages or behavior not present in them.
 
 The index file path and the per-package one-line leads are provided in the next (user) message:
 the path on the first line, then a blank line, then the leads to synthesize.
@@ -1875,10 +1923,10 @@ the path on the first line, then a blank line, then the leads to synthesize.
 You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index read by AI agents. Prioritize core logic, types, and data flow. Be terse. Write in English.
 
 ## Output
-Begin with a single blockquote line — one sentence capturing what this file does in DOMAIN terms (the searchable business/functional purpose, not class mechanics):
+Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms (the searchable business/functional purpose, not class mechanics):
 > <one-sentence domain essence>
 
-Then output ONLY the sections below that carry real information. OMIT any section that would be empty, "none", or "not applicable" — do not emit a heading just to say nothing. Use '####' for section labels, never '###' or higher.
+Then output ONLY the sections below that carry real information. OMIT any section that would be empty, "none", or "not applicable" - do not emit a heading just to say nothing. Use '####' for section labels, never '###' or higher.
 
 TRIVIAL-FILE RULE: if the unit has no public behavior to describe (e.g. a marker/annotation, an enum that only lists constants, or a near-empty type), output ONLY the blockquote lead and a single '#### Purpose' line, and stop.
 
@@ -1898,7 +1946,7 @@ What comes out: return types, produced/mutated state, written resources, side ef
 The essential steps/algorithm/responsibility as bullets. The most important section.
 
 #### Public API
-Each public/protected member as `name(params) -> returnType` + a <=6-word purpose clause. EXCEPTION: for plain data/config classes that are only getters/setters (e.g. Lombok beans), DO NOT list each accessor — write one line: "JavaBean getters/setters for: <comma-separated field names>".
+Each public/protected member as `name(params) -> returnType` + a <=6-word purpose clause. EXCEPTION: for plain data/config classes that are only getters/setters (e.g. Lombok beans), DO NOT list each accessor - write one line: "JavaBean getters/setters for: <comma-separated field names>".
 
 #### Dependencies
 Referenced types as searchable names. EXCLUDE this file's own type and java.lang.* .
@@ -1907,7 +1955,7 @@ Referenced types as searchable names. EXCLUDE this file's own type and java.lang
 Notable thrown/caught exceptions, null-handling, error conditions.
 
 #### Concurrency
-Threading, immutability, or thread-safety notes — only if the source actually shows them.
+Threading, immutability, or thread-safety notes - only if the source actually shows them.
 
 ## Rules
 - Markdown bullets and short clauses, not prose paragraphs.
@@ -1926,13 +1974,13 @@ line, then a blank line, then the source. Index only what is literally present t
                                 <promptDefinition>
                                     <key>package-body-v2</key>
                                     <template><![CDATA[
-You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source). Produce one dense, structured markdown summary of the whole package for a searchable code index read by AI agents. Synthesize and group — do not concatenate. Be terse. Write in English.
+You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source). Produce one dense, structured markdown summary of the whole package for a searchable code index read by AI agents. Synthesize and group - do not concatenate. Be terse. Write in English.
 
 ## Output
-Begin with a single blockquote line — one sentence capturing what this package does as a whole in DOMAIN terms:
+Begin with a single blockquote line - one sentence capturing what this package does as a whole in DOMAIN terms:
 > <one-sentence domain essence>
 
-SINGLE-CHILD RULE: if the input describes only ONE child package/file and no other content, output ONLY the blockquote lead restating that child's responsibility, and stop — emit no sections.
+SINGLE-CHILD RULE: if the input describes only ONE child package/file and no other content, output ONLY the blockquote lead restating that child's responsibility, and stop - emit no sections.
 
 Otherwise output ONLY the sections below that carry real information. OMIT any that would be empty. Use '####' for labels, never '###' or higher.
 
@@ -2023,26 +2071,128 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                         <fileExtension>.java</fileExtension>
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
+                                    <!--
+                                        Reusable fact-counter groups. Each <fact> reports its regex match count
+                                        over the WHOLE source (exact, language-agnostic structural counts the
+                                        sampled AI prose cannot reliably produce). Defined ONCE here and referenced
+                                        from rules below via <factsKey>, instead of repeating the same <facts>
+                                        block inline on the normal + huge rule for each language. Keep patterns
+                                        robust (line-anchored / unambiguous) - a fact that miscounts is worse than
+                                        none. (?m) opts into multi-line matching; (?i) case-insensitive for SQL.
+                                    -->
+                                    <factDefinitions>
+                                        <factDefinition>
+                                            <key>java-facts</key>
+                                            <facts>
+                                                <fact><label>type declarations</label><pattern>(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w</pattern></fact>
+                                                <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
+                                                <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
+                                                <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
+                                                <!-- Structural counts validated against real OpenJDK source (see
+                                                     JavaStructureFactPatternsTest). These are regex heuristics, so the labels are
+                                                     honest: methods are "(approx)" (~3%, includes constructors - subtract them),
+                                                     and the field count only sees fields with a STRONG modifier (final-only and
+                                                     package-private fields are deliberately NOT counted, to avoid counting final
+                                                     local variables). For exact structure you would need a real Java parser. -->
+                                                <fact><label>methods (approx)</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:&lt;[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:&lt;[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]</pattern></fact>
+                                                <fact><label>constructors</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{</pattern></fact>
+                                                <fact><label>field declarations (w/ modifier)</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:&lt;[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]*)?;</pattern></fact>
+                                            </facts>
+                                        </factDefinition>
+                                        <factDefinition>
+                                            <key>sql-facts</key>
+                                            <facts>
+                                                <fact><label>INSERT rows</label><pattern>(?im)^\s*INSERT\s+INTO\b</pattern></fact>
+                                                <fact><label>tables</label><pattern>(?im)^\s*CREATE\s+TABLE\b</pattern></fact>
+                                                <fact><label>views</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b</pattern></fact>
+                                                <fact><label>indexes</label><pattern>(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b</pattern></fact>
+                                                <fact><label>functions/procedures</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b</pattern></fact>
+                                            </facts>
+                                        </factDefinition>
+                                    </factDefinitions>
                                     <fieldGenerations>
-                                        <!-- Big-window fallback rules: a source larger than the default
-                                             model's window (~275 KB at 96K/charsPerToken 3) would be trimmed,
-                                             so route it to the large-context granite-4.0-h-tiny-bigwindow
-                                             model instead (Granite's 384K window covers up to ~1 MB; the
-                                             cpt-3 window check admits up to ~1.16 MB). There is one big-window
-                                             rule per source kind so each keeps its own prompt: big-window-java
-                                             (file-body-java) and big-window-sql (file-body-sql). Each has higher
-                                             priority than its plain java/sql counterpart so it wins for oversized
-                                             files; normal-sized files never match (size min) and fall through to
-                                             the plain rule. Without rules like these, a file larger than the
-                                             default model's window hard-fails the build (the plugin never
-                                             auto-selects a model) - this is how YOU satisfy that check. Threshold
-                                             is conservative; tune to your model's window. (A file beyond Granite's
-                                             window fails too: split it or add a still-larger fallback.) -->
+                                        <!-- Size-tiered routing for large files. THREE bands per source kind, by
+                                             ascending priority so the most specific (largest) wins:
+
+                                               plain java/sql (no priority)  files up to ~275 KB  -> ${ai.model}, one pass
+                                               big-window-*   (priority 100) ~275 KB .. ~1 MB     -> granite bigwindow, ONE 384K pass
+                                               huge-*         (priority 200) > ~1 MB              -> granite fastchunk, mapReduce
+
+                                             Why a separate huge band instead of just map-reducing on the big window?
+                                             Prefill is O(n^2) in prompt length, so ONE big 384K pass over a multi-MB file
+                                             is catastrophically slow, and map-reducing AT the big window (6 x 384K passes)
+                                             is worse still. The fast path is the opposite: chunk with a SMALL window
+                                             (granite-4.0-h-1b-fastchunk, 16K) so each prefill is cheap, and cap
+                                             <maxChunks> so a 7 MB file stays a handful of calls (~1 h order on the
+                                             reference CPU; less on GPU) - sampling a representative head/tail/spread, which
+                                             is the right trade-off for repetitive data needing no precise whole-file read.
+
+                                             Each band has its own prompt (file-body-java / file-body-sql). Without the
+                                             big-window/huge rules a file larger than ${ai.model}'s window hard-fails the
+                                             build (the plugin never auto-selects a model) - these rules are how YOU satisfy
+                                             that check. Default onOversize=fail still aborts any rule that does not opt into
+                                             sample/mapReduce/deterministic. Thresholds are conservative; tune to your models. -->
+                                        <fieldGeneration>
+                                            <id>huge-java</id>
+                                            <promptKey>file-body-java</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
+                                            <priority>200</priority>
+                                            <!-- Map-reduce on a SMALL fast window: chunk at line boundaries, summarize each,
+                                                 then combine. maxChunks bounds the run time to ~60-90 min/file by sampling a
+                                                 representative subset (head + tail + evenly spaced). Alternatives for pure
+                                                 data: sample (head only, one call) or deterministic (no model, instant). -->
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
+                                            <factsKey>java-facts</factsKey>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.java</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>1000000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>huge-sql</id>
+                                            <promptKey>file-body-sql</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
+                                            <priority>200</priority>
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
+                                            <!-- Deterministic, EXACT whole-file counts prepended to the AI body. The
+                                                 sampled map-reduce prose can't count reliably (no call sees the whole
+                                                 file), so each <fact> reports its regex match count over the FULL
+                                                 source. Fully generic/language-agnostic - the meaning is in the regex,
+                                                 so the same mechanism counts INSERT rows here or `\bboolean\b` fields
+                                                 in Java. Multi-line matching is opt-in via the inline (?m) flag. -->
+                                            <factsKey>sql-facts</factsKey>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.sql</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>1000000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
                                         <fieldGeneration>
                                             <id>big-window-java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
+                                            <!-- ~275 KB .. ~1 MB: fits Granite's 384K window, summarized in ONE pass
+                                                 (fast on GPU). Files > ~1 MB are caught by huge-java above (priority 200),
+                                                 so this rule never needs to handle the oversize case; default
+                                                 onOversize=fail is the safe floor if the huge rule is removed. -->
                                             <condition>
                                                 <and>
                                                     <conditions>
@@ -2078,6 +2228,11 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <id>java</id>
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <!-- Exact, whole-file structural counts prepended to EVERY Java summary (not just
+                                                 oversize files), giving downstream agents authoritative numbers the prose need
+                                                 not restate. Shared, defined once in <factDefinitions> above and referenced by
+                                                 key here (and by huge-java) instead of repeating the block inline. -->
+                                            <factsKey>java-facts</factsKey>
                                             <condition>
                                                 <extensions><extension>.java</extension></extensions>
                                             </condition>
@@ -2086,6 +2241,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                             <id>sql</id>
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <factsKey>sql-facts</factsKey>
                                             <condition>
                                                 <extensions><extension>.sql</extension></extensions>
                                             </condition>
@@ -2120,7 +2276,7 @@ message: the path on the first line, then a blank line, then the summaries to sy
                             </execution>
 
                             <!--
-                                Phase 3 — project index. Harvests the per-package lead already produced by
+                                Phase 3 - project index. Harvests the per-package lead already produced by
                                 aggregate-packages into a single project.ai.md. Bound to prepare-package so it
                                 runs after process-resources (aggregate-packages).
 

@@ -84,6 +84,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregateProjectMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
         </Or>
         <Bug pattern="SPP_FIELD_COULD_BE_STATIC"/>
     </Match>
@@ -116,6 +117,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
@@ -314,6 +316,81 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        THROWS_METHOD_THROWS_RUNTIMEEXCEPTION on AiFieldGenerationSupport.generateWithOverflowRetry.
+        fb-contrib flags the `throw e` as a method throwing a RuntimeException, but this is not raising a
+        new unchecked exception as control flow - it RE-THROWS the provider's own caught exception to
+        propagate it unchanged (the retry loop only intercepts a context-overflow, identified by message,
+        and otherwise gives up by rethrowing). The provider (JNI binding) throws an unchecked
+        LlamaException; catching a more specific type would couple the indexer to the binding, which the
+        message-based detection deliberately avoids. Scoped to the one retry method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport"/>
+        <Method name="generateWithOverflowRetry"/>
+        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
+    </Match>
+
+    <!--
+        RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE on LlamaCppJniAiGenerationProvider.generateWithTimings.
+        ChatResponse.getTimings() is unannotated in the binding (not @NullMarked), so the checker treats it
+        as non-null and flags the defensive null-guard as redundant. The guard is intentional: a build or
+        response without a "timings" object must degrade to zero rates (letting the caller's wall-clock
+        fallback act), not NPE. Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniAiGenerationProvider"/>
+        <Method name="generateWithTimings"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+
+    <!--
+        OPM_OVERLY_PERMISSIVE_METHOD on AiFactDefinitionSupport.facts. fb-contrib flags the public facts(key)
+        as "could be more restrictive" from bytecode shape (it is called from resolveFactsKeys in the same
+        class), but it is the class's public lookup API and is exercised directly by unit tests. Same
+        rationale as the AiGenerationTimeEstimator / AiProgressBar OPM suppressions.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+    <!--
+        DCN_NULLPOINTER_EXCEPTION on GenerateMojo.resolveSharedFacts. Same deliberate translation bridge as
+        AbstractAiIndexMojo.buildPromptSupport (see that suppression's rationale): AiFactDefinitionSupport's
+        Objects.requireNonNull validation throws NPE by Java convention on a null definition key, which this
+        method catches and rethrows as a Maven MojoExecutionException (a user configuration error) rather
+        than a plugin bug. Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+        <Method name="resolveSharedFacts"/>
+        <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
+    </Match>
+
+    <!--
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the <calibration> accessors of the Maven @Parameter config beans
+        (AiModelDefinition, AiGenerationConfig). Same rationale as the routing-config EI suppression above:
+        these are mutable JavaBeans the plugin framework populates via reflection; the AiCalibration the
+        getter returns / the setter stores IS the configuration, read once during the run and never shared
+        across threads. A defensive copy would deep-clone an immutable-after-injection value for no gain.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig"/>
+        </Or>
+        <Or>
+            <Method name="getCalibration"/>
+            <Method name="setCalibration"/>
+        </Or>
+        <Or>
+            <Bug pattern="EI_EXPOSE_REP"/>
+            <Bug pattern="EI_EXPOSE_REP2"/>
+        </Or>
+    </Match>
+
+
+    <!--
         EI_EXPOSE_REP / EI_EXPOSE_REP2 on the rule-routing config beans and the routing-plan model.
 
         AiCondition / AiConditionGroup / AiFieldGenerationConfig are mutable Maven @Parameter
@@ -336,6 +413,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiCondition"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionGroup"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan$Entry"/>
         </Or>
@@ -360,6 +438,8 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionGroup"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
@@ -413,19 +493,36 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
         </Or>
         <Or>
             <Bug pattern="CE_CLASS_ENVY"/>
             <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+            <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
             <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
             <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
             <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
             <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
         </Or>
+    </Match>
+
+    <!--
+        IMPROPER_UNICODE on AiOversizeStrategy.fromConfig. The findsecbugs detector flags any
+        case-insensitive comparison (equalsIgnoreCase, and likewise toLowerCase/toUpperCase) because
+        Unicode case folding can change string length for some scripts. Here the compared values are a
+        fixed, closed set of ASCII config tokens (fail/sample/mapReduce/deterministic) authored by the
+        operator in POM XML, not user/locale text; matching a configured &lt;onOversize&gt; value
+        case-insensitively is the intended, safe behaviour. Scoped to the one parsing method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy"/>
+        <Method name="fromConfig"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
     </Match>
 
 </FindBugsFilter>

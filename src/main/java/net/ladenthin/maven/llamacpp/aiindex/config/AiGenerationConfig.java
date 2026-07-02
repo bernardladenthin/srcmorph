@@ -254,6 +254,9 @@ public class AiGenerationConfig {
     private List<String> drySequenceBreakers = new ArrayList<>();
     private List<String> stopStrings = new ArrayList<>();
 
+    /** Optional per-machine timing calibration; {@code null} = use the estimator's built-in model. */
+    private @Nullable AiCalibration calibration;
+
     /**
      * Returns the GGUF model file path.
      *
@@ -759,5 +762,23 @@ public class AiGenerationConfig {
      */
     public void setStopStrings(final @Nullable List<String> stopStrings) {
         this.stopStrings = stopStrings != null ? stopStrings : new ArrayList<>();
+    }
+
+    /**
+     * Returns the per-machine timing calibration, or {@code null} when not calibrated.
+     *
+     * @return the calibration, or {@code null}
+     */
+    public @Nullable AiCalibration getCalibration() {
+        return calibration;
+    }
+
+    /**
+     * Sets the per-machine timing calibration.
+     *
+     * @param calibration the calibration
+     */
+    public void setCalibration(final @Nullable AiCalibration calibration) {
+        this.calibration = calibration;
     }
 }
