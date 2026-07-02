@@ -2088,6 +2088,15 @@ message: the path on the first line, then a blank line, then the summaries to sy
                                                 <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
                                                 <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
                                                 <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
+                                                <!-- Structural counts validated against real OpenJDK source (see
+                                                     JavaStructureFactPatternsTest). These are regex heuristics, so the labels are
+                                                     honest: methods are "(approx)" (~3%, includes constructors - subtract them),
+                                                     and the field count only sees fields with a STRONG modifier (final-only and
+                                                     package-private fields are deliberately NOT counted, to avoid counting final
+                                                     local variables). For exact structure you would need a real Java parser. -->
+                                                <fact><label>methods (approx)</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:&lt;[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:&lt;[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]</pattern></fact>
+                                                <fact><label>constructors</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{</pattern></fact>
+                                                <fact><label>field declarations (w/ modifier)</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:&lt;[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]*)?;</pattern></fact>
                                             </facts>
                                         </factDefinition>
                                         <factDefinition>
