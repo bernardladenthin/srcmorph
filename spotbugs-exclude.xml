@@ -331,6 +331,19 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE on LlamaCppJniAiGenerationProvider.generateWithTimings.
+        ChatResponse.getTimings() is unannotated in the binding (not @NullMarked), so the checker treats it
+        as non-null and flags the defensive null-guard as redundant. The guard is intentional: a build or
+        response without a "timings" object must degrade to zero rates (letting the caller's wall-clock
+        fallback act), not NPE. Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniAiGenerationProvider"/>
+        <Method name="generateWithTimings"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+
+    <!--
         OPM_OVERLY_PERMISSIVE_METHOD on AiFactDefinitionSupport.facts. fb-contrib flags the public facts(key)
         as "could be more restrictive" from bytecode shape (it is called from resolveFactsKeys in the same
         class), but it is the class's public lookup API and is exercised directly by unit tests. Same

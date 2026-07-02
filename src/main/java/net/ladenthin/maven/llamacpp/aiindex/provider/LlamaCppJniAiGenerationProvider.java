@@ -12,9 +12,12 @@ import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.llama.LlamaModel;
 import net.ladenthin.llama.args.ReasoningFormat;
+import net.ladenthin.llama.json.ChatResponseParser;
 import net.ladenthin.llama.parameters.InferenceParameters;
 import net.ladenthin.llama.parameters.ModelParameters;
+import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Pair;
+import net.ladenthin.llama.value.Timings;
 import net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
@@ -45,6 +48,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     private final AiPromptSupport promptSupport;
     private final AiCompletionParser completionParser = new AiCompletionParser();
+    private final ChatResponseParser chatResponseParser = new ChatResponseParser();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -131,11 +135,31 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
         return completionParser.parseCompletion(model().chatCompleteText(buildInferenceParameters(request)));
     }
 
-    // generateWithTimings is intentionally NOT overridden: the binding's stats-returning completion path
-    // does not do prompt-size-proportional work here (near-window runs match mid-window ones), so it
-    // yields no usable prefill/decode rates. The interface default returns the real generated text with
-    // zero rates; ai-index:calibrate then derives throughput from the wall-clock differential of two
-    // sized generations (see AiCalibrationRunner), which uses this same real chatCompleteText path.
+    // Narrows away the interface's checked IOException: the chat path (chatComplete + parse) throws only
+    // unchecked exceptions, so declaring IOException here would be bogus (BED).
+    @Override
+    public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
+        // chatComplete(...) returns the full OpenAI-compatible JSON, which the server populates with a
+        // "timings" object (prompt_n / predicted_n / prompt_per_second / predicted_per_second) for every
+        // real generation. chatCompleteText(...) discards it; here we parse it into a ChatResponse and
+        // surface the model's OWN measured throughput (no chars/token estimate).
+        final ChatResponse response =
+                chatResponseParser.parseResponse(model().chatComplete(buildInferenceParameters(request)));
+        final String text = response.getChoices().isEmpty()
+                ? ""
+                : response.getChoices().get(0).getMessage().getContent();
+        final Timings timings = response.getTimings();
+        if (timings == null) {
+            // A build/response without timings degrades to zero rates so the caller's fallback can act.
+            return new AiGenerationTimings(text, 0, 0.0d, 0, 0.0d);
+        }
+        return new AiGenerationTimings(
+                text,
+                (int) timings.getPromptN(),
+                timings.getPromptPerSecond(),
+                (int) timings.getPredictedN(),
+                timings.getPredictedPerSecond());
+    }
 
     /**
      * Builds the immutable {@link InferenceParameters} for the given request from the resolved config.

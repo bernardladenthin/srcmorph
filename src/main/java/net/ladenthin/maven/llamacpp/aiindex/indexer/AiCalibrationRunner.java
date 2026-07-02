@@ -94,15 +94,7 @@ public final class AiCalibrationRunner {
                 provider.generateWithTimings(request(promptKey, contextFile, syntheticSource(nearChars), header));
         final double nearWallSeconds = (System.nanoTime() - nearStartNanos) / NANOS_PER_SECOND;
 
-        // Decode probe: a TINY prompt (negligible prefill) so its wall-clock is almost pure decode. Its
-        // generated text gives the ACTUAL output size, so decode is not derived from an assumed output.
-        final long probeStartNanos = System.nanoTime();
-        final AiGenerationTimings probe =
-                provider.generateWithTimings(request(promptKey, contextFile, tinySource, header));
-        final double probeWallSeconds = (System.nanoTime() - probeStartNanos) / NANOS_PER_SECOND;
-
-        // Prefer the model's own reported throughput; fall back to a wall-clock differential when the
-        // binding does not populate timings (rates come back 0).
+        // Preferred path: the provider reports the model's OWN measured throughput (exact tokens/sec).
         if (near.prefillTokensPerSecond() > 0.0d) {
             final double charsPerToken = near.promptTokens() > 0 ? (double) nearChars / near.promptTokens() : 0.0d;
             return new AiCalibrationMeasurement(
@@ -112,6 +104,14 @@ public final class AiCalibrationRunner {
                     charsPerToken,
                     mid.prefillTokensPerSecond());
         }
+
+        // Fallback (no reported timings, e.g. mock): estimate by wall-clock. Only now do the decode probe
+        // (a TINY prompt whose prefill KV is reused from the warmup, so its wall-clock is ~pure decode; its
+        // generated text gives the ACTUAL output size).
+        final long probeStartNanos = System.nanoTime();
+        final AiGenerationTimings probe =
+                provider.generateWithTimings(request(promptKey, contextFile, tinySource, header));
+        final double probeWallSeconds = (System.nanoTime() - probeStartNanos) / NANOS_PER_SECOND;
         return wallClockFallback(
                 loadSeconds, midChars, nearChars, midWallSeconds, nearWallSeconds, probe, probeWallSeconds, config);
     }
