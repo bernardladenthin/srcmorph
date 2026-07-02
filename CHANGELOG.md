@@ -11,8 +11,11 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-02
+
 ### Changed
 - Split the big-window size-routing rule per source kind in the `ai-index-selftest` example POM: the former single `big-window` rule is now `big-window-java` (prompt `file-body-java`), and a matching `big-window-sql` rule (prompt `file-body-sql`) routes oversized `.sql` sources to the same large-context model — so an oversized `.sql` file keeps the SQL prompt instead of being misrouted/uncovered.
+- Bumped `net.ladenthin:llama` 5.0.3 → 5.0.4.
 
 ## [1.0.1] - 2026-06-29
 
@@ -57,6 +60,7 @@ First public release on Maven Central. Pre-OpenSSF history themes (March–May 2
 
 ---
 
-[Unreleased]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/releases/tag/v1.0.0
