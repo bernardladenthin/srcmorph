@@ -62,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
         <!-- net.ladenthin:llama release on Maven Central. 5.0.3 carries the prompt-cache / slot APIs
              (withCachePrompt / withSlotId) used by the provider's per-file cache reuse, plus the GPU
              classifier jars (cuda13/vulkan/opencl). -->
-        <llama.version>5.0.3</llama.version>
+        <llama.version>5.0.4</llama.version>
         <!-- Native build selector for net.ladenthin:llama. Empty = the main jar (CPU, Ninja default).
              The gpu-cuda / gpu-vulkan profiles set a GPU classifier; or override with
              -Dllama.classifier=cuda13-windows-x86-64. GPU builds need their runtime on PATH

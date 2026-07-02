@@ -380,7 +380,7 @@ Immutable value types are implemented as Java `record` types (e.g., `AiMdDocumen
 
 | Dependency | Version | Purpose |
 |---|---|---|
-| `net.ladenthin:llama` | 5.0.3 | llama.cpp JNI binding (GGUF inference); released on Maven Central, carries the prompt-cache/slot APIs + GPU classifier jars. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
+| `net.ladenthin:llama` | 5.0.4 | llama.cpp JNI binding (GGUF inference); released on Maven Central, carries the prompt-cache/slot APIs + GPU classifier jars. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
 | `org.apache.maven:maven-plugin-api` | 3.9.13 | Maven plugin API (provided) |
 | `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.1 | `@Mojo`, `@Parameter` annotations (provided) |
 
