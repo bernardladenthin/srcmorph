@@ -108,7 +108,10 @@ public class CalibrateMojo extends AbstractAiIndexMojo {
         }
 
         getLog().info("");
-        getLog().info("Paste each <calibration> onto its matching <aiDefinition> (numbers are per machine):");
+        getLog().info("Paste each <calibration> onto its matching <aiDefinition> (numbers are per machine).");
+        getLog().info("Note: these are hardware-relative estimates for the PLAN ETA, not exact engine tok/s "
+                + "(the binding does not expose per-call token counts, so tokens are estimated via charsPerToken; "
+                + "that estimate cancels out in the prefill ETA, so the plan stays self-consistent).");
         for (final String line : pasteBlocks.toString().split("\n", -1)) {
             getLog().info(line);
         }

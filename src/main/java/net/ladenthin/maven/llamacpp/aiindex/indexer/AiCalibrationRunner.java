@@ -76,9 +76,12 @@ public final class AiCalibrationRunner {
         final int midChars = clampSourceChars((long) (availableSourceChars * MID_WINDOW_FRACTION));
         final int nearChars = clampSourceChars((long) (availableSourceChars * NEAR_WINDOW_FRACTION));
         final AiMdHeader header = new AiMdHeader(CALIBRATION_CONTEXT_NAME, "1.0", "", "", "", "", "", "file");
+        // The warmup and the decode probe use the SAME tiny source, so the probe reuses the warmup's
+        // prefill KV (prompt cache) and its wall-clock is close to pure decode.
+        final String tinySource = syntheticSource(WARMUP_SOURCE_CHARS);
 
         final long loadStartNanos = System.nanoTime();
-        provider.generateWithTimings(request(promptKey, contextFile, syntheticSource(WARMUP_SOURCE_CHARS), header));
+        provider.generateWithTimings(request(promptKey, contextFile, tinySource, header));
         final double loadSeconds = (System.nanoTime() - loadStartNanos) / NANOS_PER_SECOND;
 
         final long midStartNanos = System.nanoTime();
@@ -91,6 +94,13 @@ public final class AiCalibrationRunner {
                 provider.generateWithTimings(request(promptKey, contextFile, syntheticSource(nearChars), header));
         final double nearWallSeconds = (System.nanoTime() - nearStartNanos) / NANOS_PER_SECOND;
 
+        // Decode probe: a TINY prompt (negligible prefill) so its wall-clock is almost pure decode. Its
+        // generated text gives the ACTUAL output size, so decode is not derived from an assumed output.
+        final long probeStartNanos = System.nanoTime();
+        final AiGenerationTimings probe =
+                provider.generateWithTimings(request(promptKey, contextFile, tinySource, header));
+        final double probeWallSeconds = (System.nanoTime() - probeStartNanos) / NANOS_PER_SECOND;
+
         // Prefer the model's own reported throughput; fall back to a wall-clock differential when the
         // binding does not populate timings (rates come back 0).
         if (near.prefillTokensPerSecond() > 0.0d) {
@@ -102,21 +112,26 @@ public final class AiCalibrationRunner {
                     charsPerToken,
                     mid.prefillTokensPerSecond());
         }
-        return wallClockFallback(loadSeconds, midChars, nearChars, midWallSeconds, nearWallSeconds, near, config);
+        return wallClockFallback(
+                loadSeconds, midChars, nearChars, midWallSeconds, nearWallSeconds, probe, probeWallSeconds, config);
     }
 
     /**
-     * Derives throughput from wall-clock timing when the binding reports none. Prefill comes from the
-     * mid&rarr;near difference (decode cancels because both runs use the same output budget); decode comes
-     * from the near run's residual after subtracting the derived prefill.
+     * Derives throughput from wall-clock timing when the binding reports none.
      *
-     * @param loadSeconds    the measured load + first-generation seconds
-     * @param midChars       the mid-window source length
-     * @param nearChars      the near-window source length
-     * @param midWallSeconds wall-clock seconds for the mid-window generation
+     * <p><b>Prefill</b> comes from the mid&rarr;near difference (decode cancels because both runs use the
+     * same output budget). <b>Decode</b> comes from the tiny probe run: its wall-clock minus the tiny
+     * prompt's (negligible) prefill, divided by the <em>actual</em> number of generated tokens (from the
+     * probe's returned text length &divide; chars-per-token) &mdash; not an assumed output budget.</p>
+     *
+     * @param loadSeconds     the measured load + first-generation seconds
+     * @param midChars        the mid-window source length
+     * @param nearChars       the near-window source length
+     * @param midWallSeconds  wall-clock seconds for the mid-window generation
      * @param nearWallSeconds wall-clock seconds for the near-window generation
-     * @param near           the near-window timings (for a possible predicted-token count)
-     * @param config         the model config (chars/token and output budget)
+     * @param probe           the tiny decode-probe result (its text is the actual generated output)
+     * @param probeWallSeconds wall-clock seconds for the decode probe
+     * @param config          the model config (chars/token)
      * @return the measurement derived from wall-clock timing
      */
     private static AiCalibrationMeasurement wallClockFallback(
@@ -125,7 +140,8 @@ public final class AiCalibrationRunner {
             final int nearChars,
             final double midWallSeconds,
             final double nearWallSeconds,
-            final AiGenerationTimings near,
+            final AiGenerationTimings probe,
+            final double probeWallSeconds,
             final AiGenerationConfig config) {
         final double charsPerToken =
                 config.getCharsPerToken() > 0 ? config.getCharsPerToken() : FALLBACK_CHARS_PER_TOKEN;
@@ -135,10 +151,12 @@ public final class AiCalibrationRunner {
         final double deltaWall = nearWallSeconds - midWallSeconds;
         final double prefillTps = deltaTokens > 0.0d && deltaWall > 0.0d ? deltaTokens / deltaWall : 0.0d;
 
-        final double prefillNearSeconds = prefillTps > 0.0d ? nearTokens / prefillTps : nearWallSeconds;
-        final double decodeSeconds = Math.max(MIN_DECODE_SECONDS, nearWallSeconds - prefillNearSeconds);
-        final int outputTokens = near.predictedTokens() > 0 ? near.predictedTokens() : config.getMaxOutputTokens();
-        final double decodeTps = outputTokens > 0 ? outputTokens / decodeSeconds : 0.0d;
+        // Decode from the tiny probe: subtract its (tiny) prefill, divide by the ACTUAL generated tokens.
+        final double probePromptTokens = WARMUP_SOURCE_CHARS / charsPerToken;
+        final double probePrefillSeconds = prefillTps > 0.0d ? probePromptTokens / prefillTps : 0.0d;
+        final double decodeSeconds = Math.max(MIN_DECODE_SECONDS, probeWallSeconds - probePrefillSeconds);
+        final double outputTokens = probe.text().length() / charsPerToken;
+        final double decodeTps = outputTokens > 0.0d ? outputTokens / decodeSeconds : 0.0d;
 
         return new AiCalibrationMeasurement(loadSeconds, prefillTps, decodeTps, charsPerToken, prefillTps);
     }
