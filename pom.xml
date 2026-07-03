@@ -1687,6 +1687,23 @@ SPDX-License-Identifier: Apache-2.0
                                     <topK>0</topK>
                                     <repeatPenalty>1.0</repeatPenalty>
                                 </aiDefinition>
+                                <!-- Granite 4.0 H-Small (32B total / ~9B active, hybrid Mamba-2 + MoE), Unsloth
+                                     Dynamic UD-Q4_K_XL. Greedy sampling is IBM+Unsloth's official recommendation
+                                     for Granite 4 (temperature=0); no thinking mode in the 4.0 Instruct release.
+                                     Same 16384 window + 1536 output as H-Tiny for benchmark comparability. -->
+                                <aiDefinition>
+                                    <key>EXP-Granite-4.0-H-Small</key>
+                                    <modelPath>X:/Modelle/granite-4.0-h-small-UD-Q4_K_XL.gguf</modelPath>
+                                    <contextSize>16384</contextSize>
+                                    <maxOutputTokens>1536</maxOutputTokens>
+                                    <temperature>0.0</temperature>
+                                    <threads>8</threads>
+                                    <charsPerToken>4</charsPerToken>
+                                    <warnOnTrim>true</warnOnTrim>
+                                    <topP>1.0</topP>
+                                    <topK>0</topK>
+                                    <repeatPenalty>1.0</repeatPenalty>
+                                </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Qwen3-4B-Instruct-2507</key>
                                     <modelPath>X:/Modelle/Qwen3-4B-Instruct-2507-Q4_K_M.gguf</modelPath>

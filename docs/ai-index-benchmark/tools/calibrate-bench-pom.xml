@@ -1,0 +1,20 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
+  <groupId>bench</groupId><artifactId>bench</artifactId><version>1</version><packaging>pom</packaging>
+  <properties>
+    <bench.model>X:/Modelle/granite-4.0-h-small-UD-Q4_K_XL.gguf</bench.model>
+    <bench.ctx>16384</bench.ctx><bench.ngl>0</bench.ngl>
+    <bench.temp>0.0</bench.temp><bench.effort></bench.effort><bench.cpt>4</bench.cpt>
+  </properties>
+  <build><plugins><plugin>
+    <groupId>net.ladenthin</groupId><artifactId>llamacpp-ai-index-maven-plugin</artifactId><version>1.0.3-SNAPSHOT</version>
+    <dependencies><dependency><groupId>net.ladenthin</groupId><artifactId>llama</artifactId><version>5.0.4</version><classifier>cuda13-windows-x86-64</classifier></dependency></dependencies>
+    <configuration>
+      <generationProvider>llamacpp-jni</generationProvider>
+      <promptDefinitions><promptDefinition><key>p</key><template>Summarize this Java source in 2 sentences:%s</template></promptDefinition></promptDefinitions>
+      <aiDefinitions><aiDefinition><key>m</key><modelPath>${bench.model}</modelPath>
+        <contextSize>${bench.ctx}</contextSize><gpuLayers>${bench.ngl}</gpuLayers><maxOutputTokens>256</maxOutputTokens>
+        <temperature>${bench.temp}</temperature><threads>8</threads><charsPerToken>${bench.cpt}</charsPerToken>
+        <topP>1.0</topP><topK>0</topK><minP>0.0</minP><repeatPenalty>1.0</repeatPenalty><reasoningEffort>${bench.effort}</reasoningEffort></aiDefinition></aiDefinitions>
+      <fieldGenerations><fieldGeneration><id>java</id><promptKey>p</promptKey><aiDefinitionKey>m</aiDefinitionKey>
+        <condition><extensions><extension>.java</extension></extensions></condition></fieldGeneration></fieldGenerations>
+    </configuration></plugin></plugins></build></project>

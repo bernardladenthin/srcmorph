@@ -4,6 +4,7 @@ This directory captures a controlled comparison of **local GGUF models** and **t
 versions** for the plugin's code-summarization task (`.ai.md` generation), run on CPU.
 
 - **[COMPARISON.md](COMPARISON.md)** — scored results, per-model pros/cons, source deep-dive, recommendation.
+- **[HSMALL-VS-GPTOSS.md](HSMALL-VS-GPTOSS.md)** — focused Granite 4.0 H‑Small (UD‑Q4_K_XL) vs gpt‑oss‑20B head‑to‑head, **CPU + GPU**, on the current 24‑file tree: quality parity, but H‑Small is slower (9B active) — the Mamba win is memory + long‑context prefill, not decode.
 - **[outputs/](outputs/)** — the raw generated `.ai.md` trees, one directory per cell.
 
 ## Bottom line
