@@ -26,6 +26,9 @@ Motivating question: *can a single well‑configured Granite hybrid replace the 
   decode‑bound generation of short summaries.
 - **On an 8 GB GPU neither model fits** (H‑Small ~17 GB, gpt‑oss ~12 GB), so both are
   partial‑offload; that accelerates prefill but **not decode** → little real‑world gain for this task.
+- **They cross at ~5,000 input tokens (~15–20 KB).** gpt‑oss prefills far faster on small inputs
+  (~600 tok/s) then collapses (O(L²)); H‑Small is flat (~205) and overtakes above ~5k. This is the
+  natural **size‑tier boundary** (§3b) — route small files to gpt‑oss, large files to a hybrid.
 - **So:** H‑Small is a **quality‑parity, RAM‑light** option, **not** the fast one. The fast Granite
   remains **H‑Tiny (1B active)**. "One model for everything" only holds if you accept gpt‑oss‑class
   (or slower) speed in exchange for a single, permissive, long‑context‑cheap model.
@@ -86,6 +89,37 @@ llama.cpp's hybrid/SSM decode kernels are not yet optimized (see ggml‑org/llam
 - **Decode:** unchanged for H‑Small (still 5 tok/s — the 26 CPU‑resident layers gate every token)
   and no better (arguably worse) for gpt‑oss than pure CPU. **Partial offload does not help the
   decode‑bound generation step on 8 GB.**
+
+## 3b. Context scaling — where they cross (GPU prefill sweep)
+
+Prefill throughput vs input length (GPU partial offload; raw data in
+`tools/context-scaling-sweep.tsv`):
+
+| input tokens | gpt‑oss prefill tok/s | H‑Small prefill tok/s | winner |
+|---|---|---|---|
+| ~1,000 | ~600 | ~150 | gpt‑oss (4×) |
+| ~2,200 | 592 | ~185 | gpt‑oss |
+| ~2,600 | 287 | ~198 | gpt‑oss |
+| ~4,700 | 226 | 205 | ≈ tie |
+| ~5,400 | 154 | 205 | H‑Small |
+| ~9,700 | 73 | ~212 | H‑Small (3×) |
+| ~13,000 | ~60 | 215 | H‑Small (3.5×) |
+
+- gpt‑oss starts far **ahead** at small inputs (~600 tok/s) then **collapses** past ~2.5k tokens
+  (O(L²) attention prefill). H‑Small is slow‑but‑**flat** (~205, Mamba O(L) prefill).
+- **Prefill crossover ≈ 5,000 input tokens** (~15–20 KB Java, ~250–400 lines).
+- **Total‑time crossover for summarization ≈ the same ~5k tokens:** decode time per summary is
+  roughly equal despite gpt‑oss's ~4× faster decode *rate*, because `reasoning_effort=low` still
+  emits ~4× more tokens (analysis channel) — so both spend ~110 s decoding a summary, and prefill
+  is the tie‑breaker.
+
+**Cure / sweet spot = the plugin's size‑tiered routing.** Cap gpt‑oss's input and route larger
+files to the hybrid: `maxFileSizeBytes ≈ 15000` on the gpt‑oss `<fieldGeneration>`, larger files to
+a Granite hybrid (H‑Small for quality, H‑Tiny for speed), and/or `<onOversize>` `mapReduce` to chunk.
+The "cure" for gpt‑oss's long‑input collapse is simply **not feeding it long inputs**. (Crossover
+value is quant/offload‑dependent on the 8 GB card; the *shape* — gpt‑oss high‑then‑collapsing vs
+hybrid flat — is architectural. On CPU both rates are ~10× lower and gpt‑oss stays competitive
+further out, but H‑Small's slow absolute speed makes it unattractive there regardless.)
 
 ## 4. Memory / long context (research‑established)
 
