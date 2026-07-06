@@ -22,10 +22,10 @@ def load(path, model_filter=None):
 HT = "granite-4.0-h-tiny-Q4_K_M.gguf"
 GO = "gpt-oss-20b-mxfp4.gguf"
 series = [
-    ("granite-h-tiny · GPU (Vulkan/3070)", load(htiny_vk, HT), "#2e7d32", "-", 2.4, "o"),
-    ("granite-h-tiny · CPU",               load(cpu_tsv, HT),  "#2e7d32", "--", 1.6, "o"),
-    ("gpt-oss-20b · GPU (Vulkan, partial)", load(gptoss_vk, GO), "#c62828", "-", 2.4, "s"),
-    ("gpt-oss-20b · CPU",                  load(cpu_tsv, GO),  "#c62828", "--", 1.6, "s"),
+    ("granite-h-tiny . GPU (Vulkan/3070)", load(htiny_vk, HT), "#2e7d32", "-", 2.4, "o"),
+    ("granite-h-tiny . CPU",               load(cpu_tsv, HT),  "#2e7d32", "--", 1.6, "o"),
+    ("gpt-oss-20b . GPU (Vulkan, partial)", load(gptoss_vk, GO), "#c62828", "-", 2.4, "s"),
+    ("gpt-oss-20b . CPU",                  load(cpu_tsv, GO),  "#c62828", "--", 1.6, "s"),
 ]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 5.4))
@@ -39,14 +39,14 @@ for name, pts, col, ls, lw, mk in series:
 
 for ax in (ax1, ax2):
     ax.grid(True, alpha=0.3); ax.legend(fontsize=8.5)
-    ax.set_xlabel("Kontext im Fenster (Tokens)  →  Agent lädt Dateien nach")
-ax1.set_title("Reaktionszeit (TTFT) vs. Kontext", fontsize=12, weight="bold")
-ax1.set_ylabel("Zeit bis zur ersten Aktion (Sekunden)")
+    ax.set_xlabel("Context in window (tokens)  ->  agent loads more files")
+ax1.set_title("Reaction time (TTFT) vs. context", fontsize=12, weight="bold")
+ax1.set_ylabel("Time to first action (seconds)")
 ax1.axhline(y=1, color="gray", ls=":", alpha=0.6)
-ax2.set_title("Prefill-Geschwindigkeit vs. Kontext", fontsize=12, weight="bold")
-ax2.set_ylabel("Prefill (Tokens/Sekunde) — höher = besser")
+ax2.set_title("Prefill speed vs. context", fontsize=12, weight="bold")
+ax2.set_ylabel("Prefill (tokens/second) - higher is better")
 
-fig.suptitle("granite-h-tiny vs gpt-oss-20b — CPU vs Vulkan-GPU (RTX 3070 8GB, kein CUDA)", fontsize=13, weight="bold")
+fig.suptitle("granite-h-tiny vs gpt-oss-20b - CPU vs Vulkan GPU (RTX 3070 8GB, no CUDA)", fontsize=13, weight="bold")
 fig.tight_layout(rect=[0, 0, 1, 0.95])
 fig.savefig(outpng, dpi=130)
 print("wrote", outpng)
