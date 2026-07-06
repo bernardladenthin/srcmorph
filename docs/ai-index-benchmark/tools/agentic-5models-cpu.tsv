@@ -1,0 +1,16 @@
+model	ctx_target	prompt_n	load_s	ttft_ms	prefill_tps	decode_tps	tool_ok	notes
+granite-4.0-h-tiny-Q4_K_M.gguf	512	740	6	6029	122.7	9.0	YES	total=8.256894s
+granite-4.0-h-tiny-Q4_K_M.gguf	3072	3308	6	19283	171.6	9.5	YES	total=21.405980s
+granite-4.0-h-tiny-Q4_K_M.gguf	16384	16076	6	46108	348.7	8.0	YES	total=48.629940s
+gpt-oss-20b-mxfp4.gguf	512	679	8	30276	22.4	6.9	YES	total=39.284626s
+gpt-oss-20b-mxfp4.gguf	3072	3247	8	18776	172.9	5.0	YES	total=31.235231s
+gpt-oss-20b-mxfp4.gguf	16384	16015	8	100832	158.8	3.2	YES	total=113.287090s
+deepseek-coder-7b-instruct-v1.5-Q8_0.gguf	512	696	14	18866	36.9	4.7	NO	total=44.510874s
+deepseek-coder-7b-instruct-v1.5-Q8_0.gguf	3072	3915	14	69579	56.3	3.5	NO	total=104.303962s
+Qwen2.5-Coder-14B-Instruct-Q6_K.gguf	512	770	19	32044	24.0	3.0	TEXT	total=42.433354s
+Qwen2.5-Coder-14B-Instruct-Q6_K.gguf	3072	3882	19	108356	35.8	2.5	TEXT	total=120.694763s
+Qwen2.5-Coder-14B-Instruct-Q6_K.gguf	16384	NA	19	NA	NA	NA	ERR	{'code': 400, 'message': 'request (20906 tokens) exceeds the
+Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf	512	770	24	44639	17.2	1.9	TEXT	total=56.522518s
+Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf	3072	3882	24	112945	34.4	1.6	TEXT	total=127.614789s
+Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf	16384	NA	24	NA	NA	NA	ERR	{'code': 400, 'message': 'request (20906 tokens) exceeds the
+CPU CTX BENCH DONE
