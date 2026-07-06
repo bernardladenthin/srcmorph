@@ -1,0 +1,8 @@
+model	ctx_target	prompt_n	load_s	ttft_ms	prefill_tps	decode_tps	tool_ok	notes
+gpt-oss-20b-mxfp4.gguf	512	679	9	8548	79.4	9.7	YES	total=14.927341s
+gpt-oss-20b-mxfp4.gguf	2048	2239	9	11489	194.9	10.3	YES	total=17.054640s
+gpt-oss-20b-mxfp4.gguf	4096	4231	9	17991	235.2	10.3	YES	total=21.968893s
+gpt-oss-20b-mxfp4.gguf	8192	8143	9	34454	236.3	8.8	YES	total=39.136789s
+gpt-oss-20b-mxfp4.gguf	12288	12079	9	57485	210.1	7.5	YES	total=62.994654s
+gpt-oss-20b-mxfp4.gguf	16384	16015	9	80680	198.5	6.6	YES	total=86.744817s
+CPU CTX BENCH DONE

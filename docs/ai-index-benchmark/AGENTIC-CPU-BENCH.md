@@ -59,6 +59,33 @@ From `tools/agentic-5models-cpu.tsv` (TTFT / decode tok/s / tool_ok):
 
 \* cold first request; warm prefill ~160 tok/s.
 
+## 3b. GPU backend: OpenCL vs Vulkan (non‑CUDA), and CPU‑vs‑GPU curves
+
+Goal: a **non‑CUDA** GPU path on the RTX 3070 (8 GB).
+
+- **OpenCL does NOT work on this NVIDIA GPU.** llama.cpp's OpenCL backend finds the card but rejects
+  it: `ggml_opencl: unsupported GPU 'NVIDIA GeForce RTX 3070 Laptop GPU'. drop unsupported device` →
+  `no usable GPU found, --gpu-layers ignored` (falls back to CPU). llama.cpp OpenCL targets
+  Adreno/Qualcomm; desktop NVIDIA/AMD are out.
+- **Vulkan works and is ~CUDA‑fast** (vendor‑neutral). The winget `llama-server` is a Vulkan build and
+  sees the 3070 as `Vulkan1`. Use `--device Vulkan1 -ngl <N>`.
+
+CPU vs Vulkan‑GPU, reaction time + prefill vs context, both models:
+
+![CPU vs Vulkan GPU](htiny-vs-gptoss-cpu-vs-vulkan.png)
+
+| combination | TTFT @16k | prefill |
+|---|---|---|
+| **granite‑h‑tiny · GPU (Vulkan, full)** | **5.2 s** | ~3100 tok/s |
+| granite‑h‑tiny · CPU | 43.9 s | ~366 tok/s |
+| gpt‑oss‑20b · GPU (Vulkan, 6/24 layers) | 80.7 s | ~200 tok/s |
+| gpt‑oss‑20b · CPU | 93.0 s | ~172 tok/s |
+
+**h‑tiny fully fits the 8 GB GPU → the only interactive combo** (TTFT stays < 5.2 s even at 16k).
+**gpt‑oss (11 GB) does not fit → only 6/24 layers offload → barely faster than CPU** (still 8–81 s);
+it stays CPU‑bound. So on this hardware the winning setup is unambiguous: **run the small hybrid on
+the GPU (Vulkan); big models are async/CPU only.**
+
 ## 4. Takeaways for interactive/agentic use on this laptop
 
 - **The only responsive agentic model on CPU is `granite‑h‑tiny`** — smallest, hybrid, native

@@ -34,7 +34,7 @@ for ENTRY in "$@"; do
   CTX=$MAXC; [ "$CTX" -gt 17408 ] && CTX=17408          # cap allocation
   taskkill //F //IM llama-server.exe >/dev/null 2>&1; sleep 1
   t0=$(date +%s); ready=0
-  "$LS" -m "$MPATH" --host 127.0.0.1 --port $PORT -c $CTX -ngl 0 --jinja --no-webui > "$HERE/srv-$MODEL.log" 2>&1 &
+  "$LS" -m "$MPATH" --host 127.0.0.1 --port $PORT -c $CTX -ngl ${NGL:-0} ${DEVICE:-} --jinja --no-webui > "$HERE/srv-$MODEL.log" 2>&1 &
   for i in $(seq 1 300); do
     curl -s "http://127.0.0.1:$PORT/health" 2>/dev/null | grep -qi '"status":"ok"' && { ready=1; break; }
     grep -qiE "error loading|failed to fit|out of memory|abort" "$HERE/srv-$MODEL.log" 2>/dev/null && break
