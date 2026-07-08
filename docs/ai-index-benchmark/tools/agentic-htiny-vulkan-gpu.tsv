@@ -1,0 +1,8 @@
+model	ctx_target	prompt_n	load_s	ttft_ms	prefill_tps	decode_tps	tool_ok	notes
+granite-4.0-h-tiny-Q4_K_M.gguf	512	740	5	487	1520.8	120.1	YES	total=0.667318s
+granite-4.0-h-tiny-Q4_K_M.gguf	2048	2300	5	865	2660.3	120.5	YES	total=1.045918s
+granite-4.0-h-tiny-Q4_K_M.gguf	4096	4292	5	1462	2935.9	123.4	YES	total=1.641884s
+granite-4.0-h-tiny-Q4_K_M.gguf	8192	8204	5	2642	3105.7	118.2	YES	total=2.832818s
+granite-4.0-h-tiny-Q4_K_M.gguf	12288	12140	5	3887	3123.4	118.8	YES	total=4.081778s
+granite-4.0-h-tiny-Q4_K_M.gguf	16384	16076	5	5160	3115.3	112.2	YES	total=5.370496s
+CPU CTX BENCH DONE
