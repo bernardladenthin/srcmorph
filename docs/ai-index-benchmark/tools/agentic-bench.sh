@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 # Agentic reaction-time bench for local GGUF models via llama-server (tool-calling).
 # Usage: agentic_bench.sh <out.tsv> <model1.gguf> [model2.gguf ...]
 set -uo pipefail

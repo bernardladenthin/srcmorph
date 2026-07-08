@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
 import sys, json, re
 
 model = sys.argv[1]; load_s = sys.argv[2]; expect_fn = sys.argv[3]

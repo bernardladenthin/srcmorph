@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 # CPU agentic reaction-time vs context-fill, for a fixed model set. Loads each model ONCE,
 # then measures a tool-call at several context sizes.
 # Usage: agentic_cpu_ctx.sh <out.tsv> <model.gguf:maxctx> [<model.gguf:maxctx> ...]

@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
   <groupId>bench</groupId><artifactId>bench</artifactId><version>1</version><packaging>pom</packaging>
   <properties>
