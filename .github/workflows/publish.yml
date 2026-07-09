@@ -14,10 +14,6 @@ on:
         description: "Deploy to Maven Central (snapshot if -SNAPSHOT, release if a vX.Y.Z tag)"
         type: boolean
         default: false
-      verify_signing_key:
-        description: "Verify ONLY the GPG signing key: import it, print PUBLIC metadata (owner/expiry/fingerprint) and run a passphrase-unlock sign+verify self-test. Prints NO secret material and does not publish."
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -36,11 +32,15 @@ jobs:
       - run: echo "Start gate elapsed — proceeding with pipeline."
 
   # ---------------------------------------------------------------------------
-  # GPG signing-key preflight (opt-in, standalone, no `needs:` — runs in parallel
-  # at the very start). Reproduces what maven-gpg-plugin does at deploy time so a
-  # bad/expired key or wrong passphrase is caught in ~20s instead of failing the
-  # publish stage. Declares `environment: maven-central` so it reads the SAME
-  # GPG_PRIVATE_KEY / GPG_PASSPHRASE secret the publish jobs use.
+  # GPG signing-key preflight (standalone, no `needs:` — runs in parallel at the
+  # very start on every trigger). Reproduces what maven-gpg-plugin does at deploy
+  # time so a bad/expired key or wrong passphrase is caught in ~20s instead of
+  # failing the publish stage. Declares `environment: maven-central` so it reads
+  # the SAME GPG_PRIVATE_KEY / GPG_PASSPHRASE secret the publish jobs use.
+  #
+  # It is EXPECTED to go RED on refs where the secret is not delivered — fork PRs
+  # and other contributors' branches (secrets are withheld there). That red is
+  # the intended signal: "this ref cannot sign a release", not a regression.
   #
   # SECURITY: this job NEVER prints secret material. It imports the key into an
   # ephemeral keyring, prints only PUBLIC key metadata (key id, fingerprint,
@@ -48,13 +48,10 @@ jobs:
   # keyservers), and validates the passphrase by producing + verifying a
   # throwaway signature. The passphrase is passed on fd 3 (never argv, never a
   # log line), `set -x` is deliberately never enabled, and the passphrase is
-  # additionally `::add-mask::`ed. Gated to `workflow_dispatch` + the
-  # `verify_signing_key` checkbox so it never runs on normal PR/push CI (and so
-  # the `maven-central` environment gate is only exercised on demand).
+  # additionally `::add-mask::`ed.
   # ---------------------------------------------------------------------------
   verify-signing-key:
     name: Verify GPG signing key (no secrets printed)
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_signing_key }}
     runs-on: ubuntu-latest
     environment: maven-central
     steps:
