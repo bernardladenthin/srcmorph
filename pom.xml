@@ -88,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
         <!-- Explicit device selection for the gpt-oss presets (the device flag); comma-separated backend
              device names (e.g. Vulkan1). Empty = leave default. Takes precedence over ai.mainGpu. -->
         <ai.devices></ai.devices>
-        <junit.version>6.1.1</junit.version>
+        <junit.version>6.1.2</junit.version>
         <hamcrest.version>3.0</hamcrest.version>
         <jmh.version>1.37</jmh.version>
         <jcstress.version>0.16</jcstress.version>
