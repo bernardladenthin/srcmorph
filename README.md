@@ -661,6 +661,13 @@ mvn clean install -DaiIndex.skip=true
 
 > ⚠️ **DO NOT UPGRADE jqwik past 1.9.3.** jqwik 1.10.0 added an anti-AI prompt-injection string to test stdout; the 1.10.1 user guide states the library "is not meant to be used by any 'AI' coding agents at all." 1.9.3 is the last pre-disclosure release and is the pinned version. See `CLAUDE.md` section "jqwik prompt-injection in test output" for the full context. Dependabot is configured to ignore **all** `net.jqwik` updates (every version, including patches) — see the `ignore` rule in [`.github/dependabot.yml`](./.github/dependabot.yml).
 
+## A Note on History
+
+Somewhere in early 2026, the same idea apparently occurred more than once. This repository
+started with an implementation on March 15, 2026. Andrej Karpathy published his ["LLM wiki" gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
+on April 4, 2026. Google Cloud eventually formalized the very same pattern into the [Open Knowledge Format](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/),
+announced on June 12, 2026.
+
 ## License
 Apache License 2.0
 
