@@ -1,0 +1,56 @@
+{
+  "command": "All",
+  "srcMorph": {
+    "baseDirectory": ".",
+    "outputDirectory": "target/srcmorph-ai",
+    "subtrees": [
+      "src/main/java"
+    ],
+    "fileExtensions": [
+      ".java"
+    ],
+    "excludes": [
+      "**/package-info.java"
+    ],
+    "generationProvider": "mock",
+    "projectName": "my-project",
+    "promptDefinitions": [
+      {
+        "key": "file-body-java",
+        "template": "Summarize ONE Java source file as structured markdown: types, public API, dependencies."
+      },
+      {
+        "key": "file-body-fallback",
+        "template": "Summarize ONE source file as structured markdown."
+      }
+    ],
+    "aiDefinitions": [
+      {
+        "key": "mock-model",
+        "modelPath": "unused-with-mock-provider.gguf",
+        "contextSize": 2048,
+        "maxOutputTokens": 64,
+        "temperature": 0.15,
+        "threads": 2
+      }
+    ],
+    "fieldGenerations": [
+      {
+        "id": "java",
+        "promptKey": "file-body-java",
+        "aiDefinitionKey": "mock-model",
+        "condition": {
+          "extensions": [
+            ".java"
+          ]
+        }
+      },
+      {
+        "id": "fallback",
+        "fallback": true,
+        "promptKey": "file-body-fallback",
+        "aiDefinitionKey": "mock-model"
+      }
+    ]
+  }
+}

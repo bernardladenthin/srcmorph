@@ -28,7 +28,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/llamacpp-ai-index-maven-plugin?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(24%20classes)-brightgreen)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(47%20classes)-brightgreen)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_llamacpp-ai-index-maven-plugin&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_llamacpp-ai-index-maven-plugin)  
@@ -36,12 +36,6 @@
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_llamacpp-ai-index-maven-plugin&metric=security_rating)](https://sonarcloud.io/dashboard?id=bernardladenthin_llamacpp-ai-index-maven-plugin)  
 
 **Security:**  
-<!--
-Coverity Scan is not configured for this repository.
-To enable, register the project at https://scan.coverity.com/ and add a badge
-using the assigned ID:
-[![Coverity Scan Build Status](https://scan.coverity.com/projects/<ID>/badge.svg)](https://scan.coverity.com/projects/<ID>)
--->
 [![Known Vulnerabilities](https://snyk.io/test/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/bernardladenthin/llamacpp-ai-index-maven-plugin?targetFile=pom.xml)  
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbernardladenthin%2Fllamacpp-ai-index-maven-plugin.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbernardladenthin%2Fllamacpp-ai-index-maven-plugin?ref=badge_shield)  
 [![Dependencies](https://img.shields.io/librariesio/github/bernardladenthin/llamacpp-ai-index-maven-plugin)](https://libraries.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin)  
@@ -72,594 +66,151 @@ using the assigned ID:
 [![Treeware](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=Treeware&query=%24.total&url=https%3A%2F%2Fpublic.offset.earth%2Fusers%2Ftreeware%2Ftrees)](https://treeware.earth)  
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
-# llamacpp-ai-index-maven-plugin
-A Maven plugin for generating hierarchical, AI-readable documentation of source code projects using local llama.cpp-compatible models.
-It creates structured `.ai.md` files per source file and aggregates them into package-level summaries for fast semantic navigation and retrieval.
-## Features
-- Generate AI summaries for source files
-- Per-language prompts — Java, SQL schema, and a generic fallback — selected by file extension
-- Weave searchable type, API and domain names into every summary
-- Aggregate summaries at package level
-- Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
-- Run any phase independently — toggle file / package / project on or off
-- Exclude trivial or generated files with glob patterns
-- Uses local models via llama.cpp (no cloud dependency)
-- Incremental updates (skips unchanged files)
-- Logs a rough per-file duration estimate before each generation (size, token count, expected time)
-- Optimized for AI-assisted code understanding
-## How It Works
-The plugin runs in three phases, building a navigable index from fine to coarse.
-### 1. File Generation (generate)
-- Scans configured source directories
-- Creates `.ai.md` files per source file
-- Each file contains metadata header and markdown summary
-### 2. Package Aggregation (aggregate-packages)
-- Traverses generated `.ai.md` files
-- Builds hierarchical package summaries
-- Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
-### 3. Project Index (aggregate-project)
-- Harvests the one-line lead from every `package.ai.md` — the per-package listing is deterministic, no AI call
-- Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
-- A compact, always-loadable table of contents an agent reads first to navigate down
-- **Optional** (opt-in): configure a `<fieldGeneration>` on this goal and it makes *one* extra AI call to
-  write a short `#### Overview` paragraph from the package leads. The deterministic per-package listing is
-  unchanged; with no field generation the goal stays purely deterministic and calls no model.
-## Example Output
-```
-### AiMdDocument.java
-- H: 1.0
-- C: A48CED8C
-- D: 2026-03-15T23:31:52Z
-- T: 2026-03-19T18:13:31Z
-- G: 1.0.0
-- A: 0.0.0
-- X: file
----
-> Immutable value type pairing a deterministic metadata header with the AI-generated markdown body of one .ai.md document.
+# srcmorph
 
-#### Purpose
-- Hold one parsed `.ai.md` document as an `AiMdHeader` plus its markdown body.
+**srcmorph** is a prompt-driven source-tree transformer: it walks a source tree and processes each
+file through a configurable local LLM prompt — via [llama.cpp](https://github.com/ggerganov/llama.cpp)
+GGUF models, entirely local, no cloud calls — producing layered output: per-file, then per-package,
+then per-project. Today it emits structured, AI-readable `.ai.md` Markdown summaries for fast semantic
+code navigation; the same rule-routed pipeline (composable file-matching conditions, per-rule
+model + prompt, oversize handling) is generic enough to eventually emit wikis, architecture docs,
+diagrams, or even source-to-source transformations.
 
-#### Type
-- record-shaped value class (Java); marked `@ConvertToRecord`.
+> **Migration note.** This repository was restructured from a single Maven plugin into a reactor of
+> four artifacts — see "Module overview" below. As part of that migration the Maven plugin was
+> **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` to
+> `net.ladenthin:srcmorph-maven-plugin` (goal prefix `srcmorph`, properties `srcmorph.*`). Existing
+> consumers who still declare the old coordinates are **not** broken: the old artifactId is
+> published as a tiny relocation-stub POM (`<distributionManagement><relocation>`) that redirects
+> Maven to the new coordinates automatically — no consumer action required, though updating your own
+> POM to the new coordinates directly is recommended. See [`CLAUDE.md`](CLAUDE.md) and
+> [`TODO.md`](TODO.md) for the full migration status.
 
-#### Public API
-- `header() -> AiMdHeader` — the document's metadata header.
-- `body() -> String` — the AI-generated markdown body.
-```
-## Requirements
-- Java 8+ (production code targets Java 8; CI builds on Java 8 via temurin)
-- Maven 3.6.3+
-- Local GGUF model (llama.cpp compatible)
+## Module overview
 
-### Running under Java 8: override `checker-qual`
+| Module | Artifact | What it is |
+|---|---|---|
+| [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` engines. Use this to embed srcmorph in your own tooling. |
+| [`srcmorph-cli/`](srcmorph-cli/README.md) | `net.ladenthin:srcmorph-cli` | A standalone CLI driven by one JSON or YAML configuration file (ships as a `java -jar`-ready fat jar). No Maven project required. |
+| [`srcmorph-maven-plugin/`](srcmorph-maven-plugin/README.md) | `net.ladenthin:srcmorph-maven-plugin` | The Maven plugin, a thin wrapper around `srcmorph` — **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` (goal prefix `srcmorph`, was `ai-index`; properties `srcmorph.*`, were `aiIndex.*`). |
+| [`llamacpp-ai-index-maven-plugin/`](llamacpp-ai-index-maven-plugin/pom.xml) | `net.ladenthin:llamacpp-ai-index-maven-plugin` (pinned at `1.0.4`) | A tiny relocation-stub POM — no source, no dependencies — that redirects Maven Central consumers of the old plugin coordinates to `srcmorph-maven-plugin`. |
 
-The plugin itself is compiled to Java 8 bytecode, but it pulls in
-[`org.checkerframework:checker-qual`](https://central.sonatype.com/artifact/org.checkerframework/checker-qual)
-transitively, and the version it builds against (`4.2.0`) ships its classes as **Java 11
-bytecode** (class-file major version 55). On a **Java 8** JVM, loading those annotation
-classes fails with `UnsupportedClassVersionError`.
+The first three modules (plus the reactor parent pom) are released together from this one
+repository at the same version; the relocation stub is versioned and published independently (see
+`CLAUDE.md`).
 
-If you run the plugin under a Java 8 Maven/JVM, **override `checker-qual` to `3.55.1`** — the
-**last release whose runtime classes are Java 8 bytecode** (major 52). The `checker-qual` line
-switched to Java 11 bytecode in `4.0.0`; every `3.x` release (`3.42.0` … `3.55.1`) is Java 8
-loadable, and `3.55.1` is the newest of them. (`checker-qual` `3.43.0`–`3.55.1` additionally
-carry a root `module-info.class`, which a Java 8 classpath simply ignores; if you want a jar
-with no `module-info.class` at all, `3.42.0` is the last such release.)
+## Quickstart
 
-Because this is a *plugin* dependency, the override goes inside the plugin's own
-`<dependencies>` block (a project-level `<dependencyManagement>` does **not** affect a plugin's
-classpath):
+### 1. Maven plugin
 
 ```xml
 <plugin>
     <groupId>net.ladenthin</groupId>
-    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
-    <!-- ... version + configuration ... -->
-    <dependencies>
-        <!-- Java 8 execution: pin the last Java-8-bytecode checker-qual.
-             The plugin builds against 4.2.0, which is Java 11 bytecode and
-             cannot be loaded by a Java 8 JVM. -->
-        <dependency>
-            <groupId>org.checkerframework</groupId>
-            <artifactId>checker-qual</artifactId>
-            <version>3.55.1</version>
-        </dependency>
-    </dependencies>
-</plugin>
-```
-
-Running the plugin under Java 11 or newer needs no override.
-
-## Dependency
-
-The plugin depends on [`net.ladenthin:llama`](https://central.sonatype.com/artifact/net.ladenthin/llama), the Java/JNI binding for llama.cpp.
-It is published on Maven Central and resolves automatically — no manual installation required.
-
-```xml
-<dependency>
-    <groupId>net.ladenthin</groupId>
-    <artifactId>llama</artifactId>
-    <version>5.0.3</version>
-</dependency>
-```
-## Configuration
-The plugin is configured from three building blocks, declared on the plugin inside
-`<build><plugins>`:
-
-1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
-2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
-   two `%s` placeholders: the file/package name and the source (for packages, the child summaries; for
-   the optional project overview, the per-package leads).
-3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
-   `<aiDefinitionKey>` (model id, which carries the full parameter set) and selects files with a
-   composable **`<condition>`** tree: `<and>`/`<or>`/`<not>` over the leaves `<extensions>`, `<size>`
-   (`<min>`/`<max>` bytes), `<lines>` (`<min>`/`<max>`), `<modifiedAfter>`/`<modifiedBefore>` (ISO-8601
-   instant vs the file's last-modified time), and `<pathGlob>` (base-relative glob). When several rules
-   match, the highest `<priority>` wins (ties by declaration order). A rule may instead be
-   `<skip>true</skip>` (ignore matching files — a high-priority skip beats routes and the fallback), and
-   **exactly one** `<fallback>true</fallback>` (no condition) catches everything else. A file that
-   matches no rule and no fallback **fails the build**. So one `generate` run can index different file
-   kinds/sizes with **different models *and* prompts**; it loads each model once. Run with
-   `-DaiIndex.planOnly=true` to print the routing plan (a copy-pasteable Markdown table: file → rule id →
-   prompt → context-window fit → rough time estimate, summed per model and overall) and stop before
-   loading any model. The plan also checks each file against its routed model's **context window**: a
-   file too large for the window would lose content if trimmed. What happens then is **configuration
-   only** — the plugin never picks a model for you — and is chosen per rule with `<onOversize>`:
-   - **`fail`** *(default)* — abort the build (a hard fail). The fix is to add a `<fieldGeneration>` rule
-     with a size `<condition>` that routes oversized files to a model with a large enough window (see the
-     `granite-4.0-h-tiny-bigwindow` definition + the `big-window-java` / `big-window-sql` rules in the
-     POM — IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid Mamba model whose KV cache grows only linearly,
-     configured at a 384K window to cover files up to ~1 MB; verified summarizing a ~995 KB / ~268K-token
-     file on an 8 GB GPU with no OOM).
-   - **`sample`** — feed only the head of the file (trimmed to the window) in a single call. Fast and
-     bounded; good for repetitive data where the head represents the whole.
-   - **`mapReduce`** — split the file into window-sized chunks at line boundaries (with overlap so
-     records are never torn mid-syntax), summarize each chunk, then combine the partial summaries in one
-     final call. A `<maxChunks>` cap bounds the time (a representative subset — always head + tail,
-     evenly spaced — is summarized when the file would exceed the cap), so an arbitrarily large file
-     (e.g. 7 MB) stays within a chosen per-file budget. **Route oversized files to a *small*, fast model
-     for this — not the big-window one.** Prefill is `O(n²)` in prompt length, so chunks should be small:
-     many cheap small-window passes are far faster than a few giant ones (one 384K-token pass alone can
-     dwarf a whole run). E.g. a 16K-window model with `maxChunks=6` is ~7 calls (~1 h order on a
-     reference CPU; less on GPU) and samples a representative slice — the right trade-off for repetitive
-     data. mapReduce *on* a big window is the slowest possible combination; avoid it.
-   - **`deterministic`** — no model at all: emit a deterministic body (size, line count, head/tail
-     sample). Instant; for pure data where no AI analysis is needed.
-
-   Quality from a real model is best within Granite's validated 128K (~500 KB) and degrades gradually
-   beyond it — a whole-file (or chunked) summary still beats a trimmed one.
-
-   **Exact counts with `<facts>` (optional, every file — not just oversize).** A sampled/chunked AI
-   summary can't reliably *count* things (no single call sees the whole file — it will guess "25 rows").
-   Add a `<facts>` list to a rule and each `{label, pattern}` reports its regex match count over the
-   **whole** source, prepended to the body of every file the rule matches as an exact facts line — so
-   downstream agents get authoritative structural counts in every summary. It's fully generic — the
-   meaning is in the regex, so the same mechanism counts SQL `INSERT` rows or Java `\bboolean\b` fields;
-   multi-line matching is opt-in via the inline `(?m)` flag. Keep patterns robust (a fact that miscounts
-   is worse than none). Example: `**Facts (exact, whole file):** INSERT rows: 36738; tables: 122; views: 4`.
-
-```xml
-<plugin>
-    <groupId>net.ladenthin</groupId>
-    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
-    <version>1.0.2</version>
-
+    <artifactId>srcmorph-maven-plugin</artifactId>
+    <version>1.1.0</version>
     <configuration>
-        <!-- outputDirectory defaults to ${project.basedir}/src/site/ai -->
-        <subtrees>
-            <subtree>src/main/java/com/example</subtree>
-        </subtrees>
-        <!-- provider defaults to "mock"; use "llamacpp-jni" to run a real GGUF model -->
-        <generationProvider>llamacpp-jni</generationProvider>
-
-        <!-- 1) Models: define once, reference by key. -->
+        <generationProvider>mock</generationProvider>
+        <promptDefinitions>
+            <promptDefinition>
+                <key>file-body</key>
+                <template><![CDATA[Summarize this file:
+%s]]></template>
+            </promptDefinition>
+        </promptDefinitions>
+        <fieldGenerations>
+            <fieldGeneration>
+                <promptKey>file-body</promptKey>
+                <aiDefinitionKey>coder</aiDefinitionKey>
+                <fallback>true</fallback>
+            </fieldGeneration>
+        </fieldGenerations>
         <aiDefinitions>
             <aiDefinition>
                 <key>coder</key>
                 <modelPath>/path/to/model.gguf</modelPath>
-                <contextSize>32768</contextSize>
-                <maxOutputTokens>1536</maxOutputTokens>
-                <temperature>0.7</temperature>
-                <threads>8</threads>
             </aiDefinition>
         </aiDefinitions>
-
-        <!-- 2) Prompts (abbreviated): one prompt per language plus a fallback, a package
-                prompt, and the optional project-overview prompt. See the ai-index-selftest
-                profile in this repo's pom.xml for the full, tested file-body-java /
-                file-body-sql / file-body-fallback / package-body / project-body templates. -->
-        <promptDefinitions>
-            <promptDefinition>
-                <key>file-body-java</key>
-                <template><![CDATA[Summarize ONE Java source file as structured markdown.
-
-File: %s
-
-Source:
-%s]]></template>
-            </promptDefinition>
-            <promptDefinition>
-                <key>file-body-fallback</key>
-                <template><![CDATA[Summarize ONE source file as structured markdown.
-
-File: %s
-
-Source:
-%s]]></template>
-            </promptDefinition>
-            <promptDefinition>
-                <key>package-body</key>
-                <template><![CDATA[Summarize ONE package from its already-generated file summaries.
-
-Package: %s
-
-File summaries:
-%s]]></template>
-            </promptDefinition>
-            <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
-            <promptDefinition>
-                <key>project-body</key>
-                <template><![CDATA[Write a short overview of the whole project from its per-package leads.
-
-Index file: %s
-
-%s]]></template>
-            </promptDefinition>
-        </promptDefinitions>
     </configuration>
-
-    <!-- 3) Bind each goal to a phase and map prompt -> model per goal. -->
-    <executions>
-        <execution>
-            <id>ai-generate</id>
-            <phase>generate-resources</phase>
-            <goals><goal>generate</goal></goals>
-            <configuration>
-                <!-- A .java rule (matched by its <condition>) and the explicit fallback for
-                     everything else. See "Routing rules" below for size/lines/modified/glob
-                     conditions, priority, and skip. -->
-                <fieldGenerations>
-                    <fieldGeneration>
-                        <id>java</id>
-                        <promptKey>file-body-java</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                        <condition>
-                            <extensions><extension>.java</extension></extensions>
-                        </condition>
-                    </fieldGeneration>
-                    <fieldGeneration>
-                        <id>fallback</id>
-                        <fallback>true</fallback>
-                        <promptKey>file-body-fallback</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                    </fieldGeneration>
-                </fieldGenerations>
-            </configuration>
-        </execution>
-        <execution>
-            <id>ai-aggregate-packages</id>
-            <phase>process-resources</phase>
-            <goals><goal>aggregate-packages</goal></goals>
-            <configuration>
-                <fieldGenerations>
-                    <fieldGeneration>
-                        <promptKey>package-body</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                    </fieldGeneration>
-                </fieldGenerations>
-            </configuration>
-        </execution>
-        <!-- Phase 3: project index. The per-package listing is deterministic (no model needed).
-             Add the optional <configuration> below to also write a short #### Overview paragraph
-             from the package leads (one extra AI call); omit it for a purely deterministic index. -->
-        <execution>
-            <id>ai-aggregate-project</id>
-            <phase>prepare-package</phase>
-            <goals><goal>aggregate-project</goal></goals>
-            <configuration>
-                <fieldGenerations>
-                    <fieldGeneration>
-                        <promptKey>project-body</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                    </fieldGeneration>
-                </fieldGenerations>
-            </configuration>
-        </execution>
-    </executions>
 </plugin>
 ```
 
-### Routing rules (conditions, priority, skip, plan)
-Within one `generate` run you can route files to different models **and** prompts by size, language,
-age or path. Example — small/medium/large Java files to three context presets, skip generated sources,
-and a fallback for everything else:
+Run with `mvn srcmorph:generate`. Full goal/parameter reference, routing rules, GPU acceleration, and
+model recommendations: [`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin/README.md).
 
-```xml
-<fieldGenerations>
-  <fieldGeneration>                                  <!-- skip wins by priority -->
-    <id>skip-generated</id><skip>true</skip><priority>100</priority>
-    <condition><pathGlob>**/generated/**</pathGlob></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>java-small</id><promptKey>file-body-java-terse</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><max>16384</max></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>java-mid</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c48k</aiDefinitionKey>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><min>16384</min><max>49152</max></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>java-large</id><promptKey>file-body-java-detailed</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><min>49152</min></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>                                  <!-- huge files: chunk over a SMALL fast window + combine -->
-    <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
-    <onOversize>mapReduce</onOversize><maxChunks>6</maxChunks>   <!-- ~7 cheap calls; bounds time to ~1 h/file -->
-    <facts>                                          <!-- exact whole-file counts, prepended to the body -->
-      <fact><label>boolean fields</label><pattern>\bboolean\b</pattern></fact>
-      <fact><label>methods</label><pattern>(?m)^\s+(public|private|protected).*\(</pattern></fact>
-    </facts>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><min>1048576</min></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>fallback</id><fallback>true</fallback>
-    <promptKey>file-body-fallback</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
-  </fieldGeneration>
-</fieldGenerations>
-```
-
-Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
-`<lines>` works the same way; `<modifiedAfter>2026-01-01T00:00:00Z</modifiedAfter>` only (re)indexes
-recently changed files. `<onOversize>` (`fail` *(default)* / `sample` / `mapReduce` / `deterministic` —
-see the context-window note above) chooses what a rule does when a file is still larger than its routed
-model's window; `<maxChunks>` caps how many chunks `mapReduce` summarizes. Preview the mapping without
-running a model:
-
-```
-mvn ai-index:generate -DaiIndex.planOnly=true
-```
-
-## Usage
-Run AI index generation:
-```
-mvn clean install -Pai-index-selftest
-```
-With native llama tests:
-```
-mvn clean install -Pai-index-selftest -DrunNativeLlamaTests=true
-```
-## Plugin Configuration
-Run-level parameters (set in `<configuration>`):
-- `outputDirectory` — target directory for `.ai.md` files (default: `${project.basedir}/src/site/ai`)
-- `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`)
-- `fileExtensions` — file extensions to index (default: `.java`)
-- `excludes` — glob patterns for source files to skip, matched against each file's path relative to
-  the base dir with `/` separators, e.g. `**/package-info.java`, `**/generated/**` (default: none).
-  `*` stays within one path segment, `**` spans directories, `?` is a single character.
-- `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
-- `force` — regenerate even when a body already exists (default: `false`)
-- `skip` — global switch: skip **every** phase (default: `false`)
-- Per-phase switches — turn any of the three phases on/off independently (each default `false`).
-  Named after the three index levels (`file` / `package` / `project`, the `x` node types):
-  - `aiIndex.file.skip` — skip the **file** phase (the `generate` goal)
-  - `aiIndex.package.skip` — skip the **package** phase (the `aggregate-packages` goal)
-  - `aiIndex.project.skip` — skip the **project** phase (the `aggregate-project` goal)
-
-  So `-DaiIndex.package.skip=true` runs file + project only, `-DaiIndex.skip=true` runs
-  nothing, and the defaults run all three.
-- `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
-- `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
-
-### Per-model `<aiDefinition>` parameters
-
-Every model knob lives inside its `<aiDefinition>` (referenced by `aiDefinitionKey`), not as a top-level
-plugin parameter. Only `key` and `modelPath` are required; everything else has a default. The defaults
-below are the shipped values (`AiGenerationConfig.DEFAULT_*`).
-
-| Element | Default | Description |
-|---|---|---|
-| `key` | *(required)* | Identifier referenced by a rule's `aiDefinitionKey` |
-| `modelPath` | *(required)* | Path to the GGUF model file |
-| `contextSize` | `32768` | Context window in tokens |
-| `maxOutputTokens` | `128` | Max generated tokens per call |
-| `threads` | `8` | CPU threads for inference |
-| `temperature` | `0.15` | Sampling temperature |
-| `topP` | `0.9` | Nucleus (top-p) sampling threshold |
-| `topK` | `40` | Top-k sampling limit (`0` = disabled) |
-| `minP` | `0.0` | Min-p sampling threshold (`0.0` = disabled) |
-| `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
-| `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
-| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field). Use a value at or below your model's real ratio so the budget stays conservative |
-| `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
-| `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
-| `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |
-| `cacheReuse` | `256` | KV prefix-reuse minimum chunk size in tokens (`--cache-reuse`; `0` = off) |
-| `gpuLayers` | `-1` | GPU layers to offload (`--gpu-layers`); `-1` = auto-fit to free VRAM, `0` = force CPU, `>0` = partial. GPU native only |
-| `mainGpu` | `-1` | Primary GPU index (`--main-gpu`); `-1` = leave default. Matters on multi-GPU hosts (e.g. a Vulkan build enumerates every GPU) |
-| `devices` | *(empty)* | Explicit device selection (`--device`), comma-separated backend device names (e.g. `Vulkan1`); takes precedence over `mainGpu` |
-| `chatTemplateEnableThinking` | `true` | Enable the chat template's thinking mode |
-| `reasoningEffort` | `low` | gpt-oss harmony reasoning effort (`low`/`medium`/`high`); empty omits the kwarg (e.g. for non-gpt-oss models) |
-| `reasoningBudgetTokens` | `-1` | Cap on harmony reasoning tokens (`-1` = unrestricted) |
-| `dryMultiplier` | `0.0` | DRY repetition-penalty multiplier (`0.0` = disabled); the other `dry*` knobs only apply when this is `> 0` |
-| `dryBase` | `1.75` | DRY exponential base |
-| `dryAllowedLength` | `2` | Longest n-gram that may repeat without DRY penalty |
-| `dryPenaltyLastN` | `-1` | DRY look-back window in tokens (`-1` = whole context, `0` = off) |
-| `drySequenceBreakers` | *(empty)* | DRY sequence-breaker strings; empty = the binding defaults |
-| `stopStrings` | *(empty)* | Extra stop strings that end generation |
-
-## Prompt System
-Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
-from `<fieldGenerations>`. The self-test profile defines five:
-- `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
-- `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
-  the tables it reads vs writes, and relationships)
-- `file-body-fallback` — generic multi-language summary for any other source file
-- `package-body` — synthesizes a package summary from the already-generated file summaries
-- `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
-
-For the `generate` goal the file-level prompt is selected per file by extension: the first field
-generation whose `<fileExtensions>` matches the file name wins; otherwise the first entry without a
-`<fileExtensions>` filter is the fallback. A single field generation with no filter (the historical
-shape) keeps working — it is simply the fallback for every file.
-
-Each summary begins with a one-sentence blockquote lead, followed by structured `####` sections.
-Prompts are optimized to avoid code blocks, formatter artifacts, and empty outputs, and to produce structured markdown.
-## Output Structure
-```
-src/site/ai/
-└── main/
-    └── java/
-        └── com/
-            └── example/
-                ├── MyClass.java.ai.md
-                ├── AnotherClass.java.ai.md
-                └── package.ai.md
-```
-## Design Principles
-- Deterministic metadata (hash-based change detection)
-- Separation of concerns (header = metadata, body = summary)
-- AI-friendly structure (predictable and hierarchical)
-- Local-first (no external APIs required)
-## Known Limitations
-- Model output may require normalization (handled in code)
-- Large models increase runtime
-- Output quality depends on chosen model
-
-## TODO
-- **Expand PIT mutation-testing scope.** `<targetClasses>` in `pom.xml` lists an explicit subset of classes verified at 100% mutation parity; widen it incrementally toward the whole `net.ladenthin.maven.llamacpp.aiindex.*` tree (the streambuffer whole-package model) as more classes reach parity. Generic PIT setup and invocation: see the [PIT policy](../workspace/policies/pit-mutation-testing.md).
-## Recommended Models
-Based on an 8-model × 2-prompt benchmark run against this codebase — full results, per-model
-pros/cons, a source-faithfulness deep-dive, and reproduction steps in
-[docs/ai-index-benchmark](docs/ai-index-benchmark/COMPARISON.md):
-
-- **`gpt-oss-20B-mxfp4` — the production default** (switch with `-Dai.model=<key>`). The native MXFP4
-  quant at a 96K window; it inherits the benchmark's accuracy lead (gpt-oss-20b was most *accurate* per
-  file, won 5/6 in the per-file matrix — measured on the `c96k`/UD-Q4_K_XL quant, but E5 shows quant
-  choice is within noise so the native MXFP4 is the better-quality swap), run at `reasoningEffort=low`
-  and a 96K window so it covers files up to ~250 KB untrimmed. Slowest of the set (~2× the 30B) — the
-  accepted cost for accuracy. See the preset/timing details below.
-- **Qwen3-Coder-30B-A3B-Instruct** — throughput alternative (and best of the non-reasoning models for
-  large Java files): most complete/faithful of the fast models, code-specialized, Apache-2.0,
-  ~3.3B-active MoE, 262K context. Pick it when throughput beats the last points of fidelity.
-- **Granite-4.0-H-Tiny** — fastest on CPU (~4×, flat-KV hybrid, Apache-2.0); best for very large
-  or many files when throughput beats the last points of fidelity.
-- **Seed-Coder-8B-Instruct** — clean, permissive (MIT) small dense coder.
-- Avoid `Qwen3.5-4B` (thinking tax, no quality gain).
-
-### gpt-oss-20b presets, large files, and timing
-
-`gpt-oss` is a *reasoning* model whose analysis tokens share the output budget, so use
-`reasoningEffort=low` for code summaries (best quality here) and size the budget to the file. The pom
-ships three ready presets, tiered by the largest file you must cover — full rationale and measurements
-in [COMPARISON.md §11](docs/ai-index-benchmark/COMPARISON.md):
-
-| Preset | context | covers up to | ~ time (CPU) |
-|---|---|---|---|
-| `gpt-oss-20B-c16k` | 16K | ~40 KB | ~1–2 min |
-| `gpt-oss-20B-c48k` | 48K | ~125 KB | ~25 min @ 100 KB |
-| **`gpt-oss-20B-c96k` (default)** | 96K | ~260 KB | ~80 min @ 250 KB |
-
-- **`c96k` is the default:** a measured A/B shows a wider context window costs only RAM, not per-file
-  time, so it covers every file up to ~250 KB with no trimming while small files stay just as fast.
-  Downshift only to save RAM. Hard ceiling is the 128K window (~480–500 KB of code).
-- **Timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt tokens),
-  because attention is O(n) per token — which is why throughput drops as files grow. The plugin logs
-  this estimate per file.
-
-## GPU acceleration (opt-in)
-The default native is CPU (Ninja build, bundled in the main `net.ladenthin:llama` jar). On an NVIDIA
-RTX 3070 a CUDA build measured **~4.5× the CPU decode speed**; Vulkan also works (AMD + NVIDIA) but pays
-a one-time shader-compilation cost on the first run. OpenCL is intentionally not offered (llama.cpp's
-OpenCL backend does not support NVIDIA GPUs).
-
-How the native is found: `net.ladenthin.llama.loader.LlamaLoader` tries `net.ladenthin.llama.lib.path`,
-then `java.library.path`, then **extracts the native bundled in whatever `net.ladenthin:llama` jar is on
-the classpath**. So there are two ways to enable a GPU when running the *published* plugin in your own
-build.
-
-**Recommended — add the GPU classifier to the plugin's own classpath.** Declare the matching
-`net.ladenthin:llama` classifier as a dependency of the plugin in your POM; the loader then extracts the
-GPU `jllama.dll` from it — no library path to manage:
+<details>
+<summary>Deprecated: old <code>net.ladenthin:llamacpp-ai-index-maven-plugin</code> coordinates (auto-relocates)</summary>
 
 ```xml
 <plugin>
-  <groupId>net.ladenthin</groupId>
-  <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
-  <version>...</version>
-  <dependencies>
-    <dependency>
-      <groupId>net.ladenthin</groupId>
-      <artifactId>llama</artifactId>
-      <version>5.0.3</version>
-      <classifier>cuda13-windows-x86-64</classifier> <!-- NVIDIA; or vulkan-windows-x86-64 -->
-    </dependency>
-  </dependencies>
+    <groupId>net.ladenthin</groupId>
+    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+    <version>1.0.4</version>
+    <!-- Maven Central redirects this artifact to net.ladenthin:srcmorph-maven-plugin:1.1.0 via a
+         published <distributionManagement><relocation> POM. Prefer declaring the new coordinates
+         above directly in new/updated POMs. -->
 </plugin>
 ```
 
-```
-mvn ai-index:generate -Dai.gpuLayers=20      # + the GPU runtime on PATH (see below)
-```
+</details>
 
-**Alternative — runtime library override (no POM change).** Point `net.ladenthin.llama.lib.path` at a
-folder holding the GPU `jllama.dll` (extracted once from the classifier jar); it is tried before the
-bundled native:
+### 2. Standalone CLI
 
-```
-mvn ai-index:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dai.gpuLayers=20
+```bash
+java -jar srcmorph-cli-<version>-jar-with-dependencies.jar examples/config_All.json
 ```
 
-In both cases:
+Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider (no GGUF
+model required) — see [`examples/`](examples/) for the full set plus paired `run_*.sh`/`run_*.bat`
+launcher scripts, and [`srcmorph-cli/README.md`](srcmorph-cli/README.md) for the config-file
+reference.
 
-- **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
-  `cublas64_13.dll`) on `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
-- **`ai.gpuLayers`** (on the gpt-oss presets): `-1` (default) does **not** pin a layer count, so
-  llama.cpp **auto-fits** as many layers as fit the card's free VRAM — the robust "runs on any card"
-  setting (it never over-commits, so no OOM on a 6 GB card, and uses more layers on a bigger one). Pin a
-  positive number only to force a specific **partial** split (a fixed count disables auto-fit), or `0` to
-  force CPU. Measured on an 8 GB RTX 3070, auto-fit gpt-oss-20b ≈ 29 decode t/s (vs ≈ 8 on CPU); a card
-  with ≥ 16 GB fits all layers and is far faster.
-- **Picking a GPU on a multi-GPU host** (`ai.mainGpu` / `ai.devices` on the gpt-oss presets): a **CUDA**
-  build only enumerates NVIDIA devices, so a single-NVIDIA host needs nothing. A **Vulkan** build
-  enumerates *every* GPU (an integrated GPU is often device `0`), so the default may pick the slower one —
-  set `-Dai.mainGpu=1` to select the discrete GPU, or `-Dai.devices=Vulkan1` for explicit device names
-  (these map to the binding's `--main-gpu` / `--device`). On any model definition the same knobs are the
-  `<mainGpu>` / `<devices>` elements.
+### 3. Library dependency
 
-**Profiles (this repo's own reactor build only — test/benchmark).** `-P gpu-cuda` / `-P gpu-vulkan`
-swap the `net.ladenthin:llama` classifier (via the `llama.classifier` property) for the reactor's
-test/compile classpath — handy for the native test or benchmarking on GPU here. They do **not** change
-the native used when the *published* plugin runs in another build (the POM is not flattened, so the
-classifier stays a property that resolves to the CPU default downstream) — use one of the two methods
-above for real indexing.
-
-## Development
-
-Run full build:
-```
-mvn clean install
-```
-Skip AI generation:
-```
-mvn clean install -DaiIndex.skip=true
+```xml
+<dependency>
+    <groupId>net.ladenthin</groupId>
+    <artifactId>srcmorph</artifactId>
+    <version>1.1.0</version>
+</dependency>
 ```
 
-### Contributors: do not upgrade jqwik past 1.9.3
+```java
+SrcMorphConfiguration config = new SrcMorphConfiguration();
+config.setBaseDirectory(new File("."));
+// ... set outputDirectory, promptDefinitions, aiDefinitions, fieldGenerations ...
+new GenerateEngine(config).execute();
+```
 
-> ⚠️ **DO NOT UPGRADE jqwik past 1.9.3.** jqwik 1.10.0 added an anti-AI prompt-injection string to test stdout; the 1.10.1 user guide states the library "is not meant to be used by any 'AI' coding agents at all." 1.9.3 is the last pre-disclosure release and is the pinned version. See `CLAUDE.md` section "jqwik prompt-injection in test output" for the full context. Dependabot is configured to ignore **all** `net.jqwik` updates (every version, including patches) — see the `ignore` rule in [`.github/dependabot.yml`](./.github/dependabot.yml).
+See [`srcmorph/README.md`](srcmorph/README.md) for the full API tour (the four engines, exception
+types, and a complete embedding example).
+
+## How It Works
+
+srcmorph runs in three phases, building a navigable index from fine to coarse — see each module's own
+README for the full details (routing rules, oversize strategies, exact-count facts, the project
+overview) and [`CLAUDE.md`](CLAUDE.md) for the architecture.
+
+1. **File generation** — scans configured source directories, writes one `.ai.md` file per source
+   file (deterministic metadata header + AI-generated Markdown body).
+2. **Package aggregation** — traverses the generated `.ai.md` files, writes one `package.ai.md` per
+   directory with a deterministic child-link list plus an AI-generated summary.
+3. **Project index** — harvests the one-line lead from every `package.ai.md` into a single
+   `project.ai.md` table of contents (deterministic; an optional one-call AI overview paragraph can be
+   enabled).
+
+Each phase is independently switchable and incremental (checksums skip unchanged files); a rule-based
+router lets one run send different files to different models **and** prompts by extension, size, age,
+or path.
+
+## Snapshot builds
+
+Snapshots are published to the Central Snapshots repository on every push to `main`:
+
+```
+https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/
+```
+
+Current reactor version: `1.1.0`.
 
 ## A Note on History
 
@@ -669,13 +220,5 @@ on April 4, 2026. Google Cloud eventually formalized the very same pattern into 
 announced on June 12, 2026.
 
 ## License
+
 Apache License 2.0
-
----
-
-<details>
-<summary>🍺 Beer-driven architectural review (2026-05-26)</summary>
-
-> _Sometimes you spend two beers debating "architektonisch" vs "architekturiell" and the only conclusion is: ship the code anyway. Cheers!_
-
-</details>

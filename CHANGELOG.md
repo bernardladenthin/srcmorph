@@ -11,6 +11,53 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Added
+- **Reactor split**: the former single-module `llamacpp-ai-index-maven-plugin` is now a 3-module
+  Maven reactor under a new parent, `net.ladenthin:srcmorph-parent` — `srcmorph` (new core library,
+  `net.ladenthin:srcmorph`, framework-free — no Maven Plugin API dependency), `srcmorph-cli` (new
+  standalone CLI, `net.ladenthin:srcmorph-cli`, driven by a single JSON/YAML configuration file,
+  ships as a `java -jar`-ready fat jar), and `srcmorph-maven-plugin` (the original plugin, now a
+  thin wrapper depending on `srcmorph`). All three (plus the parent pom) release together at one
+  shared version.
+- **Plugin renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` to
+  `net.ladenthin:srcmorph-maven-plugin` in this same release (goal prefix `ai-index` → `srcmorph`;
+  package `net.ladenthin.maven.llamacpp.aiindex.mojo` → `net.ladenthin.maven.srcmorph.mojo`; every
+  `@Parameter` property `aiIndex.*` → `srcmorph.*`). A new, independently-versioned relocation-stub
+  module/POM (`net.ladenthin:llamacpp-ai-index-maven-plugin:1.0.4`, no source, no dependencies, only
+  `<distributionManagement><relocation>`) keeps the old coordinates resolvable on Maven Central,
+  redirecting to `net.ladenthin:srcmorph-maven-plugin:1.1.0`.
+- New engine layer in `srcmorph` (`GenerateEngine`, `AggregatePackagesEngine`,
+  `AggregateProjectEngine`, `CalibrateEngine`) extracted from what used to be each mojo's
+  `execute()` body, plus a new shared root configuration object,
+  `net.ladenthin.srcmorph.config.SrcMorphConfiguration`, bindable identically from Maven plexus XML,
+  Jackson JSON/YAML (the new CLI), or plain Java code.
+- New `examples/` directory at the repo root: paired `config_*.json`/`.yaml` fixtures for every
+  `srcmorph-cli` command (`Plan`, `GenerateFileIndex`, `All`, `Calibrate`), paired `run_*.sh`/`.bat`
+  launcher scripts, and an example `logbackConfiguration.xml` — all runnable out of the box with the
+  `mock` provider (no GGUF model required).
+- Per-module `README.md` files (`srcmorph/README.md`, `srcmorph-cli/README.md`) and a rewritten,
+  product-level root `README.md`/`CLAUDE.md` describing the reactor.
+
+### Changed
+- Logging in the extracted core/CLI layers moved from a constructor-injected Maven `Log` to
+  `org.slf4j.Logger` (see the `1.0.x` entries below for the indexer-layer half of this change,
+  already shipped before the reactor split).
+- `.github/workflows/publish.yml` adapted to the 4-module reactor: per-module jar upload/release
+  globs, a repo-wide crash-dump glob, the PIT step scoped to `srcmorph` (the only module with a
+  mutation-testing gate), the `vmlens` job scoped to `srcmorph-maven-plugin` (where its
+  test actually lives), and Coveralls/Codecov pointed at `srcmorph`'s jacoco report.
+
+### Notes
+- **This release renames the Maven plugin's coordinates, package, goal prefix, and `@Parameter`
+  property names.** `net.ladenthin:llamacpp-ai-index-maven-plugin` → `net.ladenthin:srcmorph-maven-plugin`;
+  package `net.ladenthin.maven.llamacpp.aiindex.mojo` → `net.ladenthin.maven.srcmorph.mojo`; goal
+  prefix `ai-index` → `srcmorph`; every `aiIndex.*` property → `srcmorph.*`. Existing consumers of
+  the old coordinates are not broken: a new, independently-versioned relocation-stub artifact
+  (`net.ladenthin:llamacpp-ai-index-maven-plugin:1.0.4`, POM-only, no source/dependencies) is
+  published with a `<distributionManagement><relocation>` pointing at
+  `net.ladenthin:srcmorph-maven-plugin:1.1.0`, so Maven transparently redirects any build still
+  declaring the old artifactId.
+
 ## [1.0.2] - 2026-07-02
 
 ### Changed

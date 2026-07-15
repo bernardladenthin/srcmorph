@@ -1,0 +1,508 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/4.8.6/spotbugs/etc/findbugsfilter.xsd">
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on Maven @Parameter configuration POJOs.
+
+        AiFieldGenerationConfig and AiPromptDefinition are mutable JavaBean
+        POJOs that the Maven plugin framework instantiates via reflection,
+        populates through setters, and stores in a List<...> @Parameter field
+        on the parent Mojo (in the llamacpp-ai-index-maven-plugin module). No
+        code path compares two instances for value equality; the surrounding
+        Mojo iterates the list in source order and uses the (non-null) string
+        keys (promptKey, aiDefinitionKey, AiPromptDefinition.key) to drive
+        lookups against the other registries.
+
+        Generating a value-equality equals over their mutable fields would:
+          - Mislead readers into thinking these are immutable value types.
+          - Make Set/Map semantics dependent on the Maven framework's
+            population order (the values are mutable until setter injection
+            completes).
+          - Force a reciprocal hashCode that violates the immutability
+            assumption hashCode contracts depend on.
+
+        Identity is the correct semantics for a Maven @Parameter JavaBean.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationConfig"/>
+            <Class name="net.ladenthin.srcmorph.prompt.AiPromptDefinition"/>
+        </Or>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on the AiModelDefinitionSupport service.
+
+        AiModelDefinitionSupport is a service/lookup class: it owns a
+        Map<String, AiGenerationConfig> built once from the @Parameter
+        definitions list, and exposes a get(key) lookup. It is constructed
+        once per Mojo execution, held inside the Mojo, and discarded. No
+        code path stores two AiModelDefinitionSupport instances in a Set/Map
+        keyed by value, and the underlying map is mutable by design (Maven
+        plugin framework populates the source list of definitions via
+        reflection during Mojo configuration).
+
+        Identity is the correct semantics for a stateful service object.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiModelDefinitionSupport"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on the AiSourceExcludeFilter matcher.
+
+        AiSourceExcludeFilter is a stateless matcher: it compiles its @Parameter-derived
+        glob patterns into a List<Pattern> once at construction and exposes a single
+        isExcluded(path) predicate. It is built once per generate execution, held inside
+        SourceFileIndexer, and discarded. No code path stores two filter instances in a
+        Set/Map keyed by value or compares two filters for value equality; the compiled
+        Pattern list is an implementation detail, not an identity.
+
+        Generating a value-equality equals over the compiled patterns would mislead
+        readers into treating the matcher as a value object and would compare
+        java.util.regex.Pattern instances, which themselves use identity equality (two
+        Patterns compiled from the same source are not equal). Identity is the correct
+        semantics for this helper, matching AiModelDefinitionSupport above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.support.AiSourceExcludeFilter"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
+        USBR_UNNECESSARY_STORE_BEFORE_RETURN on Lombok-generated equals / hashCode /
+        canEqual / toString.
+
+        Lombok's @EqualsAndHashCode and @ToString annotation processors inject the
+        textbook polynomial-hash bytecode pattern (and lombok.config already emits
+        @lombok.Generated on every synthetic member via
+        lombok.addLombokGeneratedAnnotation = true):
+
+            int result = 1;
+            result = result * 59 + ($field == null ? 43 : $field.hashCode());
+            ...
+            return result;          // USBR fires here, on the istore_N / iload_N / ireturn triplet
+
+        SpotBugs core honours @lombok.Generated and skips its own detectors on those
+        members, but the fb-contrib plugin's USBR detector does NOT &#x2014; fb-contrib
+        is a separate plugin family with its own filter pipeline. Suppressing USBR on
+        equals / hashCode / canEqual / toString matches every method name Lombok can
+        emit. The collateral cost is small: any handwritten member of those four names
+        that genuinely stores-then-immediately-returns is either a debugger-friendly
+        local-variable pattern or a micro-optimisation, both intentional here. (Duplicated
+        verbatim in the llamacpp-ai-index-maven-plugin module's spotbugs-exclude.xml since
+        this rule is not class-scoped and both modules have Lombok-annotated classes.)
+    -->
+    <Match>
+        <Or>
+            <Method name="equals"/>
+            <Method name="hashCode"/>
+            <Method name="canEqual"/>
+            <Method name="toString"/>
+        </Or>
+        <Bug pattern="USBR_UNNECESSARY_STORE_BEFORE_RETURN"/>
+    </Match>
+
+    <!--
+        FORMAT_STRING_MANIPULATION on the prompt-template pipeline.
+
+        The plugin's whole contract is "developers write prompt templates in their POM
+        &lt;configuration&gt; and the plugin substitutes per-file context into them via
+        String.format". The template comes from operator-controlled POM XML (parsed and
+        validated by Maven at build time), not from end-user request input. A malformed
+        template raises IllegalFormatException on first use, immediately surfacing the
+        configuration error.
+
+        Three sites all trace to the same data path:
+          - Java8CompatibilityHelper#formatted -&gt; String.format(template, args)
+          - AiPromptSupport#buildPrompt -&gt; templates.get(promptKey) -&gt; formatted(...)
+
+        Restructuring to escape user-supplied format specifiers would defeat the
+        configurable-templates feature; suppression is the right answer here.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.support.Java8CompatibilityHelper"/>
+            <Class name="net.ladenthin.srcmorph.prompt.AiPromptSupport"/>
+        </Or>
+        <Bug pattern="FORMAT_STRING_MANIPULATION"/>
+    </Match>
+
+    <!--
+        OPM_OVERLY_PERMISSIVE_METHOD on ProjectIndexer's public constructor and
+        SourceFileIndexer.classify. These surfaced only after the srcmorph core-module extraction
+        (step 4): fb-contrib's OPM detector flags a public member as "could be more restrictive"
+        when it sees no matching-visibility call site within the analyzed class set. Before the
+        extraction both call sites (AggregateProjectMojo constructing ProjectIndexer; GenerateMojo
+        calling SourceFileIndexer.classify) lived in the same single module and satisfied the
+        detector; now those callers live in the sibling llamacpp-ai-index-maven-plugin module,
+        outside this module's own SpotBugs analysis unit, so the detector can no longer see them.
+        Both members are genuinely public API by design (the constructor is srcmorph's
+        cross-module entry point for project-level indexing; classify() is exercised directly by
+        SourceFileIndexerTest), so narrowing visibility would either break the cross-module caller
+        or the test. Suppression, not a source change, is correct here.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.ProjectIndexer"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.SourceFileIndexer"/>
+        <Method name="classify"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+    <!--
+        OPM_OVERLY_PERMISSIVE_METHOD on AiProgressBar.render. fb-contrib flags the public render(...)
+        overloads as "could be more restrictive" from bytecode shape, but they are the class's public API
+        (a reusable progress-bar renderer) and are called from GenerateMojo (llamacpp-ai-index-maven-plugin
+        module) and exercised directly by unit tests. Same rationale as the AiGenerationTimeEstimator OPM
+        suppression above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.support.AiProgressBar"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+    <!--
+        THROWS_METHOD_THROWS_RUNTIMEEXCEPTION on AiFieldGenerationSupport.generateWithOverflowRetry.
+        fb-contrib flags the `throw e` as a method throwing a RuntimeException, but this is not raising a
+        new unchecked exception as control flow - it RE-THROWS the provider's own caught exception to
+        propagate it unchanged (the retry loop only intercepts a context-overflow, identified by message,
+        and otherwise gives up by rethrowing). The provider (JNI binding) throws an unchecked
+        LlamaException; catching a more specific type would couple the indexer to the binding, which the
+        message-based detection deliberately avoids. Scoped to the one retry method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport"/>
+        <Method name="generateWithOverflowRetry"/>
+        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
+    </Match>
+
+    <!--
+        RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE on LlamaCppJniAiGenerationProvider.generateWithTimings.
+        ChatResponse.getTimings() is unannotated in the binding (not @NullMarked), so the checker treats it
+        as non-null and flags the defensive null-guard as redundant. The guard is intentional: a build or
+        response without a "timings" object must degrade to zero rates (letting the caller's wall-clock
+        fallback act), not NPE. Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniAiGenerationProvider"/>
+        <Method name="generateWithTimings"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+
+    <!--
+        OPM_OVERLY_PERMISSIVE_METHOD on AiFactDefinitionSupport.facts. fb-contrib flags the public facts(key)
+        as "could be more restrictive" from bytecode shape (it is called from resolveFactsKeys in the same
+        class), but it is the class's public lookup API and is exercised directly by unit tests. Same
+        rationale as the AiGenerationTimeEstimator / AiProgressBar OPM suppressions.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFactDefinitionSupport"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+    <!--
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the <calibration> accessors of the Maven @Parameter config beans
+        (AiModelDefinition, AiGenerationConfig). Same rationale as the routing-config EI suppression above:
+        these are mutable JavaBeans the plugin framework populates via reflection; the AiCalibration the
+        getter returns / the setter stores IS the configuration, read once during the run and never shared
+        across threads. A defensive copy would deep-clone an immutable-after-injection value for no gain.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.config.AiModelDefinition"/>
+            <Class name="net.ladenthin.srcmorph.config.AiGenerationConfig"/>
+        </Or>
+        <Or>
+            <Method name="getCalibration"/>
+            <Method name="setCalibration"/>
+        </Or>
+        <Or>
+            <Bug pattern="EI_EXPOSE_REP"/>
+            <Bug pattern="EI_EXPOSE_REP2"/>
+        </Or>
+    </Match>
+
+
+    <!--
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the rule-routing config beans and the routing-plan model.
+
+        AiCondition / AiConditionGroup / AiFieldGenerationConfig are mutable Maven @Parameter
+        JavaBeans: the plugin framework instantiates them via reflection and populates the nested
+        condition tree (and/or/not groups, the AiRangeCondition size/lines, the extensions list)
+        through setters during Mojo configuration. The "exposed representation" IS the configuration
+        by contract - the indexer reads the very tree Maven built and never mutates or shares it
+        across threads (the build is single-threaded and the beans are discarded after the run).
+        Defensive copies in the getters/setters would deep-clone an immutable-after-injection config
+        tree for no safety gain and would break the "read the configured tree" model.
+
+        AiIndexPlan (+ its nested Entry) is a build-time DTO produced by SourceFileIndexer.classify
+        and consumed only by AiIndexPlan.renderMarkdown and the unit tests. Its routesByModel / skipped
+        / unmatched collections and Entry.rule reference the same single-threaded, throwaway data; the
+        Entry.rule is the shared routing rule (an AiFieldGenerationConfig) and is intentionally aliased,
+        not copied. No untrusted caller can mutate shared state through these accessors.
+
+        SrcMorphConfiguration (migration step 5, engine extraction) is the same kind of bean, one tier
+        up: the mutable JavaBean bindable from Maven plexus reflection, a future Jackson ObjectMapper, or
+        plain Java code, holding every List field (subtrees/excludes/fileExtensions/promptDefinitions/
+        aiDefinitions/fieldGenerations/factDefinitions) the same way the mojo's own @Parameter fields used
+        to. One instance is built once per goal invocation and handed to exactly one engine, which reads
+        it and discards it - the same single-threaded, no-shared-state lifecycle as the beans above.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.config.AiCondition"/>
+            <Class name="net.ladenthin.srcmorph.config.AiConditionGroup"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationConfig"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFactDefinition"/>
+            <Class name="net.ladenthin.srcmorph.config.SrcMorphConfiguration"/>
+            <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
+            <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry"/>
+        </Or>
+        <Or>
+            <Bug pattern="EI_EXPOSE_REP"/>
+            <Bug pattern="EI_EXPOSE_REP2"/>
+        </Or>
+    </Match>
+
+    <!--
+        EI_EXPOSE_REP2 on the four engine constructors (GenerateEngine, AggregatePackagesEngine,
+        AggregateProjectEngine, CalibrateEngine): each stores the caller-supplied SrcMorphConfiguration
+        directly into a `config` field with no getter exposing it back out. Same rationale as the bean
+        suppression above - the config IS the run's configuration, read once by a single-use engine
+        instance and discarded; a defensive copy would clone a JavaBean the engine never mutates.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregatePackagesEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregateProjectEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+        </Or>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on routing value/config helpers, matching the existing
+        suppressions for the other Maven @Parameter POJOs and stateless helpers above.
+
+        AiConditionGroup and AiRangeCondition are mutable Maven @Parameter beans (populated via
+        setters, never compared by value). AiFileContext is a build-time per-file context record
+        built by the indexer and read once during classification; nothing stores two of them in a
+        Set/Map keyed by value. Identity is the correct semantics; a value-equality equals would
+        falsely imply these are interned value objects.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.config.AiConditionGroup"/>
+            <Class name="net.ladenthin.srcmorph.config.AiRangeCondition"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFileContext"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFactCounter"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFactDefinition"/>
+        </Or>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_TOSTRING on AiIndexPlan: it is an internal DTO whose human-readable
+        form is the purpose-built renderMarkdown(...) (a structured Markdown plan), not a debug
+        toString. A generated toString over its nested maps would duplicate that intent and never
+        be called.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_TOSTRING"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_WRONG_FIELD_ORDER on LlamaCppJniAiGenerationProvider: fb-contrib wants
+        the static REUSE_SLOT_ID constant declared before the instance fields. The current order
+        (the constant sits with the slot-reuse logic it documents) is a deliberate readability
+        choice and has no runtime effect.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniAiGenerationProvider"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_WRONG_FIELD_ORDER"/>
+    </Match>
+
+    <!--
+        fb-contrib stylistic/opinion detectors on the routing + plan + estimator code. These are
+        bytecode-shape heuristics that source changes cannot resolve without harming readability or
+        the class's intended API, scoped narrowly to the affected classes:
+
+          - CE_CLASS_ENVY: buildLlamaCppJniConfig copies the resolved AiGenerationConfig field-by-field
+            into the immutable LlamaCppJniConfig (it necessarily touches that config's getters more than
+            its own state); AiConditionEvaluator.branchCount walks the AiCondition tree. Both are
+            translation/traversal methods - referencing the other type heavily is the point.
+          - OCP_OVERLY_CONCRETE_PARAMETER: parameters typed to the concrete collaborator the method
+            actually needs (AiCondition / Map) rather than an over-abstracted supertype.
+          - OPM_OVERLY_PERMISSIVE_METHOD: the estimator's estimate* helpers and the plan's
+            routedCount/totalEstimatedSeconds are public by design - they are the class API and are
+            exercised directly by unit tests.
+          - UCPM_USE_CHARACTER_PARAMETERIZED_METHOD: renderMarkdown appends short literal strings
+            for the Markdown template; spelling them as String literals keeps the template readable.
+          - WEM_WEAK_EXCEPTION_MESSAGING: AiConditionEvaluator.validate's message describes a POM
+            configuration error in operator terms; it intentionally reads as a user-facing config
+            diagnostic rather than carrying internal state (the matching GenerateMojo/CalibrateMojo
+            WEM suppression lives in the llamacpp-ai-index-maven-plugin module's own filter file).
+          - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: arises from the Objects.requireNonNull /
+            @NullMarked validation style (see the DCN rationale in the plugin module's filter file);
+            the explicit guards are the deliberate fail-fast contract, not dead checks.
+
+        Migration step 5 (engine extraction) additions, same rationale class:
+          - LlamaCppJniConfigFactory.fromGenerationConfig: the pure field-by-field translation from
+            AiGenerationConfig to LlamaCppJniConfig (moved verbatim out of the old
+            AbstractAiIndexMojo.buildLlamaCppJniConfig) necessarily touches the other type's getters
+            heavily (CE_CLASS_ENVY) and its null-guard on drySequenceBreakers mirrors the same
+            Objects.requireNonNull-adjacent style (RCN).
+          - CalibrateEngine.execute(): the rule.getAiDefinitionKey()/getPromptKey() null checks building
+            the routable-model map are the same deliberate defensive guard style as
+            AiConditionEvaluator.validate (RCN); its thrown messages are user-facing config diagnostics,
+            not internal state (WEM) - moved verbatim out of the old CalibrateMojo.
+          - GenerateEngine.resolveSharedFacts/execute(): resolveSharedFacts's fieldGenerations parameter
+            is typed to the concrete List the caller already has (OCP), and execute()'s thrown messages
+            are the same user-facing config diagnostics (WEM) - moved verbatim out of the old
+            GenerateMojo.
+          - CalibrationReport's constructor parameter is typed List (not Collection) because callers
+            always have an ordered List of measurements and the class explicitly preserves that order
+            (OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER).
+          - EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport)'s fallback branch
+            throws NullPointerException("llamaModelPath") with a static message when
+            SrcMorphConfiguration#getLlamaModelPath() is unset - the same user-facing "which field is
+            missing" diagnostic style as everywhere else in this list (WEM).
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationSelector"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+            <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
+            <Class name="net.ladenthin.srcmorph.support.AiGenerationTimeEstimator"/>
+            <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrationReport"/>
+            <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+        </Or>
+        <Or>
+            <Bug pattern="CE_CLASS_ENVY"/>
+            <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+            <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
+            <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+            <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
+            <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
+            <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+        </Or>
+    </Match>
+
+    <!--
+        IMPROPER_UNICODE on AiOversizeStrategy.fromConfig. The findsecbugs detector flags any
+        case-insensitive comparison (equalsIgnoreCase, and likewise toLowerCase/toUpperCase) because
+        Unicode case folding can change string length for some scripts. Here the compared values are a
+        fixed, closed set of ASCII config tokens (fail/sample/mapReduce/deterministic) authored by the
+        operator in POM XML, not user/locale text; matching a configured &lt;onOversize&gt; value
+        case-insensitively is the intended, safe behaviour. Scoped to the one parsing method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiOversizeStrategy"/>
+        <Method name="fromConfig"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+
+    <!--
+        CRLF_INJECTION_LOGS on the four indexer classes that log via SLF4J
+        (SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport), and on the
+        engine package's orchestration classes added in migration step 5 (GenerateEngine,
+        AggregatePackagesEngine, AggregateProjectEngine, CalibrateEngine, EngineSupport) that log the
+        same categories of value one tier up (they moved the mojo-level logging that used to go through
+        Maven's Log interface).
+
+        findsecbugs flags every SLF4J call whose arguments trace back to a value it cannot prove
+        is a compile-time constant, on the theory that attacker-controlled text could inject a
+        CRLF sequence to forge a fake log line. The values actually logged here are exclusively:
+        (1) java.nio.file.Path instances for source/output files discovered by walking the
+        project's own base/output directories (the same local filesystem the Maven build already
+        has full read/write access to — never a network request body or other externally-supplied
+        channel); (2) plugin-internal config strings the operator authored in their own POM
+        (contextType labels "file"/"package"/"project", prompt keys, model keys); and (3) computed
+        sizes/durations/counts. This is a local batch build tool, not a service handling untrusted
+        requests, so there is no log-forging trust boundary to defend here — the same Path/String
+        values were logged without incident via Maven's own Log interface before this SLF4J
+        migration. Scoped to the nine converted/added classes only, so a genuine finding elsewhere in
+        the codebase still surfaces.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.indexer.SourceFileIndexer"/>
+            <Class name="net.ladenthin.srcmorph.indexer.PackageIndexer"/>
+            <Class name="net.ladenthin.srcmorph.indexer.ProjectIndexer"/>
+            <Class name="net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport"/>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregatePackagesEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregateProjectEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+        </Or>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!--
+        DCN_NULLPOINTER_EXCEPTION on EngineSupport.buildPromptSupport / buildAiModelDefinitionSupport and
+        GenerateEngine.resolveSharedFacts. Moved verbatim (same rationale) from what was
+        AbstractAiIndexMojo.buildPromptSupport / buildAiModelDefinitionSupport and
+        GenerateMojo.resolveSharedFacts in the llamacpp-ai-index-maven-plugin module's own filter file
+        (see that file for the full "why not the alternatives" reasoning): these catch sites are the
+        deliberate translation bridge between the support classes' Objects.requireNonNull validation
+        (which throws NPE by Java convention with the rich index + bad-entry message) and the engine
+        layer's own checked SrcMorphException (a caller-facing configuration error, not a plugin bug).
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+        </Or>
+        <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
+    </Match>
+
+    <!--
+        AI_ANNOTATION_ISSUES_NEEDS_NULLABLE on GenerateEngine.resolveFileExtensions. Same method (moved
+        verbatim) and same false-positive as the old GenerateMojo.resolveFileExtensions suppression in
+        the llamacpp-ai-index-maven-plugin module's own filter file: the method provably cannot return
+        null (either the non-null compatibilityHelper.listOf(...) fallback, or the
+        SrcMorphConfiguration#getFileExtensions() list gated by an explicit non-null/non-empty guard),
+        but fb-contrib's conservative dataflow analysis cannot see through the getter.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+        <Method name="resolveFileExtensions"/>
+        <Bug pattern="AI_ANNOTATION_ISSUES_NEEDS_NULLABLE"/>
+    </Match>
+
+    <!--
+        NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE on EngineSupport.resolveLlamaCppJniConfig(config,
+        modelDefinitionSupport). SpotBugs core's null-flow analysis flags the textbook guard-clause
+        pattern itself (get a possibly-null value, check it, throw if null, otherwise use the
+        now-non-null local) as a "possible null pointer dereference" on the checked variable - a known
+        false-positive shape for this detector. The method is straight-line, three lines long, and the
+        only use of `modelPath` after the guard is unreachable when it is null.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+        <Method name="resolveLlamaCppJniConfig"/>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    </Match>
+
+</FindBugsFilter>

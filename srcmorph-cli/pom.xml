@@ -1,0 +1,590 @@
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.ladenthin</groupId>
+        <artifactId>srcmorph-parent</artifactId>
+        <version>1.1.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>srcmorph-cli</artifactId>
+    <packaging>jar</packaging>
+
+    <name>srcmorph-cli</name>
+    <description>Standalone CLI for srcmorph, driven by a single JSON/YAML configuration file (BitcoinAddressFinder cli/Main.java pattern). Wraps the srcmorph core library's engines; ships as a jar-with-dependencies fat jar.</description>
+
+    <properties>
+        <sonar.organization>bernardladenthin</sonar.organization>
+        <maven.compiler.release>8</maven.compiler.release>
+        <maven.compiler.testRelease>21</maven.compiler.testRelease>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!--
+            jackson.version itself is declared in the reactor parent's own <properties> (its
+            <dependencyManagement> references it, and child properties are never visible to a
+            parent POM) — see srcmorph-parent/pom.xml. Not redeclared here.
+        -->
+        <junit.version>6.1.2</junit.version>
+        <hamcrest.version>3.0</hamcrest.version>
+        <errorprone.version>2.50.0</errorprone.version>
+        <nullaway.version>0.13.7</nullaway.version>
+        <jspecify.version>1.0.0</jspecify.version>
+        <checker.version>4.2.1</checker.version>
+        <archunit.version>1.4.2</archunit.version>
+        <spotbugs.version>4.10.2.0</spotbugs.version>
+        <lombok.version>1.18.46</lombok.version>
+        <fb-contrib.version>7.7.4</fb-contrib.version>
+        <findsecbugs.version>1.14.0</findsecbugs.version>
+        <spotless.version>3.8.0</spotless.version>
+        <palantir-java-format.version>2.94.0</palantir-java-format.version>
+
+        <project.build.outputTimestamp>2026-07-15T20:07:58Z</project.build.outputTimestamp>
+    </properties>
+
+    <!--
+        slf4j-api / logback-classic / jackson-databind / jackson-dataformat-yaml convergence pins
+        all live in the parent's <dependencyManagement> (net.ladenthin:srcmorph-parent) so every
+        reactor module shares them.
+    -->
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>${jspecify.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.checkerframework</groupId>
+            <artifactId>checker-qual</artifactId>
+            <version>${checker.version}</version>
+        </dependency>
+
+        <!--
+            The core library: SrcMorphConfiguration and the engine/* orchestration classes this
+            CLI drives. Compile scope: Main constructs GenerateEngine/AggregatePackagesEngine/
+            AggregateProjectEngine/CalibrateEngine directly.
+        -->
+        <dependency>
+            <groupId>net.ladenthin</groupId>
+            <artifactId>srcmorph</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!--
+            Already pulled in transitively via srcmorph's compile-scope dependency, but declared
+            explicitly here because Main.java imports org.slf4j.Logger directly (and
+            CliArchitectureTest's loggersArePrivateStaticFinal rule needs the type on the test
+            classpath too). Version is pinned in the parent's <dependencyManagement>.
+        -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!--
+            The CLI's own SLF4J binding: unlike the library (srcmorph) and the Maven plugin (which
+            gets a binding from Maven's own maven-slf4j-provider), the CLI is a standalone `java -jar`
+            process and must ship a binding itself or every log line is silently dropped. Runtime
+            scope: no compile-time API of logback is used here.
+        -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--
+            JSON/YAML binding for CConfiguration (BitcoinAddressFinder cli/Main.java pattern):
+            .json/.js -> ObjectMapper, .yaml/.yml -> YAMLMapper. Versions pinned in the parent's
+            <dependencyManagement>.
+        -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest</artifactId>
+            <version>${hamcrest.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>${spotbugs.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>io.github.git-commit-id</groupId>
+                    <artifactId>git-commit-id-maven-plugin</artifactId>
+                    <version>10.0.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>3.8.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.15.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.6.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.8</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.12.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.4.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.6</version>
+                    <configuration>
+                        <!--
+                            argLine starts with @{argLine} so the JaCoCo agent (placed into the
+                            argLine property by jacoco:prepare-agent) survives via late property
+                            replacement; dropping it would detach the agent and break coverage.
+                            The remaining flags add cross-repo-standard test JVM diagnostics:
+                            a 2 GB heap cap, a heap dump on OutOfMemoryError into the working
+                            directory, and a JVM fatal-error log named per crashing PID.
+                        -->
+                        <argLine>@{argLine} -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=. -XX:ErrorFile=hs_err_pid%p.log</argLine>
+                        <!--
+                            Force classpath-only test execution. Surefire's default module-path
+                            auto-detection activates as soon as module-info.class exists in
+                            target/classes (true here at test time, since module-info-compile is
+                            bound to the `compile` phase, before `test` — same as every sibling
+                            module in this reactor). Under that mode, THIS module's own
+                            requires clause is honored correctly (jackson-databind/-dataformat-yaml/
+                            org.slf4j/net.ladenthin.srcmorph are all declared), but Surefire also
+                            places net.ladenthin.srcmorph itself onto the real module path as a
+                            strict named module dependency — and that module's OWN module-info.java
+                            does not declare `requires org.slf4j` (a pre-existing gap in the
+                            srcmorph core module, out of this module's scope to fix; see
+                            CliEndToEndTest). Under a genuine module-path run this surfaces as
+                            IllegalAccessError the moment GenerateEngine's static SLF4J logger field
+                            initializes. Classpath execution is also the more representative test
+                            environment anyway: this project ships Java 8 bytecode
+                            (maven.compiler.release=8), where module-info.class is inert and every
+                            real consumer loads it via the plain classpath, exactly as this setting
+                            exercises.
+                        -->
+                        <useModulePath>false</useModulePath>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.15</version>
+                </plugin>
+                <!--
+                    No pitest-maven pluginManagement entry: unlike srcmorph (which gates ~40
+                    framework-free classes at 100% mutation coverage), this module is not yet PIT-gated.
+                    TODO (tracked for a later step): add a pitest-maven execution here once the CLI's
+                    pure helpers (config copy/round-trip, command dispatch) have dedicated unit tests
+                    worth mutation-gating; Main's I/O-heavy entry points are integration-tested instead,
+                    the same "mojos aren't unit-mutation-tested" rationale the sibling plugin module's
+                    own pom.xml comment documents.
+                -->
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.11.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>get-git-properties</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dateFormat>yyyy-MM-dd'T'HH:mm:ss'Z'</dateFormat>
+                    <dateFormatTimeZone>UTC</dateFormatTimeZone>
+                    <generateGitPropertiesFile>false</generateGitPropertiesFile>
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.6.3,)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>[1.8,)</version>
+                                </requireJavaVersion>
+                                <dependencyConvergence/>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <!-- Use SLF4J directly; never commons-logging. -->
+                                        <exclude>commons-logging:commons-logging</exclude>
+                                        <!-- Legacy / EoL logging frameworks. -->
+                                        <exclude>log4j:log4j</exclude>
+                                        <!-- Old hamcrest split artifacts; use hamcrest:hamcrest 2.x+. -->
+                                        <exclude>org.hamcrest:hamcrest-core</exclude>
+                                        <exclude>org.hamcrest:hamcrest-library</exclude>
+                                        <exclude>org.hamcrest:hamcrest-all</exclude>
+                                        <!-- Legacy JUnit 3 / 4; we use Jupiter (junit:junit-jupiter). -->
+                                        <exclude>junit:junit</exclude>
+                                        <exclude>junit:junit-dep</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <testRelease>${maven.compiler.testRelease}</testRelease>
+                    <showWarnings>true</showWarnings>
+                    <parameters>true</parameters>
+                    <compilerArgs>
+                        <!--
+                          -Xlint:all surfaces every category of javac warning. Excluded categories:
+                            -serial    : serialVersionUID warnings on non-Serializable classes
+                            -options   : bootclasspath / target-mismatch chatter under release=8
+                            -classfile : noise when javac reads our own .class output mid-build
+                            -processing: "No processor claimed any of these annotations" (Error
+                                         Prone's @GuardedBy is consumed by the EP javac plugin,
+                                         not by a JSR-269 annotation processor)
+                          -Werror is on: the ElementType.MODULE blocker is gone now that
+                          @NullMarked lives only in module-info.java (compiled at release 9 in a
+                          separate execution); see module-info.java's javadoc.
+                        -->
+                        <arg>-Xlint:all,-serial,-options,-classfile,-processing</arg>
+                        <arg>-Werror</arg>
+                        <!-- Explicit processor list: Lombok (two SPI classes) + Checker Framework's
+                             Nullness Checker as a 2nd nullness pass alongside NullAway. The explicit
+                             -processor argument overrides SPI discovery, so every processor we want
+                             to run must be listed here. -->
+                        <arg>-processor</arg>
+                        <arg>lombok.launch.AnnotationProcessorHider$AnnotationProcessor,lombok.launch.AnnotationProcessorHider$ClaimingProcessor,org.checkerframework.checker.nullness.NullnessChecker</arg>
+                        <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
+                        <arg>-XDcompilePolicy=simple</arg>
+                        <arg>--should-stop=ifError=FLOW</arg>
+                        <arg>-Xplugin:ErrorProne -XepExcludedPaths:.*/generated-sources/.* -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:ExcludedFieldAnnotations=org.apache.maven.plugins.annotations.Parameter,org.apache.maven.plugins.annotations.Component -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:CheckOptionalEmptiness=true -XepOpt:NullAway:AcknowledgeRestrictiveAnnotations=true -XepOpt:NullAway:AcknowledgeAndroidRecent=true -XepOpt:NullAway:AssertsEnabled=true -Xep:BoxedPrimitiveEquality:ERROR -Xep:EqualsHashCode:ERROR -Xep:EqualsIncompatibleType:ERROR -Xep:IdentityBinaryExpression:ERROR -Xep:SelfAssignment:ERROR -Xep:SelfComparison:ERROR -Xep:SelfEquals:ERROR -Xep:DeadException:ERROR -Xep:FormatString:ERROR -Xep:InvalidPatternSyntax:ERROR -Xep:OptionalEquality:ERROR -Xep:ImpossibleNullComparison:ERROR</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>com.google.errorprone</groupId>
+                            <artifactId>error_prone_core</artifactId>
+                            <version>${errorprone.version}</version>
+                        </path>
+                        <path>
+                            <groupId>com.uber.nullaway</groupId>
+                            <artifactId>nullaway</artifactId>
+                            <version>${nullaway.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.checkerframework</groupId>
+                            <artifactId>checker</artifactId>
+                            <version>${checker.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <!-- The default compile pass targets Java 8 bytecode for the CLI
+                                 sources. module-info.java cannot be compiled at release 8 (it is a
+                                 Java 9+ construct) and is handled by the separate execution below. -->
+                            <excludes>
+                                <exclude>module-info.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>module-info-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <!-- module-info.java is the only Java 9+ source in this project; compile
+                                 it at release 9 (the minimum version that understands modules) without
+                                 the Error Prone / NullAway / Checker Framework processors that target
+                                 ordinary source files only. Java 8 runtimes silently ignore the
+                                 resulting module-info.class at the JAR root. -->
+                            <release>9</release>
+                            <includes>
+                                <include>module-info.java</include>
+                            </includes>
+                            <compilerArgs combine.self="override"/>
+                            <annotationProcessorPaths combine.self="override"/>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-testCompile</id>
+                        <configuration>
+                            <compilerArgs combine.self="override">
+                                <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
+                                <arg>-XDcompilePolicy=simple</arg>
+                                <arg>--should-stop=ifError=FLOW</arg>
+                                <arg>-Xplugin:ErrorProne -Xep:NullAway:OFF -Xep:GuardedBy:OFF -Xep:IdentityBinaryExpression:OFF</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <source>${maven.compiler.release}</source>
+                    <failOnError>true</failOnError>
+                    <failOnWarnings>true</failOnWarnings>
+                    <doclint>all</doclint>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>net.ladenthin.srcmorph.cli.Main</mainClass>
+                            <packageName>net.ladenthin.srcmorph.cli</packageName>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!--
+                Unlike BitcoinAddressFinder's `-P assembly` opt-in pattern, the fat jar is bound
+                UNCONDITIONALLY to the `package` phase here: for this module the jar-with-dependencies
+                IS the deliverable artifact (the thing a user actually downloads and runs with
+                `java -jar`), not an occasional extra. Binding it in every `mvn package` (and therefore
+                every `mvn verify` / release build) keeps it in lockstep with the plain jar rather than
+                depending on a profile flag being remembered at release time. It rides `mvn -P release
+                deploy` as the `jar-with-dependencies` classifier alongside the plain jar.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <archive>
+                        <manifest>
+                            <mainClass>net.ladenthin.srcmorph.cli.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>build-fat-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                        <removeUnusedImports/>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <failOnError>true</failOnError>
+                    <includeTests>false</includeTests>
+                    <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                    <plugins>
+                        <plugin>
+                            <groupId>com.mebigfatguy.fb-contrib</groupId>
+                            <artifactId>fb-contrib</artifactId>
+                            <version>${fb-contrib.version}</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>com.h3xstream.findsecbugs</groupId>
+                            <artifactId>findsecbugs-plugin</artifactId>
+                            <version>${findsecbugs.version}</version>
+                        </plugin>
+                    </plugins>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotbugs-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+        No profiles here: the `release` profile (GPG signing + central-publishing-maven-plugin)
+        lives in the parent (net.ladenthin:srcmorph-parent) so a single `mvn -P release deploy`
+        signs and publishes every module, including this one's plain jar + fat jar.
+    -->
+</project>

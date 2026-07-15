@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/4.8.6/spotbugs/etc/findbugsfilter.xsd">
+
+    <!--
+        USBR_UNNECESSARY_STORE_BEFORE_RETURN on Lombok-generated toString.
+        See srcmorph/spotbugs-exclude.xml for the full rationale (lombok.config already emits
+        @lombok.Generated, which core SpotBugs honours but the fb-contrib USBR detector does not).
+    -->
+    <Match>
+        <Method name="toString"/>
+        <Bug pattern="USBR_UNNECESSARY_STORE_BEFORE_RETURN"/>
+    </Match>
+
+    <!--
+        PATH_TRAVERSAL_IN on Main.main's Paths.get(args[0]).
+
+        Same rationale as BitcoinAddressFinder's own PATH_TRAVERSAL_IN suppression
+        (spotbugs-exclude.xml): the configuration file path IS the CLI invocation
+        (`java -jar srcmorph-cli-*.jar config.json`), not an untrusted network/RPC input. The
+        operator who launches the process already controls every argument on that command line;
+        there is no privilege boundary being crossed by reading whatever path they typed.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.cli.Main"/>
+        <Method name="main"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+
+    <!--
+        CRLF_INJECTION_LOGS on Main.logConfigurationTransformation and Main.run.
+
+        The values logged are: (1) the re-serialized JSON/YAML of the CLI's own configuration
+        file, which the operator authored and already handed to the process on the same command
+        line as the config path itself (same "no untrusted boundary" argument as the
+        PATH_TRAVERSAL_IN suppression above); and (2) the CCommand enum name / thread name, both
+        fixed, non-attacker-influenced strings. This is a local batch tool, not a service handling
+        untrusted requests — mirrors the srcmorph module's own CRLF_INJECTION_LOGS suppression
+        rationale (see srcmorph/spotbugs-exclude.xml) for the indexer/engine classes' Path/String
+        logging.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.cli.Main"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!--
+        LO_APPENDED_STRING_IN_FORMAT_STRING on Main.logConfigurationTransformation.
+
+        The single LOGGER.info call concatenates a fixed banner template around the (already
+        CRLF-suppressed, see above) re-serialized JSON/YAML text, rather than using an SLF4J "{}"
+        placeholder. Splitting this multi-line, multi-section banner into a placeholder-based call
+        would not change what is logged (same operator-authored config content, same trust
+        boundary) and would only make the literal banner text harder to read as one block. Scoped
+        to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.cli.Main"/>
+        <Method name="logConfigurationTransformation"/>
+        <Bug pattern="LO_APPENDED_STRING_IN_FORMAT_STRING"/>
+    </Match>
+
+    <!--
+        EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS on Main.run and Main.copyWithPlanOnlyForced.
+
+        Both deliberately convert a checked exception (SrcMorphException/IOException) into an
+        unchecked one (IllegalStateException) by design — see the class Javadoc: "No
+        System.exit anywhere ... a failure propagates as an unchecked exception out of main()".
+        This mirrors BitcoinAddressFinder's own cli.Main.run(), which does the same translation
+        for the identical reason (its own EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS entries cover the
+        equivalent call sites). Widening either method's signature with a `throws` clause is not an
+        option: run() is called from main() (which only declares `throws IOException`, matching the
+        one checked exception loadConfiguration can still throw before Main is even constructed),
+        and copyWithPlanOnlyForced is a private helper whose only failure mode (a broken internal
+        JSON round-trip of an object this class itself just serialized) is exactly the kind of
+        "cannot happen from valid input" case IllegalStateException exists for.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.cli.Main"/>
+        <Or>
+            <Method name="run"/>
+            <Method name="copyWithPlanOnlyForced"/>
+        </Or>
+        <Bug pattern="EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS"/>
+    </Match>
+
+    <!--
+        WEM_WEAK_EXCEPTION_MESSAGING on Main.copyWithPlanOnlyForced's IllegalStateException.
+
+        The static message ("Failed to copy the configuration for the Plan command.") already
+        names exactly which internal step failed; the wrapped IOException (attached as the
+        cause) carries whatever Jackson-specific detail exists. This is the same
+        "user-facing diagnostic, not internal state" style already suppressed for
+        EngineSupport/GenerateEngine's own thrown messages in srcmorph/spotbugs-exclude.xml.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.cli.Main"/>
+        <Method name="copyWithPlanOnlyForced"/>
+        <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
+    </Match>
+
+    <!--
+        OPM_OVERLY_PERMISSIVE_METHOD across Main's public static helpers (readString, fromJson,
+        fromYaml, configurationToJson, configurationToYAML, loadConfiguration,
+        logConfigurationTransformation, run) and its public constructor.
+
+        Every one of these is genuinely public API by design: they are exercised directly by
+        MainTest/ConfigBindingTest/CliEndToEndTest (in a separate test-source-set fb-contrib does
+        not include in this analysis) and are the documented, mirror-of-BitcoinAddressFinder's-
+        cli.Main surface a caller embeds this CLI's parsing/serialization logic through without
+        forking a `java -jar` process. Same rationale as every other OPM suppression in this
+        reactor (see srcmorph/spotbugs-exclude.xml's AiProgressBar/AiFactDefinitionSupport entries):
+        fb-contrib's bytecode-shape heuristic cannot see cross-source-set (test) call sites.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.cli.Main"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+
+</FindBugsFilter>

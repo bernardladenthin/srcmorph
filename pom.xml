@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph-parent</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.1.0</version>
     <packaging>pom</packaging>
 
     <name>${project.groupId}:${project.artifactId}</name>
@@ -52,13 +52,38 @@ SPDX-License-Identifier: Apache-2.0
         </snapshotRepository>
     </distributionManagement>
 
+    <properties>
+        <!--
+            Defined here (not only in srcmorph-cli/pom.xml) because this parent's own
+            <dependencyManagement> below references it: child properties are never visible to a
+            parent POM, so the version used by both jackson dependencyManagement entries must live
+            at this level. srcmorph-cli/pom.xml does not redeclare it.
+        -->
+        <jackson.version>2.22.0</jackson.version>
+    </properties>
+
     <!--
-        Reactor modules. Only the existing plugin today (still under its current coordinates,
-        package, and goalPrefix — the srcmorph rename is deferred to the final migration step,
-        once the core library + CLI modules exist and the whole reactor is proven working).
-        Future modules (the extracted core library, the CLI) are added here as they are built out.
+        Reactor modules. `srcmorph` is the extracted core library (config/document/indexer/prompt/
+        provider/support — framework-free, no Maven plugin API); `srcmorph-cli` is the standalone
+        JSON/YAML-driven CLI (fat jar deliverable) built on top of it; `srcmorph-maven-plugin`
+        depends on the core library too and supplies only the Mojo entry points (renamed from
+        `llamacpp-ai-index-maven-plugin` in the final migration step — goal prefix `srcmorph`,
+        package `net.ladenthin.maven.srcmorph.mojo`, properties `srcmorph.*`).
+
+        `llamacpp-ai-index-maven-plugin` here is NOT the renamed plugin — it is a separate,
+        minimal relocation-stub module (its own pom.xml has no <parent>, is version-pinned
+        independently at 1.0.4, and carries only a <distributionManagement><relocation> pointing
+        at srcmorph-maven-plugin) kept only so Maven Central consumers still resolving the old
+        coordinates get redirected. IMPORTANT: `mvn versions:set` run from this root walks every
+        module in this list, including that stub — always pass
+        `-Dexcludes=net.ladenthin:llamacpp-ai-index-maven-plugin` when bumping the reactor version
+        so its pinned 1.0.4 is never accidentally overwritten. See that module's own pom.xml
+        comment and TODO.md for the same caveat.
     -->
     <modules>
+        <module>srcmorph</module>
+        <module>srcmorph-cli</module>
+        <module>srcmorph-maven-plugin</module>
         <module>llamacpp-ai-index-maven-plugin</module>
     </modules>
 
@@ -83,6 +108,25 @@ SPDX-License-Identifier: Apache-2.0
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>1.5.37</version>
+            </dependency>
+            <!--
+                JSON/YAML binding for srcmorph-cli's CConfiguration. Both artifacts are pinned to the
+                SAME jackson.version (declared in srcmorph-cli/pom.xml) because they ship from the same
+                jackson release train and each transitively pulls jackson-core/jackson-annotations at a
+                matching version — pinning them together here keeps maven-enforcer's
+                dependencyConvergence rule satisfied without needing a separate jackson-core/
+                jackson-annotations/snakeyaml pin (nothing else in the reactor depends on jackson or
+                snakeyaml, so there is no other version to converge against).
+            -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

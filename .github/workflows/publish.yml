@@ -215,16 +215,31 @@ jobs:
         with:
           java-version: '21'
           distribution: temurin
+      # spotless-maven-plugin / spotbugs-maven-plugin are declared only in each child module's own
+      # <pluginManagement>/<build> (not the pom-packaging reactor root), so the bare prefix goals
+      # (`spotless:check`, `spotbugs:check`) fail with "No plugin found for prefix" — Maven resolves
+      # a short prefix against the INVOKING project (the root aggregator here), not the reactor
+      # members, regardless of which modules actually end up executing. Using the fully-qualified
+      # groupId:artifactId:goal form bypasses prefix resolution entirely (plugin *version* still
+      # resolves correctly via each module's inherited pluginManagement pin); -pl restricts
+      # execution to the three modules that actually declare the plugin, skipping the parent pom
+      # and the source-less relocation stub, neither of which registers it anywhere.
       - name: Spotless check (fail fast on format violations)
-        run: mvn -B --no-transfer-progress spotless:check
+        run: mvn -B --no-transfer-progress -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin com.diffplug.spotless:spotless-maven-plugin:check
       - name: SpotBugs check (fail fast on static-analysis findings)
-        run: mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true compile spotbugs:check
+        run: mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin compile com.github.spotbugs:spotbugs-maven-plugin:check
       - name: Print internal package dependency graph (jdeps, informational)
         continue-on-error: true
         run: |
           mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true compile
-          echo "=== internal package dependency graph (jdeps, bytecode) ==="
-          jdeps -verbose:package llamacpp-ai-index-maven-plugin/target/classes | grep 'net.ladenthin.maven.llamacpp.aiindex' || true
+          # Three reactor modules each ship their own module-info.java / target/classes tree
+          # (srcmorph, srcmorph-cli, srcmorph-maven-plugin) — print each separately.
+          echo "=== internal package dependency graph (jdeps, bytecode) — srcmorph ==="
+          jdeps -verbose:package srcmorph/target/classes | grep 'net.ladenthin.srcmorph' || true
+          echo "=== internal package dependency graph (jdeps, bytecode) — srcmorph-cli ==="
+          jdeps -verbose:package srcmorph-cli/target/classes | grep 'net.ladenthin.srcmorph' || true
+          echo "=== internal package dependency graph (jdeps, bytecode) — srcmorph-maven-plugin ==="
+          jdeps -verbose:package srcmorph-maven-plugin/target/classes | grep 'net.ladenthin.maven.srcmorph' || true
 
   build:
     name: Build
@@ -240,7 +255,17 @@ jobs:
       - name: Build
         run: mvn --batch-mode --no-transfer-progress -DskipTests package
       - uses: actions/upload-artifact@v7
-        with: { name: plugin-jars, path: llamacpp-ai-index-maven-plugin/target/*.jar }
+        with:
+          name: plugin-jars
+          # All three reactor modules now produce their own jars: srcmorph (core library),
+          # srcmorph-cli (includes the jar-with-dependencies fat jar — the CLI's deliverable),
+          # and srcmorph-maven-plugin (the Maven plugin, renamed from llamacpp-ai-index-maven-plugin;
+          # the retired coordinates now live only in the pom-only relocation-stub module, which
+          # produces no jar).
+          path: |
+            srcmorph/target/*.jar
+            srcmorph-cli/target/*.jar
+            srcmorph-maven-plugin/target/*.jar
 
   test:
     name: Test
@@ -256,11 +281,20 @@ jobs:
       - name: Memory before tests
         run: free -h
       - name: Test
+        # Reactor-wide (no -pl): runs every module's tests. The `jcstress` profile is only
+        # declared in srcmorph-maven-plugin/pom.xml, so it activates there and is a
+        # silent no-op for srcmorph/srcmorph-cli (neither declares a profile with that id).
         run: mvn -e --batch-mode --no-transfer-progress -P jcstress verify
       - uses: actions/upload-artifact@v7
         with:
           name: jacoco-report
-          path: llamacpp-ai-index-maven-plugin/target/site/jacoco/jacoco.xml
+          # srcmorph carries the bulk of the test suite (and the only PIT gate); its report is
+          # the one forwarded to Coveralls/Codecov in the `report` job below, matching the
+          # single-primary-module precedent already used by the sibling java-llama.cpp reactor
+          # (which reports only its `llama` core module, not an aggregate across all modules).
+          # srcmorph-cli / srcmorph-maven-plugin jacoco reports are not currently
+          # aggregated or uploaded (documented gap, see TODO.md).
+          path: srcmorph/target/site/jacoco/jacoco.xml
           if-no-files-found: ignore
       - name: Memory after tests
         if: always()
@@ -270,21 +304,29 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: crash-dumps-test
+          # Repo-wide glob: a forked surefire JVM crash can happen in any of the three module
+          # working directories (srcmorph / srcmorph-cli / srcmorph-maven-plugin), each
+          # with its own target/ tree.
           path: |
-            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/hs_err_pid*.log
-            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/*.hprof
-            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/*.dump
-            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/*.dumpstream
-            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/*.txt
-            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/TEST-*.xml
+            ${{ github.workspace }}/**/hs_err_pid*.log
+            ${{ github.workspace }}/**/*.hprof
+            ${{ github.workspace }}/**/target/surefire-reports/*.dump
+            ${{ github.workspace }}/**/target/surefire-reports/*.dumpstream
+            ${{ github.workspace }}/**/target/surefire-reports/*.txt
+            ${{ github.workspace }}/**/target/surefire-reports/TEST-*.xml
           if-no-files-found: ignore
       - name: Run PIT mutation tests
-        run: mvn --batch-mode --no-transfer-progress test-compile org.pitest:pitest-maven:mutationCoverage
+        # Scoped to srcmorph: it is the only reactor module with a pitest-maven execution
+        # (srcmorph-cli and srcmorph-maven-plugin each document, in their own pom, why
+        # they have no PIT gate yet — see TODO.md). `-am` builds srcmorph's own reactor
+        # dependencies (none today) before running; without `-pl` this goal would otherwise be
+        # invoked (harmlessly, but pointlessly) against every reactor module.
+        run: mvn --batch-mode --no-transfer-progress -pl srcmorph -am test-compile org.pitest:pitest-maven:mutationCoverage
       - name: Extract PIT survivors
         if: always()
         run: |
           echo "=== PIT Survived Mutations ==="
-          for html_file in $(find llamacpp-ai-index-maven-plugin/target/pit-reports -name "*.html" -type f 2>/dev/null | sort); do
+          for html_file in $(find srcmorph/target/pit-reports -name "*.html" -type f 2>/dev/null | sort); do
             if grep -q "SURVIVED" "$html_file"; then
               echo "Found survivors in $html_file:"
               grep -B 2 -A 3 "SURVIVED" "$html_file"
@@ -293,7 +335,7 @@ jobs:
           done
       - uses: actions/upload-artifact@v7
         if: always()
-        with: { name: pit-reports, path: llamacpp-ai-index-maven-plugin/target/pit-reports/ }
+        with: { name: pit-reports, path: srcmorph/target/pit-reports/ }
 
   vmlens:
     name: Test (vmlens interleavings)
@@ -304,14 +346,25 @@ jobs:
       - uses: actions/setup-java@v5
         with: { java-version: '21', distribution: temurin, cache: maven }
       - name: Test under vmlens (one class — staged scope)
+        # VmlensInterleavingSmokeTest and the `vmlens` profile both live in
+        # srcmorph-maven-plugin/pom.xml (they were not relocated during the core
+        # extraction — see CLAUDE.md) — scope directly to that module rather than the whole
+        # reactor. `-am` is required (not just an optimization): srcmorph is a reactor-local
+        # dependency, never published, so without `-am` this module's compile would fail trying
+        # to resolve net.ladenthin:srcmorph:1.1.0-SNAPSHOT from a remote repo. That in turn means
+        # the `test` phase also runs for srcmorph, where -Dtest=VmlensInterleavingSmokeTest
+        # matches no class — `-DfailIfNoTests=false` does NOT suppress that (it only covers "no
+        # tests at all"); the actual guard for "the -Dtest pattern matched nothing" is
+        # `-Dsurefire.failIfNoSpecifiedTests=false` (verified locally: omitting it fails the
+        # build on srcmorph with "No tests matching pattern ... were executed!").
         run: >-
-          mvn --batch-mode --no-transfer-progress -Pvmlens test
-          -Dtest=VmlensInterleavingSmokeTest -DfailIfNoTests=false
+          mvn --batch-mode --no-transfer-progress -pl srcmorph-maven-plugin -am -Pvmlens test
+          -Dtest=VmlensInterleavingSmokeTest -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: vmlens-report
-          path: llamacpp-ai-index-maven-plugin/target/vmlens-report/
+          path: srcmorph-maven-plugin/target/vmlens-report/
           if-no-files-found: ignore
 
   report:
@@ -324,22 +377,26 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with: { java-version: '21', distribution: temurin }
+      # Only srcmorph's jacoco report is uploaded by the `test` job (see the comment there) —
+      # it carries the bulk of the test suite and the only PIT gate. Coveralls/Codecov are
+      # pointed at it directly rather than an aggregated multi-module report, matching the
+      # single-primary-module precedent already used by the sibling java-llama.cpp reactor.
       - uses: actions/download-artifact@v8
-        with: { name: jacoco-report, path: llamacpp-ai-index-maven-plugin/target/site/jacoco/ }
+        with: { name: jacoco-report, path: srcmorph/target/site/jacoco/ }
         continue-on-error: true
       - uses: advanced-security/maven-dependency-submission-action@v5
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          file: llamacpp-ai-index-maven-plugin/target/site/jacoco/jacoco.xml
+          file: srcmorph/target/site/jacoco/jacoco.xml
           format: jacoco
         continue-on-error: true
       - name: Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: llamacpp-ai-index-maven-plugin/target/site/jacoco/jacoco.xml
+          files: srcmorph/target/site/jacoco/jacoco.xml
         continue-on-error: true
 
   check-snapshot:
@@ -402,14 +459,19 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       # Runs even when the deploy step failed: a Central publish-poll timeout reds the
       # job *after* the bundle was uploaded (and typically published server-side), while
-      # the signed jars + .asc files already exist in llamacpp-ai-index-maven-plugin/target/ (signing happens at
+      # the signed jars + .asc files already exist in each module's target/ (signing happens at
       # verify). Collecting on failure lets the github-snapshot job still attach them.
       - name: Collect signed artifacts
         if: ${{ !cancelled() }}
+        # All three reactor modules produce their own jars/asc files (root pom has no jar).
         run: |
           mkdir -p signed-snapshot-assets
-          cp llamacpp-ai-index-maven-plugin/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
-          cp llamacpp-ai-index-maven-plugin/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph-cli/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph-cli/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -478,14 +540,19 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       # Runs even when the deploy step failed: a Central publish-poll timeout reds the
       # job *after* the bundle was uploaded (and typically published server-side), while
-      # the signed jars + .asc files already exist in llamacpp-ai-index-maven-plugin/target/ (signing happens at
+      # the signed jars + .asc files already exist in each module's target/ (signing happens at
       # verify). Collecting on failure lets the github-release job still attach them.
       - name: Collect signed artifacts
         if: ${{ !cancelled() }}
+        # All three reactor modules produce their own jars/asc files (root pom has no jar).
         run: |
           mkdir -p signed-release-assets
-          cp llamacpp-ai-index-maven-plugin/target/*.jar signed-release-assets/ 2>/dev/null || true
-          cp llamacpp-ai-index-maven-plugin/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
+          cp srcmorph/target/*.jar signed-release-assets/ 2>/dev/null || true
+          cp srcmorph/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
+          cp srcmorph-cli/target/*.jar signed-release-assets/ 2>/dev/null || true
+          cp srcmorph-cli/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar signed-release-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
