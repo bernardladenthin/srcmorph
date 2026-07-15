@@ -7,16 +7,31 @@ SPDX-License-Identifier: Apache-2.0
 <!--
     Relocation stub for the retired net.ladenthin:llamacpp-ai-index-maven-plugin coordinates.
 
-    This module is DELIBERATELY minimal and standalone: no <parent>, no <dependencies>, no
-    <build>, no source, no tests — only the coordinates plus the Maven Central
-    <distributionManagement><relocation> block. A stray dependency or plugin config here could
-    confuse a build that resolves the old artifact, so keep this file exactly as small as it
-    looks.
+    This module is DELIBERATELY minimal: no <dependencies>, no source, no tests — only the
+    coordinates plus the Maven Central <distributionManagement><relocation> block. A stray
+    dependency here could confuse a build that resolves the old artifact, so keep this file
+    exactly as small as it looks.
 
-    Its version is pinned independently of the reactor's own <version> (currently
-    1.1.0 in ../pom.xml) and must NOT be bumped by a reactor-wide version change: a
-    `mvn versions:set -DnewVersion=X` run from the repo root walks every module reachable via
-    the root <modules> list, which includes this one. Exclude it explicitly, e.g.:
+    IT DOES declare <parent> (unlike earlier drafts of this file), for one specific reason:
+    without it, this module inherits neither the release profile's <maven-gpg-plugin> signing
+    execution nor its <central-publishing-maven-plugin> binding, so `mvn -P release deploy` had
+    nothing to sign or publish this pom-only artifact WITH — it would fall through to the plain
+    Super-POM `maven-deploy-plugin:deploy` binding for `pom` packaging, which needs an explicit
+    <distributionManagement><repository> that this file (correctly) does not declare, and would
+    fail the whole reactor deploy the moment it reached this module. Inheriting <parent> fixes
+    that: it pulls in the release profile (gpg-sign + central-publishing-maven-plugin), exactly
+    like every other reactor module, so this artifact is signed and bundled into the same
+    Central Publisher upload as srcmorph/srcmorph-cli/srcmorph-maven-plugin.
+
+    Declaring <parent> does NOT tie this module's own <version> to the parent's: a child project
+    may freely override <version> (and <artifactId>) — only omitting it inherits the parent's
+    value. This module's <version> below stays pinned independently at 1.0.4, unaffected by the
+    reactor's own version (currently 1.1.0 in ../pom.xml).
+
+    That independence is NOT automatic against tooling, though: `mvn versions:set -DnewVersion=X`
+    run from the repo root walks every module reachable via the root <modules> list — parent
+    relationship or not — and rewrites each one's own <version> to X. This module must still be
+    excluded explicitly on every such run:
 
         mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false \
             -Dexcludes=net.ladenthin:llamacpp-ai-index-maven-plugin
@@ -32,8 +47,15 @@ SPDX-License-Identifier: Apache-2.0
          https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>net.ladenthin</groupId>
+    <parent>
+        <groupId>net.ladenthin</groupId>
+        <artifactId>srcmorph-parent</artifactId>
+        <version>1.1.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
     <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+    <!-- Deliberate override of the inherited parent version — see the comment above. -->
     <version>1.0.4</version>
     <packaging>pom</packaging>
 
