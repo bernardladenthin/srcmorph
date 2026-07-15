@@ -12,6 +12,16 @@ path = [
     ".github/ISSUE_TEMPLATE/bug_report.md",
     ".github/ISSUE_TEMPLATE/feature_request.md",
     ".github/PULL_REQUEST_TEMPLATE.md",
+    # JSON/YAML example configuration fixtures (no comment syntax; same precedent as
+    # BitcoinAddressFinder's examples/config_*.json entries in its own REUSE.toml).
+    "examples/config_Plan.json",
+    "examples/config_GenerateFileIndex.json",
+    "examples/config_GenerateFileIndex.yaml",
+    "examples/config_All.json",
+    "examples/config_Calibrate.json",
+    # Pre-existing private test fixtures, same "no comment syntax" JSON/YAML precedent.
+    "srcmorph-cli/src/test/resources/test-fixtures/minimal-generate.json",
+    "srcmorph-cli/src/test/resources/test-fixtures/minimal-generate.yaml",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"

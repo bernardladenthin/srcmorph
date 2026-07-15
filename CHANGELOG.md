@@ -11,6 +11,40 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Added
+- **Reactor split**: the former single-module `llamacpp-ai-index-maven-plugin` is now a 3-module
+  Maven reactor under a new parent, `net.ladenthin:srcmorph-parent` — `srcmorph` (new core library,
+  `net.ladenthin:srcmorph`, framework-free — no Maven Plugin API dependency), `srcmorph-cli` (new
+  standalone CLI, `net.ladenthin:srcmorph-cli`, driven by a single JSON/YAML configuration file,
+  ships as a `java -jar`-ready fat jar), and `llamacpp-ai-index-maven-plugin` (the original plugin,
+  now a thin wrapper depending on `srcmorph`). All three (plus the parent pom) release together at
+  one shared version.
+- New engine layer in `srcmorph` (`GenerateEngine`, `AggregatePackagesEngine`,
+  `AggregateProjectEngine`, `CalibrateEngine`) extracted from what used to be each mojo's
+  `execute()` body, plus a new shared root configuration object,
+  `net.ladenthin.srcmorph.config.SrcMorphConfiguration`, bindable identically from Maven plexus XML,
+  Jackson JSON/YAML (the new CLI), or plain Java code.
+- New `examples/` directory at the repo root: paired `config_*.json`/`.yaml` fixtures for every
+  `srcmorph-cli` command (`Plan`, `GenerateFileIndex`, `All`, `Calibrate`), paired `run_*.sh`/`.bat`
+  launcher scripts, and an example `logbackConfiguration.xml` — all runnable out of the box with the
+  `mock` provider (no GGUF model required).
+- Per-module `README.md` files (`srcmorph/README.md`, `srcmorph-cli/README.md`) and a rewritten,
+  product-level root `README.md`/`CLAUDE.md` describing the reactor.
+
+### Changed
+- Logging in the extracted core/CLI layers moved from a constructor-injected Maven `Log` to
+  `org.slf4j.Logger` (see the `1.0.x` entries below for the indexer-layer half of this change,
+  already shipped before the reactor split).
+
+### Notes
+- **This release does not change the Maven plugin's own coordinates, package, goal prefix, or
+  `@Parameter` property names.** `net.ladenthin:llamacpp-ai-index-maven-plugin`, package
+  `net.ladenthin.maven.llamacpp.aiindex`, goal prefix `ai-index`, and every `aiIndex.*` property are
+  unchanged — existing consumers of the plugin see no breaking change in this release. A
+  **future** release will rename the plugin to `net.ladenthin:srcmorph-maven-plugin` with a Maven
+  Central relocation POM for the old coordinates; that rename is a deliberately separate, later step
+  (tracked in `TODO.md`) and has not happened yet.
+
 ## [1.0.2] - 2026-07-02
 
 ### Changed

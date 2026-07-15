@@ -1,339 +1,257 @@
-# CLAUDE.md — llamacpp-ai-index-maven-plugin
+# CLAUDE.md — srcmorph (reactor)
 
-This document provides guidance for AI assistants working on the llamacpp-ai-index-maven-plugin codebase.
+This document provides guidance for AI assistants working on this codebase.
 
 ---
 
 ## Project Overview
 
-**llamacpp-ai-index-maven-plugin** is a free Maven plugin that generates AI-readable hierarchical index and summary files for Java source code projects using llama.cpp-compatible local models (GGUF format). It produces structured `.ai.md` files with metadata headers and AI-generated summaries for both individual source files and packages.
+**srcmorph** is a prompt-driven source-tree transformer: it walks a source tree and processes each
+file through a configurable local LLM prompt (via llama.cpp / GGUF models, no cloud calls), producing
+layered output — per-file, then per-package, then per-project. Today it emits structured `.ai.md`
+Markdown summaries for AI-assisted code navigation; the same rule-routed pipeline is generic enough
+to eventually emit wikis, architecture docs, diagrams, or source-to-source transformations.
+
+**This repository is mid-migration.** It started as a single Maven plugin
+(`net.ladenthin:llamacpp-ai-index-maven-plugin`) and is being restructured into a 3-module Maven
+reactor: a framework-free core library, a standalone CLI, and the original plugin (now a thin
+wrapper around the library). The migration is deliberately staged so every intermediate commit stays
+green; **the plugin's own Maven coordinates, package, and property names have NOT changed yet** —
+that rename (to `net.ladenthin:srcmorph-maven-plugin`) is a separate, deferred final step (tracked in
+`TODO.md`), done only once the rest of the reactor has shipped at least one real release. Do not
+assume the rename has happened, and do not invent `srcmorph.*` Maven `@Parameter` property names —
+the plugin still uses `aiIndex.*` (see the plugin module's own section below).
 
 - **Group ID:** `net.ladenthin`
-- **Artifact ID:** `llamacpp-ai-index-maven-plugin`
-- **Version:** 1.0.2-SNAPSHOT
-- **Java:** target bytecode 1.8, built with JDK 21
+- **Java:** target bytecode 1.8 (production code), Java 21 test sources, built with JDK 21
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)
-- **Plugin goal prefix:** `ai-index`
+- **Reactor version:** `1.1.0-SNAPSHOT` (single shared version across all reactor modules)
 
 ---
 
-## Build System
+## Repository layout — Maven reactor
 
-The project uses **Maven** (minimum 3.6.3).
-
-### Common Commands
-
-```bash
-# Compile only
-mvn compile
-
-# Run all tests
-mvn test
-
-# Build the plugin JAR
-mvn package
-
-# Build without tests
-mvn package -DskipTests
-
-# Run the plugin against itself (self-test profile)
-mvn ai-index:generate -P ai-index-selftest
-
-# Install to local Maven repository
-mvn install
+```
+llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
+├── pom.xml                                net.ladenthin:srcmorph-parent:1.1.0-SNAPSHOT (packaging=pom)
+│                                           shared build plugins + dependencyManagement + release profile
+├── srcmorph/                               CORE LIBRARY  net.ladenthin:srcmorph  (Java 8, Maven-API-free)
+│   └── src/main/java/net/ladenthin/srcmorph/
+│       ├── config/      18+ POJOs (incl. the shared root SrcMorphConfiguration)
+│       ├── engine/      GenerateEngine, AggregatePackagesEngine, AggregateProjectEngine,
+│       │                CalibrateEngine, SrcMorphException, GenerateResult, CalibrationReport, EngineSupport
+│       ├── indexer/      SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport, ...
+│       ├── document/  prompt/  provider/  support/
+│   └── src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf   (real-model tests live here)
+├── srcmorph-cli/                           CLI  net.ladenthin:srcmorph-cli  (fat jar = deliverable)
+│   └── src/main/java/net/ladenthin/srcmorph/cli/
+│       ├── Main.java                       BitcoinAddressFinder cli/Main.java pattern
+│       └── configuration/                  CConfiguration + CCommand (BAF public-field style)
+├── llamacpp-ai-index-maven-plugin/          Maven plugin  net.ladenthin:llamacpp-ai-index-maven-plugin
+│   └── src/main/java/net/ladenthin/maven/llamacpp/aiindex/mojo/   (5 mojos; UNCHANGED coordinates/package)
+├── examples/                               config_*.json/.yaml + run_*.sh/.bat + logbackConfiguration.xml
+├── docs/                                   RELEASE.md + the ai-index model-benchmark writeups
+└── .github/workflows/                      CI (still keyed to the pre-reactor layout in places; step 8)
 ```
 
-### JVM / Compiler Configuration
+Every module inherits its `<version>` from the parent (`net.ladenthin:srcmorph-parent`), so they ship
+in lockstep by construction. Bump the version reactor-wide with
+`mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false` from the repo root.
 
-- Java 1.8 source and target (compiled with JDK 21)
-- UTF-8 encoding
-- `maven-enforcer-plugin` requires Maven ≥ 3.6.3
+### `srcmorph` — the core library
 
-### Offline / Restricted-Network Environments
+Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
+`CoreArchitectureTest#coreIsMavenFree`, the load-bearing ArchUnit rule for this module). Depends on
+`net.ladenthin:llama` (the llama.cpp JNI binding, used only by the `provider` package), SLF4J, jspecify
++ checker-qual, Lombok (provided). Package root: `net.ladenthin.srcmorph`.
 
-When Maven cannot reach the internet (proxy, air-gap, restricted CI), use the options below.
+- **`config/`** — mutable JavaBeans (no Maven annotations) bindable structurally from Maven plexus XML,
+  a Jackson `ObjectMapper`/`YAMLMapper`, or plain Java code. The root object is
+  **`SrcMorphConfiguration`**: one bean holding everything a run needs (`baseDirectory`,
+  `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, the size band, `force`, `planOnly`,
+  `generationProvider`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`, the
+  `llama*` fallback params, `pluginVersion`/`aiVersion`/`projectName`). **Field names intentionally
+  mirror the Maven plugin's current `@Parameter` names** so a JSON/YAML key reads identically to the
+  matching `<configuration>` XML element — see `SrcMorphConfiguration`'s own Javadoc.
+- **`engine/`** — one class per phase, each constructed from a `SrcMorphConfiguration` and owning its
+  own AI provider lifecycle (try-with-resources; one model resident at a time):
+  `GenerateEngine` (plan → validate → planOnly early-out → per-model-group indexing loop + progress
+  bar), `AggregatePackagesEngine`, `AggregateProjectEngine` (deterministic listing + optional one-call
+  AI overview), `CalibrateEngine` (per-model preflight + timing). All four throw the checked
+  `SrcMorphException` on misconfiguration, never a Maven `MojoExecutionException` — callers (the
+  plugin's mojos, the CLI's `Main`) wrap it into whatever their own surface expects.
+- **`indexer/`** — the walk/plan/write orchestration (`SourceFileIndexer`, `PackageIndexer`,
+  `ProjectIndexer`, `AiFieldGenerationSupport`, `AiIndexPlan`, `AiCalibrationRunner`, ...). Logs via
+  `org.slf4j.Logger` (a private static final field per class), not a Maven `Log` — this is what makes
+  the module Maven-free; Maven's own `maven-slf4j-provider` (ships since Maven ≥ 3.1) makes these lines
+  surface as ordinary `[INFO]`/`[WARN]` output inside a plugin execution with zero glue, and the CLI
+  ships a logback binding for the same log lines outside Maven.
+- **`document/`** — the `.ai.md` model + codecs (`AiMdDocument`, `AiMdHeader`, `AiMdDocumentCodec`,
+  `AiMdHeaderCodec`, `AiMdHeaderSupport`, `AiMdChildEntryLineFormatter`, `AiMdLeadExtractor`,
+  `AiGenerationRequest`/`AiGenerationResult`).
+- **`prompt/`** — `AiPromptDefinition`, `AiPreparedPrompt`, `AiPromptSupport`,
+  `AiPromptPreparationSupport`.
+- **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
+  `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"`), `MockAiGenerationProvider`,
+  `LlamaCppJniAiGenerationProvider`, `LlamaCppJniConfig` + `LlamaCppJniConfigFactory` (the pure 26-field
+  mapping from a resolved `AiGenerationConfig` to the native binding's parameter objects — extracted
+  from the old mojo so it is unit- and PIT-testable without a Maven runtime), `AiCompletionParser`.
+- **`support/`** — foundation helpers with no dependency on anything above them: `AiChecksumSupport`,
+  `AiTimeSupport`, `AiPathSupport`, `AiSourceExcludeFilter`, `AiProgressBar`, `AiSourceChunker`,
+  `AiDeterministicSummary`, `AiGenerationTimeEstimator`, `Java8CompatibilityHelper`, `ConvertToRecord`.
 
-**Offline Maven (requires warm `~/.m2/repository` cache):**
+**Architecture rules** (`CoreArchitectureTest`, ArchUnit): `coreIsMavenFree` (the load-bearing rule
+above), `layeredArchitecture` (`engine` on top → `indexer` → `provider`/`document`/`prompt` → `config`
+→ `support`), `noPackageCycles`, `loggersArePrivateStaticFinal`, `noSystemExit`,
+`noTestFrameworksInProduction`, `noJavaUtilLogging`, `noSystemOutOrErrInProduction`,
+`noInternalJdkImports`, `noPublicMutableFields`, `noNewRandom`, `noThreadSleep`,
+`jniConfinedToProvider` (only the `provider` package may touch the llama.cpp JNI binding).
+
+**Test suite** (`srcmorph/src/test/java/net/ladenthin/srcmorph/`, package-renamed 1:1 with production):
+~63 test files, incl. jqwik properties, an ArchUnit suite, a Lincheck race test
+(`AiGenerationKindLincheckTest`), and the model-backed real tests gated on
+`src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf`. **PIT mutation testing**: `mutationThreshold`
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 47 classes across
+config/document/indexer/prompt/provider/support, all killed at 100%. `srcmorph-cli` and the plugin
+module do not have a PIT gate yet (see `TODO.md`). The `gpu-cuda`/`gpu-vulkan` profiles (swap the
+`net.ladenthin:llama` classifier via the `llama.classifier` property) live here; the `jcstress` and
+`vmlens` profiles/tests currently still live in the **plugin** module (they were not moved in the
+extraction — see that module's section below), not here.
+
+### `srcmorph-cli` — the standalone CLI
+
+`net.ladenthin:srcmorph-cli`, packaging `jar`, package root `net.ladenthin.srcmorph.cli`. A BAF-style
+CLI driven by a single JSON or YAML configuration file:
+
+- **`cli/Main.java`** — extension-dispatched loader (`.json`/`.js` → Jackson `ObjectMapper`,
+  `.yaml`/`.yml` → `YAMLMapper`, both with `FAIL_ON_UNKNOWN_PROPERTIES` enabled so a config typo fails
+  fast, mirroring what plexus does on the Maven XML side); echoes the parsed configuration back
+  (re-serialized as both JSON and YAML) for review before anything runs; no `System.exit` anywhere — a
+  failure propagates as an unchecked exception out of `main(String[])`. Dispatches on `CConfiguration`'s
+  `command` field to one or more `net.ladenthin.srcmorph.engine.*` engines.
+- **`cli/configuration/CConfiguration`** / **`CCommand`** — public-mutable-field JavaBeans (the BAF
+  `cli.configuration.CConfiguration` convention; carved out of the `noPublicMutableFields` ArchUnit rule
+  via this package's explicit exception). `CConfiguration.srcMorph` is the **same**
+  `net.ladenthin.srcmorph.config.SrcMorphConfiguration` the Maven plugin's mojos build from their own
+  `@Parameter` fields — a JSON/YAML key under `srcMorph` reads identically to the matching plugin XML
+  element. `CCommand` is `Plan | GenerateFileIndex | AggregatePackages | AggregateProject | All |
+  Calibrate`; the default is `Plan` (safe: no model load, nothing written).
+- The fat jar (`srcmorph-cli-<version>-jar-with-dependencies.jar`, main class
+  `net.ladenthin.srcmorph.cli.Main`) is bound **unconditionally** to the `package` phase (a deliberate
+  divergence from BAF's `-P assembly` opt-in — for this module the fat jar IS the deliverable).
+- Ships its own logback binding (`ch.qos.logback:logback-classic`, runtime scope) — unlike the library
+  (consumer picks any SLF4J binding) and the plugin (gets one for free from Maven's own
+  `maven-slf4j-provider`), a standalone `java -jar` process needs to bring its own or every log line is
+  silently dropped.
+- **Architecture rules** (`CliArchitectureTest`): `cliIsLeaf` (nothing else in the reactor may depend on
+  this module — it is the leaf-most consumer), `noPublicMutableFields` (with the `configuration`
+  package carve-out), `noSystemExit`, `mavenFree` (must never depend on the Maven Plugin API — that
+  boundary belongs to the plugin module), `noTestFrameworksInProduction`, `noInternalJdkImports`,
+  `loggersArePrivateStaticFinal`.
+- **Tests**: `MainTest`, `configuration.ConfigBindingTest` (round-trips a private
+  `src/test/resources/test-fixtures/minimal-generate.{json,yaml}` pair through both parsers),
+  `ExamplesConfigBindingTest` (sweeps every shipped `examples/config_*.{json,yaml}` fixture — the
+  public, documented examples — through the same strict mappers), `CliEndToEndTest` (drives the `All`
+  and `Plan` commands against the mock provider end to end, no forked process).
+
+### `llamacpp-ai-index-maven-plugin` — the Maven plugin (pre-rename coordinates)
+
+**Unchanged in this migration step**: coordinates `net.ladenthin:llamacpp-ai-index-maven-plugin`,
+package `net.ladenthin.maven.llamacpp.aiindex`, goal prefix `ai-index`, every `@Parameter` property
+still spelled `aiIndex.*` (e.g. `aiIndex.skip`, `aiIndex.file.skip`, `aiIndex.planOnly`,
+`aiIndex.generationProvider`, `aiIndex.llama.modelPath`). Only the plugin's *contents* shrank: the
+former ~65-class single module now depends on `net.ladenthin:srcmorph` (compile scope) for everything
+except the 5 mojo classes themselves.
+
+- **`AbstractAiIndexMojo`** — shared `@Parameter` fields + `buildConfiguration()`, which maps them onto
+  a new `SrcMorphConfiguration` for the matching engine to run. Concrete mojos
+  (`GenerateMojo`/`AggregatePackagesMojo`/`AggregateProjectMojo`/`CalibrateMojo`) each add their own
+  goal-specific `@Parameter`s (e.g. `skipFile`/`skipPackage`/`skipProject`, `planOnly`, `fileExtensions`,
+  `excludes`, `factDefinitions`), build the configuration, and delegate the whole run to one
+  `net.ladenthin.srcmorph.engine.*` engine — mojos are now thin (≤ ~30 lines of actual logic each) and
+  translate a caught `SrcMorphException`/`IOException` into a `MojoExecutionException`.
+- **Skip flags stay mojo-side** (`skip`, `skipFile`, `skipPackage`, `skipProject`) — a Maven lifecycle
+  concern, not part of `SrcMorphConfiguration`; an engine built from a configuration always executes
+  when asked. See `MojoPhaseSkipTest`.
+- **A future release will relocate this plugin** to `net.ladenthin:srcmorph-maven-plugin` (goal prefix
+  `srcmorph`, package `net.ladenthin.maven.srcmorph.mojo`, properties `srcmorph.*`) with a Maven Central
+  relocation POM for the old coordinates. **That has not happened yet** — do not write plugin
+  documentation, XML examples, or property names as if it had (see `TODO.md` for the tracked step).
+- **Architecture rules** (`PluginArchitectureTest`): Maven-annotation confinement to `mojo`, every mojo
+  extends `AbstractMojo`, plus this module's slice of the shared conventions.
+- **jcstress** (`jcstress/AiGenerationKindRace.java`) and **vmlens**
+  (`vmlens/VmlensInterleavingSmokeTest.java`) tests/profiles currently live in this module, not in
+  `srcmorph` — they were not relocated during the core extraction.
+- Full goal/parameter reference: `llamacpp-ai-index-maven-plugin/README.md`.
+
+---
+
+## Build Commands
+
+### Whole reactor (repo root)
+
 ```bash
-# Run tests without downloading anything
-mvn test -o
+mvn compile          # Compiles every module (Java + generates nothing native; pure Java reactor)
+mvn test             # Runs every module's tests
+mvn package          # Builds all four artifacts (parent pom + 3 jars, incl. the CLI's fat jar)
+mvn install          # Installs all four into ~/.m2 (needed before iterating on a single module — see below)
+```
 
-# Package without downloading anything
+### Iterating on one module
+
+Maven resolves inter-module dependencies (`llamacpp-ai-index-maven-plugin` and `srcmorph-cli` both
+depend on `net.ladenthin:srcmorph`) via the local repository, not in-reactor classes, unless you use
+`-pl`/`-am`:
+
+```bash
+# Build/install the core first if you're iterating on the CLI or the plugin against local core changes:
+mvn -pl srcmorph -am install -DskipTests
+
+# Then work on just one module:
+mvn -pl srcmorph-cli test
+mvn -pl llamacpp-ai-index-maven-plugin test
+```
+
+### Offline / restricted-network environments
+
+```bash
+mvn test -o                 # requires a warm ~/.m2/repository cache
 mvn package -o -DskipTests
 ```
 
-The cache is warm after any previous successful `mvn test` or `mvn install` run.
+### Run the self-test profile (plugin module only)
 
-**Direct `javac` compilation (fallback, no Maven required):**
 ```bash
-# Gather classpath from already-downloaded JARs
-CP=$(find ~/.m2/repository -name "*.jar" | tr '\n' ':')
-OUT=/tmp/aiindex-classes && mkdir -p "$OUT"
-
-# Compile production sources
-find src/main/java -name "*.java" | xargs javac -cp "$CP" -d "$OUT" --release 8
-
-# Compile test sources (after production classes are compiled)
-TOUT=/tmp/aiindex-test-classes && mkdir -p "$TOUT"
-find src/test/java -name "*.java" | xargs javac -cp "$CP:$OUT" -d "$TOUT" --release 8
+mvn -pl llamacpp-ai-index-maven-plugin ai-index:generate -P ai-index-selftest
 ```
 
-Zero compiler output means zero errors.
+### Run the CLI
 
----
-
-## Project Structure
-
-```
-llamacpp-ai-index-maven-plugin/
-├── src/
-│   ├── main/
-│   │   └── java/net/ladenthin/maven/llamacpp/aiindex/   # layered packages (top → bottom)
-│   │       ├── mojo/        # Entry: AbstractAiIndexMojo, GenerateMojo, AggregatePackagesMojo
-│   │       ├── indexer/     # Orchestration: SourceFileIndexer, PackageIndexer, AiFieldGenerationSupport
-│   │       ├── provider/    # AI backends: AiGenerationProvider(+Factory), Mock/LlamaCppJni providers,
-│   │       │                #   AiCompletionParser, LlamaCppJniConfig
-│   │       ├── document/    # .ai.md model + codecs: AiMdDocument, AiMdHeader, AiMd*Codec,
-│   │       │                #   AiMdHeaderSupport, AiMdChildEntryLineFormatter,
-│   │       │                #   AiGenerationRequest, AiGenerationResult (carry an AiMdHeader)
-│   │       ├── prompt/      # AiPromptDefinition, AiPreparedPrompt, AiPromptSupport, AiPromptPreparationSupport
-│   │       ├── config/      # AiGenerationConfig, AiGenerationKind, AiFieldGenerationConfig,
-│   │       │                #   AiFieldGenerationSelector, AiModelDefinition, AiModelDefinitionSupport
-│   │       └── support/     # Foundation: AiChecksumSupport, AiTimeSupport, AiPathSupport,
-│   │                        #   AiSourceExcludeFilter, Java8CompatibilityHelper, ConvertToRecord
-│   ├── site/
-│   │   └── ai/                            # Output directory for .ai.md files
-│   └── test/
-│       ├── java/net/ladenthin/maven/llamacpp/aiindex/
-│       │   └── *.java                     # JUnit Jupiter tests
-│       └── resources/
-│           └── SmolLM2-135M-Instruct-Q3_K_M.gguf  # Small test model
-├── .github/workflows/                     # CI/CD pipelines
-├── pom.xml
-└── README.md
+```bash
+mvn -pl srcmorph-cli package
+java -jar srcmorph-cli/target/srcmorph-cli-1.1.0-SNAPSHOT-jar-with-dependencies.jar examples/config_All.json
 ```
 
----
-
-## Core Architecture
-
-### Three-Phase Operation
-
-The plugin operates in three logical phases, building a navigable index from fine to coarse:
-
-**Phase 1 — File Indexing & Summarization**
-```
-[Source .java files] → SourceFileIndexer → [*.java.ai.md files (deterministic header + AI body)]
-```
-The `generate` goal is **plan-then-execute** and **rule-routed**: it first walks all candidate files,
-routes each via the `<fieldGeneration>` rules to a `(model, prompt)` — or a *skip*, or the explicit
-*fallback* — and logs a tree grouped by model (which file gets which model + prompt). It then loads
-**each model once** (groups sharing an `aiDefinitionKey`, sequentially → one model resident at a time,
-bounded RAM) and indexes that group's files. A rule matches by a composable **`<condition>` tree** — `<and>`/`<or>` (each wraps its children in
-`<conditions><condition>…</condition></conditions>`), `<not>` (a single nested condition), over leaves
-`<extensions>`, `<size>` (`min`/`max` bytes), `<lines>` (`min`/`max`), `<modifiedAfter>`/`<modifiedBefore>`
-(ISO-8601 instant vs file mtime), `<pathGlob>` (base-relative glob) — evaluated by `AiConditionEvaluator`
-against an `AiFileContext`; new leaf kinds are one field + one branch. Among matches the highest
-`priority` wins (ties by declaration order). `<skip>true</skip>` ignores matching files (a high-priority
-skip beats routes and the fallback); exactly one `<fallback>true</fallback>` (no condition) catches the
-rest; a file matching no rule and no fallback **fails the build**. `aiIndex.planOnly=true` prints the
-Markdown plan (file → rule id → prompt → rough time estimate, summed per model and overall) and stops
-(no model loaded). The plan also computes each routed file's **context-window fit** up front (via
-`AiInputWindowCalculator`, the same threshold the run uses to trim): a file larger than its routed
-model's window is flagged in the plan and, **by default (`onOversize=fail`), fails the build** (a hard
-abort) — the plugin never auto-picks a model. The resolution is **configuration only**, via the rule's
-**`<onOversize>`** strategy (`AiOversizeStrategy`): `fail` (default), `sample` (trim to the window head,
-one call), `mapReduce` (chunk at line boundaries → summarize each → combine via a **hierarchical reduce**
-that batches partials to fit the window so whole-file `<maxChunks>=0` coverage isn't trimmed away;
-`<maxChunks>` bounds the time — `AiSourceChunker`; the chunk window carries a token-safety headroom so a
-token-dense chunk can't overflow the model context), or `deterministic` (model-free metadata+sample body
-— `AiDeterministicSummary`).
-So oversized files are either routed to a larger-context model or handled by a strategy; only `fail`
-entries abort. A rule may also carry an orthogonal, language-agnostic **`<facts>`** list (`AiFactCounter`
-+ `AiFactExtractor`): each `{label, pattern}` reports its regex match count over the **whole** source,
-prepended to the body of **every** file the rule matches (oversize or not) — exact structural counts
-(SQL `INSERT` rows / tables / views, Java type declarations / `\bboolean\b` fields, …) that give
-downstream agents authoritative numbers the (possibly sampled) AI prose cannot reliably produce. A fact
-set can be defined once in a shared `<factDefinitions>` group and referenced from many rules by
-`<factsKey>` (`AiFactDefinition` + `AiFactDefinitionSupport`, resolved onto each rule before indexing),
-instead of repeating the `<facts>` block inline. Generation is also guarded by a **retry-on-overflow**:
-if the provider rejects a prompt as exceeding the context (the char-based trim under-counted tokens on
-dense content), the call is re-trimmed to a smaller window and retried rather than failing the build. See `AiFieldGenerationSelector` (selection + validation), `AiCondition`/
-`AiConditionEvaluator` (the tree), and `AiIndexPlan` (the rendered plan). This is how one run can index
-different file kinds/sizes with different models *and* prompts.
-
-**Phase 2 — Package Aggregation & Summarization**
-```
-[*.java.ai.md files] → PackageIndexer → [package.ai.md files (deterministic header + AI body)]
-```
-
-**Phase 3 — Project Index (deterministic listing; optional AI overview)**
-```
-[package.ai.md files] → ProjectIndexer → [one project.ai.md: per-package lead (body) + link (header F)]
-```
-Phase 3 harvests the one-sentence blockquote lead each `package.ai.md` already begins with
-(via `AiMdLeadExtractor`) and writes a single, always-loadable table of contents linking to
-every package — the entry point an agent reads first to navigate project → package → file → raw.
-The per-package listing calls no model, so it is cheap and scales to hundreds of packages (no
-embeddings/vector DB). **Optional (opt-in):** when a `<fieldGeneration>` is configured on the
-goal, *one* extra AI call writes a short `#### Overview` paragraph from the package leads (never
-the full bodies). Incrementality is preserved by folding the overview generation signature
-(`promptKey:aiDefinitionKey`) — not the AI output — into the `c` checksum, so an unchanged project
-is never re-inferred but enabling/switching the overview, or a package change, rebuilds it.
-
-**Each phase is independently switchable.** Every goal is a separate Maven execution, and each can be
-toggled on/off on its own via a phase-specific skip flag named after the index level (`aiIndex.file.skip`,
-`aiIndex.package.skip`, `aiIndex.project.skip` — the `x` node types), with `aiIndex.skip` as a global
-"skip all" switch — so you can run nothing, all three, or any subset (e.g. file + project only). The
-mechanism is generalized symmetrically: `AbstractAiIndexMojo` owns the global `skip`, the abstract
-`isPhaseSkipped()` seam, and `shouldSkip() = skip || isPhaseSkipped()`; each concrete mojo adds exactly
-one `skip<Phase>` `@Parameter` plus a one-line `isPhaseSkipped()` override and calls `shouldSkip()` at
-the top of `execute()`. Covered by `MojoPhaseSkipTest`.
-
-### Key Components
-
-| Class | Role |
-|---|---|
-| `AbstractAiIndexMojo` | Shared `@Parameter` fields and utilities for the AI generate/aggregate-packages mojos |
-| `GenerateMojo` | Phase 1: index + summarize source files |
-| `AggregatePackagesMojo` | Phase 2: aggregate + summarize package index files |
-| `AggregateProjectMojo` | Phase 3: build the single `project.ai.md` (deterministic listing; extends `AbstractAiIndexMojo` and builds a provider **only** when a `<fieldGeneration>` opts into the AI overview) |
-| `SourceFileIndexer` | `collectCandidates` (walk + filters) / `classify` (→ `AiIndexPlan`) / `indexFile` (write one file with a given rule + provider) — split so a run plans first and loads one model per group |
-| `AiFieldGenerationSelector` | Routes a file to a rule by its `<condition>` + priority; explicit fallback; `skip`; plus `validate(rules)` (fail-fast config check) |
-| `AiCondition` / `AiConditionEvaluator` | Composable and/or/not condition tree (leaves: extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob) + its evaluator (`matches`/`validate`/`usesLines`) |
-| `AiIndexPlan` | The routing plan: routes grouped by model id, skips, unmatched, per-file context-window fit; renders the up-front tree |
-| `AiInputWindowCalculator` | Pure calculator for the input window (max source chars before trimming + whether a source exceeds it); single source of truth shared by the run-time trim (`AiFieldGenerationSupport`) and the plan-time over-window check (`SourceFileIndexer.classify`) |
-| `AiOversizeStrategy` | Enum of the per-rule `<onOversize>` strategies (`fail`/`sample`/`mapReduce`/`deterministic`) + case-insensitive parser; default `fail` |
-| `AiSourceChunker` | Pure line-boundary chunker for `mapReduce` (overlap + `maxChunks` representative sampling) |
-| `AiFactCounter` | Maven `@Parameter` POJO for one `<fact>` — a `{label, pattern}` deterministic counter |
-| `AiFactExtractor` | Pure: counts each `<facts>` regex over the whole source → the exact "facts" block prepended to the body (+ fail-fast pattern validation) |
-| `AiFactDefinition` | Maven `@Parameter` POJO for a named, reusable `<factDefinitions>` group `{key, facts}` |
-| `AiFactDefinitionSupport` | Key-indexed lookup: resolves each rule's `<factsKey>` to its shared group's counters (copies onto the rule) |
-| `CalibrateMojo` / `AiCalibrationRunner` | `ai-index:calibrate` goal (thin orchestration) + the indexer-layer measurer (warmup + two sized generations, prefers the binding's reported throughput, else a wall-clock differential) → `AiCalibrationMeasurement` |
-| `AiCalibration` | `<calibration>` `@Parameter` POJO on `<aiDefinition>` (`prefillTokensPerSecond`/`decodeTokensPerSecond`/`charsPerToken`); makes `AiGenerationTimeEstimator` use measured per-machine rates instead of the built-in reference-CPU model |
-| `AiDeterministicSummary` | Pure model-free body builder for `deterministic` (size, line count, head/tail sample) |
-| `AiProgressBar` | Pure ASCII progress-bar renderer (`[#####     ] 42%`); `GenerateMojo` logs it after each file, advancing by the running sum of per-file plan estimates over the grand total (with estimated time left + actual elapsed) |
-| `PackageIndexer` | Creates `package.ai.md` files with contents listings, calls AI to fill the document body |
-| `ProjectIndexer` | Phase 3: harvests each package's lead + relative link into one `project.ai.md`; deterministic listing, with an optional one-call AI `#### Overview` from the leads |
-| `AiMdLeadExtractor` | Pure extraction of the one-line blockquote lead from an `.ai.md` body (fallback: first non-blank line) |
-| `AiGenerationProvider` | Interface for AI backends (llama.cpp JNI or mock) |
-| `AiFieldGenerationSupport` | Shared field-generation loop extracted from both indexers |
-| `AiGenerationResult` | Immutable carrier for the AI-generated body text out of the loop |
-| `AiModelDefinition` | Maven `@Parameter` POJO for a named AI model definition |
-| `AiModelDefinitionSupport` | Key-indexed lookup: converts `AiModelDefinition` → `AiGenerationConfig` |
-| `AiMdDocumentCodec` | Reads and writes `.ai.md` files |
-| `AiMdHeaderCodec` | Encodes/decodes the YAML-like metadata header |
-| `AiPromptSupport` | Looks up prompt templates by key |
-| `AiPromptPreparationSupport` | Prepares prompts with source substitution and trimming |
-
-### Document Format
-
-Each `.ai.md` file begins with a metadata header block:
-
-```
-### main/java/com/example
-- H: 1.0
-- C: A1B2C3D4
-- D: 2026-01-01T00:00:00Z
-- T: 2026-01-01T00:01:00Z
-- G: 0.1.0
-- A: 1.0.0
-- X: package
-- F: [MyClass.java](MyClass.java.ai.md)
-- F: [sub/](sub/package.ai.md)
----
-> Handles example domain logic for ...
-(AI-generated body text continues here)
-```
-
-The header carries only deterministic metadata. All AI-generated
-content lives in the document body after the `---` separator, keeping
-the header machine-parseable without AI involvement (see
-`AiMdHeader.java` Javadoc for the rationale). The repeatable `F` field
-holds the deterministic child links — for a `package`, one per child
-`.ai.md` (files and sub-packages); for a `project`, one per package —
-so navigation (project → package → file) stays uniformly in the header
-while the body stays free-form. `AiMdDocumentCodec` parses only the
-header block, so a `- F:` line in the body is never read as a link.
-
-| Field | Meaning |
-|---|---|
-| `h` | Header format version |
-| `title` | File or package path |
-| `c` | CRC32 checksum of the source file (8-char uppercase hex; see `AiChecksumSupport`) |
-| `d` | Index creation timestamp (ISO-8601) |
-| `t` | Last generation timestamp |
-| `g` | Plugin version (`project.version`) |
-| `a` | AI model version |
-| `x` | Node type: `file`, `package`, or `project` |
-| `F` | Repeatable child link (markdown), e.g. `[Foo.java](Foo.java.ai.md)`; the navigation list for `package`/`project` nodes, absent for `file` |
-
-### Provider Pattern
-
-`AiGenerationProvider` is a `Closeable` interface for AI backends:
-
-| Implementation | Description |
-|---|---|
-| `LlamaCppJniAiGenerationProvider` | Uses the `net.ladenthin:llama` JNI binding to run local GGUF models |
-| `MockAiGenerationProvider` | Returns deterministic mock responses; used in all tests |
-
-`AiGenerationProviderFactory` selects the provider by name (`"llamacpp-jni"` or `"mock"`).
-
----
-
-## Maven Plugin Goals
-
-| Goal | Description |
-|---|---|
-| `ai-index:generate` | Phase 1: index source files and fill the AI-generated document body |
-| `ai-index:aggregate-packages` | Phase 2: aggregate package index files and fill the AI-generated document body |
-| `ai-index:aggregate-project` | Phase 3: harvest per-package leads into one `project.ai.md` (deterministic listing; optional one-call AI `#### Overview` when a `<fieldGeneration>` is configured) |
-| `ai-index:calibrate` | Preflight + per-machine timing (between `planOnly` and a real run): loads each routed model once (catches bad path / OOM / wrong native), measures prefill/decode throughput, and prints a paste-ready `<calibration>` block per `<aiDefinition>` |
-
-### Key Parameters (`GenerateMojo`)
-
-| Parameter | Property | Default | Description |
-|---|---|---|---|
-| `outputDirectory` | `aiIndex.outputDirectory` | `${basedir}/src/site/ai` | Where `.ai.md` files are written |
-| `skip` | `aiIndex.skip` | `false` | Global switch: skip **every** phase |
-| `skipFile` | `aiIndex.file.skip` | `false` | Skip only the **file** phase (`generate` goal) |
-| `skipPackage` | `aiIndex.package.skip` | `false` | Skip only the **package** phase (`aggregate-packages` goal) |
-| `skipProject` | `aiIndex.project.skip` | `false` | Skip only the **project** phase (`aggregate-project` goal) |
-| `force` | `aiIndex.force` | `false` | Regenerate even if summary exists |
-| `subtrees` | `aiIndex.subtrees` | *(all)* | Limit to specific source subdirectories |
-| `fileExtensions` | `aiIndex.fileExtensions` | `.java` | File extensions to index |
-| `excludes` | `aiIndex.excludes` | *(none)* | Glob patterns (base-relative, `/` separators) for source files to skip, e.g. `**/package-info.java`, `**/generated/**` (`AiSourceExcludeFilter`) |
-| `minFileSizeBytes` | `aiIndex.file.minSizeBytes` | `0` | Exclusive lower size bound; files `<=` this are skipped (`0` = no lower bound). For size-tiering across multiple `generate` executions |
-| `maxFileSizeBytes` | `aiIndex.file.maxSizeBytes` | `0` | Inclusive upper size bound; files `>` this are skipped (`0` = unlimited). Pairs with `minFileSizeBytes` to form a band |
-| `planOnly` | `aiIndex.planOnly` | `false` | Print the routing plan tree (model → files → prompt → window fit) and stop; no model loaded, nothing generated |
-| `generationProvider` | `aiIndex.generationProvider` | `mock` | `mock` or `llamacpp-jni` |
-| `llamaModelPath` | `aiIndex.llama.modelPath` | — | Path to GGUF model file |
-| `llamaContextSize` | `aiIndex.llama.contextSize` | `2048` | Context window size |
-| `llamaMaxOutputTokens` | `aiIndex.llama.maxOutputTokens` | `128` | Max generated output tokens |
-| `llamaTemperature` | `aiIndex.llama.temperature` | `0.15` | Sampling temperature |
-| `llamaThreads` | `aiIndex.llama.threads` | `2` | CPU threads for inference |
+See `examples/` (repo root) for ready-to-run `config_*.json`/`.yaml` + paired `run_*.sh`/`.bat`
+launcher scripts, all using the `mock` provider (no GGUF model required).
 
 ---
 
 ## Testing
 
-### Frameworks
+Every module uses JUnit Jupiter + Hamcrest; `MockAiGenerationProvider` gives fully deterministic tests
+with no model or JNI dependency. Model-backed tests (in `srcmorph`) are gated on
+`srcmorph/src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf` and self-skip when the native library
+is unavailable.
 
-- **JUnit Jupiter** (6.1.0) — test runner (`@Test`, `@BeforeEach`, `@TempDir`)
-- **Hamcrest** — matchers (`assertThat`, `is`, `equalTo`)
-- **`MockAiGenerationProvider`** — deterministic AI responses for all tests
+- `srcmorph` — the bulk of the test suite (framework-free logic); see that module's section above.
+- `srcmorph-cli` — `MainTest`, `ConfigBindingTest`, `ExamplesConfigBindingTest`, `CliArchitectureTest`,
+  `CliEndToEndTest`.
+- `llamacpp-ai-index-maven-plugin` — `PluginArchitectureTest`, `MojoPhaseSkipTest`, plus the jcstress/
+  vmlens tests noted above.
 
-### Test Model
-
-`src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf` is a small (≈90 MB) GGUF model used by integration tests that exercise the real `LlamaCppJniAiGenerationProvider`. These tests are skipped when the JNI native library is unavailable.
-
-### Conventions
-
-- All tests that invoke the real llama.cpp JNI must guard with an availability check.
-- Tests that only exercise Java logic use `MockAiGenerationProvider`.
-- Use `Files.createTempDirectory(...)` for temporary file system state.
-- See `TEST_WRITING_GUIDE.md` for full conventions.
+See `TEST_WRITING_GUIDE.md` (repo root, applies to every module) for full conventions.
 
 ---
 
@@ -341,24 +259,44 @@ header block, so a `- F:` line in the body is never read as a link.
 
 ### Logging
 
-Production code uses `org.apache.maven.plugin.logging.Log` (not SLF4J), obtained via `AbstractMojo.getLog()` or passed via constructor. For constructor-based logger injection see `CODE_WRITING_GUIDE.md`.
+`srcmorph` and `srcmorph-cli` log via `org.slf4j.Logger` (`private static final Logger LOGGER = ...`,
+enforced by each module's own `loggersArePrivateStaticFinal` ArchUnit rule). The plugin module's mojos
+still use `AbstractMojo#getLog()` (a Maven `Log`) at the mojo boundary only — everything they delegate
+to below that boundary is SLF4J.
 
 ### Null Safety
 
-- Mark nullable return types and parameters explicitly.
-- Prefer early null/empty guards with `log.warn(...)` over silent skips.
+- JSpecify `@Nullable`/`@NonNull` (default) annotations; NullAway + Checker Framework enforce this at
+  compile time in every module. Mark nullable return types and parameters explicitly.
+- Prefer early null/empty guards with a logged warning over silent skips.
 
 ### Named Constants
 
-Every meaningful literal (string keys, header field names, node types, version strings) must be a `public static final` or `private static final` named constant with Javadoc. See `CODE_WRITING_GUIDE.md`.
+Every meaningful literal (string keys, header field names, node types, version strings) must be a
+`public static final` or `private static final` named constant with Javadoc.
 
 ### License Headers
 
-All source files must include the Apache 2.0 license header wrapped in `// @formatter:off` / `// @formatter:on`. See any existing source file for the template.
+All source files must include the Apache 2.0 license header wrapped in `// @formatter:off` /
+`// @formatter:on` (or the file type's equivalent comment syntax — see `examples/` for the `#`/`REM`/
+XML-comment conventions used there; JSON/YAML example fixtures carry no inline header, see
+`REUSE.toml`).
 
 ### Records
 
-Immutable value types are implemented as Java `record` types (e.g., `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiGenerationRequest`). Prefer records for data carriers.
+Immutable value types are Java `record`s where practical (e.g. `AiMdDocument`, `AiMdHeader`,
+`AiPreparedPrompt`, `AiGenerationRequest`, `GenerateResult`).
+
+### `useModulePath=false` (all three modules)
+
+Every module's `maven-surefire-plugin` configuration forces `<useModulePath>false</useModulePath>`.
+Each module ships a `module-info.java`, but it is release metadata for module-path *consumers* only —
+this reactor's own build, tests, and every real consumer today load these jars on the plain classpath
+(the production bytecode targets Java 8, where `module-info.class` is inert). Leaving Surefire's
+module-path auto-detection on would patch test classes into the named module and then also require
+every test-only dependency (e.g. `archunit-junit5`) to be explicitly module-readable, which
+`module-info.java` intentionally does not declare — so classpath mode is not a workaround, it is the
+actually-representative test environment.
 
 ---
 
@@ -367,45 +305,50 @@ Immutable value types are implemented as Java `record` types (e.g., `AiMdDocumen
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | `publish.yml` | Push, PR, manual dispatch | Unified build/test/coverage/package pipeline; publishes snapshots and Maven Central releases |
-| `codeql.yml` | Schedule / Push | GitHub CodeQL security scanning |
+| `codeql.yml` | Schedule/Push | GitHub CodeQL security scanning |
 | `scorecard.yml` | Schedule / Push | OpenSSF Scorecard supply-chain security analysis |
 | `osv-scanner.yml` | Schedule / Push / PR | Google OSV-Scanner dependency vulnerability scan |
-| `reuse.yml` | Push / PR | FSFE REUSE license-compliance check |
+| `reuse.yml` | Push / PR | FSFE REUSE license-compliance check (`fsfe/reuse-action`) |
 | `claude-code-review.yml` | PR | AI-powered code review |
 | `claude.yml` | Issue/PR comment with `@claude` | Claude Code interactive assistant |
+
+`publish.yml` still reflects the pre-reactor single-module layout in places (report globs, artifact
+paths); adapting it fully to the 3-module reactor is a separate, later step (see `TODO.md`) — do not
+assume it has already been updated.
 
 ---
 
 ## Dependencies Summary
 
-| Dependency | Version | Purpose |
+| Dependency | Version | Used by |
 |---|---|---|
-| `net.ladenthin:llama` | 5.0.6 | llama.cpp JNI binding (GGUF inference); released on Maven Central, carries the prompt-cache/slot APIs + GPU classifier jars. Brings `slf4j-api` transitively, converged to 2.0.18 via `<dependencyManagement>`. |
-| `org.apache.maven:maven-plugin-api` | 3.9.13 | Maven plugin API (provided) |
-| `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.1 | `@Mojo`, `@Parameter` annotations (provided) |
+| `net.ladenthin:llama` | 5.0.6 | `srcmorph` (`provider` package only) — llama.cpp JNI binding |
+| `org.slf4j:slf4j-api` | 2.0.18 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
+| `ch.qos.logback:logback-classic` | 1.5.37 (converged in the parent) | `srcmorph-cli` (runtime binding) |
+| `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph-cli` (JSON config) |
+| `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph-cli` (YAML config) |
+| `org.apache.maven:maven-plugin-api` | 3.9.16 | `llamacpp-ai-index-maven-plugin` (provided) |
+| `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.2 | `llamacpp-ai-index-maven-plugin` (provided) |
 
-Test-only:
-
-| Dependency | Version | Purpose |
-|---|---|---|
-| `org.junit.jupiter:junit-jupiter` | 6.1.0 | Test runner |
-| `org.hamcrest:hamcrest` | 3.0 | Matchers |
+Test-only (every module): `org.junit.jupiter:junit-jupiter`, `org.hamcrest:hamcrest`,
+`com.tngtech.archunit:archunit-junit5`. `srcmorph` additionally uses jqwik (pinned ≤ 1.9.3 — see the
+jqwik policy link below), JMH, jcstress, Lincheck, vmlens.
 
 ---
 
 ## Test / Code Writing Compliance
 
-After modifying or creating any `.java` file:
+After modifying or creating any `.java` file, in whichever module it lives:
 
 - For `*Test.java` files, follow the workspace version chain:
   [`../workspace/guides/test/TEST_WRITING_GUIDE-8.md`](../workspace/guides/test/TEST_WRITING_GUIDE-8.md)
-  (this repo is Java 8) **and** this repo's own `TEST_WRITING_GUIDE.md`
-  (plugin-specific supplement).
+  (baseline) **and** this repo's own `TEST_WRITING_GUIDE.md` (repo-wide supplement; applies to every
+  module — there is one guide file at the repo root, not one per module).
 - For production sources, follow the workspace version chain:
   [`../workspace/guides/src/CODE_WRITING_GUIDE-8.md`](../workspace/guides/src/CODE_WRITING_GUIDE-8.md)
-  (this repo is Java 8) **and** this repo's own `CODE_WRITING_GUIDE.md`.
-- Apply all fixable violations automatically; report only those that
-  cannot be resolved without a large refactor.
+  (baseline) **and** this repo's own `CODE_WRITING_GUIDE.md`.
+- Apply all fixable violations automatically; report only those that cannot be resolved without a
+  large refactor.
 
 ---
 
@@ -417,12 +360,24 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
 
 ## Key Design Principles
 
-1. **Local-first** — all AI inference runs locally via llama.cpp; no cloud API calls, no data leaves the machine.
-2. **Deterministic indexing** — same source produces the same `.ai.md` skeleton (deterministic header); only the AI-generated body varies.
-3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums detect source changes.
-4. **Unified indexing and summarization** — each indexer (`SourceFileIndexer`, `PackageIndexer`) both creates the `.ai.md` skeleton and fills in AI fields in a single pass; no separate summarization step is needed.
-5. **Provider abstraction** — AI backends are pluggable through `AiGenerationProvider`; mock provider enables fully deterministic tests.
-6. **Configuration-driven prompts & rule-based routing** — prompt templates are defined in POM configuration, not hardcoded in Java; changing a prompt requires no code change. For the `generate` goal each `<fieldGeneration>` is a routing **rule** (`AiFieldGenerationSelector`): a composable `<condition>` tree (`<and>`/`<or>`/`<not>` over leaves extensions/size/lines/modifiedAfter/modifiedBefore/pathGlob — `AiCondition`/`AiConditionEvaluator`), a `<priority>` (highest matching wins, ties by order), and a kind — route (`<promptKey>`+`<aiDefinitionKey>`), `<skip>true</skip>` (ignore), or exactly one explicit `<fallback>true</fallback>`. So one run can route different file kinds/sizes to different models **and** prompts; the model id (`aiDefinitionKey`) carries the full parameter set (path, context, sampling…), and the run loads each model once. A file matching no rule and no fallback fails the build; `aiIndex.planOnly=true` previews the plan tree without loading a model. Prompts live once in a shared plugin-level `<promptDefinitions>` and are referenced by id across all rules/executions (no duplication).
+1. **Local-first** — all AI inference runs locally via llama.cpp; no cloud API calls, no data leaves
+   the machine.
+2. **Deterministic indexing** — the same source produces the same `.ai.md` skeleton (deterministic
+   header); only the AI-generated body varies.
+3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums
+   detect source changes.
+4. **One shared configuration object** — `net.ladenthin.srcmorph.config.SrcMorphConfiguration` is
+   bindable from Maven plexus XML, Jackson JSON/YAML (the CLI), or plain Java code, so a JSON/YAML key
+   always reads identically to the matching Maven `<configuration>` XML element.
+5. **Provider abstraction** — AI backends are pluggable through `AiGenerationProvider`; the mock
+   provider enables fully deterministic tests everywhere.
+6. **Configuration-driven prompts & rule-based routing** — prompt templates and the `<fieldGenerations>`
+   routing rules (composable `<condition>` tree, priority, skip, exactly one fallback) are data, never
+   hardcoded in Java; see `SrcMorphConfiguration`'s Javadoc and each engine's own Javadoc for the
+   `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` semantics.
+7. **Staged, always-green migration** — the plugin's public coordinates never change out from under an
+   existing consumer mid-migration; the rename to `srcmorph-maven-plugin` is a deliberately isolated,
+   later step (see `TODO.md`).
 
 ## Javadoc Conventions
 
@@ -431,15 +386,25 @@ See [`../workspace/policies/javadoc-conventions.md`](../workspace/policies/javad
 ## SpotBugs Suppressions
 
 See [`../workspace/policies/spotbugs-suppressions.md`](../workspace/policies/spotbugs-suppressions.md).
+Each module has its own `spotbugs-exclude.xml` (`srcmorph/spotbugs-exclude.xml`,
+`srcmorph-cli/spotbugs-exclude.xml`, `llamacpp-ai-index-maven-plugin/spotbugs-exclude.xml`).
 
 ## Spotless Formatting
 
 See [`../workspace/policies/spotless-formatting.md`](../workspace/policies/spotless-formatting.md).
-Run `mvn spotless:apply` before every commit that touches `.java` files.
+Run `mvn spotless:apply` before every commit that touches `.java` files (reactor-wide from the root, or
+scoped to one module with `-pl`).
 
 ## jqwik Policy
 
 See [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md).
+jqwik is a test dependency of `srcmorph` only.
+
+## Lombok Config
+
+See [`../workspace/policies/lombok-config.md`](../workspace/policies/lombok-config.md).
+`lombok.config` lives once at the repo root and is inherited by every module (Lombok walks up the
+directory tree from each source file looking for `lombok.config`).
 
 ## CI Test Diagnostics
 
@@ -448,18 +413,16 @@ See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-te
 ## PIT Mutation Testing
 
 See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-mutation-testing.md).
-Run PIT with the lifecycle prefix — `mvn test-compile org.pitest:pitest-maven:mutationCoverage`.
-
-## Lombok Config
-
-See [`../workspace/policies/lombok-config.md`](../workspace/policies/lombok-config.md).
+Run PIT with the lifecycle prefix, scoped to the gated module —
+`mvn test-compile org.pitest:pitest-maven:mutationCoverage -f srcmorph/pom.xml` (only `srcmorph` is
+PIT-gated today; see `TODO.md`).
 
 ## JPMS Module Descriptor
 
-This repo ships a `module-info.java` compiled in a separate `release 9` execution. Javadoc
-currently runs in **classpath mode** (javadoc `<source>` resolves to `8`), which is the *only*
-thing keeping it clear of the JPMS module-mode javadoc trap that bit BAF. **Before raising the
-Java / javadoc source level to ≥ 9, read**
+Each module ships a `module-info.java` compiled in a separate `release 9` execution, and each module's
+Javadoc runs in **classpath mode** (`<source>` resolves to `8`), which is the *only* thing keeping it
+clear of the JPMS module-mode javadoc trap that bit BAF. **Before raising the Java / javadoc source
+level to ≥ 9 in any module, read**
 [`../workspace/policies/jpms-module-descriptor.md`](../workspace/policies/jpms-module-descriptor.md).
 
 ## Open TODOs

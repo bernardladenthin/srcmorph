@@ -1,0 +1,23 @@
+command: GenerateFileIndex
+srcMorph:
+  baseDirectory: "."
+  outputDirectory: "target/srcmorph-ai"
+  subtrees:
+    - "src/main/java"
+  fileExtensions:
+    - ".java"
+  generationProvider: mock
+  promptDefinitions:
+    - key: file-body
+      template: "Summarize this file as structured markdown."
+  aiDefinitions:
+    - key: mock-model
+      modelPath: unused-with-mock-provider.gguf
+      contextSize: 2048
+      maxOutputTokens: 64
+      temperature: 0.15
+      threads: 2
+  fieldGenerations:
+    - promptKey: file-body
+      aiDefinitionKey: mock-model
+      fallback: true
