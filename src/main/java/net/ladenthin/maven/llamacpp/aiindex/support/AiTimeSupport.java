@@ -20,6 +20,14 @@ public class AiTimeSupport {
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
     /**
+     * The earliest possible ISO-8601 date, formatted the same way as every other timestamp in this
+     * class. Used as the starting value when folding over a set of child dates to find the latest
+     * one (e.g. {@code latest = EPOCH_DATE; for (child) latest = laterDate(latest, child.date());}) —
+     * never itself persisted, since callers only run that fold when at least one child exists.
+     */
+    public static final String EPOCH_DATE = ISO_FORMATTER.format(Instant.EPOCH);
+
+    /**
      * Formats the given instant as an ISO-8601 string truncated to seconds.
      *
      * @param instant instant to format

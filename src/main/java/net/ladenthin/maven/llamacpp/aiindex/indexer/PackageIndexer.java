@@ -72,12 +72,6 @@ public class PackageIndexer {
     private static final String CHILD_SUMMARY_MISSING_NOTE = "(no summary available)";
 
     /**
-     * Earliest possible date value used as the starting point when scanning child nodes
-     * to find the latest index creation date.
-     */
-    private static final String EPOCH_DATE = "1970-01-01T00:00:00Z";
-
-    /**
      * Context-type label passed to {@link AiFieldGenerationSupport} so that trim-warning
      * log messages read "Trimmed AI input for package field '…'".
      */
@@ -574,7 +568,7 @@ public class PackageIndexer {
     }
 
     private String calculatePackageDate(final Path directory) throws IOException {
-        String latest = EPOCH_DATE;
+        String latest = AiTimeSupport.EPOCH_DATE;
 
         try (Stream<Path> stream = Files.list(directory)) {
             for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {

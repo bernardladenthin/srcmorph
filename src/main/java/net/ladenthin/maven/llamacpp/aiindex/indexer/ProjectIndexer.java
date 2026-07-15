@@ -100,12 +100,6 @@ public class ProjectIndexer {
     /** Separator between a package path and its lead in the overview source listing. */
     private static final String OVERVIEW_SOURCE_LEAD_SEPARATOR = ": ";
 
-    /**
-     * Earliest possible date value used as the starting point when scanning packages to find the
-     * latest index creation date recorded in the project header's {@code d} field.
-     */
-    private static final String EPOCH_DATE = "1970-01-01T00:00:00Z";
-
     private final String projectTitle;
     private final String pluginVersion;
     private final String aiVersion;
@@ -221,7 +215,7 @@ public class ProjectIndexer {
         }
 
         final List<PackageEntry> entries = new ArrayList<>(packageFiles.size());
-        String latestDate = EPOCH_DATE;
+        String latestDate = AiTimeSupport.EPOCH_DATE;
         for (final Path packageFile : packageFiles) {
             final AiMdDocument document = documentCodec.read(packageFile);
             final String displayPath = displayPath(rootDirectory, packageFile);
