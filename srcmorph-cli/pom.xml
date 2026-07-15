@@ -428,7 +428,20 @@ SPDX-License-Identifier: Apache-2.0
                 <executions>
                     <execution>
                         <id>attach-sources</id>
-                        <phase>verify</phase>
+                        <!--
+                            Must run at package (jar-no-fork's own default phase), NOT verify.
+                            maven-gpg-plugin's sign-artifacts execution (release profile) is bound
+                            to verify; package always runs before verify in the lifecycle, so the
+                            sources jar must be built and attached here to exist before signing
+                            runs. Binding this to verify put it in the SAME phase as gpg:sign,
+                            and — since the parent's inherited gpg execution ran first — gpg
+                            signed only the main jar + javadoc jar + pom, silently omitting the
+                            sources jar. Sonatype Central's deployment validation then rejected
+                            the whole bundle for a missing signature (caught on the first real
+                            release attempt; not visible in any dry run that passed -Dgpg.skip=true,
+                            which also skips the real execution-order interaction).
+                        -->
+                        <phase>package</phase>
                         <goals>
                             <goal>jar-no-fork</goal>
                         </goals>
