@@ -35,6 +35,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 - Logging in the extracted core/CLI layers moved from a constructor-injected Maven `Log` to
   `org.slf4j.Logger` (see the `1.0.x` entries below for the indexer-layer half of this change,
   already shipped before the reactor split).
+- `.github/workflows/publish.yml` adapted to the 3-module reactor: per-module jar upload/release
+  globs, a repo-wide crash-dump glob, the PIT step scoped to `srcmorph` (the only module with a
+  mutation-testing gate), the `vmlens` job scoped to `llamacpp-ai-index-maven-plugin` (where its
+  test actually lives), and Coveralls/Codecov pointed at `srcmorph`'s jacoco report.
 
 ### Notes
 - **This release does not change the Maven plugin's own coordinates, package, goal prefix, or

@@ -8,11 +8,25 @@ recorded in git history and `crossrepostatus.md`, not here.
 ## Open
 
 - **Migration step 8 — CI full pass + first reactor release.** `.github/workflows/publish.yml`
-  still reflects the pre-reactor single-module layout in places (report globs, artifact paths,
-  coverage aggregation). Adapt it to the 3-module reactor (`srcmorph` / `srcmorph-cli` /
-  `llamacpp-ai-index-maven-plugin`), then cut the first real `1.1.0` release under the plugin's
-  **current** (pre-rename) coordinates via `mvn -P release deploy`. This is the gate the user asked
-  for before step 9 ("if all is working stat I can safely do the final rename").
+  is now adapted to the 3-module reactor: the `build` job uploads jars from all three modules
+  (`srcmorph` / `srcmorph-cli`, including its `jar-with-dependencies` fat jar / `llamacpp-ai-index-maven-plugin`);
+  crash-dump globs are repo-wide (`**/hs_err_pid*.log` etc., since a forked surefire JVM can crash
+  in any module's own working directory); the PIT step is scoped to `-pl srcmorph -am` (the only
+  module with a `pitest-maven` execution) with its report glob at `srcmorph/target/pit-reports/**`;
+  the `vmlens` job is scoped to `-pl llamacpp-ai-index-maven-plugin -am` (where
+  `VmlensInterleavingSmokeTest` and the `vmlens` profile actually live — not relocated during the
+  core extraction) and additionally passes `-Dsurefire.failIfNoSpecifiedTests=false` (the
+  `-DfailIfNoTests=false` flag alone does not suppress the "-Dtest pattern matched nothing"
+  failure that `-am` now triggers in the upstream `srcmorph` module); jdeps prints a graph per
+  module; and Coveralls/Codecov are pointed at `srcmorph`'s jacoco report only (the
+  single-primary-module precedent already used by the sibling java-llama.cpp reactor — `srcmorph-cli`
+  and the plugin module's own coverage is not currently aggregated or uploaded). `mvn -q clean
+  verify` and a `-P release verify -DskipTests -Dgpg.skip=true` dry run (package/sources/javadoc
+  jars for all three modules + the CLI fat jar, no `.asc` files since signing was skipped) both
+  pass locally. **Still open: actually cutting the first real `1.1.0` release** (tag + `mvn -P
+  release deploy` with real credentials) — that action was deliberately left to the user, not
+  performed as part of this CI-adaptation step. This is the gate the user asked for before step 9
+  ("if all is working stat I can safely do the final rename").
 
 - **Migration step 9 — plugin rename + Maven Central relocation (deferred, do only after step 8
   ships a real release).** Rename `llamacpp-ai-index-maven-plugin`'s own coordinates to
