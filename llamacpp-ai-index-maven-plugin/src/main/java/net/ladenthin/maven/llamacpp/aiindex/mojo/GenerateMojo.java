@@ -9,20 +9,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
-import net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport;
-import net.ladenthin.maven.llamacpp.aiindex.indexer.AiIndexPlan;
-import net.ladenthin.maven.llamacpp.aiindex.indexer.SourceFileIndexer;
-import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
-import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
-import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
-import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory;
-import net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator;
-import net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar;
-import net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.config.AiFactDefinition;
+import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
+import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
+import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
+import net.ladenthin.srcmorph.indexer.AiIndexPlan;
+import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
+import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
+import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.provider.AiGenerationProvider;
+import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
+import net.ladenthin.srcmorph.support.AiProgressBar;
+import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -75,7 +75,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      * {@code **}{@code /generated/**}). Lets the index stay focused by excluding trivial or generated
      * sources. Empty by default — nothing is excluded.
      *
-     * @see net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter
+     * @see net.ladenthin.srcmorph.support.AiSourceExcludeFilter
      */
     @Parameter(property = "aiIndex.excludes")
     private List<String> excludes;
@@ -85,7 +85,7 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      * fact set (e.g. {@code java-facts}, {@code sql-facts}) is defined once and shared across rules
      * instead of repeated inline. Resolved onto each rule's {@code facts} before indexing.
      *
-     * @see net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport
+     * @see net.ladenthin.srcmorph.config.AiFactDefinitionSupport
      */
     @Parameter
     private List<AiFactDefinition> factDefinitions;

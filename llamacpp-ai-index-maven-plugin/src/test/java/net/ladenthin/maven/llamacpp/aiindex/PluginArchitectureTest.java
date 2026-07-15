@@ -13,10 +13,16 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import java.util.Random;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition;
-import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
 import org.slf4j.Logger;
 
+/**
+ * Architecture rules for the llamacpp-ai-index Maven plugin module itself — the {@code mojo}
+ * package (Mojo entry points) — after the {@code config}/{@code document}/{@code indexer}/
+ * {@code prompt}/{@code provider}/{@code support} packages were extracted into the sibling
+ * {@code srcmorph} core library. The rules that governed those layers (the internal layered
+ * architecture, {@code nonMojoIsMavenFree}, {@code jniConfinedToProvider}, etc.) now live in that
+ * module's own {@code CoreArchitectureTest}; only mojo-relevant rules remain here.
+ */
 @AnalyzeClasses(packages = "net.ladenthin.maven.llamacpp.aiindex", importOptions = ImportOption.DoNotIncludeTests.class)
 public class PluginArchitectureTest {
 
@@ -44,9 +50,8 @@ public class PluginArchitectureTest {
 
     /**
      * Production code must not write to {@code System.out} / {@code System.err}; all output
-     * goes through an SLF4J {@link Logger} (mojo-lifecycle messages still use Maven's
-     * {@code Log} via {@code getLog()}). Currently vacuous (no usage); acts as a regression
-     * guard.
+     * goes through Maven's {@code Log} via {@code getLog()}. Currently vacuous (no usage); acts
+     * as a regression guard.
      */
     @ArchTest
     static final ArchRule noSystemOutOrErrInProduction = noClasses()
@@ -79,53 +84,24 @@ public class PluginArchitectureTest {
             .allowEmptyShould(true);
 
     /**
-     * Strict layered architecture — <b>one layer per package</b>. Each package's
-     * {@code mayOnlyBeAccessedByLayers} lists the EXACT set of packages that reference it today
-     * (verified against the compiled bytecode graph), so even intra-tier edges are governed
-     * (e.g. {@code provider} may use {@code document}+{@code prompt} but {@code document} and
-     * {@code prompt} may not use each other beyond what is listed). A new dependency between any
-     * two packages fails the build unless this rule is updated to intend it. Conceptual tiers:
-     * {@code Mojo} &gt; {@code Indexer} &gt; {@code Provider} &gt; {@code Document}/{@code Prompt}
-     * &gt; {@code Config}/{@code Support}.
+     * Layered architecture — now a single {@code Mojo} layer (the other tiers moved to the
+     * srcmorph core library and are governed by that module's own {@code CoreArchitectureTest}).
+     * Kept as a regression guard: nothing inside this module may depend on the {@code mojo}
+     * package (the plugin's own code never needs to reach "up" into its own entry points).
      */
     @ArchTest
     static final ArchRule layeredArchitecture = layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
             .layer("Mojo")
             .definedBy("net.ladenthin.maven.llamacpp.aiindex.mojo..")
-            .layer("Indexer")
-            .definedBy("net.ladenthin.maven.llamacpp.aiindex.indexer..")
-            .layer("Provider")
-            .definedBy("net.ladenthin.maven.llamacpp.aiindex.provider..")
-            .layer("Document")
-            .definedBy("net.ladenthin.maven.llamacpp.aiindex.document..")
-            .layer("Prompt")
-            .definedBy("net.ladenthin.maven.llamacpp.aiindex.prompt..")
-            .layer("Config")
-            .definedBy("net.ladenthin.maven.llamacpp.aiindex.config..")
-            .layer("Support")
-            .definedBy("net.ladenthin.maven.llamacpp.aiindex.support..")
             .whereLayer("Mojo")
-            .mayNotBeAccessedByAnyLayer()
-            .whereLayer("Indexer")
-            .mayOnlyBeAccessedByLayers("Mojo")
-            .whereLayer("Provider")
-            .mayOnlyBeAccessedByLayers("Mojo", "Indexer")
-            .whereLayer("Document")
-            .mayOnlyBeAccessedByLayers("Indexer", "Prompt", "Provider")
-            .whereLayer("Prompt")
-            .mayOnlyBeAccessedByLayers("Indexer", "Mojo", "Provider")
-            .whereLayer("Config")
-            .mayOnlyBeAccessedByLayers("Indexer", "Mojo")
-            .whereLayer("Support")
-            .mayOnlyBeAccessedByLayers("Config", "Document", "Indexer", "Mojo", "Prompt", "Provider");
+            .mayNotBeAccessedByAnyLayer();
 
     /**
      * Public mutable state forbidden: any non-static field declared
      * {@code public} must also be {@code final}. Maven plugin configuration
-     * POJOs use {@code private} fields with setters
-     * ({@link AiPromptDefinition}, {@link AiModelDefinition}, etc.) and
-     * therefore pass this rule.
+     * POJOs (now in the srcmorph module) use {@code private} fields with setters;
+     * this rule is a regression guard on whatever remains here.
      */
     @ArchTest
     static final ArchRule noPublicMutableFields = fields().that()
@@ -180,32 +156,11 @@ public class PluginArchitectureTest {
             .callMethod(Thread.class, "sleep", long.class, int.class)
             .allowEmptyShould(true);
 
-    // ---------------------------------------------------------------------------------------
-    // Per-module banned imports — confine the heavy / framework-specific dependencies to the
-    // single layer that owns them, keeping the rest of the plugin decoupled and unit-testable.
-    // ---------------------------------------------------------------------------------------
-
-    /**
-     * The llama.cpp JNI binding ({@code net.ladenthin.llama..}) may only be referenced from the
-     * {@code provider} package, where {@code LlamaCppJniAiGenerationProvider} wraps it. Every
-     * other layer talks to the model exclusively through the {@code AiGenerationProvider}
-     * interface, so the indexers, document/prompt/config and mojo code carry no JNI dependency
-     * and stay testable with {@code MockAiGenerationProvider}.
-     */
-    @ArchTest
-    static final ArchRule jniConfinedToProvider = noClasses()
-            .that()
-            .resideOutsideOfPackage("net.ladenthin.maven.llamacpp.aiindex.provider..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("net.ladenthin.llama..")
-            .allowEmptyShould(true);
-
     /**
      * The Maven Mojo SPI annotations ({@code @Mojo} / {@code @Parameter} from
      * {@code org.apache.maven.plugins.annotations..}) may only appear in the {@code mojo}
-     * package — the goal entry points. The lower layers are plain Java and must not be
-     * annotated as Maven components.
+     * package — the goal entry points. Any future non-mojo package added to this module must
+     * stay plain Java and must not be annotated as a Maven component.
      */
     @ArchTest
     static final ArchRule mavenMojoAnnotationsConfinedToMojo = noClasses()
@@ -214,29 +169,6 @@ public class PluginArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAPackage("org.apache.maven.plugins.annotations..")
-            .allowEmptyShould(true);
-
-    /**
-     * Every layer except {@code mojo} must be framework-free: no Maven API at all (not even
-     * {@code Log} — logging in {@code indexer} goes through an SLF4J {@link Logger} instead).
-     * They are plain Java, so they can be unit-tested and eventually extracted into a
-     * standalone library without a Maven runtime. Only {@code mojo} is the Maven Plugin API
-     * boundary ({@code AbstractMojo}, {@code @Parameter}, {@code MojoExecutionException}, and
-     * the injected {@code getLog()} for mojo-lifecycle messages).
-     */
-    @ArchTest
-    static final ArchRule nonMojoIsMavenFree = noClasses()
-            .that()
-            .resideInAnyPackage(
-                    "net.ladenthin.maven.llamacpp.aiindex.config..",
-                    "net.ladenthin.maven.llamacpp.aiindex.support..",
-                    "net.ladenthin.maven.llamacpp.aiindex.document..",
-                    "net.ladenthin.maven.llamacpp.aiindex.prompt..",
-                    "net.ladenthin.maven.llamacpp.aiindex.provider..",
-                    "net.ladenthin.maven.llamacpp.aiindex.indexer..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("org.apache.maven..")
             .allowEmptyShould(true);
 
     /**

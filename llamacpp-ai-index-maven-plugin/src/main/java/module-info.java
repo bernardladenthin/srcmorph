@@ -5,8 +5,10 @@
 /**
  * JPMS module descriptor for the llamacpp-ai-index Maven plugin.
  *
- * <p>The module exports the single public package {@code net.ladenthin.maven.llamacpp.aiindex}
- * that holds the configuration POJOs and Mojo entry points. The auto-generated
+ * <p>The module exports the single public package {@code net.ladenthin.maven.llamacpp.aiindex.mojo}
+ * that holds the Mojo entry points. The configuration POJOs, document codec, indexers, prompt
+ * support, and AI generation provider abstraction now live in the {@code net.ladenthin.srcmorph}
+ * module (the extracted core library), which this module {@code requires}. The auto-generated
  * {@code net.ladenthin.llamacpp_ai_index_maven_plugin.HelpMojo} package is deliberately
  * <em>not</em> exported: Maven loads the plugin via its own classpath classloader and
  * never consults the module descriptor for Mojo discovery, so the {@code HelpMojo} class
@@ -25,11 +27,10 @@
  * descriptor; JSpecify annotations carry {@code RetentionPolicy.CLASS} so module-path
  * consumers never need jspecify on their runtime path. Annotations from
  * {@code maven-plugin-annotations} and Checker Framework qualifiers are likewise
- * compile-time only. The classes imported from {@code maven-plugin-api} and
- * {@code net.ladenthin:llama} are referenced from Mojo source files only; javac in the
- * separate {@code module-info-compile} execution compiles {@code module-info.java} in
- * isolation and therefore does not need their module names. Maven, in turn, loads the
- * plugin classpath-only and ignores the descriptor at runtime.</p>
+ * compile-time only. The classes imported from {@code maven-plugin-api} are referenced from
+ * Mojo source files only; javac in the separate {@code module-info-compile} execution compiles
+ * {@code module-info.java} in isolation and therefore does not need their module names. Maven,
+ * in turn, loads the plugin classpath-only and ignores the descriptor at runtime.</p>
  *
  * <p>This descriptor compiles at {@code --release 9}; the rest of the source compiles
  * at {@code --release 8}. Java 8 runtimes silently ignore {@code module-info.class} at
@@ -44,11 +45,8 @@ module net.ladenthin.maven.llamacpp.aiindex {
     // the @lombok.Generated annotation carried on generated members has CLASS retention.
     requires static lombok;
 
-    exports net.ladenthin.maven.llamacpp.aiindex.config;
-    exports net.ladenthin.maven.llamacpp.aiindex.document;
-    exports net.ladenthin.maven.llamacpp.aiindex.indexer;
+    // The extracted core library: config/document/indexer/prompt/provider/support now live there.
+    requires net.ladenthin.srcmorph;
+
     exports net.ladenthin.maven.llamacpp.aiindex.mojo;
-    exports net.ladenthin.maven.llamacpp.aiindex.prompt;
-    exports net.ladenthin.maven.llamacpp.aiindex.provider;
-    exports net.ladenthin.maven.llamacpp.aiindex.support;
 }

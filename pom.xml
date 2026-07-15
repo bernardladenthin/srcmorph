@@ -53,12 +53,15 @@ SPDX-License-Identifier: Apache-2.0
     </distributionManagement>
 
     <!--
-        Reactor modules. Only the existing plugin today (still under its current coordinates,
-        package, and goalPrefix — the srcmorph rename is deferred to the final migration step,
-        once the core library + CLI modules exist and the whole reactor is proven working).
-        Future modules (the extracted core library, the CLI) are added here as they are built out.
+        Reactor modules. `srcmorph` is the extracted core library (config/document/indexer/prompt/
+        provider/support — framework-free, no Maven plugin API); `llamacpp-ai-index-maven-plugin`
+        depends on it and supplies only the Mojo entry points (still under its current coordinates,
+        package, and goalPrefix — the plugin's own rename to `srcmorph-maven-plugin` is deferred to
+        the final migration step, once the CLI module exists and the whole reactor is proven
+        working). Future modules (the CLI) are added here as they are built out.
     -->
     <modules>
+        <module>srcmorph</module>
         <module>llamacpp-ai-index-maven-plugin</module>
     </modules>
 

@@ -30,16 +30,10 @@ SPDX-License-Identifier: Apache-2.0
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.15.2</maven.plugin.tools.version>
         <maven.version>3.9.16</maven.version>
-        <!-- net.ladenthin:llama release on Maven Central. 5.0.3 carries the prompt-cache / slot APIs
-             (withCachePrompt / withSlotId) used by the provider's per-file cache reuse, plus the GPU
-             classifier jars (cuda13/vulkan/opencl). 5.0.6 is source-compatible with the provider's
-             API surface (checked against CHANGELOG.md 5.0.4 -> 5.0.6: additive-only changes). -->
-        <llama.version>5.0.6</llama.version>
-        <!-- Native build selector for net.ladenthin:llama. Empty = the main jar (CPU, Ninja default).
-             The gpu-cuda / gpu-vulkan profiles set a GPU classifier; or override with
-             -Dllama.classifier=cuda13-windows-x86-64. GPU builds need their runtime on PATH
-             (CUDA: the toolkit's bin\x64 with cudart64_13.dll/cublas64_13.dll). -->
-        <llama.classifier></llama.classifier>
+        <!-- net.ladenthin:llama is now a dependency of the srcmorph core module (only the
+             provider package touches it); this module no longer declares it directly. The
+             gpu-cuda / gpu-vulkan profiles that used to set its classifier here now live on
+             srcmorph/pom.xml, since the classifier choice is resolved at srcmorph's own build. -->
         <!-- Default AI model definition (key) used by the gpt-oss profile's generate/aggregate executions.
              gpt-oss-20B-mxfp4 is the native MXFP4 format: same ~12 GB size and decode speed as the Q4/Q5/Q8
              variants (the MoE experts are MXFP4 regardless), but no double-quantization of the experts ->
@@ -63,20 +57,14 @@ SPDX-License-Identifier: Apache-2.0
         <hamcrest.version>3.0</hamcrest.version>
         <jmh.version>1.37</jmh.version>
         <jcstress.version>0.16</jcstress.version>
-        <lincheck.version>3.6</lincheck.version>
         <vmlens.version>1.2.28</vmlens.version>
         <errorprone.version>2.50.0</errorprone.version>
         <nullaway.version>0.13.7</nullaway.version>
         <jspecify.version>1.0.0</jspecify.version>
         <checker.version>4.2.1</checker.version>
-        <!-- DO NOT UPGRADE jqwik past 1.9.3. jqwik 1.10.0 added a deliberate
-             anti-AI prompt-injection string to test stdout; the 1.10.1 user
-             guide states the library "is not meant to be used by any 'AI'
-             coding agents at all." 1.9.3 is the last pre-disclosure release
-             and is the pinned version for this repo. Any CI / Dependabot /
-             contributor PR that bumps this MUST be rejected. See CLAUDE.md
-             section "jqwik prompt-injection in test output" for full context. -->
-        <jqwik.version>1.9.3</jqwik.version>
+        <!-- jqwik / Lincheck are no longer dependencies of this module (both moved to srcmorph
+             with the config package's tests); see srcmorph/pom.xml for the jqwik "DO NOT UPGRADE
+             past 1.9.3" policy note (CLAUDE.md "jqwik prompt-injection in test output"). -->
         <archunit.version>1.4.2</archunit.version>
         <spotbugs.version>4.10.2.0</spotbugs.version>
         <lombok.version>1.18.46</lombok.version>
@@ -127,18 +115,23 @@ SPDX-License-Identifier: Apache-2.0
             <artifactId>checker-qual</artifactId>
             <version>${checker.version}</version>
         </dependency>
+        <!--
+            The extracted core library: config/document/indexer/prompt/provider/support and the
+            Mojo-visible framework-free API (incl. the net.ladenthin:llama JNI binding, which only
+            the provider package touches). Compile scope: Mojo classes construct SourceFileIndexer,
+            PackageIndexer, ProjectIndexer, the *Support classes, etc. directly.
+        -->
         <dependency>
             <groupId>net.ladenthin</groupId>
-            <artifactId>llama</artifactId>
-            <version>${llama.version}</version>
-            <classifier>${llama.classifier}</classifier>
+            <artifactId>srcmorph</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <!--
-            Direct compile dependency: the indexer classes log via SLF4J instead of the Maven
-            plugin Log, so their build-log output surfaces through maven-slf4j-provider with no
-            glue code (Maven >= 3.1 binds slf4j-api inside plugin executions). Version is pinned
-            above in <dependencyManagement> for convergence with the llama/logback transitives.
+            Already pulled in transitively via srcmorph's compile-scope dependency, but declared
+            explicitly here because PluginArchitectureTest imports org.slf4j.Logger directly (its
+            loggersArePrivateStaticFinal ArchTest rule). Version is pinned in the parent's
+            <dependencyManagement> for convergence.
         -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -172,12 +165,14 @@ SPDX-License-Identifier: Apache-2.0
             <version>${hamcrest.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>net.jqwik</groupId>
-            <artifactId>jqwik</artifactId>
-            <version>${jqwik.version}</version>
-            <scope>test</scope>
-        </dependency>
+        <!--
+            net.jqwik / org.jetbrains.lincheck / ch.qos.logback are deliberately NOT declared here:
+            after the srcmorph extraction, no test remaining in this module uses jqwik properties,
+            Lincheck (AiGenerationKindLincheckTest moved to srcmorph with the config package), or a
+            logback ListAppender (AiFieldGenerationSupportTest moved to srcmorph too). jqwik is still
+            named as a string literal in PluginArchitectureTest's noTestFrameworksInProduction rule,
+            which needs no dependency on the jar itself.
+        -->
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
@@ -202,12 +197,6 @@ SPDX-License-Identifier: Apache-2.0
             <version>${jcstress.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.jetbrains.lincheck</groupId>
-            <artifactId>lincheck</artifactId>
-            <version>${lincheck.version}</version>
-            <scope>test</scope>
-        </dependency>
         <!--
             vmlens interleaving-analysis API. Test-scoped and transitive-dependency-free
             (its own deps are all test-scope, hence not propagated), so it is safe on the
@@ -221,17 +210,6 @@ SPDX-License-Identifier: Apache-2.0
             <groupId>com.vmlens</groupId>
             <artifactId>api</artifactId>
             <version>${vmlens.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!--
-            SLF4J binding for tests only: AiFieldGenerationSupportTest attaches a ListAppender to
-            capture log output (the indexer classes log via SLF4J, not the injected Maven Log
-            anymore). Already resolves transitively via llama (runtime scope); declared explicitly
-            here so it is not an implicit dependency and so its test-compile-time types are visible.
-        -->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -678,102 +656,27 @@ SPDX-License-Identifier: Apache-2.0
                     <classpathScope>test</classpathScope>
                 </configuration>
             </plugin>
-            <plugin>
-                <!--
-                  Generic PIT policy (version, 100% gate, invocation, expansion rule):
-                  see ../workspace/policies/pit-mutation-testing.md.
-                  Repo-specific: targetTests is the whole aiindex tree (any unit test may
-                  kill a mutant); all gated classes are covered by pure-Java tests
-                  (MockAiGenerationProvider - no GGUF model needed).
-                -->
-                <groupId>org.pitest</groupId>
-                <artifactId>pitest-maven</artifactId>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.pitest</groupId>
-                        <artifactId>pitest-junit5-plugin</artifactId>
-                        <version>1.2.3</version>
-                    </dependency>
-                </dependencies>
-                <configuration>
-                    <targetClasses>
-                        <!-- Classes verified at 100% PIT mutation parity. Expand as more reach it. -->
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCalibration</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiCondition</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiConditionEvaluator</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationSelector</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFileContext</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiRangeCondition</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiCalibrationMeasurement</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.indexer.AiInputWindowCalculator</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationRequest</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiGenerationResult</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdChildEntryLineFormatter</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocument</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeader</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.document.AiMdLeadExtractor</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPreparedPrompt</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiCompletionParser</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationTimings</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiOversizeStrategy</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactCounter</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinition</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactDefinitionSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.config.AiFactExtractor</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiChecksumSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiDeterministicSummary</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiGenerationTimeEstimator</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiPathSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiProgressBar</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiSourceExcludeFilter</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.AiTimeSupport</param>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.support.Java8CompatibilityHelper</param>
-                    </targetClasses>
-                    <targetTests>
-                        <param>net.ladenthin.maven.llamacpp.aiindex.*</param>
-                    </targetTests>
-                    <mutationThreshold>100</mutationThreshold>
-                    <timeoutConstant>30000</timeoutConstant>
-                </configuration>
-            </plugin>
+            <!--
+              No pitest-maven execution here: every class that was gated at 100% PIT mutation
+              parity in this pom (config/document/indexer/prompt/provider/support) moved to the
+              srcmorph module — see srcmorph/pom.xml for the full targetClasses list. Nothing in
+              the remaining mojo package has PIT coverage yet. Add a mojo-focused pitest-maven
+              execution here once mojo classes are covered (Mojos are typically integration-tested
+              via Maven invoker/executor rather than unit-mutation-tested, so this may stay empty
+              by design — revisit before assuming that's the reason).
+            -->
         </plugins>
     </build>
 
     <profiles>
-        <!-- Opt-in GPU acceleration: select a GPU native build of net.ladenthin:llama instead of the
-             default CPU (Ninja) main jar. The GPU build auto-offloads; set -Dai.gpuLayers=N for partial
-             offload when the model does not fit in VRAM. The GPU runtime must be on PATH:
-               CUDA  -> the CUDA Toolkit's bin\x64 (cudart64_13.dll, cublas64_13.dll); needs a matching
-                        CUDA 13 toolkit + NVIDIA driver. Fastest on NVIDIA (measured ~4.5x CPU).
-               Vulkan-> a Vulkan loader (ships with GPU drivers); works on AMD + NVIDIA, but the first
-                        run pays a one-time shader-compilation cost.
-             Example: mvn ai-index:generate -P gpu-cuda -Dai.gpuLayers=20
-             (OpenCL is intentionally not offered: llama.cpp's OpenCL backend does not support NVIDIA.) -->
-        <profile>
-            <id>gpu-cuda</id>
-            <properties>
-                <llama.classifier>cuda13-windows-x86-64</llama.classifier>
-            </properties>
-        </profile>
-        <profile>
-            <id>gpu-vulkan</id>
-            <properties>
-                <llama.classifier>vulkan-windows-x86-64</llama.classifier>
-            </properties>
-        </profile>
-
         <!--
+            The gpu-cuda / gpu-vulkan profiles (setting a GPU classifier on net.ladenthin:llama)
+            moved to srcmorph/pom.xml, since only that module's provider package depends on
+            net.ladenthin:llama now. To index with a GPU-accelerated model, build srcmorph with
+            that profile active first (e.g. `cd ../srcmorph && mvn install -P gpu-cuda`), then run
+            this module's ai-index-selftest profile as usual — the ai.gpuLayers / ai.mainGpu /
+            ai.devices properties consumed below are unaffected and still live in this pom.
+
             The `release` profile (GPG signing + central-publishing-maven-plugin) now lives in the
             parent (net.ladenthin:srcmorph-parent) so a single `mvn -P release deploy` from the
             reactor root signs and publishes every module.
@@ -792,10 +695,18 @@ SPDX-License-Identifier: Apache-2.0
                             <outputDirectory>${ai.index.output.directory}</outputDirectory>
                             <!-- EXPERIMENT SCOPE (claude2026_06_26_00): config + provider only,
                                  a diverse 12-file mix for fast model/prompt comparison. Restore the
-                                 single aiindex subtree for a full self-index. -->
+                                 single aiindex subtree for a full self-index.
+                                 UPDATED (srcmorph core-module extraction, step 4): config and
+                                 provider now live in the sibling srcmorph module, not under this
+                                 module's own basedir, so the subtrees below reach across the
+                                 reactor via a relative ".." path (AbstractAiIndexMojo resolves
+                                 subtrees with basePath.resolve(subtree).normalize(), which permits
+                                 ".." segments). This profile still runs `mvn ai-index:generate -P
+                                 ai-index-selftest` from THIS module (it invokes this plugin's own
+                                 goals), it just indexes source that now lives one directory up. -->
                             <subtrees>
-                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex/config</subtree>
-                                <subtree>src/main/java/net/ladenthin/maven/llamacpp/aiindex/provider</subtree>
+                                <subtree>../srcmorph/src/main/java/net/ladenthin/srcmorph/config</subtree>
+                                <subtree>../srcmorph/src/main/java/net/ladenthin/srcmorph/provider</subtree>
                             </subtrees>
 
                             <!-- EXPERIMENT FILTERING (claude2026_06_26_00): drop package-info/module-info;

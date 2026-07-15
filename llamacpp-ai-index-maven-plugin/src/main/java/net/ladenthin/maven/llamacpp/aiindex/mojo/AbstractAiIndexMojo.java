@@ -10,13 +10,13 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import lombok.ToString;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiGenerationConfig;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition;
-import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport;
-import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
-import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
-import net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniConfig;
+import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -85,7 +85,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * Name of the AI generation provider to use.
      * Supported values: {@code mock}, {@code llamacpp-jni}.
      *
-     * @see net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProviderFactory
+     * @see net.ladenthin.srcmorph.provider.AiGenerationProviderFactory
      */
     @Parameter(property = "aiIndex.generationProvider", defaultValue = "mock")
     protected String generationProvider;
@@ -99,8 +99,8 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      * Field-generation entries and the provider configuration reference these definitions
      * by key rather than embedding the full parameter set inline.
      *
-     * @see net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition
-     * @see net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport
+     * @see net.ladenthin.srcmorph.config.AiModelDefinition
+     * @see net.ladenthin.srcmorph.config.AiModelDefinitionSupport
      */
     @Parameter
     protected List<AiModelDefinition> aiDefinitions;
@@ -212,12 +212,12 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     }
 
     /**
-     * Builds a {@link net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniConfig} for the AI generation provider.
+     * Builds a {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} for the AI generation provider.
      *
      * <p>When {@link #fieldGenerations} is non-empty, all model parameters
      * (model path, context size, max output tokens, temperature, threads) are taken from
-     * the {@link net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition} referenced by the first entry's
-     * {@link net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig#getAiDefinitionKey()}. This ensures the provider is
+     * the {@link net.ladenthin.srcmorph.config.AiModelDefinition} referenced by the first entry's
+     * {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig#getAiDefinitionKey()}. This ensures the provider is
      * always configured from the same definition that drives field generation.</p>
      *
      * <p>When {@link #fieldGenerations} is {@code null} or empty, the individual
@@ -226,7 +226,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
      *
      * @return fully populated llama.cpp configuration
      * @throws IllegalArgumentException if the first field generation's
-     *                                  {@link net.ladenthin.maven.llamacpp.aiindex.config.AiFieldGenerationConfig#getAiDefinitionKey()}
+     *                                  {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig#getAiDefinitionKey()}
      *                                  does not match any registered definition
      * @throws MojoExecutionException   propagated from {@link #buildAiModelDefinitionSupport()}
      *                                  if any AI definition is missing a required field
@@ -265,11 +265,11 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     }
 
     /**
-     * Builds a {@link net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniConfig} from a specific
+     * Builds a {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} from a specific
      * AI model definition, identified by its key. Used by the {@code generate} goal to load a separate
      * model per routing group (one provider per distinct {@code aiDefinitionKey}).
      *
-     * @param aiDefinitionKey the {@link net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition} key
+     * @param aiDefinitionKey the {@link net.ladenthin.srcmorph.config.AiModelDefinition} key
      * @return fully populated llama.cpp configuration for that definition
      * @throws IllegalArgumentException if {@code aiDefinitionKey} matches no registered definition
      * @throws MojoExecutionException   propagated from {@link #buildAiModelDefinitionSupport()}
@@ -308,7 +308,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     }
 
     /**
-     * Builds an {@link net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport} from the configured {@link #promptDefinitions}.
+     * Builds an {@link net.ladenthin.srcmorph.prompt.AiPromptSupport} from the configured {@link #promptDefinitions}.
      *
      * <p>If any {@code <promptDefinition>} entry in the POM is missing its {@code key}
      * or {@code template}, the underlying constructor throws
@@ -330,7 +330,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     }
 
     /**
-     * Builds an {@link net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinitionSupport} from the configured {@link #aiDefinitions}.
+     * Builds an {@link net.ladenthin.srcmorph.config.AiModelDefinitionSupport} from the configured {@link #aiDefinitions}.
      *
      * <p>If any {@code <aiDefinition>} entry in the POM is missing its {@code key},
      * the underlying constructor throws {@link NullPointerException} with a message
