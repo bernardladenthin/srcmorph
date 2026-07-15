@@ -224,7 +224,7 @@ jobs:
         run: |
           mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true compile
           echo "=== internal package dependency graph (jdeps, bytecode) ==="
-          jdeps -verbose:package target/classes | grep 'net.ladenthin.maven.llamacpp.aiindex' || true
+          jdeps -verbose:package llamacpp-ai-index-maven-plugin/target/classes | grep 'net.ladenthin.maven.llamacpp.aiindex' || true
 
   build:
     name: Build
@@ -240,7 +240,7 @@ jobs:
       - name: Build
         run: mvn --batch-mode --no-transfer-progress -DskipTests package
       - uses: actions/upload-artifact@v7
-        with: { name: plugin-jars, path: target/*.jar }
+        with: { name: plugin-jars, path: llamacpp-ai-index-maven-plugin/target/*.jar }
 
   test:
     name: Test
@@ -260,7 +260,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: jacoco-report
-          path: target/site/jacoco/jacoco.xml
+          path: llamacpp-ai-index-maven-plugin/target/site/jacoco/jacoco.xml
           if-no-files-found: ignore
       - name: Memory after tests
         if: always()
@@ -271,12 +271,12 @@ jobs:
         with:
           name: crash-dumps-test
           path: |
-            ${{ github.workspace }}/hs_err_pid*.log
-            ${{ github.workspace }}/*.hprof
-            ${{ github.workspace }}/target/surefire-reports/*.dump
-            ${{ github.workspace }}/target/surefire-reports/*.dumpstream
-            ${{ github.workspace }}/target/surefire-reports/*.txt
-            ${{ github.workspace }}/target/surefire-reports/TEST-*.xml
+            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/hs_err_pid*.log
+            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/*.hprof
+            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/*.dump
+            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/*.dumpstream
+            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/*.txt
+            ${{ github.workspace }}/llamacpp-ai-index-maven-plugin/target/surefire-reports/TEST-*.xml
           if-no-files-found: ignore
       - name: Run PIT mutation tests
         run: mvn --batch-mode --no-transfer-progress test-compile org.pitest:pitest-maven:mutationCoverage
@@ -284,7 +284,7 @@ jobs:
         if: always()
         run: |
           echo "=== PIT Survived Mutations ==="
-          for html_file in $(find target/pit-reports -name "*.html" -type f 2>/dev/null | sort); do
+          for html_file in $(find llamacpp-ai-index-maven-plugin/target/pit-reports -name "*.html" -type f 2>/dev/null | sort); do
             if grep -q "SURVIVED" "$html_file"; then
               echo "Found survivors in $html_file:"
               grep -B 2 -A 3 "SURVIVED" "$html_file"
@@ -293,7 +293,7 @@ jobs:
           done
       - uses: actions/upload-artifact@v7
         if: always()
-        with: { name: pit-reports, path: target/pit-reports/ }
+        with: { name: pit-reports, path: llamacpp-ai-index-maven-plugin/target/pit-reports/ }
 
   vmlens:
     name: Test (vmlens interleavings)
@@ -311,7 +311,7 @@ jobs:
         if: always()
         with:
           name: vmlens-report
-          path: target/vmlens-report/
+          path: llamacpp-ai-index-maven-plugin/target/vmlens-report/
           if-no-files-found: ignore
 
   report:
@@ -325,21 +325,21 @@ jobs:
       - uses: actions/setup-java@v5
         with: { java-version: '21', distribution: temurin }
       - uses: actions/download-artifact@v8
-        with: { name: jacoco-report, path: target/site/jacoco/ }
+        with: { name: jacoco-report, path: llamacpp-ai-index-maven-plugin/target/site/jacoco/ }
         continue-on-error: true
       - uses: advanced-security/maven-dependency-submission-action@v5
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/site/jacoco/jacoco.xml
+          file: llamacpp-ai-index-maven-plugin/target/site/jacoco/jacoco.xml
           format: jacoco
         continue-on-error: true
       - name: Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: target/site/jacoco/jacoco.xml
+          files: llamacpp-ai-index-maven-plugin/target/site/jacoco/jacoco.xml
         continue-on-error: true
 
   check-snapshot:
@@ -402,14 +402,14 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       # Runs even when the deploy step failed: a Central publish-poll timeout reds the
       # job *after* the bundle was uploaded (and typically published server-side), while
-      # the signed jars + .asc files already exist in target/ (signing happens at
+      # the signed jars + .asc files already exist in llamacpp-ai-index-maven-plugin/target/ (signing happens at
       # verify). Collecting on failure lets the github-snapshot job still attach them.
       - name: Collect signed artifacts
         if: ${{ !cancelled() }}
         run: |
           mkdir -p signed-snapshot-assets
-          cp target/*.jar signed-snapshot-assets/ 2>/dev/null || true
-          cp target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
+          cp llamacpp-ai-index-maven-plugin/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
+          cp llamacpp-ai-index-maven-plugin/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -478,14 +478,14 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       # Runs even when the deploy step failed: a Central publish-poll timeout reds the
       # job *after* the bundle was uploaded (and typically published server-side), while
-      # the signed jars + .asc files already exist in target/ (signing happens at
+      # the signed jars + .asc files already exist in llamacpp-ai-index-maven-plugin/target/ (signing happens at
       # verify). Collecting on failure lets the github-release job still attach them.
       - name: Collect signed artifacts
         if: ${{ !cancelled() }}
         run: |
           mkdir -p signed-release-assets
-          cp target/*.jar signed-release-assets/ 2>/dev/null || true
-          cp target/*.jar.asc signed-release-assets/ 2>/dev/null || true
+          cp llamacpp-ai-index-maven-plugin/target/*.jar signed-release-assets/ 2>/dev/null || true
+          cp llamacpp-ai-index-maven-plugin/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
