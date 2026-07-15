@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
     Declaring <parent> does NOT tie this module's own <version> to the parent's: a child project
     may freely override <version> (and <artifactId>) — only omitting it inherits the parent's
     value. This module's <version> below stays pinned independently at 1.0.4, unaffected by the
-    reactor's own version (currently 1.1.0 in ../pom.xml).
+    reactor's own version (currently 1.1.1 in ../pom.xml).
 
     That independence is NOT automatic against tooling, though: `mvn versions:set -DnewVersion=X`
     run from the repo root walks every module reachable via the root <modules> list — parent
@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
     <parent>
         <groupId>net.ladenthin</groupId>
         <artifactId>srcmorph-parent</artifactId>
-        <version>1.1.0</version>
+        <version>1.1.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -66,7 +66,7 @@ SPDX-License-Identifier: Apache-2.0
         <relocation>
             <groupId>net.ladenthin</groupId>
             <artifactId>srcmorph-maven-plugin</artifactId>
-            <version>1.1.0</version>
+            <version>1.1.1</version>
         </relocation>
     </distributionManagement>
 </project>

@@ -25,7 +25,7 @@ recorded in git history and `crossrepostatus.md`, not here.
   and the plugin module's own coverage is not currently aggregated or uploaded). `mvn -q clean
   verify` and a `-P release verify -DskipTests -Dgpg.skip=true` dry run (package/sources/javadoc
   jars for all three modules + the CLI fat jar, no `.asc` files since signing was skipped) both
-  pass locally. **Still open: actually cutting the first real `1.1.0` release** (tag + `mvn -P
+  pass locally. **Still open: actually cutting the first real `1.1.1` release** (tag + `mvn -P
   release deploy` with real credentials) — that action was deliberately left to the user, not
   performed as part of this CI-adaptation step. This is the gate the user asked for before step 9
   ("if all is working stat I can safely do the final rename").
@@ -36,10 +36,10 @@ recorded in git history and `crossrepostatus.md`, not here.
   package `net.ladenthin.maven.srcmorph.mojo`, properties `aiIndex.*` → `srcmorph.*`), and a new,
   independent relocation-stub module `llamacpp-ai-index-maven-plugin/` (pom-only, no `<parent>`,
   pinned at version `1.0.4`, only `<distributionManagement><relocation>` pointing at
-  `net.ladenthin:srcmorph-maven-plugin:1.1.0`) was added back to the root `<modules>` list so
+  `net.ladenthin:srcmorph-maven-plugin:1.1.1`) was added back to the root `<modules>` list so
   existing consumers resolving the old coordinates get redirected once it is actually published.
   This is the last, isolated step of the migration in terms of code/POM structure — actually
-  publishing both the `1.1.0` reactor release and the `1.0.4` relocation stub to Maven Central is
+  publishing both the `1.1.1` reactor release and the `1.0.4` relocation stub to Maven Central is
   still the user's own action (this task never ran `mvn deploy` or signed anything).
 
   **Caveat — exclude the stub from reactor-wide version bumps.** Because the relocation stub is

@@ -107,7 +107,7 @@ repository at the same version; the relocation stub is versioned and published i
 <plugin>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph-maven-plugin</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <configuration>
         <generationProvider>mock</generationProvider>
         <promptDefinitions>
@@ -145,7 +145,7 @@ model recommendations: [`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin
     <groupId>net.ladenthin</groupId>
     <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
     <version>1.0.4</version>
-    <!-- Maven Central redirects this artifact to net.ladenthin:srcmorph-maven-plugin:1.1.0 via a
+    <!-- Maven Central redirects this artifact to net.ladenthin:srcmorph-maven-plugin:1.1.1 via a
          published <distributionManagement><relocation> POM. Prefer declaring the new coordinates
          above directly in new/updated POMs. -->
 </plugin>
@@ -170,7 +170,7 @@ reference.
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -210,7 +210,7 @@ Snapshots are published to the Central Snapshots repository on every push to `ma
 https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/
 ```
 
-Current reactor version: `1.1.0`.
+Current reactor version: `1.1.1`.
 
 ## A Note on History
 
