@@ -25,7 +25,6 @@ import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniAiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.provider.LlamaCppJniConfig;
-import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -120,8 +119,7 @@ public class AiFieldGenerationSupportRealModelTest {
         final Path contextFile = Files.createTempFile("Data", ".java");
 
         try (LlamaCppJniAiGenerationProvider provider = new LlamaCppJniAiGenerationProvider(jniConfig, promptSupport)) {
-            final AiFieldGenerationSupport support =
-                    new AiFieldGenerationSupport(new SystemStreamLog(), provider, prep, models);
+            final AiFieldGenerationSupport support = new AiFieldGenerationSupport(provider, prep, models);
             final AiGenerationResult result = support.processFieldGenerations(
                     Collections.singletonList(rule), contextFile, "file", source, header());
 

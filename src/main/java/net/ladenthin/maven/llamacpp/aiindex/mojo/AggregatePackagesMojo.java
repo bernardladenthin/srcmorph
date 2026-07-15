@@ -97,7 +97,6 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
             try (AiGenerationProvider provider =
                     providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
                 final PackageIndexer packageIndexer = new PackageIndexer(
-                        getLog(),
                         basePath,
                         outputPath,
                         pluginVersion,

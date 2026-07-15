@@ -24,7 +24,6 @@ import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider;
-import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Test;
 
 public class ProjectIndexerTest {
@@ -47,8 +46,7 @@ public class ProjectIndexerTest {
                 "main/java/com/example/billing",
                 "> Creates and sends invoices.\n\n#### Purpose\n- billing\n");
 
-        final ProjectIndexer indexer =
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
 
         // act
         final int written = indexer.aggregate(outputRoot);
@@ -91,8 +89,7 @@ public class ProjectIndexerTest {
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         Files.createDirectories(outputRoot);
 
-        final ProjectIndexer indexer =
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
 
         // act
         final int written = indexer.aggregate(outputRoot);
@@ -114,13 +111,10 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // first run writes the file
-        assertThat(
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot),
-                is(equalTo(1)));
+        assertThat(new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot), is(equalTo(1)));
 
         // act: a second run over the same packages must detect no change
-        final int second =
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+        final int second = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
 
         // assert
         assertThat(second, is(equalTo(0)));
@@ -134,11 +128,10 @@ public class ProjectIndexerTest {
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
-        new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
 
         // act: force=true rewrites despite no content change
-        final int forced =
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", true).aggregate(outputRoot);
+        final int forced = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", true).aggregate(outputRoot);
 
         // assert
         assertThat(forced, is(equalTo(1)));
@@ -152,8 +145,7 @@ public class ProjectIndexerTest {
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         writePackageFile(outputRoot.resolve("main/java/com/example/package.ai.md"), "main/java/com/example", "");
 
-        final ProjectIndexer indexer =
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
 
         // act
         indexer.aggregate(outputRoot);
@@ -173,8 +165,7 @@ public class ProjectIndexerTest {
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         writePackageFile(outputRoot.resolve("package.ai.md"), "ai", "> The whole project.\n");
 
-        final ProjectIndexer indexer =
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
 
         // act
         indexer.aggregate(outputRoot);
@@ -220,7 +211,7 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // act: the deterministic constructor performs no AI call
-        new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
 
         // assert
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
@@ -255,9 +246,7 @@ public class ProjectIndexerTest {
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
-        assertThat(
-                new ProjectIndexer(new SystemStreamLog(), PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot),
-                is(equalTo(1)));
+        assertThat(new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot), is(equalTo(1)));
 
         // act: enabling the overview changes the generation signature in the checksum -> regenerate
         final int rewritten = overviewIndexer(false).aggregate(outputRoot);
@@ -293,7 +282,6 @@ public class ProjectIndexerTest {
         final AiPromptSupport promptSupport = new AiPromptSupport(Collections.singletonList(prompt));
 
         return new ProjectIndexer(
-                new SystemStreamLog(),
                 PROJECT_TITLE,
                 "1.0.0",
                 "0.0.0",

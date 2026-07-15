@@ -15,6 +15,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import java.util.Random;
 import net.ladenthin.maven.llamacpp.aiindex.config.AiModelDefinition;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptDefinition;
+import org.slf4j.Logger;
 
 @AnalyzeClasses(packages = "net.ladenthin.maven.llamacpp.aiindex", importOptions = ImportOption.DoNotIncludeTests.class)
 public class PluginArchitectureTest {
@@ -43,8 +44,9 @@ public class PluginArchitectureTest {
 
     /**
      * Production code must not write to {@code System.out} / {@code System.err}; all output
-     * goes through Maven's {@link org.apache.maven.plugin.logging.Log}. Currently vacuous
-     * (no usage); acts as a regression guard.
+     * goes through an SLF4J {@link Logger} (mojo-lifecycle messages still use Maven's
+     * {@code Log} via {@code getLog()}). Currently vacuous (no usage); acts as a regression
+     * guard.
      */
     @ArchTest
     static final ArchRule noSystemOutOrErrInProduction = noClasses()
@@ -215,17 +217,40 @@ public class PluginArchitectureTest {
             .allowEmptyShould(true);
 
     /**
-     * The foundation layers ({@code config}, {@code support}) must be framework-free: no Maven
-     * API at all (not even {@code Log}). They are pure data + stateless utilities, so they can
-     * be unit-tested without a Maven runtime.
+     * Every layer except {@code mojo} must be framework-free: no Maven API at all (not even
+     * {@code Log} — logging in {@code indexer} goes through an SLF4J {@link Logger} instead).
+     * They are plain Java, so they can be unit-tested and eventually extracted into a
+     * standalone library without a Maven runtime. Only {@code mojo} is the Maven Plugin API
+     * boundary ({@code AbstractMojo}, {@code @Parameter}, {@code MojoExecutionException}, and
+     * the injected {@code getLog()} for mojo-lifecycle messages).
      */
     @ArchTest
-    static final ArchRule foundationIsMavenFree = noClasses()
+    static final ArchRule nonMojoIsMavenFree = noClasses()
             .that()
             .resideInAnyPackage(
-                    "net.ladenthin.maven.llamacpp.aiindex.config..", "net.ladenthin.maven.llamacpp.aiindex.support..")
+                    "net.ladenthin.maven.llamacpp.aiindex.config..",
+                    "net.ladenthin.maven.llamacpp.aiindex.support..",
+                    "net.ladenthin.maven.llamacpp.aiindex.document..",
+                    "net.ladenthin.maven.llamacpp.aiindex.prompt..",
+                    "net.ladenthin.maven.llamacpp.aiindex.provider..",
+                    "net.ladenthin.maven.llamacpp.aiindex.indexer..")
             .should()
             .dependOnClassesThat()
             .resideInAPackage("org.apache.maven..")
+            .allowEmptyShould(true);
+
+    /**
+     * Every SLF4J {@link Logger} field must be {@code private static final} — a single shared
+     * logger per class, never an instance field or a mutable/visible one.
+     */
+    @ArchTest
+    static final ArchRule loggersArePrivateStaticFinal = fields().that()
+            .haveRawType(Logger.class)
+            .should()
+            .bePrivate()
+            .andShould()
+            .beStatic()
+            .andShould()
+            .beFinal()
             .allowEmptyShould(true);
 }

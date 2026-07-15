@@ -26,7 +26,6 @@ import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
 import net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider;
-import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Test;
 
 public class PackageIndexerTest {
@@ -59,7 +58,6 @@ public class PackageIndexerTest {
 
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
         final PackageIndexer indexer = new PackageIndexer(
-                new SystemStreamLog(),
                 baseDirectory,
                 outputRoot,
                 "1.0.0",
@@ -113,7 +111,6 @@ public class PackageIndexerTest {
         final CapturingProvider provider = new CapturingProvider();
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
         final PackageIndexer indexer = new PackageIndexer(
-                new SystemStreamLog(),
                 temp,
                 outputRoot,
                 "1.0.0",
@@ -153,7 +150,6 @@ public class PackageIndexerTest {
         final CapturingProvider provider = new CapturingProvider();
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
         final PackageIndexer indexer = new PackageIndexer(
-                new SystemStreamLog(),
                 temp,
                 outputRoot,
                 "1.0.0",
@@ -205,7 +201,6 @@ public class PackageIndexerTest {
         final CapturingProvider provider = new CapturingProvider();
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
         final PackageIndexer indexer = new PackageIndexer(
-                new SystemStreamLog(),
                 temp,
                 outputRoot,
                 "1.0.0",
@@ -243,7 +238,6 @@ public class PackageIndexerTest {
 
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
         final PackageIndexer indexer = new PackageIndexer(
-                new SystemStreamLog(),
                 temp,
                 outputRoot,
                 "1.0.0",

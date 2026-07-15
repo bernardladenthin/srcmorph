@@ -10,6 +10,10 @@ import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -30,41 +34,12 @@ import net.ladenthin.maven.llamacpp.aiindex.document.AiMdHeaderCodec;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.AiGenerationProvider;
-import org.apache.maven.plugin.logging.SystemStreamLog;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 public class AiFieldGenerationSupportTest {
-
-    /**
-     * Simple {@link Log} implementation that captures all messages passed to
-     * {@link #warn(CharSequence)} and {@link #info(CharSequence)} for later assertion.
-     */
-    private static class WarnCapturingLog extends SystemStreamLog {
-
-        private final List<String> capturedWarnings = new ArrayList<>();
-        private final List<String> capturedInfos = new ArrayList<>();
-
-        @Override
-        public void warn(final CharSequence content) {
-            capturedWarnings.add(content.toString());
-            super.warn(content);
-        }
-
-        @Override
-        public void info(final CharSequence content) {
-            capturedInfos.add(content.toString());
-            super.info(content);
-        }
-
-        public List<String> getCapturedWarnings() {
-            return capturedWarnings;
-        }
-
-        public List<String> getCapturedInfos() {
-            return capturedInfos;
-        }
-    }
 
     /**
      * Lower bound on chunks needed to force a second reduce round: strictly above the production
@@ -72,11 +47,48 @@ public class AiFieldGenerationSupportTest {
      */
     private static final long MIN_CHUNKS_FOR_TWO_REDUCE_ROUNDS = 16L;
 
-    private WarnCapturingLog capturingLog;
+    /**
+     * Captures the SLF4J log output of {@link AiFieldGenerationSupport} via a logback
+     * {@link ListAppender} attached directly to its logger, replacing the constructor-injected
+     * Maven {@code Log} the production class used previously.
+     */
+    private ListAppender<ILoggingEvent> logAppender;
+
+    private static Logger loggerUnderTest() {
+        return (Logger) LoggerFactory.getLogger(AiFieldGenerationSupport.class);
+    }
 
     @BeforeEach
     public void setUp() {
-        capturingLog = new WarnCapturingLog();
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        final Logger logger = loggerUnderTest();
+        logger.setLevel(Level.DEBUG);
+        logger.setAdditive(false);
+        logger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    public void tearDown() {
+        loggerUnderTest().detachAppender(logAppender);
+    }
+
+    private List<String> capturedMessages(final Level level) {
+        final List<String> messages = new ArrayList<>();
+        for (final ILoggingEvent event : logAppender.list) {
+            if (event.getLevel() == level) {
+                messages.add(event.getFormattedMessage());
+            }
+        }
+        return messages;
+    }
+
+    private List<String> getCapturedWarnings() {
+        return capturedMessages(Level.WARN);
+    }
+
+    private List<String> getCapturedInfos() {
+        return capturedMessages(Level.INFO);
     }
 
     // <editor-fold defaultstate="collapsed" desc="processFieldGenerations">
@@ -96,7 +108,6 @@ public class AiFieldGenerationSupportTest {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider nonEmptyProvider = request -> "A real summary.";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog,
                 nonEmptyProvider,
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -106,7 +117,7 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert
-        assertThat(capturingLog.getCapturedWarnings().isEmpty(), is(true));
+        assertThat(getCapturedWarnings().isEmpty(), is(true));
     }
 
     @Test
@@ -125,7 +136,6 @@ public class AiFieldGenerationSupportTest {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog,
                 emptyProvider,
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -139,8 +149,8 @@ public class AiFieldGenerationSupportTest {
                 header);
 
         // assert
-        assertThat(capturingLog.getCapturedWarnings().size(), is(equalTo(1)));
-        assertThat(capturingLog.getCapturedWarnings().get(0), containsString(contextFile.toString()));
+        assertThat(getCapturedWarnings().size(), is(equalTo(1)));
+        assertThat(getCapturedWarnings().get(0), containsString(contextFile.toString()));
     }
 
     @Test
@@ -159,7 +169,6 @@ public class AiFieldGenerationSupportTest {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog,
                 emptyProvider,
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -169,8 +178,8 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
         // assert
-        assertThat(capturingLog.getCapturedWarnings().size(), is(equalTo(1)));
-        assertThat(capturingLog.getCapturedWarnings().get(0), containsString(CommonTestFixtures.PROMPT_KEY_FILE_BODY));
+        assertThat(getCapturedWarnings().size(), is(equalTo(1)));
+        assertThat(getCapturedWarnings().get(0), containsString(CommonTestFixtures.PROMPT_KEY_FILE_BODY));
     }
 
     @Test
@@ -189,7 +198,6 @@ public class AiFieldGenerationSupportTest {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog,
                 emptyProvider,
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -227,7 +235,6 @@ public class AiFieldGenerationSupportTest {
             }
         };
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog,
                 alwaysEmptyProvider,
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -238,7 +245,7 @@ public class AiFieldGenerationSupportTest {
 
         // assert — provider invoked exactly once (no retries), one warning, empty body
         assertThat(callCount.get(), is(equalTo(1)));
-        assertThat(capturingLog.getCapturedWarnings().size(), is(equalTo(1)));
+        assertThat(getCapturedWarnings().size(), is(equalTo(1)));
         assertThat(result.body(), is(equalTo("")));
     }
 
@@ -263,7 +270,6 @@ public class AiFieldGenerationSupportTest {
             }
         };
         final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                capturingLog,
                 alwaysEmptyProvider,
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -274,7 +280,7 @@ public class AiFieldGenerationSupportTest {
 
         // assert — exactly three INFO lines: the per-file processing/ETA line, the generation line,
         // and the measured actual-duration line. No retry lines (the retry mechanism was removed).
-        final List<String> infos = capturingLog.getCapturedInfos();
+        final List<String> infos = getCapturedInfos();
         assertThat(infos.size(), is(equalTo(3)));
 
         // First message: the per-file processing line with size + token + duration estimate
@@ -325,8 +331,7 @@ public class AiFieldGenerationSupportTest {
     private AiFieldGenerationSupport supportWithModels(
             final AiGenerationProvider provider, final AiModelDefinitionSupport models) {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        return new AiFieldGenerationSupport(
-                capturingLog, provider, new AiPromptPreparationSupport(promptSupport), models);
+        return new AiFieldGenerationSupport(provider, new AiPromptPreparationSupport(promptSupport), models);
     }
 
     /** A model with a normal window, so a small source fits and is NOT treated as over-window. */
@@ -529,7 +534,7 @@ public class AiFieldGenerationSupportTest {
                 largeSource(3000),
                 anyHeader());
 
-        final List<String> infos = capturingLog.getCapturedInfos();
+        final List<String> infos = getCapturedInfos();
         final long mapChunks =
                 infos.stream().filter(m -> m.contains("summarized (")).count();
         final boolean hasRound1 = infos.stream().anyMatch(m -> m.contains("reduce round 1:"));

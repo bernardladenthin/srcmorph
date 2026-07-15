@@ -173,7 +173,6 @@ public class GenerateMojo extends AbstractAiIndexMojo {
         selector.validate(fieldGenerations);
 
         final SourceFileIndexer fileIndexer = new SourceFileIndexer(
-                getLog(),
                 basePath,
                 outputPath,
                 resolvedExtensions,
@@ -251,8 +250,8 @@ public class GenerateMojo extends AbstractAiIndexMojo {
                         + group.getValue().size() + " file(s)");
                 try (AiGenerationProvider provider = providerFactory.create(
                         generationProvider, buildLlamaCppJniConfig(aiDefinitionKey), promptSupport)) {
-                    final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
-                            getLog(), provider, promptPreparationSupport, modelDefinitionSupport);
+                    final AiFieldGenerationSupport support =
+                            new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
                     for (final AiIndexPlan.Entry entry : group.getValue()) {
                         if (fileIndexer.indexFile(entry.file(), entry.rule(), support)) {
                             wrote++;

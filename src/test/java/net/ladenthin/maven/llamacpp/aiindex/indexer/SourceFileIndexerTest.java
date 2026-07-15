@@ -23,7 +23,6 @@ import net.ladenthin.maven.llamacpp.aiindex.document.AiMdDocumentCodec;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptPreparationSupport;
 import net.ladenthin.maven.llamacpp.aiindex.prompt.AiPromptSupport;
 import net.ladenthin.maven.llamacpp.aiindex.provider.MockAiGenerationProvider;
-import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.jupiter.api.Test;
 
 public class SourceFileIndexerTest {
@@ -37,7 +36,6 @@ public class SourceFileIndexerTest {
             final long minSizeBytes,
             final long maxSizeBytes) {
         return new SourceFileIndexer(
-                new SystemStreamLog(),
                 baseDirectory,
                 outputRoot,
                 Arrays.asList(".java"),
@@ -53,7 +51,6 @@ public class SourceFileIndexerTest {
     private AiFieldGenerationSupport mockSupport() {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         return new AiFieldGenerationSupport(
-                new SystemStreamLog(),
                 new MockAiGenerationProvider(),
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());

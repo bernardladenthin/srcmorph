@@ -130,7 +130,7 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
                 written = aggregateWithOverview(outputPath, title, fieldGenerations.get(0));
             } else {
                 getLog().info("Project overview generation: disabled (no fieldGenerations configured)");
-                final ProjectIndexer indexer = new ProjectIndexer(getLog(), title, pluginVersion, aiVersion, force);
+                final ProjectIndexer indexer = new ProjectIndexer(title, pluginVersion, aiVersion, force);
                 written = indexer.aggregate(outputPath);
             }
             getLog().info("Project index files written: " + written);
@@ -162,15 +162,7 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
         try (AiGenerationProvider provider =
                 providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
             final ProjectIndexer indexer = new ProjectIndexer(
-                    getLog(),
-                    title,
-                    pluginVersion,
-                    aiVersion,
-                    force,
-                    provider,
-                    overview,
-                    promptSupport,
-                    modelDefinitionSupport);
+                    title, pluginVersion, aiVersion, force, provider, overview, promptSupport, modelDefinitionSupport);
             return indexer.aggregate(outputPath);
         }
     }

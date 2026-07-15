@@ -525,4 +525,32 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="IMPROPER_UNICODE"/>
     </Match>
 
+    <!--
+        CRLF_INJECTION_LOGS on the four indexer classes that log via SLF4J
+        (SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport).
+
+        findsecbugs flags every SLF4J call whose arguments trace back to a value it cannot prove
+        is a compile-time constant, on the theory that attacker-controlled text could inject a
+        CRLF sequence to forge a fake log line. The values actually logged here are exclusively:
+        (1) java.nio.file.Path instances for source/output files discovered by walking the
+        project's own base/output directories (the same local filesystem the Maven build already
+        has full read/write access to — never a network request body or other externally-supplied
+        channel); (2) plugin-internal config strings the operator authored in their own POM
+        (contextType labels "file"/"package"/"project", prompt keys, model keys); and (3) computed
+        sizes/durations/counts. This is a local batch build tool, not a service handling untrusted
+        requests, so there is no log-forging trust boundary to defend here — the same Path/String
+        values were logged without incident via Maven's own Log interface before this SLF4J
+        migration. Scoped to the four converted classes only, so a genuine finding elsewhere in
+        the codebase still surfaces.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.SourceFileIndexer"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.PackageIndexer"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.ProjectIndexer"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.indexer.AiFieldGenerationSupport"/>
+        </Or>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
 </FindBugsFilter>

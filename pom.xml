@@ -146,6 +146,16 @@ SPDX-License-Identifier: Apache-2.0
                 <artifactId>slf4j-api</artifactId>
                 <version>2.0.18</version>
             </dependency>
+            <!--
+                Pin the version the llama dependency already brings in transitively (runtime scope),
+                so an explicit test-scope declaration (used to attach a ListAppender in
+                AiFieldGenerationSupportTest) stays converged with it.
+            -->
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.5.37</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -171,6 +181,17 @@ SPDX-License-Identifier: Apache-2.0
             <artifactId>llama</artifactId>
             <version>${llama.version}</version>
             <classifier>${llama.classifier}</classifier>
+        </dependency>
+
+        <!--
+            Direct compile dependency: the indexer classes log via SLF4J instead of the Maven
+            plugin Log, so their build-log output surfaces through maven-slf4j-provider with no
+            glue code (Maven >= 3.1 binds slf4j-api inside plugin executions). Version is pinned
+            above in <dependencyManagement> for convergence with the llama/logback transitives.
+        -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
 
         <dependency>
@@ -249,6 +270,17 @@ SPDX-License-Identifier: Apache-2.0
             <groupId>com.vmlens</groupId>
             <artifactId>api</artifactId>
             <version>${vmlens.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--
+            SLF4J binding for tests only: AiFieldGenerationSupportTest attaches a ListAppender to
+            capture log output (the indexer classes log via SLF4J, not the injected Maven Log
+            anymore). Already resolves transitively via llama (runtime scope); declared explicitly
+            here so it is not an implicit dependency and so its test-compile-time types are visible.
+        -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
