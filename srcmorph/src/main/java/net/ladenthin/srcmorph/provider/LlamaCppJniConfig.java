@@ -9,6 +9,7 @@ import java.util.Objects;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import net.ladenthin.srcmorph.support.ConvertToRecord;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable configuration for the llama.cpp JNI provider.
@@ -23,7 +24,7 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
 @ToString
 @EqualsAndHashCode
 public final class LlamaCppJniConfig {
-    private final String libraryPath;
+    private final @Nullable String libraryPath;
     private final String modelPath;
     private final int contextSize;
     private final int maxOutputTokens;
@@ -81,7 +82,7 @@ public final class LlamaCppJniConfig {
      * @param stopStrings                 stop strings; may be {@code null} (treated as empty)
      */
     public LlamaCppJniConfig(
-            String libraryPath,
+            @Nullable String libraryPath,
             String modelPath,
             int contextSize,
             int maxOutputTokens,
@@ -141,7 +142,7 @@ public final class LlamaCppJniConfig {
      *
      * @return native library path, or {@code null} to use the bundled library
      */
-    public String libraryPath() {
+    public @Nullable String libraryPath() {
         return libraryPath;
     }
 

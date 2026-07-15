@@ -254,6 +254,13 @@ SPDX-License-Identifier: Apache-2.0
         / unmatched collections and Entry.rule reference the same single-threaded, throwaway data; the
         Entry.rule is the shared routing rule (an AiFieldGenerationConfig) and is intentionally aliased,
         not copied. No untrusted caller can mutate shared state through these accessors.
+
+        SrcMorphConfiguration (migration step 5, engine extraction) is the same kind of bean, one tier
+        up: the mutable JavaBean bindable from Maven plexus reflection, a future Jackson ObjectMapper, or
+        plain Java code, holding every List field (subtrees/excludes/fileExtensions/promptDefinitions/
+        aiDefinitions/fieldGenerations/factDefinitions) the same way the mojo's own @Parameter fields used
+        to. One instance is built once per goal invocation and handed to exactly one engine, which reads
+        it and discards it - the same single-threaded, no-shared-state lifecycle as the beans above.
     -->
     <Match>
         <Or>
@@ -261,6 +268,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.config.AiConditionGroup"/>
             <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationConfig"/>
             <Class name="net.ladenthin.srcmorph.config.AiFactDefinition"/>
+            <Class name="net.ladenthin.srcmorph.config.SrcMorphConfiguration"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry"/>
         </Or>
@@ -268,6 +276,23 @@ SPDX-License-Identifier: Apache-2.0
             <Bug pattern="EI_EXPOSE_REP"/>
             <Bug pattern="EI_EXPOSE_REP2"/>
         </Or>
+    </Match>
+
+    <!--
+        EI_EXPOSE_REP2 on the four engine constructors (GenerateEngine, AggregatePackagesEngine,
+        AggregateProjectEngine, CalibrateEngine): each stores the caller-supplied SrcMorphConfiguration
+        directly into a `config` field with no getter exposing it back out. Same rationale as the bean
+        suppression above - the config IS the run's configuration, read once by a single-use engine
+        instance and discarded; a defensive copy would clone a JavaBean the engine never mutates.
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregatePackagesEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregateProjectEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+        </Or>
+        <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
 
     <!--
@@ -336,6 +361,28 @@ SPDX-License-Identifier: Apache-2.0
           - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: arises from the Objects.requireNonNull /
             @NullMarked validation style (see the DCN rationale in the plugin module's filter file);
             the explicit guards are the deliberate fail-fast contract, not dead checks.
+
+        Migration step 5 (engine extraction) additions, same rationale class:
+          - LlamaCppJniConfigFactory.fromGenerationConfig: the pure field-by-field translation from
+            AiGenerationConfig to LlamaCppJniConfig (moved verbatim out of the old
+            AbstractAiIndexMojo.buildLlamaCppJniConfig) necessarily touches the other type's getters
+            heavily (CE_CLASS_ENVY) and its null-guard on drySequenceBreakers mirrors the same
+            Objects.requireNonNull-adjacent style (RCN).
+          - CalibrateEngine.execute(): the rule.getAiDefinitionKey()/getPromptKey() null checks building
+            the routable-model map are the same deliberate defensive guard style as
+            AiConditionEvaluator.validate (RCN); its thrown messages are user-facing config diagnostics,
+            not internal state (WEM) - moved verbatim out of the old CalibrateMojo.
+          - GenerateEngine.resolveSharedFacts/execute(): resolveSharedFacts's fieldGenerations parameter
+            is typed to the concrete List the caller already has (OCP), and execute()'s thrown messages
+            are the same user-facing config diagnostics (WEM) - moved verbatim out of the old
+            GenerateMojo.
+          - CalibrationReport's constructor parameter is typed List (not Collection) because callers
+            always have an ordered List of measurements and the class explicitly preserves that order
+            (OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER).
+          - EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport)'s fallback branch
+            throws NullPointerException("llamaModelPath") with a static message when
+            SrcMorphConfiguration#getLlamaModelPath() is unset - the same user-facing "which field is
+            missing" diagnostic style as everywhere else in this list (WEM).
     -->
     <Match>
         <Or>
@@ -344,6 +391,11 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.srcmorph.support.AiGenerationTimeEstimator"/>
+            <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrationReport"/>
+            <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
         </Or>
         <Or>
             <Bug pattern="CE_CLASS_ENVY"/>
@@ -372,7 +424,11 @@ SPDX-License-Identifier: Apache-2.0
 
     <!--
         CRLF_INJECTION_LOGS on the four indexer classes that log via SLF4J
-        (SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport).
+        (SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport), and on the
+        engine package's orchestration classes added in migration step 5 (GenerateEngine,
+        AggregatePackagesEngine, AggregateProjectEngine, CalibrateEngine, EngineSupport) that log the
+        same categories of value one tier up (they moved the mojo-level logging that used to go through
+        Maven's Log interface).
 
         findsecbugs flags every SLF4J call whose arguments trace back to a value it cannot prove
         is a compile-time constant, on the theory that attacker-controlled text could inject a
@@ -385,7 +441,7 @@ SPDX-License-Identifier: Apache-2.0
         sizes/durations/counts. This is a local batch build tool, not a service handling untrusted
         requests, so there is no log-forging trust boundary to defend here — the same Path/String
         values were logged without incident via Maven's own Log interface before this SLF4J
-        migration. Scoped to the four converted classes only, so a genuine finding elsewhere in
+        migration. Scoped to the nine converted/added classes only, so a genuine finding elsewhere in
         the codebase still surfaces.
     -->
     <Match>
@@ -394,8 +450,59 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.indexer.PackageIndexer"/>
             <Class name="net.ladenthin.srcmorph.indexer.ProjectIndexer"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport"/>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregatePackagesEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.AggregateProjectEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+            <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
         </Or>
         <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!--
+        DCN_NULLPOINTER_EXCEPTION on EngineSupport.buildPromptSupport / buildAiModelDefinitionSupport and
+        GenerateEngine.resolveSharedFacts. Moved verbatim (same rationale) from what was
+        AbstractAiIndexMojo.buildPromptSupport / buildAiModelDefinitionSupport and
+        GenerateMojo.resolveSharedFacts in the llamacpp-ai-index-maven-plugin module's own filter file
+        (see that file for the full "why not the alternatives" reasoning): these catch sites are the
+        deliberate translation bridge between the support classes' Objects.requireNonNull validation
+        (which throws NPE by Java convention with the rich index + bad-entry message) and the engine
+        layer's own checked SrcMorphException (a caller-facing configuration error, not a plugin bug).
+    -->
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+        </Or>
+        <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
+    </Match>
+
+    <!--
+        AI_ANNOTATION_ISSUES_NEEDS_NULLABLE on GenerateEngine.resolveFileExtensions. Same method (moved
+        verbatim) and same false-positive as the old GenerateMojo.resolveFileExtensions suppression in
+        the llamacpp-ai-index-maven-plugin module's own filter file: the method provably cannot return
+        null (either the non-null compatibilityHelper.listOf(...) fallback, or the
+        SrcMorphConfiguration#getFileExtensions() list gated by an explicit non-null/non-empty guard),
+        but fb-contrib's conservative dataflow analysis cannot see through the getter.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+        <Method name="resolveFileExtensions"/>
+        <Bug pattern="AI_ANNOTATION_ISSUES_NEEDS_NULLABLE"/>
+    </Match>
+
+    <!--
+        NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE on EngineSupport.resolveLlamaCppJniConfig(config,
+        modelDefinitionSupport). SpotBugs core's null-flow analysis flags the textbook guard-clause
+        pattern itself (get a possibly-null value, check it, throw if null, otherwise use the
+        now-non-null local) as a "possible null pointer dereference" on the checked variable - a known
+        false-positive shape for this detector. The method is straight-line, three lines long, and the
+        only use of `modelPath` after the guard is unreachable when it is null.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+        <Method name="resolveLlamaCppJniConfig"/>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
     </Match>
 
 </FindBugsFilter>

@@ -94,13 +94,25 @@ public class CoreArchitectureTest {
      * extraction {@code PluginArchitectureTest} layering with the {@code Mojo} layer removed (the
      * mojo package lives in the sibling plugin module and is outside this test's analyzed
      * classes; consideringOnlyDependenciesInLayers() means its former accesses to Indexer/
-     * Provider/Prompt/Config/Support are simply not part of this in-module rule anymore).
-     * Conceptual tiers: {@code Indexer} &gt; {@code Provider} &gt; {@code Document}/{@code Prompt}
-     * &gt; {@code Config}/{@code Support}.
+     * Provider/Prompt/Config/Support are simply not part of this in-module rule anymore) — and with
+     * a new {@code Engine} layer on top, added for the per-phase orchestration engines (migration
+     * step 5): {@code engine} depends on {@code indexer} (the file/package/project indexers),
+     * {@code provider} (constructing/closing an {@code AiGenerationProvider} directly),
+     * {@code prompt} ({@code AiPromptSupport}/{@code AiPromptPreparationSupport}), {@code config}
+     * (the shared {@code SrcMorphConfiguration} plus the routing/model-lookup types), and
+     * {@code support} (the progress bar / time estimator / Java 8 compatibility helpers). The new
+     * {@code provider.LlamaCppJniConfigFactory} also introduced a {@code Provider -> Config} edge
+     * (it maps a {@code config.AiGenerationConfig} to a {@code provider.LlamaCppJniConfig}), and the
+     * new root {@code config.SrcMorphConfiguration} introduced a {@code Config -> Prompt} edge (it
+     * holds a {@code List<prompt.AiPromptDefinition>}). Conceptual tiers: {@code Engine} &gt;
+     * {@code Indexer} &gt; {@code Provider} &gt; {@code Document}/{@code Prompt} &gt;
+     * {@code Config}/{@code Support}.
      */
     @ArchTest
     static final ArchRule layeredArchitecture = layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
+            .layer("Engine")
+            .definedBy("net.ladenthin.srcmorph.engine..")
             .layer("Indexer")
             .definedBy("net.ladenthin.srcmorph.indexer..")
             .layer("Provider")
@@ -113,18 +125,20 @@ public class CoreArchitectureTest {
             .definedBy("net.ladenthin.srcmorph.config..")
             .layer("Support")
             .definedBy("net.ladenthin.srcmorph.support..")
-            .whereLayer("Indexer")
+            .whereLayer("Engine")
             .mayNotBeAccessedByAnyLayer()
+            .whereLayer("Indexer")
+            .mayOnlyBeAccessedByLayers("Engine")
             .whereLayer("Provider")
-            .mayOnlyBeAccessedByLayers("Indexer")
+            .mayOnlyBeAccessedByLayers("Indexer", "Engine")
             .whereLayer("Document")
             .mayOnlyBeAccessedByLayers("Indexer", "Prompt", "Provider")
             .whereLayer("Prompt")
-            .mayOnlyBeAccessedByLayers("Indexer", "Provider")
+            .mayOnlyBeAccessedByLayers("Indexer", "Provider", "Engine", "Config")
             .whereLayer("Config")
-            .mayOnlyBeAccessedByLayers("Indexer")
+            .mayOnlyBeAccessedByLayers("Indexer", "Engine", "Provider")
             .whereLayer("Support")
-            .mayOnlyBeAccessedByLayers("Config", "Document", "Indexer", "Prompt", "Provider");
+            .mayOnlyBeAccessedByLayers("Config", "Document", "Indexer", "Prompt", "Provider", "Engine");
 
     /**
      * Public mutable state forbidden: any non-static field declared

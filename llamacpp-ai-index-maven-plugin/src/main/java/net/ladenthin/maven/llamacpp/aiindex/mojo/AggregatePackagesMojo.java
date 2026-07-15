@@ -5,14 +5,10 @@ package net.ladenthin.maven.llamacpp.aiindex.mojo;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.indexer.PackageIndexer;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.engine.AggregatePackagesEngine;
+import net.ladenthin.srcmorph.engine.SrcMorphException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -20,6 +16,9 @@ import org.apache.maven.plugins.annotations.Parameter;
 /**
  * Maven goal {@code ai-index:aggregate-packages}: aggregates per-package
  * {@code .ai.md} index files and fills in their AI-generated summary and keyword fields.
+ *
+ * <p>Thin wrapper: builds a {@link SrcMorphConfiguration} from its {@code @Parameter} fields and
+ * delegates the whole run to {@link AggregatePackagesEngine}.</p>
  */
 // @Parameter fields are populated by the Maven plugin framework via reflection after
 // construction. NullAway is configured via ExcludedFieldAnnotations to skip them; Checker
@@ -70,6 +69,19 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
         return skipPackage;
     }
 
+    /**
+     * Maps this goal's own {@code @Parameter} fields onto the shared configuration built by
+     * {@link AbstractAiIndexMojo#buildConfiguration()}.
+     *
+     * @return the fully populated configuration for {@link AggregatePackagesEngine}
+     */
+    private SrcMorphConfiguration buildAggregatePackagesConfiguration() {
+        final SrcMorphConfiguration config = buildConfiguration();
+        config.setPluginVersion(pluginVersion);
+        config.setAiVersion(aiVersion);
+        return config;
+    }
+
     @Override
     public void execute() throws MojoExecutionException {
         if (shouldSkip()) {
@@ -77,44 +89,13 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
             return;
         }
 
-        final Path basePath = baseDirectory.toPath().toAbsolutePath().normalize();
         final Path outputPath = outputDirectory.toPath().toAbsolutePath().normalize();
-        final List<Path> resolvedSubtrees = resolveSubtrees(basePath);
-
-        logExecutionParameters(
-                "Starting AI package aggregation", basePath, outputPath, resolvedSubtrees, Collections.emptyList());
-
-        if (!outputPath.toFile().exists()) {
-            getLog().info("AI output directory does not exist, skipping package aggregation: " + outputPath);
-            return;
-        }
-
         try {
-            final AiPromptSupport promptSupport = buildPromptSupport();
-            final AiModelDefinitionSupport modelDefinitionSupport = buildAiModelDefinitionSupport();
-            final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
-
-            try (AiGenerationProvider provider =
-                    providerFactory.create(generationProvider, buildLlamaCppJniConfig(), promptSupport)) {
-                final PackageIndexer packageIndexer = new PackageIndexer(
-                        basePath,
-                        outputPath,
-                        pluginVersion,
-                        aiVersion,
-                        resolvedSubtrees,
-                        force,
-                        provider,
-                        fieldGenerations,
-                        promptSupport,
-                        modelDefinitionSupport);
-
-                final int aggregated = packageIndexer.aggregate(outputPath);
-                getLog().info("Aggregated packages: " + aggregated);
-            }
+            new AggregatePackagesEngine(buildAggregatePackagesConfiguration()).execute();
+        } catch (SrcMorphException e) {
+            throw new MojoExecutionException(messageOf(e), e);
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to aggregate package AI index files under " + outputPath, e);
         }
-
-        getLog().info("AI package aggregation finished.");
     }
 }

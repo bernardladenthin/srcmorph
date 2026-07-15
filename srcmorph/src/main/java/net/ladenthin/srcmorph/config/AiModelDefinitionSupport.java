@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Resolves {@link AiModelDefinition} entries by their key, returning the corresponding
@@ -61,7 +62,7 @@ public final class AiModelDefinitionSupport {
      *                    well-formed
      * @throws NullPointerException if any entry has a {@code null} {@code key}
      */
-    public AiModelDefinitionSupport(final List<AiModelDefinition> definitions) {
+    public AiModelDefinitionSupport(final @Nullable List<AiModelDefinition> definitions) {
         if (definitions == null) {
             this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
             return;

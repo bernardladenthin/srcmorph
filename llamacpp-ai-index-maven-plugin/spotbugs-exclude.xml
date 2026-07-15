@@ -116,6 +116,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregatePackagesMojo"/>
+            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AggregateProjectMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
             <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
         </Or>
@@ -157,108 +158,18 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        AI_ANNOTATION_ISSUES_NEEDS_NULLABLE on GenerateMojo.resolveFileExtensions.
-
-        The method body returns either compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION)
-        (non-null by contract) or the @Parameter-injected fileExtensions list, gated by
-        an early-return guard that ensures the second branch only runs when the field
-        is non-null and non-empty. The method provably cannot return null.
-
-        fb-contrib&apos;s analyzer is conservative: it sees a field-load on a Maven
-        @Parameter field (no model for the @NullMarked + ExcludedFieldAnnotations
-        wiring) and assumes the second return path may propagate null. We tried
-        hoisting the field to a local variable to give fb-contrib a clearer dataflow
-        signal; the finding persisted. Adding @Nullable to the return would be a lie
-        about the contract (the method genuinely cannot return null).
-
-        Suppression is scoped narrowly to this one method.
+        Migration step 5 (engine extraction) note: the AI_ANNOTATION_ISSUES_NEEDS_NULLABLE
+        (GenerateMojo.resolveFileExtensions), DCN_NULLPOINTER_EXCEPTION (AbstractAiIndexMojo.
+        buildPromptSupport/buildAiModelDefinitionSupport, GenerateMojo.resolveSharedFacts), and the
+        combined CE_CLASS_ENVY/OCP_OVERLY_CONCRETE_PARAMETER/OPM_OVERLY_PERMISSIVE_METHOD/
+        UCPM_USE_CHARACTER_PARAMETERIZED_METHOD/WEM_WEAK_EXCEPTION_MESSAGING/
+        RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE suppressions that used to live here were all scoped to
+        methods that no longer exist on these mojos - the orchestration (and the findings it produced)
+        moved to the srcmorph module's net.ladenthin.srcmorph.engine package (GenerateEngine,
+        CalibrateEngine, EngineSupport) and provider.LlamaCppJniConfigFactory, whose own
+        spotbugs-exclude.xml now carries the equivalent suppressions with the full rationale. The
+        thinned mojos (skip check -> buildConfiguration() -> new XxxEngine(config).execute() -> wrap
+        SrcMorphException/IOException) trigger none of these detectors.
     -->
-    <Match>
-        <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
-        <Method name="resolveFileExtensions"/>
-        <Bug pattern="AI_ANNOTATION_ISSUES_NEEDS_NULLABLE"/>
-    </Match>
-
-    <!--
-        DCN_NULLPOINTER_EXCEPTION on AbstractAiIndexMojo.buildPromptSupport /
-        buildAiModelDefinitionSupport.
-
-        fb-contrib's general rule is "do not catch NullPointerException" — sound
-        advice when NPE indicates a bug. Our two catch sites are the deliberate
-        translation bridge between the support classes' Objects.requireNonNull
-        validation (which throws NPE by Java convention with the rich
-        index + bad-entry message) and Maven's MojoExecutionException (which the
-        framework treats as a user configuration error rather than a plugin bug).
-
-        The alternatives we considered and rejected:
-          - Throw IllegalArgumentException from the support ctors via a manual
-            (x == null) check: brings back the RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE
-            findings that started this chain.
-          - Pre-validate inside the Mojo before calling the ctor: duplicates the
-            validation logic and lets the ctor accept malformed input, which is
-            a footgun for any non-Mojo caller (tests, future programmatic API).
-          - Pull in Guava Preconditions.checkNotNull: adds a dep purely to dodge
-            one detector rule.
-
-        Scoping to these two methods (not class-wide) means any other NPE-catching
-        site on AbstractAiIndexMojo would still surface.
-    -->
-    <Match>
-        <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
-        <Or>
-            <Method name="buildPromptSupport"/>
-            <Method name="buildAiModelDefinitionSupport"/>
-        </Or>
-        <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
-    </Match>
-
-    <!--
-        DCN_NULLPOINTER_EXCEPTION on GenerateMojo.resolveSharedFacts. Same deliberate translation bridge as
-        AbstractAiIndexMojo.buildPromptSupport (see that suppression's rationale): AiFactDefinitionSupport's
-        Objects.requireNonNull validation throws NPE by Java convention on a null definition key, which this
-        method catches and rethrows as a Maven MojoExecutionException (a user configuration error) rather
-        than a plugin bug. Scoped to the one method.
-    -->
-    <Match>
-        <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
-        <Method name="resolveSharedFacts"/>
-        <Bug pattern="DCN_NULLPOINTER_EXCEPTION"/>
-    </Match>
-
-    <!--
-        fb-contrib stylistic/opinion detectors on the Mojo layer. These are
-        bytecode-shape heuristics that source changes cannot resolve without harming readability or
-        the class's intended API, scoped narrowly to the affected classes:
-
-          - CE_CLASS_ENVY / OCP_OVERLY_CONCRETE_PARAMETER / OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER:
-            translation/traversal methods that necessarily reference collaborator types heavily.
-          - OPM_OVERLY_PERMISSIVE_METHOD: methods that are the class's public API and are exercised
-            directly by unit tests.
-          - UCPM_USE_CHARACTER_PARAMETERIZED_METHOD: short literal strings kept as String literals
-            for readability.
-          - WEM_WEAK_EXCEPTION_MESSAGING: GenerateMojo.execute's message describes a POM
-            configuration error in operator terms; it intentionally reads as a user-facing config
-            diagnostic rather than carrying internal state (the matching rationale for the
-            config/indexer/support classes now lives in the srcmorph module's filter file).
-          - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: arises from the Objects.requireNonNull /
-            @NullMarked validation style (see the DCN rationale above); the explicit guards are the
-            deliberate fail-fast contract, not dead checks.
-    -->
-    <Match>
-        <Or>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.AbstractAiIndexMojo"/>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.GenerateMojo"/>
-            <Class name="net.ladenthin.maven.llamacpp.aiindex.mojo.CalibrateMojo"/>
-        </Or>
-        <Or>
-            <Bug pattern="CE_CLASS_ENVY"/>
-            <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
-            <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
-            <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
-            <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
-            <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
-            <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
-        </Or>
-    </Match>
 
 </FindBugsFilter>

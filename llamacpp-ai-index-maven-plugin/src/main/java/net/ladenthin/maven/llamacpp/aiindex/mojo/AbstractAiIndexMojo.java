@@ -4,28 +4,22 @@
 package net.ladenthin.maven.llamacpp.aiindex.mojo;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.engine.SrcMorphException;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
 import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Base class for all AI index mojos. Centralises the parameters shared by every goal
- * ({@code generate}, {@code summarize-files}, {@code summarize-packages},
- * {@code aggregate-packages}) and provides the utility methods {@link #resolveSubtrees},
- * {@link #sizeOf}, {@link #buildLlamaCppJniConfig}, and {@link #buildPromptSupport}.
+ * ({@code generate}, {@code aggregate-packages}, {@code aggregate-project}, {@code calibrate}) and
+ * provides {@link #buildConfiguration()}, which maps the shared {@code @Parameter} fields onto a
+ * {@link net.ladenthin.srcmorph.config.SrcMorphConfiguration} for the matching
+ * {@code net.ladenthin.srcmorph.engine} engine to execute.
  *
  * <p>Concrete subclasses must implement {@link #getLlamaContextSize()} and
  * {@link #getLlamaThreads()} so that each goal can declare its own
@@ -167,7 +161,8 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     /**
      * Returns whether this goal should skip execution: either the global {@link #skip} (which skips
      * every phase) or this phase's own {@link #isPhaseSkipped()} flag. Centralised here so every goal
-     * applies the same rule identically.
+     * applies the same rule identically. Skip flags stay mojo-side (a Maven lifecycle concern); an
+     * engine built from {@link #buildConfiguration()} always executes when asked.
      *
      * @return {@code true} if the goal must not run
      */
@@ -176,209 +171,45 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     }
 
     /**
-     * Resolves the configured {@link #subtrees} strings against {@code basePath},
-     * filtering out any paths that do not exist on disk.
+     * Maps the {@code @Parameter} fields shared by every goal onto a new
+     * {@link net.ladenthin.srcmorph.config.SrcMorphConfiguration}. Concrete subclasses that need
+     * additional fields (e.g. {@code pluginVersion}, {@code aiVersion}, {@code fileExtensions})
+     * call this first and then set their own goal-specific fields on the returned instance.
      *
-     * @param basePath absolute, normalised project base directory
-     * @return list of resolved, existing subtree paths; empty if none configured
+     * @return a configuration populated from every shared {@code @Parameter} field
      */
-    protected List<Path> resolveSubtrees(final Path basePath) {
-        final List<Path> resolved = new ArrayList<>();
-
-        if (subtrees == null || subtrees.isEmpty()) {
-            return resolved;
-        }
-
-        for (String subtree : subtrees) {
-            final Path path = basePath.resolve(subtree).normalize();
-            if (path.toFile().exists()) {
-                resolved.add(path);
-            } else {
-                getLog().warn("Skipping missing subtree: " + path);
-            }
-        }
-
-        return resolved;
+    protected SrcMorphConfiguration buildConfiguration() {
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(baseDirectory);
+        config.setOutputDirectory(outputDirectory);
+        config.setForce(force);
+        config.setSubtrees(subtrees);
+        config.setGenerationProvider(generationProvider);
+        config.setPromptDefinitions(promptDefinitions);
+        config.setAiDefinitions(aiDefinitions);
+        config.setFieldGenerations(fieldGenerations);
+        config.setLlamaLibraryPath(llamaLibraryPath);
+        config.setLlamaModelPath(llamaModelPath);
+        config.setLlamaContextSize(getLlamaContextSize());
+        config.setLlamaMaxOutputTokens(llamaMaxOutputTokens);
+        config.setLlamaTemperature(llamaTemperature);
+        config.setLlamaThreads(getLlamaThreads());
+        return config;
     }
 
     /**
-     * Returns the size of {@code collection}, or {@code 0} when {@code collection} is {@code null}.
+     * Returns {@code cause}'s message for wrapping into a
+     * {@link org.apache.maven.plugin.MojoExecutionException}, falling back to {@link Throwable#toString()}
+     * when the message is {@code null}. Every {@link SrcMorphException} constructor requires a non-null
+     * message in practice, but {@link Throwable#getMessage()} is not statically non-null, so every mojo's
+     * {@code catch (SrcMorphException e)} block goes through this helper rather than passing
+     * {@code e.getMessage()} straight through.
      *
-     * @param collection any collection, or {@code null}
-     * @return number of elements, or {@code 0}
+     * @param cause the caught engine exception
+     * @return a non-null message suitable for {@code MojoExecutionException}'s constructor
      */
-    protected int sizeOf(final Collection<?> collection) {
-        return collection == null ? 0 : collection.size();
-    }
-
-    /**
-     * Builds a {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} for the AI generation provider.
-     *
-     * <p>When {@link #fieldGenerations} is non-empty, all model parameters
-     * (model path, context size, max output tokens, temperature, threads) are taken from
-     * the {@link net.ladenthin.srcmorph.config.AiModelDefinition} referenced by the first entry's
-     * {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig#getAiDefinitionKey()}. This ensures the provider is
-     * always configured from the same definition that drives field generation.</p>
-     *
-     * <p>When {@link #fieldGenerations} is {@code null} or empty, the individual
-     * {@code llamaModelPath}, {@code llamaContextSize}, {@code llamaMaxOutputTokens},
-     * {@code llamaTemperature}, and {@code llamaThreads} parameters are used as a fallback.</p>
-     *
-     * @return fully populated llama.cpp configuration
-     * @throws IllegalArgumentException if the first field generation's
-     *                                  {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig#getAiDefinitionKey()}
-     *                                  does not match any registered definition
-     * @throws MojoExecutionException   propagated from {@link #buildAiModelDefinitionSupport()}
-     *                                  if any AI definition is missing a required field
-     */
-    protected LlamaCppJniConfig buildLlamaCppJniConfig() throws MojoExecutionException {
-        if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
-            return buildLlamaCppJniConfig(fieldGenerations.get(0).getAiDefinitionKey());
-        }
-        return new LlamaCppJniConfig(
-                llamaLibraryPath,
-                llamaModelPath,
-                getLlamaContextSize(),
-                llamaMaxOutputTokens,
-                llamaTemperature,
-                getLlamaThreads(),
-                AiGenerationConfig.DEFAULT_TOP_P,
-                AiGenerationConfig.DEFAULT_TOP_K,
-                AiGenerationConfig.DEFAULT_MIN_P,
-                AiGenerationConfig.DEFAULT_TOP_N_SIGMA,
-                AiGenerationConfig.DEFAULT_REPEAT_PENALTY,
-                AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING,
-                AiGenerationConfig.DEFAULT_CACHE_PROMPT,
-                AiGenerationConfig.DEFAULT_SWA_FULL,
-                AiGenerationConfig.DEFAULT_CACHE_REUSE,
-                AiGenerationConfig.DEFAULT_GPU_LAYERS,
-                AiGenerationConfig.DEFAULT_MAIN_GPU,
-                AiGenerationConfig.DEFAULT_DEVICES,
-                AiGenerationConfig.DEFAULT_REASONING_EFFORT,
-                AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS,
-                AiGenerationConfig.DEFAULT_DRY_MULTIPLIER,
-                AiGenerationConfig.DEFAULT_DRY_BASE,
-                AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH,
-                AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N,
-                Collections.emptyList(),
-                Collections.emptyList());
-    }
-
-    /**
-     * Builds a {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} from a specific
-     * AI model definition, identified by its key. Used by the {@code generate} goal to load a separate
-     * model per routing group (one provider per distinct {@code aiDefinitionKey}).
-     *
-     * @param aiDefinitionKey the {@link net.ladenthin.srcmorph.config.AiModelDefinition} key
-     * @return fully populated llama.cpp configuration for that definition
-     * @throws IllegalArgumentException if {@code aiDefinitionKey} matches no registered definition
-     * @throws MojoExecutionException   propagated from {@link #buildAiModelDefinitionSupport()}
-     */
-    protected LlamaCppJniConfig buildLlamaCppJniConfig(final String aiDefinitionKey) throws MojoExecutionException {
-        final AiGenerationConfig config = buildAiModelDefinitionSupport().getConfig(aiDefinitionKey);
-        final List<String> stopStrings = config.getStopStrings();
-        final List<String> drySequenceBreakers = config.getDrySequenceBreakers();
-        return new LlamaCppJniConfig(
-                llamaLibraryPath,
-                config.getModelPath(),
-                config.getContextSize(),
-                config.getMaxOutputTokens(),
-                config.getTemperature(),
-                config.getThreads(),
-                config.getTopP(),
-                config.getTopK(),
-                config.getMinP(),
-                config.getTopNSigma(),
-                config.getRepeatPenalty(),
-                config.isChatTemplateEnableThinking(),
-                config.isCachePrompt(),
-                config.isSwaFull(),
-                config.getCacheReuse(),
-                config.getGpuLayers(),
-                config.getMainGpu(),
-                config.getDevices(),
-                config.getReasoningEffort(),
-                config.getReasoningBudgetTokens(),
-                config.getDryMultiplier(),
-                config.getDryBase(),
-                config.getDryAllowedLength(),
-                config.getDryPenaltyLastN(),
-                drySequenceBreakers != null ? drySequenceBreakers : Collections.emptyList(),
-                stopStrings != null ? stopStrings : Collections.emptyList());
-    }
-
-    /**
-     * Builds an {@link net.ladenthin.srcmorph.prompt.AiPromptSupport} from the configured {@link #promptDefinitions}.
-     *
-     * <p>If any {@code <promptDefinition>} entry in the POM is missing its {@code key}
-     * or {@code template}, the underlying constructor throws
-     * {@link NullPointerException} with a message naming the offending list index and
-     * the bad entry. This method translates that into a
-     * {@link MojoExecutionException} so Maven reports it as a user configuration
-     * error (the "Invalid plugin {@code <configuration>}" framing) rather than as
-     * a plugin bug.</p>
-     *
-     * @return prompt support instance backed by the configured definitions
-     * @throws MojoExecutionException if any prompt definition is missing a required field
-     */
-    protected AiPromptSupport buildPromptSupport() throws MojoExecutionException {
-        try {
-            return new AiPromptSupport(promptDefinitions);
-        } catch (NullPointerException e) {
-            throw new MojoExecutionException("Invalid plugin configuration: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Builds an {@link net.ladenthin.srcmorph.config.AiModelDefinitionSupport} from the configured {@link #aiDefinitions}.
-     *
-     * <p>If any {@code <aiDefinition>} entry in the POM is missing its {@code key},
-     * the underlying constructor throws {@link NullPointerException} with a message
-     * naming the offending list index and the bad entry. This method translates that
-     * into a {@link MojoExecutionException} so Maven reports it as a user
-     * configuration error rather than as a plugin bug.</p>
-     *
-     * @return model definition support instance backed by the configured definitions
-     * @throws MojoExecutionException if any AI definition is missing a required field
-     */
-    protected AiModelDefinitionSupport buildAiModelDefinitionSupport() throws MojoExecutionException {
-        try {
-            return new AiModelDefinitionSupport(aiDefinitions);
-        } catch (NullPointerException e) {
-            throw new MojoExecutionException("Invalid plugin configuration: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Logs the standard set of execution parameters that are common to every goal.
-     *
-     * <p>Always logs: the start message, base directory, output directory, subtrees,
-     * force flag, and provider name. When {@code resolvedExtensions} is non-{@code null}
-     * it is also logged; goals that do not use file-extension filtering (e.g.
-     * {@code aggregate-packages}) pass {@code null} to suppress that line.</p>
-     *
-     * @param startMessage       first log line that identifies which goal is starting
-     * @param basePath           resolved, absolute project base directory
-     * @param outputPath         resolved, absolute output directory
-     * @param resolvedSubtrees   resolved subtree paths; may be empty but not {@code null}
-     * @param resolvedExtensions file extensions in scope; pass an empty list when not applicable
-     */
-    protected void logExecutionParameters(
-            final String startMessage,
-            final Path basePath,
-            final Path outputPath,
-            final List<Path> resolvedSubtrees,
-            final List<String> resolvedExtensions) {
-        getLog().info(startMessage);
-        getLog().info("Base directory  : " + basePath);
-        getLog().info("Output directory: " + outputPath);
-        getLog().info("Subtrees        : " + resolvedSubtrees);
-        if (!resolvedExtensions.isEmpty()) {
-            getLog().info("Extensions      : " + resolvedExtensions);
-        }
-        getLog().info("Force           : " + force);
-        getLog().info("Provider        : " + generationProvider);
-        getLog().info("LlamaCpp Temperature: " + llamaTemperature);
-        getLog().info("LlamaCpp Max Output Tokens: " + llamaMaxOutputTokens);
+    protected static String messageOf(final SrcMorphException cause) {
+        final String message = cause.getMessage();
+        return message != null ? message : cause.toString();
     }
 }

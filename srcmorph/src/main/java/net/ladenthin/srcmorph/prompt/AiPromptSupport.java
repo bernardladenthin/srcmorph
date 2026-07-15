@@ -10,6 +10,7 @@ import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import org.jspecify.annotations.Nullable;
 
 /** Registry of prompt templates that renders prompt strings for AI generation requests. */
 @ToString
@@ -51,7 +52,7 @@ public final class AiPromptSupport {
      * @throws NullPointerException if any entry has a {@code null} {@code key}
      *                              or {@code null} {@code template}
      */
-    public AiPromptSupport(final List<AiPromptDefinition> promptDefinitions) {
+    public AiPromptSupport(final @Nullable List<AiPromptDefinition> promptDefinitions) {
         if (promptDefinitions == null) {
             this.templates = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
             return;

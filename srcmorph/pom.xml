@@ -539,7 +539,29 @@ SPDX-License-Identifier: Apache-2.0
                 </dependencies>
                 <configuration>
                     <targetClasses>
-                        <!-- Classes verified at 100% PIT mutation parity. Expand as more reach it. -->
+                        <!--
+                          Classes verified at 100% PIT mutation parity. Expand as more reach it.
+
+                          Migration step 5 (engine extraction) additions: SrcMorphConfiguration is a
+                          plain getter/setter JavaBean like AiModelDefinition/AiFieldGenerationConfig
+                          above, so it is fully round-trip-testable and gated at 100% the same way.
+                          LlamaCppJniConfigFactory (in the provider package) is the pure, exception-free
+                          extraction of the old buildLlamaCppJniConfig field mapping. GenerateResult and
+                          CalibrationReport (+ its nested ModelMeasurement) are pure value/DTO types.
+                          EngineSupport is the engine package's shared helper: every method is either a
+                          pure mapping or a thin, fully-covered wrapper (no provider lifecycle, no
+                          multi-step orchestration), so it is gated too.
+
+                          Deliberately NOT gated: GenerateEngine, AggregatePackagesEngine,
+                          AggregateProjectEngine, CalibrateEngine. These are the orchestration classes
+                          that replaced the mojo execute() bodies - they own AiGenerationProvider
+                          try-with-resources lifecycles, multi-step control flow, and logging, the same
+                          shape the sibling llamacpp-ai-index-maven-plugin module's own pom.xml comment
+                          says mojos are not PIT-gated for ("Mojos are typically integration-tested via
+                          Maven invoker/executor rather than unit-mutation-tested"). They are instead
+                          covered by ordinary JUnit tests in engine/*Test.java (planOnly/unmatched/
+                          oversize/exception-path coverage) using MockAiGenerationProvider.
+                        -->
                         <param>net.ladenthin.srcmorph.config.AiCalibration</param>
                         <param>net.ladenthin.srcmorph.config.AiCondition</param>
                         <param>net.ladenthin.srcmorph.config.AiConditionEvaluator</param>
@@ -581,6 +603,12 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.support.AiSourceExcludeFilter</param>
                         <param>net.ladenthin.srcmorph.support.AiTimeSupport</param>
                         <param>net.ladenthin.srcmorph.support.Java8CompatibilityHelper</param>
+                        <param>net.ladenthin.srcmorph.config.SrcMorphConfiguration</param>
+                        <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory</param>
+                        <param>net.ladenthin.srcmorph.engine.EngineSupport</param>
+                        <param>net.ladenthin.srcmorph.engine.GenerateResult</param>
+                        <param>net.ladenthin.srcmorph.engine.CalibrationReport</param>
+                        <param>net.ladenthin.srcmorph.engine.CalibrationReport$ModelMeasurement</param>
                     </targetClasses>
                     <targetTests>
                         <param>net.ladenthin.srcmorph.*</param>
