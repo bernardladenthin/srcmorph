@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
     looks.
 
     Its version is pinned independently of the reactor's own <version> (currently
-    1.1.0-SNAPSHOT in ../pom.xml) and must NOT be bumped by a reactor-wide version change: a
+    1.1.0 in ../pom.xml) and must NOT be bumped by a reactor-wide version change: a
     `mvn versions:set -DnewVersion=X` run from the repo root walks every module reachable via
     the root <modules> list, which includes this one. Exclude it explicitly, e.g.:
 

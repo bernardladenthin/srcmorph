@@ -210,7 +210,7 @@ Snapshots are published to the Central Snapshots repository on every push to `ma
 https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/
 ```
 
-Current development version: `1.1.0-SNAPSHOT`.
+Current reactor version: `1.1.0`.
 
 ## A Note on History
 
