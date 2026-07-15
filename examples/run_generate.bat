@@ -8,7 +8,7 @@ rem and fill in their AI-generated summary bodies). Uses the mock provider, so n
 rem required - point generationProvider at "llamacpp-jni" and set a real modelPath to run a model.
 rem
 rem The fat jar's file name is version-qualified (e.g.
-rem srcmorph-cli-1.1.1-jar-with-dependencies.jar) and changes on every version bump, so
+rem srcmorph-cli-1.2.0-SNAPSHOT-jar-with-dependencies.jar) and changes on every version bump, so
 rem the loop below picks whichever one was last built by "mvn package" in ..\srcmorph-cli.
 setlocal
 cd /d "%~dp0"

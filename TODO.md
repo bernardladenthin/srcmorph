@@ -7,42 +7,7 @@ recorded in git history and `crossrepostatus.md`, not here.
 
 ## Open
 
-- **Migration step 8 — CI full pass + first reactor release.** `.github/workflows/publish.yml`
-  is now adapted to the 3-module reactor (module names as of that step; the plugin module has
-  since been renamed `srcmorph-maven-plugin` in step 9 below, and CI was updated to match): the
-  `build` job uploads jars from all three modules
-  (`srcmorph` / `srcmorph-cli`, including its `jar-with-dependencies` fat jar / the plugin module);
-  crash-dump globs are repo-wide (`**/hs_err_pid*.log` etc., since a forked surefire JVM can crash
-  in any module's own working directory); the PIT step is scoped to `-pl srcmorph -am` (the only
-  module with a `pitest-maven` execution) with its report glob at `srcmorph/target/pit-reports/**`;
-  the `vmlens` job is scoped to `-pl srcmorph-maven-plugin -am` (where
-  `VmlensInterleavingSmokeTest` and the `vmlens` profile actually live — not relocated during the
-  core extraction) and additionally passes `-Dsurefire.failIfNoSpecifiedTests=false` (the
-  `-DfailIfNoTests=false` flag alone does not suppress the "-Dtest pattern matched nothing"
-  failure that `-am` now triggers in the upstream `srcmorph` module); jdeps prints a graph per
-  module; and Coveralls/Codecov are pointed at `srcmorph`'s jacoco report only (the
-  single-primary-module precedent already used by the sibling java-llama.cpp reactor — `srcmorph-cli`
-  and the plugin module's own coverage is not currently aggregated or uploaded). `mvn -q clean
-  verify` and a `-P release verify -DskipTests -Dgpg.skip=true` dry run (package/sources/javadoc
-  jars for all three modules + the CLI fat jar, no `.asc` files since signing was skipped) both
-  pass locally. **Still open: actually cutting the first real `1.1.1` release** (tag + `mvn -P
-  release deploy` with real credentials) — that action was deliberately left to the user, not
-  performed as part of this CI-adaptation step. This is the gate the user asked for before step 9
-  ("if all is working stat I can safely do the final rename").
-
-- **Migration step 9 — plugin rename + Maven Central relocation. DONE (structurally; publishing is
-  still the user's own later action).** The former `llamacpp-ai-index-maven-plugin` module was
-  renamed to `srcmorph-maven-plugin` (`net.ladenthin:srcmorph-maven-plugin`, goal prefix `srcmorph`,
-  package `net.ladenthin.maven.srcmorph.mojo`, properties `aiIndex.*` → `srcmorph.*`), and a new,
-  independent relocation-stub module `llamacpp-ai-index-maven-plugin/` (pom-only, no `<parent>`,
-  pinned at version `1.0.4`, only `<distributionManagement><relocation>` pointing at
-  `net.ladenthin:srcmorph-maven-plugin:1.1.1`) was added back to the root `<modules>` list so
-  existing consumers resolving the old coordinates get redirected once it is actually published.
-  This is the last, isolated step of the migration in terms of code/POM structure — actually
-  publishing both the `1.1.1` reactor release and the `1.0.4` relocation stub to Maven Central is
-  still the user's own action (this task never ran `mvn deploy` or signed anything).
-
-  **Caveat — exclude the stub from reactor-wide version bumps.** Because the relocation stub is
+- **Caveat — exclude the stub from reactor-wide version bumps.** Because the relocation stub is
   listed in the root `<modules>`, a `mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false` run
   from the repo root walks every module reachable from that list — including the stub — and would
   overwrite its frozen `1.0.4` unless explicitly excluded:

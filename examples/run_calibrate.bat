@@ -9,7 +9,7 @@ rem this is a no-op smoke check; swap generationProvider to "llamacpp-jni" and s
 rem modelPath to calibrate an actual GGUF model on this machine.
 rem
 rem The fat jar's file name is version-qualified (e.g.
-rem srcmorph-cli-1.1.1-jar-with-dependencies.jar) and changes on every version bump, so
+rem srcmorph-cli-1.2.0-SNAPSHOT-jar-with-dependencies.jar) and changes on every version bump, so
 rem the loop below picks whichever one was last built by "mvn package" in ..\srcmorph-cli.
 setlocal
 cd /d "%~dp0"

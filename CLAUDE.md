@@ -22,15 +22,16 @@ coordinates, package, goal prefix, and every `@Parameter` property changed in th
 write `aiIndex.*` properties, the `ai-index` goal prefix, or the
 `net.ladenthin.maven.llamacpp.aiindex` package in new documentation or code; use `srcmorph.*`,
 `srcmorph`, and `net.ladenthin.maven.srcmorph.mojo` instead (see the plugin module's own section
-below). Actually publishing the `1.1.1` reactor release and the `1.0.4` relocation stub to Maven
-Central remains a separate, later action by the user.
+below). The `1.1.1` reactor release and the `1.0.4` relocation stub were published to Maven
+Central; development on `main` now continues at the next SNAPSHOT version.
 
 - **Group ID:** `net.ladenthin`
 - **Java:** target bytecode 1.8 (production code), Java 21 test sources, built with JDK 21
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)
-- **Reactor version:** `1.1.1` (single shared version across `srcmorph`, `srcmorph-cli`,
-  and `srcmorph-maven-plugin`; the relocation stub below is version-pinned independently)
+- **Reactor version:** `1.2.0-SNAPSHOT` (single shared version across `srcmorph`, `srcmorph-cli`,
+  and `srcmorph-maven-plugin`; the relocation stub below is version-pinned independently). Last
+  released version: `1.1.1`.
 
 ---
 
@@ -38,7 +39,7 @@ Central remains a separate, later action by the user.
 
 ```
 llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
-├── pom.xml                                net.ladenthin:srcmorph-parent:1.1.1 (packaging=pom)
+├── pom.xml                                net.ladenthin:srcmorph-parent:1.2.0-SNAPSHOT (packaging=pom)
 │                                           shared build plugins + dependencyManagement + release profile
 ├── srcmorph/                               CORE LIBRARY  net.ladenthin:srcmorph  (Java 8, Maven-API-free)
 │   └── src/main/java/net/ladenthin/srcmorph/
@@ -261,7 +262,7 @@ mvn -pl srcmorph-maven-plugin srcmorph:generate -P srcmorph-selftest
 
 ```bash
 mvn -pl srcmorph-cli package
-java -jar srcmorph-cli/target/srcmorph-cli-1.1.1-jar-with-dependencies.jar examples/config_All.json
+java -jar srcmorph-cli/target/srcmorph-cli-1.2.0-SNAPSHOT-jar-with-dependencies.jar examples/config_All.json
 ```
 
 See `examples/` (repo root) for ready-to-run `config_*.json`/`.yaml` + paired `run_*.sh`/`.bat`
