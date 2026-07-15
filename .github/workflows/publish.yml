@@ -215,10 +215,19 @@ jobs:
         with:
           java-version: '21'
           distribution: temurin
+      # spotless-maven-plugin / spotbugs-maven-plugin are declared only in each child module's own
+      # <pluginManagement>/<build> (not the pom-packaging reactor root), so the bare prefix goals
+      # (`spotless:check`, `spotbugs:check`) fail with "No plugin found for prefix" — Maven resolves
+      # a short prefix against the INVOKING project (the root aggregator here), not the reactor
+      # members, regardless of which modules actually end up executing. Using the fully-qualified
+      # groupId:artifactId:goal form bypasses prefix resolution entirely (plugin *version* still
+      # resolves correctly via each module's inherited pluginManagement pin); -pl restricts
+      # execution to the three modules that actually declare the plugin, skipping the parent pom
+      # and the source-less relocation stub, neither of which registers it anywhere.
       - name: Spotless check (fail fast on format violations)
-        run: mvn -B --no-transfer-progress spotless:check
+        run: mvn -B --no-transfer-progress -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin com.diffplug.spotless:spotless-maven-plugin:check
       - name: SpotBugs check (fail fast on static-analysis findings)
-        run: mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true compile spotbugs:check
+        run: mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin compile com.github.spotbugs:spotbugs-maven-plugin:check
       - name: Print internal package dependency graph (jdeps, informational)
         continue-on-error: true
         run: |
