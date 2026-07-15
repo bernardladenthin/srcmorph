@@ -297,6 +297,19 @@ SPDX-License-Identifier: Apache-2.0
                         <excludes>
                             <exclude>**/VmlensInterleavingSmokeTest.java</exclude>
                         </excludes>
+                        <!--
+                            Force classpath-mode test execution, matching the same setting (and
+                            rationale) in srcmorph/pom.xml and srcmorph-cli/pom.xml: this module's
+                            module-info.java declares a real (non-static) `requires
+                            net.ladenthin.srcmorph`, which is enough to make Surefire's module-path
+                            auto-detection patch test-classes into the named module — and that
+                            patched module then also needs every test-only dependency (e.g.
+                            archunit-junit5) explicitly readable, which module-info intentionally
+                            does not declare (it is release metadata for module-path consumers
+                            only; Maven itself always loads this plugin classpath-only). Classpath
+                            mode matches how this module is actually built/tested/consumed.
+                        -->
+                        <useModulePath>false</useModulePath>
                     </configuration>
                 </plugin>
                 <plugin>

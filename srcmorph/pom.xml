@@ -215,6 +215,23 @@ SPDX-License-Identifier: Apache-2.0
                             directory, and a JVM fatal-error log named per crashing PID.
                         -->
                         <argLine>@{argLine} -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=. -XX:ErrorFile=hs_err_pid%p.log</argLine>
+                        <!--
+                            Force classpath-mode test execution. module-info.java here is release
+                            metadata for downstream module-path consumers only (see its own Javadoc:
+                            "Maven, in turn, loads any consumer of this jar classpath-only and
+                            ignores the descriptor at runtime" — this project ships Java 8 bytecode
+                            and every real consumer loads it via the plain classpath). Surefire's
+                            module-path auto-detection engages once a module-info declares at least
+                            one non-static `requires` (added here for `org.slf4j`, needed by the
+                            indexer/engine packages at runtime) and then patches test-classes into
+                            the named module, which additionally requires every test-only dependency
+                            (e.g. logback-classic, used only by AiFieldGenerationSupportTest's
+                            ListAppender) to be explicitly readable — module-info intentionally does
+                            not declare test-only requires, so patched module-path execution fails
+                            with IllegalAccessError. Classpath-mode sidesteps this entirely and
+                            matches how this module is actually consumed in practice.
+                        -->
+                        <useModulePath>false</useModulePath>
                     </configuration>
                 </plugin>
                 <plugin>

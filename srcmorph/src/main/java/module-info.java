@@ -47,6 +47,11 @@ module net.ladenthin.srcmorph {
     // the @lombok.Generated annotation carried on generated members has CLASS retention.
     requires static lombok;
 
+    // indexer/ and engine/ classes log via SLF4J at runtime (not compile-time-only, unlike the
+    // annotation-only requires above), so this must be a real (non-static) requires: a
+    // module-path consumer needs org.slf4j resolvable at runtime too, not just here.
+    requires org.slf4j;
+
     exports net.ladenthin.srcmorph.config;
     exports net.ladenthin.srcmorph.document;
     exports net.ladenthin.srcmorph.engine;
