@@ -9,7 +9,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ---
 
-## [Unreleased]
+## [1.1.1] - 2026-07-15
 
 ### Added
 - **Reactor split**: the former single-module `llamacpp-ai-index-maven-plugin` is now a 3-module
@@ -25,7 +25,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `@Parameter` property `aiIndex.*` → `srcmorph.*`). A new, independently-versioned relocation-stub
   module/POM (`net.ladenthin:llamacpp-ai-index-maven-plugin:1.0.4`, no source, no dependencies, only
   `<distributionManagement><relocation>`) keeps the old coordinates resolvable on Maven Central,
-  redirecting to `net.ladenthin:srcmorph-maven-plugin:1.1.0`.
+  redirecting to `net.ladenthin:srcmorph-maven-plugin:1.1.1`.
 - New engine layer in `srcmorph` (`GenerateEngine`, `AggregatePackagesEngine`,
   `AggregateProjectEngine`, `CalibrateEngine`) extracted from what used to be each mojo's
   `execute()` body, plus a new shared root configuration object,
@@ -55,8 +55,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   the old coordinates are not broken: a new, independently-versioned relocation-stub artifact
   (`net.ladenthin:llamacpp-ai-index-maven-plugin:1.0.4`, POM-only, no source/dependencies) is
   published with a `<distributionManagement><relocation>` pointing at
-  `net.ladenthin:srcmorph-maven-plugin:1.1.0`, so Maven transparently redirects any build still
+  `net.ladenthin:srcmorph-maven-plugin:1.1.1`, so Maven transparently redirects any build still
   declaring the old artifactId.
+
+### Fixed
+- **Sources-jar signing**: `maven-source-plugin`'s `attach-sources` execution was bound to the
+  `verify` phase instead of `package` in all three real modules. `maven-gpg-plugin`'s signing
+  execution is also bound to `verify`, and within the same phase execution order follows
+  declaration/inheritance order — the inherited gpg execution ran before the sources jar was
+  built, so it was silently omitted from every signed bundle. Rebound `attach-sources` to
+  `package` (its own goal default). Also gave the relocation-stub module a `<parent>` so it
+  inherits the release profile's signing/publishing plugins at all (it previously had none),
+  while keeping its own version pinned independently.
 
 ## [1.0.2] - 2026-07-02
 
@@ -107,7 +117,8 @@ First public release on Maven Central. Pre-OpenSSF history themes (March–May 2
 
 ---
 
-[Unreleased]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.2...v1.1.1
 [1.0.2]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/releases/tag/v1.0.0

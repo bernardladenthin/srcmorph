@@ -22,14 +22,14 @@ coordinates, package, goal prefix, and every `@Parameter` property changed in th
 write `aiIndex.*` properties, the `ai-index` goal prefix, or the
 `net.ladenthin.maven.llamacpp.aiindex` package in new documentation or code; use `srcmorph.*`,
 `srcmorph`, and `net.ladenthin.maven.srcmorph.mojo` instead (see the plugin module's own section
-below). Actually publishing the `1.1.0` reactor release and the `1.0.4` relocation stub to Maven
+below). Actually publishing the `1.1.1` reactor release and the `1.0.4` relocation stub to Maven
 Central remains a separate, later action by the user.
 
 - **Group ID:** `net.ladenthin`
 - **Java:** target bytecode 1.8 (production code), Java 21 test sources, built with JDK 21
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)
-- **Reactor version:** `1.1.0` (single shared version across `srcmorph`, `srcmorph-cli`,
+- **Reactor version:** `1.1.1` (single shared version across `srcmorph`, `srcmorph-cli`,
   and `srcmorph-maven-plugin`; the relocation stub below is version-pinned independently)
 
 ---
@@ -38,7 +38,7 @@ Central remains a separate, later action by the user.
 
 ```
 llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
-├── pom.xml                                net.ladenthin:srcmorph-parent:1.1.0 (packaging=pom)
+├── pom.xml                                net.ladenthin:srcmorph-parent:1.1.1 (packaging=pom)
 │                                           shared build plugins + dependencyManagement + release profile
 ├── srcmorph/                               CORE LIBRARY  net.ladenthin:srcmorph  (Java 8, Maven-API-free)
 │   └── src/main/java/net/ladenthin/srcmorph/
@@ -208,7 +208,7 @@ themselves.
 A separate, minimal 4th reactor module — **not** a renamed copy of the plugin above, and not a
 child of `srcmorph-parent` (no `<parent>` at all). Its entire `pom.xml` is `groupId` +
 `artifactId` (`llamacpp-ai-index-maven-plugin`) + a version pinned independently at `1.0.4` +
-`<distributionManagement><relocation>` pointing at `net.ladenthin:srcmorph-maven-plugin:1.1.0`.
+`<distributionManagement><relocation>` pointing at `net.ladenthin:srcmorph-maven-plugin:1.1.1`.
 No source, no tests, no dependencies. Its sole purpose is so a consumer still declaring the old
 Maven coordinates gets redirected by Maven to the renamed plugin once both are published. Because
 it is still listed in the root `<modules>` for aggregation, a reactor-wide `mvn versions:set` run
@@ -261,7 +261,7 @@ mvn -pl srcmorph-maven-plugin srcmorph:generate -P srcmorph-selftest
 
 ```bash
 mvn -pl srcmorph-cli package
-java -jar srcmorph-cli/target/srcmorph-cli-1.1.0-jar-with-dependencies.jar examples/config_All.json
+java -jar srcmorph-cli/target/srcmorph-cli-1.1.1-jar-with-dependencies.jar examples/config_All.json
 ```
 
 See `examples/` (repo root) for ready-to-run `config_*.json`/`.yaml` + paired `run_*.sh`/`.bat`
