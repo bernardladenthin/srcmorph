@@ -4,7 +4,7 @@
 [srcmorph](../README.md): a single `java -jar` invocation driven by one JSON or YAML configuration
 file, with no Maven project or build required. It wraps the
 [`srcmorph`](../srcmorph/README.md) core library's engines exactly the way the
-[Maven plugin](../llamacpp-ai-index-maven-plugin/README.md) does, following the
+[Maven plugin](../srcmorph-maven-plugin/README.md) does, following the
 [BitcoinAddressFinder](https://github.com/bernardladenthin/BitcoinAddressFinder) `cli.Main` pattern.
 
 ## Running it
@@ -46,7 +46,7 @@ public class CConfiguration {
   `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`, the `llama*` fallback
   parameters, `force`, `planOnly`, `projectName`. If you already know the plugin's XML shape, you
   already know this shape — see
-  [`../llamacpp-ai-index-maven-plugin/README.md`](../llamacpp-ai-index-maven-plugin/README.md)'s
+  [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s
   "Configuration" section for the full field-by-field reference (routing-rule conditions, oversize
   strategies, per-model sampling parameters, etc.), which applies verbatim here.
 

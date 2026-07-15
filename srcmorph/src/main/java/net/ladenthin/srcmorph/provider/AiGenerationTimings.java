@@ -9,7 +9,7 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
 
 /**
  * A generated text plus the model's measured timing for that generation, used by the
- * {@code ai-index:calibrate} goal to derive per-machine throughput. Prefill = prompt processing; decode =
+ * {@code srcmorph:calibrate} goal to derive per-machine throughput. Prefill = prompt processing; decode =
  * answer generation. Rates of {@code 0} mean the provider did not report timings (e.g. the mock provider
  * or a binding that omits them).
  *

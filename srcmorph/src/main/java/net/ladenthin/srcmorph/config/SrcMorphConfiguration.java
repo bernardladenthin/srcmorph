@@ -11,14 +11,14 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Root mutable JavaBean holding every parameter a {@code srcmorph} run needs, independent of how it is
- * bound: today from Maven {@code @Parameter} fields (the {@code llamacpp-ai-index-maven-plugin} module's
+ * bound: today from Maven {@code @Parameter} fields (the {@code srcmorph-maven-plugin} module's
  * mojos each build one of these from their own annotated fields), tomorrow from a JSON/YAML config file
  * (a future CLI) or from plain Java code constructing one directly.
  *
  * <p><strong>Field names intentionally mirror today's Maven {@code @Parameter} field names</strong> (e.g.
  * {@link #outputDirectory}, {@link #fieldGenerations}, {@link #llamaContextSize}) so that a future
  * JSON/YAML config's keys read the same as the existing plugin XML — this class is the single shared
- * config object bindable from every surface. See {@code net.ladenthin.maven.llamacpp.aiindex.mojo}'s
+ * config object bindable from every surface. See {@code net.ladenthin.maven.srcmorph.mojo}'s
  * mojo classes (in the sibling plugin module) for the exact provenance of every field.</p>
  *
  * <p>Deliberately excluded: the per-goal {@code skip}/{@code skipFile}/{@code skipPackage}/

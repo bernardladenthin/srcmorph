@@ -12,8 +12,8 @@
  * {@code .ai.md} document codec, the per-phase orchestration engines, the file/package/project
  * indexers, the prompt templating support, the AI generation provider abstraction (incl. the
  * llama.cpp JNI binding), and the shared stateless helpers. The Maven plugin module
- * ({@code net.ladenthin.maven.llamacpp.aiindex}, still in its own reactor module) depends on
- * this module and supplies only the {@code mojo} entry points, which now delegate to the
+ * ({@code net.ladenthin.maven.srcmorph}, in its own reactor module {@code srcmorph-maven-plugin})
+ * depends on this module and supplies only the {@code mojo} entry points, which now delegate to the
  * {@code engine} package.</p>
  *
  * <p>JSpecify {@code @NullMarked} is declared at the module level here so that no source

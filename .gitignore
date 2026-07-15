@@ -33,17 +33,17 @@ replay_pid*
 *.hprof
 
 # jcstress / jqwik test outputs (generated at the repo root pre-reactor; each module's own
-# basedir post-reactor, e.g. llamacpp-ai-index-maven-plugin/.jqwik-database)
+# basedir post-reactor, e.g. srcmorph-maven-plugin/.jqwik-database)
 **/.jqwik-database
 
 # Benchmark/experiment scratch output dirs (not part of the build)
-llamacpp-ai-index-maven-plugin/src/siteGusto/
-llamacpp-ai-index-maven-plugin/src/siteMistral3/
-llamacpp-ai-index-maven-plugin/src/siteQwenBRUTAL/
+srcmorph-maven-plugin/src/siteGusto/
+srcmorph-maven-plugin/src/siteMistral3/
+srcmorph-maven-plugin/src/siteQwenBRUTAL/
 
 # IDE config
 .idea/
 
 # Generated AI-index output from the self-index run (keep the tracked placeholder)
-/llamacpp-ai-index-maven-plugin/src/site/ai/*
-!/llamacpp-ai-index-maven-plugin/src/site/ai/empty.md
+/srcmorph-maven-plugin/src/site/ai/*
+!/srcmorph-maven-plugin/src/site/ai/empty.md

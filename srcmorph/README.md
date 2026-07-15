@@ -4,7 +4,7 @@
 [srcmorph](../README.md) project: a prompt-driven source-tree transformer built on local llama.cpp
 (GGUF) models. It has **no dependency on the Maven Plugin API** (enforced by an ArchUnit rule —
 see `CoreArchitectureTest#coreIsMavenFree`), so it can be embedded in any JVM tool: a Maven plugin (see
-[`../llamacpp-ai-index-maven-plugin/`](../llamacpp-ai-index-maven-plugin/README.md)), a standalone CLI
+[`../srcmorph-maven-plugin/`](../srcmorph-maven-plugin/README.md)), a standalone CLI
 (see [`../srcmorph-cli/`](../srcmorph-cli/README.md)), a Gradle plugin, a test harness, or plain code.
 
 Package root: `net.ladenthin.srcmorph`.

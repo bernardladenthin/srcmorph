@@ -6,7 +6,7 @@ package net.ladenthin.srcmorph.config;
 import lombok.ToString;
 
 /**
- * Per-model, per-machine timing calibration measured by the {@code ai-index:calibrate} goal and pasted
+ * Per-model, per-machine timing calibration measured by the {@code srcmorph:calibrate} goal and pasted
  * onto an {@code <aiDefinition>} via {@code <calibration>}. It makes the plan's time estimate reflect the
  * actual hardware (GPU/CPU, quant, context) instead of the built-in reference-CPU coefficients.
  *

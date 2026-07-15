@@ -67,7 +67,7 @@ public class AiModelDefinition {
     private @Nullable List<String> drySequenceBreakers;
     private @Nullable List<String> stopStrings;
 
-    /** Optional per-machine timing calibration ({@code <calibration>}), measured by {@code ai-index:calibrate}. */
+    /** Optional per-machine timing calibration ({@code <calibration>}), measured by {@code srcmorph:calibrate}. */
     private @Nullable AiCalibration calibration;
 
     /**

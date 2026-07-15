@@ -224,13 +224,13 @@ jobs:
         run: |
           mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true compile
           # Three reactor modules each ship their own module-info.java / target/classes tree
-          # (srcmorph, srcmorph-cli, llamacpp-ai-index-maven-plugin) — print each separately.
+          # (srcmorph, srcmorph-cli, srcmorph-maven-plugin) — print each separately.
           echo "=== internal package dependency graph (jdeps, bytecode) — srcmorph ==="
           jdeps -verbose:package srcmorph/target/classes | grep 'net.ladenthin.srcmorph' || true
           echo "=== internal package dependency graph (jdeps, bytecode) — srcmorph-cli ==="
           jdeps -verbose:package srcmorph-cli/target/classes | grep 'net.ladenthin.srcmorph' || true
-          echo "=== internal package dependency graph (jdeps, bytecode) — llamacpp-ai-index-maven-plugin ==="
-          jdeps -verbose:package llamacpp-ai-index-maven-plugin/target/classes | grep 'net.ladenthin.maven.llamacpp.aiindex' || true
+          echo "=== internal package dependency graph (jdeps, bytecode) — srcmorph-maven-plugin ==="
+          jdeps -verbose:package srcmorph-maven-plugin/target/classes | grep 'net.ladenthin.maven.srcmorph' || true
 
   build:
     name: Build
@@ -250,11 +250,13 @@ jobs:
           name: plugin-jars
           # All three reactor modules now produce their own jars: srcmorph (core library),
           # srcmorph-cli (includes the jar-with-dependencies fat jar — the CLI's deliverable),
-          # and llamacpp-ai-index-maven-plugin (the Maven plugin, unchanged coordinates).
+          # and srcmorph-maven-plugin (the Maven plugin, renamed from llamacpp-ai-index-maven-plugin;
+          # the retired coordinates now live only in the pom-only relocation-stub module, which
+          # produces no jar).
           path: |
             srcmorph/target/*.jar
             srcmorph-cli/target/*.jar
-            llamacpp-ai-index-maven-plugin/target/*.jar
+            srcmorph-maven-plugin/target/*.jar
 
   test:
     name: Test
@@ -271,7 +273,7 @@ jobs:
         run: free -h
       - name: Test
         # Reactor-wide (no -pl): runs every module's tests. The `jcstress` profile is only
-        # declared in llamacpp-ai-index-maven-plugin/pom.xml, so it activates there and is a
+        # declared in srcmorph-maven-plugin/pom.xml, so it activates there and is a
         # silent no-op for srcmorph/srcmorph-cli (neither declares a profile with that id).
         run: mvn -e --batch-mode --no-transfer-progress -P jcstress verify
       - uses: actions/upload-artifact@v7
@@ -281,7 +283,7 @@ jobs:
           # the one forwarded to Coveralls/Codecov in the `report` job below, matching the
           # single-primary-module precedent already used by the sibling java-llama.cpp reactor
           # (which reports only its `llama` core module, not an aggregate across all modules).
-          # srcmorph-cli / llamacpp-ai-index-maven-plugin jacoco reports are not currently
+          # srcmorph-cli / srcmorph-maven-plugin jacoco reports are not currently
           # aggregated or uploaded (documented gap, see TODO.md).
           path: srcmorph/target/site/jacoco/jacoco.xml
           if-no-files-found: ignore
@@ -294,7 +296,7 @@ jobs:
         with:
           name: crash-dumps-test
           # Repo-wide glob: a forked surefire JVM crash can happen in any of the three module
-          # working directories (srcmorph / srcmorph-cli / llamacpp-ai-index-maven-plugin), each
+          # working directories (srcmorph / srcmorph-cli / srcmorph-maven-plugin), each
           # with its own target/ tree.
           path: |
             ${{ github.workspace }}/**/hs_err_pid*.log
@@ -306,7 +308,7 @@ jobs:
           if-no-files-found: ignore
       - name: Run PIT mutation tests
         # Scoped to srcmorph: it is the only reactor module with a pitest-maven execution
-        # (srcmorph-cli and llamacpp-ai-index-maven-plugin each document, in their own pom, why
+        # (srcmorph-cli and srcmorph-maven-plugin each document, in their own pom, why
         # they have no PIT gate yet — see TODO.md). `-am` builds srcmorph's own reactor
         # dependencies (none today) before running; without `-pl` this goal would otherwise be
         # invoked (harmlessly, but pointlessly) against every reactor module.
@@ -336,7 +338,7 @@ jobs:
         with: { java-version: '21', distribution: temurin, cache: maven }
       - name: Test under vmlens (one class — staged scope)
         # VmlensInterleavingSmokeTest and the `vmlens` profile both live in
-        # llamacpp-ai-index-maven-plugin/pom.xml (they were not relocated during the core
+        # srcmorph-maven-plugin/pom.xml (they were not relocated during the core
         # extraction — see CLAUDE.md) — scope directly to that module rather than the whole
         # reactor. `-am` is required (not just an optimization): srcmorph is a reactor-local
         # dependency, never published, so without `-am` this module's compile would fail trying
@@ -347,13 +349,13 @@ jobs:
         # `-Dsurefire.failIfNoSpecifiedTests=false` (verified locally: omitting it fails the
         # build on srcmorph with "No tests matching pattern ... were executed!").
         run: >-
-          mvn --batch-mode --no-transfer-progress -pl llamacpp-ai-index-maven-plugin -am -Pvmlens test
+          mvn --batch-mode --no-transfer-progress -pl srcmorph-maven-plugin -am -Pvmlens test
           -Dtest=VmlensInterleavingSmokeTest -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: vmlens-report
-          path: llamacpp-ai-index-maven-plugin/target/vmlens-report/
+          path: srcmorph-maven-plugin/target/vmlens-report/
           if-no-files-found: ignore
 
   report:
@@ -459,8 +461,8 @@ jobs:
           cp srcmorph/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
           cp srcmorph-cli/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
           cp srcmorph-cli/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
-          cp llamacpp-ai-index-maven-plugin/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
-          cp llamacpp-ai-index-maven-plugin/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -540,8 +542,8 @@ jobs:
           cp srcmorph/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
           cp srcmorph-cli/target/*.jar signed-release-assets/ 2>/dev/null || true
           cp srcmorph-cli/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
-          cp llamacpp-ai-index-maven-plugin/target/*.jar signed-release-assets/ 2>/dev/null || true
-          cp llamacpp-ai-index-maven-plugin/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar signed-release-assets/ 2>/dev/null || true
+          cp srcmorph-maven-plugin/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

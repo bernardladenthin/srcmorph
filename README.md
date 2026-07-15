@@ -76,12 +76,15 @@ code navigation; the same rule-routed pipeline (composable file-matching conditi
 model + prompt, oversize handling) is generic enough to eventually emit wikis, architecture docs,
 diagrams, or even source-to-source transformations.
 
-> **This repository is mid-migration.** It began life as a single Maven plugin and is being
-> restructured into a small reactor of three artifacts — see "Module overview" below. The **Maven
-> plugin keeps its original coordinates and property names in this release**; a later, separately
-> tagged release will relocate it to `net.ladenthin:srcmorph-maven-plugin` with a Maven Central
-> relocation POM, so existing consumers are never broken out from under them. See
-> [`CLAUDE.md`](CLAUDE.md) and [`TODO.md`](TODO.md) for the full migration status.
+> **Migration note.** This repository was restructured from a single Maven plugin into a reactor of
+> four artifacts — see "Module overview" below. As part of that migration the Maven plugin was
+> **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` to
+> `net.ladenthin:srcmorph-maven-plugin` (goal prefix `srcmorph`, properties `srcmorph.*`). Existing
+> consumers who still declare the old coordinates are **not** broken: the old artifactId is
+> published as a tiny relocation-stub POM (`<distributionManagement><relocation>`) that redirects
+> Maven to the new coordinates automatically — no consumer action required, though updating your own
+> POM to the new coordinates directly is recommended. See [`CLAUDE.md`](CLAUDE.md) and
+> [`TODO.md`](TODO.md) for the full migration status.
 
 ## Module overview
 
@@ -89,20 +92,22 @@ diagrams, or even source-to-source transformations.
 |---|---|---|
 | [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` engines. Use this to embed srcmorph in your own tooling. |
 | [`srcmorph-cli/`](srcmorph-cli/README.md) | `net.ladenthin:srcmorph-cli` | A standalone CLI driven by one JSON or YAML configuration file (ships as a `java -jar`-ready fat jar). No Maven project required. |
-| [`llamacpp-ai-index-maven-plugin/`](llamacpp-ai-index-maven-plugin/README.md) | `net.ladenthin:llamacpp-ai-index-maven-plugin` | The original Maven plugin, now a thin wrapper around `srcmorph`. **Coordinates/goal-prefix/properties unchanged in this release** — see the note above. |
+| [`srcmorph-maven-plugin/`](srcmorph-maven-plugin/README.md) | `net.ladenthin:srcmorph-maven-plugin` | The Maven plugin, a thin wrapper around `srcmorph` — **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` (goal prefix `srcmorph`, was `ai-index`; properties `srcmorph.*`, were `aiIndex.*`). |
+| [`llamacpp-ai-index-maven-plugin/`](llamacpp-ai-index-maven-plugin/pom.xml) | `net.ladenthin:llamacpp-ai-index-maven-plugin` (pinned at `1.0.4`) | A tiny relocation-stub POM — no source, no dependencies — that redirects Maven Central consumers of the old plugin coordinates to `srcmorph-maven-plugin`. |
 
-All three (plus the reactor parent pom) are released together from this one repository at the same
-version.
+The first three modules (plus the reactor parent pom) are released together from this one
+repository at the same version; the relocation stub is versioned and published independently (see
+`CLAUDE.md`).
 
 ## Quickstart
 
-### 1. Maven plugin (current coordinates)
+### 1. Maven plugin
 
 ```xml
 <plugin>
     <groupId>net.ladenthin</groupId>
-    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
-    <version>1.0.2</version>
+    <artifactId>srcmorph-maven-plugin</artifactId>
+    <version>1.1.0</version>
     <configuration>
         <generationProvider>mock</generationProvider>
         <promptDefinitions>
@@ -129,8 +134,24 @@ version.
 </plugin>
 ```
 
-Run with `mvn ai-index:generate`. Full goal/parameter reference, routing rules, GPU acceleration, and
-model recommendations: [`llamacpp-ai-index-maven-plugin/README.md`](llamacpp-ai-index-maven-plugin/README.md).
+Run with `mvn srcmorph:generate`. Full goal/parameter reference, routing rules, GPU acceleration, and
+model recommendations: [`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin/README.md).
+
+<details>
+<summary>Deprecated: old <code>net.ladenthin:llamacpp-ai-index-maven-plugin</code> coordinates (auto-relocates)</summary>
+
+```xml
+<plugin>
+    <groupId>net.ladenthin</groupId>
+    <artifactId>llamacpp-ai-index-maven-plugin</artifactId>
+    <version>1.0.4</version>
+    <!-- Maven Central redirects this artifact to net.ladenthin:srcmorph-maven-plugin:1.1.0 via a
+         published <distributionManagement><relocation> POM. Prefer declaring the new coordinates
+         above directly in new/updated POMs. -->
+</plugin>
+```
+
+</details>
 
 ### 2. Standalone CLI
 

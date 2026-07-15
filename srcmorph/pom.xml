@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     <packaging>jar</packaging>
 
     <name>srcmorph</name>
-    <description>Core library extracted from llamacpp-ai-index-maven-plugin: routing/configuration model, the .ai.md document codec, the file/package/project indexers, prompt templating support, and the AI generation provider abstraction (incl. the llama.cpp JNI binding). Framework-free (no Maven plugin API); the llamacpp-ai-index-maven-plugin module supplies only the Mojo entry points on top of this library.</description>
+    <description>Core library extracted from llamacpp-ai-index-maven-plugin: routing/configuration model, the .ai.md document codec, the file/package/project indexers, prompt templating support, and the AI generation provider abstraction (incl. the llama.cpp JNI binding). Framework-free (no Maven plugin API); the srcmorph-maven-plugin module supplies only the Mojo entry points on top of this library.</description>
 
     <properties>
         <sonar.organization>bernardladenthin</sonar.organization>
@@ -131,7 +131,7 @@ SPDX-License-Identifier: Apache-2.0
         <!--
             Lincheck linearizability check (AiGenerationKindLincheckTest, moved here with the
             config package). No jcstress/vmlens/JMH dependency: those test files stay behind in
-            the llamacpp-ai-index-maven-plugin module (their packages were not among the six
+            the srcmorph-maven-plugin module (their packages were not among the six
             extracted here) and jcstress/JMH have no consumer in this module today.
         -->
         <dependency>
@@ -405,7 +405,7 @@ SPDX-License-Identifier: Apache-2.0
                         <configuration>
                             <!-- Drop -parameters for test compile so Lincheck reflection doesn't
                                  pick up parameter names from MethodParameters (mirrors the
-                                 llamacpp-ai-index-maven-plugin module's rationale, which also covers
+                                 srcmorph-maven-plugin module's rationale, which also covers
                                  jcstress there). -->
                             <parameters>false</parameters>
                             <compilerArgs combine.self="override">
@@ -573,7 +573,7 @@ SPDX-License-Identifier: Apache-2.0
                           AggregateProjectEngine, CalibrateEngine. These are the orchestration classes
                           that replaced the mojo execute() bodies - they own AiGenerationProvider
                           try-with-resources lifecycles, multi-step control flow, and logging, the same
-                          shape the sibling llamacpp-ai-index-maven-plugin module's own pom.xml comment
+                          shape the sibling srcmorph-maven-plugin module's own pom.xml comment
                           says mojos are not PIT-gated for ("Mojos are typically integration-tested via
                           Maven invoker/executor rather than unit-mutation-tested"). They are instead
                           covered by ordinary JUnit tests in engine/*Test.java (planOnly/unmatched/
@@ -641,14 +641,14 @@ SPDX-License-Identifier: Apache-2.0
         <!-- Opt-in GPU acceleration: select a GPU native build of net.ladenthin:llama instead of the
              default CPU (Ninja) main jar. The GPU build auto-offloads; set -Dai.gpuLayers=N for partial
              offload when the model does not fit in VRAM (the ai.gpuLayers/ai.mainGpu/ai.devices
-             properties themselves stay declared in the llamacpp-ai-index-maven-plugin module's pom,
-             where they are actually consumed by the ai-index-selftest profile's <aiDefinition>
+             properties themselves stay declared in the srcmorph-maven-plugin module's pom,
+             where they are actually consumed by the srcmorph-selftest profile's <aiDefinition>
              blocks). The GPU runtime must be on PATH:
                CUDA  -> the CUDA Toolkit's bin\x64 (cudart64_13.dll, cublas64_13.dll); needs a matching
                         CUDA 13 toolkit + NVIDIA driver. Fastest on NVIDIA (measured ~4.5x CPU).
                Vulkan-> a Vulkan loader (ships with GPU drivers); works on AMD + NVIDIA, but the first
                         run pays a one-time shader-compilation cost.
-             Example: mvn ai-index:generate -P gpu-cuda -Dai.gpuLayers=20 (run from the plugin module,
+             Example: mvn srcmorph:generate -P gpu-cuda -Dai.gpuLayers=20 (run from the plugin module,
              which pulls this module's GPU-classified llama jar transitively via the classifier below).
              (OpenCL is intentionally not offered: llama.cpp's OpenCL backend does not support NVIDIA.) -->
         <profile>

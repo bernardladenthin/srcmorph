@@ -65,15 +65,25 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         Reactor modules. `srcmorph` is the extracted core library (config/document/indexer/prompt/
         provider/support — framework-free, no Maven plugin API); `srcmorph-cli` is the standalone
-        JSON/YAML-driven CLI (fat jar deliverable) built on top of it; `llamacpp-ai-index-maven-plugin`
-        depends on the core library too and supplies only the Mojo entry points (still under its
-        current coordinates, package, and goalPrefix — the plugin's own rename to
-        `srcmorph-maven-plugin` is deferred to the final migration step, once the whole reactor is
-        proven working).
+        JSON/YAML-driven CLI (fat jar deliverable) built on top of it; `srcmorph-maven-plugin`
+        depends on the core library too and supplies only the Mojo entry points (renamed from
+        `llamacpp-ai-index-maven-plugin` in the final migration step — goal prefix `srcmorph`,
+        package `net.ladenthin.maven.srcmorph.mojo`, properties `srcmorph.*`).
+
+        `llamacpp-ai-index-maven-plugin` here is NOT the renamed plugin — it is a separate,
+        minimal relocation-stub module (its own pom.xml has no <parent>, is version-pinned
+        independently at 1.0.4, and carries only a <distributionManagement><relocation> pointing
+        at srcmorph-maven-plugin) kept only so Maven Central consumers still resolving the old
+        coordinates get redirected. IMPORTANT: `mvn versions:set` run from this root walks every
+        module in this list, including that stub — always pass
+        `-Dexcludes=net.ladenthin:llamacpp-ai-index-maven-plugin` when bumping the reactor version
+        so its pinned 1.0.4 is never accidentally overwritten. See that module's own pom.xml
+        comment and TODO.md for the same caveat.
     -->
     <modules>
         <module>srcmorph</module>
         <module>srcmorph-cli</module>
+        <module>srcmorph-maven-plugin</module>
         <module>llamacpp-ai-index-maven-plugin</module>
     </modules>
 

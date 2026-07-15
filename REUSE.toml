@@ -7,7 +7,7 @@ SPDX-PackageDownloadLocation = "https://github.com/bernardladenthin/llamacpp-ai-
 path = [
     "**.md",
     "CITATION.cff",
-    "llamacpp-ai-index-maven-plugin/src/site/ai/empty.md",
+    "srcmorph-maven-plugin/src/site/ai/empty.md",
     "docs/RELEASE.md",
     ".github/ISSUE_TEMPLATE/bug_report.md",
     ".github/ISSUE_TEMPLATE/feature_request.md",

@@ -1,4 +1,4 @@
-# Code Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
+# Code Writing Guide — srcmorph (reactor-wide Supplement)
 
 > **Canonical workspace rules** for production sources live in
 > [`../workspace/guides/src/CODE_WRITING_GUIDE-8.md`](../workspace/guides/src/CODE_WRITING_GUIDE-8.md)

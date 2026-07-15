@@ -1,4 +1,4 @@
-# TODO — srcmorph (llamacpp-ai-index-maven-plugin reactor)
+# TODO — srcmorph reactor (Maven plugin now `srcmorph-maven-plugin`, formerly `llamacpp-ai-index-maven-plugin`)
 
 Open work items for this repo. Cross-cutting tracking lives in
 [`../workspace/crossrepostatus.md`](../workspace/crossrepostatus.md); items here are
@@ -8,12 +8,14 @@ recorded in git history and `crossrepostatus.md`, not here.
 ## Open
 
 - **Migration step 8 — CI full pass + first reactor release.** `.github/workflows/publish.yml`
-  is now adapted to the 3-module reactor: the `build` job uploads jars from all three modules
-  (`srcmorph` / `srcmorph-cli`, including its `jar-with-dependencies` fat jar / `llamacpp-ai-index-maven-plugin`);
+  is now adapted to the 3-module reactor (module names as of that step; the plugin module has
+  since been renamed `srcmorph-maven-plugin` in step 9 below, and CI was updated to match): the
+  `build` job uploads jars from all three modules
+  (`srcmorph` / `srcmorph-cli`, including its `jar-with-dependencies` fat jar / the plugin module);
   crash-dump globs are repo-wide (`**/hs_err_pid*.log` etc., since a forked surefire JVM can crash
   in any module's own working directory); the PIT step is scoped to `-pl srcmorph -am` (the only
   module with a `pitest-maven` execution) with its report glob at `srcmorph/target/pit-reports/**`;
-  the `vmlens` job is scoped to `-pl llamacpp-ai-index-maven-plugin -am` (where
+  the `vmlens` job is scoped to `-pl srcmorph-maven-plugin -am` (where
   `VmlensInterleavingSmokeTest` and the `vmlens` profile actually live — not relocated during the
   core extraction) and additionally passes `-Dsurefire.failIfNoSpecifiedTests=false` (the
   `-DfailIfNoTests=false` flag alone does not suppress the "-Dtest pattern matched nothing"
@@ -28,21 +30,34 @@ recorded in git history and `crossrepostatus.md`, not here.
   performed as part of this CI-adaptation step. This is the gate the user asked for before step 9
   ("if all is working stat I can safely do the final rename").
 
-- **Migration step 9 — plugin rename + Maven Central relocation (deferred, do only after step 8
-  ships a real release).** Rename `llamacpp-ai-index-maven-plugin`'s own coordinates to
-  `net.ladenthin:srcmorph-maven-plugin` (goal prefix `srcmorph`, package
-  `net.ladenthin.maven.srcmorph.mojo`, properties `aiIndex.*` → `srcmorph.*`), and add a
-  relocation-stub module/POM for the old `net.ladenthin:llamacpp-ai-index-maven-plugin` coordinates
-  (only `groupId`/`artifactId`/`version` + `<distributionManagement><relocation>` — no source, no
-  dependencies) so existing consumers resolving the old artifact get redirected. This is the last,
-  isolated step of the migration; do not do it early, and do not describe it as already done in any
-  documentation until it actually ships.
+- **Migration step 9 — plugin rename + Maven Central relocation. DONE (structurally; publishing is
+  still the user's own later action).** The former `llamacpp-ai-index-maven-plugin` module was
+  renamed to `srcmorph-maven-plugin` (`net.ladenthin:srcmorph-maven-plugin`, goal prefix `srcmorph`,
+  package `net.ladenthin.maven.srcmorph.mojo`, properties `aiIndex.*` → `srcmorph.*`), and a new,
+  independent relocation-stub module `llamacpp-ai-index-maven-plugin/` (pom-only, no `<parent>`,
+  pinned at version `1.0.4`, only `<distributionManagement><relocation>` pointing at
+  `net.ladenthin:srcmorph-maven-plugin:1.1.0`) was added back to the root `<modules>` list so
+  existing consumers resolving the old coordinates get redirected once it is actually published.
+  This is the last, isolated step of the migration in terms of code/POM structure — actually
+  publishing both the `1.1.0` reactor release and the `1.0.4` relocation stub to Maven Central is
+  still the user's own action (this task never ran `mvn deploy` or signed anything).
+
+  **Caveat — exclude the stub from reactor-wide version bumps.** Because the relocation stub is
+  listed in the root `<modules>`, a `mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false` run
+  from the repo root walks every module reachable from that list — including the stub — and would
+  overwrite its frozen `1.0.4` unless explicitly excluded:
+  ```bash
+  mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false \
+      -Dexcludes=net.ladenthin:llamacpp-ai-index-maven-plugin
+  ```
+  The same warning is documented in the stub's own `pom.xml` comment and in the root `CLAUDE.md`
+  reactor-layout section.
 
 - **PIT mutation-testing gate for `srcmorph-cli` and the plugin module.** Only `srcmorph`
   (`srcmorph/pom.xml`) is PIT-gated today — `<mutationThreshold>100</mutationThreshold>` over an
   explicit `<targetClasses>` list of 47 classes across config/document/engine/indexer/prompt/
   provider/support, all killed at 100%. Neither `srcmorph-cli` nor
-  `llamacpp-ai-index-maven-plugin` has a `pitest-maven` execution of its own yet (both poms document
+  `srcmorph-maven-plugin` has a `pitest-maven` execution of its own yet (both poms document
   this explicitly with a comment at the spot a PIT plugin block would go). For the CLI: the pure
   helpers worth mutation-gating are the config copy/round-trip (`Main#copyWithPlanOnlyForced`) and
   command dispatch; `Main`'s I/O-heavy entry points (`main`, `loadConfiguration`) are better served by

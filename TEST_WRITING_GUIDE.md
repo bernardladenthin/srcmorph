@@ -1,4 +1,4 @@
-# Unit Test Writing Guide — llamacpp-ai-index-maven-plugin (Plugin-Specific Supplement)
+# Unit Test Writing Guide — srcmorph (reactor-wide Supplement)
 
 > **Canonical workspace rules** for test sources live in
 > [`../workspace/guides/test/TEST_WRITING_GUIDE-8.md`](../workspace/guides/test/TEST_WRITING_GUIDE-8.md)
@@ -39,7 +39,7 @@ Every test file **must** start with the formatter-off block enclosing the Apache
  *
  */
 // @formatter:on
-package net.ladenthin.maven.llamacpp.aiindex;
+package net.ladenthin.maven.srcmorph;
 ```
 
 - The `// @formatter:off` / `// @formatter:on` pair wraps **only** the license block.
@@ -337,7 +337,7 @@ public class AiMdHeaderCodecTest {
 ```
 
 For sources shared across multiple test classes, reference a fully-qualified method:
-`@MethodSource("net.ladenthin.maven.llamacpp.aiindex.CommonDataProvider#nodeTypes")`.
+`@MethodSource("net.ladenthin.maven.srcmorph.CommonDataProvider#nodeTypes")`.
 
 ---
 
@@ -504,7 +504,7 @@ The goal is to **minimize the diff** to only lines that actually need changing.
  *
  */
 // @formatter:on
-package net.ladenthin.maven.llamacpp.aiindex;
+package net.ladenthin.maven.srcmorph;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;

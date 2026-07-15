@@ -16,7 +16,7 @@ import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
  * routed model, in calibration order.
  *
  * <p>{@link #renderXml()} is the pure, paste-ready {@code <calibration>} XML block renderer — the same
- * text the {@code ai-index:calibrate} goal has always printed, extracted here so it is unit-testable
+ * text the {@code srcmorph:calibrate} goal has always printed, extracted here so it is unit-testable
  * without a Maven {@code Log} and reusable by any future caller (e.g. a CLI).</p>
  */
 @ToString

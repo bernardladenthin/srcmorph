@@ -30,13 +30,13 @@ mvn package -DskipTests
 mvn install
 
 # Run the plugin against itself (self-test; requires a local GGUF model)
-mvn clean install -Pai-index-selftest
+mvn clean install -Psrcmorph-selftest
 
 # Run with native llama.cpp JNI tests enabled
-mvn clean install -Pai-index-selftest -DrunNativeLlamaTests=true
+mvn clean install -Psrcmorph-selftest -DrunNativeLlamaTests=true
 
 # Skip AI generation during build
-mvn clean install -DaiIndex.skip=true
+mvn clean install -Dsrcmorph.skip=true
 ```
 
 ### Offline / restricted-network environments

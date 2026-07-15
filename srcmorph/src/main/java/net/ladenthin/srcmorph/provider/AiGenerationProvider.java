@@ -23,7 +23,7 @@ public interface AiGenerationProvider extends AutoCloseable {
 
     /**
      * Generates text and returns it together with the model's measured timing, for the
-     * {@code ai-index:calibrate} goal. The default implementation delegates to {@link #generate} and
+     * {@code srcmorph:calibrate} goal. The default implementation delegates to {@link #generate} and
      * reports no timings (rates {@code 0}); providers that expose timings override this.
      *
      * @param request the generation request
