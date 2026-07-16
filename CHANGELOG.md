@@ -9,6 +9,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ---
 
+## [Unreleased]
+
 ## [1.1.1] - 2026-07-15
 
 ### Added

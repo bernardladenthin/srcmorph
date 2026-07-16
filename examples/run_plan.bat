@@ -8,7 +8,7 @@ rem GenerateFileIndex phase with planOnly forced true by the Plan command) - no 
 rem and nothing is written. Safe to run with no GGUF model on disk (generationProvider is "mock").
 rem
 rem The fat jar's file name is version-qualified (e.g.
-rem srcmorph-cli-1.1.1-jar-with-dependencies.jar) and changes on every version bump, so
+rem srcmorph-cli-1.2.0-SNAPSHOT-jar-with-dependencies.jar) and changes on every version bump, so
 rem the loop below picks whichever one was last built by "mvn package" in ..\srcmorph-cli.
 setlocal
 cd /d "%~dp0"

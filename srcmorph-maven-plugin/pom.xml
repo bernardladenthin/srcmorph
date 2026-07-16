@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     <parent>
         <groupId>net.ladenthin</groupId>
         <artifactId>srcmorph-parent</artifactId>
-        <version>1.1.1</version>
+        <version>1.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
         <exp.pkgPrompt>package-body</exp.pkgPrompt>
         -->
 
-        <project.build.outputTimestamp>2026-07-15T22:33:37Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-07-15T23:12:53Z</project.build.outputTimestamp>
 
     </properties>
 

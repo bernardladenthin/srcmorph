@@ -8,7 +8,7 @@
 # required - point generationProvider at "llamacpp-jni" and set a real modelPath to run a model.
 #
 # The fat jar's file name is version-qualified (e.g.
-# srcmorph-cli-1.1.1-jar-with-dependencies.jar) and changes on every version bump, so the
+# srcmorph-cli-1.2.0-SNAPSHOT-jar-with-dependencies.jar) and changes on every version bump, so the
 # glob below picks whichever one was last built by `mvn package` in ../srcmorph-cli.
 set -euo pipefail
 cd "$(dirname "$0")"
