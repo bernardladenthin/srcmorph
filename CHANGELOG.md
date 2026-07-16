@@ -11,6 +11,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Removed
+- **Relocation-stub module** (`llamacpp-ai-index-maven-plugin/`, `net.ladenthin:llamacpp-ai-index-maven-plugin`)
+  removed from the active reactor. It was published once at `1.0.4` as part of the `1.1.1` release
+  and the redirect verified working end-to-end (a clean-environment Maven resolution of the old
+  coordinates correctly follows the relocation through to `srcmorph-maven-plugin:1.1.1` and its
+  full dependency graph). The published `1.0.4` artifact is permanent on Maven Central regardless
+  of this repo's module list and will never need another release, so there is no reason to keep
+  carrying the module (and the `versions:set -Dexcludes=...` caveat it required) in ongoing
+  development. `.github/workflows/publish.yml` updated accordingly (no more per-module handling for
+  a fourth artifact).
+
 ## [1.1.1] - 2026-07-15
 
 ### Added
@@ -119,8 +130,8 @@ First public release on Maven Central. Pre-OpenSSF history themes (March–May 2
 
 ---
 
-[Unreleased]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.1.1...HEAD
-[1.1.1]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.2...v1.1.1
-[1.0.2]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.1...v1.0.2
-[1.0.1]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/releases/tag/v1.0.0
+[Unreleased]: https://github.com/bernardladenthin/srcmorph/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/bernardladenthin/srcmorph/compare/v1.0.2...v1.1.1
+[1.0.2]: https://github.com/bernardladenthin/srcmorph/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/bernardladenthin/srcmorph/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/bernardladenthin/srcmorph/releases/tag/v1.0.0

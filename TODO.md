@@ -7,17 +7,6 @@ recorded in git history and `crossrepostatus.md`, not here.
 
 ## Open
 
-- **Caveat — exclude the stub from reactor-wide version bumps.** Because the relocation stub is
-  listed in the root `<modules>`, a `mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false` run
-  from the repo root walks every module reachable from that list — including the stub — and would
-  overwrite its frozen `1.0.4` unless explicitly excluded:
-  ```bash
-  mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false \
-      -Dexcludes=net.ladenthin:llamacpp-ai-index-maven-plugin
-  ```
-  The same warning is documented in the stub's own `pom.xml` comment and in the root `CLAUDE.md`
-  reactor-layout section.
-
 - **PIT mutation-testing gate for `srcmorph-cli` and the plugin module.** Only `srcmorph`
   (`srcmorph/pom.xml`) is PIT-gated today — `<mutationThreshold>100</mutationThreshold>` over an
   explicit `<targetClasses>` list of 47 classes across config/document/engine/indexer/prompt/
@@ -46,5 +35,3 @@ recorded in git history and `crossrepostatus.md`, not here.
 - **Null-safety refinement.** JSpecify + NullAway are enforced at compile time in strict JSpecify mode in every module (see each module's own `pom.xml`); `@NullMarked` on the package; framework-populated POJOs carry class-level `@SuppressWarnings({"NullAway.Init","initialization.fields.uninitialized"})`. Open follow-up: review remaining unannotated public API surfaces for places where `@Nullable` would be more precise than the implicit non-null default.
 
 - **Cross-repo code-quality TODOs** — see [`../workspace/policies/code-quality-todos.md`](../workspace/policies/code-quality-todos.md) for the canonical `@VisibleForTesting` design-fit review, package hierarchy review, and class/method naming review. This repo has no `@VisibleForTesting` usages today; the package and naming reviews are still open here.
-
-- **SLF4J gap CLOSED (core + CLI).** `srcmorph`'s `indexer.*` classes (`SourceFileIndexer`, `PackageIndexer`, `ProjectIndexer`, `AiFieldGenerationSupport`) and `engine.*` classes all log via `org.slf4j.Logger` instead of a Maven `Log`; `srcmorph-cli`'s `Main` does the same. Only the plugin module's 5 mojos (and `PluginArchitectureTest`'s Maven-confinement rules) still touch the Maven Plugin API directly — that boundary is deliberate (see `CLAUDE.md`), not a gap. Maven's `maven-slf4j-provider` binds `slf4j-api` inside plugin executions, so every `LOGGER.info(...)`/`.warn(...)`/`.debug(...)` call in the delegated-to `srcmorph` code surfaces as a normal `[INFO]`/`[WARN]`/`[DEBUG]` line in `mvn` output with zero glue; the CLI ships its own logback binding for the same log lines outside Maven. `AiFieldGenerationSupportTest` (in `srcmorph`) exercises the binding/configuration directly via a logback `ListAppender` attached to the class logger.

@@ -9,10 +9,10 @@ retrieval.
 > for the product overview, badges, and build status. **This plugin was renamed** from
 > `net.ladenthin:llamacpp-ai-index-maven-plugin` to `net.ladenthin:srcmorph-maven-plugin` (goal
 > prefix `srcmorph`, properties `srcmorph.*`) as part of the reactor migration's final step.
-> Consumers still declaring the old coordinates are transparently redirected: the old artifactId is
-> now published only as a tiny relocation-stub POM
-> (`../llamacpp-ai-index-maven-plugin/pom.xml`, `<distributionManagement><relocation>`) pointing here
-> — see the root README's migration note. Internally, the plugin depends on
+> Consumers still declaring the old coordinates are transparently redirected: the old artifactId was
+> published once (`1.0.4`, a tiny relocation-stub POM with only a
+> `<distributionManagement><relocation>` pointing here) and the redirect verified working — see the
+> root README's migration note. Internally, the plugin depends on
 > [`net.ladenthin:srcmorph`](../srcmorph/README.md) (a sibling reactor module) for all of
 > its engine/indexing logic — the 5 Mojo classes in this module are thin wrappers that map their
 > `@Parameter` fields onto a shared `SrcMorphConfiguration` and delegate to one of `srcmorph`'s

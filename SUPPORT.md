@@ -2,9 +2,9 @@
 
 If you need help with this project:
 
-- **Bug reports / feature requests** — open an issue: https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/issues
+- **Bug reports / feature requests** — open an issue: https://github.com/bernardladenthin/srcmorph/issues
 - **Security vulnerabilities** — please do **not** file public issues; see [SECURITY.md](./SECURITY.md) for the private reporting channel.
-- **Questions / general discussion** — use [GitHub Discussions](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/discussions) if enabled, or open an issue and label it `question`.
+- **Questions / general discussion** — use [GitHub Discussions](https://github.com/bernardladenthin/srcmorph/discussions) if enabled, or open an issue and label it `question`.
 
 For broader context, also see:
 

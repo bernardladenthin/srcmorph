@@ -18,7 +18,7 @@ The project has not yet cut a versioned release. Security fixes are applied dire
 
 Use GitHub's built-in private vulnerability reporting mechanism:
 
-https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/security/advisories/new
+https://github.com/bernardladenthin/srcmorph/security/advisories/new
 
 This creates a private advisory that only the maintainers can see.
 

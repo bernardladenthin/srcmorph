@@ -21,14 +21,14 @@
 [![Lincheck](https://img.shields.io/badge/tested%20with-Lincheck-7F52FF)](https://github.com/JetBrains/lincheck)  
 [![vmlens](https://img.shields.io/badge/tested%20with-vmlens-ff6f00)](https://vmlens.com)  
 [![JMH](https://img.shields.io/badge/benchmarked%20with-JMH-25A162)](https://openjdk.org/projects/code-tools/jmh/)  
-[![Publish](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml/badge.svg)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
-[![CodeQL](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/codeql.yml/badge.svg)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/codeql.yml)  
+[![Publish](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml/badge.svg)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
+[![CodeQL](https://github.com/bernardladenthin/srcmorph/actions/workflows/codeql.yml/badge.svg)](https://github.com/bernardladenthin/srcmorph/actions/workflows/codeql.yml)  
 
 **Coverage:**  
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/llamacpp-ai-index-maven-plugin?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(47%20classes)-brightgreen)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(47%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_llamacpp-ai-index-maven-plugin&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_llamacpp-ai-index-maven-plugin)  
@@ -39,20 +39,20 @@
 [![Known Vulnerabilities](https://snyk.io/test/github/bernardladenthin/llamacpp-ai-index-maven-plugin/badge.svg?targetFile=pom.xml)](https://snyk.io/test/github/bernardladenthin/llamacpp-ai-index-maven-plugin?targetFile=pom.xml)  
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbernardladenthin%2Fllamacpp-ai-index-maven-plugin.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbernardladenthin%2Fllamacpp-ai-index-maven-plugin?ref=badge_shield)  
 [![Dependencies](https://img.shields.io/librariesio/github/bernardladenthin/llamacpp-ai-index-maven-plugin)](https://libraries.io/github/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-[![OSV-Scanner](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/osv-scanner.yml/badge.svg)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/actions/workflows/osv-scanner.yml)  
+[![OSV-Scanner](https://github.com/bernardladenthin/srcmorph/actions/workflows/osv-scanner.yml/badge.svg)](https://github.com/bernardladenthin/srcmorph/actions/workflows/osv-scanner.yml)  
 
 **Package:**  
-[![Maven Central](https://img.shields.io/maven-central/v/net.ladenthin/llamacpp-ai-index-maven-plugin)](https://central.sonatype.com/artifact/net.ladenthin/llamacpp-ai-index-maven-plugin)  
-[![Snapshot](https://img.shields.io/badge/snapshot-latest-informational)](https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/llamacpp-ai-index-maven-plugin/)  
-![Release Date](https://img.shields.io/github/release-date/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-![Last Commit](https://img.shields.io/github/last-commit/bernardladenthin/llamacpp-ai-index-maven-plugin)  
+[![Maven Central](https://img.shields.io/maven-central/v/net.ladenthin/srcmorph-maven-plugin)](https://central.sonatype.com/artifact/net.ladenthin/srcmorph-maven-plugin)  
+[![Snapshot](https://img.shields.io/badge/snapshot-latest-informational)](https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/srcmorph-maven-plugin/)  
+![Release Date](https://img.shields.io/github/release-date/bernardladenthin/srcmorph)  
+![Last Commit](https://img.shields.io/github/last-commit/bernardladenthin/srcmorph)  
 
 **License:**  
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange)](./LICENSE)  
 
 **Community:**  
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12863/badge)](https://www.bestpractices.dev/projects/12863)  
-[![Contribute with Gitpod](https://img.shields.io/badge/Contribute%20with-Gitpod-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin)  
+[![Contribute with Gitpod](https://img.shields.io/badge/Contribute%20with-Gitpod-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/bernardladenthin/srcmorph)  
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/badge)](https://scorecard.dev/viewer/?uri=github.com/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-success?logo=dependabot)](./.github/dependabot.yml)  
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://www.conventionalcommits.org/en/v1.0.0/)  
@@ -60,9 +60,9 @@
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue)](https://semver.org/spec/v2.0.0.html)  
 [![REUSE](https://api.reuse.software/badge/github.com/bernardladenthin/llamacpp-ai-index-maven-plugin)](https://api.reuse.software/info/github.com/bernardladenthin/llamacpp-ai-index-maven-plugin)  
 [![Maintained?](https://isitmaintained.com/badge/resolution/bernardladenthin/llamacpp-ai-index-maven-plugin.svg)](https://isitmaintained.com/project/bernardladenthin/llamacpp-ai-index-maven-plugin)  
-[![Issues](https://img.shields.io/github/issues/bernardladenthin/llamacpp-ai-index-maven-plugin)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/issues)  
-[![Pull Requests](https://img.shields.io/github/issues-pr/bernardladenthin/llamacpp-ai-index-maven-plugin)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/pulls)  
-[![GitHub Stars](https://img.shields.io/github/stars/bernardladenthin/llamacpp-ai-index-maven-plugin?style=social)](https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/stargazers)  
+[![Issues](https://img.shields.io/github/issues/bernardladenthin/srcmorph)](https://github.com/bernardladenthin/srcmorph/issues)  
+[![Pull Requests](https://img.shields.io/github/issues-pr/bernardladenthin/srcmorph)](https://github.com/bernardladenthin/srcmorph/pulls)  
+[![GitHub Stars](https://img.shields.io/github/stars/bernardladenthin/srcmorph?style=social)](https://github.com/bernardladenthin/srcmorph/stargazers)  
 [![Treeware](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=Treeware&query=%24.total&url=https%3A%2F%2Fpublic.offset.earth%2Fusers%2Ftreeware%2Ftrees)](https://treeware.earth)  
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
@@ -77,14 +77,15 @@ model + prompt, oversize handling) is generic enough to eventually emit wikis, a
 diagrams, or even source-to-source transformations.
 
 > **Migration note.** This repository was restructured from a single Maven plugin into a reactor of
-> four artifacts — see "Module overview" below. As part of that migration the Maven plugin was
+> three artifacts — see "Module overview" below. As part of that migration the Maven plugin was
 > **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` to
 > `net.ladenthin:srcmorph-maven-plugin` (goal prefix `srcmorph`, properties `srcmorph.*`). Existing
-> consumers who still declare the old coordinates are **not** broken: the old artifactId is
-> published as a tiny relocation-stub POM (`<distributionManagement><relocation>`) that redirects
-> Maven to the new coordinates automatically — no consumer action required, though updating your own
-> POM to the new coordinates directly is recommended. See [`CLAUDE.md`](CLAUDE.md) and
-> [`TODO.md`](TODO.md) for the full migration status.
+> consumers who still declare the old coordinates are **not** broken: the old artifactId was
+> published once, at version `1.0.4`, as a tiny relocation-stub POM
+> (`<distributionManagement><relocation>`) that redirects Maven to the new coordinates
+> automatically — verified working end-to-end from a clean environment. No consumer action is
+> required, though updating your own POM to the new coordinates directly is recommended. See
+> [`CLAUDE.md`](CLAUDE.md) for the full migration history.
 
 ## Module overview
 
@@ -93,11 +94,12 @@ diagrams, or even source-to-source transformations.
 | [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` engines. Use this to embed srcmorph in your own tooling. |
 | [`srcmorph-cli/`](srcmorph-cli/README.md) | `net.ladenthin:srcmorph-cli` | A standalone CLI driven by one JSON or YAML configuration file (ships as a `java -jar`-ready fat jar). No Maven project required. |
 | [`srcmorph-maven-plugin/`](srcmorph-maven-plugin/README.md) | `net.ladenthin:srcmorph-maven-plugin` | The Maven plugin, a thin wrapper around `srcmorph` — **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` (goal prefix `srcmorph`, was `ai-index`; properties `srcmorph.*`, were `aiIndex.*`). |
-| [`llamacpp-ai-index-maven-plugin/`](llamacpp-ai-index-maven-plugin/pom.xml) | `net.ladenthin:llamacpp-ai-index-maven-plugin` (pinned at `1.0.4`) | A tiny relocation-stub POM — no source, no dependencies — that redirects Maven Central consumers of the old plugin coordinates to `srcmorph-maven-plugin`. |
 
-The first three modules (plus the reactor parent pom) are released together from this one
-repository at the same version; the relocation stub is versioned and published independently (see
-`CLAUDE.md`).
+All three modules (plus the reactor parent pom) are released together from this one repository at
+the same version. (A fourth, independently-versioned relocation-stub module for the retired
+`net.ladenthin:llamacpp-ai-index-maven-plugin` coordinates was part of this reactor through the
+`1.1.1` release and has since been removed — its published `1.0.4` artifact remains permanently on
+Maven Central regardless; see `CLAUDE.md`.)
 
 ## Quickstart
 

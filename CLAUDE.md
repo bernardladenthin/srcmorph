@@ -12,26 +12,33 @@ layered output — per-file, then per-package, then per-project. Today it emits 
 Markdown summaries for AI-assisted code navigation; the same rule-routed pipeline is generic enough
 to eventually emit wikis, architecture docs, diagrams, or source-to-source transformations.
 
-**This repository completed its migration to a 4-module Maven reactor.** It started as a single
+**This repository completed its migration to a 3-module Maven reactor.** It started as a single
 Maven plugin (`net.ladenthin:llamacpp-ai-index-maven-plugin`) and was restructured into: a
-framework-free core library, a standalone CLI, the original plugin (now a thin wrapper around the
-library, **renamed** to `net.ladenthin:srcmorph-maven-plugin`), and a tiny relocation-stub module
-that keeps the old `net.ladenthin:llamacpp-ai-index-maven-plugin` coordinates alive on Maven
-Central purely as a `<distributionManagement><relocation>` pointer. **The plugin rename is done**:
+framework-free core library, a standalone CLI, and the original plugin (now a thin wrapper around
+the library, **renamed** to `net.ladenthin:srcmorph-maven-plugin`). **The plugin rename is done**:
 coordinates, package, goal prefix, and every `@Parameter` property changed in this step — do not
 write `aiIndex.*` properties, the `ai-index` goal prefix, or the
 `net.ladenthin.maven.llamacpp.aiindex` package in new documentation or code; use `srcmorph.*`,
 `srcmorph`, and `net.ladenthin.maven.srcmorph.mojo` instead (see the plugin module's own section
-below). The `1.1.1` reactor release and the `1.0.4` relocation stub were published to Maven
-Central; development on `main` now continues at the next SNAPSHOT version.
+below). The `1.1.1` reactor release was published to Maven Central; development on `main` now
+continues at the next SNAPSHOT version.
+
+**A fourth module existed temporarily**: a tiny relocation-stub POM
+(`net.ladenthin:llamacpp-ai-index-maven-plugin`, pinned at `1.0.4`, only a
+`<distributionManagement><relocation>` pointing at `srcmorph-maven-plugin:1.1.1`) so existing
+consumers of the old coordinates get transparently redirected. It was published once, verified
+working end-to-end (a clean-environment Maven resolution of the old coordinates correctly followed
+the relocation through to the real artifact and its full dependency graph), and then **removed from
+this reactor** — the published `1.0.4` artifact is permanent on Maven Central regardless of what
+this repo's module list contains, and it will never need another release, so there was no reason to
+keep carrying it (and its `versions:set` exclusion footgun) in active development.
 
 - **Group ID:** `net.ladenthin`
 - **Java:** target bytecode 1.8 (production code), Java 21 test sources, built with JDK 21
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)
 - **Reactor version:** `1.2.0-SNAPSHOT` (single shared version across `srcmorph`, `srcmorph-cli`,
-  and `srcmorph-maven-plugin`; the relocation stub below is version-pinned independently). Last
-  released version: `1.1.1`.
+  and `srcmorph-maven-plugin`). Last released version: `1.1.1`.
 
 ---
 
@@ -55,25 +62,16 @@ llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
 │       └── configuration/                  CConfiguration + CCommand (BAF public-field style)
 ├── srcmorph-maven-plugin/                   Maven plugin  net.ladenthin:srcmorph-maven-plugin, goalPrefix srcmorph
 │   └── src/main/java/net/ladenthin/maven/srcmorph/mojo/   (5 mojos; renamed package/properties)
-├── llamacpp-ai-index-maven-plugin/          RELOCATION STUB  net.ladenthin:llamacpp-ai-index-maven-plugin:1.0.4
-│   └── pom.xml                              only <distributionManagement><relocation> — no source, no <parent>
 ├── examples/                               config_*.json/.yaml + run_*.sh/.bat + logbackConfiguration.xml
 ├── docs/                                   RELEASE.md + the ai-index model-benchmark writeups
-└── .github/workflows/                      CI adapted to the 4-module reactor
+└── .github/workflows/                      CI adapted to the 3-module reactor
 ```
 
-Every module except the relocation stub inherits its `<version>` from the parent
-(`net.ladenthin:srcmorph-parent`), so `srcmorph`/`srcmorph-cli`/`srcmorph-maven-plugin` ship in
-lockstep by construction. Bump their version reactor-wide with
-`mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false` from the repo root — but the relocation
-stub (`llamacpp-ai-index-maven-plugin/`) has **no `<parent>`** and is version-pinned independently
-at `1.0.4`; because it is still listed in the root `<modules>`, a plain `versions:set` run from the
-root walks it too and would overwrite that pin unless excluded:
-
-```bash
-mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false \
-    -Dexcludes=net.ladenthin:llamacpp-ai-index-maven-plugin
-```
+Every module inherits its `<version>` from the parent (`net.ladenthin:srcmorph-parent`), so
+`srcmorph`/`srcmorph-cli`/`srcmorph-maven-plugin` ship in lockstep by construction. Bump their
+version reactor-wide with `mvn versions:set -DnewVersion=X -DgenerateBackupPoms=false` from the
+repo root — no exclusions needed today (the relocation-stub module that once required one was
+removed after its `1.0.4` release; see "Project Overview" above).
 
 ### `srcmorph` — the core library
 
@@ -178,8 +176,8 @@ CLI driven by a single JSON or YAML configuration file:
 `net.ladenthin.maven.llamacpp.aiindex.mojo`), goal prefix `srcmorph` (was `ai-index`), every
 `@Parameter` property now spelled `srcmorph.*` (e.g. `srcmorph.skip`, `srcmorph.file.skip`,
 `srcmorph.planOnly`, `srcmorph.generationProvider`, `srcmorph.llama.modelPath` — was `aiIndex.*`).
-The old coordinates are kept alive only via the separate relocation-stub module (see "Repository
-layout" above and its own paragraph below) — never describe the plugin using the old
+The old coordinates were kept alive on Maven Central via a one-time relocation-stub publish (see
+"Project Overview" above and its own paragraph below) — never describe the plugin using the old
 coordinates/package/properties in new documentation or code. The plugin's *contents* stay thin: it
 depends on `net.ladenthin:srcmorph` (compile scope) for everything except the 5 mojo classes
 themselves.
@@ -204,17 +202,19 @@ themselves.
   `srcmorph` — they were not relocated during the core extraction.
 - Full goal/parameter reference: `srcmorph-maven-plugin/README.md`.
 
-### `llamacpp-ai-index-maven-plugin` — the relocation stub (retired coordinates)
+### `llamacpp-ai-index-maven-plugin` — the retired relocation stub (no longer in this repo)
 
-A separate, minimal 4th reactor module — **not** a renamed copy of the plugin above, and not a
-child of `srcmorph-parent` (no `<parent>` at all). Its entire `pom.xml` is `groupId` +
-`artifactId` (`llamacpp-ai-index-maven-plugin`) + a version pinned independently at `1.0.4` +
-`<distributionManagement><relocation>` pointing at `net.ladenthin:srcmorph-maven-plugin:1.1.1`.
-No source, no tests, no dependencies. Its sole purpose is so a consumer still declaring the old
-Maven coordinates gets redirected by Maven to the renamed plugin once both are published. Because
-it is still listed in the root `<modules>` for aggregation, a reactor-wide `mvn versions:set` run
-from the repo root must exclude it explicitly — see "Repository layout" above for the exact
-command; the same warning is repeated in the stub's own `pom.xml` comment and in `TODO.md`.
+Not a module in this reactor anymore. It existed briefly as a minimal 4th reactor module — **not**
+a renamed copy of the plugin above, and not a child of `srcmorph-parent` (no `<parent>` at all).
+Its entire `pom.xml` was `groupId` + `artifactId` (`llamacpp-ai-index-maven-plugin`) + a version
+pinned independently at `1.0.4` + `<distributionManagement><relocation>` pointing at
+`net.ladenthin:srcmorph-maven-plugin:1.1.1`. No source, no tests, no dependencies. Its sole purpose
+was so a consumer still declaring the old Maven coordinates gets redirected by Maven to the renamed
+plugin — published once, verified working end-to-end from a clean environment, then removed from
+active development: the published `1.0.4` artifact is permanent on Maven Central regardless of
+this repo's module list, and it will never need another release. Anyone still depending on the old
+coordinates continues to be redirected correctly; nothing here needs to change again for that to
+keep working.
 
 ---
 
@@ -225,9 +225,8 @@ command; the same warning is repeated in the stub's own `pom.xml` comment and in
 ```bash
 mvn compile          # Compiles every module (Java + generates nothing native; pure Java reactor)
 mvn test             # Runs every module's tests
-mvn package          # Builds all five reactor projects: parent pom + 3 jars (incl. the CLI's fat
-                     # jar) + the relocation-stub pom (trivial — no source, packaging=pom)
-mvn install          # Installs all five into ~/.m2 (needed before iterating on a single module — see below)
+mvn package          # Builds all four reactor projects: parent pom + 3 jars (incl. the CLI's fat jar)
+mvn install          # Installs all four into ~/.m2 (needed before iterating on a single module — see below)
 ```
 
 ### Iterating on one module
@@ -281,7 +280,7 @@ is unavailable.
 - `srcmorph-cli` — `MainTest`, `ConfigBindingTest`, `ExamplesConfigBindingTest`, `CliArchitectureTest`,
   `CliEndToEndTest`.
 - `srcmorph-maven-plugin` — `PluginArchitectureTest`, `MojoPhaseSkipTest`, plus the jcstress/
-  vmlens tests noted above. (The `llamacpp-ai-index-maven-plugin` relocation stub has no tests.)
+  vmlens tests noted above.
 
 See `TEST_WRITING_GUIDE.md` (repo root, applies to every module) for full conventions.
 

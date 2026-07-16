@@ -257,11 +257,11 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: plugin-jars
-          # All three reactor modules now produce their own jars: srcmorph (core library),
+          # All three reactor modules produce their own jars: srcmorph (core library),
           # srcmorph-cli (includes the jar-with-dependencies fat jar — the CLI's deliverable),
-          # and srcmorph-maven-plugin (the Maven plugin, renamed from llamacpp-ai-index-maven-plugin;
-          # the retired coordinates now live only in the pom-only relocation-stub module, which
-          # produces no jar).
+          # and srcmorph-maven-plugin (the Maven plugin, renamed from llamacpp-ai-index-maven-plugin
+          # in the migration). The former 4th module — a pom-only relocation-stub for the retired
+          # coordinates — was published once and then removed from this reactor; see CLAUDE.md.
           path: |
             srcmorph/target/*.jar
             srcmorph-cli/target/*.jar
