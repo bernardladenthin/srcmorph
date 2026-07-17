@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
         AiFieldGenerationConfig and AiPromptDefinition are mutable JavaBean
         POJOs that the Maven plugin framework instantiates via reflection,
         populates through setters, and stores in a List<...> @Parameter field
-        on the parent Mojo (in the llamacpp-ai-index-maven-plugin module). No
+        on the parent Mojo (in the srcmorph-maven-plugin module). No
         code path compares two instances for value equality; the surrounding
         Mojo iterates the list in source order and uses the (non-null) string
         keys (promptKey, aiDefinitionKey, AiPromptDefinition.key) to drive
@@ -100,7 +100,7 @@ SPDX-License-Identifier: Apache-2.0
         emit. The collateral cost is small: any handwritten member of those four names
         that genuinely stores-then-immediately-returns is either a debugger-friendly
         local-variable pattern or a micro-optimisation, both intentional here. (Duplicated
-        verbatim in the llamacpp-ai-index-maven-plugin module's spotbugs-exclude.xml since
+        verbatim in the srcmorph-maven-plugin module's spotbugs-exclude.xml since
         this rule is not class-scoped and both modules have Lombok-annotated classes.)
     -->
     <Match>
@@ -145,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
         when it sees no matching-visibility call site within the analyzed class set. Before the
         extraction both call sites (AggregateProjectMojo constructing ProjectIndexer; GenerateMojo
         calling SourceFileIndexer.classify) lived in the same single module and satisfied the
-        detector; now those callers live in the sibling llamacpp-ai-index-maven-plugin module,
+        detector; now those callers live in the sibling srcmorph-maven-plugin module,
         outside this module's own SpotBugs analysis unit, so the detector can no longer see them.
         Both members are genuinely public API by design (the constructor is srcmorph's
         cross-module entry point for project-level indexing; classify() is exercised directly by
@@ -166,7 +166,7 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         OPM_OVERLY_PERMISSIVE_METHOD on AiProgressBar.render. fb-contrib flags the public render(...)
         overloads as "could be more restrictive" from bytecode shape, but they are the class's public API
-        (a reusable progress-bar renderer) and are called from GenerateMojo (llamacpp-ai-index-maven-plugin
+        (a reusable progress-bar renderer) and are called from GenerateMojo (srcmorph-maven-plugin
         module) and exercised directly by unit tests. Same rationale as the AiGenerationTimeEstimator OPM
         suppression above.
     -->
@@ -357,7 +357,7 @@ SPDX-License-Identifier: Apache-2.0
           - WEM_WEAK_EXCEPTION_MESSAGING: AiConditionEvaluator.validate's message describes a POM
             configuration error in operator terms; it intentionally reads as a user-facing config
             diagnostic rather than carrying internal state (the matching GenerateMojo/CalibrateMojo
-            WEM suppression lives in the llamacpp-ai-index-maven-plugin module's own filter file).
+            WEM suppression lives in the srcmorph-maven-plugin module's own filter file).
           - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: arises from the Objects.requireNonNull /
             @NullMarked validation style (see the DCN rationale in the plugin module's filter file);
             the explicit guards are the deliberate fail-fast contract, not dead checks.
@@ -463,7 +463,7 @@ SPDX-License-Identifier: Apache-2.0
         DCN_NULLPOINTER_EXCEPTION on EngineSupport.buildPromptSupport / buildAiModelDefinitionSupport and
         GenerateEngine.resolveSharedFacts. Moved verbatim (same rationale) from what was
         AbstractAiIndexMojo.buildPromptSupport / buildAiModelDefinitionSupport and
-        GenerateMojo.resolveSharedFacts in the llamacpp-ai-index-maven-plugin module's own filter file
+        GenerateMojo.resolveSharedFacts in the srcmorph-maven-plugin module's own filter file
         (see that file for the full "why not the alternatives" reasoning): these catch sites are the
         deliberate translation bridge between the support classes' Objects.requireNonNull validation
         (which throws NPE by Java convention with the rich index + bad-entry message) and the engine
@@ -480,7 +480,7 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         AI_ANNOTATION_ISSUES_NEEDS_NULLABLE on GenerateEngine.resolveFileExtensions. Same method (moved
         verbatim) and same false-positive as the old GenerateMojo.resolveFileExtensions suppression in
-        the llamacpp-ai-index-maven-plugin module's own filter file: the method provably cannot return
+        the srcmorph-maven-plugin module's own filter file: the method provably cannot return
         null (either the non-null compatibilityHelper.listOf(...) fallback, or the
         SrcMorphConfiguration#getFileExtensions() list gated by an explicit non-null/non-empty guard),
         but fb-contrib's conservative dataflow analysis cannot see through the getter.

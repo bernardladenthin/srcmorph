@@ -1,7 +1,7 @@
 version = 1
-SPDX-PackageName = "llamacpp-ai-index-maven-plugin"
+SPDX-PackageName = "srcmorph"
 SPDX-PackageSupplier = "Bernard Ladenthin <bernard.ladenthin@gmail.com>"
-SPDX-PackageDownloadLocation = "https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin"
+SPDX-PackageDownloadLocation = "https://github.com/bernardladenthin/srcmorph"
 
 [[annotations]]
 path = [

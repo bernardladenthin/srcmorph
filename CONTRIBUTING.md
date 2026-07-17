@@ -1,6 +1,6 @@
-# Contributing to llamacpp-ai-index-maven-plugin
+# Contributing to srcmorph
 
-Thank you for your interest in contributing to **llamacpp-ai-index-maven-plugin**, a free Maven plugin for generating AI-readable hierarchical documentation of Java source projects using local llama.cpp-compatible models.
+Thank you for your interest in contributing to **srcmorph**, a prompt-driven source-tree transformer for generating AI-readable hierarchical documentation of Java source projects using local llama.cpp-compatible models.
 
 ---
 
@@ -54,7 +54,7 @@ mvn package -o -DskipTests
 
 Please use the GitHub issue tracker:
 
-https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/issues
+https://github.com/bernardladenthin/srcmorph/issues
 
 When filing a bug report, include:
 - Java version (`java -version`) and Maven version (`mvn -version`)
@@ -139,9 +139,9 @@ docs(security): publish maintainer fallback email
 ## Communication channels
 
 - **GitHub Issues** — bug reports, feature requests, and questions:
-  https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/issues
+  https://github.com/bernardladenthin/srcmorph/issues
 - **GitHub Security Advisories** — private vulnerability reports:
-  https://github.com/bernardladenthin/llamacpp-ai-index-maven-plugin/security/advisories/new
+  https://github.com/bernardladenthin/srcmorph/security/advisories/new
 
 ---
 
