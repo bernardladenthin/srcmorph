@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/branding/srcmorph.svg" alt="srcmorph" width="720">
+</p>
+
 > [!NOTE]
 > **No IDE or local setup required.** This repository is optimized for fully AI-assisted development using [Claude Code](https://claude.ai/code). No local toolchain, no IDE, nothing to install — everything works completely through Claude.
 

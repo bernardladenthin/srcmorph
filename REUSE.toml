@@ -38,3 +38,17 @@ path = "LICENSE"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
 SPDX-License-Identifier = "Apache-2.0"
+
+# Project logo / branding assets (binary PNG + generated SVG with a base64-embedded
+# font, neither of which can carry an inline SPDX header without corruption). Dual
+# MIT OR Apache-2.0, the same license the author ships them under in the workspace
+# repo (the embedded Martian Mono font is OFL-1.1; only the standalone .ttf — not
+# shipped here — carries that identifier).
+[[annotations]]
+path = [
+    "docs/branding/srcmorph.svg",
+    "docs/branding/srcmorph.png",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
