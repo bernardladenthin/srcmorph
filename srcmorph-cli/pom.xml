@@ -40,7 +40,7 @@ SPDX-License-Identifier: Apache-2.0
         <jspecify.version>1.0.0</jspecify.version>
         <checker.version>4.2.1</checker.version>
         <archunit.version>1.4.2</archunit.version>
-        <spotbugs.version>4.10.2.0</spotbugs.version>
+        <spotbugs.version>4.10.3.0</spotbugs.version>
         <lombok.version>1.18.46</lombok.version>
         <fb-contrib.version>7.7.4</fb-contrib.version>
         <findsecbugs.version>1.14.0</findsecbugs.version>
