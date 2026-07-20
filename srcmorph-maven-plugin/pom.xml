@@ -59,7 +59,7 @@ SPDX-License-Identifier: Apache-2.0
         <jcstress.version>0.16</jcstress.version>
         <vmlens.version>1.2.28</vmlens.version>
         <errorprone.version>2.50.0</errorprone.version>
-        <nullaway.version>0.13.7</nullaway.version>
+        <nullaway.version>0.13.8</nullaway.version>
         <jspecify.version>1.0.0</jspecify.version>
         <checker.version>4.2.1</checker.version>
         <!-- jqwik / Lincheck are no longer dependencies of this module (both moved to srcmorph

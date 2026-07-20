@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
         <junit.version>6.1.2</junit.version>
         <hamcrest.version>3.0</hamcrest.version>
         <errorprone.version>2.50.0</errorprone.version>
-        <nullaway.version>0.13.7</nullaway.version>
+        <nullaway.version>0.13.8</nullaway.version>
         <jspecify.version>1.0.0</jspecify.version>
         <checker.version>4.2.1</checker.version>
         <archunit.version>1.4.2</archunit.version>
