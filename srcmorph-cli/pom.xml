@@ -210,7 +210,18 @@ SPDX-License-Identifier: Apache-2.0
                             a 2 GB heap cap, a heap dump on OutOfMemoryError into the working
                             directory, and a JVM fatal-error log named per crashing PID.
                         -->
-                        <argLine>@{argLine} -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=. -XX:ErrorFile=hs_err_pid%p.log</argLine>
+                        <!--
+                            -XX:+EnableDynamicAgentLoading silences the JDK 21 "A Java agent has
+                            been loaded dynamically" warning that a test-time self-attaching agent
+                            (no static -javaagent) emits to the *native* stderr, which can
+                            intermittently corrupt Surefire's encoded fork channel ("Corrupted
+                            channel by directly writing to native stream" → bogus "There was a
+                            timeout in the fork"). This module runs no such agent today, but the
+                            flag is kept identical across the reactor's module poms and mirrors the
+                            guard in the core srcmorph module (Lincheck) and the sibling
+                            BitcoinAddressFinder repo (Mockito inline mock maker).
+                        -->
+                        <argLine>@{argLine} -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=. -XX:ErrorFile=hs_err_pid%p.log -XX:+EnableDynamicAgentLoading</argLine>
                         <!--
                             Force classpath-only test execution. Surefire's default module-path
                             auto-detection activates as soon as module-info.class exists in
