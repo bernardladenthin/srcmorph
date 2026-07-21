@@ -285,18 +285,7 @@ SPDX-License-Identifier: Apache-2.0
                             a 2 GB heap cap, a heap dump on OutOfMemoryError into the working
                             directory, and a JVM fatal-error log named per crashing PID.
                         -->
-                        <!--
-                            -XX:+EnableDynamicAgentLoading silences the JDK 21 "A Java agent has
-                            been loaded dynamically" warning that a test-time self-attaching agent
-                            (no static -javaagent) emits to the *native* stderr, which can
-                            intermittently corrupt Surefire's encoded fork channel ("Corrupted
-                            channel by directly writing to native stream" → bogus "There was a
-                            timeout in the fork"). This module's jcstress/vmlens agents run only
-                            under their opt-in profiles; the flag is kept identical across the
-                            reactor's module poms and mirrors the guard in the core srcmorph module
-                            (Lincheck) and the sibling BitcoinAddressFinder repo (Mockito inline
-                            mock maker).
-                        -->
+                        <!-- -XX:+EnableDynamicAgentLoading: silences the JDK 21 byte-buddy self-attach agent warning that intermittently corrupts Surefire's fork channel ("Corrupted channel ..." / bogus "timeout in the fork"). See workspace policy ci-test-diagnostics.md section 2.1: https://github.com/bernardladenthin/workspace/blob/main/policies/ci-test-diagnostics.md - root cause: https://github.com/raphw/byte-buddy/issues/1639 -->
                         <argLine>@{argLine} -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=. -XX:ErrorFile=hs_err_pid%p.log -XX:+EnableDynamicAgentLoading</argLine>
                         <!--
                             The vmlens interleaving smoke test is meaningful only when run
