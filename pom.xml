@@ -99,14 +99,16 @@ SPDX-License-Identifier: Apache-2.0
                 <version>2.0.18</version>
             </dependency>
             <!--
-                Pin the version the llama dependency already brings in transitively (runtime scope),
-                so an explicit test-scope declaration (used to attach a ListAppender in
-                AiFieldGenerationSupportTest) stays converged with it.
+                Pin logback-classic (runtime scope) so the runtime binding and the explicit
+                test-scope declaration (used to attach a ListAppender in
+                AiFieldGenerationSupportTest) stay converged. The managed version here wins over
+                whatever the llama dependency brings in transitively, satisfying maven-enforcer's
+                DependencyConvergence.
             -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
-                <version>1.5.38</version>
+                <version>1.6.0</version>
             </dependency>
             <!--
                 JSON/YAML binding for srcmorph-cli's CConfiguration. Both artifacts are pinned to the
