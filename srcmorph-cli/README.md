@@ -14,7 +14,19 @@ java -jar srcmorph-cli-<version>-jar-with-dependencies.jar <path-to-config.json-
 ```
 
 The fat jar (`srcmorph-cli-<version>-jar-with-dependencies.jar`, built by `mvn package`) bundles every
-dependency, including a logback binding, so it runs standalone. Both `.json`/`.js` (parsed via a
+dependency, including a logback binding, so it runs standalone.
+
+**Download:** the pre-built fat jars are attached to each
+[GitHub Release](https://github.com/bernardladenthin/srcmorph/releases) (with a `.asc` GPG signature),
+**not** Maven Central. The unsuffixed `srcmorph-cli-<version>-jar-with-dependencies.jar` bundles the
+multi-platform **CPU** `net.ladenthin:llama` native and runs on any OS/arch. For GPU acceleration there
+is one classifier variant per llama native backend —
+`srcmorph-cli-<version>-jar-with-dependencies-<classifier>.jar` (e.g. `-cuda13-linux-x86-64`,
+`-vulkan-windows-x86-64`) — each bundling exactly that one backend's binary, so it runs only on the
+matching OS/arch with that GPU runtime present. Pick the plain CPU jar unless you specifically want a
+GPU build.
+
+Both `.json`/`.js` (parsed via a
 Jackson `ObjectMapper`) and `.yaml`/`.yml` (parsed via `YAMLMapper`) are supported — pick whichever you
 prefer; both mappers are configured strictly (`FAIL_ON_UNKNOWN_PROPERTIES`), so a typo'd key fails the
 run immediately rather than being silently ignored. On startup the CLI logs the parsed configuration
