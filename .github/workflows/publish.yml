@@ -486,10 +486,10 @@ jobs:
       - name: Build & sign classifier fat jars (GitHub-only assets, never Central)
         if: ${{ !cancelled() }}
         env:
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          if [ -n "${MAVEN_GPG_PASSPHRASE:-}" ]; then echo "::add-mask::${MAVEN_GPG_PASSPHRASE}"; fi
           # Source of truth: the <classifier> set in java-llama.cpp llama/pom.xml for the pinned
           # ${llama.version} (all published to Maven Central). Keep in sync on a llama bump.
           CLASSIFIERS=(
@@ -509,10 +509,10 @@ jobs:
           done
           # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
           build ""
-          for f in srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar; do
-            printf '%s' "$MAVEN_GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign --armor "$f"
-            cp "$f" "$f".asc signed-snapshot-assets/
-          done
+          # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
+          # (.github/sign-fatjars.sh, byte-identical with java-llama.cpp) — a .asc per fat jar.
+          cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-snapshot-assets/
+          bash .github/sign-fatjars.sh signed-snapshot-assets
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -608,10 +608,10 @@ jobs:
       - name: Build & sign classifier fat jars (GitHub-only assets, never Central)
         if: ${{ !cancelled() }}
         env:
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          if [ -n "${MAVEN_GPG_PASSPHRASE:-}" ]; then echo "::add-mask::${MAVEN_GPG_PASSPHRASE}"; fi
           # Source of truth: the <classifier> set in java-llama.cpp llama/pom.xml for the pinned
           # ${llama.version} (all published to Maven Central). Keep in sync on a llama bump.
           CLASSIFIERS=(
@@ -631,10 +631,10 @@ jobs:
           done
           # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
           build ""
-          for f in srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar; do
-            printf '%s' "$MAVEN_GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign --armor "$f"
-            cp "$f" "$f".asc signed-release-assets/
-          done
+          # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
+          # (.github/sign-fatjars.sh, byte-identical with java-llama.cpp) — a .asc per fat jar.
+          cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-release-assets/
+          bash .github/sign-fatjars.sh signed-release-assets
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

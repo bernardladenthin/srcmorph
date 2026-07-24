@@ -456,6 +456,15 @@ clear of the JPMS module-mode javadoc trap that bit BAF. **Before raising the Ja
 level to ≥ 9 in any module, read**
 [`../workspace/policies/jpms-module-descriptor.md`](../workspace/policies/jpms-module-descriptor.md).
 
+## Fat-jar release assets
+
+The `srcmorph-cli` fat jar (`jar-with-dependencies`) is a **GitHub-Release asset only — never
+Maven Central** (`srcmorph-cli/pom.xml` sets `<attach>false</attach>`), attached with a detached
+GPG `.asc`. CI builds **one fat jar per `net.ladenthin:llama` classifier** (default CPU + every GPU
+classifier) and signs them via the cross-repo shared `.github/sign-fatjars.sh` (byte-identical with
+java-llama.cpp). The convention + per-repo shapes + the classifier keep-in-sync rule are documented
+in [`../workspace/policies/fat-jar-release-assets.md`](../workspace/policies/fat-jar-release-assets.md).
+
 ## Open TODOs
 
 Open TODOs for this repo live in [`TODO.md`](TODO.md). Cross-repo status
