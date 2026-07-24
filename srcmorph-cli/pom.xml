@@ -488,8 +488,18 @@ SPDX-License-Identifier: Apache-2.0
                 IS the deliverable artifact (the thing a user actually downloads and runs with
                 `java -jar`), not an occasional extra. Binding it in every `mvn package` (and therefore
                 every `mvn verify` / release build) keeps it in lockstep with the plain jar rather than
-                depending on a profile flag being remembered at release time. It rides `mvn -P release
-                deploy` as the `jar-with-dependencies` classifier alongside the plain jar.
+                depending on a profile flag being remembered at release time.
+
+                `<attach>false</attach>`: the fat jar is a GitHub-Release-only asset and must NOT be
+                deployed to Maven Central. A jar-with-dependencies on Central is redundant (consumers
+                depend on the plain `srcmorph-cli` jar + its resolved dependency graph, never the fat
+                jar) and, because it bundles the `net.ladenthin:llama` native binary, is both large and
+                platform-specific. Leaving it attached uploaded a 74 MB fat jar to Central on every
+                release. With attach=false the file is still produced in target/ (so the CI build's
+                upload-artifact and the release job's classifier-fat-jar loop still pick it up) but is
+                neither installed to ~/.m2 nor deployed to Central. Signing + GitHub attachment (for
+                this default CPU jar and one fat jar per net.ladenthin:llama GPU classifier) is done
+                explicitly by the publish-release / publish-snapshot jobs in .github/workflows/publish.yml.
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -503,6 +513,7 @@ SPDX-License-Identifier: Apache-2.0
                             <mainClass>net.ladenthin.srcmorph.cli.Main</mainClass>
                         </manifest>
                     </archive>
+                    <attach>false</attach>
                 </configuration>
                 <executions>
                     <execution>

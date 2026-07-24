@@ -461,17 +461,58 @@ jobs:
       # job *after* the bundle was uploaded (and typically published server-side), while
       # the signed jars + .asc files already exist in each module's target/ (signing happens at
       # verify). Collecting on failure lets the github-snapshot job still attach them.
-      - name: Collect signed artifacts
+      # NOTE: the fat jar (jar-with-dependencies) is EXCLUDED here — it is no longer attached/
+      # deployed to Central (srcmorph-cli/pom.xml sets <attach>false</attach>), so it is unsigned
+      # in target/ at this point. It is built + signed + collected by the next step instead. This
+      # step runs BEFORE that one so the deploy-signed plain/sources/javadoc jars are captured
+      # before the classifier loop rebuilds (and clobbers) srcmorph-cli/target.
+      - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
         if: ${{ !cancelled() }}
-        # All three reactor modules produce their own jars/asc files (root pom has no jar).
         run: |
           mkdir -p signed-snapshot-assets
-          cp srcmorph/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
-          cp srcmorph/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
-          cp srcmorph-cli/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
-          cp srcmorph-cli/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
-          cp srcmorph-maven-plugin/target/*.jar signed-snapshot-assets/ 2>/dev/null || true
-          cp srcmorph-maven-plugin/target/*.jar.asc signed-snapshot-assets/ 2>/dev/null || true
+          for m in srcmorph srcmorph-cli srcmorph-maven-plugin; do
+            for f in "$m"/target/*.jar "$m"/target/*.jar.asc; do
+              [ -e "$f" ] || continue
+              case "$f" in *-jar-with-dependencies.jar|*-jar-with-dependencies.jar.asc) continue ;; esac
+              cp "$f" signed-snapshot-assets/
+            done
+          done
+      # Build one srcmorph-cli fat jar per net.ladenthin:llama native classifier + the default
+      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets. These
+      # are GitHub-only (never Maven Central): each bundles exactly one llama native binary, so a
+      # GPU jar runs only on its own OS/arch/backend, while the default (no classifier) bundles the
+      # multi-platform CPU natives and runs anywhere. Signing uses the key setup-java already
+      # imported (armored detached .asc, same shape Central produces).
+      - name: Build & sign classifier fat jars (GitHub-only assets, never Central)
+        if: ${{ !cancelled() }}
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MAVEN_GPG_PASSPHRASE:-}" ]; then echo "::add-mask::${MAVEN_GPG_PASSPHRASE}"; fi
+          # Source of truth: the <classifier> set in java-llama.cpp llama/pom.xml for the pinned
+          # ${llama.version} (all published to Maven Central). Keep in sync on a llama bump.
+          CLASSIFIERS=(
+            cuda13-linux-x86-64 cuda13-windows-x86-64
+            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64
+            opencl-windows-x86-64 opencl-windows-aarch64 opencl-android-aarch64
+            rocm-linux-x86-64 rocm-windows-x86-64
+            sycl-fp16-linux-x86-64 sycl-fp32-linux-x86-64 sycl-windows-x86-64
+            openvino-linux-x86-64 openvino-windows-x86-64
+            msvc-windows
+          )
+          build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
+          for c in "${CLASSIFIERS[@]}"; do
+            build "$c"
+            f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)
+            cp "$f" "${f%.jar}-${c}.jar"
+          done
+          # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
+          build ""
+          for f in srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar; do
+            printf '%s' "$MAVEN_GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign --armor "$f"
+            cp "$f" "$f".asc signed-snapshot-assets/
+          done
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -542,17 +583,58 @@ jobs:
       # job *after* the bundle was uploaded (and typically published server-side), while
       # the signed jars + .asc files already exist in each module's target/ (signing happens at
       # verify). Collecting on failure lets the github-release job still attach them.
-      - name: Collect signed artifacts
+      # NOTE: the fat jar (jar-with-dependencies) is EXCLUDED here — it is no longer attached/
+      # deployed to Central (srcmorph-cli/pom.xml sets <attach>false</attach>), so it is unsigned
+      # in target/ at this point. It is built + signed + collected by the next step instead. This
+      # step runs BEFORE that one so the deploy-signed plain/sources/javadoc jars are captured
+      # before the classifier loop rebuilds (and clobbers) srcmorph-cli/target.
+      - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
         if: ${{ !cancelled() }}
-        # All three reactor modules produce their own jars/asc files (root pom has no jar).
         run: |
           mkdir -p signed-release-assets
-          cp srcmorph/target/*.jar signed-release-assets/ 2>/dev/null || true
-          cp srcmorph/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
-          cp srcmorph-cli/target/*.jar signed-release-assets/ 2>/dev/null || true
-          cp srcmorph-cli/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
-          cp srcmorph-maven-plugin/target/*.jar signed-release-assets/ 2>/dev/null || true
-          cp srcmorph-maven-plugin/target/*.jar.asc signed-release-assets/ 2>/dev/null || true
+          for m in srcmorph srcmorph-cli srcmorph-maven-plugin; do
+            for f in "$m"/target/*.jar "$m"/target/*.jar.asc; do
+              [ -e "$f" ] || continue
+              case "$f" in *-jar-with-dependencies.jar|*-jar-with-dependencies.jar.asc) continue ;; esac
+              cp "$f" signed-release-assets/
+            done
+          done
+      # Build one srcmorph-cli fat jar per net.ladenthin:llama native classifier + the default
+      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets. These
+      # are GitHub-only (never Maven Central): each bundles exactly one llama native binary, so a
+      # GPU jar runs only on its own OS/arch/backend, while the default (no classifier) bundles the
+      # multi-platform CPU natives and runs anywhere. Signing uses the key setup-java already
+      # imported (armored detached .asc, same shape Central produces).
+      - name: Build & sign classifier fat jars (GitHub-only assets, never Central)
+        if: ${{ !cancelled() }}
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MAVEN_GPG_PASSPHRASE:-}" ]; then echo "::add-mask::${MAVEN_GPG_PASSPHRASE}"; fi
+          # Source of truth: the <classifier> set in java-llama.cpp llama/pom.xml for the pinned
+          # ${llama.version} (all published to Maven Central). Keep in sync on a llama bump.
+          CLASSIFIERS=(
+            cuda13-linux-x86-64 cuda13-windows-x86-64
+            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64
+            opencl-windows-x86-64 opencl-windows-aarch64 opencl-android-aarch64
+            rocm-linux-x86-64 rocm-windows-x86-64
+            sycl-fp16-linux-x86-64 sycl-fp32-linux-x86-64 sycl-windows-x86-64
+            openvino-linux-x86-64 openvino-windows-x86-64
+            msvc-windows
+          )
+          build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
+          for c in "${CLASSIFIERS[@]}"; do
+            build "$c"
+            f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)
+            cp "$f" "${f%.jar}-${c}.jar"
+          done
+          # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
+          build ""
+          for f in srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar; do
+            printf '%s' "$MAVEN_GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign --armor "$f"
+            cp "$f" "$f".asc signed-release-assets/
+          done
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
