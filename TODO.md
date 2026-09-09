@@ -10,6 +10,24 @@ everything below is genuinely still open.
 
 ## Open
 
+- **`main` does not build: `net.ladenthin:llama` 5.2.0 was never released.** `srcmorph/pom.xml`
+  pins `<llama.version>5.2.0</llama.version>` (commit `5b4abeb`, 2026-09-01, *"pin
+  net.ladenthin:llama to the 5.2.0 release, not the snapshot"*), but that release does not exist:
+  Central's newest is `5.1.0` and `llama-5.2.0.pom` returns HTTP 404. This reactor declares no
+  repository besides Central, so nothing can resolve it. **Every PR run since 2026-09-01 is red**
+  at the first Maven step — run `33962068246`, job `101297417993`: `Could not find artifact
+  net.ladenthin:llama:jar:5.2.0 in central`, BUILD FAILURE after 3.35 s — while the matching `main`
+  runs were all `cancelled` by the start gate, so no red `main` was ever visible and the cause went
+  unattributed for over a week. It also passes locally on any machine where an earlier `mvn install`
+  of java-llama.cpp left 5.2.0 in `~/.m2`, which is why "verified locally: reactor mvn clean verify
+  green" appears in commit messages from that window; reproduce the real state with
+  `mvn -Dmaven.repo.local=/tmp/empty dependency:get -Dartifact=net.ladenthin:llama:5.2.0`.
+  **Reverting to `5.1.0` is not obviously correct** — `229903c` had raised the pin to
+  `5.2.0-SNAPSHOT` precisely because the newer binding "can express" flashAttn, so 5.1.0 may not
+  carry the API `LlamaCppJniConfigFactory` uses. java-llama.cpp's `main` sits at `5.2.0-SNAPSHOT`,
+  so publishing that release is the likelier fix. Decide which, then re-run CI to confirm — this is
+  the one item here that blocks everything else in the repo.
+
 - **The sixteen GPU classifier fat jars are verified structurally, never launched.** Since 1.2.0
   `.github/verify-classifier-fatjars.sh` asserts each is the artifact its name claims (one jar per
   classifier, a native for the promised OS/arch, a native set that differs from the default jar's, so
