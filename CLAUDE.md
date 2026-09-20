@@ -398,8 +398,8 @@ assume it has already been updated.
 | Dependency | Version | Used by |
 |---|---|---|
 | `net.ladenthin:llama` | 5.2.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
-| `org.slf4j:slf4j-api` | 2.0.18 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
-| `org.slf4j:slf4j-simple` | 2.0.18 (converged in the parent) | `srcmorph-cli` (runtime binding) |
+| `org.slf4j:slf4j-api` | 2.0.19 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
+| `org.slf4j:slf4j-simple` | 2.0.19 (converged in the parent) | `srcmorph-cli` (runtime binding) |
 | `ch.qos.logback:logback-classic` | 1.6.3 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
 | `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph-cli` (JSON config) |
 | `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph-cli` (YAML config) |

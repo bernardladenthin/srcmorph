@@ -28,6 +28,17 @@ everything below is genuinely still open.
   so publishing that release is the likelier fix. Decide which, then re-run CI to confirm — this is
   the one item here that blocks everything else in the repo.
 
+- **Second latent red behind the one above: `spotbugs:check` fails on `srcmorph` with 4 findsecbugs
+  findings.** Found 2026-09-20 by compiling the reactor against a locally installed
+  `net.ladenthin:llama:5.2.0-SNAPSHOT` (`-Dllama.version=5.2.0-SNAPSHOT -DskipTests verify`), the
+  only way to get past the unresolvable pin: `LlamaCppJniProviderSupport` (introduced by `45b619c`,
+  2026-09-05) raises `CRLF_INJECTION_LOGS` ×2 and `IMPROPER_UNICODE` ×2, all reported at line 49, and
+  nothing in `srcmorph/spotbugs-exclude.xml` covers the class. It is invisible today only because
+  every CI run dies at the dependency step before spotbugs runs; the moment the 5.2.0 pin resolves,
+  `Code style (spotless) + package graph` goes red on this instead. Reproduced on the unmodified
+  `origin/main` tree, so it is not an artefact of the dependency sweep. Fix the code or add a
+  justified suppression per `../workspace/policies/spotbugs-suppressions.md` in the same change
+  that unblocks the pin.
 - **The sixteen GPU classifier fat jars are verified structurally, never launched.** Since 1.2.0
   `.github/verify-classifier-fatjars.sh` asserts each is the artifact its name claims (one jar per
   classifier, a native for the promised OS/arch, a native set that differs from the default jar's, so
