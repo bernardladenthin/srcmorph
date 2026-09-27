@@ -39,6 +39,14 @@ everything below is genuinely still open.
   `origin/main` tree, so it is not an artefact of the dependency sweep. Fix the code or add a
   justified suppression per `../workspace/policies/spotbugs-suppressions.md` in the same change
   that unblocks the pin.
+- **Third latent red behind the pin: 4 `LlamaCppJniProviderSupportTest` failures against the 5.2.0
+  core.** Found 2026-09-27 the same way (`-Dllama.version=5.2.0-SNAPSHOT verify`), reproduced on the
+  unmodified tree. `buildInferenceParameters_zeroWindows_sendsBothAsZero`,
+  `_configuredWindows_arePassedThrough`, `_zeroSeed_isStillSent` and
+  `_configuredDrySequenceBreakers_arePassedThrough` assert on `InferenceParameters.toString()` as if
+  it were the request JSON. In java-llama.cpp 5.2.0 `toString()` is a redacted debug view that is
+  deliberately not valid JSON, and `toJson()` renders the request body — so those assertions need to
+  read `toJson()`. Fix together with the pin; the rest of the reactor is green (634 / 39 / 33 tests).
 - **The sixteen GPU classifier fat jars are verified structurally, never launched.** Since 1.2.0
   `.github/verify-classifier-fatjars.sh` asserts each is the artifact its name claims (one jar per
   classifier, a native for the promised OS/arch, a native set that differs from the default jar's, so
