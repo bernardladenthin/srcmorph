@@ -662,11 +662,11 @@ jobs:
               cp "$f" signed-snapshot-assets/
             done
           done
-      # Build one srcmorph-cli fat jar per net.ladenthin:llama native classifier + the default
-      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets. These
-      # are GitHub-only (never Maven Central): each bundles exactly one llama native binary, so a
-      # GPU jar runs only on its own OS/arch/backend, while the default (no classifier) bundles the
-      # multi-platform CPU natives and runs anywhere. Signing uses the key setup-java already
+      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU/alternate natives jar + the
+      # default all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
+      # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
+      # natives, and a classifier jar adds its one backend on top, which the loader prefers on its
+      # own OS/arch when the vendor runtime is present. Signing uses the key setup-java already
       # imported (armored detached .asc, same shape Central produces).
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
         if: ${{ !cancelled() }}
@@ -675,8 +675,10 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          # Source of truth: the <classifier> set in java-llama.cpp llama/pom.xml for the pinned
-          # ${llama.version} (all published to Maven Central). Keep in sync on a llama bump.
+          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}
+          # (every natives jar but the cpu-*/metal-* ones llama-platform already brings). Each
+          # jar here is ADDED to the default CPU natives (-Dllama.classifier activates the
+          # gpu-natives profile), so every classifier fat jar keeps the CPU fallback.
           CLASSIFIERS=(
             cuda13-linux-x86-64 cuda13-windows-x86-64
             vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64
@@ -684,7 +686,7 @@ jobs:
             rocm-linux-x86-64 rocm-windows-x86-64
             sycl-fp16-linux-x86-64 sycl-fp32-linux-x86-64 sycl-windows-x86-64
             openvino-linux-x86-64 openvino-windows-x86-64
-            msvc-windows
+            msvc-windows-x86-64 msvc-windows-x86
           )
           build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
           for c in "${CLASSIFIERS[@]}"; do
@@ -699,13 +701,13 @@ jobs:
           cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-snapshot-assets/
           bash .github/sign-fatjars.sh signed-snapshot-assets
           # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
-          # default jar; the sixteen GPU jars cannot be covered that way (a GitHub runner has no
+          # default jar; the classifier jars cannot be covered that way (a GitHub runner has no
           # such device, and the only command that would load the native library is a real
           # generation), so this asserts instead that each jar is the artifact its name claims --
-          # one jar per classifier, a native for the OS/arch the name promises, and a native set
-          # that DIFFERS from the default jar's. That last one is the point: if -Dllama.classifier=
-          # ever stops being wired through, the loop silently ships sixteen copies of the CPU build
-          # under GPU names and nothing else in this pipeline notices.
+          # one jar per classifier, the backend directory the name promises, and every default
+          # CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=
+          # ever stops being wired through, the loop silently ships copies of the CPU build under
+          # GPU names and nothing else in this pipeline notices.
           bash .github/verify-classifier-fatjars.sh signed-snapshot-assets "${CLASSIFIERS[@]}"
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -827,11 +829,11 @@ jobs:
               cp "$f" signed-release-assets/
             done
           done
-      # Build one srcmorph-cli fat jar per net.ladenthin:llama native classifier + the default
-      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets. These
-      # are GitHub-only (never Maven Central): each bundles exactly one llama native binary, so a
-      # GPU jar runs only on its own OS/arch/backend, while the default (no classifier) bundles the
-      # multi-platform CPU natives and runs anywhere. Signing uses the key setup-java already
+      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU/alternate natives jar + the
+      # default all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
+      # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
+      # natives, and a classifier jar adds its one backend on top, which the loader prefers on its
+      # own OS/arch when the vendor runtime is present. Signing uses the key setup-java already
       # imported (armored detached .asc, same shape Central produces).
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
         if: ${{ !cancelled() }}
@@ -840,8 +842,10 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          # Source of truth: the <classifier> set in java-llama.cpp llama/pom.xml for the pinned
-          # ${llama.version} (all published to Maven Central). Keep in sync on a llama bump.
+          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}
+          # (every natives jar but the cpu-*/metal-* ones llama-platform already brings). Each
+          # jar here is ADDED to the default CPU natives (-Dllama.classifier activates the
+          # gpu-natives profile), so every classifier fat jar keeps the CPU fallback.
           CLASSIFIERS=(
             cuda13-linux-x86-64 cuda13-windows-x86-64
             vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64
@@ -849,7 +853,7 @@ jobs:
             rocm-linux-x86-64 rocm-windows-x86-64
             sycl-fp16-linux-x86-64 sycl-fp32-linux-x86-64 sycl-windows-x86-64
             openvino-linux-x86-64 openvino-windows-x86-64
-            msvc-windows
+            msvc-windows-x86-64 msvc-windows-x86
           )
           build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
           for c in "${CLASSIFIERS[@]}"; do
@@ -864,13 +868,13 @@ jobs:
           cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-release-assets/
           bash .github/sign-fatjars.sh signed-release-assets
           # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
-          # default jar; the sixteen GPU jars cannot be covered that way (a GitHub runner has no
+          # default jar; the classifier jars cannot be covered that way (a GitHub runner has no
           # such device, and the only command that would load the native library is a real
           # generation), so this asserts instead that each jar is the artifact its name claims --
-          # one jar per classifier, a native for the OS/arch the name promises, and a native set
-          # that DIFFERS from the default jar's. That last one is the point: if -Dllama.classifier=
-          # ever stops being wired through, the loop silently ships sixteen copies of the CPU build
-          # under GPU names and nothing else in this pipeline notices.
+          # one jar per classifier, the backend directory the name promises, and every default
+          # CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=
+          # ever stops being wired through, the loop silently ships copies of the CPU build under
+          # GPU names and nothing else in this pipeline notices.
           bash .github/verify-classifier-fatjars.sh signed-release-assets "${CLASSIFIERS[@]}"
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}

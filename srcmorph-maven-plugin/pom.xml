@@ -44,8 +44,8 @@ SPDX-License-Identifier: Apache-2.0
         <maven.version>3.9.16</maven.version>
         <!-- net.ladenthin:llama is now a dependency of the srcmorph core module (only the
              provider package touches it); this module no longer declares it directly. The
-             gpu-cuda / gpu-vulkan profiles that used to set its classifier here now live on
-             srcmorph/pom.xml, since the classifier choice is resolved at srcmorph's own build. -->
+             gpu-cuda / gpu-vulkan profiles that add a GPU natives jar live on srcmorph/pom.xml,
+             since the natives are resolved at srcmorph's own build. -->
         <!-- ====================================================================================
              `ai.*` properties (ai.model / ai.gpuLayers / ai.mainGpu / ai.devices / ai.cachePrompt /
              ai.index.output.directory, plus the commented-out exp.* experiment knobs) are THIS
@@ -68,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
              do NOT pin a count, so llama.cpp AUTO-FITS as many layers as fit the card's free VRAM. This is
              the robust "runs on any card" setting: it never over-commits (no OOM on a 6 GB card) and uses
              more layers on a bigger card. A CPU build stays on CPU. Pin a count only to force a specific
-             partial split (e.g. -Dai.gpuLayers=12); a fixed count disables auto-fit. GPU classifier only. -->
+             partial split (e.g. -Dai.gpuLayers=12); a fixed count disables auto-fit. GPU natives jar only. -->
         <ai.gpuLayers>-1</ai.gpuLayers>
         <!-- Primary GPU index for the gpt-oss presets (the main-gpu flag). -1 = leave default. Matters on
              multi-GPU hosts: a Vulkan build enumerates every GPU (an integrated GPU may be device 0), so
@@ -749,7 +749,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <profiles>
         <!--
-            The gpu-cuda / gpu-vulkan profiles (setting a GPU classifier on net.ladenthin:llama)
+            The gpu-cuda / gpu-vulkan profiles (adding a GPU natives jar of net.ladenthin:llama)
             moved to srcmorph/pom.xml, since only that module's provider package depends on
             net.ladenthin:llama now. To index with a GPU-accelerated model, build srcmorph with
             that profile active first (e.g. `cd ../srcmorph && mvn install -P gpu-cuda`), then run

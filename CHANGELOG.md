@@ -12,6 +12,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- **`net.ladenthin:llama` 5.2.0's natives jars.** The binding is now the Java classes only, and every
+  native build is its own jar of the same artifact (classifier `<backend>-<os>-<arch>`). `srcmorph`
+  depends on `net.ladenthin:llama-platform` (a pom naming the CPU natives of every desktop platform),
+  so the plugin and the CLI keep running everywhere with no change for users. A GPU natives jar is now
+  **added** next to the CPU natives rather than swapped in: `-P gpu-cuda` / `-P gpu-vulkan` and the new
+  `-Dllama.classifier=<classifier>` (profile `gpu-natives`) add one, and the loader falls back to the
+  CPU natives when the GPU runtime is missing. The GPU classifier fat jars of the CLI are therefore the
+  CPU fat jar plus one backend — they now also run on a machine without that GPU.
+  `.github/verify-classifier-fatjars.sh` asserts exactly that (the promised `<OS>/<ARCH>/<backend>/`
+  directory, and no CPU native of the default jar lost), and the CI fat-jar set follows llama's
+  `natives.csv` (the two `msvc-windows-*` jars added).
 - **The CLI fat jar now ships `slf4j-simple` instead of logback, and no `checker-qual` at all.**
   Production code here targets Java 8, but every logback release from 1.4.0 on is Java 11 bytecode:
   SLF4J's `ServiceLoader` finds `LogbackServiceProvider` at startup, so a Java 8 JVM died with

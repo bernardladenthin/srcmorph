@@ -19,12 +19,13 @@ dependency, including an SLF4J binding (`slf4j-simple`), so it runs standalone.
 **Download:** the pre-built fat jars are attached to each
 [GitHub Release](https://github.com/bernardladenthin/srcmorph/releases) (with a `.asc` GPG signature),
 **not** Maven Central. The unsuffixed `srcmorph-cli-<version>-jar-with-dependencies.jar` bundles the
-multi-platform **CPU** `net.ladenthin:llama` native and runs on any OS/arch. For GPU acceleration there
+multi-platform **CPU** `net.ladenthin:llama` natives and runs on any OS/arch. For GPU acceleration there
 is one classifier variant per llama native backend —
 `srcmorph-cli-<version>-jar-with-dependencies-<classifier>.jar` (e.g. `-cuda13-linux-x86-64`,
-`-vulkan-windows-x86-64`) — each bundling exactly that one backend's binary, so it runs only on the
-matching OS/arch with that GPU runtime present. Pick the plain CPU jar unless you specifically want a
-GPU build.
+`-vulkan-windows-x86-64`) — each the CPU jar plus that one backend's binary. The loader tries the GPU
+backend first and falls back to the CPU natives when its runtime is missing, so a GPU variant never runs
+worse than the plain jar; it only runs *faster* on the matching OS/arch with that GPU runtime present.
+Pick the plain CPU jar unless you specifically want a GPU build.
 
 Both `.json`/`.js` (parsed via a
 Jackson `ObjectMapper`) and `.yaml`/`.yml` (parsed via `YAMLMapper`) are supported — pick whichever you

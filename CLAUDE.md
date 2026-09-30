@@ -140,8 +140,11 @@ somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold
 100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 52 classes across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (16/16) and `srcmorph-maven-plugin` (62/62) carry their own
-`pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The `gpu-cuda`/`gpu-vulkan` profiles (swap the
-`net.ladenthin:llama` classifier via the `llama.classifier` property) live here; the `jcstress` and
+`pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
+naming the CPU natives jar of every desktop platform — since llama 5.2.0 `net.ladenthin:llama` is the
+classes only); the `gpu-cuda`/`gpu-vulkan` profiles and `-Dllama.classifier=<natives jar>` (profile
+`gpu-natives`) **add** a GPU natives jar next to them, and the loader falls back to the CPU natives when
+the GPU runtime is missing. They live here; the `jcstress` and
 `vmlens` profiles/tests currently still live in the **plugin** module (they were not moved in the
 extraction — see that module's section below), not here.
 
@@ -397,7 +400,7 @@ assume it has already been updated.
 
 | Dependency | Version | Used by |
 |---|---|---|
-| `net.ladenthin:llama` | 5.2.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
+| `net.ladenthin:llama` + `llama-platform` (pom) | 5.2.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding (classes) + the CPU natives jars; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
 | `org.slf4j:slf4j-api` | 2.0.20 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
 | `org.slf4j:slf4j-simple` | 2.0.20 (converged in the parent) | `srcmorph-cli` (runtime binding) |
 | `ch.qos.logback:logback-classic` | 1.6.4 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |

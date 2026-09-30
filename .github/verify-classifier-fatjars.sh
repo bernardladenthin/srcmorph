@@ -8,7 +8,7 @@
 #
 # WHY THIS IS STRUCTURAL AND NOT A LAUNCH. The cross-repo rule is "no release asset is attached that
 # CI has not run" (workspace/policies/fat-jar-release-assets.md), and the `smoke-fatjar` job does
-# exactly that -- for the DEFAULT jar. The sixteen GPU-classifier jars cannot be covered the same
+# exactly that -- for the DEFAULT jar. The GPU-classifier jars cannot be covered the same
 # way: a GitHub-hosted runner has no CUDA/ROCm/SYCL/OpenVINO device, and the only command that would
 # load the native library is a real generation. `Plan` with the mock provider -- the one thing that
 # does run on a GPU-less runner -- never touches it, so "launching" a classifier jar would assert
@@ -19,12 +19,14 @@
 #   1. exactly one jar per requested classifier, and no unexpected classifier jar;
 #   2. every jar carries at least one native library (a jar with none is a broken assembly that
 #      would fail at runtime on every platform);
-#   3. every classifier jar carries the native for the OS/arch its NAME promises;
-#   4. every classifier jar's native set DIFFERS from the default jar's -- this is the one that
-#      catches the failure the whole loop is exposed to. If `-Dllama.classifier=` ever stops being
-#      wired through (a renamed property, a pom refactor), Maven still resolves the default artifact
-#      and the loop happily produces seventeen byte-similar jars under sixteen different names. No
-#      other check in this pipeline would notice;
+#   3. every classifier jar carries the backend directory its NAME promises: net.ladenthin:llama
+#      natives jars (5.2.0 on) are named <backend>-<os>-<arch> and hold <OS>/<ARCH>/<backend>/ --
+#      this is the one that catches the failure the whole loop is exposed to. If
+#      `-Dllama.classifier=` ever stops being wired through (a renamed property, a pom refactor),
+#      Maven still resolves the default natives and the loop happily produces byte-similar jars
+#      under GPU names. No other check in this pipeline would notice;
+#   4. every classifier jar still carries every native of the default jar: the GPU backend is added
+#      next to the CPU natives, which are the loader's fallback when the GPU runtime is missing;
 #   5. the default jar carries natives for more than one OS (it is the all-platform CPU variant).
 #
 # A new classifier SHAPE fails this script until its expected native path is declared, rather than
@@ -38,7 +40,7 @@ ASSET_DIR="${1:?usage: verify-classifier-fatjars.sh <asset-dir> <classifier>...}
 shift
 CLASSIFIERS=("$@")
 
-# Native libraries live under this prefix inside the jar, as <OS>/<ARCH>/<lib>.
+# Native libraries live under this prefix inside the jar, as <OS>/<ARCH>/<backend>/<lib>.
 NATIVE_PREFIX="net/ladenthin/llama/"
 
 fail() {
@@ -54,18 +56,25 @@ natives_of() {
     unzip -Z1 "$1" | grep -E "^${NATIVE_PREFIX}.*\.(so|dll|dylib)$" | sort
 }
 
-# "<OS>/<ARCH>" fragment a classifier's name promises. The catch-all is deliberate: a classifier
-# shape nobody has mapped must red the job, not pass unchecked.
+# "<OS>/<ARCH>/<backend>/" directory a classifier's name promises (<backend>-<os>-<arch>). The
+# catch-all is deliberate: a classifier shape nobody has mapped must red the job, not pass unchecked.
 expected_path_of() {
-    case "$1" in
-        *-linux-x86-64) echo "Linux/x86_64/" ;;
-        *-linux-aarch64) echo "Linux/aarch64/" ;;
-        *-windows-x86-64) echo "Windows/x86_64/" ;;
-        *-windows-aarch64) echo "Windows/aarch64/" ;;
-        *-android-aarch64) echo "Linux-Android/aarch64/" ;;
-        msvc-windows) echo "Windows/" ;;
-        *) fail "classifier '$1' has no expected native path -- add its shape to expected_path_of()" ;;
+    local c="$1" arch os_arch
+    case "$c" in
+        *-linux-x86-64) os_arch="Linux/x86_64" ;;
+        *-linux-aarch64) os_arch="Linux/aarch64" ;;
+        *-windows-x86-64) os_arch="Windows/x86_64" ;;
+        *-windows-x86) os_arch="Windows/x86" ;;
+        *-windows-aarch64) os_arch="Windows/aarch64" ;;
+        *-android-aarch64) os_arch="Linux-Android/aarch64" ;;
+        *) fail "classifier '$c' has no expected native path -- add its shape to expected_path_of()" ;;
     esac
+    case "$c" in
+        *-x86-64) arch="x86-64" ;;
+        *) arch="${c##*-}" ;;
+    esac
+    local rest="${c%-"$arch"}"
+    echo "$os_arch/${rest%-*}/"
 }
 
 default_jars=()
@@ -113,10 +122,10 @@ for c in "${CLASSIFIERS[@]}"; do
     echo "$natives" | grep -qF -- "${NATIVE_PREFIX}${want}" \
         || fail "$(basename "$jar") carries no native under ${NATIVE_PREFIX}${want} -- it does not contain what its name promises: $(echo "$natives" | tr '\n' ' ')"
 
-    # The load-bearing one: a classifier jar that is native-identical to the default means
-    # -Dllama.classifier= did not take effect and every GPU asset is really the CPU build.
-    [ "$natives" != "$default_natives" ] \
-        || fail "$(basename "$jar") has the same native set as the default jar -- -Dllama.classifier=$c did not take effect"
+    # Every CPU native of the default jar must still be there: it is the loader's fallback.
+    missing="$(comm -23 <(echo "$default_natives") <(echo "$natives"))"
+    [ -z "$missing" ] \
+        || fail "$(basename "$jar") lost natives of the default jar (the CPU fallback): $(echo "$missing" | tr '\n' ' ')"
 
     echo "ok: $(basename "$jar") -- $(echo "$natives" | wc -l) native(s), matches ${want}"
 done
