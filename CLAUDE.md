@@ -485,8 +485,7 @@ and both are easy to undo by accident:
   only. Safe because no source in this reactor imports `org.checkerframework`.
 
 **The gate: `.github/verify-bytecode-version.sh`.** Kept **byte-identical** across
-java-llama.cpp / BitcoinAddressFinder / streambuffer / srcmorph (checksum table in
-`workspace/crossrepostatus.md`). It opens every `.class` in every jar it is given and fails on any
+java-llama.cpp / BitcoinAddressFinder / streambuffer / srcmorph (listed in `.github/shared-files.sha256`, checked by the `shared-files` job). It opens every `.class` in every jar it is given and fails on any
 whose class-file major version exceeds `--max-major`:
 
 ```bash
@@ -601,7 +600,7 @@ in [`../workspace/policies/fat-jar-release-assets.md`](../workspace/policies/fat
 **srcmorph-specific smoke.** The cross-repo rule "no release asset is attached that CI has not run"
 is implemented here by the `smoke-fatjar` job (`needs: [build]`, gates both publish jobs): it
 downloads the `plugin-jars` artifact and runs the **byte-identical shared**
-`.github/smoke-fatjar-cli.sh` (synced with BAF — see the checksum table in `crossrepostatus.md`)
+`.github/smoke-fatjar-cli.sh` (synced with BAF — listed in `.github/shared-files.sha256`)
 from `examples/` against `config_Plan.json`, asserting exit 0 plus `Main#run end.` in the output.
 `Plan` with the `mock` provider needs no GGUF, no GPU and no network, which makes this the cheapest
 possible real launch of the CLI. **Do not "strengthen" it to `config_All.json` over a real source
@@ -620,6 +619,20 @@ existing `slf4j-api`/`logback-classic`/`jackson` pins) because `net.ladenthin:ll
 transitively. Convention + the `excludedScopes` gotcha + merge-discipline guidance (this repo's
 `main` was actually broken by exactly this pattern once — Dependabot PR #169) are in
 [`../workspace/policies/dependency-convergence-pinning.md`](../workspace/policies/dependency-convergence-pinning.md).
+
+## Shared files and the release gate (`shared-files` job)
+
+Files kept byte-identical with java-llama.cpp, BitcoinAddressFinder, srcmorph and streambuffer are
+listed with their SHA-256 in **`.github/shared-files.sha256`** — the reference for what must stay
+equal. The `shared-files` job of `publish.yml` (identical in all four repositories, gating both
+publish jobs) fails when a listed file changed here alone and warns when another repository's
+default branch lists it with a different hash. To change a shared file, change every copy, then run
+`python3 .github/check-shared-files.py --write` in each repository. The shared build-check library
+(`.github/buildcheck/`, stdlib-only Python with unit tests: `python3 -m unittest discover -s
+.github/buildcheck/tests -t .github`) also runs **`check-release-gate.py`**: every job must gate both
+publish jobs unless `.github/release-gate-exemptions.txt` names it with a reason. Details and the
+reasoning (copies with a checksum rather than a shared actions repository):
+[`../workspace/crossrepostatus.md`](../workspace/crossrepostatus.md), "Cross-repo byte-identical files".
 
 ## Open TODOs
 
