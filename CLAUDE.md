@@ -403,7 +403,7 @@ assume it has already been updated.
 | `net.ladenthin:llama` + `llama-platform` (pom) | 5.2.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding (classes) + the CPU natives jars; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
 | `org.slf4j:slf4j-api` | 2.0.20 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
 | `org.slf4j:slf4j-simple` | 2.0.20 (converged in the parent) | `srcmorph-cli` (runtime binding) |
-| `ch.qos.logback:logback-classic` | 1.6.4 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
+| `ch.qos.logback:logback-classic` | 1.6.5 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
 | `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph-cli` (JSON config) |
 | `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph-cli` (YAML config) |
 | `org.apache.maven:maven-plugin-api` | 3.9.16 | `srcmorph-maven-plugin` (provided) |
