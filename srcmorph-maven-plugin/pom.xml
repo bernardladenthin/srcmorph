@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
         <maven.compiler.testRelease>21</maven.compiler.testRelease>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.tools.version>3.16.0</maven.plugin.tools.version>
-        <maven.version>3.9.16</maven.version>
+        <maven.version>3.10.0</maven.version>
         <!-- net.ladenthin:llama is now a dependency of the srcmorph core module (only the
              provider package touches it); this module no longer declares it directly. The
              gpu-cuda / gpu-vulkan profiles that add a GPU natives jar live on srcmorph/pom.xml,
