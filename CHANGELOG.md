@@ -23,6 +23,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `.github/shared-files.sha256` entry `.github/workflows/publish.yml#<job>` hashes one job (`startgate`,
   `shared-files`, `verify-signing-key`, `check-snapshot`, `check-tag`, and where present
   `verify-signing-key-gradle`, `github-snapshot`, `github-release`).
+- **Maven versions are compared with the sibling repositories**: `check-versions.py` (in the
+  `shared-files` job) warns where a dependency or plugin -- incl. annotation-processor paths and the
+  Spotless formatter version -- is used in another version than in a sibling's default branch.
 - **`net.ladenthin:llama` 5.2.0's natives jars.** The binding is now the Java classes only, and every
   native build is its own jar of the same artifact (classifier `<backend>-<os>-<arch>`). `srcmorph`
   depends on `net.ladenthin:llama-platform` (a pom naming the CPU natives of every desktop platform),
