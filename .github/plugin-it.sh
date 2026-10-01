@@ -2,7 +2,7 @@
 
 # SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Integration test for srcmorph-maven-plugin: runs the plugin as a PLUGIN, from the local
 # repository, through a real Maven lifecycle, against the fixture project in .github/plugin-it/.
