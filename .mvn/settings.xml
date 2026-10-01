@@ -1,16 +1,11 @@
 <!--
 SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 
-SPDX-License-Identifier: Apache-2.0
+SPDX-License-Identifier: MIT OR Apache-2.0
 -->
 
 <settings>
     <servers>
-        <server>
-            <id>github-java-llama</id>
-            <username>${env.GITHUB_ACTOR}</username>
-            <password>${env.GITHUB_TOKEN}</password>
-        </server>
         <server>
             <id>github</id>
             <username>${env.GITHUB_ACTOR}</username>
