@@ -48,9 +48,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  JAVA_VERSION: '21'
-
 jobs:
   # ---------------------------------------------------------------------------
   # Start gate — single cancellable abort window before the pipeline starts.
@@ -152,7 +149,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v6
         with:
@@ -193,7 +190,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
       # spotless-maven-plugin / spotbugs-maven-plugin are declared only in each child module's own
       # <pluginManagement>/<build> (not the pom-packaging reactor root), so the bare prefix goals
@@ -229,7 +226,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
           cache: maven
       - name: Build
@@ -255,7 +252,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
           cache: maven
       - name: Memory before tests
@@ -334,7 +331,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
-        with: { java-version: '${{ env.JAVA_VERSION }}', distribution: temurin, cache: maven }
+        with: { java-version-file: .java-version, distribution: temurin, cache: maven }
       - name: Test under vmlens (one class — staged scope)
         # VmlensInterleavingSmokeTest and the `vmlens` profile both live in
         # srcmorph-maven-plugin/pom.xml (they were not relocated during the core
@@ -384,7 +381,7 @@ jobs:
           path: fatjar/
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
       # Class-file floor. Production code here targets Java 8, so anything a consumer's JVM
       # can load must be major 52 or lower -- a single Java 11 class (logback's
@@ -429,7 +426,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
           cache: maven
       # -pl srcmorph-maven-plugin -am resolves to exactly parent + srcmorph + the plugin;
@@ -478,7 +475,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
-        with: { java-version: '${{ env.JAVA_VERSION }}', distribution: temurin }
+        with: { java-version-file: .java-version, distribution: temurin }
       # Only srcmorph's jacoco report is uploaded by the `test` job (see the comment there) —
       # it carries the bulk of the test suite and the only PIT gate. Coveralls/Codecov are
       # pointed at it directly rather than an aggregated multi-module report, matching the
@@ -535,7 +532,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
           cache: maven
           server-id: central
@@ -711,7 +708,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: temurin
           cache: maven
           server-id: central
