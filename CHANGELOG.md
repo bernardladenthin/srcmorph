@@ -12,6 +12,51 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- **CI: shared files and the release gate are checked.** The files kept byte-identical with the sibling
+  repositories are listed with their SHA-256 in `.github/shared-files.sha256`; a new `shared-files` job
+  fails on a copy changed here alone and warns on a sibling's differing copy. The same job runs the
+  shared build-check library's tests and `check-release-gate.py`: every job must gate both publish
+  jobs unless `.github/release-gate-exemptions.txt` says why (`vmlens` now gates). The crash-log step
+  and the signing-key preflight are shared scripts (`print-crash-logs.sh`, `verify-signing-key.sh`)
+  instead of copies pasted into the workflow.
+- **Workflow jobs kept identical across the repositories are checked too**: a
+  `.github/shared-files.sha256` entry `.github/workflows/publish.yml#<job>` hashes one job (`startgate`,
+  `shared-files`, `verify-signing-key`, `check-snapshot`, `check-tag`, and where present
+  `verify-signing-key-gradle`, `github-snapshot`, `github-release`).
+- **Own scripts are licensed `MIT OR Apache-2.0`** like the CI files: `examples/run_*` and
+  `docs/ai-index-benchmark/tools/` (the Java sources and the rest of the project stay Apache-2.0; the
+  header `generate-fixture.sh` writes into its generated Java fixtures is unchanged).
+- **More shared files, and files identical up to the repository name**: a shared-files entry ending
+  in `?repo` is hashed with the repository's name replaced by `{repo}`. Added: `.editorconfig`,
+  `.gitattributes` (now with `*.gguf binary` everywhere), `FUNDING.yml`, `CODEOWNERS`, the license texts,
+  `SUPPORT.md`, `ISSUE_TEMPLATE/config.yml` and further files listed in `.github/shared-files.sha256`;
+  the signing self-test now runs on Gradle 9.8.0 in all four repositories.
+  `.mvn/settings.xml` lost the unused `github-java-llama` server.
+- **The JDK is named once, in `.java-version`**: every workflow reads it through setup-java's
+  `java-version-file` (the `JAVA_VERSION` env and the literal `21`s are gone); `.java-version` and
+  `codeql.yml` are now byte-identical in all four sibling repositories and in the shared-files manifest.
+- **CI files are licensed `MIT OR Apache-2.0`**: every `.github` file carrying only the owner's
+  copyright now has the same license header in all four sibling repositories, so the shared ones are
+  byte-identical. `claude.yml`, `claude-code-review.yml`, `scorecard.yml`, `reuse.yml`,
+  `osv-scanner.yml`, `dependabot.yml` and `CODE_OF_CONDUCT.md` joined the shared-files manifest;
+  `osv-scanner.yml` now grants `contents: read` instead of `read-all` (as java-llama.cpp already did).
+- **Workflow run scripts are parsed in the `shared-files` job**: `check-run-scripts.py` runs `bash -n`
+  over every `run:` script of the workflows and composite actions that runs in bash (shell decided as
+  the runner does), so a broken script fails within minutes instead of in the job that runs it.
+- **Maven versions are compared with the sibling repositories**: `check-versions.py` (in the
+  `shared-files` job) warns where a dependency or plugin -- incl. annotation-processor paths and the
+  Spotless formatter version -- is used in another version than in a sibling's default branch.
+- **`net.ladenthin:llama` 5.2.0's natives jars.** The binding is now the Java classes only, and every
+  native build is its own jar of the same artifact (classifier `<backend>-<os>-<arch>`). `srcmorph`
+  depends on `net.ladenthin:llama-platform` (a pom naming the CPU natives of every desktop platform),
+  so the plugin and the CLI keep running everywhere with no change for users. A GPU natives jar is now
+  **added** next to the CPU natives rather than swapped in: `-P gpu-cuda` / `-P gpu-vulkan` and the new
+  `-Dllama.classifier=<classifier>` (profile `gpu-natives`) add one, and the loader falls back to the
+  CPU natives when the GPU runtime is missing. The GPU classifier fat jars of the CLI are therefore the
+  CPU fat jar plus one backend — they now also run on a machine without that GPU.
+  `.github/verify-classifier-fatjars.sh` asserts exactly that (the promised `<OS>/<ARCH>/<backend>/`
+  directory, and no CPU native of the default jar lost), and the CI fat-jar set follows llama's
+  `natives.csv` (the two `msvc-windows-*` jars added).
 - **The CLI fat jar now ships `slf4j-simple` instead of logback, and no `checker-qual` at all.**
   Production code here targets Java 8, but every logback release from 1.4.0 on is Java 11 bytecode:
   SLF4J's `ServiceLoader` finds `LogbackServiceProvider` at startup, so a Java 8 JVM died with

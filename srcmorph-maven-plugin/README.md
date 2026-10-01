@@ -119,12 +119,17 @@ Running the plugin under Java 11 or newer needs no override.
 
 The plugin depends on [`net.ladenthin:llama`](https://central.sonatype.com/artifact/net.ladenthin/llama), the Java/JNI binding for llama.cpp (via the `srcmorph` core library it wraps).
 It is published on Maven Central and resolves automatically — no manual installation required.
+Since `llama` 5.2.0 the binding is split: `net.ladenthin:llama` holds the Java classes only, and every
+native build is a natives jar of the same artifact (classifier `<backend>-<os>-<arch>`).
+`srcmorph` depends on `net.ladenthin:llama-platform`, a pom naming the CPU natives of every desktop
+platform (macOS: Metal), so the plugin runs anywhere out of the box:
 
 ```xml
 <dependency>
     <groupId>net.ladenthin</groupId>
-    <artifactId>llama</artifactId>
-    <version>5.1.0</version>
+    <artifactId>llama-platform</artifactId>
+    <version>5.2.0</version>
+    <type>pom</type>
 </dependency>
 ```
 ## Configuration
@@ -555,19 +560,20 @@ in [COMPARISON.md §11](../docs/ai-index-benchmark/COMPARISON.md):
   this estimate per file.
 
 ## GPU acceleration (opt-in)
-The default native is CPU (Ninja build, bundled in the main `net.ladenthin:llama` jar). On an NVIDIA
+The default natives are CPU (from `net.ladenthin:llama-platform`, see "Dependency" above). On an NVIDIA
 RTX 3070 a CUDA build measured **~4.5× the CPU decode speed**; Vulkan also works (AMD + NVIDIA) but pays
 a one-time shader-compilation cost on the first run. OpenCL is intentionally not offered (llama.cpp's
 OpenCL backend does not support NVIDIA GPUs).
 
 How the native is found: `net.ladenthin.llama.loader.LlamaLoader` tries `net.ladenthin.llama.lib.path`,
-then `java.library.path`, then **extracts the native bundled in whatever `net.ladenthin:llama` jar is on
-the classpath**. So there are two ways to enable a GPU when running the *published* plugin in your own
-build.
+then `java.library.path`, then **every natives jar on the classpath**, GPU backends before the CPU one:
+a GPU library whose runtime is missing fails its load and the loader falls through to the CPU natives.
+So there are two ways to enable a GPU when running the *published* plugin in your own build.
 
-**Recommended — add the GPU classifier to the plugin's own classpath.** Declare the matching
-`net.ladenthin:llama` classifier as a dependency of the plugin in your POM; the loader then extracts the
-GPU `jllama.dll` from it — no library path to manage:
+**Recommended — add the GPU natives jar to the plugin's own classpath.** Declare the matching
+`net.ladenthin:llama` natives jar as a dependency of the plugin in your POM. It is added next to the
+CPU natives, not swapped in — no library path to manage, and a machine without the GPU runtime still
+runs on the CPU:
 
 ```xml
 <plugin>
@@ -578,7 +584,7 @@ GPU `jllama.dll` from it — no library path to manage:
     <dependency>
       <groupId>net.ladenthin</groupId>
       <artifactId>llama</artifactId>
-      <version>5.1.0</version>
+      <version>5.2.0</version>
       <classifier>cuda13-windows-x86-64</classifier> <!-- NVIDIA; or vulkan-windows-x86-64 -->
     </dependency>
   </dependencies>
@@ -590,8 +596,8 @@ mvn srcmorph:generate -Dsrcmorph.generationProvider=llamacpp-jni      # + the GP
 ```
 
 **Alternative — runtime library override (no POM change).** Point `net.ladenthin.llama.lib.path` at a
-folder holding the GPU `jllama.dll` (extracted once from the classifier jar); it is tried before the
-bundled native:
+folder holding the GPU `jllama.dll` (extracted once from the natives jar); it is tried before the
+natives jars:
 
 ```
 mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dsrcmorph.generationProvider=llamacpp-jni
@@ -608,7 +614,7 @@ mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dsrc
 In both cases:
 
 - **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
-  `cublas64_13.dll`) on `PATH` — the classifier jar bundles only `jllama.dll`, not the CUDA runtime.
+  `cublas64_13.dll`) on `PATH` — the natives jar bundles only `jllama.dll`, not the CUDA runtime.
 - **GPU layer offload** — set `<gpuLayers>` inside your `<aiDefinition>` (see "Per-model
   `<aiDefinition>` parameters" above): `-1` (default) does **not** pin a layer count, so llama.cpp
   **auto-fits** as many layers as fit the card's free VRAM — the robust "runs on any card" setting (it
@@ -625,11 +631,10 @@ In both cases:
   gpt-oss presets these are wired to the `-Dai.mainGpu` / `-Dai.devices` build properties.)*
 
 **Profiles (this repo's own reactor build only — test/benchmark).** `-P gpu-cuda` / `-P gpu-vulkan`
-swap the `net.ladenthin:llama` classifier (via the `llama.classifier` property) for `srcmorph`'s own
-test/compile classpath — handy for the native test or benchmarking on GPU here. They do **not** change
-the native used when the *published* plugin runs in another build (the POM is not flattened, so the
-classifier stays a property that resolves to the CPU default downstream) — use one of the two methods
-above for real indexing.
+add the Windows x86-64 CUDA / Vulkan natives jar to `srcmorph`'s own test/compile classpath, and
+`-Dllama.classifier=<classifier>` adds any other one (e.g. `cuda13-linux-x86-64`) — handy for the
+native test or benchmarking on GPU here. For real indexing in another build use one of the two methods
+above.
 
 ## Development
 

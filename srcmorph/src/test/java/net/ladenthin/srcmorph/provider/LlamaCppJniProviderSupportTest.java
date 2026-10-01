@@ -168,7 +168,7 @@ public class LlamaCppJniProviderSupportTest {
         // act
         final String json = providerWith(defaults)
                 .buildInferenceParameters(request("class A {}"))
-                .toString();
+                .toJson();
 
         // assert
         assertThat(json, not(containsString(PARAM_DRY_PENALTY_LAST_N)));
@@ -190,7 +190,7 @@ public class LlamaCppJniProviderSupportTest {
         // act
         final String json = providerWith(zeroed)
                 .buildInferenceParameters(request("class A {}"))
-                .toString();
+                .toJson();
 
         // assert
         assertThat(json, containsString(PARAM_DRY_PENALTY_LAST_N));
@@ -209,11 +209,11 @@ public class LlamaCppJniProviderSupportTest {
         // act
         final String json = providerWith(configured)
                 .buildInferenceParameters(request("class A {}"))
-                .toString();
+                .toJson();
 
         // assert -- distinct values, so a transposition of the two guards fails rather than cancelling out
-        assertThat(json, containsString(PARAM_DRY_PENALTY_LAST_N + ": 64"));
-        assertThat(json, containsString(PARAM_REPEAT_LAST_N + ": 128"));
+        assertThat(json, containsString(PARAM_DRY_PENALTY_LAST_N + ":64"));
+        assertThat(json, containsString(PARAM_REPEAT_LAST_N + ":128"));
     }
 
     /**
@@ -230,7 +230,7 @@ public class LlamaCppJniProviderSupportTest {
         // act
         final String json = providerWith(defaults)
                 .buildInferenceParameters(request("class A {}"))
-                .toString();
+                .toJson();
 
         // assert
         assertThat(json, not(containsString(PARAM_SEED)));
@@ -250,10 +250,10 @@ public class LlamaCppJniProviderSupportTest {
         // act
         final String json = providerWith(zeroSeed)
                 .buildInferenceParameters(request("class A {}"))
-                .toString();
+                .toJson();
 
         // assert
-        assertThat(json, containsString(PARAM_SEED + ": 0"));
+        assertThat(json, containsString(PARAM_SEED + ":0"));
     }
 
     /**
@@ -270,7 +270,7 @@ public class LlamaCppJniProviderSupportTest {
         // act
         final String json = providerWith(defaults)
                 .buildInferenceParameters(request("class A {}"))
-                .toString();
+                .toJson();
 
         // assert
         assertThat(json, not(containsString(PARAM_DRY_SEQUENCE_BREAKERS)));
@@ -287,7 +287,7 @@ public class LlamaCppJniProviderSupportTest {
         // act
         final String json = providerWith(configured)
                 .buildInferenceParameters(request("class A {}"))
-                .toString();
+                .toJson();
 
         // assert
         assertThat(json, containsString(PARAM_DRY_SEQUENCE_BREAKERS));

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # Generates a large, *valid* synthetic Java class for benchmarking how the AI
 # index plugin handles big source files (context sizing, trim/no-trim, output

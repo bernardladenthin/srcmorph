@@ -1,6 +1,6 @@
 REM SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 REM
-REM SPDX-License-Identifier: Apache-2.0
+REM SPDX-License-Identifier: MIT OR Apache-2.0
 
 @echo off
 rem Runs the srcmorph CLI against config_GenerateFileIndex.json (Phase 1 only: index source files

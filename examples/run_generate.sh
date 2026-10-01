@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Runs the srcmorph CLI against config_GenerateFileIndex.json (Phase 1 only: index source files
 # and fill in their AI-generated summary bodies). Uses the mock provider, so no GGUF model is

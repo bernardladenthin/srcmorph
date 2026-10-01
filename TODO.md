@@ -26,32 +26,18 @@ everything below is genuinely still open.
   `5.2.0-SNAPSHOT` precisely because the newer binding "can express" flashAttn, so 5.1.0 may not
   carry the API `LlamaCppJniConfigFactory` uses. java-llama.cpp's `main` sits at `5.2.0-SNAPSHOT`,
   so publishing that release is the likelier fix. Decide which, then re-run CI to confirm — this is
-  the one item here that blocks everything else in the repo.
+  the one item here that blocks everything else in the repo. Reverting got harder since: the reactor
+  now depends on 5.2.0's natives-jar split (`net.ladenthin:llama-platform`, GPU natives jars added via
+  `-Dllama.classifier`), which 5.1.0 does not have. Against a locally installed 5.2.0-SNAPSHOT
+  (`-Dllama.version=5.2.0-SNAPSHOT install`) the whole reactor is green, spotbugs included
+  (658 / 39 / 32 tests, the 36 model-backed knob-sweep cases among them), so the release is the only
+  thing missing.
 
-- **Second latent red behind the one above: `spotbugs:check` fails on `srcmorph` with 4 findsecbugs
-  findings.** Found 2026-09-20 by compiling the reactor against a locally installed
-  `net.ladenthin:llama:5.2.0-SNAPSHOT` (`-Dllama.version=5.2.0-SNAPSHOT -DskipTests verify`), the
-  only way to get past the unresolvable pin: `LlamaCppJniProviderSupport` (introduced by `45b619c`,
-  2026-09-05) raises `CRLF_INJECTION_LOGS` ×2 and `IMPROPER_UNICODE` ×2, all reported at line 49, and
-  nothing in `srcmorph/spotbugs-exclude.xml` covers the class. It is invisible today only because
-  every CI run dies at the dependency step before spotbugs runs; the moment the 5.2.0 pin resolves,
-  `Code style (spotless) + package graph` goes red on this instead. Reproduced on the unmodified
-  `origin/main` tree, so it is not an artefact of the dependency sweep. Fix the code or add a
-  justified suppression per `../workspace/policies/spotbugs-suppressions.md` in the same change
-  that unblocks the pin.
-- **Third latent red behind the pin: 4 `LlamaCppJniProviderSupportTest` failures against the 5.2.0
-  core.** Found 2026-09-27 the same way (`-Dllama.version=5.2.0-SNAPSHOT verify`), reproduced on the
-  unmodified tree. `buildInferenceParameters_zeroWindows_sendsBothAsZero`,
-  `_configuredWindows_arePassedThrough`, `_zeroSeed_isStillSent` and
-  `_configuredDrySequenceBreakers_arePassedThrough` assert on `InferenceParameters.toString()` as if
-  it were the request JSON. In java-llama.cpp 5.2.0 `toString()` is a redacted debug view that is
-  deliberately not valid JSON, and `toJson()` renders the request body — so those assertions need to
-  read `toJson()`. Fix together with the pin; the rest of the reactor is green (634 / 39 / 33 tests).
-- **The sixteen GPU classifier fat jars are verified structurally, never launched.** Since 1.2.0
+- **The GPU classifier fat jars are verified structurally, never launched.** Since 1.2.0
   `.github/verify-classifier-fatjars.sh` asserts each is the artifact its name claims (one jar per
-  classifier, a native for the promised OS/arch, a native set that differs from the default jar's, so
-  a broken `-Dllama.classifier=` cannot silently ship seventeen CPU builds). What it cannot assert is
-  that the jar *works*: a GitHub-hosted runner has no CUDA/ROCm/SYCL/OpenVINO device, and the only
+  classifier, the promised backend directory next to the default CPU natives, so a broken
+  `-Dllama.classifier=` cannot silently ship CPU-only builds under GPU names). What it cannot assert
+  is that the jar *works*: a GitHub-hosted runner has no CUDA/ROCm/SYCL/OpenVINO device, and the only
   command that would load the native library is a real generation. Closing this needs hardware —
   a self-hosted runner, or a manual pre-release pass on one GPU box per backend. Worth knowing which
   half is covered before reading the green check as "the CUDA jar runs".

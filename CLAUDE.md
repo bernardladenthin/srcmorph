@@ -140,8 +140,11 @@ somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold
 100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 52 classes across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (16/16) and `srcmorph-maven-plugin` (62/62) carry their own
-`pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The `gpu-cuda`/`gpu-vulkan` profiles (swap the
-`net.ladenthin:llama` classifier via the `llama.classifier` property) live here; the `jcstress` and
+`pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
+naming the CPU natives jar of every desktop platform — since llama 5.2.0 `net.ladenthin:llama` is the
+classes only); the `gpu-cuda`/`gpu-vulkan` profiles and `-Dllama.classifier=<natives jar>` (profile
+`gpu-natives`) **add** a GPU natives jar next to them, and the loader falls back to the CPU natives when
+the GPU runtime is missing. They live here; the `jcstress` and
 `vmlens` profiles/tests currently still live in the **plugin** module (they were not moved in the
 extraction — see that module's section below), not here.
 
@@ -397,7 +400,7 @@ assume it has already been updated.
 
 | Dependency | Version | Used by |
 |---|---|---|
-| `net.ladenthin:llama` | 5.2.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
+| `net.ladenthin:llama` + `llama-platform` (pom) | 5.2.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding (classes) + the CPU natives jars; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
 | `org.slf4j:slf4j-api` | 2.0.20 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
 | `org.slf4j:slf4j-simple` | 2.0.20 (converged in the parent) | `srcmorph-cli` (runtime binding) |
 | `ch.qos.logback:logback-classic` | 1.6.4 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
@@ -482,8 +485,7 @@ and both are easy to undo by accident:
   only. Safe because no source in this reactor imports `org.checkerframework`.
 
 **The gate: `.github/verify-bytecode-version.sh`.** Kept **byte-identical** across
-java-llama.cpp / BitcoinAddressFinder / streambuffer / srcmorph (checksum table in
-`workspace/crossrepostatus.md`). It opens every `.class` in every jar it is given and fails on any
+java-llama.cpp / BitcoinAddressFinder / streambuffer / srcmorph (listed in `.github/shared-files.sha256`, checked by the `shared-files` job). It opens every `.class` in every jar it is given and fails on any
 whose class-file major version exceeds `--max-major`:
 
 ```bash
@@ -598,7 +600,7 @@ in [`../workspace/policies/fat-jar-release-assets.md`](../workspace/policies/fat
 **srcmorph-specific smoke.** The cross-repo rule "no release asset is attached that CI has not run"
 is implemented here by the `smoke-fatjar` job (`needs: [build]`, gates both publish jobs): it
 downloads the `plugin-jars` artifact and runs the **byte-identical shared**
-`.github/smoke-fatjar-cli.sh` (synced with BAF — see the checksum table in `crossrepostatus.md`)
+`.github/smoke-fatjar-cli.sh` (synced with BAF — listed in `.github/shared-files.sha256`)
 from `examples/` against `config_Plan.json`, asserting exit 0 plus `Main#run end.` in the output.
 `Plan` with the `mock` provider needs no GGUF, no GPU and no network, which makes this the cheapest
 possible real launch of the CLI. **Do not "strengthen" it to `config_All.json` over a real source
@@ -617,6 +619,29 @@ existing `slf4j-api`/`logback-classic`/`jackson` pins) because `net.ladenthin:ll
 transitively. Convention + the `excludedScopes` gotcha + merge-discipline guidance (this repo's
 `main` was actually broken by exactly this pattern once — Dependabot PR #169) are in
 [`../workspace/policies/dependency-convergence-pinning.md`](../workspace/policies/dependency-convergence-pinning.md).
+
+## Shared files and the release gate (`shared-files` job)
+
+Files kept byte-identical with java-llama.cpp, BitcoinAddressFinder, srcmorph and streambuffer are
+listed with their SHA-256 in **`.github/shared-files.sha256`** — the reference for what must stay
+equal. An entry `.github/workflows/publish.yml#<job>` stands for one job of the workflow: the jobs kept
+identical across the repositories (`startgate`, `shared-files`, `verify-signing-key`, `check-snapshot`,
+`check-tag`, `verify-signing-key-gradle`, `github-snapshot`, `github-release`) are checked like files. An entry ending in `?repo` covers a file or job identical up to the
+repository's name (hashed with the name replaced by `{repo}`), e.g. `SUPPORT.md?repo`.
+The `shared-files` job of `publish.yml` (gating both publish jobs) fails when a listed file changed here alone and warns when another repository's
+default branch lists it with a different hash. To change a shared file, change every copy, then run
+`python3 .github/check-shared-files.py --write` in each repository. The shared build-check library
+(`.github/buildcheck/`, stdlib-only Python with unit tests: `python3 -m unittest discover -s
+.github/buildcheck/tests -t .github`) also runs **`check-release-gate.py`**: every job must gate both
+publish jobs unless `.github/release-gate-exemptions.txt` names it with a reason, and
+**`check-versions.py`**, which **warns** where a Maven dependency or plugin (incl. the Spotless
+formatter version) is used here in another version than in a sibling repository -- Dependabot bumps
+each repository on its own, so this is where the drift shows -- and **`check-run-scripts.py`**, which
+runs `bash -n` over every `run:` script of the workflows and composite actions that runs in bash, so
+a broken script (a lost line continuation, say) fails here instead of in the job running it. The JDK every
+workflow uses is `.java-version` (setup-java's `java-version-file`), the same shared file in all four. Details and the
+reasoning (copies with a checksum rather than a shared actions repository):
+[`../workspace/crossrepostatus.md`](../workspace/crossrepostatus.md), "Cross-repo byte-identical files".
 
 ## Open TODOs
 

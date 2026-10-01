@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Runs the srcmorph CLI against config_Calibrate.json: loads each distinct routed model once and
 # prints a paste-ready <calibration> block per model. With the mock provider (as shipped) this is
