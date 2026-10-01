@@ -19,6 +19,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   jobs unless `.github/release-gate-exemptions.txt` says why (`vmlens` now gates). The crash-log step
   and the signing-key preflight are shared scripts (`print-crash-logs.sh`, `verify-signing-key.sh`)
   instead of copies pasted into the workflow.
+- **Workflow jobs kept identical across the repositories are checked too**: a
+  `.github/shared-files.sha256` entry `.github/workflows/publish.yml#<job>` hashes one job (`startgate`,
+  `shared-files`, `verify-signing-key`, `check-snapshot`, `check-tag`, and where present
+  `verify-signing-key-gradle`, `github-snapshot`, `github-release`).
 - **`net.ladenthin:llama` 5.2.0's natives jars.** The binding is now the Java classes only, and every
   native build is its own jar of the same artifact (classifier `<backend>-<os>-<arch>`). `srcmorph`
   depends on `net.ladenthin:llama-platform` (a pom naming the CPU natives of every desktop platform),
