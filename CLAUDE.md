@@ -479,7 +479,7 @@ and both are easy to undo by accident:
   javac's symbol table, i.e. the *compile classpath*, so a 3.x checker-qual under the 4.x processor
   fails every build with `Could not load type:
   org.checkerframework.framework.qual.DoesNotUnrefineReceiver`. Processor and qualifiers must share a
-  major version. `provided` satisfies both: 4.2.2 where the checker needs it, and excluded from
+  major version. `provided` satisfies both: 4.3.0 where the checker needs it, and excluded from
   consumers' graph **and** from the fat jar (`jar-with-dependencies` takes scope `runtime`).
   `<optional>true</optional>` alone would not have been enough — that descriptor filters on scope
   only. Safe because no source in this reactor imports `org.checkerframework`.

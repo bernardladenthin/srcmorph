@@ -198,7 +198,7 @@ SPDX-License-Identifier: Apache-2.0
                 org.checkerframework.framework.qual.DoesNotUnrefineReceiver". Processor and
                 qualifiers must share a major version.
 
-                Scope `provided` satisfies both constraints at once: 4.2.3 on the compile classpath
+                Scope `provided` satisfies both constraints at once: 4.3.0 on the compile classpath
                 where the checker needs it, and excluded from consumers' transitive graph AND from
                 the fat jar (jar-with-dependencies takes scope runtime), so no checker-qual class of
                 any version reaches a consumer's JVM. <optional>true</optional> alone would not have
@@ -212,7 +212,7 @@ SPDX-License-Identifier: Apache-2.0
             <dependency>
                 <groupId>org.checkerframework</groupId>
                 <artifactId>checker-qual</artifactId>
-                <version>4.2.3</version>
+                <version>4.3.0</version>
                 <scope>provided</scope>
             </dependency>
         </dependencies>

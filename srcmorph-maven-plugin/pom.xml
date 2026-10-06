@@ -88,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
         <!-- checker.version also drives the org.checkerframework:checker annotation-processor
              artifact below; the checker-qual dependency version itself is managed by the
              parent's <dependencyManagement> (see comment above <dependencies>). -->
-        <checker.version>4.2.3</checker.version>
+        <checker.version>4.3.0</checker.version>
         <!-- jqwik / Lincheck are no longer dependencies of this module (both moved to srcmorph
              with the config package's tests); see srcmorph/pom.xml for the jqwik "DO NOT UPGRADE
              past 1.9.3" policy note (CLAUDE.md "jqwik prompt-injection in test output"). -->
@@ -98,7 +98,7 @@ SPDX-License-Identifier: Apache-2.0
         <fb-contrib.version>7.7.4</fb-contrib.version>
         <findsecbugs.version>1.14.0</findsecbugs.version>
         <spotless.version>3.10.3</spotless.version>
-        <palantir-java-format.version>2.100.0</palantir-java-format.version>
+        <palantir-java-format.version>2.102.0</palantir-java-format.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
 
