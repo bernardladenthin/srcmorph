@@ -21,7 +21,9 @@
 #      would fail at runtime on every platform);
 #   3. every classifier jar carries the backend directory its NAME promises: net.ladenthin:llama
 #      natives jars (5.2.0 on) are named <backend>-<os>-<arch> and hold <OS>/<ARCH>/<backend>/ --
-#      this is the one that catches the failure the whole loop is exposed to. If
+#      for a GPU jar one ggml backend module (libggml-<backend>.so / ggml-<backend>.dll), which the
+#      loader puts next to the CPU library of llama-platform's jar for that platform.
+#      This is the one that catches the failure the whole loop is exposed to. If
 #      `-Dllama.classifier=` ever stops being wired through (a renamed property, a pom refactor),
 #      Maven still resolves the default natives and the loop happily produces byte-similar jars
 #      under GPU names. No other check in this pipeline would notice;
@@ -64,9 +66,7 @@ expected_path_of() {
         *-linux-x86-64) os_arch="Linux/x86_64" ;;
         *-linux-aarch64) os_arch="Linux/aarch64" ;;
         *-windows-x86-64) os_arch="Windows/x86_64" ;;
-        *-windows-x86) os_arch="Windows/x86" ;;
         *-windows-aarch64) os_arch="Windows/aarch64" ;;
-        *-android-aarch64) os_arch="Linux-Android/aarch64" ;;
         *) fail "classifier '$c' has no expected native path -- add its shape to expected_path_of()" ;;
     esac
     case "$c" in
