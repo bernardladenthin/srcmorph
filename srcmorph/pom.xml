@@ -790,9 +790,9 @@ SPDX-License-Identifier: Apache-2.0
     </build>
 
     <profiles>
-        <!-- Opt-in GPU acceleration: add a GPU natives jar of net.ladenthin:llama next to the CPU
-             natives (llama-platform); the loader prefers it and falls back to the CPU natives when
-             the GPU runtime is missing. The GPU build auto-offloads; set -Dai.gpuLayers=N for partial
+        <!-- Opt-in GPU acceleration: add a GPU module jar of net.ladenthin:llama (since llama 5.2.0
+             one ggml backend module) next to the CPU natives (llama-platform); ggml loads it when the
+             GPU runtime is installed and runs on the CPU modules otherwise. The GPU build auto-offloads; set -Dai.gpuLayers=N for partial
              offload when the model does not fit in VRAM (the ai.gpuLayers/ai.mainGpu/ai.devices
              properties themselves stay declared in the srcmorph-maven-plugin module's pom,
              where they are actually consumed by the srcmorph-selftest profile's <aiDefinition>

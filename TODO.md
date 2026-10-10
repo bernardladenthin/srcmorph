@@ -42,6 +42,19 @@ everything below is genuinely still open.
   a self-hosted runner, or a manual pre-release pass on one GPU box per backend. Worth knowing which
   half is covered before reading the green check as "the CUDA jar runs".
 
+- **Follow java-llama.cpp and drop the per-classifier fat jars? (owner's decision)** Since its
+  modular natives java-llama.cpp ships no fat jar at all: the thin jar on Central is the deliverable,
+  a GPU is `jbang --deps net.ladenthin:llama:<v>:<classifier> …`, and its smoke jobs launch the
+  published jars on the classpath a consumer resolves. The same shape fits `srcmorph-cli`
+  (`jbang net.ladenthin:srcmorph-cli:<v> config.json` resolves slf4j-simple and llama-platform from its
+  pom; a GPU is one more `--deps` jar) and would remove the 14 signed classifier fat jars per release,
+  the loop above and the structural-only check. It would also close a gap the current shape has: the
+  artifact `smoke-fatjar` launches is the fat jar built by the `build` job (a GitHub asset, rebuilt by
+  the publish jobs' loop), while the `srcmorph-cli` jar that goes to Central is never launched by any
+  job -- a smoke over the thin jar plus its resolved runtime classpath (what java-llama.cpp's smoke
+  sets are) would test what is published. Decide before the next release that bumps to a published
+  llama 5.2.0; the classifier list is current for 5.2.0 either way.
+
 - **jqwik pin policy** — see [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md). `jqwik.version ≤ 1.9.3` is mandatory (declared in `srcmorph/pom.xml`, the only reactor module with a jqwik test dependency).
 
 - **`@VisibleForTesting` audit.** Nothing is annotated, but the members exist: `provider.LlamaCppJniAiGenerationProvider` has four (`buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`, `logPromptCacheReuse`) plus the static `tensorReadLazyMode`/`cacheType`, `document.AiMdDocumentCodec` has `read(List)`/`write`, `prompt.AiPromptPreparationSupport` has `trimSourceAtLineBreak`, and the three mojos have their `build*Configuration()`. Guava is not a dependency, so closing this means either a project-local marker annotation (there is precedent: `support.ConvertToRecord`) or recording that the convention is not adopted here. Decide and act rather than re-auditing.

@@ -585,12 +585,13 @@ jobs:
               cp "$f" signed-snapshot-assets/
             done
           done
-      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU/alternate natives jar + the
-      # default all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
+      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU module jar + the default
+      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
       # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
-      # natives, and a classifier jar adds its one backend on top, which the loader prefers on its
-      # own OS/arch when the vendor runtime is present. Signing uses the key setup-java already
-      # imported (armored detached .asc, same shape Central produces).
+      # natives (llama-platform), and a classifier jar adds one ggml backend module on top (since
+      # llama 5.2.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
+      # library when the vendor runtime is present and skips otherwise. Signing uses the key
+      # setup-java already imported (armored detached .asc, same shape Central produces).
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
         if: ${{ !cancelled() }}
         env:
@@ -598,18 +599,19 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}
-          # (every natives jar but the cpu-*/metal-* ones llama-platform already brings). Each
-          # jar here is ADDED to the default CPU natives (-Dllama.classifier activates the
-          # gpu-natives profile), so every classifier fat jar keeps the CPU fallback.
+          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:
+          # every row of kind `module` (a GPU backend module, additive to the library jar of its
+          # platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*
+          # library jars come with llama-platform. Each jar here is ADDED to the default CPU
+          # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
+          # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
           CLASSIFIERS=(
             cuda13-linux-x86-64 cuda13-windows-x86-64
-            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64
-            opencl-windows-x86-64 opencl-windows-aarch64 opencl-android-aarch64
+            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64 vulkan-windows-aarch64
+            opencl-windows-x86-64 opencl-windows-aarch64
             rocm-linux-x86-64 rocm-windows-x86-64
-            sycl-fp16-linux-x86-64 sycl-fp32-linux-x86-64 sycl-windows-x86-64
+            sycl-linux-x86-64 sycl-windows-x86-64
             openvino-linux-x86-64 openvino-windows-x86-64
-            msvc-windows-x86-64 msvc-windows-x86
           )
           build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
           for c in "${CLASSIFIERS[@]}"; do
@@ -620,7 +622,7 @@ jobs:
           # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
           build ""
           # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
-          # (.github/sign-fatjars.sh, byte-identical with java-llama.cpp) — a .asc per fat jar.
+          # (.github/sign-fatjars.sh; java-llama.cpp dropped its copy with its fat jars) — a .asc per fat jar.
           cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-snapshot-assets/
           bash .github/sign-fatjars.sh signed-snapshot-assets
           # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
@@ -753,12 +755,13 @@ jobs:
               cp "$f" signed-release-assets/
             done
           done
-      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU/alternate natives jar + the
-      # default all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
+      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU module jar + the default
+      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
       # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
-      # natives, and a classifier jar adds its one backend on top, which the loader prefers on its
-      # own OS/arch when the vendor runtime is present. Signing uses the key setup-java already
-      # imported (armored detached .asc, same shape Central produces).
+      # natives (llama-platform), and a classifier jar adds one ggml backend module on top (since
+      # llama 5.2.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
+      # library when the vendor runtime is present and skips otherwise. Signing uses the key
+      # setup-java already imported (armored detached .asc, same shape Central produces).
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
         if: ${{ !cancelled() }}
         env:
@@ -766,18 +769,19 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}
-          # (every natives jar but the cpu-*/metal-* ones llama-platform already brings). Each
-          # jar here is ADDED to the default CPU natives (-Dllama.classifier activates the
-          # gpu-natives profile), so every classifier fat jar keeps the CPU fallback.
+          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:
+          # every row of kind `module` (a GPU backend module, additive to the library jar of its
+          # platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*
+          # library jars come with llama-platform. Each jar here is ADDED to the default CPU
+          # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
+          # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
           CLASSIFIERS=(
             cuda13-linux-x86-64 cuda13-windows-x86-64
-            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64
-            opencl-windows-x86-64 opencl-windows-aarch64 opencl-android-aarch64
+            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64 vulkan-windows-aarch64
+            opencl-windows-x86-64 opencl-windows-aarch64
             rocm-linux-x86-64 rocm-windows-x86-64
-            sycl-fp16-linux-x86-64 sycl-fp32-linux-x86-64 sycl-windows-x86-64
+            sycl-linux-x86-64 sycl-windows-x86-64
             openvino-linux-x86-64 openvino-windows-x86-64
-            msvc-windows-x86-64 msvc-windows-x86
           )
           build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
           for c in "${CLASSIFIERS[@]}"; do
@@ -788,7 +792,7 @@ jobs:
           # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
           build ""
           # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
-          # (.github/sign-fatjars.sh, byte-identical with java-llama.cpp) — a .asc per fat jar.
+          # (.github/sign-fatjars.sh; java-llama.cpp dropped its copy with its fat jars) — a .asc per fat jar.
           cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-release-assets/
           bash .github/sign-fatjars.sh signed-release-assets
           # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
