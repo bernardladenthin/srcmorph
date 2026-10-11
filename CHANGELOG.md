@@ -12,6 +12,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- Build and test tooling bumped in step with the sibling repositories: Spotless 3.10.4 and Checker
+  Framework 4.3.1 in all three modules. The shared `check-versions.py` now also compares the Kotlin
+  Gradle plugins of a repository with its POMs' Kotlin (nothing to compare here) and reads
+  java-llama.cpp's `examples/server/pom.xml`.
+- **CI prints the runner's CPU** at the top of `test` and `vmlens` (`.github/print-host-info.sh`, a
+  shared file of the four repositories), so the knob sweep's and PIT's timings can be read against the
+  hardware the job drew.
 - **CI: snapshot deploy fails with HTTP 401 on Maven 3.10 (seen in java-llama.cpp).** The runners moved to Maven 3.10, which
   sends a `<server>`'s credentials only to the origins declared for it; for the id `central` that is
   `https://repo.maven.apache.org`, so the upload to `central.sonatype.com/repository/maven-snapshots/`
