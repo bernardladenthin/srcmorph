@@ -183,6 +183,20 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `true` case, so a future "send it only when false" shortcut fails rather than silently swallowing
   a configured value.
 
+### Fixed
+- **CI: the GitHub `snapshot` pre-release holds exactly the current build, and the release assets
+  include the pom.** `gh release upload --clobber` replaces same-named assets and never removes any
+  other, so the `snapshot` release accumulated: all 16 of its assets were stale -- the 0.1.0-SNAPSHOT and
+  1.0.1-SNAPSHOT jars of the old `llamacpp-ai-index-maven-plugin` coordinates and four SpotBugs plugin jars
+  (`fb-contrib-7.6.4.jar`, `fb-contrib-7.7.4.jar`, `findsecbugs-plugin-1.13.0.jar`,
+  `findsecbugs-plugin-1.14.0.jar`) an old collect step uploaded from `target/spotbugs/` in 2026-05/06. `github-snapshot` now deletes every asset
+  the run did not upload, after the upload and each printed by name; versioned releases are never
+  pruned, and the next snapshot run clears the backlog by itself. The collect steps copy
+  `<artifactId>-<version>.pom` + `.pom.asc` as well (Central had them, the release did not), and
+  the signature check counts every attachable type (`*.jar`, `*.aar`, `*.pom`) instead of jars
+  alone. Shared job text with the two sibling repositories (`shared-files.sha256`), the convention
+  in `workspace/policies/fat-jar-release-assets.md`.
+
 ---
 
 ## [1.2.0] - 2026-09-01
