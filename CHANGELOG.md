@@ -12,6 +12,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- **Build tooling: spotbugs-maven-plugin 4.10.4.1 -> 4.10.5.0** in all three modules, in step with the sibling
+  repositories, and `checker-qual` 4.3.1 managed in the parent (it had stayed at 4.3.0 next to the 4.3.1
+  Checker Framework processor). With the SpotBugs bump, **Lombok-generated code carries JSpecify nullness** (`lombok.addNullAnnotations = jspecify` in the
+  shared `lombok.config`): under `@NullMarked` a generated `equals(Object)` parameter read as non-null
+  while `Object.equals` accepts null, which SpotBugs 4.10.5 -- the first release that reads JSpecify --
+  reports as `NP_METHOD_PARAMETER_TIGHTENS_ANNOTATION` per class; Lombok now writes `@Nullable` there
+  (and `@NonNull` where a generated member cannot return or take null), so a consumer's nullness checker
+  sees the real contract too.
 - Build and test tooling bumped in step with the sibling repositories: Spotless 3.10.4 and Checker
   Framework 4.3.1 in all three modules. The shared `check-versions.py` now also compares the Kotlin
   Gradle plugins of a repository with its POMs' Kotlin (nothing to compare here) and reads
