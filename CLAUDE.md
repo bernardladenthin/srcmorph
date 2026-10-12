@@ -599,6 +599,14 @@ list in `publish.yml`, every `module` row of java-llama.cpp's `natives.csv` but 
 (srcmorph's own since java-llama.cpp dropped its fat jars with its modular natives). The convention +
 per-repo shapes + the classifier keep-in-sync rule are documented
 in [`../workspace/policies/fat-jar-release-assets.md`](../workspace/policies/fat-jar-release-assets.md).
+The attach jobs are shared text with the two sibling Maven-only repositories
+(`publish.yml#github-snapshot` / `#github-release` in `shared-files.sha256`): the collect steps copy
+`<artifactId>-<version>.pom` + `.pom.asc` with the jars (maven-gpg writes both into `target/`), the
+signature check counts every attachable type (`*.jar`, `*.aar`, `*.pom`), and `github-snapshot` ends
+by deleting every asset of the `snapshot` pre-release that the run did not upload, each printed by
+name -- `gh release upload --clobber` never removed anything, so the release accumulated every past
+version. Versioned releases are never pruned. See the policy's "Attach first, then go red" and "The
+`snapshot` pre-release holds exactly the current upload".
 
 **srcmorph-specific smoke.** The cross-repo rule "no release asset is attached that CI has not run"
 is implemented here by the `smoke-fatjar` job (`needs: [build]`, gates both publish jobs): it
