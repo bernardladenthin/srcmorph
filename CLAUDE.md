@@ -141,9 +141,9 @@ somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (16/16) and `srcmorph-maven-plugin` (62/62) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
-naming the CPU natives jar of every desktop platform — since llama 5.2.0 `net.ladenthin:llama` is the
+naming the CPU natives jar of every desktop platform — since llama 6.0.0 `net.ladenthin:llama` is the
 classes only); the `gpu-cuda`/`gpu-vulkan` profiles and `-Dllama.classifier=<natives jar>` (profile
-`gpu-natives`) **add** a GPU module jar next to them (since llama 5.2.0 one ggml backend module, which
+`gpu-natives`) **add** a GPU module jar next to them (since llama 6.0.0 one ggml backend module, which
 ggml loads when its vendor runtime is installed; otherwise the CPU modules run). They live here; the `jcstress` and
 `vmlens` profiles/tests currently still live in the **plugin** module (they were not moved in the
 extraction — see that module's section below), not here.
@@ -400,7 +400,7 @@ assume it has already been updated.
 
 | Dependency | Version | Used by |
 |---|---|---|
-| `net.ladenthin:llama` + `llama-platform` (pom) | 5.2.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding (classes) + the CPU natives jars; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
+| `net.ladenthin:llama` + `llama-platform` (pom) | 6.0.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding (classes) + the CPU natives jars; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
 | `org.slf4j:slf4j-api` | 2.0.20 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
 | `org.slf4j:slf4j-simple` | 2.0.20 (converged in the parent) | `srcmorph-cli` (runtime binding) |
 | `ch.qos.logback:logback-classic` | 1.6.5 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
@@ -595,7 +595,7 @@ Maven Central** (`srcmorph-cli/pom.xml` sets `<attach>false</attach>`), attached
 GPG `.asc`. CI builds **one fat jar per desktop GPU module jar of `net.ladenthin:llama`** (the default
 CPU jar + 14: `cuda13`, `vulkan`, `opencl`, `rocm`, `sycl`, `openvino` per OS/arch -- the `CLASSIFIERS`
 list in `publish.yml`, every `module` row of java-llama.cpp's `natives.csv` but the Android one; no
-`msvc`, `sycl-fp*` or 32-bit jar exists since llama 5.2.0) and signs them via `.github/sign-fatjars.sh`
+`msvc`, `sycl-fp*` or 32-bit jar exists since llama 6.0.0) and signs them via `.github/sign-fatjars.sh`
 (srcmorph's own since java-llama.cpp dropped its fat jars with its modular natives). The convention +
 per-repo shapes + the classifier keep-in-sync rule are documented
 in [`../workspace/policies/fat-jar-release-assets.md`](../workspace/policies/fat-jar-release-assets.md).

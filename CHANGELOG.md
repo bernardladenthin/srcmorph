@@ -68,7 +68,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 - **Maven versions are compared with the sibling repositories**: `check-versions.py` (in the
   `shared-files` job) warns where a dependency or plugin -- incl. annotation-processor paths and the
   Spotless formatter version -- is used in another version than in a sibling's default branch.
-- **`net.ladenthin:llama` 5.2.0's natives jars.** The binding is now the Java classes only, and every
+- **`net.ladenthin:llama` 6.0.0's natives jars.** The binding is now the Java classes only, and every
   native build is its own jar of the same artifact (classifier `<backend>-<os>-<arch>`). `srcmorph`
   depends on `net.ladenthin:llama-platform` (a pom naming the CPU natives of every desktop platform),
   so the plugin and the CLI keep running everywhere with no change for users. A GPU natives jar is now
@@ -135,7 +135,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   argv token — the load then died naming a flag the user never set. 1.2.0 shipped a refusal at plan
   time rather than that diagnostic.
 
-  `net.ladenthin:llama` **5.2.0** adds `ModelParameters.setFlashAttn(FlashAttn)`, so the provider now
+  `net.ladenthin:llama` **6.0.0** adds `ModelParameters.setFlashAttn(FlashAttn)`, so the provider now
   emits `--flash-attn on` when the knob is set. `false` still emits nothing, which leaves llama.cpp's
   own `auto` default in force — that is the correct behaviour for an unconfigured run, and it is what
   the knob's javadoc now says.
@@ -160,11 +160,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   native** produces `Failed to parse model parameters` at load time and nothing earlier catches it.
   The knob sweep did — it is what surfaced the mismatch here.
 
-- **`net.ladenthin:llama` 5.1.0 → 5.2.0.** Deliberately the *release* version, not `5.2.0-SNAPSHOT`:
+- **`net.ladenthin:llama` 5.1.0 → 6.0.0** (the pin said 5.2.0 until 2026-10-15; jllama never published
+  that number and ships the breaking natives split as 6.0.0). Deliberately the *release* version, not `6.0.0-SNAPSHOT`:
   this repo declares no `<repositories>` element (the `distributionManagement/snapshotRepository` is
   deploy-only), so the Central snapshot channel is not resolvable here at all — and a `-SNAPSHOT`
   dependency on `main` would block every srcmorph release, since Central rejects one. The build
-  therefore stays red until `net.ladenthin:llama:5.2.0` is published and goes green with no further
+  therefore stays red until `net.ladenthin:llama:6.0.0` is published and goes green with no further
   edit the moment it is — recorded here so nobody mistakes it for a regression.
 
 - **BREAKING: `chatTemplateEnableThinking` is a tri-state; the `enable_thinking` kwarg is only sent
