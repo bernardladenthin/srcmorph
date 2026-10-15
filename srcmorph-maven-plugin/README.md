@@ -119,7 +119,7 @@ Running the plugin under Java 11 or newer needs no override.
 
 The plugin depends on [`net.ladenthin:llama`](https://central.sonatype.com/artifact/net.ladenthin/llama), the Java/JNI binding for llama.cpp (via the `srcmorph` core library it wraps).
 It is published on Maven Central and resolves automatically — no manual installation required.
-Since `llama` 5.2.0 the binding is split: `net.ladenthin:llama` holds the Java classes only, and every
+Since `llama` 6.0.0 the binding is split: `net.ladenthin:llama` holds the Java classes only, and every
 native build is a natives jar of the same artifact (classifier `<backend>-<os>-<arch>`).
 `srcmorph` depends on `net.ladenthin:llama-platform`, a pom naming the CPU natives of every desktop
 platform (macOS: Metal), so the plugin runs anywhere out of the box:
@@ -128,7 +128,7 @@ platform (macOS: Metal), so the plugin runs anywhere out of the box:
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>llama-platform</artifactId>
-    <version>5.2.0</version>
+    <version>6.0.0</version>
     <type>pom</type>
 </dependency>
 ```
@@ -584,7 +584,7 @@ runs on the CPU:
     <dependency>
       <groupId>net.ladenthin</groupId>
       <artifactId>llama</artifactId>
-      <version>5.2.0</version>
+      <version>6.0.0</version>
       <classifier>cuda13-windows-x86-64</classifier> <!-- NVIDIA; or vulkan-windows-x86-64 -->
     </dependency>
   </dependencies>

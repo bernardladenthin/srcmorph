@@ -598,7 +598,7 @@ jobs:
       # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
       # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
       # natives (llama-platform), and a classifier jar adds one ggml backend module on top (since
-      # llama 5.2.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
+      # llama 6.0.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
       # library when the vendor runtime is present and skips otherwise. Signing uses the key
       # setup-java already imported (armored detached .asc, same shape Central produces).
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
@@ -837,7 +837,7 @@ jobs:
       # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
       # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
       # natives (llama-platform), and a classifier jar adds one ggml backend module on top (since
-      # llama 5.2.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
+      # llama 6.0.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
       # library when the vendor runtime is present and skips otherwise. Signing uses the key
       # setup-java already imported (armored detached .asc, same shape Central produces).
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
