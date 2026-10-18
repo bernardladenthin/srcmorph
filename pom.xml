@@ -255,7 +255,7 @@ SPDX-License-Identifier: Apache-2.0
                         <artifactId>central-publishing-maven-plugin</artifactId>
                         <!-- No parent pluginManagement above this pom to inherit a default version
                              from; must match the pin in the plugin module's own pluginManagement. -->
-                        <version>0.11.0</version>
+                        <version>0.12.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
