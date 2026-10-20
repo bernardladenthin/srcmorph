@@ -12,6 +12,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- Dependencies and build tooling bumped in step with the sibling repositories: Jackson 2.22.3 ->
+  2.22.4 (the CLI's JSON/YAML configuration binding); `anthropics/claude-code-action` v1.0.255 and
+  Gradle 9.8.2 in the shared `verify-signing-key-gradle` job.
 - **Build tooling: spotbugs-maven-plugin 4.10.4.1 -> 4.10.5.0** in all three modules, in step with the sibling
   repositories, and `checker-qual` 4.3.1 managed in the parent (it had stayed at 4.3.0 next to the 4.3.1
   Checker Framework processor). With the SpotBugs bump, **Lombok-generated code carries JSpecify nullness** (`lombok.addNullAnnotations = jspecify` in the
