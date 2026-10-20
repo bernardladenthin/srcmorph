@@ -18,8 +18,9 @@ everything below is genuinely still open.
   wherever an earlier `mvn install` of java-llama.cpp left the version in `~/.m2`; reproduce the real
   state with `mvn -Dmaven.repo.local=/tmp/empty dependency:get -Dartifact=net.ladenthin:llama:6.0.0`.
   **Reverting is not an option**: the pom comment explains why 6.0.0 is a breaking bump this module
-  needs (the natives-jar split, `net.ladenthin:llama-platform`, GPU natives jars via
-  `-Dllama.classifier`, which 5.1.0 does not have). Against a locally installed snapshot of it
+  needs (the binding removed `enableFlashAttn()`/`FLASH_ATTN` and renamed `setTensorReadLazy` to
+  `setLazyMode`; the provider uses the new forms, so it cannot compile against 5.1.0), and the reactor additionally depends on 6.0.0's
+  natives-jar split (`net.ladenthin:llama-platform`, GPU natives jars via `-Dllama.classifier`). Against a locally installed snapshot of it
   (`-Dllama.version=<v>-SNAPSHOT install`, measured under the old 5.2.0 number) the whole reactor was
   green, so the jllama release is the
   only thing missing -- this item closes with it, nothing to change here.
@@ -48,7 +49,7 @@ everything below is genuinely still open.
 
 - **jqwik pin policy** — see [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md). `jqwik.version ≤ 1.9.3` is mandatory (declared in `srcmorph/pom.xml`, the only reactor module with a jqwik test dependency).
 
-- **`@VisibleForTesting` audit.** Nothing is annotated, but the members exist: `provider.LlamaCppJniAiGenerationProvider` has four (`buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`, `logPromptCacheReuse`) plus the static `tensorReadLazyMode`/`cacheType`, `document.AiMdDocumentCodec` has `read(List)`/`write`, `prompt.AiPromptPreparationSupport` has `trimSourceAtLineBreak`, and the three mojos have their `build*Configuration()`. Guava is not a dependency, so closing this means either a project-local marker annotation (there is precedent: `support.ConvertToRecord`) or recording that the convention is not adopted here. Decide and act rather than re-auditing.
+- **`@VisibleForTesting` audit.** Nothing is annotated, but the members exist: `provider.LlamaCppJniProviderSupport` has four (`buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`, `logPromptCacheReuse`; moved out of `LlamaCppJniAiGenerationProvider` so the PIT gate reaches them) plus the static `lazyMode`/`cacheType`, `document.AiMdDocumentCodec` has `read(List)`/`write`, `prompt.AiPromptPreparationSupport` has `trimSourceAtLineBreak`, and the three mojos have their `build*Configuration()`. Guava is not a dependency, so closing this means either a project-local marker annotation (there is precedent: `support.ConvertToRecord`) or recording that the convention is not adopted here. Decide and act rather than re-auditing.
 
 - **Null-safety refinement.** JSpecify + NullAway are enforced at compile time in strict JSpecify mode in every module (see each module's own `pom.xml`); `@NullMarked` on the package; framework-populated POJOs carry class-level `@SuppressWarnings({"NullAway.Init","initialization.fields.uninitialized"})`. Open follow-up: review remaining unannotated public API surfaces for places where `@Nullable` would be more precise than the implicit non-null default.
 

@@ -20,7 +20,7 @@
 #   2. every jar carries at least one native library (a jar with none is a broken assembly that
 #      would fail at runtime on every platform);
 #   3. every classifier jar carries the backend directory its NAME promises: net.ladenthin:llama
-#      natives jars (5.2.0 on) are named <backend>-<os>-<arch> and hold <OS>/<ARCH>/<backend>/ --
+#      natives jars (6.0.0 on) are named <backend>-<os>-<arch> and hold <OS>/<ARCH>/<backend>/ --
 #      for a GPU jar one ggml backend module (libggml-<backend>.so / ggml-<backend>.dll), which the
 #      loader puts next to the CPU library of llama-platform's jar for that platform.
 #      This is the one that catches the failure the whole loop is exposed to. If
