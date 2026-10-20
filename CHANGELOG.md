@@ -196,6 +196,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   a configured value.
 
 ### Fixed
+- **CI: a fat jar without any native library is named in the release check again.**
+  `.github/verify-classifier-fatjars.sh` runs under `set -euo pipefail`, and its `natives_of` helper
+  piped `unzip -Z1` through `grep`: for a jar with no native entry `grep` exits 1, the assignment of
+  the helper's output failed and the script ended right there -- red, but with no `::error::` line and
+  no jar name, so its two "carries no native library at all" checks (default jar and classifier jar)
+  could never run. The helper now tolerates only grep's "no match"; an `unzip` failure or a grep error
+  still fails it. The script had no test at all: the new srcmorph-local
+  `.github/buildcheck/tests/test_verify_classifier_fatjars.py` builds fixture jars and asserts exit code
+  and `::error::` message for every check (a matching classifier jar passes; CPU-only under a GPU name,
+  a lost default native, an unmapped classifier shape, a jar without natives -- classifier and default --,
+  a single-OS default jar and a corrupt jar fail). The two no-natives cases were red before the fix.
 - **CI: the GitHub `snapshot` pre-release holds exactly the current build, and the release assets
   include the pom.** `gh release upload --clobber` replaces same-named assets and never removes any
   other, so the `snapshot` release accumulated: all 16 of its assets were stale -- the 0.1.0-SNAPSHOT and

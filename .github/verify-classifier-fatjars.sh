@@ -53,9 +53,12 @@ fail() {
 [ -d "$ASSET_DIR" ] || fail "asset directory '$ASSET_DIR' does not exist"
 [ "${#CLASSIFIERS[@]}" -gt 0 ] || fail "no classifiers given -- pass the same list the build loop used"
 
-# Sorted list of native-library entries in a jar, one per line.
+# Sorted list of native-library entries in a jar, one per line; empty for a jar without any.
+# grep's "no match" (exit 1) is tolerated so the explicit checks below name the jar -- under pipefail
+# it used to end the script on the assignment, silently. An unzip failure or a grep error (exit 2)
+# still fails the pipeline.
 natives_of() {
-    unzip -Z1 "$1" | grep -E "^${NATIVE_PREFIX}.*\.(so|dll|dylib)$" | sort
+    unzip -Z1 "$1" | { grep -E "^${NATIVE_PREFIX}.*\.(so|dll|dylib)$" || [ "$?" -eq 1 ]; } | sort
 }
 
 # "<OS>/<ARCH>/<backend>/" directory a classifier's name promises (<backend>-<os>-<arch>). The
