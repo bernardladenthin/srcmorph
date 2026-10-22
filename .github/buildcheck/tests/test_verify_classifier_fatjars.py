@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 """Drives .github/verify-classifier-fatjars.sh against fixture jars built here.
 
-srcmorph's own test, not a shared file: the script is srcmorph's alone. Every case asserts the exit
-code AND the ::error:: line the script promises, so a silent exit cannot pass for a diagnosed one.
+srcmorph's own test, not a shared file: the script is srcmorph's alone. Every case of a check the
+script makes itself asserts the exit code AND the ::error:: line it promises, so a silent exit cannot
+pass for a diagnosed one; the corrupt-jar case asserts unzip's own exit code and that the script does
+not pass the file off as a jar without natives.
 """
 
 import os
@@ -92,12 +94,23 @@ class VerifyClassifierFatjarsTest(unittest.TestCase):
         self.jar(classifier_jar("cuda13-linux-x86-64"), [LINUX_CPU, LINUX_CUDA])
         self.assert_fails_with(self.run_script("cuda13-linux-x86-64"), "carries natives for only 1 OS")
 
-    def test_a_corrupt_jar_still_fails(self):
+    def test_a_corrupt_jar_fails_with_unzip_s_own_error_not_as_a_jar_without_natives(self):
+        """A jar unzip cannot read must end the script with unzip's own failure, not read as a jar
+        without natives: were the helper's failure masked (a `|| true` on its call, or a lost
+        pipefail), the script would report "carries no native library at all" with exit code 1 and
+        an ::error:: line, a wrong diagnosis. So the case pins unzip's exit code (9,
+        "End-of-central-directory signature not found") and the absence of the script's diagnosis,
+        not merely a non-zero exit. (A `|| true` on the grep branch alone is not observable this way:
+        pipefail carries unzip's status whatever that branch does; the branch only decides whether
+        grep's own error, exit 2, is tolerated, and nothing a fixture can provoke makes grep fail.)"""
         self.jar(DEFAULT, [LINUX_CPU, WINDOWS_CPU])
         with open(os.path.join(self.dir, classifier_jar("cuda13-linux-x86-64")), "wb") as f:
             f.write(b"not a zip")
         result = self.run_script("cuda13-linux-x86-64")
-        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.returncode, 9, result.stdout + result.stderr)
+        self.assertIn("End-of-central-directory signature not found", result.stderr)
+        self.assertNotIn("::error::", result.stderr)
+        self.assertNotIn("carries no native library", result.stderr)
         self.assertNotIn("ok: ", result.stdout)
 
 
