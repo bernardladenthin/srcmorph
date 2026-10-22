@@ -342,9 +342,10 @@ jobs:
         # VmlensInterleavingSmokeTest and the `vmlens` profile both live in
         # srcmorph-maven-plugin/pom.xml (they were not relocated during the core
         # extraction — see CLAUDE.md) — scope directly to that module rather than the whole
-        # reactor. `-am` is required (not just an optimization): srcmorph is a reactor-local
-        # dependency, never published, so without `-am` this module's compile would fail trying
-        # to resolve net.ladenthin:srcmorph:1.1.0-SNAPSHOT from a remote repo. That in turn means
+        # reactor. `-am` is required (not just an optimization): this module depends on srcmorph at
+        # the reactor's own -SNAPSHOT version, and no repository this build resolves from carries a
+        # -SNAPSHOT (Maven Central holds releases only, and no snapshot <repository> is declared), so
+        # without `-am` its compile would fail trying to resolve that version. That in turn means
         # the `test` phase also runs for srcmorph, where -Dtest=VmlensInterleavingSmokeTest
         # matches no class — `-DfailIfNoTests=false` does NOT suppress that (it only covers "no
         # tests at all"); the actual guard for "the -Dtest pattern matched nothing" is

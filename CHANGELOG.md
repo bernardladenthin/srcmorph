@@ -12,9 +12,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- Build tooling bumped in step with the sibling repositories: `anthropics/claude-code-action` v1.0.258 and
+  `github/codeql-action` v4.39.1. maven-clean-plugin 3.5.0, maven-resources-plugin 3.5.0,
+  maven-install-plugin 3.2.0, maven-deploy-plugin 3.2.0 and maven-dependency-plugin 3.11.0 are now declared,
+  in a new pluginManagement of the parent POM: no POM named them, so their versions came from whichever
+  Maven ran the build. Maven 3.9 runs clean 3.2.0, resources 3.3.1, install and deploy 3.1.x and dependency
+  3.7.0; the Ubuntu runners' Maven 3.10.0 already matches, except that it leaves the dependency plugin to
+  the newest release. Resource output is byte-identical under resources 3.3.1 and 3.5.0.
 - Dependencies and build tooling bumped in step with the sibling repositories: Jackson 2.22.3 ->
-  2.22.4 (the CLI's JSON/YAML configuration binding); `anthropics/claude-code-action` v1.0.255 and
-  Gradle 9.8.2 in the shared `verify-signing-key-gradle` job.
+  2.22.4 (the CLI's JSON/YAML configuration binding) and Gradle 9.8.2 in the shared
+  `verify-signing-key-gradle` job.
 - **Build tooling: spotbugs-maven-plugin 4.10.4.1 -> 4.10.5.0** in all three modules, in step with the sibling
   repositories, and `checker-qual` 4.3.1 managed in the parent (it had stayed at 4.3.0 next to the 4.3.1
   Checker Framework processor). With the SpotBugs bump, **Lombok-generated code carries JSpecify nullness** (`lombok.addNullAnnotations = jspecify` in the
