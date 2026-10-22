@@ -20,7 +20,7 @@
 #   2. every jar carries at least one native library (a jar with none is a broken assembly that
 #      would fail at runtime on every platform);
 #   3. every classifier jar carries the backend directory its NAME promises: net.ladenthin:llama
-#      natives jars (5.2.0 on) are named <backend>-<os>-<arch> and hold <OS>/<ARCH>/<backend>/ --
+#      natives jars (6.0.0 on) are named <backend>-<os>-<arch> and hold <OS>/<ARCH>/<backend>/ --
 #      for a GPU jar one ggml backend module (libggml-<backend>.so / ggml-<backend>.dll), which the
 #      loader puts next to the CPU library of llama-platform's jar for that platform.
 #      This is the one that catches the failure the whole loop is exposed to. If
@@ -53,9 +53,12 @@ fail() {
 [ -d "$ASSET_DIR" ] || fail "asset directory '$ASSET_DIR' does not exist"
 [ "${#CLASSIFIERS[@]}" -gt 0 ] || fail "no classifiers given -- pass the same list the build loop used"
 
-# Sorted list of native-library entries in a jar, one per line.
+# Sorted list of native-library entries in a jar, one per line; empty for a jar without any.
+# grep's "no match" (exit 1) is tolerated so the explicit checks below name the jar -- under pipefail
+# it used to end the script on the assignment, silently. An unzip failure or a grep error (exit 2)
+# still fails the pipeline.
 natives_of() {
-    unzip -Z1 "$1" | grep -E "^${NATIVE_PREFIX}.*\.(so|dll|dylib)$" | sort
+    unzip -Z1 "$1" | { grep -E "^${NATIVE_PREFIX}.*\.(so|dll|dylib)$" || [ "$?" -eq 1 ]; } | sort
 }
 
 # "<OS>/<ARCH>/<backend>/" directory a classifier's name promises (<backend>-<os>-<arch>). The

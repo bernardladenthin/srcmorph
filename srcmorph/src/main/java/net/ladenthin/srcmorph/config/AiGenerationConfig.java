@@ -300,7 +300,7 @@ public class AiGenerationConfig {
      * {@code --flash-attn} takes a mandatory {@code [on|off|auto]}, and the binding used to offer only a
      * bare-flag setter, which emitted the key alone and made llama.cpp's parser consume the next argv
      * token — killing the load while naming a flag the user never set. {@code net.ladenthin:llama}
-     * 5.2.0 added {@code ModelParameters.setFlashAttn(FlashAttn)}, which is what the provider uses.</p>
+     * 6.0.0 added {@code ModelParameters.setFlashAttn(FlashAttn)}, which is what the provider uses.</p>
      */
     public static final boolean DEFAULT_FLASH_ATTN = false;
 
