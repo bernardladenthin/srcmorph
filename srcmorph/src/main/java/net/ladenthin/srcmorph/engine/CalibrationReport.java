@@ -240,11 +240,11 @@ public final class CalibrationReport {
         out.append("<calibration>\n");
         out.append(String.format(
                 Locale.ROOT,
-                "    <prefillTokensPerSecond>%.1f</prefillTokensPerSecond>%n",
+                "    <prefillTokensPerSecond>%.1f</prefillTokensPerSecond>\n",
                 m.prefillTokensPerSecond()));
         out.append(String.format(
-                Locale.ROOT, "    <decodeTokensPerSecond>%.1f</decodeTokensPerSecond>%n", m.decodeTokensPerSecond()));
-        out.append(String.format(Locale.ROOT, "    <charsPerToken>%.2f</charsPerToken>%n", m.charsPerToken()));
+                Locale.ROOT, "    <decodeTokensPerSecond>%.1f</decodeTokensPerSecond>\n", m.decodeTokensPerSecond()));
+        out.append(String.format(Locale.ROOT, "    <charsPerToken>%.2f</charsPerToken>\n", m.charsPerToken()));
         out.append("</calibration>\n");
     }
 

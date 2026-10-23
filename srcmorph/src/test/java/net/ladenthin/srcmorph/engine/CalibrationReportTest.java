@@ -9,6 +9,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,6 +90,64 @@ public class CalibrationReportTest {
                 + "</calibration>\n";
 
         assertThat(report.renderXml(), is(expected));
+    }
+
+    @Test
+    public void renderXml_endsEveryLineWithLineFeedOnACrLfPlatform() throws IOException, InterruptedException {
+        // String.format's %n is the platform line separator, fixed when the JVM starts, so only a JVM
+        // whose separator is CRLF (Windows) shows a mixed block; on Linux this test starts one.
+        final List<String> command = new ArrayList<>();
+        command.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
+        if (!"\r\n".equals(System.lineSeparator())) {
+            command.add("-Dline.separator=\r\n");
+        }
+        command.add("-cp");
+        command.add(System.getProperty("java.class.path"));
+        command.add(RenderXmlInThisJvm.class.getName());
+        final Process process = new ProcessBuilder(command).start();
+        final byte[] stdout = readAll(process.getInputStream());
+        final byte[] stderr = readAll(process.getErrorStream());
+        final int exit = process.waitFor();
+
+        assertThat(new String(stderr, StandardCharsets.UTF_8), exit, is(0));
+        final String xml = new String(stdout, StandardCharsets.UTF_8);
+        assertThat(xml, not(containsString("\r")));
+        assertThat(xml, is(RenderXmlInThisJvm.EXPECTED));
+    }
+
+    private static byte[] readAll(final InputStream in) throws IOException {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final byte[] buffer = new byte[8192];
+        for (int n; (n = in.read(buffer)) != -1; ) {
+            out.write(buffer, 0, n);
+        }
+        return out.toByteArray();
+    }
+
+    /** Renders one block in a JVM started with a CRLF line separator; fails when it is not one. */
+    static final class RenderXmlInThisJvm {
+
+        static final String EXPECTED = "<!-- calibration for aiDefinition 'model-a' (this machine) -->\n"
+                + "<calibration>\n"
+                + "    <prefillTokensPerSecond>1000.5</prefillTokensPerSecond>\n"
+                + "    <decodeTokensPerSecond>200.3</decodeTokensPerSecond>\n"
+                + "    <charsPerToken>4.57</charsPerToken>\n"
+                + "</calibration>\n";
+
+        private RenderXmlInThisJvm() {}
+
+        public static void main(final String[] args) throws IOException {
+            if (!"\r\n".equals(System.lineSeparator())) {
+                // Without the CRLF separator the test would pass vacuously; the exception exits the
+                // child with a failure status and its message reaches the parent on stderr.
+                throw new IllegalStateException("the line separator of this JVM is not CRLF");
+            }
+            final CalibrationReport report =
+                    new CalibrationReport(Collections.singletonList(new CalibrationReport.ModelMeasurement(
+                            "model-a", new AiCalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128))));
+            System.out.write(report.renderXml().getBytes(StandardCharsets.UTF_8));
+            System.out.flush();
+        }
     }
 
     @Test
