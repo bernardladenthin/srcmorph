@@ -11,6 +11,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Fixed
+- **The `calibrate` goal's paste block mixed line endings on Windows.** `CalibrationReport` wrote its three
+  value lines with `String.format("...%n")`, the platform line separator, between lines ending in `\n`, so on
+  Windows the `<calibration>` block meant for a `pom.xml` carried 3x CRLF and 3x LF. All lines end in `\n`
+  now. `CalibrationReportTest` renders the block in a child JVM started with `-Dline.separator=\r\n`, so the
+  Linux CI sees what only a Windows build showed before (red without the fix).
+
 ### Changed
 - Build tooling bumped in step with the sibling repositories: `anthropics/claude-code-action` v1.0.258 and
   `github/codeql-action` v4.39.1. maven-clean-plugin 3.5.0, maven-resources-plugin 3.5.0,
