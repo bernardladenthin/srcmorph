@@ -124,7 +124,7 @@ public class CalibrationReportTest {
         return out.toByteArray();
     }
 
-    /** Renders one block in a JVM started with a CRLF line separator; exit 2 when it is not one. */
+    /** Renders one block in a JVM started with a CRLF line separator; fails when it is not one. */
     static final class RenderXmlInThisJvm {
 
         static final String EXPECTED = "<!-- calibration for aiDefinition 'model-a' (this machine) -->\n"
@@ -138,7 +138,9 @@ public class CalibrationReportTest {
 
         public static void main(final String[] args) throws IOException {
             if (!"\r\n".equals(System.lineSeparator())) {
-                System.exit(2);
+                // Without the CRLF separator the test would pass vacuously; the exception exits the
+                // child with a failure status and its message reaches the parent on stderr.
+                throw new IllegalStateException("the line separator of this JVM is not CRLF");
             }
             final CalibrationReport report =
                     new CalibrationReport(Collections.singletonList(new CalibrationReport.ModelMeasurement(
