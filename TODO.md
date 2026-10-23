@@ -34,6 +34,16 @@ everything below is genuinely still open.
   a self-hosted runner, or a manual pre-release pass on one GPU box per backend. Worth knowing which
   half is covered before reading the green check as "the CUDA jar runs".
 
+  **`cuda13-windows-x86-64` has had that pass (2026-10-23, against `llama 6.0.0-SNAPSHOT`).** On an
+  RTX 3070 Laptop the `-P gpu-cuda` fat jar (258 MB, carrying `Windows/x86_64/cuda13/` next to the six
+  CPU library directories) ran a real `GenerateFileIndex` over the production prompt set through the
+  CLI *and* through `srcmorph:generate`, both at 3474 t/s prefill / 86.8 t/s decode, with the loader
+  naming the module (`with GPU module(s) cuda13`) and ggml registering `[CUDA, RPC, CPU]`. The same
+  config on the default CPU fat jar is 63 / 7.1 with `[RPC, CPU]`, so the jar demonstrably loads its
+  backend rather than falling back. **Still unlaunched: `rocm`, `sycl`, `openvino` and `vulkan`** —
+  no AMD, Intel or second GPU here. Vulkan is reachable on any NVIDIA box and is the cheapest one to
+  add next.
+
 - **Follow java-llama.cpp and drop the per-classifier fat jars? (owner's decision)** Since its
   modular natives java-llama.cpp ships no fat jar at all: the thin jar on Central is the deliverable,
   a GPU is `jbang --deps net.ladenthin:llama:<v>:<classifier> …`, and its smoke jobs launch the

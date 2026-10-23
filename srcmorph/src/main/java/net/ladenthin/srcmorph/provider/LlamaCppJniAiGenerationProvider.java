@@ -90,8 +90,17 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
             if (config.cacheReuse() > 0) {
                 modelParameters.setCacheReuse(config.cacheReuse());
             }
-            // Offload model layers to the GPU when explicitly configured (>= 0). -1 leaves the
-            // binding/native-build default (CPU build stays CPU; GPU build uses its own default).
+            // Offload model layers to the GPU when explicitly configured (>= 0). -1 leaves llama.cpp's
+            // own default, which offloads everything when a GPU device is registered and stays on the
+            // CPU when none is -- so a GPU needs no gpuLayers, only the matching natives jar on the
+            // classpath. Since jllama 6.0.0 there is no "CPU build" or "GPU build" to speak of: the
+            // library jar is CPU-only and a GPU backend joins it as an additive module jar
+            // (-Dllama.classifier=cuda13-windows-x86-64 and friends, see srcmorph/pom.xml).
+            // Measured on an RTX 3070 Laptop with Qwen3-4B-Instruct-2507-Q4_K_M, same config except
+            // the classpath: without the module jar 63 t/s prefill and 7.1 t/s decode (ggml registers
+            // [RPC, CPU]); with it 3474 / 86.8 (ggml registers [CUDA, RPC, CPU]). gpuLayers -1 and 99
+            // were within noise of each other in both cases, which is what "llama.cpp's own default"
+            // means here.
             if (config.gpuLayers() >= 0) {
                 modelParameters.setGpuLayers(config.gpuLayers());
             }

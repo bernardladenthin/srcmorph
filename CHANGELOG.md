@@ -17,8 +17,35 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   Windows the `<calibration>` block meant for a `pom.xml` carried 3x CRLF and 3x LF. All lines end in `\n`
   now. `CalibrationReportTest` renders the block in a child JVM started with `-Dline.separator=\r\n`, so the
   Linux CI sees what only a Windows build showed before (red without the fix).
+- **...and that fix left `spotbugs:check` red.** SpotBugs reports `VA_FORMAT_STRING_USES_NEWLINE` for every
+  `String.format` pattern containing `\n` and asks for `%n` — the platform separator this block must not
+  carry, so the rule and the requirement are in direct conflict. Nothing could have shown it: the reactor
+  still dies earlier on the unresolvable `net.ladenthin:llama:6.0.0` (see `TODO.md`), so no CI run reaches
+  SpotBugs, and `main` was red on a check that never executed. `appendPasteBlock` appends the newline as a
+  literal through a new `appendXmlNumber` helper now — the shape `appendJsonNumber`/`appendYamlNumber`
+  already use for the same reason — and formats the numbers at the call site through the `FORMAT_*` constants
+  the JSON and YAML renderers share. No pattern carries a newline, the block keeps its LF endings, and no
+  suppression was added.
 
 ### Changed
+- **The `srcmorph-selftest` profile names its model directory once, as `ai.modelDir`.** All 38
+  `<modelPath>` entries of `srcmorph-maven-plugin/pom.xml` carried the absolute `X:/Modelle/...`, a drive
+  that no longer exists on the owner's machine, so the profile could not run anywhere as committed — and a
+  machine-specific absolute path sat in a published POM. They read `${ai.modelDir}/<file>.gguf` now, the
+  property defaults to the owner's model drive, and another machine runs the profile with
+  `-Dai.modelDir=/path/to/models`. `docs/ai-index-benchmark/tools/calibrate-bench-pom.xml` keeps its single
+  overridable `bench.model` and only follows the drive.
+- **`LlamaCppJniAiGenerationProvider` no longer explains `gpuLayers = -1` in terms of a "CPU build" and a
+  "GPU build".** That was jllama's pre-6.0.0 artifact layout, where the classifier chose the backend. Since
+  6.0.0 the library jar is CPU-only and a GPU backend joins it as an additive module jar, so the comment's
+  premise was gone while its conclusion stayed right: `-1` leaves llama.cpp's own default, which offloads
+  everything once a GPU device is registered. Measured on an RTX 3070 Laptop (Qwen3-4B-Instruct-2507-Q4_K_M,
+  identical config, only the classpath differing): 63 t/s prefill and 7.1 t/s decode without the module jar,
+  3474 / 86.8 with it, and `gpuLayers` -1 vs 99 within noise either way.
+- Removed four unused constants and one string concatenation from `LlamaCppJniAiGenerationProviderTest`
+  (six Error Prone `UnusedVariable` / `StringConcatToTextBlock` warnings). The wire-key assertions they
+  belonged to moved to the model-free `LlamaCppJniProviderSupportTest` with the core-module extraction,
+  where the same four constants are declared and used; these were fossils, so no coverage is lost.
 - Build tooling bumped in step with the sibling repositories: `anthropics/claude-code-action` v1.0.258 and
   `github/codeql-action` v4.39.1. maven-clean-plugin 3.5.0, maven-resources-plugin 3.5.0,
   maven-install-plugin 3.2.0, maven-deploy-plugin 3.2.0 and maven-dependency-plugin 3.11.0 are now declared,
