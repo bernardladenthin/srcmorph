@@ -20,21 +20,6 @@ public class LlamaCppJniAiGenerationProviderTest {
 
     private static final String MODEL_PATH = NativeLlamaAvailability.modelPath();
 
-    /**
-     * JSON key of the DRY penalty window as the binding renders it. Quoted so the assertions cannot
-     * accidentally match a different key that merely contains this one as a substring.
-     */
-    private static final String PARAM_DRY_PENALTY_LAST_N = "\"dry_penalty_last_n\"";
-
-    /** JSON key of the repeat-penalty window, quoted for the same reason. */
-    private static final String PARAM_REPEAT_LAST_N = "\"repeat_last_n\"";
-
-    /** Chat-template kwarg key for Qwen-style thinking, as the provider spells it. */
-    private static final String KWARG_ENABLE_THINKING = "enable_thinking";
-
-    /** Chat-template kwarg key for the gpt-oss reasoning-effort level. */
-    private static final String KWARG_REASONING_EFFORT = "reasoning_effort";
-
     private static final AiMdHeader HEADER = new AiMdHeader(
             "Test.java",
             AiMdHeaderCodec.HEADER_VERSION_1_0,
@@ -63,13 +48,16 @@ public class LlamaCppJniAiGenerationProviderTest {
     public void generate_realProvider_returnsNonEmptyResponse() throws Exception {
         NativeLlamaAvailability.assumeAvailable();
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final String source = "package com.example;\n" + "\n"
-                + "public class Test {\n"
-                + "\n"
-                + "    public String hello(final String name) {\n"
-                + "        return \"Hello \" + name;\n"
-                + "    }\n"
-                + "}\n";
+        final String source = """
+                package com.example;
+
+                public class Test {
+
+                    public String hello(final String name) {
+                        return "Hello " + name;
+                    }
+                }
+                """;
 
         try (LlamaCppJniAiGenerationProvider provider =
                 new LlamaCppJniAiGenerationProvider(config(32768, 128), promptSupport)) {
