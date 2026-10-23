@@ -32,10 +32,10 @@ public final class CalibrationReport {
     /** File name of the machine-readable YAML report, written alongside {@link #JSON_FILE_NAME}. */
     public static final String YAML_FILE_NAME = "srcmorph-calibration.yaml";
 
-    /** Format of the two throughput figures; identical to the one {@link #renderXml()} pastes. */
+    /** Format of the two throughput figures, shared by {@link #renderXml()} and the JSON/YAML reports. */
     private static final String FORMAT_TOKENS_PER_SECOND = "%.1f";
 
-    /** Format of the chars-per-token figure; identical to the one {@link #renderXml()} pastes. */
+    /** Format of the chars-per-token figure, shared by {@link #renderXml()} and the JSON/YAML reports. */
     private static final String FORMAT_CHARS_PER_TOKEN = "%.2f";
 
     /** Format of the load duration, which has no counterpart in the XML block. */
@@ -238,14 +238,40 @@ public final class CalibrationReport {
             final StringBuilder out, final String modelKey, final AiCalibrationMeasurement m) {
         out.append("<!-- calibration for aiDefinition '").append(modelKey).append("' (this machine) -->\n");
         out.append("<calibration>\n");
-        out.append(String.format(
-                Locale.ROOT,
-                "    <prefillTokensPerSecond>%.1f</prefillTokensPerSecond>\n",
-                m.prefillTokensPerSecond()));
-        out.append(String.format(
-                Locale.ROOT, "    <decodeTokensPerSecond>%.1f</decodeTokensPerSecond>\n", m.decodeTokensPerSecond()));
-        out.append(String.format(Locale.ROOT, "    <charsPerToken>%.2f</charsPerToken>\n", m.charsPerToken()));
+        appendXmlNumber(
+                out,
+                "prefillTokensPerSecond",
+                String.format(Locale.ROOT, FORMAT_TOKENS_PER_SECOND, m.prefillTokensPerSecond()));
+        appendXmlNumber(
+                out,
+                "decodeTokensPerSecond",
+                String.format(Locale.ROOT, FORMAT_TOKENS_PER_SECOND, m.decodeTokensPerSecond()));
+        appendXmlNumber(out, "charsPerToken", String.format(Locale.ROOT, FORMAT_CHARS_PER_TOKEN, m.charsPerToken()));
         out.append("</calibration>\n");
+    }
+
+    /**
+     * Appends one indented {@code <tag>value</tag>} line of the paste block, ending in {@code \n}.
+     *
+     * <p>The line separator is a literal here and never part of a {@link String#format} pattern:
+     * SpotBugs reports {@code VA_FORMAT_STRING_USES_NEWLINE} for a pattern containing {@code \n} and
+     * wants {@code %n}, which is exactly the platform-dependent separator this block must not carry
+     * (see the {@code renderXml()} contract and {@code CalibrationReportTest}). Keeping the newline
+     * out of the pattern satisfies both. The value arrives already rendered for the same reason as in
+     * {@link #appendJsonNumber(StringBuilder, String, String)}.</p>
+     *
+     * @param out    the buffer
+     * @param tag    the XML element name
+     * @param value  the already-formatted value
+     */
+    private static void appendXmlNumber(final StringBuilder out, final String tag, final String value) {
+        out.append("    <")
+                .append(tag)
+                .append('>')
+                .append(value)
+                .append("</")
+                .append(tag)
+                .append(">\n");
     }
 
     /** One model's key paired with its {@link AiCalibrationMeasurement}. */
