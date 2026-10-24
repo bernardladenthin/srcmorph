@@ -37,7 +37,7 @@ this repo's module list contains, and it will never need another release, so the
 keep carrying it (and its `versions:set` exclusion footgun) in active development.
 
 - **Group ID:** `net.ladenthin`
-- **Java:** target bytecode 1.8 (production code), Java 21 test sources, built with JDK 21
+- **Java:** target bytecode 1.8 (production code), Java 21 test sources, built with JDK 25
 - **License:** Apache 2.0
 - **Author:** Bernard Ladenthin (Copyright 2026)
 - **Reactor version:** `1.3.0-SNAPSHOT` (single shared version across `srcmorph`, `srcmorph-cli`,
