@@ -530,14 +530,22 @@ jobs:
         run: echo "Confirmed on tag ${{ github.ref }}"
 
   publish-snapshot:
-    name: Publish Snapshot to Central
-    needs: [check-snapshot, code-style, smoke-fatjar, plugin-it, shared-files, vmlens]
+    name: Prepare and verify signed snapshot artifacts
+    needs:
+      - check-snapshot
+      - code-style
+      - smoke-fatjar
+      - plugin-it
+      - shared-files
+      - vmlens
     if: needs.check-snapshot.result == 'success' && inputs.publish_to_central
     runs-on: ubuntu-latest
     environment: maven-central
+    outputs:
+      assets_complete: ${{ steps.preflight.outputs.complete }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
         with:
           java-version-file: .java-version
           distribution: temurin
@@ -553,243 +561,94 @@ jobs:
           VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n1)
           echo "Resolved project version: $VERSION"
           case "$VERSION" in
-            *-SNAPSHOT) echo "OK: -SNAPSHOT version, continuing snapshot deploy." ;;
+            *-SNAPSHOT) echo "OK: -SNAPSHOT version, continuing local snapshot staging." ;;
             *) echo "::error::Refusing to publish non-SNAPSHOT version '$VERSION' from the snapshot job. Snapshot publishing requires a -SNAPSHOT version; releases go through the v* tag path."; exit 1 ;;
           esac
-      # Informational only (nothing depends on it): logs the effective POM with the same
-      # profile as the deploy below, so the resolved central-publishing configuration
-      # (waitUntil/waitMaxTime etc.) is visible for debugging.
       - name: Show effective POM (debug)
-        run: mvn --batch-mode --no-transfer-progress -P release help:effective-pom
-      # -Dmaven.repository.credentialScope=id: Maven 3.10 (on the runners since 2026-10) sends a server's
-      # credentials only to its declared origins, and for the id `central` that is repo.maven.apache.org --
-      # an upload to central.sonatype.com then goes out anonymously and fails with HTTP 401.
-      # Restores id-only matching; replace with setup-java's `mvn-server-repository-origins:
-      # central:https://central.sonatype.com` once a release of setup-java ships that input.
-      - name: Deploy snapshot
-        run: mvn --batch-mode --no-transfer-progress -Dmaven.repository.credentialScope=id -P release deploy -DskipTests
+        run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
+      - name: Stage snapshot
+        run: mvn --batch-mode --no-transfer-progress -Dmaven.repository.credentialScope=id -P release -DskipUpload=true deploy -DskipTests
         env:
-          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      # Runs even when the deploy step failed: a Central publish-poll timeout reds the
-      # job *after* the bundle was uploaded (and typically published server-side), while
-      # the signed jars + .asc files already exist in each module's target/ (signing happens at
-      # verify). Collecting on failure lets the github-snapshot job still attach them.
-      # NOTE: the fat jar (jar-with-dependencies) is EXCLUDED here — it is no longer attached/
-      # deployed to Central (srcmorph-cli/pom.xml sets <attach>false</attach>), so it is unsigned
-      # in target/ at this point. It is built + signed + collected by the next step instead. This
-      # step runs BEFORE that one so the deploy-signed plain/sources/javadoc jars are captured
-      # before the classifier loop rebuilds (and clobbers) srcmorph-cli/target.
       - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
-        if: ${{ !cancelled() }}
-        run: |
-          mkdir -p signed-snapshot-assets
-          # Every module's jars and poms with their .asc, the reactor parent's pom included (`.` --
-          # srcmorph-parent is a Central artifact of its own); maven-gpg writes
-          # target/<artifactId>-<version>.pom next to its .pom.asc.
-          for m in . srcmorph srcmorph-cli srcmorph-maven-plugin; do
-            for f in "$m"/target/*.jar "$m"/target/*.jar.asc "$m"/target/*.pom "$m"/target/*.pom.asc; do
-              [ -e "$f" ] || continue
-              case "$f" in *-jar-with-dependencies.jar|*-jar-with-dependencies.jar.asc) continue ;; esac
-              cp "$f" signed-snapshot-assets/
-            done
-          done
-      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU module jar + the default
-      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
-      # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
-      # natives (llama-platform), and a classifier jar adds one ggml backend module on top (since
-      # llama 6.0.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
-      # library when the vendor runtime is present and skips otherwise. Signing uses the key
-      # setup-java already imported (armored detached .asc, same shape Central produces).
+        run: python3 .github/collect-release-assets.py central-assets --maven-only
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
-        if: ${{ !cancelled() }}
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          set -euo pipefail
-          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:
-          # every row of kind `module` (a GPU backend module, additive to the library jar of its
-          # platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*
-          # library jars come with llama-platform. Each jar here is ADDED to the default CPU
-          # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
-          # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
-          CLASSIFIERS=(
-            cuda13-linux-x86-64 cuda13-windows-x86-64
-            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64 vulkan-windows-aarch64
-            opencl-windows-x86-64 opencl-windows-aarch64
-            rocm-linux-x86-64 rocm-windows-x86-64
-            sycl-linux-x86-64 sycl-windows-x86-64
-            openvino-linux-x86-64 openvino-windows-x86-64
-          )
-          build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
-          for c in "${CLASSIFIERS[@]}"; do
-            build "$c"
-            f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)
-            cp "$f" "${f%.jar}-${c}.jar"
-          done
-          # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
-          build ""
-          # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
-          # (.github/sign-fatjars.sh; java-llama.cpp dropped its copy with its fat jars) — a .asc per fat jar.
-          cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-snapshot-assets/
-          bash .github/sign-fatjars.sh signed-snapshot-assets
-          # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
-          # default jar; the classifier jars cannot be covered that way (a GitHub runner has no
-          # such device, and the only command that would load the native library is a real
-          # generation), so this asserts instead that each jar is the artifact its name claims --
-          # one jar per classifier, the backend directory the name promises, and every default
-          # CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=
-          # ever stops being wired through, the loop silently ships copies of the CPU build under
-          # GPU names and nothing else in this pipeline notices.
-          bash .github/verify-classifier-fatjars.sh signed-snapshot-assets "${CLASSIFIERS[@]}"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: ${{ !cancelled() }}
+        run: "set -euo pipefail\n# Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:\n# every row of kind `module` (a GPU backend module, additive\
+          \ to the library jar of its\n# platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*\n# library jars come with llama-platform. Each jar here is ADDED\
+          \ to the default CPU\n# natives (-Dllama.classifier activates the gpu-natives profile), so every classifier\n# fat jar keeps the CPU fallback: ggml loads the module when its\
+          \ runtime is installed.\npython3 .github/collect-release-assets.py --list-classifiers 1 > fatjar-classifiers.txt\nmapfile -t CLASSIFIERS < fatjar-classifiers.txt\nbuild() { mvn\
+          \ -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier=\"$1\" package; }\nfor c in \"${CLASSIFIERS[@]}\"; do\n  build \"$c\"\
+          \n  f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)\n  cp \"$f\" \"${f%.jar}-${c}.jar\"\ndone\n# default CPU build LAST so the unsuffixed fat jar is the\
+          \ all-platform CPU variant\nbuild \"\"\n# Collect every fat jar variant, then GPG-sign each via the cross-repo shared script\n# (.github/sign-fatjars.sh; java-llama.cpp dropped\
+          \ its copy with its fat jars) \u2014 a .asc per fat jar.\nmkdir -p fatjar-assets\ncp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar fatjar-assets/\nbash .github/sign-fatjars.sh\
+          \ fatjar-assets\n# Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the\n# default jar; the classifier jars cannot be covered that way (a GitHub\
+          \ runner has no\n# such device, and the only command that would load the native library is a real\n# generation), so this asserts instead that each jar is the artifact its name\
+          \ claims --\n# one jar per classifier, the backend directory the name promises, and every default\n# CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=\n\
+          # ever stops being wired through, the loop silently ships copies of the CPU build under\n# GPU names and nothing else in this pipeline notices.\nbash .github/verify-classifier-fatjars.sh\
+          \ fatjar-assets \"${CLASSIFIERS[@]}\"\n"
+      - name: Collect signed artifacts
+        id: collect
+        run: python3 .github/collect-release-assets.py signed-snapshot-assets --maven-assets central-assets
+      - name: Verify and freeze the complete signed publication
+        id: preflight
+        run: python3 .github/publication.py prepare signed-snapshot-assets publication-package
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: signed-snapshot-assets
-          path: signed-snapshot-assets/
+          path: publication-package/
+          if-no-files-found: error
+        if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
 
   github-snapshot:
     name: Update Snapshot Pre-release on GitHub
-    needs: [publish-snapshot]
-    # Also runs when publish-snapshot FAILED (not when skipped/cancelled): a Central
-    # publish-poll timeout reds that job after the artifacts were already uploaded —
-    # the GitHub pre-release assets must not be lost in that case.
-    if: ${{ !cancelled() && (needs.publish-snapshot.result == 'success' || needs.publish-snapshot.result == 'failure') }}
+    needs:
+      - publish-snapshot
+    if: ${{ !cancelled() && needs.publish-snapshot.outputs.assets_complete == 'true' }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: snapshot-release-${{ github.repository }}
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: signed-snapshot-assets
-          path: snapshot-assets/
-      - name: Report unsigned assets (does not block the upload)
-        # Deliberately NON-blocking, and deliberately BEFORE the upload. Both attach jobs run even
-        # when their publish job failed, because a Central publish-poll timeout must not cost the
-        # GitHub assets: if Central is unreachable these are the ONLY way to get the artifacts at
-        # all. Refusing to attach on a signing failure would defeat exactly that. So annotate here,
-        # upload regardless, and fail the job afterwards. Assets always land; an unsigned release is
-        # still loudly red rather than quietly wrong.
-        # See workspace/policies/fat-jar-release-assets.md, "Attach first, then go red".
-        id: signatures
-        run: |
-          set -uo pipefail
-          dir="snapshot-assets"
-          # Every attachable artifact type, not only jars: with '*.jar' alone the AARs were attached
-          # unsigned for months and nothing counted them, so the job reported success.
-          artifacts=$(find "$dir" -maxdepth 1 \( -name '*.jar' -o -name '*.aar' -o -name '*.pom' \) | sort)
-          if [ -z "$artifacts" ]; then
-            echo "::error::no artifacts in $dir -- the collection step produced nothing"
-            echo "missing=-1" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          missing=0
-          for artifact in $artifacts; do
-            if [ ! -e "$artifact.asc" ]; then
-              echo "::error::unsigned: $(basename "$artifact") has no detached .asc"
-              missing=$((missing + 1))
-            fi
-          done
-          echo "missing=$missing" >> "$GITHUB_OUTPUT"
-          [ "$missing" -eq 0 ] && echo "all $(echo "$artifacts" | wc -l) artifact(s) signed"
-          exit 0
-      - name: Update snapshot pre-release
+          path: publication-package/
+          digest-mismatch: error
+      - name: Verify transport integrity and export checked GitHub files
+        run: python3 .github/publication.py verify publication-package --export-github snapshot-assets
+      - name: Update snapshot assets, source tag and notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release view snapshot --repo ${{ github.repository }} 2>/dev/null \
-            || gh release create snapshot \
-                 --repo ${{ github.repository }} \
-                 --prerelease \
-                 --title "Snapshot (latest)" \
-                 --notes "Latest snapshot build from the main branch."
-          gh release upload snapshot snapshot-assets/* \
-            --repo ${{ github.repository }} \
-            --clobber
-      - name: Remove the assets this run did not upload
-        # `snapshot` is a rolling "latest" pre-release, and `gh release upload --clobber` replaces
-        # same-named assets but never removes any other, so every asset of every past version stayed
-        # forever: 208 on java-llama.cpp (109 of them from 5.0.x, 43 in shapes that no longer exist),
-        # and SpotBugs plugin jars an old collect step attached in 2026-05 on three repositories. A
-        # non-current asset on this release is noise by definition. The keep-set is what this run
-        # uploaded -- the files in the asset directory -- never a version pattern, which would have to
-        # be re-taught at every classifier added or dropped (how the stale shapes arose). AFTER the
-        # upload on purpose: a failed upload must not leave the release emptier than it was. And only
-        # here: a versioned v* release is history, github-release never deletes anything. Every
-        # deletion is printed by name, so the job log is the audit trail.
-        #
-        # Asset by asset, never the release. The first form of this job (2026-05-07) deleted the whole
-        # `snapshot` release with its tag and recreated it; on 2026-05-10 the runs of several main
-        # pushes minutes apart deleted it under each other, and every job of each burst but the last
-        # failed in that step with its artifacts present. The job then went with the Central
-        # migration and came back as `view || create` + `upload --clobber` without any cleanup, which
-        # is how the backlog grew (workspace/policies/fat-jar-release-assets.md has the runs). Hence
-        # three guards: an empty upload is refused (every asset would count as stale; the download
-        # and upload steps above fail first, the guard keeps it so), an asset that is already gone
-        # counts as removed (two overlapping dispatches may both pick it), and a failed deletion is
-        # reported and the rest still tried -- the assets of this upload are on the release either
-        # way, so this is "attach first, then red" like the signature check.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          keep="$(ls -1 snapshot-assets | sort)"
-          if [ -z "$keep" ]; then
-            echo "::error::refusing to prune: this run uploaded nothing, so every asset of the release would count as stale"
-            exit 1
-          fi
-          list_assets() {
-            gh release view snapshot --repo ${{ github.repository }} --json assets --jq '.assets[].name' | sort
-          }
-          current="$(list_assets)"
-          stale="$(comm -13 <(printf '%s\n' "$keep") <(printf '%s\n' "$current"))"
-          if [ -z "$stale" ]; then
-            echo "nothing to remove: the release holds exactly the $(printf '%s\n' "$keep" | wc -l) asset(s) of this upload"
-            exit 0
-          fi
-          echo "removing $(printf '%s\n' "$stale" | wc -l) asset(s) that are not part of this upload:"
-          failed=0
-          while IFS= read -r name; do
-            [ -n "$name" ] || continue
-            echo "  deleting $name"
-            if gh release delete-asset snapshot "$name" --repo ${{ github.repository }} --yes; then
-              continue
-            fi
-            if ! remaining="$(list_assets)"; then
-              echo "::error::could not delete $name, and could not re-read the release to tell whether it is gone"
-              failed=$((failed + 1))
-            elif printf '%s\n' "$remaining" | grep -qxF -- "$name"; then
-              echo "::error::could not delete $name"
-              failed=$((failed + 1))
-            else
-              echo "  $name was already gone"
-            fi
-          done <<< "$stale"
-          if [ "$failed" -ne 0 ]; then
-            echo "::error::$failed asset(s) could not be removed; the $(printf '%s\n' "$keep" | wc -l) asset(s) of this upload are on the release"
-            exit 1
-          fi
-          echo "kept the $(printf '%s\n' "$keep" | wc -l) asset(s) of this upload"
-      - name: Fail if anything was attached unsigned
-        # After the upload on purpose: the assets must exist even when the signature does not.
-        if: ${{ always() && steps.signatures.outputs.missing != '0' }}
-        run: |
-          echo "::error::${{ steps.signatures.outputs.missing }} asset(s) attached without a signature (-1 means none were collected at all)"
-          exit 1
+          ASSETS_COMPLETE: ${{ needs.publish-snapshot.outputs.assets_complete }}
+        run: python3 .github/update-snapshot.py snapshot-assets
 
   publish-release:
-    name: Publish Release to Central
-    needs: [check-tag, code-style, smoke-fatjar, plugin-it, shared-files, vmlens]
+    name: Prepare and verify signed release artifacts
+    needs:
+      - check-tag
+      - code-style
+      - smoke-fatjar
+      - plugin-it
+      - shared-files
+      - vmlens
     if: needs.check-tag.result == 'success' && inputs.publish_to_central
     runs-on: ubuntu-latest
     environment: maven-central
+    outputs:
+      assets_complete: ${{ steps.preflight.outputs.complete }}
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
         with:
           java-version-file: .java-version
           distribution: temurin
@@ -799,148 +658,127 @@ jobs:
           server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-      # Informational only (nothing depends on it): logs the effective POM with the same
-      # profile as the deploy below, so the resolved central-publishing configuration
-      # (waitUntil/waitMaxTime etc.) is visible for debugging.
       - name: Show effective POM (debug)
-        run: mvn --batch-mode --no-transfer-progress -P release help:effective-pom
-      # -Dmaven.repository.credentialScope=id: see the first deploy step of this file (Maven 3.10).
-      - name: Deploy release
-        run: mvn --batch-mode --no-transfer-progress -Dmaven.repository.credentialScope=id -P release deploy -DskipTests
+        run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
+      - name: Stage release
+        run: mvn --batch-mode --no-transfer-progress -Dmaven.repository.credentialScope=id -P release -DskipUpload=true deploy -DskipTests
         env:
-          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      # Runs even when the deploy step failed: a Central publish-poll timeout reds the
-      # job *after* the bundle was uploaded (and typically published server-side), while
-      # the signed jars + .asc files already exist in each module's target/ (signing happens at
-      # verify). Collecting on failure lets the github-release job still attach them.
-      # NOTE: the fat jar (jar-with-dependencies) is EXCLUDED here — it is no longer attached/
-      # deployed to Central (srcmorph-cli/pom.xml sets <attach>false</attach>), so it is unsigned
-      # in target/ at this point. It is built + signed + collected by the next step instead. This
-      # step runs BEFORE that one so the deploy-signed plain/sources/javadoc jars are captured
-      # before the classifier loop rebuilds (and clobbers) srcmorph-cli/target.
       - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
-        if: ${{ !cancelled() }}
-        run: |
-          mkdir -p signed-release-assets
-          # Every module's jars and poms with their .asc, the reactor parent's pom included (`.` --
-          # srcmorph-parent is a Central artifact of its own); maven-gpg writes
-          # target/<artifactId>-<version>.pom next to its .pom.asc.
-          for m in . srcmorph srcmorph-cli srcmorph-maven-plugin; do
-            for f in "$m"/target/*.jar "$m"/target/*.jar.asc "$m"/target/*.pom "$m"/target/*.pom.asc; do
-              [ -e "$f" ] || continue
-              case "$f" in *-jar-with-dependencies.jar|*-jar-with-dependencies.jar.asc) continue ;; esac
-              cp "$f" signed-release-assets/
-            done
-          done
-      # Build one srcmorph-cli fat jar per net.ladenthin:llama GPU module jar + the default
-      # all-platform CPU fat jar, GPG-sign each, and add them to the GitHub-Release assets.
-      # These are GitHub-only (never Maven Central): every jar carries the multi-platform CPU
-      # natives (llama-platform), and a classifier jar adds one ggml backend module on top (since
-      # llama 6.0.0 a GPU natives jar holds only that module), which ggml loads next to the CPU
-      # library when the vendor runtime is present and skips otherwise. Signing uses the key
-      # setup-java already imported (armored detached .asc, same shape Central produces).
+        run: python3 .github/collect-release-assets.py central-assets --maven-only
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
-        if: ${{ !cancelled() }}
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          set -euo pipefail
-          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:
-          # every row of kind `module` (a GPU backend module, additive to the library jar of its
-          # platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*
-          # library jars come with llama-platform. Each jar here is ADDED to the default CPU
-          # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
-          # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
-          CLASSIFIERS=(
-            cuda13-linux-x86-64 cuda13-windows-x86-64
-            vulkan-linux-x86-64 vulkan-linux-aarch64 vulkan-windows-x86-64 vulkan-windows-aarch64
-            opencl-windows-x86-64 opencl-windows-aarch64
-            rocm-linux-x86-64 rocm-windows-x86-64
-            sycl-linux-x86-64 sycl-windows-x86-64
-            openvino-linux-x86-64 openvino-windows-x86-64
-          )
-          build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
-          for c in "${CLASSIFIERS[@]}"; do
-            build "$c"
-            f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)
-            cp "$f" "${f%.jar}-${c}.jar"
-          done
-          # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
-          build ""
-          # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
-          # (.github/sign-fatjars.sh; java-llama.cpp dropped its copy with its fat jars) — a .asc per fat jar.
-          cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar signed-release-assets/
-          bash .github/sign-fatjars.sh signed-release-assets
-          # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
-          # default jar; the classifier jars cannot be covered that way (a GitHub runner has no
-          # such device, and the only command that would load the native library is a real
-          # generation), so this asserts instead that each jar is the artifact its name claims --
-          # one jar per classifier, the backend directory the name promises, and every default
-          # CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=
-          # ever stops being wired through, the loop silently ships copies of the CPU build under
-          # GPU names and nothing else in this pipeline notices.
-          bash .github/verify-classifier-fatjars.sh signed-release-assets "${CLASSIFIERS[@]}"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: ${{ !cancelled() }}
+        run: "set -euo pipefail\n# Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:\n# every row of kind `module` (a GPU backend module, additive\
+          \ to the library jar of its\n# platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*\n# library jars come with llama-platform. Each jar here is ADDED\
+          \ to the default CPU\n# natives (-Dllama.classifier activates the gpu-natives profile), so every classifier\n# fat jar keeps the CPU fallback: ggml loads the module when its\
+          \ runtime is installed.\npython3 .github/collect-release-assets.py --list-classifiers 1 > fatjar-classifiers.txt\nmapfile -t CLASSIFIERS < fatjar-classifiers.txt\nbuild() { mvn\
+          \ -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier=\"$1\" package; }\nfor c in \"${CLASSIFIERS[@]}\"; do\n  build \"$c\"\
+          \n  f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)\n  cp \"$f\" \"${f%.jar}-${c}.jar\"\ndone\n# default CPU build LAST so the unsuffixed fat jar is the\
+          \ all-platform CPU variant\nbuild \"\"\n# Collect every fat jar variant, then GPG-sign each via the cross-repo shared script\n# (.github/sign-fatjars.sh; java-llama.cpp dropped\
+          \ its copy with its fat jars) \u2014 a .asc per fat jar.\nmkdir -p fatjar-assets\ncp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar fatjar-assets/\nbash .github/sign-fatjars.sh\
+          \ fatjar-assets\n# Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the\n# default jar; the classifier jars cannot be covered that way (a GitHub\
+          \ runner has no\n# such device, and the only command that would load the native library is a real\n# generation), so this asserts instead that each jar is the artifact its name\
+          \ claims --\n# one jar per classifier, the backend directory the name promises, and every default\n# CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=\n\
+          # ever stops being wired through, the loop silently ships copies of the CPU build under\n# GPU names and nothing else in this pipeline notices.\nbash .github/verify-classifier-fatjars.sh\
+          \ fatjar-assets \"${CLASSIFIERS[@]}\"\n"
+      - name: Collect signed artifacts
+        id: collect
+        run: python3 .github/collect-release-assets.py signed-release-assets --maven-assets central-assets
+      - name: Verify and freeze the complete signed publication
+        id: preflight
+        run: python3 .github/publication.py prepare signed-release-assets publication-package
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: signed-release-assets
-          path: signed-release-assets/
+          path: publication-package/
+          if-no-files-found: error
+        if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
 
   github-release:
     name: Attach Binaries to GitHub Release
-    needs: [publish-release]
-    # Also runs when publish-release FAILED (not when skipped/cancelled): a Central
-    # publish-poll timeout reds that job after the artifacts were already uploaded —
-    # the GitHub release assets must not be lost in that case.
-    if: ${{ !cancelled() && (needs.publish-release.result == 'success' || needs.publish-release.result == 'failure') }}
+    needs:
+      - publish-release
+    if: ${{ !cancelled() && needs.publish-release.outputs.assets_complete == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: signed-release-assets
-          path: release-assets/
-      - name: Report unsigned assets (does not block the upload)
-        # Deliberately NON-blocking, and deliberately BEFORE the upload. Both attach jobs run even
-        # when their publish job failed, because a Central publish-poll timeout must not cost the
-        # GitHub assets: if Central is unreachable these are the ONLY way to get the artifacts at
-        # all. Refusing to attach on a signing failure would defeat exactly that. So annotate here,
-        # upload regardless, and fail the job afterwards. Assets always land; an unsigned release is
-        # still loudly red rather than quietly wrong.
-        # See workspace/policies/fat-jar-release-assets.md, "Attach first, then go red".
-        id: signatures
-        run: |
-          set -uo pipefail
-          dir="release-assets"
-          # Every attachable artifact type, not only jars: with '*.jar' alone the AARs were attached
-          # unsigned for months and nothing counted them, so the job reported success.
-          artifacts=$(find "$dir" -maxdepth 1 \( -name '*.jar' -o -name '*.aar' -o -name '*.pom' \) | sort)
-          if [ -z "$artifacts" ]; then
-            echo "::error::no artifacts in $dir -- the collection step produced nothing"
-            echo "missing=-1" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          missing=0
-          for artifact in $artifacts; do
-            if [ ! -e "$artifact.asc" ]; then
-              echo "::error::unsigned: $(basename "$artifact") has no detached .asc"
-              missing=$((missing + 1))
-            fi
-          done
-          echo "missing=$missing" >> "$GITHUB_OUTPUT"
-          [ "$missing" -eq 0 ] && echo "all $(echo "$artifacts" | wc -l) artifact(s) signed"
-          exit 0
+          path: publication-package/
+          digest-mismatch: error
+      - name: Verify transport integrity and export checked GitHub files
+        run: python3 .github/publication.py verify publication-package --export-github release-assets
       - name: Upload release assets
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
         with:
           files: release-assets/*
-      - name: Fail if anything was attached unsigned
-        # After the upload on purpose: the assets must exist even when the signature does not.
-        if: ${{ always() && steps.signatures.outputs.missing != '0' }}
-        run: |
-          echo "::error::${{ steps.signatures.outputs.missing }} asset(s) attached without a signature (-1 means none were collected at all)"
-          exit 1
+
+
+  central-snapshot:
+    name: Upload checked snapshot artifacts to Maven Central
+    needs:
+      - publish-snapshot
+    if: ${{ !cancelled() && needs.publish-snapshot.outputs.assets_complete == 'true' }}
+    runs-on: ubuntu-latest
+    environment: maven-central
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          java-version-file: .java-version
+          distribution: temurin
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: signed-snapshot-assets
+          path: publication-package/
+          digest-mismatch: error
+      - name: Transfer frozen artifacts (no rebuild, signing or validation polling)
+        run: python3 .github/publication.py upload publication-package
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
+
+  central-release:
+    name: Upload checked release artifacts to Maven Central
+    needs:
+      - publish-release
+    if: ${{ !cancelled() && needs.publish-release.outputs.assets_complete == 'true' }}
+    runs-on: ubuntu-latest
+    environment: maven-central
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          java-version-file: .java-version
+          distribution: temurin
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: signed-release-assets
+          path: publication-package/
+          digest-mismatch: error
+      - name: Transfer frozen artifacts (no rebuild, signing or validation polling)
+        run: python3 .github/publication.py upload publication-package
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
