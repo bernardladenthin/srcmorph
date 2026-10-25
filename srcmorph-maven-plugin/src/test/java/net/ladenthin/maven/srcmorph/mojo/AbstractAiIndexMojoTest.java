@@ -96,6 +96,8 @@ public class AbstractAiIndexMojoTest {
         mojo.aiDefinitions = models;
         mojo.fieldGenerations = rules;
         mojo.llamaModelPath = "model.gguf";
+        final File modelDirectory = new File("models");
+        mojo.modelDirectory = modelDirectory;
         mojo.llamaMaxOutputTokens = 222;
         mojo.llamaTemperature = 0.33f;
 
@@ -112,6 +114,7 @@ public class AbstractAiIndexMojoTest {
         assertThat(config.getAiDefinitions(), is(sameInstance(models)));
         assertThat(config.getFieldGenerations(), is(sameInstance(rules)));
         assertThat(config.getLlamaModelPath(), is(equalTo("model.gguf")));
+        assertThat(config.getModelDirectory(), is(sameInstance(modelDirectory)));
         assertThat(config.getLlamaMaxOutputTokens(), is(equalTo(222)));
         assertThat(config.getLlamaTemperature(), is(equalTo(0.33f)));
         // These two come from the abstract getters, not fields -- a subclass declares its own

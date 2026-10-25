@@ -11,6 +11,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Added
+- **`modelDirectory`: relative model paths resolve against one directory, absolute ones stay as they
+  are.** A new configuration field (plugin parameter `modelDirectory`, property
+  `srcmorph.modelDirectory`; `"modelDirectory"` in a CLI configuration) is the directory every relative
+  `modelPath` of the `aiDefinitions` and the `llamaModelPath` fallback is resolved against. An absolute
+  `modelPath` is used unchanged, so one model can live elsewhere while the others are named by file
+  name only. Unset, a relative path stays relative to the working directory, as before. The
+  `srcmorph-selftest` profile uses it: `<modelDirectory>${ai.modelDir}</modelDirectory>` once, and its
+  36 `<modelPath>` entries are bare file names; before, each entry was the text `${ai.modelDir}/<file>`,
+  which put every model in that one directory unless the entry was edited.
+
 ### Fixed
 - **The `calibrate` goal's paste block mixed line endings on Windows.** `CalibrationReport` wrote its three
   value lines with `String.format("...%n")`, the platform line separator, between lines ending in `\n`, so on

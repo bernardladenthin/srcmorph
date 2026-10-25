@@ -102,10 +102,11 @@ SPDX-License-Identifier: Apache-2.0
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
 
-        <!-- Directory holding the GGUF files every <modelPath> of the srcmorph-selftest profile
-             below points into. One place instead of one absolute path per model: the profile runs
-             on another machine with -Dai.modelDir=/path/to/models, and a moved model drive is a
-             one-line change here. The default is the owner's model drive. -->
+        <!-- The srcmorph-selftest profile's <modelDirectory>: every <modelPath> there is a file
+             name relative to it, so the profile runs on another machine with
+             -Dai.modelDir=/path/to/models, and a moved model drive is a one-line change here. A
+             model kept somewhere else gets an absolute <modelPath>, which is used as it is. The
+             default is the owner's model drive. -->
         <ai.modelDir>M:/Modelle</ai.modelDir>
 
         <!-- Prompt-cache toggle (default on). Reuses the shared prompt-template prefix KV across
@@ -816,6 +817,10 @@ SPDX-License-Identifier: Apache-2.0
 
                             <generationProvider>llamacpp-jni</generationProvider>
 
+                            <!-- Relative <modelPath> entries below resolve against this directory;
+                                 an absolute <modelPath> is used as it is (see ai.modelDir above). -->
+                            <modelDirectory>${ai.modelDir}</modelDirectory>
+
                             <!--
                                 AI model definitions: define each model once and reference it by key.
                                 No Maven profiles or properties are needed for model configuration.
@@ -930,7 +935,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/lmstudio-community/Mistral-7B-Instruct-v0.3-GGUF/blob/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf -->
                                 <aiDefinition>
                                     <key>Mistral-7B-Instruct-v0.3-Q4_K_M-C16k</key>
-                                    <modelPath>${ai.modelDir}/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Mistral-7B-Instruct-v0.3-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -943,7 +948,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/blob/main/Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf -->
                                 <aiDefinition>
                                     <key>Meta-Llama-3.1-8B-Instruct-Q5_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf</modelPath>
+                                    <modelPath>Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -956,7 +961,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/bartowski/Codestral-22B-v0.1-GGUF/blob/main/Codestral-22B-v0.1-Q4_K_M.gguf -->
                                 <aiDefinition>
                                     <key>Codestral-22B-v0.1-Q4_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Codestral-22B-v0.1-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Codestral-22B-v0.1-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -969,7 +974,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/bartowski/Codestral-22B-v0.1-GGUF/blob/main/Codestral-22B-v0.1-Q6_K.gguf -->
                                 <aiDefinition>
                                     <key>Codestral-22B-v0.1-Q6_K-C32k</key>
-                                    <modelPath>${ai.modelDir}/Codestral-22B-v0.1-Q6_K.gguf</modelPath>
+                                    <modelPath>Codestral-22B-v0.1-Q6_K.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -982,7 +987,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/blob/main/qwen2.5-coder-7b-instruct-q5_k_m.gguf -->
                                 <aiDefinition>
                                     <key>Qwen2.5-Coder-7B-Instruct-Q5_K_M-C16k</key>
-                                    <modelPath>${ai.modelDir}/qwen2.5-coder-7b-instruct-q5_k_m.gguf</modelPath>
+                                    <modelPath>qwen2.5-coder-7b-instruct-q5_k_m.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -998,7 +1003,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512-GGUF -->
                                 <aiDefinition>
                                     <key>Ministral-3-8B-Instruct-2512-Q4_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Ministral-3-8B-Instruct-2512-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Ministral-3-8B-Instruct-2512-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.1</temperature>
@@ -1015,7 +1020,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/mistralai/Ministral-3-14B-Instruct-2512-GGUF -->
                                 <aiDefinition>
                                     <key>Ministral-3-14B-Instruct-2512-Q4_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Ministral-3-14B-Instruct-2512-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Ministral-3-14B-Instruct-2512-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.1</temperature>
@@ -1031,7 +1036,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512-GGUF -->
                                 <aiDefinition>
                                     <key>Ministral-3-8B-Instruct-2512-Q5_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Ministral-3-8B-Instruct-2512-Q5_K_M.gguf</modelPath>
+                                    <modelPath>Ministral-3-8B-Instruct-2512-Q5_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.1</temperature>
@@ -1048,7 +1053,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/mistralai/Ministral-3-14B-Instruct-2512-GGUF -->
                                 <aiDefinition>
                                     <key>Ministral-3-14B-Instruct-2512-Q5_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Ministral-3-14B-Instruct-2512-Q5_K_M.gguf</modelPath>
+                                    <modelPath>Ministral-3-14B-Instruct-2512-Q5_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.1</temperature>
@@ -1065,7 +1070,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF -->
                                 <aiDefinition>
                                     <key>Gemma-4-26B-A4B-it-UD-Q4_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf</modelPath>
+                                    <modelPath>gemma-4-26B-A4B-it-UD-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>8192</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -1087,7 +1092,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/bartowski/gemma-4-12B-it-GGUF -->
                                 <aiDefinition>
                                     <key>Gemma-4-12B-it-Q4_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/gemma-4-12B-it-Q4_K_M.gguf</modelPath>
+                                    <modelPath>gemma-4-12B-it-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>8192</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -1109,7 +1114,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive -->
                                 <aiDefinition>
                                     <key>Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q4_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>8192</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -1133,7 +1138,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/HauhauCS/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive -->
                                 <aiDefinition>
                                     <key>Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q6_K_P-C32k</key>
-                                    <modelPath>${ai.modelDir}/Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q6_K_P.gguf</modelPath>
+                                    <modelPath>Gemma-4-E4B-Uncensored-HauhauCS-Aggressive-Q6_K_P.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>8192</maxOutputTokens>
                                     <temperature>1.0</temperature>
@@ -1166,7 +1171,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF -->
                                 <aiDefinition>
                                     <key>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</key>
-                                    <modelPath>${ai.modelDir}/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
+                                    <modelPath>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
                                     <!-- Context 16384 is the practical CPU default on this machine: the 64K
                                          KV cache (~6 GB) pushed total memory over the edge and caused paging,
                                          while 16K fits comfortably (~18 GB total) and still covers every source
@@ -1190,7 +1195,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/bartowski/Qwen2.5-Coder-14B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf -->
                                 <aiDefinition>
                                     <key>Qwen2.5-Coder-14B-Instruct-Q4_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.7</temperature>
@@ -1208,7 +1213,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q5_K_M.gguf -->
                                 <aiDefinition>
                                     <key>Qwen3-4B-Instruct-2507-Q5_K_M-C32k</key>
-                                    <modelPath>${ai.modelDir}/Qwen3-4B-Instruct-2507-Q5_K_M.gguf</modelPath>
+                                    <modelPath>Qwen3-4B-Instruct-2507-Q5_K_M.gguf</modelPath>
                                     <contextSize>32768</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.7</temperature>
@@ -1227,7 +1232,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/bartowski/ibm-granite_granite-4.0-h-tiny-GGUF/resolve/main/ibm-granite_granite-4.0-h-tiny-Q4_K_M.gguf -->
                                 <aiDefinition>
                                     <key>Granite-4.0-H-Tiny-Q4_K_M-C128k</key>
-                                    <modelPath>${ai.modelDir}/ibm-granite_granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <modelPath>ibm-granite_granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
                                     <contextSize>131072</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.2</temperature>
@@ -1243,7 +1248,7 @@ SPDX-License-Identifier: Apache-2.0
                                      https://huggingface.co/bartowski/ibm-granite_granite-4.0-h-small-GGUF/resolve/main/ibm-granite_granite-4.0-h-small-Q4_K_M.gguf -->
                                 <aiDefinition>
                                     <key>Granite-4.0-H-Small-Q4_K_M-C128k</key>
-                                    <modelPath>${ai.modelDir}/ibm-granite_granite-4.0-h-small-Q4_K_M.gguf</modelPath>
+                                    <modelPath>ibm-granite_granite-4.0-h-small-Q4_K_M.gguf</modelPath>
                                     <contextSize>131072</contextSize>
                                     <maxOutputTokens>2048</maxOutputTokens>
                                     <temperature>0.2</temperature>
@@ -1259,7 +1264,7 @@ SPDX-License-Identifier: Apache-2.0
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>EXP-Qwen3.5-4B</key>
-                                    <modelPath>${ai.modelDir}/Qwen3.5-4B-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Qwen3.5-4B-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.7</temperature>
@@ -1273,7 +1278,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Qwen2.5-Coder-7B</key>
-                                    <modelPath>${ai.modelDir}/qwen2.5-coder-7b-instruct-q5_k_m.gguf</modelPath>
+                                    <modelPath>qwen2.5-coder-7b-instruct-q5_k_m.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.7</temperature>
@@ -1333,7 +1338,7 @@ SPDX-License-Identifier: Apache-2.0
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>gpt-oss-20B-c16k</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1351,7 +1356,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>gpt-oss-20B-c48k</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>49152</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1369,7 +1374,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>gpt-oss-20B-c96k</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1419,7 +1424,7 @@ SPDX-License-Identifier: Apache-2.0
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>gpt-oss-20B-mxfp4</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-mxfp4.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-mxfp4.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1437,7 +1442,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>gpt-oss-20B-Q4_K_M</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-Q4_K_M.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-Q4_K_M.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1455,7 +1460,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>gpt-oss-20B-Q5_K_M</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-Q5_K_M.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-Q5_K_M.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1473,7 +1478,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>gpt-oss-20B-Q8_0</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-Q8_0.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-Q8_0.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1491,7 +1496,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>gpt-oss-20B-F16</key>
-                                    <modelPath>${ai.modelDir}/gpt-oss-20b-F16.gguf</modelPath>
+                                    <modelPath>gpt-oss-20b-F16.gguf</modelPath>
                                     <contextSize>98304</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1538,7 +1543,7 @@ SPDX-License-Identifier: Apache-2.0
                                      rules and are map-reduced (cheap small chunks, maxChunks-bounded). -->
                                 <aiDefinition>
                                     <key>granite-4.0-h-tiny-bigwindow</key>
-                                    <modelPath>${ai.modelDir}/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <modelPath>granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
                                     <contextSize>393216</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1575,7 +1580,7 @@ SPDX-License-Identifier: Apache-2.0
                                      huge-java / huge-sql rules below (priority above big-window). -->
                                 <aiDefinition>
                                     <key>granite-4.0-h-1b-fastchunk</key>
-                                    <modelPath>${ai.modelDir}/granite-4.0-h-1b-Q4_K_M.gguf</modelPath>
+                                    <modelPath>granite-4.0-h-1b-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <gpuLayers>${ai.gpuLayers}</gpuLayers>
                                     <mainGpu>${ai.mainGpu}</mainGpu>
@@ -1594,7 +1599,7 @@ SPDX-License-Identifier: Apache-2.0
 
                                 <aiDefinition>
                                     <key>EXP-Qwen3-Coder-30B</key>
-                                    <modelPath>${ai.modelDir}/Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
+                                    <modelPath>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.7</temperature>
@@ -1612,7 +1617,7 @@ SPDX-License-Identifier: Apache-2.0
                                      ============================================================ -->
                                 <aiDefinition>
                                     <key>EXP-DeepSeek-Coder-V2-Lite</key>
-                                    <modelPath>${ai.modelDir}/DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf</modelPath>
+                                    <modelPath>DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.3</temperature>
@@ -1625,7 +1630,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Seed-Coder-8B</key>
-                                    <modelPath>${ai.modelDir}/Seed-Coder-8B-Instruct-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Seed-Coder-8B-Instruct-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.3</temperature>
@@ -1638,7 +1643,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Granite-4.0-H-Tiny</key>
-                                    <modelPath>${ai.modelDir}/granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
+                                    <modelPath>granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.0</temperature>
@@ -1655,7 +1660,7 @@ SPDX-License-Identifier: Apache-2.0
                                      Same 16384 window + 1536 output as H-Tiny for benchmark comparability. -->
                                 <aiDefinition>
                                     <key>EXP-Granite-4.0-H-Small</key>
-                                    <modelPath>${ai.modelDir}/granite-4.0-h-small-UD-Q4_K_XL.gguf</modelPath>
+                                    <modelPath>granite-4.0-h-small-UD-Q4_K_XL.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.0</temperature>
@@ -1668,7 +1673,7 @@ SPDX-License-Identifier: Apache-2.0
                                 </aiDefinition>
                                 <aiDefinition>
                                     <key>EXP-Qwen3-4B-Instruct-2507</key>
-                                    <modelPath>${ai.modelDir}/Qwen3-4B-Instruct-2507-Q4_K_M.gguf</modelPath>
+                                    <modelPath>Qwen3-4B-Instruct-2507-Q4_K_M.gguf</modelPath>
                                     <contextSize>16384</contextSize>
                                     <maxOutputTokens>1536</maxOutputTokens>
                                     <temperature>0.7</temperature>

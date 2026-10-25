@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.config;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +64,20 @@ public final class AiModelDefinitionSupport {
      * @throws NullPointerException if any entry has a {@code null} {@code key}
      */
     public AiModelDefinitionSupport(final @Nullable List<AiModelDefinition> definitions) {
+        this(definitions, null);
+    }
+
+    /**
+     * Builds a new {@code AiModelDefinitionSupport} whose relative {@code modelPath} entries are
+     * resolved against {@code modelDirectory} (see {@link #resolveModelPath(File, String)}).
+     *
+     * @param definitions    list of AI model definitions; may be {@code null} or empty
+     * @param modelDirectory directory relative model paths are resolved against, or {@code null} to
+     *                       keep them relative to the working directory
+     * @throws NullPointerException if any entry has a {@code null} {@code key}
+     */
+    public AiModelDefinitionSupport(
+            final @Nullable List<AiModelDefinition> definitions, final @Nullable File modelDirectory) {
         if (definitions == null) {
             this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
             return;
@@ -77,7 +92,7 @@ public final class AiModelDefinitionSupport {
             Objects.requireNonNull(
                     definition.getKey(),
                     () -> "aiDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
-            configs.put(definition.getKey(), toConfig(definition));
+            configs.put(definition.getKey(), toConfig(definition, modelDirectory));
         }
     }
 
@@ -97,15 +112,39 @@ public final class AiModelDefinitionSupport {
     }
 
     /**
-     * Converts an {@link AiModelDefinition} into an {@link AiGenerationConfig} by copying
-     * all field values.
+     * Resolves a configured model path: a relative path against {@code modelDirectory}, an absolute
+     * path unchanged. So a configuration can name every model by its file name below one directory
+     * and still point a single model anywhere else with an absolute path.
      *
-     * @param definition the definition to convert; must not be {@code null}
+     * @param modelDirectory directory relative paths are resolved against, or {@code null} to leave
+     *                       them relative to the working directory
+     * @param modelPath      the configured path, or {@code null}
+     * @return the path to load, or {@code null} when {@code modelPath} is {@code null}
+     */
+    public static @Nullable String resolveModelPath(
+            final @Nullable File modelDirectory, final @Nullable String modelPath) {
+        if (modelDirectory == null || modelPath == null || new File(modelPath).isAbsolute()) {
+            return modelPath;
+        }
+        return new File(modelDirectory, modelPath).getPath();
+    }
+
+    /**
+     * Converts an {@link AiModelDefinition} into an {@link AiGenerationConfig} by copying
+     * all field values, the model path resolved against {@code modelDirectory}.
+     *
+     * @param definition     the definition to convert; must not be {@code null}
+     * @param modelDirectory directory a relative model path is resolved against, or {@code null}
      * @return a fully populated {@link AiGenerationConfig}
      */
-    private static AiGenerationConfig toConfig(final AiModelDefinition definition) {
+    private static AiGenerationConfig toConfig(
+            final AiModelDefinition definition, final @Nullable File modelDirectory) {
         final AiGenerationConfig config = new AiGenerationConfig();
-        config.setModelPath(definition.getModelPath());
+        final String modelPath = definition.getModelPath();
+        final String resolved = resolveModelPath(modelDirectory, modelPath);
+        // null only when the definition names no model; passed on as before, for the engines'
+        // fail-fast model path check to report.
+        config.setModelPath(resolved == null ? modelPath : resolved);
         config.setContextSize(definition.getContextSize());
         config.setMaxOutputTokens(definition.getMaxOutputTokens());
         config.setTemperature(definition.getTemperature());

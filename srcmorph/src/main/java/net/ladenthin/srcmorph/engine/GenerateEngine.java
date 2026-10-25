@@ -101,7 +101,7 @@ public final class GenerateEngine {
 
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(config.getPromptDefinitions());
         final AiModelDefinitionSupport modelDefinitionSupport =
-                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions());
+                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
         // Resolve each rule's factsKey to its shared factDefinitions group (copies the counters onto the
         // rule's facts) BEFORE validation, so the resolved fact patterns are validated too.

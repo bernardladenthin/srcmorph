@@ -15,6 +15,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -123,7 +124,20 @@ public class EngineSupportTest {
     // <editor-fold defaultstate="collapsed" desc="buildAiModelDefinitionSupport">
     @Test
     public void buildAiModelDefinitionSupport_nullListBuildsEmptySupport() throws SrcMorphException {
-        assertThat(EngineSupport.buildAiModelDefinitionSupport(null), is(notNullValue()));
+        assertThat(EngineSupport.buildAiModelDefinitionSupport(null, null), is(notNullValue()));
+    }
+
+    @Test
+    public void buildAiModelDefinitionSupport_resolvesAgainstTheModelDirectory() throws SrcMorphException {
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("named");
+        definition.setModelPath("named.gguf");
+        final File modelDirectory = new File("models");
+
+        final AiModelDefinitionSupport support =
+                EngineSupport.buildAiModelDefinitionSupport(Arrays.asList(definition), modelDirectory);
+
+        assertThat(support.getConfig("named").getModelPath(), is(new File(modelDirectory, "named.gguf").getPath()));
     }
 
     @Test
@@ -132,7 +146,7 @@ public class EngineSupportTest {
         bad.setModelPath("model.gguf");
 
         final SrcMorphException e = assertThrows(
-                SrcMorphException.class, () -> EngineSupport.buildAiModelDefinitionSupport(Arrays.asList(bad)));
+                SrcMorphException.class, () -> EngineSupport.buildAiModelDefinitionSupport(Arrays.asList(bad), null));
         assertThat(e.getMessage(), containsString("Invalid plugin configuration:"));
     }
     // </editor-fold>
@@ -155,6 +169,19 @@ public class EngineSupportTest {
         assertThat(result.maxOutputTokens(), is(64));
         assertThat(result.temperature(), is(0.2f));
         assertThat(result.threads(), is(3));
+    }
+
+    @Test
+    public void resolveLlamaCppJniConfig_noKey_fallbackModelPathIsResolvedAgainstTheModelDirectory() {
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        final File modelDirectory = new File("models");
+        config.setModelDirectory(modelDirectory);
+        config.setLlamaModelPath("fallback.gguf");
+
+        final LlamaCppJniConfig result =
+                EngineSupport.resolveLlamaCppJniConfig(config, new AiModelDefinitionSupport(null));
+
+        assertThat(result.modelPath(), is(new File(modelDirectory, "fallback.gguf").getPath()));
     }
 
     @Test

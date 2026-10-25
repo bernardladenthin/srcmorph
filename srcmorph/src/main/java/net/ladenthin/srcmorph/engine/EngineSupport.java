@@ -86,14 +86,16 @@ final class EngineSupport {
      * misconfiguration ({@link NullPointerException} from a missing {@code key}) into a
      * {@link SrcMorphException} so the caller reports it as a configuration error.
      *
-     * @param aiDefinitions the configured AI model definitions, or {@code null} for none
+     * @param aiDefinitions  the configured AI model definitions, or {@code null} for none
+     * @param modelDirectory directory relative model paths are resolved against, or {@code null}
      * @return model definition support instance backed by the configured definitions
      * @throws SrcMorphException if any AI definition is missing a required field
      */
-    static AiModelDefinitionSupport buildAiModelDefinitionSupport(final @Nullable List<AiModelDefinition> aiDefinitions)
+    static AiModelDefinitionSupport buildAiModelDefinitionSupport(
+            final @Nullable List<AiModelDefinition> aiDefinitions, final @Nullable File modelDirectory)
             throws SrcMorphException {
         try {
-            return new AiModelDefinitionSupport(aiDefinitions);
+            return new AiModelDefinitionSupport(aiDefinitions, modelDirectory);
         } catch (final NullPointerException e) {
             throw new SrcMorphException("Invalid plugin configuration: " + e.getMessage(), e);
         }
@@ -120,7 +122,8 @@ final class EngineSupport {
             return resolveLlamaCppJniConfig(
                     modelDefinitionSupport, fieldGenerations.get(0).getAiDefinitionKey());
         }
-        final String modelPath = config.getLlamaModelPath();
+        final String modelPath =
+                AiModelDefinitionSupport.resolveModelPath(config.getModelDirectory(), config.getLlamaModelPath());
         if (modelPath == null) {
             throw new NullPointerException("llamaModelPath");
         }
