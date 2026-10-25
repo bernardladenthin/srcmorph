@@ -16,6 +16,8 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 public class AiModelDefinitionSupportTest {
@@ -334,6 +336,21 @@ public class AiModelDefinitionSupportTest {
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition), null);
 
         assertThat(support.getConfig("relative").getModelPath(), is(equalTo("model.gguf")));
+    }
+
+    @Test
+    public void resolveModelPath_pathWithARoot_staysUnchanged(@TempDir final File modelDirectory) {
+        // absolute on every platform; on Windows a root-relative path (no drive)
+        assertThat(
+                AiModelDefinitionSupport.resolveModelPath(modelDirectory, "/models/x.gguf"),
+                is(equalTo("/models/x.gguf")));
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    public void resolveModelPath_windowsDriveRelativePath_staysUnchanged(@TempDir final File modelDirectory) {
+        assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, "M:x.gguf"), is(equalTo("M:x.gguf")));
+        assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, "\\x.gguf"), is(equalTo("\\x.gguf")));
     }
 
     @Test

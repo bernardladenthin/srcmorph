@@ -398,6 +398,8 @@ Run-level parameters (set in `<configuration>`):
 - `modelDirectory` (`srcmorph.modelDirectory`) — the directory a relative `modelPath` is resolved
   against; an absolute `modelPath` is used as it is, so models can live in one directory and still
   one of them elsewhere. Unset (default), a relative `modelPath` is relative to the working directory.
+  A relative `modelDirectory` itself is relative to the module's `${basedir}`, as Maven resolves every
+  `File` parameter.
 - `force` — regenerate even when a body already exists (default: `false`)
 - `skip` — global switch: skip **every** phase (default: `false`)
 - Per-phase switches — turn any of the three phases on/off independently (each default `false`).

@@ -4,6 +4,8 @@
 package net.ladenthin.srcmorph.config;
 
 import java.io.File;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -116,6 +118,11 @@ public final class AiModelDefinitionSupport {
      * path unchanged. So a configuration can name every model by its file name below one directory
      * and still point a single model anywhere else with an absolute path.
      *
+     * <p>"Absolute" here means any path with a root, which on Windows also covers the root-relative
+     * {@code /models/x.gguf} and the drive-relative {@code M:x.gguf}: both name a place of their own,
+     * and joining them below the directory would produce a path nobody wrote. A path the platform
+     * cannot parse is left unchanged too; the engines' model check reports it.</p>
+     *
      * @param modelDirectory directory relative paths are resolved against, or {@code null} to leave
      *                       them relative to the working directory
      * @param modelPath      the configured path, or {@code null}
@@ -123,10 +130,24 @@ public final class AiModelDefinitionSupport {
      */
     public static @Nullable String resolveModelPath(
             final @Nullable File modelDirectory, final @Nullable String modelPath) {
-        if (modelDirectory == null || modelPath == null || new File(modelPath).isAbsolute()) {
+        if (modelDirectory == null || modelPath == null || hasRoot(modelPath)) {
             return modelPath;
         }
         return new File(modelDirectory, modelPath).getPath();
+    }
+
+    /**
+     * Whether {@code path} carries a root of its own: absolute, or on Windows root- or drive-relative.
+     *
+     * @param path the configured model path
+     * @return {@code true} if the path has a root, or cannot be parsed as a path at all
+     */
+    private static boolean hasRoot(final String path) {
+        try {
+            return Paths.get(path).getRoot() != null;
+        } catch (final InvalidPathException e) {
+            return true;
+        }
     }
 
     /**

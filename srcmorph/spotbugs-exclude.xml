@@ -491,16 +491,20 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        PATH_TRAVERSAL_IN on AiModelDefinitionSupport.resolveModelPath. It joins the configured
-        modelDirectory and a relative modelPath into one path, and asks File.isAbsolute() whether
-        the modelPath stands on its own; both values come from the operator's own POM XML or CLI
-        configuration, the same trust boundary as validateRoutedModelPaths above. Pointing a model
-        outside the directory is the documented use of an absolute modelPath, so there is nothing a
-        traversal could escape. Nothing is opened or read here. Scoped to the one method.
+        PATH_TRAVERSAL_IN on AiModelDefinitionSupport.resolveModelPath and its helper hasRoot. They
+        join the configured modelDirectory and a relative modelPath into one path, and ask
+        Paths.get(modelPath).getRoot() whether the modelPath stands on its own; both values come
+        from the operator's own POM XML or CLI configuration, the same trust boundary as
+        validateRoutedModelPaths above. Pointing a model outside the directory is the documented use
+        of an absolute modelPath, so there is nothing a traversal could escape. Nothing is opened or
+        read here. Scoped to the two methods.
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.config.AiModelDefinitionSupport"/>
-        <Method name="resolveModelPath"/>
+        <Or>
+            <Method name="resolveModelPath"/>
+            <Method name="hasRoot"/>
+        </Or>
         <Bug pattern="PATH_TRAVERSAL_IN"/>
     </Match>
 
