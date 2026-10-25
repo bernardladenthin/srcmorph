@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
         <jmh.version>1.37</jmh.version>
         <jcstress.version>0.16</jcstress.version>
         <vmlens.version>1.2.28</vmlens.version>
-        <errorprone.version>2.50.0</errorprone.version>
+        <errorprone.version>2.51.0</errorprone.version>
         <nullaway.version>0.14.2</nullaway.version>
         <!-- checker.version also drives the org.checkerframework:checker annotation-processor
              artifact below; the checker-qual dependency version itself is managed by the
