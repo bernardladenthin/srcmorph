@@ -46,6 +46,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   directory unless the entry was edited.
 
 ### Fixed
+- **`srcmorph-cli` could not be built on Windows at all.** The `collect-runtime-licenses` execution passes a
+  one-line Python program to `python3 -c`, and `exec-maven-plugin` drops the double quotes out of that
+  argument on Windows: `find_spec("actionlib")` reached Python as `find_spec(actionlib)`, so every
+  `mvn package`/`install` died with `SyntaxError: '(' was never closed` before the module was packaged. The
+  string literals are single-quoted now, which is valid Python and survives the argument handling on both
+  platforms. Measured with this plugin version: `print("x")` arrives as `print(x)` and fails, `print('x')`
+  arrives intact. Escaping as `\"` would fix Windows and break Linux, where the argument reaches `execve`
+  verbatim, so it is not an option; a comment at the execution says so. The Linux CI never showed this.
 - **The `calibrate` goal's paste block mixed line endings on Windows.** `CalibrationReport` wrote its three
   value lines with `String.format("...%n")`, the platform line separator, between lines ending in `\n`, so on
   Windows the `<calibration>` block meant for a `pom.xml` carried 3x CRLF and 3x LF. All lines end in `\n`
