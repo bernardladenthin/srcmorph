@@ -12,6 +12,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- **The shared CI code moved to [bernardladenthin/actions](https://github.com/bernardladenthin/actions).**
+  The build-check library, the publication gate and its consumers, the signing-key checks and the
+  shared scripts and workflows are actions and reusable workflows there, pinned by commit; the
+  `shared-files` job and `.github/shared-files.sha256` are replaced by the `repository-checks` job,
+  configured in `.github/actions-config.json`: the files this repository must carry are compared with
+  the templates there, and the publication wiring and a dry run of the release asset contract are
+  checked in every pull request. Packaging srcmorph-cli runs the license collector from there: `ACTIONS_DIR` in CI, locally a checkout at `../actions`.
 - **The CLI fat jar carries a license text for every runtime jar, and the build checks it.** Runtime
   jars without legal files of their own (JSpecify, SnakeYAML) get their upstream texts from
   `third-party-notices/`; a runtime jar with neither fails the build. The dependencies' legal files go

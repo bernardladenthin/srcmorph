@@ -484,20 +484,25 @@ and both are easy to undo by accident:
   `<optional>true</optional>` alone would not have been enough — that descriptor filters on scope
   only. Safe because no source in this reactor imports `org.checkerframework`.
 
-**The gate: `.github/verify-bytecode-version.sh`.** Kept **byte-identical** across
-java-llama.cpp / BitcoinAddressFinder / streambuffer / srcmorph (listed in `.github/shared-files.sha256`, checked by the `shared-files` job). It opens every `.class` in every jar it is given and fails on any
-whose class-file major version exceeds `--max-major`:
+**The gate: the `java/verify-bytecode` action of [bernardladenthin/actions](https://github.com/bernardladenthin/actions)** (its `verify-bytecode-version.sh`).
+It opens every `.class` in every jar it is given and fails on any whose class-file major version
+exceeds `max-major`:
 
-```bash
-.github/verify-bytecode-version.sh --max-major 52 [--allow '<jar>:<entry>']... <jar-or-dir>...
+```yaml
+- uses: bernardladenthin/actions/java/verify-bytecode@<commit> # v1.x.y
+  with:
+    max-major: "52"
+    paths: |          # jars or directories, one per line
+      fatjar
+    allow: |          # optional: '<jar-basename>:<entry-path>' globs to tolerate
 ```
 
 Paths may be jars or directories (searched recursively for `*.jar`), so one invocation covers a
 whole artifact set. `module-info.class` and `META-INF/versions/**` are skipped unconditionally —
-a classpath JVM never loads either, which is why a `release 9` `module-info` is fine. `--allow`
-is a repeatable glob matched against `<jar-basename>:<entry-path>` for anything else that must be
+a classpath JVM never loads either, which is why a `release 9` `module-info` is fine. `allow`
+takes globs matched against `<jar-basename>:<entry-path>` for anything else that must be
 tolerated. Exit codes: 0 clean, 1 violations, **2 nothing to scan** (an empty input is a failure,
-never a pass). Wired into the `smoke-fatjar` job at `--max-major 52`.
+never a pass). Wired into the `smoke-fatjar` job at `max-major` 52.
 
 ## Javadoc Conventions
 
@@ -599,24 +604,22 @@ list in `publish.yml`, every `module` row of java-llama.cpp's `natives.csv` but 
 (srcmorph's own since java-llama.cpp dropped its fat jars with its modular natives). The convention +
 per-repo shapes + the classifier keep-in-sync rule are documented
 in [`../workspace/policies/fat-jar-release-assets.md`](../workspace/policies/fat-jar-release-assets.md).
-Every publication goes through one gate, shared byte for byte by the four Java repositories
-(listed in `.github/shared-files.sha256`; the full text is
-[`docs/publication-preflight.md`](docs/publication-preflight.md)). `check-snapshot` / `check-tag`
-run `publication.py check-ref`: a release publishes only from the tag `v<version>` of a
-non-SNAPSHOT version, a snapshot only a `-SNAPSHOT` version and never from a tag. The publish jobs
-stage and sign the Central files locally (`-DskipUpload=true deploy`) and end in the composite
-action `finalize-publication`: `collect-release-assets.py` collects what `.github/release-assets.json`
-names (Maven modules are discovered from the POMs), and `publication.py prepare` checks it -- exact
-membership, every signature with `gpg --verify`, each Central file byte-equal to its GitHub twin --
-and freezes it into one package. Only after that package is uploaded does the job output
-`assets_complete=true`; a missing file or signature fails there, and nothing is published. Three
-pairs of consumers each need only that output, never each other: `github-snapshot` /
-`github-release` attach the frozen GitHub files (`update-snapshot.py` serializes the rolling
-`snapshot` pre-release, never lets an older commit or run replace a newer one and prunes what the
-upload did not contain; a versioned tag is refused), `central-snapshot` / `central-release`
-transfer the frozen Central files (`publication.py upload`, no rebuild, no re-signing), and
-`attest-snapshot` / `attest-release` attest them. Interface, staging options and synchronization
-rules: [`../workspace/policies/release-asset-scripts.md`](../workspace/policies/release-asset-scripts.md).
+Every publication goes through the one gate of [bernardladenthin/actions](https://github.com/bernardladenthin/actions) (full text: [docs/publication.md](https://github.com/bernardladenthin/actions/blob/main/docs/publication.md)).
+`check-snapshot` / `check-tag` run `java/check-release-ref`: a release publishes only from the tag
+`v<version>` of a non-SNAPSHOT version, a snapshot only a `-SNAPSHOT` version and never from a tag.
+The publish jobs stage and sign the Central files locally (`-DskipUpload=true deploy`) and end in
+`java/finalize-publication`, which collects what `.github/release-assets.json` names (Maven modules
+are discovered from the POMs), checks it -- exact membership, every signature with `gpg --verify`,
+each Central file byte-equal to its GitHub twin -- and freezes it into one package. Only after that
+package is uploaded does the job output `assets_complete=true`; a missing file or signature fails
+there, and nothing is published. Three pairs of consumers each need only that output, never each
+other: `github-snapshot` / `github-release` (`java/publish-github`: the rolling `snapshot`
+pre-release is serialized, never lets an older commit or run replace a newer one, prunes only after a
+complete upload and starts as a draft; a versioned tag is refused), `central-snapshot` /
+`central-release` (`java/publish-central`, no rebuild, no re-signing) and `attest-snapshot` /
+`attest-release` (`java/attest-publication`). The jobs themselves stay in this workflow
+(environment, permissions, concurrency); `java/check-publication` checks their wiring in every pull
+request.
 
 The publish jobs stage deploy-signed Maven outputs with `--maven-only` before the classifier
 loop rebuilds `target/`. The final collector uses `--maven-assets central-assets` and requires
@@ -625,9 +628,8 @@ in `.github/release-assets.json` via `--list-classifiers 1` (default CPU is buil
 
 **srcmorph-specific smoke.** The cross-repo rule "no release asset is attached that CI has not run"
 is implemented here by the `smoke-fatjar` job (`needs: [build]`, gates both publish jobs): it
-downloads the `plugin-jars` artifact and runs the **byte-identical shared**
-`.github/smoke-fatjar-cli.sh` (synced with BAF — listed in `.github/shared-files.sha256`)
-from `examples/` against `config_Plan.json`, asserting exit 0 plus `Main#run end.` in the output.
+downloads the `plugin-jars` artifact and runs the `java/smoke-fatjar-cli` action of [bernardladenthin/actions](https://github.com/bernardladenthin/actions)
+(BAF runs it too) from `examples/` against `config_Plan.json`, asserting exit 0 plus `Main#run end.` in the output.
 `Plan` with the `mock` provider needs no GGUF, no GPU and no network, which makes this the cheapest
 possible real launch of the CLI. **Do not "strengthen" it to `config_All.json` over a real source
 tree:** the example configs are tuned for a small demo tree, so `All` against this repo's own
@@ -646,32 +648,46 @@ transitively. Convention + the `excludedScopes` gotcha + merge-discipline guidan
 `main` was actually broken by exactly this pattern once — Dependabot PR #169) are in
 [`../workspace/policies/dependency-convergence-pinning.md`](../workspace/policies/dependency-convergence-pinning.md).
 
-## Shared files and the release gate (`shared-files` job)
+## Shared CI: bernardladenthin/actions (`repository-checks` job)
 
-Files kept byte-identical with java-llama.cpp, BitcoinAddressFinder, srcmorph and streambuffer are
-listed with their SHA-256 in **`.github/shared-files.sha256`** — the reference for what must stay
-equal. An entry `.github/workflows/publish.yml#<job>` stands for one job of the workflow: the jobs kept
-identical across the four repositories (`startgate`, `shared-files`, `verify-signing-key`,
-`verify-signing-key-gradle`, `check-snapshot`, `check-tag`, and the publication consumers
-`github-snapshot`, `github-release`, `central-snapshot`, `central-release`, `attest-snapshot`,
-`attest-release`) are checked like files. An entry ending in `?repo` covers a file or job identical up to the
-repository's name (hashed with the name replaced by `{repo}`), e.g. `SUPPORT.md?repo`.
-The `shared-files` job of `publish.yml` (gating both publish jobs) fails when a listed file changed here alone and warns when another repository's
-default branch lists it with a different hash. To change a shared file, change every copy, then run
-`python3 .github/check-shared-files.py --write` in each repository. The shared build-check library
-(`.github/buildcheck/`, stdlib-only Python with unit tests: `python3 -m unittest discover -s
-.github/buildcheck/tests -t .github`) also runs **`check-release-gate.py`**: every job must gate both
-publish jobs unless `.github/release-gate-exemptions.txt` names it with a reason, and
-**`check-versions.py`**, which **warns** where a Maven dependency or plugin (incl. the Spotless
-formatter version) is used here in another version than in a sibling repository -- Dependabot bumps
-each repository on its own, so this is where the drift shows; it also compares the Kotlin Gradle plugins
-of a repository's `*.gradle.kts` files with its POMs' Kotlin, the files Dependabot never sees -- and
-**`check-run-scripts.py`**, which
-runs `bash -n` over every `run:` script of the workflows and composite actions that runs in bash, so
-a broken script (a lost line continuation, say) fails here instead of in the job running it. The JDK every
-workflow uses is `.java-version` (setup-java's `java-version-file`), the same shared file in all four. Details and the
-reasoning (copies with a checksum rather than a shared actions repository):
-[`../workspace/crossrepostatus.md`](../workspace/crossrepostatus.md), "Cross-repo byte-identical files".
+The CI code the four Java repositories (java-llama.cpp, BitcoinAddressFinder, srcmorph,
+streambuffer) share lives once in [bernardladenthin/actions](https://github.com/bernardladenthin/actions): composite actions for single steps (`uses:
+bernardladenthin/actions/<common|java>/<action>@<commit> # v1.x.y`), reusable workflows for whole
+jobs (CodeQL, Maven dependency submission, REUSE, OSV-Scanner, SonarQube -- the workflow files here
+only name the triggers), and templates for the files this repository has to carry itself.
+Dependabot moves the pins with every release of that repository. Until 2026-10 the same code was
+four byte-identical copies held together by a `.github/shared-files.sha256` manifest per repository.
+
+The `repository-checks` job of `publish.yml` (gating both publish jobs) runs its checks, configured
+in **`.github/actions-config.json`**:
+
+- **templates**: every file this repository keeps equal to a template there (community files,
+  licenses, `.editorconfig`, `.gitattributes`, `.java-version`, `.mvn/`, Dependabot, the workflow
+  callers, `scorecard.yml`, the Claude workflows) still equals it, up to the repository's name and
+  the action pins. To change one, change the template in bernardladenthin/actions; `python3 -m
+  actionlib.common.templates --write` (with its `lib/` on `PYTHONPATH`) writes it here;
+- **release gate**: every job gates both publish jobs unless `.github/release-gate-exemptions.txt`
+  names it with a reason;
+- **run scripts**: `bash -n` over every bash `run:` script of the workflows and local actions, so a
+  broken script (a lost line continuation, say) fails here instead of in the job running it;
+- **Maven versions** (warnings only): a dependency or plugin (incl. the Spotless formatter version)
+  used here in another version than in a sibling of the `java-maven` family (each sibling's POMs come
+  from its own configuration), and Kotlin Gradle plugins behind the POMs' Kotlin;
+- **publication**: the publication jobs are wired as the actions expect, and a dry run of
+  `.github/release-assets.json` against the real POMs collects exactly what it promises.
+
+**Packaging srcmorph-cli needs bernardladenthin/actions.** Its `package` runs the license collector
+(`python3 -m actionlib.java.thirdpartylicenses`): CI provides it through `common/setup`
+(`ACTIONS_DIR`) and the reusable SonarQube workflow, locally a checkout next to this repository
+(`../actions`) does; when neither is there, the collector call says so and where it looked, instead
+of a Python traceback.
+
+**srcmorph's own build checks** stay here (`.github/buildcheck/`, the classifier fat-jar check):
+`python3 -m unittest discover -s .github/buildcheck/tests -t .github`, run by `repository-checks`.
+
+The JDK every workflow uses is `.java-version` (setup-java's `java-version-file`), a template of
+the `java` set. Why a repository instead of copies:
+[`../workspace/crossrepostatus.md`](../workspace/crossrepostatus.md).
 
 ## Open TODOs
 

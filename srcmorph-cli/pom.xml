@@ -317,8 +317,14 @@ SPDX-License-Identifier: Apache-2.0
                         <goals><goal>exec</goal></goals>
                         <configuration combine.self="override">
                             <executable>${license.python}</executable>
+                            <environmentVariables>
+                                <PYTHONPATH>${ci.actions.dir}/lib</PYTHONPATH>
+                            </environmentVariables>
                             <arguments>
-                                <argument>${project.basedir}/../.github/collect-third-party-licenses.py</argument>
+                                <!-- python3 -m actionlib.java.thirdpartylicenses, but saying where actionlib was looked for
+                                     when it is missing instead of a ModuleNotFoundError. -->
+                                <argument>-c</argument>
+                                <argument>import importlib.util, sys; importlib.util.find_spec("actionlib") or sys.exit("The license collector comes from bernardladenthin/actions: set ACTIONS_DIR to a checkout of it, or check it out next to this repository (../actions). Looked in ${ci.actions.dir}/lib"); from actionlib.java.thirdpartylicenses import main; sys.exit(main(sys.argv[1:]))</argument>
                                 <argument>--classpath</argument>
                                 <argument>${project.build.directory}/runtime-license-classpath.txt</argument>
                                 <argument>--output</argument>

@@ -13,7 +13,7 @@ Those native artifacts have additional third-party contents requiring their own 
 
 ## Review evidence
 
-See [the dependency license review](docs/dependency-license-review.md) in the source repository
+See [the dependency license review](https://github.com/bernardladenthin/actions/blob/main/docs/dependency-license-review.md) of bernardladenthin/actions
 for exact-version evidence and remaining decisions. This inventory is not an approval of all
 licenses found by a scanner. Test-tool redistribution requires a separate review.
 

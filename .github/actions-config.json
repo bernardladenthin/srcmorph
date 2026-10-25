@@ -1,0 +1,11 @@
+{
+  "$comment": "Configuration of the shared checks of bernardladenthin/actions (see its README).",
+  "templates": {
+    "sets": ["common", "java"]
+  },
+  "maven-versions": {
+    "poms": ["pom.xml", "srcmorph/pom.xml", "srcmorph-cli/pom.xml", "srcmorph-maven-plugin/pom.xml"],
+    "family": "java-maven",
+    "ignore-groups": ["net.ladenthin"]
+  }
+}

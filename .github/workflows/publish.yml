@@ -62,84 +62,60 @@ jobs:
       - run: echo "Start gate elapsed — proceeding with pipeline."
 
   # ---------------------------------------------------------------------------
-  # Files kept byte-identical with the sibling repositories (java-llama.cpp,
-  # BitcoinAddressFinder, srcmorph, streambuffer), listed in .github/shared-files.sha256.
-  # A copy changed here alone fails; one the siblings list with another hash warns.
-  # Also runs the tests of the shared build checks and the release-gate check. This
-  # job is itself identical in all four repositories.
+  # The repository checks of bernardladenthin/actions, configured in
+  # .github/actions-config.json: the files this repository keeps equal to the templates
+  # there (replaced the shared-files.sha256 manifest), the release gate, bash -n over
+  # every run script, Maven version drift against the sibling repositories (warnings
+  # only), and the publication wiring plus a dry run of the release asset contract.
   # ---------------------------------------------------------------------------
-  shared-files:
-    name: Shared files + build checks
+  repository-checks:
+    name: Repository checks
     needs: startgate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Shared files match .github/shared-files.sha256 (siblings compared, warnings only)
-        run: python3 .github/check-shared-files.py
-      - name: Build-check tests
+      - name: Files equal their templates in bernardladenthin/actions
+        uses: bernardladenthin/actions/common/check-templates@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+      # This repository's own build checks build on actionlib (the setup step puts it on PYTHONPATH).
+      - uses: bernardladenthin/actions/common/setup@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+      - name: Build-check tests of this repository
         run: python3 -m unittest discover -s .github/buildcheck/tests -t .github
       - name: Release gate (every job gates both publish jobs, or release-gate-exemptions.txt says why)
-        run: python3 .github/check-release-gate.py
+        uses: bernardladenthin/actions/common/check-release-gate@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
       - name: Run scripts parse (bash -n over every bash run script of the workflows and actions)
-        run: python3 .github/check-run-scripts.py
+        uses: bernardladenthin/actions/common/check-run-scripts@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
       - name: Maven versions (warns where a dependency or plugin differs from a sibling repository)
-        run: python3 .github/check-versions.py
+        uses: bernardladenthin/actions/java/check-maven-versions@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+      - name: Publication wiring and release asset contract (dry run)
+        uses: bernardladenthin/actions/java/check-publication@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
 
   # ---------------------------------------------------------------------------
-  # GPG signing-key preflight (standalone, no `needs:` — runs in parallel at the
-  # very start on every trigger). Reproduces what maven-gpg-plugin does at deploy
-  # time so a bad/expired key or wrong passphrase is caught in ~20s instead of
-  # failing the publish stage. Declares `environment: maven-central` so it reads
-  # the SAME GPG_PRIVATE_KEY / GPG_PASSPHRASE secret the publish jobs use.
-  #
-  # It is EXPECTED to go RED on refs where the secret is not delivered — fork PRs
-  # and other contributors' branches (secrets are withheld there). That red is
-  # the intended signal: "this ref cannot sign a release", not a regression.
-  #
-  # SECURITY: this job NEVER prints secret material. It imports the key into an
-  # ephemeral keyring, prints only PUBLIC key metadata (key id, fingerprint,
-  # owner UID, algorithm, created/expiry — all of which live on public
-  # keyservers), and validates the passphrase by producing + verifying a
-  # throwaway signature. The passphrase is passed on fd 3 (never argv, never a
-  # log line), `set -x` is deliberately never enabled, and the passphrase is
-  # additionally `::add-mask::`ed.
+  # GPG signing-key preflight (standalone, no `needs:` -- runs in parallel at the
+  # very start on every trigger): what maven-gpg-plugin does at deploy time, so a
+  # bad/expired key or wrong passphrase is caught in ~20s instead of failing the
+  # publish stage. `environment: maven-central` gives it the SAME secret the publish
+  # jobs use. EXPECTED to go RED where the secret is not delivered (fork PRs, other
+  # contributors' branches): "this ref cannot sign a release", not a regression.
+  # Prints only public key metadata; the security notes are in the action's script.
   # ---------------------------------------------------------------------------
   verify-signing-key:
     name: Verify GPG signing key (no secrets printed)
     runs-on: ubuntu-latest
     environment: maven-central
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: bernardladenthin/actions/common/verify-gpg-key@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
-          persist-credentials: false
-      - name: Import key + run sign/verify self-test (prints only PUBLIC metadata)
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        # Shared, byte-identical in all four repos; the security notes are in the script.
-        run: bash .github/verify-signing-key.sh
+          private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
   # ---------------------------------------------------------------------------
-  # GPG signing-key preflight — GRADLE / BouncyCastle path.
-  # Companion to the `verify-signing-key` (gpg) job above: that one mirrors
-  # maven-gpg-plugin (how the Maven artifacts are signed); this one drives
-  # Gradle's `signing` plugin + `useInMemoryPgpKeys` (BouncyCastle) — the path any
-  # Gradle-based publish (e.g. an Android AAR) uses to sign. BouncyCastle is a
-  # STRICTER parser of the armored key than gpg, so it catches key/format problems
-  # gpg tolerates (e.g. the primary-vs-signing-subkey null-PGPPrivateKey issue).
-  # It signs a throwaway project (.github/signing-selftest/) — no repo build is
-  # involved — so this job is IDENTICAL across the sibling repos and validates the
-  # release key via the Gradle path even in repos that do not publish via Gradle
-  # yet ("prepared for Gradle"). Standalone (no `needs:`), parallel at pipeline
-  # start, `environment: maven-central` so it reads the same secret the publish
-  # uses. Red-by-design where the secret is not delivered (see the gpg job's note).
-  #
-  # SECURITY: prints no secret material. Key/passphrase reach Gradle only via env
-  # (read by System.getenv at runtime); `set -x` is never enabled; the passphrase
-  # is `::add-mask::`ed; Gradle runs with `--stacktrace` only. Only the produced
-  # `.asc` (exit code) is asserted. Uses Gradle 9.6.1.
+  # The same key through Gradle's signing plugin + useInMemoryPgpKeys (BouncyCastle),
+  # the path a Gradle publication (an Android AAR) signs with. BouncyCastle parses the
+  # armored key more strictly than gpg, so it catches what the job above tolerates.
+  # It signs the action's own throwaway project, so it is the same in every repository
+  # ("prepared for Gradle"). Red by design where the secret is not delivered.
   # ---------------------------------------------------------------------------
   verify-signing-key-gradle:
     name: Verify GPG signing key — Gradle/BouncyCastle path (no secrets printed)
@@ -147,40 +123,13 @@ jobs:
     environment: maven-central
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
-          java-version-file: .java-version
-          distribution: temurin
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+          persist-credentials: false
+      - uses: bernardladenthin/actions/java/verify-signing-key-gradle@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
-          gradle-version: "9.8.2"
-      - name: Sign a throwaway artifact via useInMemoryPgpKeys (BouncyCastle)
-        shell: bash
-        env:
-          MAVEN_GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          MAVEN_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
-        run: |
-          set -euo pipefail   # NOTE: deliberately NO `set -x` — it would echo the passphrase.
-
-          if [ -z "${MAVEN_GPG_PRIVATE_KEY:-}" ]; then
-            echo "::error::MAVEN_GPG_PRIVATE_KEY is empty for this run. The maven-central environment did not deliver the secret to this ref (fork PR / other branch). Nothing to verify."
-            exit 1
-          fi
-          if [ -n "${MAVEN_GPG_PASSPHRASE:-}" ]; then echo "::add-mask::${MAVEN_GPG_PASSPHRASE}"; fi
-
-          PROJ=".github/signing-selftest"
-          echo "== Sign a throwaway artifact through Gradle's useInMemoryPgpKeys (BouncyCastle) =="
-          gradle --no-daemon -p "$PROJ" signMakeArtifact --stacktrace
-
-          ASC="$PROJ/build/signing-selftest.zip.asc"
-          if [ -f "$ASC" ]; then
-            echo "  Detached signature produced: $(wc -c < "$ASC") armored bytes"
-            echo "RESULT: OK — Gradle's useInMemoryPgpKeys accepted the armored key + passphrase and produced a signature."
-          else
-            echo "::error::Gradle signing produced no .asc — useInMemoryPgpKeys could not build a usable signatory from MAVEN_GPG_PRIVATE_KEY / MAVEN_GPG_PASSPHRASE."
-            exit 1
-          fi
+          private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          key-id: ${{ secrets.GPG_KEY_ID }}
 
   code-style:
     name: Code style (spotless) + package graph
@@ -229,6 +178,9 @@ jobs:
           java-version-file: .java-version
           distribution: temurin
           cache: maven
+      # srcmorph-cli runs the license collector of bernardladenthin/actions while packaging
+      # (ACTIONS_DIR, exported here).
+      - uses: bernardladenthin/actions/common/setup@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
       - name: Build
         run: mvn --batch-mode --no-transfer-progress -DskipTests package
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -251,8 +203,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Display CPU Info
-        shell: bash
-        run: bash .github/print-host-info.sh
+        uses: bernardladenthin/actions/common/print-host-info@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           java-version-file: .java-version
@@ -289,8 +240,9 @@ jobs:
       # Echo the crash logs into the job log (workspace/policies/ci-test-diagnostics.md 3.1).
       - name: Print crash logs (on failure)
         if: failure()
-        shell: bash
-        run: bash .github/print-crash-logs.sh srcmorph srcmorph-cli srcmorph-maven-plugin
+        uses: bernardladenthin/actions/java/print-crash-logs@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+        with:
+          modules: srcmorph srcmorph-cli srcmorph-maven-plugin
       - name: Upload crash & surefire dumps
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -334,8 +286,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Display CPU Info
-        shell: bash
-        run: bash .github/print-host-info.sh
+        uses: bernardladenthin/actions/common/print-host-info@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with: { java-version-file: .java-version, distribution: temurin, cache: maven }
       - name: Test under vmlens (one class — staged scope)
@@ -396,13 +347,21 @@ jobs:
       # UnsupportedClassVersionError before any of our code runs. The script recurses into the
       # whole download directory, so every jar the build produced is checked, not just the fat
       # jar; module-info.class and META-INF/versions/** are skipped unconditionally because a
-      # classpath JVM never loads them. Kept byte-identical across all four sibling repos.
+      # classpath JVM never loads them. The java/verify-bytecode action of bernardladenthin/actions.
       - name: Verify Java 8 bytecode (no class newer than major 52)
-        run: .github/verify-bytecode-version.sh --max-major 52 fatjar
+        uses: bernardladenthin/actions/java/verify-bytecode@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+        with:
+          max-major: "52"
+          paths: |
+            fatjar
       - name: Run fat-jar smoke test
-        run: |
-          .github/smoke-fatjar-cli.sh fatjar 'srcmorph-cli-*-jar-with-dependencies.jar' \
-            examples 'Main#run end\.' config_Plan.json
+        uses: bernardladenthin/actions/java/smoke-fatjar-cli@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+        with:
+          jar-dir: fatjar
+          jar-glob: 'srcmorph-cli-*-jar-with-dependencies.jar'
+          work-dir: examples
+          marker: 'Main#run end\.'
+          args: config_Plan.json
       - name: Upload smoke logs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -522,7 +481,9 @@ jobs:
       # a release is tagged on.
       - name: Require a SNAPSHOT version
         if: inputs.publish_to_central
-        run: python3 .github/publication.py check-ref --channel snapshot
+        uses: bernardladenthin/actions/java/check-release-ref@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+        with:
+          channel: snapshot
 
   check-tag:
     name: "Check: v* tag"
@@ -535,7 +496,9 @@ jobs:
           persist-credentials: false
       # The tag names exactly the project version (v1.2.3 for 1.2.3), which is no SNAPSHOT.
       - name: Require the release version the tag names
-        run: python3 .github/publication.py check-ref --channel release
+        uses: bernardladenthin/actions/java/check-release-ref@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+        with:
+          channel: release
 
   publish-snapshot:
     name: Prepare and verify signed snapshot artifacts
@@ -544,7 +507,7 @@ jobs:
       - code-style
       - smoke-fatjar
       - plugin-it
-      - shared-files
+      - repository-checks
       - vmlens
     if: needs.check-snapshot.result == 'success' && inputs.publish_to_central
     runs-on: ubuntu-latest
@@ -574,6 +537,9 @@ jobs:
             *-SNAPSHOT) echo "OK: -SNAPSHOT version, continuing local snapshot staging." ;;
             *) echo "::error::Refusing to publish non-SNAPSHOT version '$VERSION' from the snapshot job. Snapshot publishing requires a -SNAPSHOT version; releases go through the v* tag path."; exit 1 ;;
           esac
+      # srcmorph-cli runs the license collector of bernardladenthin/actions while packaging
+      # (ACTIONS_DIR, exported here).
+      - uses: bernardladenthin/actions/common/setup@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
       - name: Show effective POM (debug)
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
       - name: Stage snapshot
@@ -581,7 +547,7 @@ jobs:
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
-        run: python3 .github/collect-release-assets.py central-assets --maven-only
+        run: python3 -m actionlib.java.releaseassets central-assets --maven-only
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -594,7 +560,7 @@ jobs:
           # library jars come with llama-platform. Each jar here is ADDED to the default CPU
           # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
           # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
-          python3 .github/collect-release-assets.py --list-classifiers 1 > fatjar-classifiers.txt
+          python3 -m actionlib.java.releaseassets --list-classifiers 1 > fatjar-classifiers.txt
           mapfile -t CLASSIFIERS < fatjar-classifiers.txt
           build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
           for c in "${CLASSIFIERS[@]}"; do
@@ -620,7 +586,7 @@ jobs:
           bash .github/verify-classifier-fatjars.sh fatjar-assets "${CLASSIFIERS[@]}"
       - name: Finalize and secure the signed publication
         id: finalize
-        uses: ./.github/actions/finalize-publication
+        uses: bernardladenthin/actions/java/finalize-publication@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
           channel: snapshot
           maven-assets: central-assets
@@ -637,21 +603,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: bernardladenthin/actions/java/publish-github@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
-          persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: signed-snapshot-assets
-          path: publication-package/
-          digest-mismatch: error
-      - name: Verify transport integrity and export checked GitHub files
-        run: python3 .github/publication.py verify publication-package --export-github snapshot-assets
-      - name: Update snapshot assets, source tag and notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ASSETS_COMPLETE: ${{ needs.publish-snapshot.outputs.assets_complete }}
-        run: python3 .github/update-snapshot.py snapshot-assets
+          channel: snapshot
+          assets-complete: ${{ needs.publish-snapshot.outputs.assets_complete }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   publish-release:
     name: Prepare and verify signed release artifacts
@@ -660,7 +616,7 @@ jobs:
       - code-style
       - smoke-fatjar
       - plugin-it
-      - shared-files
+      - repository-checks
       - vmlens
     if: needs.check-tag.result == 'success' && inputs.publish_to_central
     runs-on: ubuntu-latest
@@ -681,6 +637,9 @@ jobs:
           server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      # srcmorph-cli runs the license collector of bernardladenthin/actions while packaging
+      # (ACTIONS_DIR, exported here).
+      - uses: bernardladenthin/actions/common/setup@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
       - name: Show effective POM (debug)
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
       - name: Stage release
@@ -688,7 +647,7 @@ jobs:
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
-        run: python3 .github/collect-release-assets.py central-assets --maven-only
+        run: python3 -m actionlib.java.releaseassets central-assets --maven-only
       - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -701,7 +660,7 @@ jobs:
           # library jars come with llama-platform. Each jar here is ADDED to the default CPU
           # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
           # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
-          python3 .github/collect-release-assets.py --list-classifiers 1 > fatjar-classifiers.txt
+          python3 -m actionlib.java.releaseassets --list-classifiers 1 > fatjar-classifiers.txt
           mapfile -t CLASSIFIERS < fatjar-classifiers.txt
           build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
           for c in "${CLASSIFIERS[@]}"; do
@@ -727,7 +686,7 @@ jobs:
           bash .github/verify-classifier-fatjars.sh fatjar-assets "${CLASSIFIERS[@]}"
       - name: Finalize and secure the signed publication
         id: finalize
-        uses: ./.github/actions/finalize-publication
+        uses: bernardladenthin/actions/java/finalize-publication@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
           channel: release
           maven-assets: central-assets
@@ -741,21 +700,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: bernardladenthin/actions/java/publish-github@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
-          persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: signed-release-assets
-          path: publication-package/
-          digest-mismatch: error
-      - name: Verify transport integrity and export checked GitHub files
-        run: python3 .github/publication.py verify publication-package --export-github release-assets
-      - name: Upload release assets
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
-        with:
-          files: release-assets/*
-
+          channel: release
+          assets-complete: ${{ needs.publish-release.outputs.assets_complete }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   central-snapshot:
     name: Upload checked snapshot artifacts to Maven Central
@@ -764,7 +713,7 @@ jobs:
     if: ${{ !cancelled() && needs.publish-snapshot.outputs.assets_complete == 'true' }}
     runs-on: ubuntu-latest
     environment: maven-central
-    # One transfer at a time; an older commit finishing late is skipped (publication.py superseded).
+    # One transfer at a time; an older commit finishing late is skipped (the superseded check).
     concurrency:
       group: central-snapshot-${{ github.repository }}
       cancel-in-progress: false
@@ -775,24 +724,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
-        with:
-          java-version-file: .java-version
-          distribution: temurin
-          server-id: central
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: signed-snapshot-assets
-          path: publication-package/
-          digest-mismatch: error
       - name: Transfer frozen artifacts (no rebuild, signing or validation polling)
-        run: python3 .github/publication.py upload publication-package --skip-superseded
-        env:
-          GH_TOKEN: ${{ github.token }}
-          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
+        uses: bernardladenthin/actions/java/publish-central@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+        with:
+          channel: snapshot
+          assets-complete: ${{ needs.publish-snapshot.outputs.assets_complete }}
+          username: ${{ secrets.CENTRAL_USERNAME }}
+          password: ${{ secrets.CENTRAL_TOKEN }}
 
   central-release:
     name: Upload checked release artifacts to Maven Central
@@ -807,23 +745,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
-        with:
-          java-version-file: .java-version
-          distribution: temurin
-          server-id: central
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: signed-release-assets
-          path: publication-package/
-          digest-mismatch: error
       - name: Transfer frozen artifacts (no rebuild, signing or validation polling)
-        run: python3 .github/publication.py upload publication-package
-        env:
-          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN }}
+        uses: bernardladenthin/actions/java/publish-central@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
+        with:
+          channel: release
+          assets-complete: ${{ needs.publish-release.outputs.assets_complete }}
+          username: ${{ secrets.CENTRAL_USERNAME }}
+          password: ${{ secrets.CENTRAL_TOKEN }}
 
   attest-snapshot:
     name: Attest the checked snapshot publication
@@ -836,21 +764,10 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: bernardladenthin/actions/java/attest-publication@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
-          persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: signed-snapshot-assets
-          path: publication-package/
-          digest-mismatch: error
-      - name: Verify the secured package before attesting
-        run: python3 .github/publication.py verify publication-package
-      - name: Attest the frozen artifacts and detached signatures
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-        with:
-          subject-path: publication-package/github/*
-
+          channel: snapshot
+          assets-complete: ${{ needs.publish-snapshot.outputs.assets_complete }}
 
   attest-release:
     name: Attest the checked release publication
@@ -863,17 +780,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: bernardladenthin/actions/java/attest-publication@7646ab0603d75ee130463eceaa8988f7352e2d6a # v1.0.0
         with:
-          persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: signed-release-assets
-          path: publication-package/
-          digest-mismatch: error
-      - name: Verify the secured package before attesting
-        run: python3 .github/publication.py verify publication-package
-      - name: Attest the frozen artifacts and detached signatures
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-        with:
-          subject-path: publication-package/github/*
+          channel: release
+          assets-complete: ${{ needs.publish-release.outputs.assets_complete }}

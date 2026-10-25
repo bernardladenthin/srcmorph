@@ -60,5 +60,5 @@ srcmorph-maven-plugin/src/siteQwenBRUTAL/
 # the ignore is so a failed run cannot leave untracked debris behind.
 .github/plugin-it/src/site/
 
-# Python bytecode of the .github/buildcheck checks
+# Python bytecode of this repository's own build checks
 __pycache__/
