@@ -70,7 +70,7 @@ public final class AggregatePackagesEngine {
 
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(config.getPromptDefinitions());
         final AiModelDefinitionSupport modelDefinitionSupport =
-                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions());
+                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
         final int aggregated;

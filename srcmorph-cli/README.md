@@ -57,8 +57,9 @@ public class CConfiguration {
   plugin's mojos build from their own `@Parameter` fields. **Every key under `srcMorph` in your JSON/YAML
   file reads identically to the matching Maven `<configuration>` XML element** — `baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, `generationProvider`,
-  `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`, the `llama*` fallback
-  parameters, `force`, `planOnly`, `projectName`. If you already know the plugin's XML shape, you
+  `promptDefinitions`, `aiDefinitions`, `modelDirectory`, `fieldGenerations`, `factDefinitions`, the
+  `llama*` fallback parameters, `force`, `planOnly`, `projectName`. A relative `modelDirectory` (like
+  every relative path here) is relative to the working directory the CLI is started in. If you already know the plugin's XML shape, you
   already know this shape — see
   [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s
   "Configuration" section for the full field-by-field reference (routing-rule conditions, oversize

@@ -7,13 +7,18 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.io.TempDir;
 
 public class AiModelDefinitionSupportTest {
 
@@ -277,6 +282,80 @@ public class AiModelDefinitionSupportTest {
             return;
         }
         throw new AssertionError("Expected IllegalArgumentException was not thrown");
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="modelDirectory">
+    @Test
+    public void getConfig_relativeModelPathWithModelDirectory_isResolvedAgainstTheDirectory(
+            @TempDir final File modelDirectory) {
+        // arrange
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("relative");
+        definition.setModelPath("sub/model.gguf");
+
+        // act
+        final AiModelDefinitionSupport support =
+                new AiModelDefinitionSupport(Arrays.asList(definition), modelDirectory);
+
+        // assert
+        assertThat(
+                support.getConfig("relative").getModelPath(),
+                is(equalTo(new File(modelDirectory, "sub/model.gguf").getPath())));
+    }
+
+    @Test
+    public void getConfig_absoluteModelPathWithModelDirectory_isUsedAsItIs(@TempDir final File elsewhere) {
+        // arrange: one model below the directory, one outside of it
+        final String absolute = new File(elsewhere, "other.gguf").getAbsolutePath();
+        final AiModelDefinition inside = new AiModelDefinition();
+        inside.setKey("inside");
+        inside.setModelPath("inside.gguf");
+        final AiModelDefinition outside = new AiModelDefinition();
+        outside.setKey("outside");
+        outside.setModelPath(absolute);
+        final File modelDirectory = new File(elsewhere, "models");
+
+        // act
+        final AiModelDefinitionSupport support =
+                new AiModelDefinitionSupport(Arrays.asList(inside, outside), modelDirectory);
+
+        // assert
+        assertThat(
+                support.getConfig("inside").getModelPath(),
+                is(equalTo(new File(modelDirectory, "inside.gguf").getPath())));
+        assertThat(support.getConfig("outside").getModelPath(), is(equalTo(absolute)));
+    }
+
+    @Test
+    public void getConfig_withoutModelDirectory_keepsTheRelativePath() {
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("relative");
+        definition.setModelPath("model.gguf");
+
+        final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition), null);
+
+        assertThat(support.getConfig("relative").getModelPath(), is(equalTo("model.gguf")));
+    }
+
+    @Test
+    public void resolveModelPath_pathWithARoot_staysUnchanged(@TempDir final File modelDirectory) {
+        // absolute on every platform; on Windows a root-relative path (no drive)
+        assertThat(
+                AiModelDefinitionSupport.resolveModelPath(modelDirectory, "/models/x.gguf"),
+                is(equalTo("/models/x.gguf")));
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    public void resolveModelPath_windowsDriveRelativePath_staysUnchanged(@TempDir final File modelDirectory) {
+        assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, "M:x.gguf"), is(equalTo("M:x.gguf")));
+        assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, "\\x.gguf"), is(equalTo("\\x.gguf")));
+    }
+
+    @Test
+    public void resolveModelPath_nullModelPath_staysNull(@TempDir final File modelDirectory) {
+        assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, null), is(nullValue()));
     }
     // </editor-fold>
 }

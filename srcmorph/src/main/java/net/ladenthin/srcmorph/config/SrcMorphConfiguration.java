@@ -71,6 +71,7 @@ public class SrcMorphConfiguration {
     private String generationProvider = DEFAULT_GENERATION_PROVIDER;
     private @Nullable List<AiPromptDefinition> promptDefinitions;
     private @Nullable List<AiModelDefinition> aiDefinitions;
+    private @Nullable File modelDirectory;
     private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
     private @Nullable List<AiFactDefinition> factDefinitions;
     private @Nullable String llamaModelPath;
@@ -299,6 +300,28 @@ public class SrcMorphConfiguration {
      */
     public void setAiDefinitions(final @Nullable List<AiModelDefinition> aiDefinitions) {
         this.aiDefinitions = aiDefinitions;
+    }
+
+    /**
+     * Returns the directory a relative model path is resolved against: every {@code modelPath} of
+     * {@link #aiDefinitions} and {@link #llamaModelPath}. An absolute model path is used as it is, so
+     * models outside this directory stay possible. Without it, a relative model path is relative to
+     * the working directory of the JVM, as before.
+     *
+     * @return the model directory, or {@code null} when none is configured
+     */
+    public @Nullable File getModelDirectory() {
+        return modelDirectory;
+    }
+
+    /**
+     * Sets the directory a relative model path is resolved against.
+     *
+     * @param modelDirectory the model directory, or {@code null} to resolve relative model paths
+     *                       against the working directory
+     */
+    public void setModelDirectory(final @Nullable File modelDirectory) {
+        this.modelDirectory = modelDirectory;
     }
 
     /**

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "source": "fatjar-assets/srcmorph-cli-{version}-jar-with-dependencies.jar"
+    },
+    {
+      "source": "fatjar-assets/srcmorph-cli-{version}-jar-with-dependencies-{classifier}.jar",
+      "classifiers": [
+        "cuda13-linux-x86-64",
+        "cuda13-windows-x86-64",
+        "vulkan-linux-x86-64",
+        "vulkan-linux-aarch64",
+        "vulkan-windows-x86-64",
+        "vulkan-windows-aarch64",
+        "opencl-windows-x86-64",
+        "opencl-windows-aarch64",
+        "rocm-linux-x86-64",
+        "rocm-windows-x86-64",
+        "sycl-linux-x86-64",
+        "sycl-windows-x86-64",
+        "openvino-linux-x86-64",
+        "openvino-windows-x86-64"
+      ]
+    }
+  ]
+}

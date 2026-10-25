@@ -1,13 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
-"""Build checks as a library, so buildcheck/tests can test them. Standard library only.
-
-Two kinds of module live here. workflow.py, releasegate.py, sharedfiles.py, versions.py and
-runscripts.py (with their tests and the check-*.py entry points next to this package) are kept
-BYTE-IDENTICAL in java-llama.cpp, BitcoinAddressFinder, srcmorph and streambuffer: each repository
-lists them in .github/shared-files.sha256, which its `shared-files` job checks (see sharedfiles.py).
-Every other module is the repository's own.
+"""This repository's own build checks. The checks it shares with its sibling repositories live in
+bernardladenthin/actions (actionlib); these are the ones only srcmorph has.
 
 Run the tests from the repository root:
   python3 -m unittest discover -s .github/buildcheck/tests -t .github

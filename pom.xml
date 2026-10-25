@@ -62,6 +62,10 @@ SPDX-License-Identifier: Apache-2.0
     </distributionManagement>
 
     <properties>
+        <!-- bernardladenthin/actions, whose license collector (actionlib.java.thirdpartylicenses) the
+             fat jar build runs: ACTIONS_DIR in CI (common/setup), else a checkout next to this
+             repository. -->
+        <ci.actions.dir>${maven.multiModuleProjectDirectory}/../actions</ci.actions.dir>
         <!--
             SonarCloud requires sonar.organization on the project the scanner actually analyzes.
             The SonarCloud scan runs at THIS reactor root (.github/workflows/sonarqube.yml calls
@@ -135,7 +139,8 @@ SPDX-License-Identifier: Apache-2.0
                 release train as slf4j-api, all major 52, with no configuration or socket layer.
                 Pinned here so the direct declaration in srcmorph-cli and whatever
                 net.ladenthin:llama brings transitively stay converged for maven-enforcer.
-                .github/verify-bytecode-version.sh enforces the class-file floor on the built jars.
+                The verify-bytecode action of bernardladenthin/actions enforces the class-file floor on
+                the built jars.
             -->
             <dependency>
                 <groupId>org.slf4j</groupId>
@@ -206,8 +211,8 @@ SPDX-License-Identifier: Apache-2.0
                 reactor imports org.checkerframework.
 
                 It doubles as the convergence pin (same shape as jspecify above): net.ladenthin:llama
-                brings checker-qual transitively. .github/verify-bytecode-version.sh enforces the
-                resulting class-file floor on the built jars.
+                brings checker-qual transitively. The verify-bytecode action of bernardladenthin/actions
+                enforces the resulting class-file floor on the built jars.
             -->
             <dependency>
                 <groupId>org.checkerframework</groupId>
@@ -259,6 +264,19 @@ SPDX-License-Identifier: Apache-2.0
     </build>
 
     <profiles>
+        <profile>
+            <!-- ACTIONS_DIR (exported by bernardladenthin/actions' common/setup) wins over the
+                 sibling checkout ci.actions.dir defaults to. -->
+            <id>actions-dir-from-environment</id>
+            <activation>
+                <property>
+                    <name>env.ACTIONS_DIR</name>
+                </property>
+            </activation>
+            <properties>
+                <ci.actions.dir>${env.ACTIONS_DIR}</ci.actions.dir>
+            </properties>
+        </profile>
         <!--
             Signs and publishes every reactor module in one `mvn -P release deploy` (the
             java-llama.cpp reactor pattern). GPG signing at verify + Central Portal publishing;
@@ -300,10 +318,8 @@ SPDX-License-Identifier: Apache-2.0
                         <configuration>
                             <publishingServerId>central</publishingServerId>
                             <autoPublish>true</autoPublish>
-                            <!-- validated: wait only for portal validation (where real errors surface), not the slow server-side publish; autoPublish completes it -->
-                            <waitUntil>validated</waitUntil>
-                            <!-- seconds; generous headroom for the validation poll (default 1800) -->
-                            <waitMaxTime>21600</waitMaxTime>
+                            <!-- uploaded: acknowledge transfer only; Central validates and publishes asynchronously -->
+                            <waitUntil>uploaded</waitUntil>
                         </configuration>
                     </plugin>
                 </plugins>

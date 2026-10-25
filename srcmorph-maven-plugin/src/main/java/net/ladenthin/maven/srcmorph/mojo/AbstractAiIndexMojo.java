@@ -99,6 +99,14 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     @Parameter
     protected List<AiModelDefinition> aiDefinitions;
 
+    /**
+     * Directory a relative {@code modelPath} of {@link #aiDefinitions} (and {@link #llamaModelPath})
+     * is resolved against; an absolute model path is used as it is. Unset, a relative model path is
+     * relative to the working directory of the Maven JVM.
+     */
+    @Parameter(property = "srcmorph.modelDirectory")
+    protected File modelDirectory;
+
     /** Per-field AI generation configurations controlling which prompt and AI definition to use. */
     @Parameter
     protected List<AiFieldGenerationConfig> fieldGenerations;
@@ -180,6 +188,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
         config.setGenerationProvider(generationProvider);
         config.setPromptDefinitions(promptDefinitions);
         config.setAiDefinitions(aiDefinitions);
+        config.setModelDirectory(modelDirectory);
         config.setFieldGenerations(fieldGenerations);
         config.setLlamaModelPath(llamaModelPath);
         config.setLlamaContextSize(getLlamaContextSize());

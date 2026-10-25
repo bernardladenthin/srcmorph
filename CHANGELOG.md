@@ -11,6 +11,40 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Changed
+- **The shared CI code moved to [bernardladenthin/actions](https://github.com/bernardladenthin/actions).**
+  The build-check library, the publication gate and its consumers, the signing-key checks and the
+  shared scripts and workflows are actions and reusable workflows there, pinned by commit; the
+  `shared-files` job and `.github/shared-files.sha256` are replaced by the `repository-checks` job,
+  configured in `.github/actions-config.json`: the files this repository must carry are compared with
+  the templates there, and the publication wiring and a dry run of the release asset contract are
+  checked in every pull request. Packaging srcmorph-cli runs the license collector from there: `ACTIONS_DIR` in CI, locally a checkout at `../actions`.
+- **The CLI fat jar carries a license text for every runtime jar, and the build checks it.** Runtime
+  jars without legal files of their own (JSpecify, SnakeYAML) get their upstream texts from
+  `third-party-notices/`; a runtime jar with neither fails the build. The dependencies' legal files go
+  into the fat jar only, no longer also into the published `srcmorph-cli` jar.
+- **Releases and snapshots are published through one local gate.** The publish jobs stage and sign
+  everything, `publication.py prepare` checks the exact file set, every signature and the version
+  against the tag (`v<version>`, no `-SNAPSHOT`; `check-tag` / `check-snapshot` check it first), and
+  freezes the result; the GitHub release, the Maven Central transfer and the provenance attestation
+  are independent jobs on that frozen package, so a Central outage no longer hides the GitHub files and
+  nothing is attached before the gate has passed. Builds run on JDK 25 (`.java-version`); the
+  published bytecode target is unchanged. Every published jar carries `LICENSE` and `THIRD_PARTY.md`
+  under `META-INF/third-party/`.
+
+### Added
+- **`modelDirectory`: relative model paths resolve against one directory, absolute ones stay as they
+  are.** A new configuration field (plugin parameter `modelDirectory`, property
+  `srcmorph.modelDirectory`; `"modelDirectory"` in a CLI configuration; a relative value is relative to
+  the module's `${basedir}` in Maven and to the working directory in the CLI) is the directory every
+  relative `modelPath` of the `aiDefinitions` and the `llamaModelPath` fallback is resolved against. An
+  absolute `modelPath` (on Windows also a root- or drive-relative one) is used unchanged, so one model
+  can live elsewhere while the others are named by file name only. Unset, a relative path stays relative
+  to the working directory, as before. The `srcmorph-selftest` profile uses it:
+  `<modelDirectory>${ai.modelDir}</modelDirectory>` once, and its 36 `<modelPath>` entries are bare file
+  names; before, each entry was the text `${ai.modelDir}/<file>`, which put every model in that one
+  directory unless the entry was edited.
+
 ### Fixed
 - **The `calibrate` goal's paste block mixed line endings on Windows.** `CalibrationReport` wrote its three
   value lines with `String.format("...%n")`, the platform line separator, between lines ending in `\n`, so on
@@ -28,7 +62,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   suppression was added.
 
 ### Changed
-- **The `srcmorph-selftest` profile names its model directory once, as `ai.modelDir`.** All 38
+- **The `srcmorph-selftest` profile names its model directory once, as `ai.modelDir`.** All 36
   `<modelPath>` entries of `srcmorph-maven-plugin/pom.xml` carried the absolute `X:/Modelle/...`, a drive
   that no longer exists on the owner's machine, so the profile could not run anywhere as committed — and a
   machine-specific absolute path sat in a published POM. They read `${ai.modelDir}/<file>.gguf` now, the

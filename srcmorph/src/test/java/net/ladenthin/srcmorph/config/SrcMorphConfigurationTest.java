@@ -46,7 +46,16 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getFieldGenerations(), is(nullValue()));
         assertThat(c.getFactDefinitions(), is(nullValue()));
         assertThat(c.getLlamaModelPath(), is(nullValue()));
+        assertThat(c.getModelDirectory(), is(nullValue()));
         assertThat(c.getProjectName(), is(nullValue()));
+    }
+
+    @Test
+    public void modelDirectoryRoundTrips() {
+        final SrcMorphConfiguration c = new SrcMorphConfiguration();
+        final File dir = new File("/tmp/models");
+        c.setModelDirectory(dir);
+        assertThat(c.getModelDirectory(), is(sameInstance(dir)));
     }
 
     @Test

@@ -106,7 +106,7 @@ public final class AggregateProjectEngine {
             throws SrcMorphException, IOException {
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(config.getPromptDefinitions());
         final AiModelDefinitionSupport modelDefinitionSupport =
-                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions());
+                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         LOGGER.info("Project overview generation: enabled (prompt '{}')", overview.getPromptKey());
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
         try (AiGenerationProvider provider = providerFactory.create(

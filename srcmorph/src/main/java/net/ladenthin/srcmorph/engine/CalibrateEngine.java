@@ -73,7 +73,7 @@ public final class CalibrateEngine {
 
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(config.getPromptDefinitions());
         final AiModelDefinitionSupport modelDefinitionSupport =
-                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions());
+                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 

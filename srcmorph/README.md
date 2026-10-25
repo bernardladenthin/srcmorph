@@ -24,7 +24,7 @@ Major field groups:
 |---|---|
 | Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `minFileSizeBytes`/`maxFileSizeBytes` |
 | Output | `outputDirectory`, `force`, `planOnly` |
-| Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`), `aiDefinitions` (`List<AiModelDefinition>`), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` |
+| Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` |
 | AI backend | `generationProvider` (`"mock"` or `"llamacpp-jni"`), plus the `llama*` fallback params (`llamaModelPath`/`llamaContextSize`/`llamaMaxOutputTokens`/`llamaTemperature`/`llamaThreads`), used only when `fieldGenerations` is empty |
 | Header metadata | `pluginVersion`, `aiVersion`, `projectName` |
 

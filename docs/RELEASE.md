@@ -41,8 +41,9 @@ procedure:
    `https://repo1.maven.org/maven2/net/ladenthin/<artifact>/X.Y.Z/` for each of the four artifacts
    — `srcmorph-parent`, `srcmorph`, `srcmorph-cli`, `srcmorph-maven-plugin`; the parent POM is easy to
    forget precisely because it carries no code, and a consumer who cannot resolve it cannot resolve any
-   of the other three — and confirm the CI run's "Deploy release" step succeeded (not just
-   "completed").
+   of the other three — and confirm that the CI run's `central-release` job ("Upload checked release
+   artifacts to Maven Central") succeeded and printed the Portal deployment id (not just "completed"):
+   the publish job only stages and checks, and the Portal validates after the upload was accepted.
 6. **Bump `main` forward** to the next `-SNAPSHOT` version (same `versions:set` command) so `main`
    never again sits at a version matching a published release.
 

@@ -395,6 +395,11 @@ Run-level parameters (set in `<configuration>`):
   the base dir with `/` separators, e.g. `**/package-info.java`, `**/generated/**` (default: none).
   `*` stays within one path segment, `**` spans directories, `?` is a single character.
 - `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
+- `modelDirectory` (`srcmorph.modelDirectory`) — the directory a relative `modelPath` is resolved
+  against; an absolute `modelPath` is used as it is, so models can live in one directory and still
+  one of them elsewhere. Unset (default), a relative `modelPath` is relative to the working directory.
+  A relative `modelDirectory` itself is relative to the module's `${basedir}`, as Maven resolves every
+  `File` parameter.
 - `force` — regenerate even when a body already exists (default: `false`)
 - `skip` — global switch: skip **every** phase (default: `false`)
 - Per-phase switches — turn any of the three phases on/off independently (each default `false`).
@@ -417,7 +422,7 @@ below are the shipped values (`AiGenerationConfig.DEFAULT_*`).
 | Element | Default | Description |
 |---|---|---|
 | `key` | *(required)* | Identifier referenced by a rule's `aiDefinitionKey` |
-| `modelPath` | *(required)* | Path to the GGUF model file |
+| `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the working directory) |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
 | `threads` | `8` | CPU threads for inference |
