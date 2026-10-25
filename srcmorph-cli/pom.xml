@@ -322,7 +322,12 @@ SPDX-License-Identifier: Apache-2.0
                                 <argument>--classpath</argument>
                                 <argument>${project.build.directory}/runtime-license-classpath.txt</argument>
                                 <argument>--output</argument>
-                                <argument>${project.build.outputDirectory}/META-INF/third-party/dependencies</argument>
+                                <argument>${project.build.directory}/third-party-dependencies</argument>
+                                <!-- License texts for runtime JARs that carry none (../third-party-notices/
+                                     notices.json); a JAR with neither fails the build. -->
+                                <argument>--supplemental</argument>
+                                <argument>${project.basedir}/../third-party-notices</argument>
+                                <argument>--require-complete</argument>
                             </arguments>
                         </configuration>
                     </execution>

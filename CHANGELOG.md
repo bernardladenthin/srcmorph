@@ -12,6 +12,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
+- **The CLI fat jar carries a license text for every runtime jar, and the build checks it.** Runtime
+  jars without legal files of their own (JSpecify, SnakeYAML) get their upstream texts from
+  `third-party-notices/`; a runtime jar with neither fails the build. The dependencies' legal files go
+  into the fat jar only, no longer also into the published `srcmorph-cli` jar.
 - **Releases and snapshots are published through one local gate.** The publish jobs stage and sign
   everything, `publication.py prepare` checks the exact file set, every signature and the version
   against the tag (`v<version>`, no `-SNAPSHOT`; `check-tag` / `check-snapshot` check it first), and
