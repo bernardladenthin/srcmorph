@@ -10,6 +10,15 @@ everything below is genuinely still open.
 
 ## Open
 
+- **1.3.0-SNAPSHOT and the `examples/windows-fatjar` example (#244).** The snapshot is published by
+  Publish dispatch [40367427445](https://github.com/bernardladenthin/srcmorph/actions/runs/40367427445)
+  (`41249de9`; every build and test job green, the job "Prepare and verify signed snapshot
+  artifacts" waits for the owner's approval of `maven-central`). After it: build the example once
+  against Central only, with an empty local repository, since it resolves `srcmorph-cli`
+  `1.3.0-SNAPSHOT` from Central's snapshot repository. **At the 1.3.0 release:** set
+  `srcmorph.version` in `examples/windows-fatjar/pom.xml` to `1.3.0` and delete its `<repositories>`
+  block (`central-snapshots`), as the comment there says.
+
 - **The GPU classifier fat jars are verified structurally, never launched.** Since 1.2.0
   `.github/verify-classifier-fatjars.sh` asserts each is the artifact its name claims (one jar per
   classifier, the promised backend directory next to the default CPU natives, so a broken
