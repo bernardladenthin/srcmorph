@@ -209,6 +209,9 @@ jobs:
           java-version-file: .java-version
           distribution: temurin
           cache: maven
+      # `verify` packages srcmorph-cli, whose license collector comes from bernardladenthin/actions
+      # (ACTIONS_DIR, exported here) -- as in `build`.
+      - uses: bernardladenthin/actions/common/setup@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
       - name: Memory before tests
         run: free -h
       - name: Test

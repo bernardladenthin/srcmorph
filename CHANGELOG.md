@@ -56,6 +56,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   directory unless the entry was edited.
 
 ### Fixed
+- **Two CI defects that the unresolvable llama 6.0.0 had hidden.** Until 6.0.0 reached Central, every
+  run stopped at the first Maven step. The first run that resolved it (srcmorph#243) went further and
+  found two more:
+  - The `Test` job runs `verify`, which packages `srcmorph-cli` and runs its license collector from
+    bernardladenthin/actions. Unlike `build`, the job had no `common/setup`, so `ACTIONS_DIR` was
+    unset and the collector stopped the build. The job now runs `common/setup` too.
+  - The plugin integration test compares the descriptor's `srcmorph.*` properties both ways against
+    a deliberate list. `srcmorph.modelDirectory`, added with the model-directory resolution, was
+    never added to that list. It is listed now, and all six steps pass locally (20 properties).
 - **`srcmorph-cli` could not be built on Windows at all.** The `collect-runtime-licenses` execution passes a
   one-line Python program to `python3 -c`, and `exec-maven-plugin` drops the double quotes out of that
   argument on Windows: `find_spec("actionlib")` reached Python as `find_spec(actionlib)`, so every

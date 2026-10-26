@@ -181,6 +181,7 @@ EXPECTED_PROPS="$(printf '%s\n' \
     srcmorph.llama.modelPath \
     srcmorph.llama.temperature \
     srcmorph.llama.threads \
+    srcmorph.modelDirectory \
     srcmorph.outputDirectory \
     srcmorph.package.skip \
     srcmorph.planOnly \
