@@ -384,10 +384,10 @@ public class AiGenerationConfigTest {
         final AiGenerationConfig c = new AiGenerationConfig();
         // -1 means "reuse threads"; it must not collide with the decode thread count.
         assertThat(c.getThreadsBatch(), is(-1));
-        c.setThreads(4);
+        c.setThreads(7);
         c.setThreadsBatch(12);
         assertThat(c.getThreadsBatch(), is(12));
-        assertThat(c.getThreads(), is(4));
+        assertThat(c.getThreads(), is(7));
     }
 
     // </editor-fold>

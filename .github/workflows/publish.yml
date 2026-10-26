@@ -266,6 +266,11 @@ jobs:
         # All three modules now carry a pitest-maven execution at mutationThreshold 100, so the
         # goal runs reactor-wide rather than scoped to srcmorph. `-am` is gone with the `-pl`:
         # a plain reactor invocation already builds each module's dependencies in order.
+        # The timeout bounds a regression: PIT re-runs the real-model tests for every mutant they
+        # cover, so a slow test multiplies. With threads(8) on this 4-vCPU runner one generation
+        # took 431 s and the step ran for hours until cancelled (40316163607); with
+        # NativeLlamaAvailability.THREADS the whole step takes minutes (7 in September).
+        timeout-minutes: 60
         run: mvn --batch-mode --no-transfer-progress test-compile org.pitest:pitest-maven:mutationCoverage
       - name: Extract PIT survivors
         if: always()

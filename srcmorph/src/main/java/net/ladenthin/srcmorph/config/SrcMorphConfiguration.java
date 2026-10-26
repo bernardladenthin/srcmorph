@@ -48,8 +48,8 @@ public class SrcMorphConfiguration {
     /** Default llama.cpp sampling temperature when none is configured. */
     public static final float DEFAULT_LLAMA_TEMPERATURE = 0.15f;
 
-    /** Default number of llama.cpp CPU threads when none is configured. */
-    public static final int DEFAULT_LLAMA_THREADS = 2;
+    /** Default number of llama.cpp CPU threads when none is configured: the same as a model definition's. */
+    public static final int DEFAULT_LLAMA_THREADS = AiGenerationConfig.DEFAULT_THREADS;
 
     /** Default AI summarisation logic version when none is configured. */
     public static final String DEFAULT_AI_VERSION = "0.0.0";

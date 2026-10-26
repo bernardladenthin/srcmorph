@@ -50,7 +50,7 @@ public class AiModelDefinitionSupportTest {
         definition.setContextSize(16384);
         definition.setMaxOutputTokens(512);
         definition.setTemperature(0.8f);
-        definition.setThreads(4);
+        definition.setThreads(7);
         definition.setCharsPerToken(3);
         definition.setWarnOnTrim(false);
         definition.setChatTemplateEnableThinking(false);
@@ -100,7 +100,7 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getContextSize(), is(equalTo(16384)));
         assertThat(config.getMaxOutputTokens(), is(equalTo(512)));
         assertThat(config.getTemperature(), is(equalTo(0.8f)));
-        assertThat(config.getThreads(), is(equalTo(4)));
+        assertThat(config.getThreads(), is(equalTo(7)));
         assertThat(config.getCharsPerToken(), is(equalTo(3)));
         assertThat(config.isWarnOnTrim(), is(false));
         assertThat(config.getChatTemplateEnableThinking(), is(false));
@@ -351,6 +351,14 @@ public class AiModelDefinitionSupportTest {
     public void resolveModelPath_windowsDriveRelativePath_staysUnchanged(@TempDir final File modelDirectory) {
         assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, "M:x.gguf"), is(equalTo("M:x.gguf")));
         assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, "\\x.gguf"), is(equalTo("\\x.gguf")));
+    }
+
+    @Test
+    public void resolveModelPath_unparsablePath_staysUnchanged(@TempDir final File modelDirectory) {
+        // A NUL character is an InvalidPathException on every platform; such a path is not joined
+        // below the directory but left as written, so the engines' model check reports it verbatim.
+        final String unparsable = "model\u0000.gguf";
+        assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, unparsable), is(equalTo(unparsable)));
     }
 
     @Test

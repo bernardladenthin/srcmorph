@@ -40,8 +40,17 @@ public class AiGenerationConfig {
      */
     public static final float DEFAULT_TEMPERATURE = 0.15f;
 
-    /** Default number of CPU threads used for llama.cpp inference. */
-    public static final int DEFAULT_THREADS = 8;
+    /**
+     * Default number of CPU threads used for llama.cpp inference: 4, or fewer when the machine has
+     * fewer cores.
+     * <p>Never more than the cores: ggml synchronises its threads on spinning barriers, so more threads
+     * than cores is not a little slower but orders of magnitude slower. Each barrier waits for a thread
+     * the OS has descheduled. Measured on four visible cores, the same real-model test class took
+     * 644.9 s with 8 threads and 7.8 s with 4. The former default of 8 hit that on every four-core
+     * machine, the GitHub runner included. Four is enough for the models srcmorph runs; set
+     * {@code threads} higher on a machine with more cores after measuring it ({@code Calibrate}).</p>
+     */
+    public static final int DEFAULT_THREADS = Math.min(4, Runtime.getRuntime().availableProcessors());
 
     /**
      * Default maximum number of characters of source text fed into the prompt.

@@ -79,8 +79,8 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
     private int llamaContextSize;
 
     /** CPU threads for llama.cpp inference, used only on the no-field-generation fallback path. */
-    @Parameter(property = "srcmorph.llama.threads", defaultValue = "2")
-    private int llamaThreads;
+    @Parameter(property = "srcmorph.llama.threads")
+    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
 
     @Override
     protected int getLlamaContextSize() {

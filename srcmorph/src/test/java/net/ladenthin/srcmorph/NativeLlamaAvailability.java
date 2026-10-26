@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import org.junit.jupiter.api.Assumptions;
 
 /**
@@ -48,6 +49,14 @@ public final class NativeLlamaAvailability {
      * report {@link NoClassDefFoundError} rather than the original cause.</p>
      */
     private static final String NATIVE_FAILURE = resolveNativeFailure();
+
+    /**
+     * Threads for every test that runs the real model: the production default, 4 or fewer cores.
+     * <p>With {@code threads(8)} on the 4-vCPU GitHub runner one generation took 431 s; it takes
+     * seconds with no more threads than cores (see {@link AiGenerationConfig#DEFAULT_THREADS}). PIT
+     * re-runs these tests for every mutant they cover and turned that into hours.</p>
+     */
+    public static final int THREADS = AiGenerationConfig.DEFAULT_THREADS;
 
     /** Utility class; not instantiable. */
     private NativeLlamaAvailability() {
