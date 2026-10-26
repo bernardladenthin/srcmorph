@@ -35,7 +35,7 @@ public class LlamaCppJniAiGenerationProviderTest {
                 .contextSize(contextSize)
                 .maxOutputTokens(maxOutputTokens)
                 .temperature(0.15f)
-                .threads(8)
+                .threads(NativeLlamaAvailability.THREADS)
                 .build();
     }
 

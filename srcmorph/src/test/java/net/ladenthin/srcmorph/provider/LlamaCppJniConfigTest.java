@@ -163,7 +163,7 @@ public class LlamaCppJniConfigTest {
                 .contextSize(1111)
                 .maxOutputTokens(222)
                 .temperature(0.33f)
-                .threads(4)
+                .threads(7)
                 .topP(0.55f)
                 .topK(66)
                 .minP(0.07f)
@@ -203,7 +203,7 @@ public class LlamaCppJniConfigTest {
         assertThat(config.contextSize(), is(1111));
         assertThat(config.maxOutputTokens(), is(222));
         assertThat(config.temperature(), is(0.33f));
-        assertThat(config.threads(), is(4));
+        assertThat(config.threads(), is(7));
         assertThat(config.topP(), is(0.55f));
         assertThat(config.topK(), is(66));
         assertThat(config.minP(), is(0.07f));

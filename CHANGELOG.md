@@ -25,6 +25,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `run.bat`. `ExamplesConfigBindingTest` binds its configuration and checks the pom's main class.
 
 ### Changed
+- **The default thread count is now 4, or fewer on a machine with fewer cores.** It was 8 for a model
+  definition (`threads`) and 2 for the fallback parameters (`llamaThreads`, `srcmorph.llama.threads`).
+  Both now use `AiGenerationConfig.DEFAULT_THREADS = min(4, cores)`. Eight threads on a four-core
+  machine is not a little slower but orders of magnitude slower, because ggml's threads wait on each
+  other at every step: on four visible cores the same real-model test class took 644.9 s with 8
+  threads and 7.8 s with 4. A configuration that sets `threads` explicitly is unchanged. On a machine
+  with more cores, raise it after measuring (`Calibrate`).
 - **`bernardladenthin/actions` pinned at v1.1.0.** v1.1.0 adds `java/audit-publication`, an audit of a
   published release from the outside (not used here yet); nothing changes for the actions in use.
   v1.0.3 before it made the snapshot publication survive
@@ -69,6 +76,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   directory unless the entry was edited.
 
 ### Fixed
+- **PIT ran for hours on CI: the real-model tests used eight threads on a four-vCPU runner.** The first
+  `main` run to pass its tests since llama 6.0.0 (40316163607) sat in the PIT step for over two hours
+  until it was cancelled. Two tests built their configuration with `threads(8)`. ggml synchronises
+  its threads on spinning barriers, so more threads than cores is not a little slower but orders of
+  magnitude slower: one generation took 431 s on the runner, PIT's coverage pass 904 s against 41 s
+  locally, and PIT re-runs these tests for every mutant they cover. All real-model tests now use
+  `NativeLlamaAvailability.THREADS`, the new default (see Changed). The PIT step has a 60-minute timeout, so a regression cannot burn the six-hour job limit again.
+- **The one PIT mutant without a test:** `AiModelDefinitionSupport.hasRoot` returns `true` for a path
+  the platform cannot parse, and nothing tested that. A model path with a NUL character now does; it
+  stays unchanged instead of being joined below `modelDirectory`. That brings `srcmorph` back from
+  842/843 to the 100 % threshold.
 - **Stale prompt-template documentation.** The plugin README described a template as taking two `%s`
   placeholders, and its examples, like the README Quickstart, ended in `File: %s` / `Source: %s`.
   Since the core extraction (`b141d20`) a template is the system prompt, sent verbatim, and the file

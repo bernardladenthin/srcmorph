@@ -74,7 +74,7 @@ public class AiFieldGenerationSupportRealModelTest {
                 .contextSize(SMALL_CONTEXT)
                 .maxOutputTokens(48)
                 .temperature(0.15f)
-                .threads(8)
+                .threads(NativeLlamaAvailability.THREADS)
                 .build();
 
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();

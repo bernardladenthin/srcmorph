@@ -51,8 +51,8 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
     private int llamaContextSize;
 
     /** CPU threads for llama.cpp inference during package aggregation. */
-    @Parameter(property = "srcmorph.llama.threads", defaultValue = "2")
-    private int llamaThreads;
+    @Parameter(property = "srcmorph.llama.threads")
+    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
 
     @Override
     protected int getLlamaContextSize() {

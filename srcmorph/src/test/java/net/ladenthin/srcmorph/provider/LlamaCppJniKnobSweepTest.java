@@ -66,8 +66,8 @@ public class LlamaCppJniKnobSweepTest {
     /** Output budget for the sweep. The assertion is "the binding accepted this", not "the model is good". */
     private static final int SWEEP_MAX_OUTPUT_TOKENS = 8;
 
-    /** Threads for the sweep; a CI runner is not the place to spawn eight of them per case. */
-    private static final int SWEEP_THREADS = 2;
+    /** Threads for the sweep: the shared real-model setting, see {@link NativeLlamaAvailability#THREADS}. */
+    private static final int SWEEP_THREADS = NativeLlamaAvailability.THREADS;
 
     /** Source text handed to every case — deliberately tiny, the prompt content is not what is under test. */
     private static final String SWEEP_SOURCE = "package com.example;\npublic class Test {}\n";

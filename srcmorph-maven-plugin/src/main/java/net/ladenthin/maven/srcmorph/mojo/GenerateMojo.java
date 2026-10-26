@@ -96,8 +96,8 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     private int llamaContextSize;
 
     /** CPU threads for llama.cpp inference during the generate pass. */
-    @Parameter(property = "srcmorph.llama.threads", defaultValue = "2")
-    private int llamaThreads;
+    @Parameter(property = "srcmorph.llama.threads")
+    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
 
     /**
      * When {@code true}, only build and log the routing plan (which model indexes which files with which

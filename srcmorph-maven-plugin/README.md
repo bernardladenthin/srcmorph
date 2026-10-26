@@ -407,7 +407,7 @@ below are the shipped values (`AiGenerationConfig.DEFAULT_*`).
 | `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the working directory) |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
-| `threads` | `8` | CPU threads for inference |
+| `threads` | `4` (fewer on a machine with fewer cores) | CPU threads for inference. Never set more than the machine has cores: ggml's threads wait on each other, and an oversubscribed run is orders of magnitude slower |
 | `temperature` | `0.15` | Sampling temperature |
 | `topP` | `0.9` | Nucleus (top-p) sampling threshold |
 | `topK` | `40` | Top-k sampling limit (`0` = disabled) |

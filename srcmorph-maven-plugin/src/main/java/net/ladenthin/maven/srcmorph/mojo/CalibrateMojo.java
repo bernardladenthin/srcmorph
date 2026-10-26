@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.srcmorph.mojo;
 
+import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.CalibrateEngine;
 import net.ladenthin.srcmorph.engine.CalibrationReport;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
@@ -39,8 +40,8 @@ public class CalibrateMojo extends AbstractAiIndexMojo {
     private int llamaContextSize;
 
     /** CPU threads (unused by calibrate, which uses each model's own config). */
-    @Parameter(property = "srcmorph.llama.threads", defaultValue = "2")
-    private int llamaThreads;
+    @Parameter(property = "srcmorph.llama.threads")
+    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
 
     @Override
     protected int getLlamaContextSize() {

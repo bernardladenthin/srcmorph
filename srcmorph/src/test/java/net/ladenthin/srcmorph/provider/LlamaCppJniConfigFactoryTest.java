@@ -24,7 +24,7 @@ public class LlamaCppJniConfigFactoryTest {
         config.setContextSize(1111);
         config.setMaxOutputTokens(222);
         config.setTemperature(0.33f);
-        config.setThreads(4);
+        config.setThreads(7);
         config.setTopP(0.55f);
         config.setTopK(66);
         config.setMinP(0.07f);
@@ -68,7 +68,7 @@ public class LlamaCppJniConfigFactoryTest {
         assertThat(result.contextSize(), is(1111));
         assertThat(result.maxOutputTokens(), is(222));
         assertThat(result.temperature(), is(0.33f));
-        assertThat(result.threads(), is(4));
+        assertThat(result.threads(), is(7));
         assertThat(result.topP(), is(0.55f));
         assertThat(result.topK(), is(66));
         assertThat(result.minP(), is(0.07f));
