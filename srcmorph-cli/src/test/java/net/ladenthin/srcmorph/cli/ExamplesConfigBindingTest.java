@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.cli;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
@@ -15,9 +16,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
+import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 /**
@@ -75,6 +80,33 @@ public class ExamplesConfigBindingTest {
             }
         }
         return found;
+    }
+
+    /**
+     * {@code examples/windows-fatjar/} is the build-it-yourself example (docs/windows-intel-core-ultra.md):
+     * its {@code srcmorph.yaml} is meant for a real model, so it is not one of the mock fixtures above,
+     * but it must still bind under the strict mapper, start with the safe {@code Plan}, and route every
+     * file through a fallback rule that handles an oversized file. Its {@code pom.xml} names the CLI's
+     * main class by string, so a renamed {@link Main} would otherwise only fail on the user's machine.
+     *
+     * @throws IOException if an example file cannot be read
+     */
+    @Test
+    public void windowsFatJarExample_bindsAndNamesTheMainClass() throws IOException {
+        final Path directory = EXAMPLES_DIRECTORY.resolve("windows-fatjar");
+        final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph.yaml")));
+
+        assertThat(configuration.command, is(CCommand.Plan));
+        final SrcMorphConfiguration srcMorph = configuration.srcMorph;
+        assertThat(srcMorph.getGenerationProvider(), is(equalTo("llamacpp-jni")));
+        assertThat(srcMorph.getFieldGenerations().size(), is(1));
+        final AiFieldGenerationConfig rule = srcMorph.getFieldGenerations().get(0);
+        assertThat(rule.isFallback(), is(true));
+        assertThat(rule.getOnOversize(), is(equalTo(AiOversizeStrategy.SAMPLE.configValue())));
+
+        assertThat(
+                Main.readString(directory.resolve("pom.xml")),
+                containsString("<mainClass>" + Main.class.getName() + "</mainClass>"));
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {

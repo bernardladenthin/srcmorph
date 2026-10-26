@@ -120,8 +120,8 @@ Maven Central regardless; see `CLAUDE.md`.)
         <promptDefinitions>
             <promptDefinition>
                 <key>file-body</key>
-                <template><![CDATA[Summarize this file:
-%s]]></template>
+                <!-- the system prompt; srcmorph sends the file name and source separately -->
+                <template>Summarize this file as structured markdown.</template>
             </promptDefinition>
         </promptDefinitions>
         <fieldGenerations>
@@ -170,6 +170,11 @@ Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock`
 model required) — see [`examples/`](examples/) for the full set plus paired `run_*.sh`/`run_*.bat`
 launcher scripts, and [`srcmorph-cli/README.md`](srcmorph-cli/README.md) for the config-file
 reference.
+
+**To build a fat jar with only your machine's natives** (for example the CPU and Vulkan classifiers
+on Windows), see [`docs/windows-intel-core-ultra.md`](docs/windows-intel-core-ultra.md). It covers a
+pom, `build.bat` and `run.bat` in [`examples/windows-fatjar/`](examples/windows-fatjar/), and a
+commented configuration.
 
 ### 3. Library dependency
 

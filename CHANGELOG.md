@@ -11,6 +11,19 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Added
+- **`examples/windows-fatjar/`: build your own fat jar, then run it.** Four files:
+  - `pom.xml` names srcmorph-cli and the llama classifiers of the machine, with `llama-platform`
+    excluded;
+  - `build.bat` is one `mvn package` on a JDK 8;
+  - `srcmorph.yaml` is a commented configuration that starts with `Plan`;
+  - `run.bat` runs it.
+
+  `docs/windows-intel-core-ultra.md` walks through them for an Intel Core Ultra (CPU and Vulkan
+  classifiers, checking what loaded, threads). Tested on Windows: built on JDK 8 (32 MiB instead of
+  the release fat jar's 111 MiB), `Plan` on JDK 8, and a real index with the Vulkan module through
+  `run.bat`. `ExamplesConfigBindingTest` binds its configuration and checks the pom's main class.
+
 ### Changed
 - **`bernardladenthin/actions` pinned at v1.1.0.** v1.1.0 adds `java/audit-publication`, an audit of a
   published release from the outside (not used here yet); nothing changes for the actions in use.
@@ -56,6 +69,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   directory unless the entry was edited.
 
 ### Fixed
+- **Stale prompt-template documentation.** The plugin README described a template as taking two `%s`
+  placeholders, and its examples, like the README Quickstart, ended in `File: %s` / `Source: %s`.
+  Since the core extraction (`b141d20`) a template is the system prompt, sent verbatim, and the file
+  name and source go to the model as a separate user message. A `%s` therefore reached the model
+  literally. The text now says so, and the examples carry no placeholders.
+- **The plugin README's GPU section described the llama natives before 6.0.0.** It said a GPU natives
+  jar holds `jllama.dll`, that `lib.path` points at "the GPU `jllama.dll`", and that a GPU library
+  whose runtime is missing fails over to the CPU one. Since 6.0.0 a GPU jar holds one ggml backend
+  module that is put next to the CPU library, and `lib.path` names a natives directory. The section
+  now describes that, adds `cublasLt64_13.dll` to the CUDA runtime list, and links the Windows guide.
 - **Two CI defects that the unresolvable llama 6.0.0 had hidden.** Until 6.0.0 reached Central, every
   run stopped at the first Maven step. The first run that resolved it (srcmorph#243) went further and
   found two more:

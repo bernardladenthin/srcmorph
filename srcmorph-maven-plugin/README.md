@@ -137,9 +137,10 @@ The plugin is configured from three building blocks, declared on the plugin insi
 `<build><plugins>`:
 
 1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
-2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template takes
-   two `%s` placeholders: the file/package name and the source (for packages, the child summaries; for
-   the optional project overview, the per-package leads).
+2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template is
+   the **system prompt** and takes **no placeholders**: the file/package name and the source (for
+   packages, the child summaries; for the optional project overview, the per-package leads) are sent
+   as a separate user message (`AiPromptSupport`). A `%s` in a template reaches the model literally.
 3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
    `<aiDefinitionKey>` (model id, which carries the full parameter set) and selects files with a
    composable **`<condition>`** tree: `<and>`/`<or>`/`<not>` over the leaves `<extensions>`, `<size>`
@@ -221,39 +222,20 @@ The plugin is configured from three building blocks, declared on the plugin insi
         <promptDefinitions>
             <promptDefinition>
                 <key>file-body-java</key>
-                <template><![CDATA[Summarize ONE Java source file as structured markdown.
-
-File: %s
-
-Source:
-%s]]></template>
+                <template><![CDATA[Summarize ONE Java source file as structured markdown.]]></template>
             </promptDefinition>
             <promptDefinition>
                 <key>file-body-fallback</key>
-                <template><![CDATA[Summarize ONE source file as structured markdown.
-
-File: %s
-
-Source:
-%s]]></template>
+                <template><![CDATA[Summarize ONE source file as structured markdown.]]></template>
             </promptDefinition>
             <promptDefinition>
                 <key>package-body</key>
-                <template><![CDATA[Summarize ONE package from its already-generated file summaries.
-
-Package: %s
-
-File summaries:
-%s]]></template>
+                <template><![CDATA[Summarize ONE package from its already-generated file summaries.]]></template>
             </promptDefinition>
             <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
             <promptDefinition>
                 <key>project-body</key>
-                <template><![CDATA[Write a short overview of the whole project from its per-package leads.
-
-Index file: %s
-
-%s]]></template>
+                <template><![CDATA[Write a short overview of the whole project from its per-package leads.]]></template>
             </promptDefinition>
         </promptDefinitions>
     </configuration>
@@ -570,10 +552,13 @@ RTX 3070 a CUDA build measured **~4.5× the CPU decode speed**; Vulkan also work
 a one-time shader-compilation cost on the first run. OpenCL is intentionally not offered (llama.cpp's
 OpenCL backend does not support NVIDIA GPUs).
 
-How the native is found: `net.ladenthin.llama.loader.LlamaLoader` tries `net.ladenthin.llama.lib.path`,
-then `java.library.path`, then **every natives jar on the classpath**, GPU backends before the CPU one:
-a GPU library whose runtime is missing fails its load and the loader falls through to the CPU natives.
-So there are two ways to enable a GPU when running the *published* plugin in your own build.
+How the native is found (`net.ladenthin:llama` 6.0.0): `net.ladenthin.llama.loader.LlamaLoader` tries
+`net.ladenthin.llama.lib.path`, then `java.library.path`, then the natives jars on the classpath. The
+library itself (`jllama.dll` with ggml and the CPU modules) comes from the CPU natives jar; a GPU
+natives jar holds **one ggml backend module** (`ggml-cuda.dll`, `ggml-vulkan.dll`, …), which the loader
+puts next to the library. ggml opens a module only when its vendor runtime is installed; otherwise the
+work stays on the CPU modules. So there are two ways to enable a GPU when running the *published*
+plugin in your own build.
 
 **Recommended — add the GPU natives jar to the plugin's own classpath.** Declare the matching
 `net.ladenthin:llama` natives jar as a dependency of the plugin in your POM. It is added next to the
@@ -600,9 +585,9 @@ runs on the CPU:
 mvn srcmorph:generate -Dsrcmorph.generationProvider=llamacpp-jni      # + the GPU runtime on PATH (see below)
 ```
 
-**Alternative — runtime library override (no POM change).** Point `net.ladenthin.llama.lib.path` at a
-folder holding the GPU `jllama.dll` (extracted once from the natives jar); it is tried before the
-natives jars:
+**Alternative — a natives directory (no POM change).** Unpack the CPU natives jar's directory and
+copy the GPU module jar's files into it, then point `net.ladenthin.llama.lib.path` at that directory;
+it is tried before the natives jars (the binding's README, "Natives outside Maven"):
 
 ```
 mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dsrcmorph.generationProvider=llamacpp-jni
@@ -619,7 +604,10 @@ mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dsrc
 In both cases:
 
 - **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
-  `cublas64_13.dll`) on `PATH` — the natives jar bundles only `jllama.dll`, not the CUDA runtime.
+  `cublas64_13.dll`, `cublasLt64_13.dll`) on `PATH` — the natives jar bundles only the backend module
+  `ggml-cuda.dll`, not the CUDA runtime.
+- **Vulkan** needs only the GPU driver (it brings `vulkan-1.dll`). A CLI fat jar built with exactly
+  the CPU and Vulkan natives of a Windows machine is in [docs/windows-intel-core-ultra.md](../docs/windows-intel-core-ultra.md).
 - **GPU layer offload** — set `<gpuLayers>` inside your `<aiDefinition>` (see "Per-model
   `<aiDefinition>` parameters" above): `-1` (default) does **not** pin a layer count, so llama.cpp
   **auto-fits** as many layers as fit the card's free VRAM — the robust "runs on any card" setting (it
