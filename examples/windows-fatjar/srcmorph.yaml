@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# What run.bat does with it: every file under baseDirectory/subtrees with one of the fileExtensions
+# is matched to a rule in fieldGenerations. The rule names a prompt (promptDefinitions) and a model
+# (aiDefinitions). srcmorph sends the prompt as the system message and the file's name and source as
+# the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
+#
+# command:
+#   Plan               prints which file gets which model and prompt; loads nothing, writes nothing
+#   GenerateFileIndex  one .ai.md per source file
+#   All                GenerateFileIndex, then one summary per package and one for the project
+# Start with Plan, then switch to GenerateFileIndex. A second run only redoes changed files.
+command: Plan
+
+srcMorph:
+  # Use forward slashes in Windows paths here: in a double-quoted YAML string, "C:\x" is an escape.
+  baseDirectory: "C:/path/to/project"
+  outputDirectory: "C:/path/to/project/target/srcmorph-ai"
+  subtrees:
+    - "src/main/java"
+  fileExtensions:
+    - ".java"
+
+  generationProvider: llamacpp-jni      # "mock" runs without a model, for a dry test of the setup
+  modelDirectory: "C:/models"           # a relative modelPath below is relative to this directory
+
+  promptDefinitions:
+    - key: java
+      template: "Summarize this Java file as structured Markdown: purpose, public API, collaborators."
+
+  aiDefinitions:
+    - key: local
+      modelPath: granite-4.0-h-tiny-Q4_K_M.gguf
+      contextSize: 16384                # tokens; a file larger than this is handled by onOversize
+      maxOutputTokens: 1024
+      temperature: 0.15
+      threads: 8                        # measure 6, 8, 10; all cores is rarely the fastest
+      gpuLayers: 99                     # 99 = everything on the GPU (Vulkan), 0 = CPU only
+
+  fieldGenerations:
+    - promptKey: java
+      aiDefinitionKey: local
+      fallback: true                    # the rule for every file no other rule matches
+      onOversize: sample                # default "fail" stops the run on a file larger than the window

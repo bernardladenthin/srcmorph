@@ -26,8 +26,9 @@ is one classifier variant per llama GPU backend module —
 plus that one backend's ggml module. ggml loads the module when the matching vendor runtime is installed
 and skips it otherwise, so a GPU variant never runs worse than the plain jar; it only runs *faster* on
 the matching OS/arch with that GPU runtime present. Pick the plain CPU jar unless you specifically want a
-GPU build. A worked Windows example with the Vulkan jar (configuration, plan, index, what the log must
-show) is in [`../docs/windows-intel-core-ultra.md`](../docs/windows-intel-core-ultra.md).
+GPU build. To build your own fat jar with exactly the classifiers of your machine instead, see
+[`../docs/windows-intel-core-ultra.md`](../docs/windows-intel-core-ultra.md) and
+[`../examples/windows-fatjar/`](../examples/windows-fatjar/).
 
 Both `.json`/`.js` (parsed via a
 Jackson `ObjectMapper`) and `.yaml`/`.yml` (parsed via `YAMLMapper`) are supported — pick whichever you

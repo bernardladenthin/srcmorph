@@ -12,12 +12,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
-- **`docs/windows-intel-core-ultra.md`: srcmorph on Windows.** The guide covers both routes, the CLI
-  fat jar and the Maven plugin, with the Vulkan natives for an Intel iGPU. It says which artifacts to
-  take, gives one configuration for both routes, and explains the plan, the incremental index, threads
-  and how to verify what loaded. Every command and snippet was run on Windows (`cmd.exe`, 1.3.0-SNAPSHOT
-  on llama 6.0.0): the CLI on the CPU and with Vulkan, the plugin with Vulkan, and the guide's own YAML
-  through the CLI's strict mapper.
+- **`examples/windows-fatjar/`: build your own fat jar, then run it.** Four files:
+  - `pom.xml` names srcmorph-cli and the llama classifiers of the machine, with `llama-platform`
+    excluded;
+  - `build.bat` is one `mvn package` on a JDK 8;
+  - `srcmorph.yaml` is a commented configuration that starts with `Plan`;
+  - `run.bat` runs it.
+
+  `docs/windows-intel-core-ultra.md` walks through them for an Intel Core Ultra (CPU and Vulkan
+  classifiers, checking what loaded, threads). Tested on Windows: built on JDK 8 (32 MiB instead of
+  the release fat jar's 111 MiB), `Plan` on JDK 8, and a real index with the Vulkan module through
+  `run.bat`. `ExamplesConfigBindingTest` binds its configuration and checks the pom's main class.
 
 ### Changed
 - **`bernardladenthin/actions` pinned at v1.1.0.** v1.1.0 adds `java/audit-publication`, an audit of a

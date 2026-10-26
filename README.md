@@ -171,9 +171,10 @@ model required) — see [`examples/`](examples/) for the full set plus paired `r
 launcher scripts, and [`srcmorph-cli/README.md`](srcmorph-cli/README.md) for the config-file
 reference.
 
-**On Windows**, with the iGPU through Vulkan and either route (the CLI fat jar or the plugin), see
-[`docs/windows-intel-core-ultra.md`](docs/windows-intel-core-ultra.md): which artifacts to take, a
-configuration that runs as it is, and how to check what loaded.
+**To build a fat jar with only your machine's natives** (for example the CPU and Vulkan classifiers
+on Windows), see [`docs/windows-intel-core-ultra.md`](docs/windows-intel-core-ultra.md). It covers a
+pom, `build.bat` and `run.bat` in [`examples/windows-fatjar/`](examples/windows-fatjar/), and a
+commented configuration.
 
 ### 3. Library dependency
 
