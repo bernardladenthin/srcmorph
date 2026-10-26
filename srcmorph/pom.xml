@@ -111,7 +111,7 @@ SPDX-License-Identifier: Apache-2.0
         <!--
             Compile-only: nothing in this module imports these annotations, they exist for the
             Checker Framework processor. Scope `provided` is inherited from the parent's
-            dependencyManagement and is what keeps them out of the fat jar; see the comment there.
+            dependencyManagement and is what keeps them off a consumer's runtime classpath; see the comment there.
         -->
         <dependency>
             <groupId>org.checkerframework</groupId>
@@ -816,8 +816,7 @@ SPDX-License-Identifier: Apache-2.0
                         run pays a one-time shader-compilation cost.
              Example: mvn srcmorph:generate -P gpu-cuda -Dai.gpuLayers=20 (run from the plugin module,
              which pulls this module's GPU natives jar transitively).
-             Any other natives jar: -Dllama.classifier=<classifier> (gpu-natives), which is also how CI
-             builds one srcmorph-cli fat jar per GPU backend.
+             Any other natives jar: -Dllama.classifier=<classifier> (gpu-natives).
              (OpenCL is intentionally not offered: llama.cpp's OpenCL backend does not support NVIDIA.) -->
         <profile>
             <id>gpu-cuda</id>

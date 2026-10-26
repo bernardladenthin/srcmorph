@@ -8,15 +8,14 @@
 # a no-op smoke check; swap generationProvider to "llamacpp-jni" and set a real modelPath to
 # calibrate an actual GGUF model on this machine.
 #
-# The fat jar's file name is version-qualified (e.g.
-# srcmorph-cli-1.2.0-SNAPSHOT-jar-with-dependencies.jar) and changes on every version bump, so the
-# glob below picks whichever one was last built by `mvn package` in ../srcmorph-cli.
+# Runs the jar of build-your-own-jar/ (srcmorph-cli plus the natives of this machine); build it
+# once with build-your-own-jar/build.sh.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-JAR=$(ls ../srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar 2>/dev/null | head -n 1)
-if [ -z "$JAR" ]; then
-  echo "srcmorph-cli fat jar not found under ../srcmorph-cli/target/ - run 'mvn package' first." >&2
+JAR=build-your-own-jar/target/srcmorph.jar
+if [ ! -f "$JAR" ]; then
+  echo "$JAR not found - run build-your-own-jar/build.sh first." >&2
   exit 1
 fi
 

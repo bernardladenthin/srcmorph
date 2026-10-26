@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     <packaging>jar</packaging>
 
     <name>srcmorph-cli</name>
-    <description>Standalone CLI for srcmorph, driven by a single JSON/YAML configuration file (BitcoinAddressFinder cli/Main.java pattern). Wraps the srcmorph core library's engines; ships as a jar-with-dependencies fat jar.</description>
+    <description>Standalone CLI for srcmorph, driven by a single JSON/YAML configuration file (BitcoinAddressFinder cli/Main.java pattern). Wraps the srcmorph core library's engines. Run it from your own jar (examples/build-your-own-jar) or with jbang.</description>
 
     <!--
         Declared explicitly rather than inherited. The parent sets
@@ -36,7 +36,6 @@ SPDX-License-Identifier: Apache-2.0
 
 
     <properties>
-        <license.python>python3</license.python>
         <sonar.organization>bernardladenthin</sonar.organization>
         <maven.compiler.release>8</maven.compiler.release>
         <maven.compiler.testRelease>21</maven.compiler.testRelease>
@@ -85,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
         <!--
             Compile-only: nothing in this module imports these annotations, they exist for the
             Checker Framework processor. Scope `provided` is inherited from the parent's
-            dependencyManagement and is what keeps them out of the fat jar; see the comment there.
+            dependencyManagement and is what keeps them off a consumer's runtime classpath; see the comment there.
         -->
         <dependency>
             <groupId>org.checkerframework</groupId>
@@ -122,8 +121,9 @@ SPDX-License-Identifier: Apache-2.0
 
             slf4j-simple, not logback: logback 1.4.0+ is Java 11 bytecode and the production code
             here targets Java 8 — see the rationale on the pin in the parent's dependencyManagement.
-            Defaults ship in src/main/assembly-resources/simplelogger.properties (fat jar only);
-            override at runtime with -Dorg.slf4j.simpleLogger.* or a classpath simplelogger.properties.
+            This jar ships no simplelogger.properties (it would override an embedder's own); the
+            runnable jar of examples/build-your-own-jar carries the defaults. Override at runtime with
+            -Dorg.slf4j.simpleLogger.* or a classpath simplelogger.properties.
         -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -197,11 +197,6 @@ SPDX-License-Identifier: Apache-2.0
                     <groupId>io.github.git-commit-id</groupId>
                     <artifactId>git-commit-id-maven-plugin</artifactId>
                     <version>10.0.1</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-assembly-plugin</artifactId>
-                    <version>3.8.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -289,64 +284,6 @@ SPDX-License-Identifier: Apache-2.0
             </plugins>
         </pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>runtime-license-classpath</id>
-                        <phase>process-classes</phase>
-                        <goals><goal>build-classpath</goal></goals>
-                        <configuration>
-                            <includeScope>runtime</includeScope>
-                            <includeTypes>jar</includeTypes>
-                            <regenerateFile>true</regenerateFile>
-                            <outputFile>${project.build.directory}/runtime-license-classpath.txt</outputFile>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.6.4</version>
-                <executions>
-                    <execution>
-                        <id>collect-runtime-licenses</id>
-                        <phase>prepare-package</phase>
-                        <goals><goal>exec</goal></goals>
-                        <configuration combine.self="override">
-                            <executable>${license.python}</executable>
-                            <environmentVariables>
-                                <PYTHONPATH>${ci.actions.dir}/lib</PYTHONPATH>
-                            </environmentVariables>
-                            <arguments>
-                                <!-- python3 -m actionlib.java.thirdpartylicenses, but saying where actionlib was looked for
-                                     when it is missing instead of a ModuleNotFoundError.
-                                     The Python string literals are SINGLE-quoted deliberately. On Windows
-                                     exec-maven-plugin drops a double quote out of an argument (measured with this
-                                     plugin version: print("x") reaches Python as print(x)), so the double-quoted
-                                     form makes this module unbuildable there with a SyntaxError and exit 1, while
-                                     the Linux CI stays green and never shows it. Escaping them as backslash-quote
-                                     survives Windows but NOT Linux, where the argument reaches execve verbatim and
-                                     Python then sees the backslashes. Single quotes are valid Python and survive
-                                     both platforms. Keep them. -->
-                                <argument>-c</argument>
-                                <argument>import importlib.util, sys; importlib.util.find_spec('actionlib') or sys.exit('The license collector comes from bernardladenthin/actions: set ACTIONS_DIR to a checkout of it, or check it out next to this repository (../actions). Looked in ${ci.actions.dir}/lib'); from actionlib.java.thirdpartylicenses import main; sys.exit(main(sys.argv[1:]))</argument>
-                                <argument>--classpath</argument>
-                                <argument>${project.build.directory}/runtime-license-classpath.txt</argument>
-                                <argument>--output</argument>
-                                <argument>${project.build.directory}/third-party-dependencies</argument>
-                                <!-- License texts for runtime JARs that carry none (../third-party-notices/
-                                     notices.json); a JAR with neither fails the build. -->
-                                <argument>--supplemental</argument>
-                                <argument>${project.basedir}/../third-party-notices</argument>
-                                <argument>--require-complete</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
@@ -572,56 +509,6 @@ SPDX-License-Identifier: Apache-2.0
                 </configuration>
             </plugin>
 
-            <!--
-                Unlike BitcoinAddressFinder's `-P assembly` opt-in pattern, the fat jar is bound
-                UNCONDITIONALLY to the `package` phase here: for this module the jar-with-dependencies
-                IS the deliverable artifact (the thing a user actually downloads and runs with
-                `java -jar`), not an occasional extra. Binding it in every `mvn package` (and therefore
-                every `mvn verify` / release build) keeps it in lockstep with the plain jar rather than
-                depending on a profile flag being remembered at release time.
-
-                `<attach>false</attach>`: the fat jar is a GitHub-Release-only asset and must NOT be
-                deployed to Maven Central. A jar-with-dependencies on Central is redundant (consumers
-                depend on the plain `srcmorph-cli` jar + its resolved dependency graph, never the fat
-                jar) and, because it bundles the `net.ladenthin:llama` native binary, is both large and
-                platform-specific. Leaving it attached uploaded a 74 MB fat jar to Central on every
-                release. With attach=false the file is still produced in target/ (so the CI build's
-                upload-artifact and the release job's classifier-fat-jar loop still pick it up) but is
-                neither installed to ~/.m2 nor deployed to Central. Signing + GitHub attachment (for
-                this default CPU jar and one fat jar per net.ladenthin:llama GPU classifier) is done
-                explicitly by the publish-release / publish-snapshot jobs in .github/workflows/publish.yml.
-            -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <!--
-                        src/assembly/fat-jar.xml, not the predefined jar-with-dependencies ref: it is
-                        that descriptor verbatim plus one fileSet adding simplelogger.properties, which
-                        must not live in src/main/resources (it would ship in the published jar and
-                        hijack an embedder's own slf4j-simple config). See the comments in that file.
-                    -->
-                    <descriptors>
-                        <descriptor>src/assembly/fat-jar.xml</descriptor>
-                    </descriptors>
-                    <archive>
-                        <manifest>
-                            <mainClass>net.ladenthin.srcmorph.cli.Main</mainClass>
-                        </manifest>
-                    </archive>
-                    <attach>false</attach>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>build-fat-jar</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -721,10 +608,10 @@ SPDX-License-Identifier: Apache-2.0
                     </targetTests>
                     <!--
                       main(String[]) is out of scope for mutation gating, and this is the reason
-                      rather than a shrug: it is the process entry point, and the `smoke-fatjar` CI
+                      rather than a shrug: it is the process entry point, and the `smoke-jar` CI
                       job (a release gate for both publish jobs) already runs the REAL artifact -
-                      `java -jar srcmorph-cli-...-jar-with-dependencies.jar config_Plan.json` - and
-                      asserts exit 0 plus "Main#run end." in the output. That line is logged by
+                      examples/build-your-own-jar built against this reactor, `java -jar srcmorph.jar
+                      config_Plan.json` - and asserts exit 0 plus "Main#run end." in the output. That line is logged by
                       run(), which only main() calls, so both of the mutants excluded here
                       (dropping the logConfigurationTransformation() call, dropping the run() call)
                       are covered end to end by an artifact-level test that a unit mutant cannot
@@ -748,6 +635,6 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         No profiles here: the `release` profile (GPG signing + central-publishing-maven-plugin)
         lives in the parent (net.ladenthin:srcmorph-parent) so a single `mvn -P release deploy`
-        signs and publishes every module, including this one's plain jar + fat jar.
+        signs and publishes every module, including this one's plain jar.
     -->
 </project>

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: MIT OR Apache-2.0
+-->
+<!--
+    Builds target/srcmorph.jar: the srcmorph CLI from Maven Central plus exactly the llama natives
+    this machine needs. srcmorph publishes no runnable jar of its own; there are too many
+    OS/CPU/GPU combinations to ship one per machine, so this pom is how you get yours.
+
+        mvn package                              CPU natives of this OS/arch (picked by a profile below)
+        mvn package -Dgpu=vulkan-windows-x86-64  plus one GPU module of the same OS/arch
+        mvn package -Dnatives=cpu-linux-aarch64  a different OS/arch than the build machine
+
+    Then: java -jar target/srcmorph.jar srcmorph.yaml
+    The classifiers are listed in the java-llama.cpp README, "Choosing the natives jars".
+    For two GPU modules, copy the dependency in the `gpu` profile once more with the second one.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>local</groupId>
+    <artifactId>srcmorph-local</artifactId>
+    <version>1</version>
+    <!-- jar, not pom: this project's own (otherwise empty) jar carries simplelogger.properties, and
+         the assembly below unpacks it into srcmorph.jar together with the dependencies. -->
+    <packaging>jar</packaging>
+
+    <properties>
+        <srcmorph.version>1.3.0</srcmorph.version>
+        <llama.version>6.0.0</llama.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>net.ladenthin</groupId>
+            <artifactId>srcmorph-cli</artifactId>
+            <version>${srcmorph.version}</version>
+            <exclusions>
+                <!-- the CPU natives of every desktop platform (~100 MiB); ${natives} replaces it -->
+                <exclusion>
+                    <groupId>net.ladenthin</groupId>
+                    <artifactId>llama-platform</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- the library for one OS/arch: jllama, llama/ggml and the CPU backend modules -->
+        <dependency>
+            <groupId>net.ladenthin</groupId>
+            <artifactId>llama</artifactId>
+            <version>${llama.version}</version>
+            <classifier>${natives}</classifier>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <include>simplelogger.properties</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>require-natives</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireProperty>
+                                    <property>natives</property>
+                                    <message>No natives jar for this OS/arch. Pass one: -Dnatives=cpu-linux-x86-64 (see the java-llama.cpp README, "Choosing the natives jars").</message>
+                                </requireProperty>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.8.0</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <finalName>srcmorph</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <attach>false</attach>
+                    <archive>
+                        <manifest>
+                            <mainClass>net.ladenthin.srcmorph.cli.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- The library classifier of the build machine. -Dnatives=... on the command line wins. -->
+        <profile>
+            <id>linux-x86-64</id>
+            <activation><os><name>Linux</name><arch>amd64</arch></os></activation>
+            <properties><natives>cpu-linux-x86-64</natives></properties>
+        </profile>
+        <profile>
+            <id>linux-aarch64</id>
+            <activation><os><name>Linux</name><arch>aarch64</arch></os></activation>
+            <properties><natives>cpu-linux-aarch64</natives></properties>
+        </profile>
+        <profile>
+            <id>windows-x86-64</id>
+            <activation><os><family>windows</family><arch>amd64</arch></os></activation>
+            <properties><natives>cpu-windows-x86-64</natives></properties>
+        </profile>
+        <profile>
+            <id>windows-aarch64</id>
+            <activation><os><family>windows</family><arch>aarch64</arch></os></activation>
+            <properties><natives>cpu-windows-aarch64</natives></properties>
+        </profile>
+        <profile>
+            <id>macos-aarch64</id>
+            <activation><os><family>mac</family><arch>aarch64</arch></os></activation>
+            <properties><natives>metal-macos-aarch64</natives></properties>
+        </profile>
+        <!-- One GPU module of the same OS/arch, e.g. -Dgpu=vulkan-windows-x86-64 or
+             -Dgpu=cuda13-linux-x86-64. Without a working driver/runtime ggml skips it and runs on
+             the CPU. -->
+        <profile>
+            <id>gpu</id>
+            <activation><property><name>gpu</name></property></activation>
+            <dependencies>
+                <dependency>
+                    <groupId>net.ladenthin</groupId>
+                    <artifactId>llama</artifactId>
+                    <version>${llama.version}</version>
+                    <classifier>${gpu}</classifier>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>

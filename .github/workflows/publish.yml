@@ -78,10 +78,6 @@ jobs:
           persist-credentials: false
       - name: Files equal their templates in bernardladenthin/actions
         uses: bernardladenthin/actions/common/check-templates@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
-      # This repository's own build checks build on actionlib (the setup step puts it on PYTHONPATH).
-      - uses: bernardladenthin/actions/common/setup@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
-      - name: Build-check tests of this repository
-        run: python3 -m unittest discover -s .github/buildcheck/tests -t .github
       - name: Release gate (every job gates both publish jobs, or release-gate-exemptions.txt says why)
         uses: bernardladenthin/actions/common/check-release-gate@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
       - name: Run scripts parse (bash -n over every bash run script of the workflows and actions)
@@ -178,23 +174,8 @@ jobs:
           java-version-file: .java-version
           distribution: temurin
           cache: maven
-      # srcmorph-cli runs the license collector of bernardladenthin/actions while packaging
-      # (ACTIONS_DIR, exported here).
-      - uses: bernardladenthin/actions/common/setup@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
       - name: Build
         run: mvn --batch-mode --no-transfer-progress -DskipTests package
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: plugin-jars
-          # All three reactor modules produce their own jars: srcmorph (core library),
-          # srcmorph-cli (includes the jar-with-dependencies fat jar — the CLI's deliverable),
-          # and srcmorph-maven-plugin (the Maven plugin, renamed from llamacpp-ai-index-maven-plugin
-          # in the migration). The former 4th module — a pom-only relocation-stub for the retired
-          # coordinates — was published once and then removed from this reactor; see CLAUDE.md.
-          path: |
-            srcmorph/target/*.jar
-            srcmorph-cli/target/*.jar
-            srcmorph-maven-plugin/target/*.jar
 
   test:
     name: Test
@@ -209,9 +190,6 @@ jobs:
           java-version-file: .java-version
           distribution: temurin
           cache: maven
-      # `verify` packages srcmorph-cli, whose license collector comes from bernardladenthin/actions
-      # (ACTIONS_DIR, exported here) -- as in `build`.
-      - uses: bernardladenthin/actions/common/setup@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
       - name: Memory before tests
         run: free -h
       - name: Test
@@ -321,52 +299,61 @@ jobs:
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------
-  # Fat-jar smoke test — cross-repo standard job, kept in the same shape in
-  # BitcoinAddressFinder and java-llama.cpp (see workspace/policies/fat-jar-release-assets.md,
-  # "No release asset is attached that CI has not run"). The fat jar is a GitHub-Release asset,
-  # and unit tests never touch it: they run off target/classes, so an unrunnable uber jar — no
-  # Main-Class, a shade-mangled resource, a missing SLF4J binding — is built and GPG-signed
-  # without anything noticing. Signing proves who built it, not that it works.
+  # Jar smoke test. srcmorph publishes no runnable jar: a user builds one from
+  # examples/build-your-own-jar (srcmorph-cli plus the natives of their OS/arch). This job takes
+  # exactly that path against the commit under test: it installs the reactor into the runner's
+  # local repository, builds the example with srcmorph.version and llama.version from the reactor,
+  # and launches the result the way a user would. Unit tests run off target/classes and never
+  # notice an unrunnable jar -- no Main-Class, a missing SLF4J binding, a Java 11 class on a Java 8
+  # floor.
   #
-  # srcmorph-specific: config_Plan.json uses the `mock` generation provider, so this needs no
-  # GGUF model, no GPU and no network — it is the cheapest possible real launch of the CLI.
-  # `Plan` is the command that cannot fail for configuration reasons (planOnly, nothing written);
-  # `All` over a real source tree fails by design when files exceed the demo model's context
-  # window, which would make the smoke non-deterministic rather than more thorough.
+  # config_Plan.json uses the `mock` generation provider, so this needs no GGUF model, no GPU and
+  # no network beyond Maven -- the cheapest possible real launch of the CLI. `Plan` is the command
+  # that cannot fail for configuration reasons (planOnly, nothing written); `All` over a real
+  # source tree fails by design when files exceed the demo model's context window, which would make
+  # the smoke non-deterministic rather than more thorough.
   # ---------------------------------------------------------------------------
 
-  smoke-fatjar:
-    name: Smoke test fat jar
-    needs: [build]
+  smoke-jar:
+    name: Smoke test the user-built jar
+    needs: startgate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: plugin-jars
-          path: fatjar/
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           java-version-file: .java-version
           distribution: temurin
+          cache: maven
+      - name: Install the reactor, then build examples/build-your-own-jar against it
+        run: |
+          set -euo pipefail
+          mvn --batch-mode --no-transfer-progress -DskipTests install
+          version=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n1)
+          llama=$(mvn -q -DforceStdout -pl srcmorph help:evaluate -Dexpression=llama.version | tail -n1)
+          echo "srcmorph $version, llama $llama"
+          mvn --batch-mode --no-transfer-progress -f examples/build-your-own-jar/pom.xml             -Dsrcmorph.version="$version" -Dllama.version="$llama" package
+          mkdir -p smoke-jars
+          cp examples/build-your-own-jar/target/srcmorph.jar smoke-jars/
+          cp "srcmorph-maven-plugin/target/srcmorph-maven-plugin-$version.jar" smoke-jars/
       # Class-file floor. Production code here targets Java 8, so anything a consumer's JVM
       # can load must be major 52 or lower -- a single Java 11 class (logback's
       # LogbackServiceProvider was the real case) kills the process with
-      # UnsupportedClassVersionError before any of our code runs. The script recurses into the
-      # whole download directory, so every jar the build produced is checked, not just the fat
-      # jar; module-info.class and META-INF/versions/** are skipped unconditionally because a
-      # classpath JVM never loads them. The java/verify-bytecode action of bernardladenthin/actions.
+      # UnsupportedClassVersionError before any of our code runs. srcmorph.jar holds the CLI with
+      # its whole runtime classpath; the plugin jar is what Maven loads. module-info.class and
+      # META-INF/versions/** are skipped because a classpath JVM never loads them. The
+      # java/verify-bytecode action of bernardladenthin/actions.
       - name: Verify Java 8 bytecode (no class newer than major 52)
         uses: bernardladenthin/actions/java/verify-bytecode@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
         with:
           max-major: "52"
           paths: |
-            fatjar
-      - name: Run fat-jar smoke test
+            smoke-jars
+      - name: Run the jar
         uses: bernardladenthin/actions/java/smoke-fatjar-cli@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
         with:
-          jar-dir: fatjar
-          jar-glob: 'srcmorph-cli-*-jar-with-dependencies.jar'
+          jar-dir: smoke-jars
+          jar-glob: 'srcmorph.jar'
           work-dir: examples
           marker: 'Main#run end\.'
           args: config_Plan.json
@@ -374,7 +361,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: smoke-fatjar-logs
+          name: smoke-jar-logs
           path: |
             smoke-out.log
             smoke-err.log
@@ -513,7 +500,7 @@ jobs:
     needs:
       - check-snapshot
       - code-style
-      - smoke-fatjar
+      - smoke-jar
       - plugin-it
       - repository-checks
       - vmlens
@@ -545,8 +532,7 @@ jobs:
             *-SNAPSHOT) echo "OK: -SNAPSHOT version, continuing local snapshot staging." ;;
             *) echo "::error::Refusing to publish non-SNAPSHOT version '$VERSION' from the snapshot job. Snapshot publishing requires a -SNAPSHOT version; releases go through the v* tag path."; exit 1 ;;
           esac
-      # srcmorph-cli runs the license collector of bernardladenthin/actions while packaging
-      # (ACTIONS_DIR, exported here).
+      # The collect step runs actionlib of bernardladenthin/actions (on PYTHONPATH from here).
       - uses: bernardladenthin/actions/common/setup@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
       - name: Show effective POM (debug)
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
@@ -554,44 +540,8 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true deploy -DskipTests
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
+      - name: Collect signed Central artifacts (pom/jar/sources/javadoc)
         run: python3 -m actionlib.java.releaseassets central-assets --maven-only
-      - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          set -euo pipefail
-          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:
-          # every row of kind `module` (a GPU backend module, additive to the library jar of its
-          # platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*
-          # library jars come with llama-platform. Each jar here is ADDED to the default CPU
-          # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
-          # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
-          python3 -m actionlib.java.releaseassets --list-classifiers 1 > fatjar-classifiers.txt
-          mapfile -t CLASSIFIERS < fatjar-classifiers.txt
-          build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
-          for c in "${CLASSIFIERS[@]}"; do
-            build "$c"
-            f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)
-            cp "$f" "${f%.jar}-${c}.jar"
-          done
-          # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
-          build ""
-          # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
-          # (.github/sign-fatjars.sh; java-llama.cpp dropped its copy with its fat jars) — a .asc per fat jar.
-          mkdir -p fatjar-assets
-          cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar fatjar-assets/
-          bash .github/sign-fatjars.sh fatjar-assets
-          # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
-          # default jar; the classifier jars cannot be covered that way (a GitHub runner has no
-          # such device, and the only command that would load the native library is a real
-          # generation), so this asserts instead that each jar is the artifact its name claims --
-          # one jar per classifier, the backend directory the name promises, and every default
-          # CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=
-          # ever stops being wired through, the loop silently ships copies of the CPU build under
-          # GPU names and nothing else in this pipeline notices.
-          bash .github/verify-classifier-fatjars.sh fatjar-assets "${CLASSIFIERS[@]}"
       - name: Finalize and secure the signed publication
         id: finalize
         uses: bernardladenthin/actions/java/finalize-publication@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
@@ -622,7 +572,7 @@ jobs:
     needs:
       - check-tag
       - code-style
-      - smoke-fatjar
+      - smoke-jar
       - plugin-it
       - repository-checks
       - vmlens
@@ -645,8 +595,7 @@ jobs:
           server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-      # srcmorph-cli runs the license collector of bernardladenthin/actions while packaging
-      # (ACTIONS_DIR, exported here).
+      # The collect step runs actionlib of bernardladenthin/actions (on PYTHONPATH from here).
       - uses: bernardladenthin/actions/common/setup@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
       - name: Show effective POM (debug)
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
@@ -654,44 +603,8 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true deploy -DskipTests
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      - name: Collect signed Central artifacts (plain/sources/javadoc; fat jars handled next)
+      - name: Collect signed Central artifacts (pom/jar/sources/javadoc)
         run: python3 -m actionlib.java.releaseassets central-assets --maven-only
-      - name: Build, sign & verify classifier fat jars (GitHub-only assets, never Central)
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          set -euo pipefail
-          # Source of truth: java-llama.cpp's .github/natives.csv for the pinned ${llama.version}:
-          # every row of kind `module` (a GPU backend module, additive to the library jar of its
-          # platform) except the Android one, which no `java -jar` can use; the cpu-*/metal-*
-          # library jars come with llama-platform. Each jar here is ADDED to the default CPU
-          # natives (-Dllama.classifier activates the gpu-natives profile), so every classifier
-          # fat jar keeps the CPU fallback: ggml loads the module when its runtime is installed.
-          python3 -m actionlib.java.releaseassets --list-classifiers 1 > fatjar-classifiers.txt
-          mapfile -t CLASSIFIERS < fatjar-classifiers.txt
-          build() { mvn -B --no-transfer-progress -pl srcmorph-cli -am -DskipTests -Dmaven.javadoc.skip=true -Dllama.classifier="$1" package; }
-          for c in "${CLASSIFIERS[@]}"; do
-            build "$c"
-            f=$(ls srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies.jar)
-            cp "$f" "${f%.jar}-${c}.jar"
-          done
-          # default CPU build LAST so the unsuffixed fat jar is the all-platform CPU variant
-          build ""
-          # Collect every fat jar variant, then GPG-sign each via the cross-repo shared script
-          # (.github/sign-fatjars.sh; java-llama.cpp dropped its copy with its fat jars) — a .asc per fat jar.
-          mkdir -p fatjar-assets
-          cp srcmorph-cli/target/srcmorph-cli-*-jar-with-dependencies*.jar fatjar-assets/
-          bash .github/sign-fatjars.sh fatjar-assets
-          # Structural check of what the loop just produced. The smoke-fatjar job LAUNCHES the
-          # default jar; the classifier jars cannot be covered that way (a GitHub runner has no
-          # such device, and the only command that would load the native library is a real
-          # generation), so this asserts instead that each jar is the artifact its name claims --
-          # one jar per classifier, the backend directory the name promises, and every default
-          # CPU native kept next to it. The backend directory is the point: if -Dllama.classifier=
-          # ever stops being wired through, the loop silently ships copies of the CPU build under
-          # GPU names and nothing else in this pipeline notices.
-          bash .github/verify-classifier-fatjars.sh fatjar-assets "${CLASSIFIERS[@]}"
       - name: Finalize and secure the signed publication
         id: finalize
         uses: bernardladenthin/actions/java/finalize-publication@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0

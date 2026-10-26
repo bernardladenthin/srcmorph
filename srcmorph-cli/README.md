@@ -2,33 +2,40 @@
 
 `net.ladenthin:srcmorph-cli` is a standalone command-line front end for
 [srcmorph](../README.md): a single `java -jar` invocation driven by one JSON or YAML configuration
-file, with no Maven project or build required. It wraps the
+file, with no Maven project of your own required. It wraps the
 [`srcmorph`](../srcmorph/README.md) core library's engines exactly the way the
 [Maven plugin](../srcmorph-maven-plugin/README.md) does, following the
 [BitcoinAddressFinder](https://github.com/bernardladenthin/BitcoinAddressFinder) `cli.Main` pattern.
 
 ## Running it
 
+srcmorph publishes no runnable jar. The `srcmorph-cli` jar on Maven Central is the CLI without its
+dependencies; the llama natives it needs differ per OS, CPU and GPU, and no set of pre-built jars
+covers every combination. You build the runnable jar for your machine with Maven, from
+[`../examples/build-your-own-jar/`](../examples/build-your-own-jar/):
+
 ```bash
-java -jar srcmorph-cli-<version>-jar-with-dependencies.jar <path-to-config.json-or-.yaml>
+cd examples/build-your-own-jar
+./build.sh                       # build.bat on Windows
+java -jar target/srcmorph.jar <path-to-config.json-or-.yaml>
 ```
 
-The fat jar (`srcmorph-cli-<version>-jar-with-dependencies.jar`, built by `mvn package`) bundles every
-dependency, including an SLF4J binding (`slf4j-simple`), so it runs standalone.
+Its `pom.xml` takes `srcmorph-cli` from Maven Central, swaps the CPU natives of every desktop
+platform (`llama-platform`) for the one natives jar of your OS/arch (picked by a Maven profile), and
+packs everything into `target/srcmorph.jar` together with `slf4j-simple` defaults (INFO, stdout,
+timestamps). A GPU module of the same OS/arch is one more property, for example
+`./build.sh -Dgpu=cuda13-linux-x86-64` or `build.bat -Dgpu=vulkan-windows-x86-64`; ggml loads it when
+the vendor runtime is installed and runs on the CPU otherwise. The classifiers are listed in the
+java-llama.cpp README, [Choosing the natives
+jars](https://github.com/bernardladenthin/java-llama.cpp#choosing-the-natives-jars). A walkthrough for a
+Windows laptop is in [`../docs/windows-intel-core-ultra.md`](../docs/windows-intel-core-ultra.md).
 
-**Download:** the pre-built fat jars are attached to each
-[GitHub Release](https://github.com/bernardladenthin/srcmorph/releases) (with a `.asc` GPG signature),
-**not** Maven Central. The unsuffixed `srcmorph-cli-<version>-jar-with-dependencies.jar` bundles the
-multi-platform **CPU** `net.ladenthin:llama` natives and runs on any OS/arch. For GPU acceleration there
-is one classifier variant per llama GPU backend module —
-`srcmorph-cli-<version>-jar-with-dependencies-<classifier>.jar` (e.g. `-cuda13-linux-x86-64`,
-`-vulkan-windows-x86-64`; CUDA, Vulkan, OpenCL, ROCm, SYCL and OpenVINO per OS/arch) — each the CPU jar
-plus that one backend's ggml module. ggml loads the module when the matching vendor runtime is installed
-and skips it otherwise, so a GPU variant never runs worse than the plain jar; it only runs *faster* on
-the matching OS/arch with that GPU runtime present. Pick the plain CPU jar unless you specifically want a
-GPU build. To build your own fat jar with exactly the classifiers of your machine instead, see
-[`../docs/windows-intel-core-ultra.md`](../docs/windows-intel-core-ultra.md) and
-[`../examples/windows-fatjar/`](../examples/windows-fatjar/).
+[JBang](https://www.jbang.dev/) runs the CLI without a build (`srcmorph-cli`'s jar names its main
+class): `jbang net.ladenthin:srcmorph-cli:<version> <config>`, with a GPU module as
+`--deps net.ladenthin:llama:<llama-version>:<classifier>`. Maven is the supported path.
+
+Releases up to 1.3.0 attached pre-built fat jars to the
+[GitHub Release](https://github.com/bernardladenthin/srcmorph/releases); from 1.4.0 there are none.
 
 Both `.json`/`.js` (parsed via a
 Jackson `ObjectMapper`) and `.yaml`/`.yml` (parsed via `YAMLMapper`) are supported — pick whichever you
@@ -119,6 +126,7 @@ detail.
 mvn -pl srcmorph-cli -am package
 ```
 
-produces `srcmorph-cli/target/srcmorph-cli-<version>.jar` (plain jar) and
-`srcmorph-cli/target/srcmorph-cli-<version>-jar-with-dependencies.jar` (the fat jar you actually run —
-bound unconditionally to the `package` phase, since for this module the fat jar *is* the deliverable).
+produces `srcmorph-cli/target/srcmorph-cli-<version>.jar`, the plain jar that goes to Maven Central.
+To run a local build, install the reactor (`mvn install`) and build
+`examples/build-your-own-jar` with `-Dsrcmorph.version=<the reactor version>`; CI's `smoke-jar` job
+does exactly that.

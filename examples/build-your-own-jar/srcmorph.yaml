@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# What run.bat does with it: every file under baseDirectory/subtrees with one of the fileExtensions
+# What run.sh / run.bat do with it: every file under baseDirectory/subtrees with one of the fileExtensions
 # is matched to a rule in fieldGenerations. The rule names a prompt (promptDefinitions) and a model
 # (aiDefinitions). srcmorph sends the prompt as the system message and the file's name and source as
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
@@ -15,16 +15,17 @@
 command: Plan
 
 srcMorph:
-  # Use forward slashes in Windows paths here: in a double-quoted YAML string, "C:\x" is an escape.
-  baseDirectory: "C:/path/to/project"
-  outputDirectory: "C:/path/to/project/target/srcmorph-ai"
+  # On Windows use forward slashes ("C:/path/to/project"): in a double-quoted YAML string, "C:\x" is
+  # an escape.
+  baseDirectory: "/path/to/project"
+  outputDirectory: "/path/to/project/target/srcmorph-ai"
   subtrees:
     - "src/main/java"
   fileExtensions:
     - ".java"
 
   generationProvider: llamacpp-jni      # "mock" runs without a model, for a dry test of the setup
-  modelDirectory: "C:/models"           # a relative modelPath below is relative to this directory
+  modelDirectory: "/path/to/models"     # a relative modelPath below is relative to this directory
 
   promptDefinitions:
     - key: java
@@ -37,7 +38,7 @@ srcMorph:
       maxOutputTokens: 1024
       temperature: 0.15
       threads: 4                        # the default; more only after measuring, never more than cores
-      gpuLayers: 99                     # 99 = everything on the GPU (Vulkan), 0 = CPU only
+      gpuLayers: 99                     # 99 = everything on the GPU module in the jar, 0 = CPU only
 
   fieldGenerations:
     - promptKey: java

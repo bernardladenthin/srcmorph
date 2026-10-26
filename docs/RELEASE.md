@@ -23,7 +23,10 @@ procedure:
    - `srcmorph-maven-plugin/README.md` — its own `<plugin>` snippet;
    - `CLAUDE.md` — the reactor version and "Last released version" in the overview and layout blocks;
    - `SECURITY.md` — the supported-release-line table;
-   - `CHANGELOG.md` — the `## [X.Y.Z] - <date>` heading and the two link refs at the bottom.
+   - `CHANGELOG.md` — the `## [X.Y.Z] - <date>` heading and the two link refs at the bottom;
+   - `examples/build-your-own-jar/pom.xml` — `srcmorph.version` (and `llama.version` when the
+     reactor's moved). It names what a user resolves from Central, so it carries the release, never
+     the `-SNAPSHOT`; CI overrides both with the reactor's values in `smoke-jar`.
 
    `grep -rn "<previous version>" --include="*.md" .` finds what was missed; run it before tagging,
    not after.
