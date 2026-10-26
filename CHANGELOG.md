@@ -11,6 +11,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-26
+
 ### Added
 - **`examples/windows-fatjar/`: build your own fat jar, then run it.** Four files:
   - `pom.xml` names srcmorph-cli and the llama classifiers of the machine, with `llama-platform`
@@ -967,7 +969,8 @@ First public release on Maven Central. Pre-OpenSSF history themes (March–May 2
 
 ---
 
-[Unreleased]: https://github.com/bernardladenthin/srcmorph/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/bernardladenthin/srcmorph/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/bernardladenthin/srcmorph/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.0.2...v1.1.0
