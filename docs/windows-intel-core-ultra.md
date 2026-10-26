@@ -23,9 +23,7 @@ desktop platform (~111 MiB with Vulkan). Your own carries only the ones you name
 below), and you choose the GPU module.
 
 > [!NOTE]
-> This is for **srcmorph 1.3.0** (on `net.ladenthin:llama` 6.0.0). Until 1.3.0 is released the pom
-> uses `1.3.0-SNAPSHOT` from Central's snapshot repository; then set the version to `1.3.0` and delete
-> the `<repositories>` block.
+> This is for **srcmorph 1.3.0** (on `net.ladenthin:llama` 6.0.0); both resolve from Maven Central.
 
 ## Step 1 — pick the classifiers, build the jar
 

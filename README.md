@@ -114,7 +114,7 @@ Maven Central regardless; see `CLAUDE.md`.)
 <plugin>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph-maven-plugin</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
     <configuration>
         <generationProvider>mock</generationProvider>
         <promptDefinitions>
@@ -182,7 +182,7 @@ commented configuration.
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 
@@ -223,7 +223,7 @@ on `main` with `publish_to_central` checked — not automatically on push:
 https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/
 ```
 
-Current reactor version: `1.3.0-SNAPSHOT`. Last released version: `1.2.0`.
+Current reactor version: `1.3.0`. Last released version: `1.2.0`.
 
 ## A Note on History
 
