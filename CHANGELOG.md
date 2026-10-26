@@ -12,7 +12,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Changed
-- **`bernardladenthin/actions` pinned at v1.0.3.** v1.0.3 makes the snapshot publication survive
+- **`bernardladenthin/actions` pinned at v1.1.0.** v1.1.0 adds `java/audit-publication`, an audit of a
+  published release from the outside (not used here yet); nothing changes for the actions in use.
+  v1.0.3 before it made the snapshot publication survive
   GitHub: the Central snapshot transfer lists the jobs of older runs 50 per page and repeats GitHub
   reads on a server error, and a refused move of the `snapshot` tag deletes and re-creates it (both
   failed in java-llama.cpp's first snapshot dispatch on v1.0.1). v1.0.2 before it carried a
@@ -54,6 +56,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   directory unless the entry was edited.
 
 ### Fixed
+- **Two CI defects that the unresolvable llama 6.0.0 had hidden.** Until 6.0.0 reached Central, every
+  run stopped at the first Maven step. The first run that resolved it (srcmorph#243) went further and
+  found two more:
+  - The `Test` job runs `verify`, which packages `srcmorph-cli` and runs its license collector from
+    bernardladenthin/actions. Unlike `build`, the job had no `common/setup`, so `ACTIONS_DIR` was
+    unset and the collector stopped the build. The job now runs `common/setup` too.
+  - The plugin integration test compares the descriptor's `srcmorph.*` properties both ways against
+    a deliberate list. `srcmorph.modelDirectory`, added with the model-directory resolution, was
+    never added to that list. It is listed now, and all six steps pass locally (20 properties).
 - **`srcmorph-cli` could not be built on Windows at all.** The `collect-runtime-licenses` execution passes a
   one-line Python program to `python3 -c`, and `exec-maven-plugin` drops the double quotes out of that
   argument on Windows: `find_spec("actionlib")` reached Python as `find_spec(actionlib)`, so every
@@ -70,7 +81,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 - **...and that fix left `spotbugs:check` red.** SpotBugs reports `VA_FORMAT_STRING_USES_NEWLINE` for every
   `String.format` pattern containing `\n` and asks for `%n` — the platform separator this block must not
   carry, so the rule and the requirement are in direct conflict. Nothing could have shown it: the reactor
-  still dies earlier on the unresolvable `net.ladenthin:llama:6.0.0` (see `TODO.md`), so no CI run reaches
+  still died earlier on the then unresolvable `net.ladenthin:llama:6.0.0`, so no CI run reached
   SpotBugs, and `main` was red on a check that never executed. `appendPasteBlock` appends the newline as a
   literal through a new `appendXmlNumber` helper now — the shape `appendJsonNumber`/`appendYamlNumber`
   already use for the same reason — and formats the numbers at the call site through the `FORMAT_*` constants

@@ -10,21 +10,6 @@ everything below is genuinely still open.
 
 ## Open
 
-- **`main` does not build until `net.ladenthin:llama` 6.0.0 is released.** `srcmorph/pom.xml` pins
-  `<llama.version>6.0.0</llama.version>` (`b710796`; jllama renumbered its next release from 5.2.0 to
-  6.0.0), and Central's newest is still `5.1.0`
-  (`llama-6.0.0.pom` is HTTP 404, checked 2026-10-20). This reactor declares no repository besides
-  Central, so every CI run is red at the first Maven step until that release exists. It passes locally
-  wherever an earlier `mvn install` of java-llama.cpp left the version in `~/.m2`; reproduce the real
-  state with `mvn -Dmaven.repo.local=/tmp/empty dependency:get -Dartifact=net.ladenthin:llama:6.0.0`.
-  **Reverting is not an option**: the pom comment explains why 6.0.0 is a breaking bump this module
-  needs (the binding removed `enableFlashAttn()`/`FLASH_ATTN` and renamed `setTensorReadLazy` to
-  `setLazyMode`; the provider uses the new forms, so it cannot compile against 5.1.0), and the reactor additionally depends on 6.0.0's
-  natives-jar split (`net.ladenthin:llama-platform`, GPU natives jars via `-Dllama.classifier`). Against a locally installed snapshot of it
-  (`-Dllama.version=<v>-SNAPSHOT install`, measured under the old 5.2.0 number) the whole reactor was
-  green, so the jllama release is the
-  only thing missing -- this item closes with it, nothing to change here.
-
 - **The GPU classifier fat jars are verified structurally, never launched.** Since 1.2.0
   `.github/verify-classifier-fatjars.sh` asserts each is the artifact its name claims (one jar per
   classifier, the promised backend directory next to the default CPU natives, so a broken
