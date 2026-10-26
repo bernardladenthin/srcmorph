@@ -83,7 +83,7 @@ public class ExamplesConfigBindingTest {
     }
 
     /**
-     * {@code examples/windows-fatjar/} is the build-it-yourself example (docs/windows-intel-core-ultra.md):
+     * {@code examples/build-your-own-jar/} is how a user builds the runnable jar (docs/windows-intel-core-ultra.md):
      * its {@code srcmorph.yaml} is meant for a real model, so it is not one of the mock fixtures above,
      * but it must still bind under the strict mapper, start with the safe {@code Plan}, and route every
      * file through a fallback rule that handles an oversized file. Its {@code pom.xml} names the CLI's
@@ -92,8 +92,8 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if an example file cannot be read
      */
     @Test
-    public void windowsFatJarExample_bindsAndNamesTheMainClass() throws IOException {
-        final Path directory = EXAMPLES_DIRECTORY.resolve("windows-fatjar");
+    public void buildYourOwnJarExample_bindsAndNamesTheMainClass() throws IOException {
+        final Path directory = EXAMPLES_DIRECTORY.resolve("build-your-own-jar");
         final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph.yaml")));
 
         assertThat(configuration.command, is(CCommand.Plan));
