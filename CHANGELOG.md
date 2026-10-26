@@ -72,7 +72,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 - **...and that fix left `spotbugs:check` red.** SpotBugs reports `VA_FORMAT_STRING_USES_NEWLINE` for every
   `String.format` pattern containing `\n` and asks for `%n` — the platform separator this block must not
   carry, so the rule and the requirement are in direct conflict. Nothing could have shown it: the reactor
-  still dies earlier on the unresolvable `net.ladenthin:llama:6.0.0` (see `TODO.md`), so no CI run reaches
+  still died earlier on the then unresolvable `net.ladenthin:llama:6.0.0`, so no CI run reached
   SpotBugs, and `main` was red on a check that never executed. `appendPasteBlock` appends the newline as a
   literal through a new `appendXmlNumber` helper now — the shape `appendJsonNumber`/`appendYamlNumber`
   already use for the same reason — and formats the numbers at the call site through the `FORMAT_*` constants
