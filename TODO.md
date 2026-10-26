@@ -35,18 +35,23 @@ everything below is genuinely still open.
   no AMD, Intel or second GPU here. Vulkan is reachable on any NVIDIA box and is the cheapest one to
   add next.
 
-- **Follow java-llama.cpp and drop the per-classifier fat jars? (owner's decision)** Since its
+- **Drop the fat jars in 1.4.0 (owner's decision, 2026-10-26).** 1.3.0 is the last release with
+  fat jars on GitHub; they were never on Central (`<attach>false</attach>`, `--maven-only`, and no
+  `"central": true` in `.github/release-assets.json`), so removing them touches only the GitHub
+  release. Users build their own jar locally, as `examples/windows-fatjar` shows. Since its
   modular natives java-llama.cpp ships no fat jar at all: the thin jar on Central is the deliverable,
   a GPU is `jbang --deps net.ladenthin:llama:<v>:<classifier> …`, and its smoke jobs launch the
   published jars on the classpath a consumer resolves. The same shape fits `srcmorph-cli`
   (`jbang net.ladenthin:srcmorph-cli:<v> config.json` resolves slf4j-simple and llama-platform from its
-  pom; a GPU is one more `--deps` jar) and would remove the 14 signed classifier fat jars per release,
-  the loop above and the structural-only check. It would also close a gap the current shape has: the
+  pom; a GPU is one more `--deps` jar). Removing them drops the default and 14 signed classifier fat
+  jars per release, the build loop in `publish.yml`, `sign-fatjars.sh`, `verify-classifier-fatjars.sh`
+  and `.github/release-assets.json`'s file rules. It also closes a gap the current shape has: the
   artifact `smoke-fatjar` launches is the fat jar built by the `build` job (a GitHub asset, rebuilt by
   the publish jobs' loop), while the `srcmorph-cli` jar that goes to Central is never launched by any
-  job -- a smoke over the thin jar plus its resolved runtime classpath (what java-llama.cpp's smoke
-  sets are) would test what is published. Decide before the next release that bumps to a published
-  llama 6.0.0; the classifier list is current for 6.0.0 either way.
+  job. The smoke has to move to the thin jar plus its resolved runtime classpath (what
+  java-llama.cpp's smoke sets are), so it tests what is published. `README.md`,
+  `srcmorph-cli/README.md`, `CLAUDE.md` and the eight `examples/run_*` scripts that name the fat jar
+  go with it.
 
 - **jqwik pin policy** — see [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md). `jqwik.version ≤ 1.9.3` is mandatory (declared in `srcmorph/pom.xml`, the only reactor module with a jqwik test dependency).
 
