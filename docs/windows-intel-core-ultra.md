@@ -97,8 +97,9 @@ load_backends_next_to_this_library: 3 backend(s) registered [RPC, Vulkan, CPU], 
 
 ## Two settings worth measuring
 
-- **`threads`**: a Core Ultra mixes P-, E- and slow LP-E-cores, and ggml waits for the slowest thread.
-  Try 6, 8 and 10 rather than all cores.
+- **`threads`**: 4 is the default and enough for these models. A Core Ultra mixes P-, E- and slow
+  LP-E-cores, and ggml waits for the slowest thread, so more threads can be slower. Never set more
+  than the machine has cores: an oversubscribed run is orders of magnitude slower, not a little.
 - **`gpuLayers: 99` against `0`**: the iGPU shares memory and a 15 W budget with the CPU, so measure
   before deciding. `command: Calibrate` prints each model's prefill and decode speed.
 

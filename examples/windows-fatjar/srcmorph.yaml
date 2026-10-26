@@ -36,7 +36,7 @@ srcMorph:
       contextSize: 16384                # tokens; a file larger than this is handled by onOversize
       maxOutputTokens: 1024
       temperature: 0.15
-      threads: 8                        # measure 6, 8, 10; all cores is rarely the fastest
+      threads: 4                        # the default; more only after measuring, never more than cores
       gpuLayers: 99                     # 99 = everything on the GPU (Vulkan), 0 = CPU only
 
   fieldGenerations:
