@@ -11,6 +11,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Added
+- **`docs/windows-intel-core-ultra.md`: srcmorph on Windows.** The guide covers both routes, the CLI
+  fat jar and the Maven plugin, with the Vulkan natives for an Intel iGPU. It says which artifacts to
+  take, gives one configuration for both routes, and explains the plan, the incremental index, threads
+  and how to verify what loaded. Every command and snippet was run on Windows (`cmd.exe`, 1.3.0-SNAPSHOT
+  on llama 6.0.0): the CLI on the CPU and with Vulkan, the plugin with Vulkan, and the guide's own YAML
+  through the CLI's strict mapper.
+
 ### Changed
 - **`bernardladenthin/actions` pinned at v1.1.0.** v1.1.0 adds `java/audit-publication`, an audit of a
   published release from the outside (not used here yet); nothing changes for the actions in use.
@@ -56,6 +64,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   directory unless the entry was edited.
 
 ### Fixed
+- **Stale prompt-template documentation.** The plugin README described a template as taking two `%s`
+  placeholders, and its examples, like the README Quickstart, ended in `File: %s` / `Source: %s`.
+  Since the core extraction (`b141d20`) a template is the system prompt, sent verbatim, and the file
+  name and source go to the model as a separate user message. A `%s` therefore reached the model
+  literally. The text now says so, and the examples carry no placeholders.
+- **The plugin README's GPU section described the llama natives before 6.0.0.** It said a GPU natives
+  jar holds `jllama.dll`, that `lib.path` points at "the GPU `jllama.dll`", and that a GPU library
+  whose runtime is missing fails over to the CPU one. Since 6.0.0 a GPU jar holds one ggml backend
+  module that is put next to the CPU library, and `lib.path` names a natives directory. The section
+  now describes that, adds `cublasLt64_13.dll` to the CUDA runtime list, and links the Windows guide.
 - **Two CI defects that the unresolvable llama 6.0.0 had hidden.** Until 6.0.0 reached Central, every
   run stopped at the first Maven step. The first run that resolved it (srcmorph#243) went further and
   found two more:
