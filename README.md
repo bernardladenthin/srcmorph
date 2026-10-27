@@ -97,7 +97,7 @@ diagrams, or even source-to-source transformations.
 | Module | Artifact | What it is |
 |---|---|---|
 | [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` engines. Use this to embed srcmorph in your own tooling. |
-| [`srcmorph-cli/`](srcmorph-cli/README.md) | `net.ladenthin:srcmorph-cli` | A standalone CLI driven by one JSON or YAML configuration file (ships as a `java -jar`-ready fat jar). No Maven project required. |
+| [`srcmorph-cli/`](srcmorph-cli/README.md) | `net.ladenthin:srcmorph-cli` | A standalone CLI driven by one JSON or YAML configuration file. You build the runnable jar for your machine with one `mvn package` ([`examples/build-your-own-jar/`](examples/build-your-own-jar/)). |
 | [`srcmorph-maven-plugin/`](srcmorph-maven-plugin/README.md) | `net.ladenthin:srcmorph-maven-plugin` | The Maven plugin, a thin wrapper around `srcmorph` — **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` (goal prefix `srcmorph`, was `ai-index`; properties `srcmorph.*`, were `aiIndex.*`). |
 
 All three modules (plus the reactor parent pom) are released together from this one repository at
@@ -162,19 +162,29 @@ model recommendations: [`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin
 
 ### 2. Standalone CLI
 
+srcmorph publishes no runnable jar: there are too many OS, CPU and GPU combinations to ship one per
+machine. You build your own with Maven from
+[`examples/build-your-own-jar/`](examples/build-your-own-jar/): its `pom.xml` takes `srcmorph-cli`
+from Maven Central plus exactly the llama natives of your OS/arch (picked automatically), and
+optionally one GPU module.
+
 ```bash
-java -jar srcmorph-cli-<version>-jar-with-dependencies.jar examples/config_All.json
+cd examples/build-your-own-jar
+./build.sh                                  # or build.bat; add e.g. -Dgpu=vulkan-linux-x86-64
+java -jar target/srcmorph.jar ../config_All.json
 ```
 
 Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider (no GGUF
 model required) — see [`examples/`](examples/) for the full set plus paired `run_*.sh`/`run_*.bat`
 launcher scripts, and [`srcmorph-cli/README.md`](srcmorph-cli/README.md) for the config-file
-reference.
+reference. A walkthrough for a Windows laptop with Vulkan is in
+[`docs/windows-intel-core-ultra.md`](docs/windows-intel-core-ultra.md).
 
-**To build a fat jar with only your machine's natives** (for example the CPU and Vulkan classifiers
-on Windows), see [`docs/windows-intel-core-ultra.md`](docs/windows-intel-core-ultra.md). It covers a
-pom, `build.bat` and `run.bat` in [`examples/windows-fatjar/`](examples/windows-fatjar/), and a
-commented configuration.
+Without building anything, [JBang](https://www.jbang.dev/) can run the CLI straight from Maven
+Central. It resolves `srcmorph-cli` with the CPU natives of every desktop platform, and a GPU
+module is one more `--deps` jar:
+`jbang --deps net.ladenthin:llama:6.0.0:vulkan-linux-x86-64 net.ladenthin:srcmorph-cli:<version> config.json`.
+Maven is the supported path; JBang is a shortcut.
 
 ### 3. Library dependency
 

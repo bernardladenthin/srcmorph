@@ -62,10 +62,6 @@ SPDX-License-Identifier: Apache-2.0
     </distributionManagement>
 
     <properties>
-        <!-- bernardladenthin/actions, whose license collector (actionlib.java.thirdpartylicenses) the
-             fat jar build runs: ACTIONS_DIR in CI (common/setup), else a checkout next to this
-             repository. -->
-        <ci.actions.dir>${maven.multiModuleProjectDirectory}/../actions</ci.actions.dir>
         <!--
             SonarCloud requires sonar.organization on the project the scanner actually analyzes.
             The SonarCloud scan runs at THIS reactor root (.github/workflows/sonarqube.yml calls
@@ -95,7 +91,7 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         Reactor modules. `srcmorph` is the extracted core library (config/document/indexer/prompt/
         provider/support — framework-free, no Maven plugin API); `srcmorph-cli` is the standalone
-        JSON/YAML-driven CLI (fat jar deliverable) built on top of it; `srcmorph-maven-plugin`
+        JSON/YAML-driven CLI built on top of it; `srcmorph-maven-plugin`
         depends on the core library too and supplies only the Mojo entry points (renamed from
         `llamacpp-ai-index-maven-plugin` in the migration — goal prefix `srcmorph`, package
         `net.ladenthin.maven.srcmorph.mojo`, properties `srcmorph.*`).
@@ -129,7 +125,7 @@ SPDX-License-Identifier: Apache-2.0
                 <version>2.0.20</version>
             </dependency>
             <!--
-                The SLF4J binding shipped inside srcmorph-cli's fat jar. It is slf4j-simple, not
+                The SLF4J binding srcmorph-cli declares at runtime scope (and so every jar built from it). It is slf4j-simple, not
                 logback, because every logback release from 1.4.0 on is Java 11 bytecode (class-file
                 major 55) while this reactor's production code targets Java 8: SLF4J's ServiceLoader
                 finds LogbackServiceProvider at startup and an unpatched Java 8 JVM then dies with
@@ -150,7 +146,7 @@ SPDX-License-Identifier: Apache-2.0
             <!--
                 Pin logback-classic for the TEST scope only: AiFieldGenerationSupportTest attaches a
                 logback ListAppender to capture log output, and LogCaptor-style capture needs logback
-                specifically. Test scope never reaches a published artifact or the fat jar, so its
+                specifically. Test scope never reaches a published artifact or a consumer's runtime classpath, so its
                 Java 11 bytecode is harmless here. The managed version wins over whatever the llama
                 dependency brings transitively, satisfying maven-enforcer's DependencyConvergence.
             -->
@@ -193,7 +189,7 @@ SPDX-License-Identifier: Apache-2.0
                 COMPILE-ONLY, and that is the whole point. checker-qual is class-file major 55 from
                 4.0.0 on, its annotations are @Retention(RUNTIME), and anything that reflects over an
                 annotated element (Jackson does, and srcmorph-cli binds its whole configuration with
-                Jackson) loads them — so a copy inside the fat jar is an UnsupportedClassVersionError
+                Jackson) loads them — so a copy on a consumer's runtime classpath is an UnsupportedClassVersionError
                 waiting for a Java 8 consumer.
 
                 Pinning the SHIPPED copy to the last Java 8 line (3.55.1) does not work and was
@@ -205,7 +201,7 @@ SPDX-License-Identifier: Apache-2.0
 
                 Scope `provided` satisfies both constraints at once: 4.3.0 on the compile classpath
                 where the checker needs it, and excluded from consumers' transitive graph AND from
-                the fat jar (jar-with-dependencies takes scope runtime), so no checker-qual class of
+                any jar-with-dependencies built from it (that descriptor takes scope runtime), so no checker-qual class of
                 any version reaches a consumer's JVM. <optional>true</optional> alone would not have
                 been enough — that descriptor filters on scope only. Safe because no source in this
                 reactor imports org.checkerframework.
@@ -264,19 +260,6 @@ SPDX-License-Identifier: Apache-2.0
     </build>
 
     <profiles>
-        <profile>
-            <!-- ACTIONS_DIR (exported by bernardladenthin/actions' common/setup) wins over the
-                 sibling checkout ci.actions.dir defaults to. -->
-            <id>actions-dir-from-environment</id>
-            <activation>
-                <property>
-                    <name>env.ACTIONS_DIR</name>
-                </property>
-            </activation>
-            <properties>
-                <ci.actions.dir>${env.ACTIONS_DIR}</ci.actions.dir>
-            </properties>
-        </profile>
         <!--
             Signs and publishes every reactor module in one `mvn -P release deploy` (the
             java-llama.cpp reactor pattern). GPG signing at verify + Central Portal publishing;

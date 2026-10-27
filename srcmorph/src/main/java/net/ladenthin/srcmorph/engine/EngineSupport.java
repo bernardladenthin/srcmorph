@@ -168,8 +168,8 @@ final class EngineSupport {
      * <p><strong>Gated on the provider on purpose.</strong> Only {@code llamacpp-jni} loads a GGUF;
      * the {@code mock} provider ignores {@code modelPath} entirely, and every shipped example config
      * sets a deliberately non-existent {@code "unused-with-mock-provider.gguf"}. An ungated check
-     * would red those examples, their binding tests, the CLI end-to-end test and the fat-jar release
-     * smoke.
+     * would red those examples, their binding tests, the CLI end-to-end test and the jar smoke
+     * ({@code smoke-jar}) that gates every release.
      *
      * @param generationProvider     the configured provider key
      * @param modelDefinitionSupport model lookup built from the configured {@code <aiDefinitions>}

@@ -30,26 +30,6 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "HuggingFaceTB"
 SPDX-License-Identifier = "Apache-2.0"
 
-# Upstream license texts of runtime dependencies whose JARs carry none, bundled into the CLI fat
-# jar by the license collector of bernardladenthin/actions (--supplemental, third-party-notices/notices.json).
-[[annotations]]
-path = "third-party-notices/notices.json"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
-SPDX-License-Identifier = "Apache-2.0"
-
-[[annotations]]
-path = "third-party-notices/jspecify-1.0.1/**"
-precedence = "override"
-SPDX-FileCopyrightText = "2018-2020 The JSpecify Authors"
-SPDX-License-Identifier = "Apache-2.0"
-
-[[annotations]]
-path = "third-party-notices/snakeyaml-2.5/**"
-precedence = "override"
-SPDX-FileCopyrightText = "2008 SnakeYAML"
-SPDX-License-Identifier = "Apache-2.0"
-
 [[annotations]]
 path = "LICENSE"
 precedence = "aggregate"

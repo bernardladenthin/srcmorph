@@ -11,6 +11,32 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Removed
+- **No more fat jars on the GitHub release.** Up to 1.3.0 every release attached 15 signed
+  `srcmorph-cli-<version>-jar-with-dependencies[-<classifier>].jar` files (a CPU jar for every
+  desktop platform plus one per llama GPU module); they were never on Maven Central. There are too
+  many OS, CPU and GPU combinations to ship one per machine, so from 1.4.0 you build the runnable jar
+  yourself (see Changed). Gone with them: the `package`-bound assembly in `srcmorph-cli`, its
+  `fat-jar.xml` descriptor, the runtime license collector that only those jars needed (and with it
+  the build's dependency on a bernardladenthin/actions checkout and `third-party-notices/`), and in
+  CI the classifier build loop, `sign-fatjars.sh`, `verify-classifier-fatjars.sh` and its tests.
+  `.github/release-assets.json` names no files beyond the Maven artifacts.
+
+### Changed
+- **`examples/windows-fatjar/` is now `examples/build-your-own-jar/`, for every platform.** Its
+  `pom.xml` takes `srcmorph-cli` from Maven Central, picks the natives jar of the build machine's
+  OS/arch with an OS-activated profile (`-Dnatives=<classifier>` overrides it, and the enforcer
+  names the property when no profile matches), adds one GPU module with `-Dgpu=<classifier>`, and
+  packs everything with the logging defaults into `target/srcmorph.jar`. `build.sh`/`build.bat`
+  pass their arguments to Maven; `run.sh`/`run.bat` start the jar. The eight `examples/run_*`
+  scripts now run that jar instead of `srcmorph-cli/target/*-jar-with-dependencies.jar`. The README
+  mentions JBang as a shortcut (`srcmorph-cli`'s jar names its main class); Maven is the supported
+  path.
+- **CI: `smoke-fatjar` is now `smoke-jar` and tests the user's path.** It installs the reactor,
+  builds `examples/build-your-own-jar` against it (`srcmorph.version` and `llama.version` read from
+  the reactor), checks the Java 8 bytecode floor over that jar and the plugin jar, and runs `Plan`.
+  The example pom is therefore under test on every pull request.
+
 ## [1.3.0] - 2026-10-26
 
 ### Added

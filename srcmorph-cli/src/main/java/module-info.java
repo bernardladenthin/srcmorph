@@ -29,9 +29,9 @@
  * <p>{@code requires static org.jspecify} is needed only at compile time of this
  * descriptor; JSpecify annotations carry {@code RetentionPolicy.CLASS} so module-path
  * consumers never need jspecify on their runtime path. Checker Framework qualifiers are
- * likewise compile-time only. The fat jar produced by {@code maven-assembly-plugin} is a
- * classpath-only artifact and flattens multiple {@code module-info.class} entries harmlessly,
- * same as any other jar-with-dependencies build.</p>
+ * likewise compile-time only. The jar a user builds with {@code examples/build-your-own-jar}
+ * ({@code maven-assembly-plugin}) is a classpath-only artifact and flattens multiple
+ * {@code module-info.class} entries harmlessly, same as any other jar-with-dependencies build.</p>
  *
  * <p><strong>This descriptor is NOT purely decorative</strong> — unlike the core/plugin modules'
  * own {@code module-info.java} (which only need to satisfy the isolated, release-9

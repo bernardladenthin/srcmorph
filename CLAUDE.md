@@ -59,13 +59,14 @@ llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
 │       ├── indexer/      SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport, ...
 │       ├── document/  prompt/  provider/  support/
 │   └── src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf   (real-model tests live here)
-├── srcmorph-cli/                           CLI  net.ladenthin:srcmorph-cli  (fat jar = deliverable)
+├── srcmorph-cli/                           CLI  net.ladenthin:srcmorph-cli  (thin jar; users build the runnable one)
 │   └── src/main/java/net/ladenthin/srcmorph/cli/
 │       ├── Main.java                       BitcoinAddressFinder cli/Main.java pattern
 │       └── configuration/                  CConfiguration + CCommand (BAF public-field style)
 ├── srcmorph-maven-plugin/                   Maven plugin  net.ladenthin:srcmorph-maven-plugin, goalPrefix srcmorph
 │   └── src/main/java/net/ladenthin/maven/srcmorph/mojo/   (4 goal mojos + the abstract AbstractAiIndexMojo base; renamed package/properties)
 ├── examples/                               config_*.json/.yaml + run_*.sh/.bat + simplelogger.properties
+│   └── build-your-own-jar/                 pom.xml + build/run scripts: srcmorph-cli + this machine's natives -> srcmorph.jar
 ├── docs/                                   RELEASE.md + the ai-index model-benchmark writeups
 └── .github/workflows/                      CI adapted to the 3-module reactor
 ```
@@ -166,16 +167,21 @@ CLI driven by a single JSON or YAML configuration file:
   `@Parameter` fields — a JSON/YAML key under `srcMorph` reads identically to the matching plugin XML
   element. `CCommand` is `Plan | GenerateFileIndex | AggregatePackages | AggregateProject | All |
   Calibrate`; the default is `Plan` (safe: no model load, nothing written).
-- The fat jar (`srcmorph-cli-<version>-jar-with-dependencies.jar`, main class
-  `net.ladenthin.srcmorph.cli.Main`) is bound **unconditionally** to the `package` phase (a deliberate
-  divergence from BAF's `-P assembly` opt-in — for this module the fat jar IS the deliverable).
-- Ships its own SLF4J binding (`org.slf4j:slf4j-simple`, runtime scope) — unlike the library
+- **No runnable jar is built or published here** (since 1.4.0). `mvn package` produces only the thin
+  `srcmorph-cli` jar (its manifest names `net.ladenthin.srcmorph.cli.Main`, so `jbang` can run it).
+  Users build the runnable jar with `examples/build-your-own-jar/pom.xml`: `srcmorph-cli` from
+  Central, `llama-platform` excluded, the one natives jar of the OS/arch picked by an OS-activated
+  profile (`-Dnatives=` overrides), an optional GPU module via `-Dgpu=<classifier>`, packed by
+  `jar-with-dependencies` into `target/srcmorph.jar`. Up to 1.3.0 this module built a fat jar on
+  every `package` and CI released 15 of them on GitHub; there are too many OS/CPU/GPU combinations
+  to keep doing that.
+- Declares its own SLF4J binding (`org.slf4j:slf4j-simple`, runtime scope) — unlike the library
   (consumer picks any SLF4J binding) and the plugin (gets one for free from Maven's own
   `maven-slf4j-provider`), a standalone `java -jar` process needs to bring its own or every log line is
-  silently dropped. It is **not** logback: see "Java 8 bytecode floor" below. Fat-jar defaults live in
-  `srcmorph-cli/src/main/assembly-resources/simplelogger.properties`, added by the custom assembly
-  descriptor `srcmorph-cli/src/assembly/fat-jar.xml` (the predefined `jar-with-dependencies` ref
-  verbatim plus that one file) so they never reach the published `srcmorph-cli` jar.
+  silently dropped. It is **not** logback: see "Java 8 bytecode floor" below. The logging defaults
+  (INFO, stdout, timestamps) are `examples/build-your-own-jar/simplelogger.properties`, which that
+  pom packs into the user's jar; the published `srcmorph-cli` jar carries none, so an embedder's own
+  configuration is never overridden.
 - **Architecture rules** (`CliArchitectureTest`): `cliIsLeaf` (nothing else in the reactor may depend on
   this module — it is the leaf-most consumer), `noPublicMutableFields` (with the `configuration`
   package carve-out), `noSystemExit`, `mavenFree` (must never depend on the Maven Plugin API — that
@@ -272,7 +278,7 @@ keep working.
 ```bash
 mvn compile          # Compiles every module (Java + generates nothing native; pure Java reactor)
 mvn test             # Runs every module's tests
-mvn package          # Builds all four reactor projects: parent pom + 3 jars (incl. the CLI's fat jar)
+mvn package          # Builds all four reactor projects: parent pom + 3 jars
 mvn install          # Installs all four into ~/.m2 (needed before iterating on a single module — see below)
 ```
 
@@ -307,8 +313,9 @@ mvn -pl srcmorph-maven-plugin srcmorph:generate -P srcmorph-selftest
 ### Run the CLI
 
 ```bash
-mvn -pl srcmorph-cli package
-java -jar srcmorph-cli/target/srcmorph-cli-1.4.0-SNAPSHOT-jar-with-dependencies.jar examples/config_All.json
+mvn install -DskipTests
+mvn -f examples/build-your-own-jar/pom.xml package -Dsrcmorph.version=1.4.0-SNAPSHOT
+java -jar examples/build-your-own-jar/target/srcmorph.jar examples/config_All.json
 ```
 
 See `examples/` (repo root) for ready-to-run `config_*.json`/`.yaml` + paired `run_*.sh`/`.bat`
@@ -480,7 +487,8 @@ and both are easy to undo by accident:
   fails every build with `Could not load type:
   org.checkerframework.framework.qual.DoesNotUnrefineReceiver`. Processor and qualifiers must share a
   major version. `provided` satisfies both: 4.3.0 where the checker needs it, and excluded from
-  consumers' graph **and** from the fat jar (`jar-with-dependencies` takes scope `runtime`).
+  consumers' graph **and** from any `jar-with-dependencies` built from it (that descriptor takes
+  scope `runtime`).
   `<optional>true</optional>` alone would not have been enough — that descriptor filters on scope
   only. Safe because no source in this reactor imports `org.checkerframework`.
 
@@ -493,7 +501,7 @@ exceeds `max-major`:
   with:
     max-major: "52"
     paths: |          # jars or directories, one per line
-      fatjar
+      smoke-jars
     allow: |          # optional: '<jar-basename>:<entry-path>' globs to tolerate
 ```
 
@@ -502,7 +510,8 @@ whole artifact set. `module-info.class` and `META-INF/versions/**` are skipped u
 a classpath JVM never loads either, which is why a `release 9` `module-info` is fine. `allow`
 takes globs matched against `<jar-basename>:<entry-path>` for anything else that must be
 tolerated. Exit codes: 0 clean, 1 violations, **2 nothing to scan** (an empty input is a failure,
-never a pass). Wired into the `smoke-fatjar` job at `max-major` 52.
+never a pass). Wired into the `smoke-jar` job at `max-major` 52, over the user-built `srcmorph.jar`
+(the CLI with its whole runtime classpath) and the plugin jar.
 
 ## Javadoc Conventions
 
@@ -543,7 +552,7 @@ Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (830 mutations),
 `srcmorph-maven-plugin` (62, the five mojo classes) and `srcmorph-cli` (16). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
-`smoke-fatjar` release-gating job already runs the real `java -jar` artifact and asserts
+`smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts
 `Main#run end.` in its output, which is an end-to-end check a unit mutant cannot reach.
 
 **`LlamaCppJniAiGenerationProvider` is split so the gate can reach it, and the split is load-bearing.**
@@ -593,17 +602,14 @@ clear of the JPMS module-mode javadoc trap that bit BAF. **Before raising the Ja
 level to ≥ 9 in any module, read**
 [`../workspace/policies/jpms-module-descriptor.md`](../workspace/policies/jpms-module-descriptor.md).
 
-## Fat-jar release assets
+## Release assets
 
-The `srcmorph-cli` fat jar (`jar-with-dependencies`) is a **GitHub-Release asset only — never
-Maven Central** (`srcmorph-cli/pom.xml` sets `<attach>false</attach>`), attached with a detached
-GPG `.asc`. CI builds **one fat jar per desktop GPU module jar of `net.ladenthin:llama`** (the default
-CPU jar + 14: `cuda13`, `vulkan`, `opencl`, `rocm`, `sycl`, `openvino` per OS/arch -- the `CLASSIFIERS`
-list in `publish.yml`, every `module` row of java-llama.cpp's `natives.csv` but the Android one; no
-`msvc`, `sycl-fp*` or 32-bit jar exists since llama 6.0.0) and signs them via `.github/sign-fatjars.sh`
-(srcmorph's own since java-llama.cpp dropped its fat jars with its modular natives). The convention +
-per-repo shapes + the classifier keep-in-sync rule are documented
-in [`../workspace/policies/fat-jar-release-assets.md`](../workspace/policies/fat-jar-release-assets.md).
+srcmorph releases **only the Maven artifacts**: the four POMs and the three modules' jar, sources
+and javadoc, each with a detached GPG `.asc`, on Central and as GitHub release assets.
+`.github/release-assets.json` is `{"schema": 1}`: no extra file rules. Up to 1.3.0 the publish jobs
+also built, signed and attached one `srcmorph-cli` fat jar per desktop GPU module of
+`net.ladenthin:llama` (15 per release, never on Central); 1.4.0 dropped them together with
+`sign-fatjars.sh`, `verify-classifier-fatjars.sh` and the license collector that only they needed.
 Every publication goes through the one gate of [bernardladenthin/actions](https://github.com/bernardladenthin/actions) (full text: [docs/publication.md](https://github.com/bernardladenthin/actions/blob/main/docs/publication.md)).
 `check-snapshot` / `check-tag` run `java/check-release-ref`: a release publishes only from the tag
 `v<version>` of a non-SNAPSHOT version, a snapshot only a `-SNAPSHOT` version and never from a tag.
@@ -621,14 +627,13 @@ complete upload and starts as a draft; a versioned tag is refused), `central-sna
 (environment, permissions, concurrency); `java/check-publication` checks their wiring in every pull
 request.
 
-The publish jobs stage deploy-signed Maven outputs with `--maven-only` before the classifier
-loop rebuilds `target/`. The final collector uses `--maven-assets central-assets` and requires
-all configured fat jars from `fatjar-assets/`. The loop's classifier list comes from file rule 1
-in `.github/release-assets.json` via `--list-classifiers 1` (default CPU is built last).
+The publish jobs collect the deploy-signed Maven outputs with `--maven-only` into
+`central-assets/`, and `finalize-publication` reads them from there (`--maven-assets`).
 
-**srcmorph-specific smoke.** The cross-repo rule "no release asset is attached that CI has not run"
-is implemented here by the `smoke-fatjar` job (`needs: [build]`, gates both publish jobs): it
-downloads the `plugin-jars` artifact and runs the `java/smoke-fatjar-cli` action of [bernardladenthin/actions](https://github.com/bernardladenthin/actions)
+**srcmorph-specific smoke.** The `smoke-jar` job (`needs: startgate`, gates both publish jobs) takes
+the path a user takes: `mvn install` of the reactor, then `examples/build-your-own-jar` with
+`srcmorph.version` and `llama.version` read from the reactor, so the example pom itself is under test
+on every pull request. It then runs the `java/smoke-fatjar-cli` action of [bernardladenthin/actions](https://github.com/bernardladenthin/actions)
 (BAF runs it too) from `examples/` against `config_Plan.json`, asserting exit 0 plus `Main#run end.` in the output.
 `Plan` with the `mock` provider needs no GGUF, no GPU and no network, which makes this the cheapest
 possible real launch of the CLI. **Do not "strengthen" it to `config_All.json` over a real source
@@ -675,15 +680,6 @@ in **`.github/actions-config.json`**:
   from its own configuration), and Kotlin Gradle plugins behind the POMs' Kotlin;
 - **publication**: the publication jobs are wired as the actions expect, and a dry run of
   `.github/release-assets.json` against the real POMs collects exactly what it promises.
-
-**Packaging srcmorph-cli needs bernardladenthin/actions.** Its `package` runs the license collector
-(`python3 -m actionlib.java.thirdpartylicenses`): CI provides it through `common/setup`
-(`ACTIONS_DIR`) and the reusable SonarQube workflow, locally a checkout next to this repository
-(`../actions`) does; when neither is there, the collector call says so and where it looked, instead
-of a Python traceback.
-
-**srcmorph's own build checks** stay here (`.github/buildcheck/`, the classifier fat-jar check):
-`python3 -m unittest discover -s .github/buildcheck/tests -t .github`, run by `repository-checks`.
 
 The JDK every workflow uses is `.java-version` (setup-java's `java-version-file`), a template of
 the `java` set. Why a repository instead of copies:

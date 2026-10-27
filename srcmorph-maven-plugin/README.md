@@ -606,7 +606,7 @@ In both cases:
 - **CUDA** needs a matching CUDA 13 toolkit + driver, and the toolkit's `bin\x64` (with `cudart64_13.dll`,
   `cublas64_13.dll`, `cublasLt64_13.dll`) on `PATH` — the natives jar bundles only the backend module
   `ggml-cuda.dll`, not the CUDA runtime.
-- **Vulkan** needs only the GPU driver (it brings `vulkan-1.dll`). A CLI fat jar built with exactly
+- **Vulkan** needs only the GPU driver (it brings `vulkan-1.dll`). A CLI jar built with exactly
   the CPU and Vulkan natives of a Windows machine is in [docs/windows-intel-core-ultra.md](../docs/windows-intel-core-ultra.md).
 - **GPU layer offload** — set `<gpuLayers>` inside your `<aiDefinition>` (see "Per-model
   `<aiDefinition>` parameters" above): `-1` (default) does **not** pin a layer count, so llama.cpp
