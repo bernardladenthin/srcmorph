@@ -269,7 +269,7 @@ public class AiGenerationConfigTest {
     @Test
     public void apiKeyEnvDefaultsAndRoundTrips() {
         AiGenerationConfig c = new AiGenerationConfig();
-        assertThat(c.getApiKeyEnv(), is("OPENROUTER_API_KEY"));
+        assertThat(c.getApiKeyEnv(), is(""));
         c.setApiKeyEnv("MY_KEY");
         assertThat(c.getApiKeyEnv(), is("MY_KEY"));
     }
@@ -279,7 +279,7 @@ public class AiGenerationConfigTest {
         AiGenerationConfig c = new AiGenerationConfig();
         c.setApiKeyEnv("MY_KEY");
         c.setApiKeyEnv(null);
-        assertThat(c.getApiKeyEnv(), is("OPENROUTER_API_KEY"));
+        assertThat(c.getApiKeyEnv(), is(""));
     }
 
     @Test

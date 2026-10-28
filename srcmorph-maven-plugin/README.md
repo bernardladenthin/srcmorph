@@ -411,7 +411,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `provider` | *(empty)* | The backend of this model: `llamacpp-jni`, `openai-compatible` or `mock`; empty uses the run's `generationProvider`. Lets one run send some files to a local GGUF and others to a remote model |
 | `remoteModel` | *(empty)* | `openai-compatible` only: the model id requested (the `model` field, e.g. `openai/gpt-6-luna` on OpenRouter); empty sends none, which a single-model `llama-server` or `NativeServer` accepts |
 | `baseUrl` | `https://openrouter.ai/api/v1` | `openai-compatible` only: the API base; `<baseUrl>/chat/completions` is called. A local server is `http://127.0.0.1:<port>/v1`. Must be `http(s)`, checked before the run starts |
-| `apiKeyEnv` | `OPENROUTER_API_KEY` | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer`. The key itself never goes into a configuration file. Unset or empty sends no key. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
+| `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default), or a variable that is unset or empty, sends no key: a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
 | `threads` | `4` (fewer on a machine with fewer cores) | CPU threads for inference. Never set more than the machine has cores: ggml's threads wait on each other, and an oversubscribed run is orders of magnitude slower |
@@ -464,6 +464,7 @@ nothing is retried.
   <key>luna</key>
   <provider>openai-compatible</provider>
   <remoteModel>openai/gpt-6-luna</remoteModel>
+  <apiKeyEnv>OPENROUTER_API_KEY</apiKeyEnv>
   <maxOutputTokens>1024</maxOutputTokens>
 </aiDefinition>
 ```

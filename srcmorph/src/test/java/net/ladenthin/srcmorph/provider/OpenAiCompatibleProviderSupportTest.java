@@ -215,7 +215,9 @@ public class OpenAiCompatibleProviderSupportTest {
     public void apiKey_variableSet_returnsTheTrimmedValue() {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", " sk-test \n");
-        assertThat(support(LlamaCppJniConfig.builder("").build(), environment).apiKey(), is("sk-test"));
+        final LlamaCppJniConfig config =
+                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        assertThat(support(config, environment).apiKey(), is("sk-test"));
     }
 
     @Test
@@ -230,14 +232,33 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void apiKey_variableUnset_returnsNull() {
-        assertThat(support(LlamaCppJniConfig.builder("").build()).apiKey(), is(nullValue()));
+        final LlamaCppJniConfig config =
+                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        assertThat(support(config).apiKey(), is(nullValue()));
     }
 
     @Test
     public void apiKey_variableBlank_returnsNull() {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "  ");
-        assertThat(support(LlamaCppJniConfig.builder("").build(), environment).apiKey(), is(nullValue()));
+        final LlamaCppJniConfig config =
+                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        assertThat(support(config, environment).apiKey(), is(nullValue()));
+    }
+
+    /**
+     * The default names no variable, so a model that only points {@code baseUrl} at another server
+     * cannot send it the OpenRouter key that happens to be in the environment.
+     */
+    @Test
+    public void apiKeyFor_defaultConfigWithACustomHttpsEndpoint_sendsNoKey() throws Exception {
+        final Map<String, String> environment = new HashMap<>();
+        environment.put("OPENROUTER_API_KEY", "sk-or-test");
+        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+                .baseUrl("https://other.example/v1")
+                .build();
+        assertThat(
+                support(config, environment).apiKeyFor("https://other.example/v1/chat/completions"), is(nullValue()));
     }
 
     @Test
@@ -257,7 +278,8 @@ public class OpenAiCompatibleProviderSupportTest {
     private static OpenAiCompatibleProviderSupport supportWithKey() {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "sk-test");
-        return support(LlamaCppJniConfig.builder("").build(), environment);
+        return support(
+                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build(), environment);
     }
 
     @Test

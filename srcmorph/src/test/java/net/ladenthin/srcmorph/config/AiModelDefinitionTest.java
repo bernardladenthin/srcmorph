@@ -267,7 +267,7 @@ public class AiModelDefinitionTest {
     @Test
     public void apiKeyEnvDefaultsAndRoundTrips() {
         AiModelDefinition c = new AiModelDefinition();
-        assertThat(c.getApiKeyEnv(), is("OPENROUTER_API_KEY"));
+        assertThat(c.getApiKeyEnv(), is(""));
         c.setApiKeyEnv("MY_KEY");
         assertThat(c.getApiKeyEnv(), is("MY_KEY"));
     }
@@ -277,7 +277,7 @@ public class AiModelDefinitionTest {
         AiModelDefinition c = new AiModelDefinition();
         c.setApiKeyEnv("MY_KEY");
         c.setApiKeyEnv(null);
-        assertThat(c.getApiKeyEnv(), is("OPENROUTER_API_KEY"));
+        assertThat(c.getApiKeyEnv(), is(""));
     }
 
     @Test

@@ -16,9 +16,11 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   default `baseUrl`), a llama.cpp `llama-server`, jllama's `NativeServer` or any server answering
   `POST <baseUrl>/chat/completions`. Four new per-model settings: `provider` (overrides the run's
   `generationProvider` for this model, so one run can mix local and remote models), `remoteModel`,
-  `baseUrl` and `apiKeyEnv` (the *name* of the environment variable holding the key, default
-  `OPENROUTER_API_KEY`; the key never goes into a configuration, and it is sent only over `https`
-  or to a loopback `http` server, never in cleartext to another machine). The request carries the same
+  `baseUrl` and `apiKeyEnv` (the *name* of the environment variable holding the key, e.g.
+  `OPENROUTER_API_KEY`; empty by default, so no key is sent unless a model names its variable and a
+  custom endpoint never receives the OpenRouter key by accident; the key never goes into a
+  configuration, and it is sent only over `https` or to a loopback `http` server, never in cleartext
+  to another machine). The request carries the same
   prompts as the local provider and only the portable sampling knobs; the answer goes through the
   same parsing, so the `.ai.md` comes out the same way. Remote models skip the GGUF checks before a
   run and instead must name an `http(s)` `baseUrl`. Local stays the default: nothing leaves the

@@ -385,11 +385,14 @@ public class AiGenerationConfig {
 
     /**
      * Default name of the environment variable holding the API key of the {@code openai-compatible}
-     * provider, sent as {@code Authorization: Bearer <key>}. The key itself never appears in a
-     * configuration file. Empty, or a variable that is unset or empty, sends no key, which a local
-     * server without {@code --api-key} accepts.
+     * provider, sent as {@code Authorization: Bearer <key>}: empty, so <b>no key is sent unless a
+     * model names its variable</b> (for OpenRouter, {@code OPENROUTER_API_KEY}). A default that named
+     * a variable would hand that key to any {@code baseUrl} a model sets, so a custom endpoint would
+     * receive the OpenRouter key without anyone having decided that. The key itself never appears in
+     * a configuration file; an empty name, or a variable that is unset or empty, sends no key, which a
+     * local server without {@code --api-key} accepts.
      */
-    public static final String DEFAULT_API_KEY_ENV = "OPENROUTER_API_KEY";
+    public static final String DEFAULT_API_KEY_ENV = "";
 
     /**
      * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).

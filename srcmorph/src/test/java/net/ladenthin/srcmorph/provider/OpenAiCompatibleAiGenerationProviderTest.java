@@ -157,7 +157,9 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
     @Test
     public void generate_keySet_sendsItAsBearer() throws Exception {
-        provider(LlamaCppJniConfig.builder(""), name -> "OPENROUTER_API_KEY".equals(name) ? "sk-stub" : null)
+        provider(
+                        LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY"),
+                        name -> "OPENROUTER_API_KEY".equals(name) ? "sk-stub" : null)
                 .generate(REQUEST);
         assertThat(header("Authorization"), is("Bearer sk-stub"));
     }

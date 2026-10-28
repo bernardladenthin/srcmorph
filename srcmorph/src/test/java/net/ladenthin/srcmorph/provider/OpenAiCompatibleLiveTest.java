@@ -60,8 +60,8 @@ public class OpenAiCompatibleLiveTest {
     /** System property naming the OpenRouter model to test; the OpenRouter test is skipped without it. */
     public static final String OPENROUTER_MODEL_PROPERTY = "net.ladenthin.srcmorph.openai.openRouterModel";
 
-    /** Environment variable holding the OpenRouter key: the provider's default {@code apiKeyEnv}. */
-    private static final String OPENROUTER_KEY_ENV = AiGenerationConfig.DEFAULT_API_KEY_ENV;
+    /** Environment variable holding the OpenRouter key, named explicitly as a model must. */
+    private static final String OPENROUTER_KEY_ENV = "OPENROUTER_API_KEY";
 
     /** Output budget: enough for a reasoning model's low-effort thinking plus a short summary. */
     private static final int MAX_OUTPUT_TOKENS = 1024;

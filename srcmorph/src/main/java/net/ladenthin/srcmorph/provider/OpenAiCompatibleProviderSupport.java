@@ -184,8 +184,10 @@ final class OpenAiCompatibleProviderSupport {
      * The API key to send to {@code endpoint}: {@link #apiKey()}, but never in cleartext to another
      * machine. A key goes out over {@code https}, or over plain {@code http} to a loopback host only
      * (a local {@code llama-server} or {@code NativeServer}); anything else fails before a byte is
-     * sent. Without that, a model that sets only a plain-{@code http} {@code baseUrl} would send the
-     * key of the default {@code apiKeyEnv} ({@code OPENROUTER_API_KEY}) readable to every hop.
+     * sent. Without that, a model that sets a plain-{@code http} {@code baseUrl} would send the key its
+     * {@code apiKeyEnv} names readable to every hop. Which host may receive a key at all is the
+     * model's own decision: no {@code apiKeyEnv}, no key ({@code AiGenerationConfig.DEFAULT_API_KEY_ENV}
+     * is empty).
      *
      * @param endpoint the URL the request goes to (from {@link #endpoint()})
      * @return the key, or {@code null} when none is configured
