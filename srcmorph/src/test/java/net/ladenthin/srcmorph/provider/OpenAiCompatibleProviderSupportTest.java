@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
@@ -202,12 +203,9 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void endpoint_otherScheme_isRejected() {
-        final IllegalArgumentException thrown = assertThrows(
-                IllegalArgumentException.class,
-                () -> support(LlamaCppJniConfig.builder("")
-                                .baseUrl("file:///etc/passwd")
-                                .build())
-                        .endpoint());
+        final OpenAiCompatibleProviderSupport support = support(
+                LlamaCppJniConfig.builder("").baseUrl("file:///etc/passwd").build());
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc/passwd'"));
     }
     // </editor-fold>
@@ -252,6 +250,58 @@ public class OpenAiCompatibleProviderSupportTest {
 
         // act + assert
         assertThat(support.apiKey(), is(nullValue()));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="apiKeyFor / isLoopbackHost">
+    private static OpenAiCompatibleProviderSupport supportWithKey() {
+        final Map<String, String> environment = new HashMap<>();
+        environment.put("OPENROUTER_API_KEY", "sk-test");
+        return support(LlamaCppJniConfig.builder("").build(), environment);
+    }
+
+    @Test
+    public void apiKeyFor_https_sendsTheKey() throws Exception {
+        assertThat(supportWithKey().apiKeyFor("https://example.org/v1/chat/completions"), is("sk-test"));
+    }
+
+    @Test
+    public void apiKeyFor_plainHttpToLoopback_sendsTheKey() throws Exception {
+        final OpenAiCompatibleProviderSupport support = supportWithKey();
+        assertThat(support.apiKeyFor("http://127.0.0.1:8080/v1/chat/completions"), is("sk-test"));
+        assertThat(support.apiKeyFor("http://localhost:8080/v1/chat/completions"), is("sk-test"));
+        assertThat(support.apiKeyFor("http://[::1]:8080/v1/chat/completions"), is("sk-test"));
+    }
+
+    @Test
+    public void apiKeyFor_plainHttpToAnotherHost_refusesWithoutSendingTheKey() {
+        final OpenAiCompatibleProviderSupport support = supportWithKey();
+        final IOException thrown =
+                assertThrows(IOException.class, () -> support.apiKeyFor("http://example.org/v1/chat/completions"));
+        assertThat(
+                thrown.getMessage(),
+                is("Refusing to send the API key from OPENROUTER_API_KEY in cleartext to example.org: use an"
+                        + " https baseUrl, a loopback server, or an empty apiKeyEnv for a server that needs no key"));
+    }
+
+    @Test
+    public void apiKeyFor_plainHttpToAnotherHostWithoutKey_isFine() throws Exception {
+        assertThat(
+                support(LlamaCppJniConfig.builder("").build()).apiKeyFor("http://example.org/v1/chat/completions"),
+                is(nullValue()));
+    }
+
+    @Test
+    public void isLoopbackHost_onlyLoopbackLiteralsAndLocalhost() {
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("localhost"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("LocalHost"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("127.0.0.1"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("127.255.0.9"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[::1]"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("127.evil.example"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("128.0.0.1"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("localhost.example"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("llama-server"), is(false));
     }
     // </editor-fold>
 

@@ -423,7 +423,7 @@ public class AiGenerationConfig {
      */
     public static final int DEFAULT_DRY_PENALTY_LAST_N = -1;
 
-    private String modelPath;
+    private @Nullable String modelPath;
     private int contextSize = DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS;
     private float temperature = DEFAULT_TEMPERATURE;
@@ -476,7 +476,7 @@ public class AiGenerationConfig {
      *
      * @return model file path, or {@code null} if not set
      */
-    public String getModelPath() {
+    public @Nullable String getModelPath() {
         return modelPath;
     }
 
@@ -485,7 +485,7 @@ public class AiGenerationConfig {
      *
      * @param modelPath absolute or relative path to the model file
      */
-    public void setModelPath(final String modelPath) {
+    public void setModelPath(final @Nullable String modelPath) {
         this.modelPath = modelPath;
     }
 

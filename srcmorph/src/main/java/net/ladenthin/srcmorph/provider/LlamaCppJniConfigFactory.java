@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.provider;
 
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Pure mapping from a resolved {@link AiGenerationConfig} (or a small set of fallback parameters) to an
@@ -34,7 +35,7 @@ public final class LlamaCppJniConfigFactory {
      */
     public static LlamaCppJniConfig fromGenerationConfig(final AiGenerationConfig config) {
         // A remote model (openai-compatible) needs no model file, so its definition may name none.
-        final String modelPath = config.getModelPath();
+        final @Nullable String modelPath = config.getModelPath();
         return LlamaCppJniConfig.builder(modelPath == null ? "" : modelPath)
                 .contextSize(config.getContextSize())
                 .maxOutputTokens(config.getMaxOutputTokens())

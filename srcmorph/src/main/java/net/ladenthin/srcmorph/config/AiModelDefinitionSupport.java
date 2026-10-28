@@ -161,7 +161,7 @@ public final class AiModelDefinitionSupport {
     private static AiGenerationConfig toConfig(
             final AiModelDefinition definition, final @Nullable File modelDirectory) {
         final AiGenerationConfig config = new AiGenerationConfig();
-        final String modelPath = definition.getModelPath();
+        final @Nullable String modelPath = definition.getModelPath();
         final String resolved = resolveModelPath(modelDirectory, modelPath);
         // null only when the definition names no model; passed on as before, for the engines'
         // fail-fast model path check to report.

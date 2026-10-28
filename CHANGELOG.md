@@ -17,11 +17,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `POST <baseUrl>/chat/completions`. Four new per-model settings: `provider` (overrides the run's
   `generationProvider` for this model, so one run can mix local and remote models), `remoteModel`,
   `baseUrl` and `apiKeyEnv` (the *name* of the environment variable holding the key, default
-  `OPENROUTER_API_KEY`; the key never goes into a configuration). The request carries the same
+  `OPENROUTER_API_KEY`; the key never goes into a configuration, and it is sent only over `https`
+  or to a loopback `http` server, never in cleartext to another machine). The request carries the same
   prompts as the local provider and only the portable sampling knobs; the answer goes through the
   same parsing, so the `.ai.md` comes out the same way. Remote models skip the GGUF checks before a
   run and instead must name an `http(s)` `baseUrl`. Local stays the default: nothing leaves the
   machine unless a model says `openai-compatible`.
+- **CI tests the provider against three real APIs on every run**, each in addition to the others:
+  jllama's `NativeServer` (started in-process by `OpenAiCompatibleLiveTest`), a llama.cpp
+  `llama-server` container (both on the committed SmolLM2 GGUF), and OpenRouter with
+  `openai/gpt-6-luna` and the `OPENROUTER_API_KEY` secret. A check on the Surefire report fails the
+  `test` job when any of them was skipped; only the OpenRouter case may skip, and only in a run
+  without the secret (a pull request from a fork or from Dependabot).
 
 ### Removed
 - **No more fat jars on the GitHub release.** Up to 1.3.0 every release attached 15 signed

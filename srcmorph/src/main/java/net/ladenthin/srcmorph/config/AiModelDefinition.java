@@ -39,7 +39,7 @@ public class AiModelDefinition {
     }
 
     private String key;
-    private String modelPath;
+    private @Nullable String modelPath;
     private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = AiGenerationConfig.DEFAULT_MAX_OUTPUT_TOKENS;
     private float temperature = AiGenerationConfig.DEFAULT_TEMPERATURE;
@@ -109,7 +109,7 @@ public class AiModelDefinition {
      *
      * @return the model path, or {@code null} if not set
      */
-    public String getModelPath() {
+    public @Nullable String getModelPath() {
         return modelPath;
     }
 
@@ -118,7 +118,7 @@ public class AiModelDefinition {
      *
      * @param modelPath absolute or relative path to the model file
      */
-    public void setModelPath(final String modelPath) {
+    public void setModelPath(final @Nullable String modelPath) {
         this.modelPath = modelPath;
     }
 

@@ -110,6 +110,8 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
 
     private String post(final String body) throws IOException {
         final String endpoint = support.endpoint();
+        // Resolved before the connection is opened: a key that must not go to this endpoint fails here.
+        final String key = support.apiKeyFor(endpoint);
         final HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
         try {
             connection.setRequestMethod("POST");
@@ -119,7 +121,6 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("X-Title", APPLICATION_TITLE);
-            final String key = support.apiKey();
             if (key != null) {
                 connection.setRequestProperty("Authorization", "Bearer " + key);
             }

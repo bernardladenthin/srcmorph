@@ -7,9 +7,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
@@ -47,6 +49,18 @@ final class OpenAiCompatibleProviderSupport {
 
     /** The HTTPS scheme prefix a {@code baseUrl} may start with. */
     static final String HTTPS_SCHEME = "https://";
+
+    /** Host name of the loopback interface. */
+    private static final String LOOPBACK_HOST_NAME = "localhost";
+
+    /**
+     * An IPv4 loopback literal ({@code 127.0.0.0/8}). A literal, not a prefix: {@code 127.evil.com}
+     * is a host name that resolves anywhere.
+     */
+    private static final Pattern IPV4_LOOPBACK = Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
+
+    /** The IPv6 loopback address as {@link URL#getHost()} returns it, in brackets. */
+    private static final String IPV6_LOOPBACK = "[::1]";
 
     /** Appended to an error body cut at {@link #ERROR_BODY_EXCERPT}. */
     private static final String ELLIPSIS = "...";
@@ -164,6 +178,43 @@ final class OpenAiCompatibleProviderSupport {
             return null;
         }
         return key.trim();
+    }
+
+    /**
+     * The API key to send to {@code endpoint}: {@link #apiKey()}, but never in cleartext to another
+     * machine. A key goes out over {@code https}, or over plain {@code http} to a loopback host only
+     * (a local {@code llama-server} or {@code NativeServer}); anything else fails before a byte is
+     * sent. Without that, a model that sets only a plain-{@code http} {@code baseUrl} would send the
+     * key of the default {@code apiKeyEnv} ({@code OPENROUTER_API_KEY}) readable to every hop.
+     *
+     * @param endpoint the URL the request goes to (from {@link #endpoint()})
+     * @return the key, or {@code null} when none is configured
+     * @throws IOException if a key is configured and {@code endpoint} is plain {@code http} to a host
+     *                     that is not loopback, or if {@code endpoint} cannot be parsed
+     */
+    @Nullable
+    String apiKeyFor(final String endpoint) throws IOException {
+        final String key = apiKey();
+        if (key == null || !endpoint.startsWith(HTTP_SCHEME)) {
+            return key;
+        }
+        final String host = new URL(endpoint).getHost();
+        if (!isLoopbackHost(host)) {
+            throw new IOException("Refusing to send the API key from " + config.apiKeyEnv()
+                    + " in cleartext to " + host + ": use an https baseUrl, a loopback server, or an empty"
+                    + " apiKeyEnv for a server that needs no key");
+        }
+        return key;
+    }
+
+    /**
+     * Whether a host names the local machine's loopback interface.
+     *
+     * @param host the host part of a URL, as {@link URL#getHost()} returns it
+     * @return {@code true} for {@code localhost} (exactly, lower case), {@code 127.x.x.x} and {@code [::1]}
+     */
+    static boolean isLoopbackHost(final String host) {
+        return LOOPBACK_HOST_NAME.equals(host) || IPV4_LOOPBACK.matcher(host).matches() || IPV6_LOOPBACK.equals(host);
     }
 
     /**

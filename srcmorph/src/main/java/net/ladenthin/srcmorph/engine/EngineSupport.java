@@ -201,26 +201,47 @@ final class EngineSupport {
             final String provider =
                     AiGenerationProviderFactory.effectiveProvider(generationProvider, modelConfig.getProvider());
             if (AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)) {
-                final String baseUrl = modelConfig.getBaseUrl().trim();
-                if (!baseUrl.startsWith(HTTP_SCHEME) && !baseUrl.startsWith(HTTPS_SCHEME)) {
-                    throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
-                            + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
-                            + " provider but its baseUrl is not an http(s) URL: '" + baseUrl + "'");
-                }
-                continue;
+                validateRemoteModel(aiDefinitionKey, modelConfig);
+            } else if (AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
+                validateLocalModel(aiDefinitionKey, modelConfig);
             }
-            if (!AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
-                continue;
-            }
-            final String modelPath = modelConfig.getModelPath();
-            if (modelPath == null || !new File(modelPath).isFile()) {
-                throw new SrcMorphException("Model file for aiDefinition '" + aiDefinitionKey
-                        + "' does not exist: " + modelPath
-                        + " (checked before any model is loaded; fix the modelPath, or set"
-                        + " generationProvider to mock for a model-free run)");
-            }
-            validateAgainstTheModelItself(aiDefinitionKey, modelConfig, Paths.get(modelPath));
         }
+    }
+
+    /**
+     * Checks an {@code openai-compatible} model: its {@code baseUrl} must be an {@code http(s)} URL.
+     *
+     * @param aiDefinitionKey the definition's key, named in the error
+     * @param modelConfig     the definition's resolved configuration
+     * @throws SrcMorphException if the URL is not {@code http(s)}
+     */
+    private static void validateRemoteModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
+            throws SrcMorphException {
+        final String baseUrl = modelConfig.getBaseUrl().trim();
+        if (!baseUrl.startsWith(HTTP_SCHEME) && !baseUrl.startsWith(HTTPS_SCHEME)) {
+            throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
+                    + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
+                    + " provider but its baseUrl is not an http(s) URL: '" + baseUrl + "'");
+        }
+    }
+
+    /**
+     * Checks a {@code llamacpp-jni} model: the file must exist and be a GGUF that fits the configuration.
+     *
+     * @param aiDefinitionKey the definition's key, named in the error
+     * @param modelConfig     the definition's resolved configuration
+     * @throws SrcMorphException if the file is missing, not a GGUF, or not readable
+     */
+    private static void validateLocalModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
+            throws SrcMorphException {
+        final String modelPath = modelConfig.getModelPath();
+        if (modelPath == null || !new File(modelPath).isFile()) {
+            throw new SrcMorphException("Model file for aiDefinition '" + aiDefinitionKey
+                    + "' does not exist: " + modelPath
+                    + " (checked before any model is loaded; fix the modelPath, or set"
+                    + " generationProvider to mock for a model-free run)");
+        }
+        validateAgainstTheModelItself(aiDefinitionKey, modelConfig, Paths.get(modelPath));
     }
 
     /**

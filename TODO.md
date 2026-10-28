@@ -21,13 +21,6 @@ everything below is genuinely still open.
   unlaunched: `rocm`, `sycl`, `openvino` and `vulkan`** — no AMD, Intel or second GPU here. Vulkan is
   reachable on any NVIDIA box and is the cheapest one to add next.
 
-- **No CI run of the `openai-compatible` provider against a real server.** The unit and stub-server
-  tests cover the HTTP path; `OpenAiCompatibleLiveTest` runs only with
-  `-Dnet.ladenthin.srcmorph.openai.baseUrl=...`. Two cheap options: a job that starts a
-  `llama-server` container with the committed SmolLM2 GGUF and points the test at it (no secret, no
-  cost), and/or a smoke against OpenRouter with the `OPENROUTER_API_KEY` secret and a cheap model
-  (`openai/gpt-6-luna`), gated to `main` so a fork's pull request never spends the key.
-
 - **jqwik pin policy** — see [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md). `jqwik.version ≤ 1.9.3` is mandatory (declared in `srcmorph/pom.xml`, the only reactor module with a jqwik test dependency).
 
 - **`@VisibleForTesting` audit.** Nothing is annotated, and the inventory has two kinds of package-private members that must not be lumped together. **Production API, not candidates:** the four of `provider.LlamaCppJniProviderSupport` (`buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`, `logPromptCacheReuse`) and the static `lazyMode`/`cacheType` are package-private because `LlamaCppJniAiGenerationProvider` calls them (they were moved out of it so the PIT gate reaches them); their visibility serves the provider, the tests only ride along. **Test seams, the actual candidates:** `document.AiMdDocumentCodec.read(List)` and the `String write(AiMdDocument)` overload (their Javadoc says so; production goes through the `Path` overloads), `prompt.AiPromptPreparationSupport.trimSourceAtLineBreak` (called only inside its own class and by `AiPromptPreparationSupportTest`), and the three mojos' `build*Configuration()` (called only by their own `execute()` and by `MojoConfigurationMappingTest`). Guava is not a dependency, so closing this means either a project-local marker annotation on the second group (there is precedent: `support.ConvertToRecord`) or recording that the convention is not adopted here. Decide and act rather than re-auditing.
