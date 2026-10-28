@@ -68,18 +68,75 @@ public class AiCompletionParserTest {
     }
 
     @Test
-    public void parseCompletion_endMarkerAtIndexZero_returnsTrailingTrimmedAnswer() throws Exception {
-        // The end marker appears at the very start of the response (thinkingEnd == 0).
-        // Pins the >= 0 boundary check: a > 0 mutation would fall through and return
-        // the whole input including the leading end-marker.
+    public void parseCompletion_emptyThinkingBlock_returnsAnswerDirectlyAfterIt() throws Exception {
+        // The end marker follows the start marker directly, at index 0 of the block's text.
+        // Pins the < 0 check: a <= 0 mutation would report this complete block as truncated.
         // arrange
-        final String response = AiCompletionParser.THINKING_BLOCK_END_MARKER + "actual answer";
+        final String response = AiCompletionParser.THINKING_BLOCK_START_MARKER
+                + AiCompletionParser.THINKING_BLOCK_END_MARKER + "actual answer";
 
         // act
         final String result = parser.parseCompletion(response);
 
         // assert
         assertThat(result, is(equalTo("actual answer")));
+    }
+
+    @Test
+    public void parseCompletion_thinkingBlockAfterLeadingWhitespace_returnsBodyOnly() throws Exception {
+        // arrange
+        final String response = "\n  " + AiCompletionParser.THINKING_BLOCK_START_MARKER + "\nreasoning\n"
+                + AiCompletionParser.THINKING_BLOCK_END_MARKER + "\nactual answer";
+
+        // act
+        final String result = parser.parseCompletion(response);
+
+        // assert
+        assertThat(result, is(equalTo("actual answer")));
+    }
+
+    /**
+     * A summary of this very parser quotes both markers. Only a block at the start is reasoning;
+     * stripping up to the last end marker anywhere cut such a summary down to its tail.
+     */
+    @Test
+    public void parseCompletion_markersQuotedInAnswer_returnsWholeAnswer() throws Exception {
+        // arrange
+        final String response = "### AiCompletionParser.java\nStrips a thinking block ("
+                + AiCompletionParser.THINKING_BLOCK_START_MARKER + " ... "
+                + AiCompletionParser.THINKING_BLOCK_END_MARKER + ").\n\n#### Exceptions\n- IOException";
+
+        // act
+        final String result = parser.parseCompletion(response);
+
+        // assert
+        assertThat(result, is(equalTo(response)));
+    }
+
+    @Test
+    public void parseCompletion_startMarkerQuotedInAnswerWithoutEndMarker_returnsWholeAnswer() throws Exception {
+        // arrange
+        final String response = "Opens with " + AiCompletionParser.THINKING_BLOCK_START_MARKER + " only.";
+
+        // act
+        final String result = parser.parseCompletion(response);
+
+        // assert
+        assertThat(result, is(equalTo(response)));
+    }
+
+    @Test
+    public void parseCompletion_answerAfterThinkingBlockQuotesEndMarker_keepsTheQuote() throws Exception {
+        // arrange
+        final String answer = "The block closes at " + AiCompletionParser.THINKING_BLOCK_END_MARKER + ".";
+        final String response = AiCompletionParser.THINKING_BLOCK_START_MARKER + "\nreasoning\n"
+                + AiCompletionParser.THINKING_BLOCK_END_MARKER + "\n" + answer;
+
+        // act
+        final String result = parser.parseCompletion(response);
+
+        // assert
+        assertThat(result, is(equalTo(answer)));
     }
     // </editor-fold>
 }

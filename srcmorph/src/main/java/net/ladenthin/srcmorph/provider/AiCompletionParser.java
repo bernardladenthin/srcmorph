@@ -16,6 +16,11 @@ import lombok.ToString;
  * marker is the actual model answer; everything inside the block is internal
  * reasoning that must not be persisted.</p>
  *
+ * <p>A thinking block is recognized only at the <b>start</b> of the response, where the model
+ * emits it. A marker further in is part of the answer: a summary of this very class quotes both
+ * markers, and stripping up to the last end marker anywhere in the text would throw most of that
+ * answer away.</p>
+ *
  * <p>This class is non-final to allow subclassing and mocking in tests.</p>
  */
 @ToString
@@ -43,43 +48,47 @@ public class AiCompletionParser {
     public static final String THINKING_BLOCK_END_MARKER = "<channel|>";
 
     /**
-     * Strips any Gemma-4 thinking block from {@code response} and returns the
+     * Strips a leading Gemma-4 thinking block from {@code response} and returns the
      * clean answer text.
      *
      * <ul>
-     *   <li>If {@link #THINKING_BLOCK_END_MARKER} is present, everything up to
-     *       and including that marker is removed; only the trimmed text that
-     *       follows is returned.</li>
-     *   <li>If {@link #THINKING_BLOCK_START_MARKER} is present but
+     *   <li>If the trimmed response starts with {@link #THINKING_BLOCK_START_MARKER},
+     *       everything up to and including the first {@link #THINKING_BLOCK_END_MARKER}
+     *       is removed; only the trimmed text that follows is returned, markers it quotes
+     *       included.</li>
+     *   <li>If it starts with {@link #THINKING_BLOCK_START_MARKER} but
      *       {@link #THINKING_BLOCK_END_MARKER} is absent, the token budget was
      *       exhausted while the model was still reasoning.  An {@link IOException}
      *       is thrown with an actionable message so the caller can surface the
      *       problem rather than persist garbage.</li>
-     *   <li>If neither marker is present the response is returned trimmed.</li>
+     *   <li>Otherwise the response is returned trimmed, any marker in it kept as text.</li>
      *   <li>{@code null} input is treated as an empty response.</li>
      * </ul>
      *
      * @param response the raw completion text from the model, may be {@code null}
      * @return the cleaned answer text, never {@code null}
-     * @throws IOException if a thinking block was started but the token budget was
-     *                     exhausted before the closing marker was emitted
+     * @throws IOException if a leading thinking block was started but the token budget
+     *                     was exhausted before the closing marker was emitted
      */
     public String parseCompletion(final String response) throws IOException {
         if (response == null) {
             return "";
         }
-        final int thinkingEnd = response.lastIndexOf(THINKING_BLOCK_END_MARKER);
-        if (thinkingEnd >= 0) {
-            return response.substring(thinkingEnd + THINKING_BLOCK_END_MARKER.length())
-                    .trim();
+        final String trimmed = response.trim();
+        if (!trimmed.startsWith(THINKING_BLOCK_START_MARKER)) {
+            return trimmed;
         }
-        if (response.contains(THINKING_BLOCK_START_MARKER)) {
+        // The first end marker after the start marker closes the block.
+        final String thinking = trimmed.substring(THINKING_BLOCK_START_MARKER.length());
+        final int thinkingEnd = thinking.indexOf(THINKING_BLOCK_END_MARKER);
+        if (thinkingEnd < 0) {
             throw new IOException("Model token budget exhausted inside thinking block: "
                     + THINKING_BLOCK_START_MARKER + " was emitted but "
                     + THINKING_BLOCK_END_MARKER + " was not. "
                     + "Increase maxOutputTokens for this model definition. "
                     + "(response length=" + response.length() + " chars)");
         }
-        return response.trim();
+        return thinking.substring(thinkingEnd + THINKING_BLOCK_END_MARKER.length())
+                .trim();
     }
 }

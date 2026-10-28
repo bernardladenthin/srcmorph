@@ -67,6 +67,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   the reactor), checks the Java 8 bytecode floor over that jar and the plugin jar, and runs `Plan`.
   The example pom is therefore under test on every pull request.
 
+### Fixed
+- **A summary that quotes a thinking-block marker lost most of its text.** `AiCompletionParser`
+  dropped everything up to the *last* `<channel|>` anywhere in a response, so a model describing a
+  Gemma-4 parser, a prompt or anything else that names the marker had its answer cut down to the
+  tail (seen on `AiCompletionParser.java` itself in a run against OpenRouter: lead, purpose and type
+  were gone). A thinking block is now recognized only at the start of the response, where the model
+  emits it, and closes at the first `<channel|>`; a marker later in the text stays part of the
+  answer, and a quoted `<|channel>thought` no longer reports an exhausted token budget.
+
 ## [1.3.0] - 2026-10-26
 
 ### Added
