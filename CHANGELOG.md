@@ -23,6 +23,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `.github/release-assets.json` names no files beyond the Maven artifacts.
 
 ### Changed
+- **The GPG signing-key preflight runs only when something is published.** The two jobs
+  `verify-signing-key` and `verify-signing-key-gradle` ran on every trigger: red on every pull request,
+  because the `maven-central` environment admits only `main` and `v*` tags, and on a push to `main`
+  they sat out the environment's wait timer for a run that publishes nothing. They run now on a
+  `publish_to_central` dispatch only, still at the start of the run, and both publish jobs need them
+  (no longer an exemption of the release gate).
 - **`examples/windows-fatjar/` is now `examples/build-your-own-jar/`, for every platform.** Its
   `pom.xml` takes `srcmorph-cli` from Maven Central, picks the natives jar of the build machine's
   OS/arch with an OS-activated profile (`-Dnatives=<classifier>` overrides it, and the enforcer
