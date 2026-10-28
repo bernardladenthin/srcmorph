@@ -84,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
         <jcstress.version>0.16</jcstress.version>
         <vmlens.version>1.2.28</vmlens.version>
         <errorprone.version>2.51.0</errorprone.version>
-        <nullaway.version>0.14.2</nullaway.version>
+        <nullaway.version>0.14.3</nullaway.version>
         <!-- checker.version also drives the org.checkerframework:checker annotation-processor
              artifact below; the checker-qual dependency version itself is managed by the
              parent's <dependencyManagement> (see comment above <dependencies>). -->
@@ -98,7 +98,7 @@ SPDX-License-Identifier: Apache-2.0
         <fb-contrib.version>7.7.4</fb-contrib.version>
         <findsecbugs.version>1.14.0</findsecbugs.version>
         <spotless.version>3.10.4</spotless.version>
-        <palantir-java-format.version>2.102.0</palantir-java-format.version>
+        <palantir-java-format.version>2.103.0</palantir-java-format.version>
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
 
@@ -326,7 +326,7 @@ SPDX-License-Identifier: Apache-2.0
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.6.0</version>
+                    <version>3.6.1</version>
                     <configuration>
                         <!--
                             argLine starts with @{argLine} so the JaCoCo agent (placed into the
@@ -372,7 +372,7 @@ SPDX-License-Identifier: Apache-2.0
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>0.8.15</version>
+                    <version>0.8.16</version>
                 </plugin>
                 <plugin>
                     <groupId>org.pitest</groupId>
