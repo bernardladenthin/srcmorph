@@ -474,7 +474,8 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        PATH_TRAVERSAL_IN on EngineSupport.validateRoutedModelPaths. find-sec-bugs flags the
+        PATH_TRAVERSAL_IN on EngineSupport.validateLocalModel (the llamacpp-jni branch of
+        validateRoutedModelPaths, split out of it). find-sec-bugs flags the
         `new File(modelPath)` because the path is not a compile-time constant. Reading a configured
         path is the entire purpose of this method: it exists so that a typo in a modelPath fails at
         plan time instead of an hour into a run inside the native loader. The value comes from the
@@ -486,7 +487,7 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
-        <Method name="validateRoutedModelPaths"/>
+        <Method name="validateLocalModel"/>
         <Bug pattern="PATH_TRAVERSAL_IN"/>
     </Match>
 
@@ -495,7 +496,7 @@ SPDX-License-Identifier: Apache-2.0
         join the configured modelDirectory and a relative modelPath into one path, and ask
         Paths.get(modelPath).getRoot() whether the modelPath stands on its own; both values come
         from the operator's own POM XML or CLI configuration, the same trust boundary as
-        validateRoutedModelPaths above. Pointing a model outside the directory is the documented use
+        validateLocalModel above. Pointing a model outside the directory is the documented use
         of an absolute modelPath, so there is nothing a traversal could escape. Nothing is opened or
         read here. Scoped to the two methods.
     -->
@@ -611,4 +612,18 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
     </Match>
 
+    <!--
+        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.post. The URL is
+        the baseUrl of the user's own model definition, not input from a remote party: srcmorph is a
+        build tool and CLI that runs with the rights of whoever wrote its configuration, and calling
+        the server that configuration names is the whole purpose of the openai-compatible provider.
+        OpenAiCompatibleProviderSupport.endpoint() rejects any baseUrl that is not http(s), and
+        EngineSupport.validateRemoteModel does the same before a run starts, so file: and other
+        schemes never reach openConnection.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
+        <Method name="post"/>
+        <Bug pattern="URLCONNECTION_SSRF_FD"/>
+    </Match>
 </FindBugsFilter>

@@ -140,6 +140,10 @@ public class LlamaCppJniConfigTest {
         assertThat(config.threadsBatch(), is(AiGenerationConfig.DEFAULT_THREADS_BATCH));
         assertThat(config.mainGpu(), is(AiGenerationConfig.DEFAULT_MAIN_GPU));
         assertThat(config.devices(), is(AiGenerationConfig.DEFAULT_DEVICES));
+        assertThat(config.provider(), is(AiGenerationConfig.DEFAULT_PROVIDER));
+        assertThat(config.remoteModel(), is(AiGenerationConfig.DEFAULT_REMOTE_MODEL));
+        assertThat(config.baseUrl(), is(AiGenerationConfig.DEFAULT_BASE_URL));
+        assertThat(config.apiKeyEnv(), is(AiGenerationConfig.DEFAULT_API_KEY_ENV));
         assertThat(config.reasoningEffort(), is(AiGenerationConfig.DEFAULT_REASONING_EFFORT));
         assertThat(config.reasoningBudgetTokens(), is(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS));
         assertThat(config.dryMultiplier(), is(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER));
@@ -188,6 +192,10 @@ public class LlamaCppJniConfigTest {
                 .threadsBatch(6)
                 .mainGpu(3)
                 .devices("Vulkan1")
+                .provider("openai-compatible")
+                .remoteModel("openai/gpt-6-luna")
+                .baseUrl("http://127.0.0.1:8080/v1")
+                .apiKeyEnv("MY_KEY")
                 .reasoningEffort("high")
                 .reasoningBudgetTokens(512)
                 .dryMultiplier(0.5f)
@@ -228,6 +236,10 @@ public class LlamaCppJniConfigTest {
         assertThat(config.threadsBatch(), is(6));
         assertThat(config.mainGpu(), is(3));
         assertThat(config.devices(), is("Vulkan1"));
+        assertThat(config.provider(), is("openai-compatible"));
+        assertThat(config.remoteModel(), is("openai/gpt-6-luna"));
+        assertThat(config.baseUrl(), is("http://127.0.0.1:8080/v1"));
+        assertThat(config.apiKeyEnv(), is("MY_KEY"));
         assertThat(config.reasoningEffort(), is("high"));
         assertThat(config.reasoningBudgetTokens(), is(512));
         assertThat(config.dryMultiplier(), is(0.5f));
@@ -252,11 +264,19 @@ public class LlamaCppJniConfigTest {
                 .cacheTypeK("q8_0")
                 .cacheTypeV("q4_0")
                 .devices("Vulkan1")
+                .provider("openai-compatible")
+                .remoteModel("openai/gpt-6-luna")
+                .baseUrl("http://127.0.0.1:8080/v1")
+                .apiKeyEnv("MY_KEY")
                 .reasoningEffort("high")
                 .lazyMode(null)
                 .cacheTypeK(null)
                 .cacheTypeV(null)
                 .devices(null)
+                .provider(null)
+                .remoteModel(null)
+                .baseUrl(null)
+                .apiKeyEnv(null)
                 .reasoningEffort(null)
                 .build();
 
@@ -265,6 +285,10 @@ public class LlamaCppJniConfigTest {
         assertThat(config.cacheTypeK(), is(""));
         assertThat(config.cacheTypeV(), is(""));
         assertThat(config.devices(), is(""));
+        assertThat(config.provider(), is(AiGenerationConfig.DEFAULT_PROVIDER));
+        assertThat(config.remoteModel(), is(AiGenerationConfig.DEFAULT_REMOTE_MODEL));
+        assertThat(config.baseUrl(), is(AiGenerationConfig.DEFAULT_BASE_URL));
+        assertThat(config.apiKeyEnv(), is(AiGenerationConfig.DEFAULT_API_KEY_ENV));
         assertThat(config.reasoningEffort(), is(AiGenerationConfig.DEFAULT_REASONING_EFFORT));
         assertThat(config.reasoningEffort(), is("low"));
     }

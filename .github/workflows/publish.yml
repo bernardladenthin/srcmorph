@@ -196,6 +196,28 @@ jobs:
           cache: maven
       - name: Memory before tests
         run: free -h
+      # A real llama.cpp llama-server for OpenAiCompatibleLiveTest, serving the committed SmolLM2
+      # GGUF: the openai-compatible provider's HTTP path against a real server on every run, with no
+      # secret and no cost. The stub-server test pins the request; this one proves a real server
+      # accepts it. Pinned by tag and digest (b11946, the build it was first verified against).
+      # Dependabot does not move a pin inside a `docker run`, so bump it by hand with llama.cpp.
+      - name: Start llama-server for the openai-compatible live test
+        run: |
+          set -euo pipefail
+          docker run -d --name llama-server -p 127.0.0.1:8080:8080 \
+            -v "$GITHUB_WORKSPACE/srcmorph/src/test/resources:/models:ro" \
+            ghcr.io/ggml-org/llama.cpp:server-b11946@sha256:d880b2a0e478795ce99d0a275732f5a50e579cb234ae7d2d3815afc909fd02f2 \
+            -m /models/SmolLM2-135M-Instruct-Q3_K_M.gguf --host 0.0.0.0 --port 8080 -c 8192 -t 2
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then
+              echo "llama-server is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs llama-server
+          echo "::error::llama-server did not become ready within 120 s"
+          exit 1
       - name: Test
         # Reactor-wide (no -pl): runs every module's tests. The `jcstress` profile is only
         # declared in srcmorph-maven-plugin/pom.xml, so it activates there and is a
@@ -205,9 +227,41 @@ jobs:
         # failure. Skipping is right on a developer machine with an unsupported OS/arch; here it
         # would mean a vanished native library or an unchecked-out model quietly restores a green
         # build with zero real inference — the exact shape that let a dead provider ship twice.
+        #
+        # OpenAiCompatibleLiveTest runs the openai-compatible provider against every API it supports,
+        # each in addition to the others: jllama's NativeServer (started by the test itself),
+        # the llama-server started above (openai.baseUrl), and OpenRouter (openai.openRouterModel,
+        # a cheap model, with the repository secret). A pull request from a fork or from Dependabot
+        # gets no secret, so there the OpenRouter case skips; the check below allows exactly that.
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: >-
           mvn -e --batch-mode --no-transfer-progress -P jcstress
-          -Dnet.ladenthin.srcmorph.requireNativeLlama=true verify
+          -Dnet.ladenthin.srcmorph.requireNativeLlama=true
+          -Dnet.ladenthin.srcmorph.openai.baseUrl=http://127.0.0.1:8080/v1
+          -Dnet.ladenthin.srcmorph.openai.openRouterModel=openai/gpt-6-luna verify
+      # Each live case skips when its server is not configured, so a property that stops reaching the
+      # test JVM would turn it into a silent skip. Fail instead: all three must run, OpenRouter only
+      # when the secret is available to this run.
+      - name: Check that the openai-compatible live tests ran
+        env:
+          OPENROUTER_KEY_SET: ${{ secrets.OPENROUTER_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          report=srcmorph/target/surefire-reports/TEST-net.ladenthin.srcmorph.provider.OpenAiCompatibleLiveTest.xml
+          expected_skipped=0
+          if [ "$OPENROUTER_KEY_SET" != "true" ]; then
+            expected_skipped=1
+            echo "::warning::No OPENROUTER_API_KEY in this run (fork or Dependabot); the OpenRouter case skipped"
+          fi
+          if ! grep -q 'tests="3"' "$report" || ! grep -q "skipped=\"$expected_skipped\"" "$report"; then
+            echo "::error::OpenAiCompatibleLiveTest did not run against NativeServer, llama-server and OpenRouter as expected"
+            grep -o 'tests="[0-9]*" errors="[0-9]*" skipped="[0-9]*" failures="[0-9]*"' "$report" || true
+            exit 1
+          fi
+      - name: llama-server log
+        if: failure()
+        run: docker logs llama-server || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: jacoco-report

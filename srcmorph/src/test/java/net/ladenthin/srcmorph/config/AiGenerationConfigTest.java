@@ -219,6 +219,70 @@ public class AiGenerationConfigTest {
     }
 
     @Test
+    public void providerDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getProvider(), is(""));
+        c.setProvider("openai-compatible");
+        assertThat(c.getProvider(), is("openai-compatible"));
+    }
+
+    @Test
+    public void setProviderNullResetsToDefault() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setProvider("openai-compatible");
+        c.setProvider(null);
+        assertThat(c.getProvider(), is(""));
+    }
+
+    @Test
+    public void remoteModelDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getRemoteModel(), is(""));
+        c.setRemoteModel("openai/gpt-6-luna");
+        assertThat(c.getRemoteModel(), is("openai/gpt-6-luna"));
+    }
+
+    @Test
+    public void setRemoteModelNullResetsToDefault() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setRemoteModel("openai/gpt-6-luna");
+        c.setRemoteModel(null);
+        assertThat(c.getRemoteModel(), is(""));
+    }
+
+    @Test
+    public void baseUrlDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getBaseUrl(), is("https://openrouter.ai/api/v1"));
+        c.setBaseUrl("http://127.0.0.1:8080/v1");
+        assertThat(c.getBaseUrl(), is("http://127.0.0.1:8080/v1"));
+    }
+
+    @Test
+    public void setBaseUrlNullResetsToDefault() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setBaseUrl("http://127.0.0.1:8080/v1");
+        c.setBaseUrl(null);
+        assertThat(c.getBaseUrl(), is("https://openrouter.ai/api/v1"));
+    }
+
+    @Test
+    public void apiKeyEnvDefaultsAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getApiKeyEnv(), is(""));
+        c.setApiKeyEnv("MY_KEY");
+        assertThat(c.getApiKeyEnv(), is("MY_KEY"));
+    }
+
+    @Test
+    public void setApiKeyEnvNullResetsToDefault() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        c.setApiKeyEnv("MY_KEY");
+        c.setApiKeyEnv(null);
+        assertThat(c.getApiKeyEnv(), is(""));
+    }
+
+    @Test
     public void reasoningBudgetTokensDefaultsUnrestrictedAndRoundTrips() {
         AiGenerationConfig c = new AiGenerationConfig();
         // Default -1 (unrestricted) kills the inline-constant / "return 0" getter mutants.

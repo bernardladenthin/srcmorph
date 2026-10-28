@@ -161,7 +161,7 @@ public final class AiModelDefinitionSupport {
     private static AiGenerationConfig toConfig(
             final AiModelDefinition definition, final @Nullable File modelDirectory) {
         final AiGenerationConfig config = new AiGenerationConfig();
-        final String modelPath = definition.getModelPath();
+        final @Nullable String modelPath = definition.getModelPath();
         final String resolved = resolveModelPath(modelDirectory, modelPath);
         // null only when the definition names no model; passed on as before, for the engines'
         // fail-fast model path check to report.
@@ -197,6 +197,10 @@ public final class AiModelDefinitionSupport {
         config.setThreadsBatch(definition.getThreadsBatch());
         config.setMainGpu(definition.getMainGpu());
         config.setDevices(definition.getDevices());
+        config.setProvider(definition.getProvider());
+        config.setRemoteModel(definition.getRemoteModel());
+        config.setBaseUrl(definition.getBaseUrl());
+        config.setApiKeyEnv(definition.getApiKeyEnv());
         config.setReasoningEffort(definition.getReasoningEffort());
         config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
         config.setDryMultiplier(definition.getDryMultiplier());

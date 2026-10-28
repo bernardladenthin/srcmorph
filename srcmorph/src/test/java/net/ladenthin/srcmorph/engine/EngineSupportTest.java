@@ -246,6 +246,21 @@ public class EngineSupportTest {
     }
 
     /**
+     * Builds a lookup holding one remote definition.
+     *
+     * @param provider the definition's own provider
+     * @param baseUrl  its base URL
+     * @return the lookup
+     */
+    private static AiModelDefinitionSupport supportWithRemote(final String provider, final String baseUrl) {
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("routed");
+        definition.setProvider(provider);
+        definition.setBaseUrl(baseUrl);
+        return new AiModelDefinitionSupport(Arrays.asList(definition));
+    }
+
+    /**
      * Builds a routing rule pointing at the {@code routed} definition.
      *
      * @param skip           whether the rule is a skip rule
@@ -583,4 +598,58 @@ public class EngineSupportTest {
     }
 
     // </editor-fold>
+
+    @Test
+    public void validateRoutedModelPaths_remoteModelInAJniRun_needsNoModelFile() throws SrcMorphException {
+        EngineSupport.validateRoutedModelPaths(
+                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                supportWithRemote(
+                        AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1"),
+                Arrays.asList(routedRule(false, "routed")));
+    }
+
+    @Test
+    public void validateRoutedModelPaths_remoteModel_acceptsHttpAndATrimmedUrl() throws SrcMorphException {
+        EngineSupport.validateRoutedModelPaths(
+                AiGenerationProviderFactory.PROVIDER_MOCK,
+                supportWithRemote(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, " http://127.0.0.1:8080/v1 "),
+                Arrays.asList(routedRule(false, "routed")));
+    }
+
+    @Test
+    public void validateRoutedModelPaths_remoteModelWithoutAnHttpUrl_throwsNamingTheDefinition() {
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.validateRoutedModelPaths(
+                        AiGenerationProviderFactory.PROVIDER_MOCK,
+                        supportWithRemote(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, "ftp://example.org"),
+                        Arrays.asList(routedRule(false, "routed"))));
+        assertThat(thrown.getMessage(), containsString("routed"));
+        assertThat(thrown.getMessage(), containsString("ftp://example.org"));
+    }
+
+    @Test
+    public void validateRoutedModelPaths_runProviderOpenAiCompatible_checksTheUrlToo() {
+        assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.validateRoutedModelPaths(
+                        AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE,
+                        supportWithRemote("", "not a url"),
+                        Arrays.asList(routedRule(false, "routed"))));
+    }
+
+    @Test
+    public void validateRoutedModelPaths_jniModelInAMockRun_isChecked() {
+        // The gate is per model: a definition that names llamacpp-jni itself is checked in a mock run.
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("routed");
+        definition.setProvider(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        definition.setModelPath(modelDir.resolve("nope.gguf").toString());
+        assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.validateRoutedModelPaths(
+                        AiGenerationProviderFactory.PROVIDER_MOCK,
+                        new AiModelDefinitionSupport(Arrays.asList(definition)),
+                        Arrays.asList(routedRule(false, "routed"))));
+    }
 }

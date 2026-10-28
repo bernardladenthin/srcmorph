@@ -32,6 +32,12 @@ final class EngineSupport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EngineSupport.class);
 
+    /** Scheme prefix of a plain-HTTP {@code baseUrl} (a local OpenAI-compatible server). */
+    private static final String HTTP_SCHEME = "http://";
+
+    /** Scheme prefix of an HTTPS {@code baseUrl}. */
+    private static final String HTTPS_SCHEME = "https://";
+
     private EngineSupport() {
         // utility class — not instantiable
     }
@@ -169,7 +175,9 @@ final class EngineSupport {
      * the {@code mock} provider ignores {@code modelPath} entirely, and every shipped example config
      * sets a deliberately non-existent {@code "unused-with-mock-provider.gguf"}. An ungated check
      * would red those examples, their binding tests, the CLI end-to-end test and the jar smoke
-     * ({@code smoke-jar}) that gates every release.
+     * ({@code smoke-jar}) that gates every release. The gate is per model: a definition's own
+     * {@code provider} overrides the run's, so an {@code openai-compatible} model needs no file even
+     * in a {@code llamacpp-jni} run, and instead must name an {@code http(s)} {@code baseUrl}.
      *
      * @param generationProvider     the configured provider key
      * @param modelDefinitionSupport model lookup built from the configured {@code <aiDefinitions>}
@@ -181,9 +189,6 @@ final class EngineSupport {
             final AiModelDefinitionSupport modelDefinitionSupport,
             final List<AiFieldGenerationConfig> fieldGenerations)
             throws SrcMorphException {
-        if (!AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(generationProvider)) {
-            return;
-        }
         for (final AiFieldGenerationConfig rule : fieldGenerations) {
             if (rule == null || rule.isSkip()) {
                 continue;
@@ -193,15 +198,50 @@ final class EngineSupport {
                 continue;
             }
             final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(aiDefinitionKey);
-            final String modelPath = modelConfig.getModelPath();
-            if (modelPath == null || !new File(modelPath).isFile()) {
-                throw new SrcMorphException("Model file for aiDefinition '" + aiDefinitionKey
-                        + "' does not exist: " + modelPath
-                        + " (checked before any model is loaded; fix the modelPath, or set"
-                        + " generationProvider to mock for a model-free run)");
+            final String provider =
+                    AiGenerationProviderFactory.effectiveProvider(generationProvider, modelConfig.getProvider());
+            if (AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)) {
+                validateRemoteModel(aiDefinitionKey, modelConfig);
+            } else if (AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
+                validateLocalModel(aiDefinitionKey, modelConfig);
             }
-            validateAgainstTheModelItself(aiDefinitionKey, modelConfig, Paths.get(modelPath));
         }
+    }
+
+    /**
+     * Checks an {@code openai-compatible} model: its {@code baseUrl} must be an {@code http(s)} URL.
+     *
+     * @param aiDefinitionKey the definition's key, named in the error
+     * @param modelConfig     the definition's resolved configuration
+     * @throws SrcMorphException if the URL is not {@code http(s)}
+     */
+    private static void validateRemoteModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
+            throws SrcMorphException {
+        final String baseUrl = modelConfig.getBaseUrl().trim();
+        if (!baseUrl.startsWith(HTTP_SCHEME) && !baseUrl.startsWith(HTTPS_SCHEME)) {
+            throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
+                    + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
+                    + " provider but its baseUrl is not an http(s) URL: '" + baseUrl + "'");
+        }
+    }
+
+    /**
+     * Checks a {@code llamacpp-jni} model: the file must exist and be a GGUF that fits the configuration.
+     *
+     * @param aiDefinitionKey the definition's key, named in the error
+     * @param modelConfig     the definition's resolved configuration
+     * @throws SrcMorphException if the file is missing, not a GGUF, or not readable
+     */
+    private static void validateLocalModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
+            throws SrcMorphException {
+        final String modelPath = modelConfig.getModelPath();
+        if (modelPath == null || !new File(modelPath).isFile()) {
+            throw new SrcMorphException("Model file for aiDefinition '" + aiDefinitionKey
+                    + "' does not exist: " + modelPath
+                    + " (checked before any model is loaded; fix the modelPath, or set"
+                    + " generationProvider to mock for a model-free run)");
+        }
+        validateAgainstTheModelItself(aiDefinitionKey, modelConfig, Paths.get(modelPath));
     }
 
     /**

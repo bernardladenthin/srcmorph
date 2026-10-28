@@ -250,7 +250,8 @@ public class SrcMorphConfiguration {
     /**
      * Returns the name of the AI generation provider to use.
      *
-     * @return the provider name ({@code mock} or {@code llamacpp-jni}); defaults to
+     * @return the provider name ({@code mock}, {@code llamacpp-jni} or {@code openai-compatible}); a
+     *         model definition's own {@code provider} overrides it for that model; defaults to
      *         {@link #DEFAULT_GENERATION_PROVIDER}
      */
     public String getGenerationProvider() {
@@ -260,7 +261,8 @@ public class SrcMorphConfiguration {
     /**
      * Sets the name of the AI generation provider to use.
      *
-     * @param generationProvider the provider name ({@code mock} or {@code llamacpp-jni})
+     * @param generationProvider the provider name ({@code mock}, {@code llamacpp-jni} or
+     *                           {@code openai-compatible})
      */
     public void setGenerationProvider(final String generationProvider) {
         this.generationProvider = generationProvider;
