@@ -72,6 +72,10 @@ public class AiModelDefinitionSupportTest {
         definition.setThreadsBatch(6);
         definition.setMainGpu(1);
         definition.setDevices("Vulkan1");
+        definition.setProvider("openai-compatible");
+        definition.setRemoteModel("openai/gpt-6-luna");
+        definition.setBaseUrl("http://127.0.0.1:8080/v1");
+        definition.setApiKeyEnv("MY_KEY");
         definition.setReasoningEffort("high");
         definition.setReasoningBudgetTokens(512);
         definition.setDryMultiplier(0.7f);
@@ -139,6 +143,10 @@ public class AiModelDefinitionSupportTest {
         // mainGpu/devices propagate — kill the dropped-setter void-call mutants in toConfig().
         assertThat(config.getMainGpu(), is(equalTo(1)));
         assertThat(config.getDevices(), is(equalTo("Vulkan1")));
+        assertThat(config.getProvider(), is(equalTo("openai-compatible")));
+        assertThat(config.getRemoteModel(), is(equalTo("openai/gpt-6-luna")));
+        assertThat(config.getBaseUrl(), is(equalTo("http://127.0.0.1:8080/v1")));
+        assertThat(config.getApiKeyEnv(), is(equalTo("MY_KEY")));
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(512)));
@@ -189,6 +197,10 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getThreadsBatch(), is(equalTo(AiGenerationConfig.DEFAULT_THREADS_BATCH)));
         assertThat(config.getMainGpu(), is(equalTo(AiGenerationConfig.DEFAULT_MAIN_GPU)));
         assertThat(config.getDevices(), is(equalTo(AiGenerationConfig.DEFAULT_DEVICES)));
+        assertThat(config.getProvider(), is(equalTo(AiGenerationConfig.DEFAULT_PROVIDER)));
+        assertThat(config.getRemoteModel(), is(equalTo(AiGenerationConfig.DEFAULT_REMOTE_MODEL)));
+        assertThat(config.getBaseUrl(), is(equalTo(AiGenerationConfig.DEFAULT_BASE_URL)));
+        assertThat(config.getApiKeyEnv(), is(equalTo(AiGenerationConfig.DEFAULT_API_KEY_ENV)));
         assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
         assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));

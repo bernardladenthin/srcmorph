@@ -70,6 +70,10 @@ public class AiModelDefinition {
     private int threadsBatch = AiGenerationConfig.DEFAULT_THREADS_BATCH;
     private int mainGpu = AiGenerationConfig.DEFAULT_MAIN_GPU;
     private String devices = AiGenerationConfig.DEFAULT_DEVICES;
+    private String provider = AiGenerationConfig.DEFAULT_PROVIDER;
+    private String remoteModel = AiGenerationConfig.DEFAULT_REMOTE_MODEL;
+    private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
+    private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -676,6 +680,78 @@ public class AiModelDefinition {
      */
     public void setDevices(final String devices) {
         this.devices = devices == null ? AiGenerationConfig.DEFAULT_DEVICES : devices;
+    }
+
+    /**
+     * Returns the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}).
+     *
+     * @return the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}; defaults to {@link AiGenerationConfig#DEFAULT_PROVIDER}
+     */
+    public String getProvider() {
+        return provider;
+    }
+
+    /**
+     * Sets the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}). A {@code null} argument resets to the default.
+     *
+     * @param provider the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}, or {@code null} for the default
+     */
+    public void setProvider(final String provider) {
+        this.provider = provider == null ? AiGenerationConfig.DEFAULT_PROVIDER : provider;
+    }
+
+    /**
+     * Returns the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}).
+     *
+     * @return the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none; defaults to {@link AiGenerationConfig#DEFAULT_REMOTE_MODEL}
+     */
+    public String getRemoteModel() {
+        return remoteModel;
+    }
+
+    /**
+     * Sets the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}). A {@code null} argument resets to the default.
+     *
+     * @param remoteModel the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none, or {@code null} for the default
+     */
+    public void setRemoteModel(final String remoteModel) {
+        this.remoteModel = remoteModel == null ? AiGenerationConfig.DEFAULT_REMOTE_MODEL : remoteModel;
+    }
+
+    /**
+     * Returns the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called).
+     *
+     * @return the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called); defaults to {@link AiGenerationConfig#DEFAULT_BASE_URL}
+     */
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    /**
+     * Sets the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called). A {@code null} argument resets to the default.
+     *
+     * @param baseUrl the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called), or {@code null} for the default
+     */
+    public void setBaseUrl(final String baseUrl) {
+        this.baseUrl = baseUrl == null ? AiGenerationConfig.DEFAULT_BASE_URL : baseUrl;
+    }
+
+    /**
+     * Returns the name of the environment variable holding the API key (never the key itself).
+     *
+     * @return the name of the environment variable holding the API key (never the key itself); empty sends none; defaults to {@link AiGenerationConfig#DEFAULT_API_KEY_ENV}
+     */
+    public String getApiKeyEnv() {
+        return apiKeyEnv;
+    }
+
+    /**
+     * Sets the name of the environment variable holding the API key (never the key itself). A {@code null} argument resets to the default.
+     *
+     * @param apiKeyEnv the name of the environment variable holding the API key (never the key itself); empty sends none, or {@code null} for the default
+     */
+    public void setApiKeyEnv(final String apiKeyEnv) {
+        this.apiKeyEnv = apiKeyEnv == null ? AiGenerationConfig.DEFAULT_API_KEY_ENV : apiKeyEnv;
     }
 
     /**

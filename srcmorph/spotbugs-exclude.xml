@@ -611,4 +611,18 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
     </Match>
 
+    <!--
+        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.post. The URL is
+        the baseUrl of the user's own model definition, not input from a remote party: srcmorph is a
+        build tool and CLI that runs with the rights of whoever wrote its configuration, and calling
+        the server that configuration names is the whole purpose of the openai-compatible provider.
+        OpenAiCompatibleProviderSupport.endpoint() rejects any baseUrl that is not http(s), and
+        EngineSupport.validateRoutedModelPaths does the same before a run starts, so file: and other
+        schemes never reach openConnection.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
+        <Method name="post"/>
+        <Bug pattern="URLCONNECTION_SSRF_FD"/>
+    </Match>
 </FindBugsFilter>

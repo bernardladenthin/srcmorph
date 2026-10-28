@@ -161,8 +161,9 @@ SPDX-License-Identifier: Apache-2.0
                 jackson release train and each transitively pulls jackson-core/jackson-annotations at a
                 matching version — pinning them together here keeps maven-enforcer's
                 dependencyConvergence rule satisfied without needing a separate jackson-core/
-                jackson-annotations/snakeyaml pin (nothing else in the reactor depends on jackson or
-                snakeyaml, so there is no other version to converge against).
+                jackson-annotations/snakeyaml pin. jackson-databind is also used directly by srcmorph's
+                OpenAiCompatibleAiGenerationProvider and transitively by net.ladenthin:llama; this one
+                managed version is what all three resolve to.
             -->
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>

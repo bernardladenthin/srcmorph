@@ -49,6 +49,10 @@ public class LlamaCppJniConfigFactoryTest {
         config.setThreadsBatch(6);
         config.setMainGpu(3);
         config.setDevices("Vulkan1");
+        config.setProvider("openai-compatible");
+        config.setRemoteModel("openai/gpt-6-luna");
+        config.setBaseUrl("http://127.0.0.1:8080/v1");
+        config.setApiKeyEnv("MY_KEY");
         config.setReasoningEffort("high");
         config.setReasoningBudgetTokens(512);
         config.setDryMultiplier(0.5f);
@@ -94,6 +98,10 @@ public class LlamaCppJniConfigFactoryTest {
         assertThat(result.threadsBatch(), is(6));
         assertThat(result.mainGpu(), is(3));
         assertThat(result.devices(), is("Vulkan1"));
+        assertThat(result.provider(), is("openai-compatible"));
+        assertThat(result.remoteModel(), is("openai/gpt-6-luna"));
+        assertThat(result.baseUrl(), is("http://127.0.0.1:8080/v1"));
+        assertThat(result.apiKeyEnv(), is("MY_KEY"));
         assertThat(result.reasoningEffort(), is("high"));
         assertThat(result.reasoningBudgetTokens(), is(512));
         assertThat(result.dryMultiplier(), is(0.5f));
@@ -162,6 +170,10 @@ public class LlamaCppJniConfigFactoryTest {
         assertThat(result.threadsBatch(), is(AiGenerationConfig.DEFAULT_THREADS_BATCH));
         assertThat(result.mainGpu(), is(AiGenerationConfig.DEFAULT_MAIN_GPU));
         assertThat(result.devices(), is(AiGenerationConfig.DEFAULT_DEVICES));
+        assertThat(result.provider(), is(AiGenerationConfig.DEFAULT_PROVIDER));
+        assertThat(result.remoteModel(), is(AiGenerationConfig.DEFAULT_REMOTE_MODEL));
+        assertThat(result.baseUrl(), is(AiGenerationConfig.DEFAULT_BASE_URL));
+        assertThat(result.apiKeyEnv(), is(AiGenerationConfig.DEFAULT_API_KEY_ENV));
         assertThat(result.reasoningEffort(), is(AiGenerationConfig.DEFAULT_REASONING_EFFORT));
         assertThat(result.reasoningBudgetTokens(), is(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS));
         assertThat(result.dryMultiplier(), is(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER));
@@ -170,5 +182,18 @@ public class LlamaCppJniConfigFactoryTest {
         assertThat(result.dryPenaltyLastN(), is(AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N));
         assertThat(result.drySequenceBreakers(), is(Collections.<String>emptyList()));
         assertThat(result.stopStrings(), is(Collections.<String>emptyList()));
+    }
+
+    @Test
+    public void fromGenerationConfig_noModelPath_mapsToEmpty() {
+        // A remote (openai-compatible) definition names no model file; the builder takes "" for it.
+        final AiGenerationConfig config = new AiGenerationConfig();
+        config.setModelPath(null);
+        config.setProvider("openai-compatible");
+
+        final LlamaCppJniConfig result = LlamaCppJniConfigFactory.fromGenerationConfig(config);
+
+        assertThat(result.modelPath(), is(""));
+        assertThat(result.provider(), is("openai-compatible"));
     }
 }

@@ -361,6 +361,37 @@ public class AiGenerationConfig {
     public static final String DEFAULT_DEVICES = "";
 
     /**
+     * Default AI provider of a single model definition. Empty (default) means "the run's
+     * {@code generationProvider}"; a non-empty value ({@code llamacpp-jni}, {@code openai-compatible},
+     * {@code mock}) overrides it for this model only, so one run can route some files to a local GGUF
+     * and others to a remote model.
+     */
+    public static final String DEFAULT_PROVIDER = "";
+
+    /**
+     * Default model id the {@code openai-compatible} provider asks the server for (the request's
+     * {@code model} field, e.g. {@code openai/gpt-6-luna} on OpenRouter). Empty (default) sends none,
+     * which a llama.cpp {@code llama-server} or jllama's {@code NativeServer} accept: they serve the
+     * one model they loaded.
+     */
+    public static final String DEFAULT_REMOTE_MODEL = "";
+
+    /**
+     * Default base URL of the {@code openai-compatible} provider: OpenRouter's OpenAI-compatible API.
+     * The provider posts to {@code <baseUrl>/chat/completions}, so a local {@code llama-server} or
+     * {@code NativeServer} is {@code http://127.0.0.1:<port>/v1}.
+     */
+    public static final String DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
+
+    /**
+     * Default name of the environment variable holding the API key of the {@code openai-compatible}
+     * provider, sent as {@code Authorization: Bearer <key>}. The key itself never appears in a
+     * configuration file. Empty, or a variable that is unset or empty, sends no key, which a local
+     * server without {@code --api-key} accepts.
+     */
+    public static final String DEFAULT_API_KEY_ENV = "OPENROUTER_API_KEY";
+
+    /**
      * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
      * {@code 0.0} = disabled (llama.cpp default). A positive value penalises verbatim n-gram
      * repetition, which can break runaway repetition loops; the other {@code dry*} knobs only take
@@ -424,6 +455,10 @@ public class AiGenerationConfig {
     private int threadsBatch = DEFAULT_THREADS_BATCH;
     private int mainGpu = DEFAULT_MAIN_GPU;
     private String devices = DEFAULT_DEVICES;
+    private String provider = DEFAULT_PROVIDER;
+    private String remoteModel = DEFAULT_REMOTE_MODEL;
+    private String baseUrl = DEFAULT_BASE_URL;
+    private String apiKeyEnv = DEFAULT_API_KEY_ENV;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
@@ -1013,6 +1048,78 @@ public class AiGenerationConfig {
      */
     public void setDevices(final String devices) {
         this.devices = devices == null ? DEFAULT_DEVICES : devices;
+    }
+
+    /**
+     * Returns the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}).
+     *
+     * @return the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}
+     */
+    public String getProvider() {
+        return provider;
+    }
+
+    /**
+     * Sets the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}). A {@code null} argument resets to {@link #DEFAULT_PROVIDER}.
+     *
+     * @param provider the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}, or {@code null} for the default
+     */
+    public void setProvider(final String provider) {
+        this.provider = provider == null ? DEFAULT_PROVIDER : provider;
+    }
+
+    /**
+     * Returns the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}).
+     *
+     * @return the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none
+     */
+    public String getRemoteModel() {
+        return remoteModel;
+    }
+
+    /**
+     * Sets the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}). A {@code null} argument resets to {@link #DEFAULT_REMOTE_MODEL}.
+     *
+     * @param remoteModel the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none, or {@code null} for the default
+     */
+    public void setRemoteModel(final String remoteModel) {
+        this.remoteModel = remoteModel == null ? DEFAULT_REMOTE_MODEL : remoteModel;
+    }
+
+    /**
+     * Returns the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called).
+     *
+     * @return the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called)
+     */
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    /**
+     * Sets the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called). A {@code null} argument resets to {@link #DEFAULT_BASE_URL}.
+     *
+     * @param baseUrl the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called), or {@code null} for the default
+     */
+    public void setBaseUrl(final String baseUrl) {
+        this.baseUrl = baseUrl == null ? DEFAULT_BASE_URL : baseUrl;
+    }
+
+    /**
+     * Returns the name of the environment variable holding the API key (never the key itself).
+     *
+     * @return the name of the environment variable holding the API key (never the key itself); empty sends none
+     */
+    public String getApiKeyEnv() {
+        return apiKeyEnv;
+    }
+
+    /**
+     * Sets the name of the environment variable holding the API key (never the key itself). A {@code null} argument resets to {@link #DEFAULT_API_KEY_ENV}.
+     *
+     * @param apiKeyEnv the name of the environment variable holding the API key (never the key itself); empty sends none, or {@code null} for the default
+     */
+    public void setApiKeyEnv(final String apiKeyEnv) {
+        this.apiKeyEnv = apiKeyEnv == null ? DEFAULT_API_KEY_ENV : apiKeyEnv;
     }
 
     /**

@@ -57,6 +57,10 @@ public final class LlamaCppJniConfig {
     private final int threadsBatch;
     private final int mainGpu;
     private final String devices;
+    private final String provider;
+    private final String remoteModel;
+    private final String baseUrl;
+    private final String apiKeyEnv;
     private final String reasoningEffort;
     private final int reasoningBudgetTokens;
     private final float dryMultiplier;
@@ -109,6 +113,10 @@ public final class LlamaCppJniConfig {
         this.threadsBatch = builder.threadsBatch;
         this.mainGpu = builder.mainGpu;
         this.devices = builder.devices;
+        this.provider = builder.provider;
+        this.remoteModel = builder.remoteModel;
+        this.baseUrl = builder.baseUrl;
+        this.apiKeyEnv = builder.apiKeyEnv;
         this.reasoningEffort = builder.reasoningEffort;
         this.reasoningBudgetTokens = builder.reasoningBudgetTokens;
         this.dryMultiplier = builder.dryMultiplier;
@@ -399,6 +407,42 @@ public final class LlamaCppJniConfig {
     }
 
     /**
+     * Returns the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}).
+     *
+     * @return the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}
+     */
+    public String provider() {
+        return provider;
+    }
+
+    /**
+     * Returns the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}).
+     *
+     * @return the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none
+     */
+    public String remoteModel() {
+        return remoteModel;
+    }
+
+    /**
+     * Returns the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called).
+     *
+     * @return the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called)
+     */
+    public String baseUrl() {
+        return baseUrl;
+    }
+
+    /**
+     * Returns the name of the environment variable holding the API key (never the key itself).
+     *
+     * @return the name of the environment variable holding the API key (never the key itself); empty sends none
+     */
+    public String apiKeyEnv() {
+        return apiKeyEnv;
+    }
+
+    /**
      * Returns the gpt-oss reasoning-effort kwarg value.
      *
      * @return reasoning effort ("low"/"medium"/"high"), or empty to omit the kwarg
@@ -512,6 +556,10 @@ public final class LlamaCppJniConfig {
         private int threadsBatch = AiGenerationConfig.DEFAULT_THREADS_BATCH;
         private int mainGpu = AiGenerationConfig.DEFAULT_MAIN_GPU;
         private String devices = AiGenerationConfig.DEFAULT_DEVICES;
+        private String provider = AiGenerationConfig.DEFAULT_PROVIDER;
+        private String remoteModel = AiGenerationConfig.DEFAULT_REMOTE_MODEL;
+        private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
+        private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
         private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
         private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
         private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -831,6 +879,50 @@ public final class LlamaCppJniConfig {
          */
         public Builder devices(final String devices) {
             this.devices = devices != null ? devices : AiGenerationConfig.DEFAULT_DEVICES;
+            return this;
+        }
+
+        /**
+         * Sets the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}). {@code null} restores the default.
+         *
+         * @param provider the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}
+         * @return this builder
+         */
+        public Builder provider(final String provider) {
+            this.provider = provider != null ? provider : AiGenerationConfig.DEFAULT_PROVIDER;
+            return this;
+        }
+
+        /**
+         * Sets the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}). {@code null} restores the default.
+         *
+         * @param remoteModel the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none
+         * @return this builder
+         */
+        public Builder remoteModel(final String remoteModel) {
+            this.remoteModel = remoteModel != null ? remoteModel : AiGenerationConfig.DEFAULT_REMOTE_MODEL;
+            return this;
+        }
+
+        /**
+         * Sets the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called). {@code null} restores the default.
+         *
+         * @param baseUrl the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called)
+         * @return this builder
+         */
+        public Builder baseUrl(final String baseUrl) {
+            this.baseUrl = baseUrl != null ? baseUrl : AiGenerationConfig.DEFAULT_BASE_URL;
+            return this;
+        }
+
+        /**
+         * Sets the name of the environment variable holding the API key (never the key itself). {@code null} restores the default.
+         *
+         * @param apiKeyEnv the name of the environment variable holding the API key (never the key itself); empty sends none
+         * @return this builder
+         */
+        public Builder apiKeyEnv(final String apiKeyEnv) {
+            this.apiKeyEnv = apiKeyEnv != null ? apiKeyEnv : AiGenerationConfig.DEFAULT_API_KEY_ENV;
             return this;
         }
 

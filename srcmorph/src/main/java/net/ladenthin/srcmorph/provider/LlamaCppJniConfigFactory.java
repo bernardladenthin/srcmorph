@@ -33,7 +33,9 @@ public final class LlamaCppJniConfigFactory {
      * @return the fully populated llama.cpp configuration
      */
     public static LlamaCppJniConfig fromGenerationConfig(final AiGenerationConfig config) {
-        return LlamaCppJniConfig.builder(config.getModelPath())
+        // A remote model (openai-compatible) needs no model file, so its definition may name none.
+        final String modelPath = config.getModelPath();
+        return LlamaCppJniConfig.builder(modelPath == null ? "" : modelPath)
                 .contextSize(config.getContextSize())
                 .maxOutputTokens(config.getMaxOutputTokens())
                 .temperature(config.getTemperature())
@@ -62,6 +64,10 @@ public final class LlamaCppJniConfigFactory {
                 .threadsBatch(config.getThreadsBatch())
                 .mainGpu(config.getMainGpu())
                 .devices(config.getDevices())
+                .provider(config.getProvider())
+                .remoteModel(config.getRemoteModel())
+                .baseUrl(config.getBaseUrl())
+                .apiKeyEnv(config.getApiKeyEnv())
                 .reasoningEffort(config.getReasoningEffort())
                 .reasoningBudgetTokens(config.getReasoningBudgetTokens())
                 .dryMultiplier(config.getDryMultiplier())

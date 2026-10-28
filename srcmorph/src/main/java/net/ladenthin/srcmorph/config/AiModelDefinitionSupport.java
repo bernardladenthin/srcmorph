@@ -197,6 +197,10 @@ public final class AiModelDefinitionSupport {
         config.setThreadsBatch(definition.getThreadsBatch());
         config.setMainGpu(definition.getMainGpu());
         config.setDevices(definition.getDevices());
+        config.setProvider(definition.getProvider());
+        config.setRemoteModel(definition.getRemoteModel());
+        config.setBaseUrl(definition.getBaseUrl());
+        config.setApiKeyEnv(definition.getApiKeyEnv());
         config.setReasoningEffort(definition.getReasoningEffort());
         config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
         config.setDryMultiplier(definition.getDryMultiplier());

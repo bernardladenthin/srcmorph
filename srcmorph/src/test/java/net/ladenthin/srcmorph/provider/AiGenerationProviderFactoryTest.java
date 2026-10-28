@@ -48,4 +48,44 @@ public class AiGenerationProviderFactoryTest {
     public void unknownProviderNameThrows() {
         assertThrows(IllegalArgumentException.class, () -> factory.create("nope", jniConfig(), promptSupport));
     }
+
+    @Test
+    public void openAiCompatibleProviderNameReturnsTheHttpProvider() {
+        assertThat(
+                factory.create(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, jniConfig(), promptSupport),
+                is(instanceOf(OpenAiCompatibleAiGenerationProvider.class)));
+    }
+
+    @Test
+    public void theModelsOwnProviderOverridesTheRunsProvider() {
+        final LlamaCppJniConfig remote = LlamaCppJniConfig.builder("")
+                .provider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
+                .build();
+        assertThat(
+                factory.create(AiGenerationProviderFactory.PROVIDER_MOCK, remote, promptSupport),
+                is(instanceOf(OpenAiCompatibleAiGenerationProvider.class)));
+    }
+
+    @Test
+    public void anUnknownProviderOfTheModelIsNamedInTheError() {
+        final LlamaCppJniConfig remote =
+                LlamaCppJniConfig.builder("").provider("nope-model").build();
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> factory.create(AiGenerationProviderFactory.PROVIDER_MOCK, remote, promptSupport));
+        assertThat(thrown.getMessage(), is("Unsupported AI provider: nope-model"));
+    }
+
+    @Test
+    public void effectiveProvider_aBlankModelProviderKeepsTheRunsProvider() {
+        assertThat(AiGenerationProviderFactory.effectiveProvider("mock", null), is("mock"));
+        assertThat(AiGenerationProviderFactory.effectiveProvider("mock", ""), is("mock"));
+        assertThat(AiGenerationProviderFactory.effectiveProvider("mock", "   "), is("mock"));
+    }
+
+    @Test
+    public void effectiveProvider_aModelProviderWinsAndIsTrimmed() {
+        assertThat(
+                AiGenerationProviderFactory.effectiveProvider("mock", " openai-compatible "), is("openai-compatible"));
+    }
 }

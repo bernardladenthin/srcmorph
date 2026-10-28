@@ -7,7 +7,8 @@ This document provides guidance for AI assistants working on this codebase.
 ## Project Overview
 
 **srcmorph** is a prompt-driven source-tree transformer: it walks a source tree and processes each
-file through a configurable local LLM prompt (via llama.cpp / GGUF models, no cloud calls), producing
+file through a configurable LLM prompt (by default local via llama.cpp / GGUF models; per model
+optionally an OpenAI-compatible API such as OpenRouter), producing
 layered output — per-file, then per-package, then per-project. Today it emits structured `.ai.md`
 Markdown summaries for AI-assisted code navigation; the same rule-routed pipeline is generic enough
 to eventually emit wikis, architecture docs, diagrams, or source-to-source transformations.
@@ -111,8 +112,11 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
 - **`prompt/`** — `AiPromptDefinition`, `AiPreparedPrompt`, `AiPromptSupport`,
   `AiPromptPreparationSupport`.
 - **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
-  `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"`), `MockAiGenerationProvider`,
-  `LlamaCppJniAiGenerationProvider`, `LlamaCppJniConfig` (built through `LlamaCppJniConfig.builder(modelPath)`; the
+  `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
+  definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,
+  `LlamaCppJniAiGenerationProvider`, `OpenAiCompatibleAiGenerationProvider` (HTTP to
+  `<baseUrl>/chat/completions`, key from the env var `apiKeyEnv` names; its pure logic lives in the
+  PIT-gated `OpenAiCompatibleProviderSupport`), `LlamaCppJniConfig` (built through `LlamaCppJniConfig.builder(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching
   `AiGenerationConfig.DEFAULT_*`) + `LlamaCppJniConfigFactory` (the pure 37-field
   mapping from a resolved `AiGenerationConfig` to the native binding's parameter objects — extracted
@@ -446,8 +450,9 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
 
 ## Key Design Principles
 
-1. **Local-first** — all AI inference runs locally via llama.cpp; no cloud API calls, no data leaves
-   the machine.
+1. **Local-first** — by default all AI inference runs locally via llama.cpp; no cloud API calls, no
+   data leaves the machine. A remote model is an explicit per-model opt-in (`provider`
+   `openai-compatible`), and its API key is only ever read from an environment variable.
 2. **Deterministic indexing** — the same source produces the same `.ai.md` skeleton (deterministic
    header); only the AI-generated body varies.
 3. **Incremental updates** — files with existing summaries are skipped unless `force=true`; checksums

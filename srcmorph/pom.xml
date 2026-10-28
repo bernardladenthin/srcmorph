@@ -118,6 +118,15 @@ SPDX-License-Identifier: Apache-2.0
             <artifactId>checker-qual</artifactId>
         </dependency>
         <dependency>
+            <!--
+                OpenAiCompatibleAiGenerationProvider builds its request JSON with Jackson. Declared
+                explicitly because the provider uses it directly; net.ladenthin:llama depends on the
+                same artifact, and the parent's dependencyManagement keeps both on one version.
+            -->
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
             <groupId>net.ladenthin</groupId>
             <artifactId>llama</artifactId>
             <version>${llama.version}</version>
@@ -732,6 +741,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.provider.AiGenerationProvider</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.srcmorph.provider.MockAiGenerationProvider</param>
+                        <param>net.ladenthin.srcmorph.provider.OpenAiCompatibleProviderSupport</param>
                         <param>net.ladenthin.srcmorph.config.AiOversizeStrategy</param>
                         <param>net.ladenthin.srcmorph.config.AiFactCounter</param>
                         <param>net.ladenthin.srcmorph.config.AiFactDefinition</param>

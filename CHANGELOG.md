@@ -11,6 +11,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Added
+- **`openai-compatible` provider: a model can run on any OpenAI-compatible API.** OpenRouter (the
+  default `baseUrl`), a llama.cpp `llama-server`, jllama's `NativeServer` or any server answering
+  `POST <baseUrl>/chat/completions`. Four new per-model settings: `provider` (overrides the run's
+  `generationProvider` for this model, so one run can mix local and remote models), `remoteModel`,
+  `baseUrl` and `apiKeyEnv` (the *name* of the environment variable holding the key, default
+  `OPENROUTER_API_KEY`; the key never goes into a configuration). The request carries the same
+  prompts as the local provider and only the portable sampling knobs; the answer goes through the
+  same parsing, so the `.ai.md` comes out the same way. Remote models skip the GGUF checks before a
+  run and instead must name an `http(s)` `baseUrl`. Local stays the default: nothing leaves the
+  machine unless a model says `openai-compatible`.
+
 ### Removed
 - **No more fat jars on the GitHub release.** Up to 1.3.0 every release attached 15 signed
   `srcmorph-cli-<version>-jar-with-dependencies[-<classifier>].jar` files (a CPU jar for every

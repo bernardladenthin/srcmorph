@@ -27,7 +27,8 @@ retrieval.
 - Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
 - Run any phase independently — toggle file / package / project on or off
 - Exclude trivial or generated files with glob patterns
-- Uses local models via llama.cpp (no cloud dependency)
+- Uses local models via llama.cpp by default (no cloud dependency); a model can instead run on any
+  OpenAI-compatible API (OpenRouter, `llama-server`, jllama's `NativeServer`), chosen per model
 - Incremental updates (skips unchanged files)
 - Logs a rough per-file duration estimate before each generation (size, token count, expected time)
 - Optimized for AI-assisted code understanding
@@ -376,7 +377,8 @@ Run-level parameters (set in `<configuration>`):
 - `excludes` — glob patterns for source files to skip, matched against each file's path relative to
   the base dir with `/` separators, e.g. `**/package-info.java`, `**/generated/**` (default: none).
   `*` stays within one path segment, `**` spans directories, `?` is a single character.
-- `generationProvider` — AI backend: `mock` (default) or `llamacpp-jni`
+- `generationProvider` — AI backend: `mock` (default), `llamacpp-jni` or `openai-compatible`; a
+  model's own `provider` (below) overrides it for that model
 - `modelDirectory` (`srcmorph.modelDirectory`) — the directory a relative `modelPath` is resolved
   against; an absolute `modelPath` is used as it is, so models can live in one directory and still
   one of them elsewhere. Unset (default), a relative `modelPath` is relative to the working directory.
@@ -398,13 +400,18 @@ Run-level parameters (set in `<configuration>`):
 ### Per-model `<aiDefinition>` parameters
 
 Every model knob lives inside its `<aiDefinition>` (referenced by `aiDefinitionKey`), not as a top-level
-plugin parameter. Only `key` and `modelPath` are required; everything else has a default. The defaults
-below are the shipped values (`AiGenerationConfig.DEFAULT_*`).
+plugin parameter. Only `key` and `modelPath` are required (`modelPath` not for an `openai-compatible`
+model); everything else has a default. The defaults below are the shipped values
+(`AiGenerationConfig.DEFAULT_*`).
 
 | Element | Default | Description |
 |---|---|---|
 | `key` | *(required)* | Identifier referenced by a rule's `aiDefinitionKey` |
-| `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the working directory) |
+| `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the working directory). Not used by an `openai-compatible` model |
+| `provider` | *(empty)* | The backend of this model: `llamacpp-jni`, `openai-compatible` or `mock`; empty uses the run's `generationProvider`. Lets one run send some files to a local GGUF and others to a remote model |
+| `remoteModel` | *(empty)* | `openai-compatible` only: the model id requested (the `model` field, e.g. `openai/gpt-6-luna` on OpenRouter); empty sends none, which a single-model `llama-server` or `NativeServer` accepts |
+| `baseUrl` | `https://openrouter.ai/api/v1` | `openai-compatible` only: the API base; `<baseUrl>/chat/completions` is called. A local server is `http://127.0.0.1:<port>/v1`. Must be `http(s)`, checked before the run starts |
+| `apiKeyEnv` | `OPENROUTER_API_KEY` | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer`. The key itself never goes into a configuration file. Unset or empty sends no key |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
 | `threads` | `4` (fewer on a machine with fewer cores) | CPU threads for inference. Never set more than the machine has cores: ggml's threads wait on each other, and an oversubscribed run is orders of magnitude slower |
@@ -443,6 +450,23 @@ below are the shipped values (`AiGenerationConfig.DEFAULT_*`).
 | `dryPenaltyLastN` | `-1` | DRY look-back window in tokens (`-1` = whole context, `0` = off) |
 | `drySequenceBreakers` | *(empty)* | DRY sequence-breaker strings; empty = the binding defaults |
 | `stopStrings` | *(empty)* | Extra stop strings that end generation |
+
+**An `openai-compatible` model** sends the source file to the server at `baseUrl`; with the default
+that is OpenRouter, i.e. a third party. It sends the same system prompt and user message as the
+local provider and only the portable sampling knobs: `maxOutputTokens`, `temperature`, `topP`,
+`topK` and `minP` (when positive), `repeatPenalty`, `seed` (when set), `stopStrings` and
+`reasoningEffort`. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
+caching) are ignored. A non-2xx answer fails the file with the status and the server's error text;
+nothing is retried.
+
+```xml
+<aiDefinition>
+  <key>luna</key>
+  <provider>openai-compatible</provider>
+  <remoteModel>openai/gpt-6-luna</remoteModel>
+  <maxOutputTokens>1024</maxOutputTokens>
+</aiDefinition>
+```
 
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
@@ -492,7 +516,7 @@ identically, so the two can never disagree about what was measured.
 - Deterministic metadata (hash-based change detection)
 - Separation of concerns (header = metadata, body = summary)
 - AI-friendly structure (predictable and hierarchical)
-- Local-first (no external APIs required)
+- Local-first (no external APIs required; a remote model is an explicit, per-model opt-in)
 ## Known Limitations
 - Model output may require normalization (handled in code)
 - Large models increase runtime
