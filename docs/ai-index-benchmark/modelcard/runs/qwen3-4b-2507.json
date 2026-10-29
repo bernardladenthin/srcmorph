@@ -1,0 +1,33 @@
+{
+ "key": "qwen3-4b-2507",
+ "name": "Qwen3-4B-Instruct-2507",
+ "backend": "huggingface",
+ "definition": {
+  "key": "qwen3-4b-2507",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://router.huggingface.co/v1",
+  "contextSize": 32768,
+  "remoteModel": "Qwen/Qwen3-4B-Instruct-2507:nscale"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 295.6,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 93.8,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 3.2,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

@@ -3,7 +3,7 @@
 This directory captures a controlled comparison of **local GGUF models** and **two prompt
 versions** for the plugin's code-summarization task (`.ai.md` generation), run on CPU.
 
-- **[MODEL-CARD.md](MODEL-CARD.md)** — October 2026: 7 hosted (OpenRouter) and 7 local GGUF models (RTX 3070 Laptop) on Java, SQL and other files: compaction, recall of the names that matter, invented names, format, cost. Hosted pick GPT-6 Luna, local pick Gemma 4 E4B with thinking off.
+- **[MODEL-CARD.md](MODEL-CARD.md)** — October 2026: 9 hosted (7 OpenRouter, 2 Hugging Face router) and 7 local GGUF models (RTX 3070 Laptop) on Java, SQL and other files: compaction, recall of the names that matter, invented names, format, cost. Hosted pick GPT-6 Luna, local pick Gemma 4 E4B with thinking off.
 - **[COMPARISON.md](COMPARISON.md)** — scored results, per-model pros/cons, source deep-dive, recommendation.
 - **[HSMALL-VS-GPTOSS.md](HSMALL-VS-GPTOSS.md)** — focused Granite 4.0 H‑Small (UD‑Q4_K_XL) vs gpt‑oss‑20B head‑to‑head, **CPU + GPU**, on the current 24‑file tree: quality parity, but H‑Small is slower (9B active) — the Mamba win is memory + long‑context prefill, not decode.
 - **[AGENTIC-CPU-BENCH.md](AGENTIC-CPU-BENCH.md)** — agentic **reaction‑time** benchmark (tool‑calling via `llama-server --jinja`): which local models can do native tool_calls, and reaction time vs. context size. h‑tiny (hybrid) beats gpt‑oss at every context and the lead grows; big coders are async‑only on CPU.

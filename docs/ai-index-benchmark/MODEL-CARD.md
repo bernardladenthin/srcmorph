@@ -2,7 +2,7 @@
 
 Which model to put behind srcmorph, measured on one fixed corpus: how much each model compacts
 Java, SQL and other source files, how many of the names that matter it keeps, how many it makes up,
-and how well it holds the `.ai.md` format. Hosted models (OpenRouter) and local GGUF models
+and how well it holds the `.ai.md` format. Hosted models (OpenRouter and Hugging Face's router) and local GGUF models
 (llama.cpp on a laptop GPU) ran the same three phases with the same prompts.
 
 The June 2026 benchmark ([COMPARISON.md](COMPARISON.md)) compared local models on Java only; the
@@ -20,13 +20,20 @@ models marked ¹ below were in it.
   more (5.25 against 4.09), but it states none of the seed counts and its other-file summaries keep
   fewer names (87 %). The June precision pick holds up on the hosted route as well.
 - **Local on an 8 GB GPU: Gemma 4 E4B with thinking off.** Full Java recall, no invented names, a
-  clean format, 11 s per file. **Qwen3.5-4B with thinking off** is as fast (9.6 s), is the only small
-  model that gets all four seed counts, but drops more names (Java 92 %, other files 68 %).
+  clean format, 11 s per file. **Qwen3.5-4B with thinking off** is as fast (9.6 s) and gets all four seed
+  counts, but drops more names (Java 92 %, other files 68 %).
 - **Local, when time does not matter: Granite 4.0 H-Small.** Full Java recall and a clean format,
   but 59 s per file.
 - **Not worth their cost here.** Qwen3.8-27B is about as faithful as Luna, but costs 18 times as much
   (0.40 USD) and writes the longest summaries. Gemma 4 12B gets the seed counts right, but at 172 s
   per file: the Q4_K_M weights do not fit in 8 GB, so part of the model runs on the CPU.
+- **Hugging Face router (nscale): the cheapest, not the best.** Both models together cost under
+  0.01 USD at 0.01 / 0.03 USD per million input / output tokens.
+  - **Qwen2.5-Coder-7B** is the fastest run of all (3.9 s per file), with Java recall at 86 %. It
+    states no seed counts and writes 6 `#`–`###` headings.
+  - **Qwen3-4B-Instruct-2507** gets all four seed counts, but Java recall is only 74 %.
+
+  Neither comes close to gpt-oss-20b, which costs about one cent.
 - **Avoid for this task:**
   - **Granite 4.0 H-Tiny** starts 7 summaries with "Here is the markdown summary …", wraps 13 in a
     ```` ```markdown ```` fence (34 fence lines), writes 129 `#`–`###` headings, and calls the
@@ -73,6 +80,9 @@ models.
 - **Qwen3-Coder-30B-A3B**, June's throughput alternative, falls behind on recall and on invented
   names.
 - **Granite H-Tiny**, June's high-throughput choice, fails on format.
+- **Qwen3-4B-Instruct-2507**, June's budget pick over Qwen3.5-4B, now falls behind it: Java recall
+  74 % against 92 %. Qwen3-4B ran hosted here, Qwen3.5-4B locally at Q4, and Qwen3.5-4B had thinking
+  off.
 - **Gemma 4** was not in June. With thinking off, E4B is the best local model on this hardware.
 <!-- assessment:end -->
 
@@ -90,8 +100,8 @@ models.
 | Qwen3.5-35B-A3B | OpenRouter | 37 | 28.5 | 55.6 | 0.2371 | 5 (`java/config/AiFactExtractor.java`, `java/config/AiGenerationConfig.java`, `java/config/AiOversizeStrategy.java`, `java/config/SrcMorphConfiguration.java`, `java/provider/AiCompletionParser.java`) |
 | Qwen3.8-27B | OpenRouter | 37 | 8.7 | 14.8 | 0.4030 | 0 |
 | gpt-oss-20b ¹ | OpenRouter | 37 | 7.1 | 11.8 | 0.0122 | 0 |
-| Qwen3-4B-Instruct-2507 ¹ | HF / nscale | not run | | | | |
-| Qwen2.5-Coder-7B-Instruct ¹ | HF / nscale | not run | | | | |
+| Qwen3-4B-Instruct-2507 ¹ | HF / nscale | 37 | 6.5 | 12.3 | see text | 0 |
+| Qwen2.5-Coder-7B-Instruct ¹ | HF / nscale | 37 | 2.4 | 3.9 | see text | 0 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 95.2 | 172.3 | 0 (local) | 0 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 6.3 | 11.1 | 0 (local) | 0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | local GGUF (RTX 3070) | 37 | 6.1 | 9.6 | 0 (local) | 0 |
@@ -111,6 +121,8 @@ models.
 | Qwen3.5-35B-A3B | 4.66 | 49% | 5.06 | 96% | 4/4 | 0.96 | 79% | 0.6 |
 | Qwen3.8-27B | 3.49 | 98% | 4.18 | 98% | 4/4 | 0.69 | 96% | 1.6 |
 | gpt-oss-20b ¹ | 5.25 | 100% | 5.45 | 98% | 0/4 | 0.94 | 87% | 0.8 |
+| Qwen3-4B-Instruct-2507 ¹ | 4.72 | 74% | 4.49 | 84% | 4/4 | 0.91 | 79% | 1.0 |
+| Qwen2.5-Coder-7B-Instruct ¹ | 4.23 | 86% | 5.57 | 87% | 0/4 | 0.99 | 62% | 0.8 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | 4.22 | 88% | 5.72 | 95% | 4/4 | 0.90 | 85% | 0.2 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | 4.08 | 100% | 5.36 | 94% | 0/4 | 0.91 | 78% | 0.0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | 4.32 | 92% | 4.42 | 95% | 4/4 | 0.91 | 68% | 1.1 |
@@ -130,6 +142,8 @@ models.
 | Qwen3.5-35B-A3B | 0 | 0 | 0 | 0 | 5 |
 | Qwen3.8-27B | 0 | 0 | 0 | 0 | 0 |
 | gpt-oss-20b ¹ | 0 | 0 | 0 | 0 | 0 |
+| Qwen3-4B-Instruct-2507 ¹ | 0 | 0 | 0 | 0 | 0 |
+| Qwen2.5-Coder-7B-Instruct ¹ | 0 | 6 | 0 | 0 | 0 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | 0 | 0 | 0 | 0 | 0 |
@@ -192,7 +206,9 @@ deviates from the common settings.
 - **Format** — bodies without the `>` lead line, `#`–`###` headings (the prompts allow `####` and
   below), code fences, leaked reasoning markers, empty or missing bodies.
 - **Cut off** — files whose generation hit `maxOutputTokens` (the provider's warning in the log).
-- **Cost** — the difference of OpenRouter's `total_usage` before and after a model's run.
+- **Cost** — the difference of OpenRouter's `total_usage` before and after a model's run. Hugging
+  Face's router reports no per-run usage. The "see text" entries are priced at nscale's list price
+  under Recommendations.
 
 [`modelcard/run.py`](modelcard/run.py) runs a model, [`modelcard/score.py`](modelcard/score.py)
 writes [`scores/files.tsv`](modelcard/scores/files.tsv) (one row per model and file) and
@@ -212,8 +228,7 @@ trees are in [`outputs-2026-10/`](outputs-2026-10/), one directory per model.
   small mostly measures how much a model writes regardless of input; the Java files (up to 51 KB)
   say more about compaction.
 - **Not measured:** MAI-Code-1.1-Flash (Microsoft) is only on Azure AI Foundry and GitHub Copilot,
-  neither on OpenRouter nor on Hugging Face's router. The two Hugging Face models of
-  `models.json` (Qwen3-4B-Instruct-2507, Qwen2.5-Coder-7B-Instruct) wait for inference credits.
+  neither on OpenRouter nor on Hugging Face's router.
 
 ### Earlier SQL measurements
 

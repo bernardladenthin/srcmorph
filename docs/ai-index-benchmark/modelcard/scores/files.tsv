@@ -332,6 +332,80 @@ nemotron-3.5-lightning	sql/package.ai.md	package	False	0	5227	0	0	0	0	0	0	True	0
 nemotron-3.5-lightning	sql/shop/package.ai.md	package	False	0	1969	0	0	0	0	0	0	True	0	0	0	FOR UPDATE add_order_item customer_order order_item product
 nemotron-3.5-lightning	sql/warehouse/package.ai.md	package	False	0	1815	0	0	0	0	0	0	True	0	0	0	Changes DATETIME2 ReceivedAt SYSUTCDATETIME Since Sku StockLevel SupplierFeed
 nemotron-3.5-lightning	project.ai.md	project	False	0	2861	0	0	0	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/config/AiConditionEvaluator.java	java	False	9800	3250	4	4	99	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/config/AiConditionGroup.java	java	False	1750	1280	2	2	32	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/config/AiFactExtractor.java	java	False	4856	1405	3	3	43	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/config/AiGenerationConfig.java	java	False	51188	6219	88	85	130	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/config/AiOversizeStrategy.java	java	False	3315	1361	3	3	19	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/config/SrcMorphConfiguration.java	java	False	17710	5746	37	36	151	2	0	0	True	0	0	0	extends implements
+qwen2.5-coder-7b	java/provider/AiCompletionParser.java	java	False	4337	1495	2	1	9	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/provider/AiGenerationProvider.java	java	False	1725	1053	1	0	28	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/provider/AiGenerationProviderFactory.java	java	False	3673	2140	2	2	59	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3360	4	4	104	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/provider/LlamaCppJniConfig.java	java	False	36703	7219	44	44	143	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3197	0	0	136	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	other/kernels/histogram.cl	other	False	1653	1669	9	6	22	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	other/ringbuf/ringbuf.c	other	False	1794	2006	12	8	45	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	other/ringbuf/ringbuf.h	other	False	1292	1559	14	11	45	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	other/scripts/rotate_backups.sh	other	False	1202	1392	5	1	13	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	other/scripts/sales_report.py	other	False	2290	1679	9	7	32	2	0	0	True	0	0	0	tregion trevenue
+qwen2.5-coder-7b	sql/library/01_schema.sql	sql	False	1622	2069	19	16	160	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	sql/library/02_views.sql	sql	False	1240	1291	13	12	0	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	sql/library/03_routines.sql	sql	False	2546	1716	14	10	81	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	sql/library/04_migration_v2.sql	sql	False	1660	1616	12	9	91	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	sql/library/05_seed_data.sql	sql	False	54543	1440	4	4	117	6	4	0	True	0	0	0	varchar
+qwen2.5-coder-7b	sql/shop/orders_mysql.sql	sql	False	2481	2203	15	14	150	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1655	14	13	0	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	java/config/package.ai.md	package	False	0	1735	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig AiFileContext
+qwen2.5-coder-7b	java/package.ai.md	package	False	0	4712	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+qwen2.5-coder-7b	java/provider/package.ai.md	package	False	0	3366	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiPromptSupport AutoCloseable Function IOException
+qwen2.5-coder-7b	other/kernels/package.ai.md	package	False	0	1012	0	0	0	0	0	0	True	0	0	0	__global __local histogram histogram_partial histogram_reduce input length partial
+qwen2.5-coder-7b	other/package.ai.md	package	False	0	1908	0	0	0	0	0	0	True	0	0	0	__global __local csv_files histogram histogram_partial histogram_reduce input length
+qwen2.5-coder-7b	other/ringbuf/package.ai.md	package	False	0	1299	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM ringbuf ringbuf_free_space ringbuf_read ringbuf_status_t ringbuf_t ringbuf_used
+qwen2.5-coder-7b	other/scripts/package.ai.md	package	False	0	1072	0	0	0	0	0	0	True	0	0	0	csv_files rotate_backups sales_report source_dir
+qwen2.5-coder-7b	package.ai.md	package	False	0	10882	0	0	0	0	0	0	True	4	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+qwen2.5-coder-7b	sql/library/package.ai.md	package	False	0	2785	0	0	0	0	0	0	True	0	0	0	BIGSERIAL TIMESTAMPTZ
+qwen2.5-coder-7b	sql/package.ai.md	package	False	0	4222	0	0	0	0	0	0	True	2	0	0	BIGSERIAL TIMESTAMPTZ customer_order order_id order_item orders_mysql product quantity
+qwen2.5-coder-7b	sql/shop/package.ai.md	package	False	0	859	0	0	0	0	0	0	True	0	0	0	customer_order order_id order_item orders_mysql product quantity sku sql
+qwen2.5-coder-7b	sql/warehouse/package.ai.md	package	False	0	635	0	0	0	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	project.ai.md	project	False	0	2346	0	0	0	0	0	0	True	0	0	0	config java kernels other provider ringbuf scripts shop
+qwen3-4b-2507	java/config/AiConditionEvaluator.java	java	False	9800	2246	4	3	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/config/AiConditionGroup.java	java	False	1750	1385	2	2	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/config/AiFactExtractor.java	java	False	4856	2131	3	2	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/config/AiGenerationConfig.java	java	False	51188	6894	88	87	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/config/AiOversizeStrategy.java	java	False	3315	1549	3	3	1	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/config/SrcMorphConfiguration.java	java	False	17710	5501	37	36	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/provider/AiCompletionParser.java	java	False	4337	1461	2	1	1	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/provider/AiGenerationProvider.java	java	False	1725	1389	1	0	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/provider/AiGenerationProviderFactory.java	java	False	3673	2055	2	1	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	2374	4	3	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/provider/LlamaCppJniConfig.java	java	False	36703	3072	44	43	56	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3766	0	0	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	other/kernels/histogram.cl	other	False	1653	1918	9	9	27	2	0	0	True	0	0	0	CL_KERNEL CL_LOCAL_MEM_FENCE
+qwen3-4b-2507	other/ringbuf/ringbuf.c	other	False	1794	1885	12	10	25	0	0	0	True	0	0	0	
+qwen3-4b-2507	other/ringbuf/ringbuf.h	other	False	1292	2325	14	13	37	1	0	0	True	0	0	0	uint32_t
+qwen3-4b-2507	other/scripts/rotate_backups.sh	other	False	1202	1394	5	2	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	other/scripts/sales_report.py	other	False	2290	1567	9	7	8	0	0	0	True	0	0	0	
+qwen3-4b-2507	sql/library/01_schema.sql	sql	False	1622	2378	19	15	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	sql/library/02_views.sql	sql	False	1240	1668	13	13	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	sql/library/03_routines.sql	sql	False	2546	2116	14	9	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	sql/library/04_migration_v2.sql	sql	False	1660	2701	12	11	106	0	0	0	True	0	0	0	
+qwen3-4b-2507	sql/library/05_seed_data.sql	sql	False	54543	2370	4	4	83	0	4	4	True	0	0	0	
+qwen3-4b-2507	sql/shop/orders_mysql.sql	sql	False	2481	1587	15	10	25	0	0	0	True	0	0	0	
+qwen3-4b-2507	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2062	14	12	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/config/package.ai.md	package	False	0	3312	0	0	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/package.ai.md	package	False	0	4519	0	0	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	java/provider/package.ai.md	package	False	0	2623	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiPromptSupport ChatResponse Collections IOException
+qwen3-4b-2507	other/kernels/package.ai.md	package	False	0	1757	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE CL_KERNEL atomic_inc histogram_partial histogram_reduce uchar
+qwen3-4b-2507	other/package.ai.md	package	False	0	2604	0	0	0	0	0	0	True	0	0	0	CL_KERNEL argparse csv dataclasses datetime decimal histogram_partial histogram_reduce
+qwen3-4b-2507	other/ringbuf/package.ai.md	package	False	0	1949	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM free malloc memcpy ringbuf ringbuf_free_space ringbuf_read
+qwen3-4b-2507	other/scripts/package.ai.md	package	False	0	1462	0	0	0	0	0	0	True	0	0	0	rotate_backups sales_report
+qwen3-4b-2507	package.ai.md	package	False	0	4920	0	0	0	0	0	0	True	0	0	0	AiCondition AiFactDefinition AiFieldGenerationConfig AiFileContext AiModelDefinition AiPromptDefinition AiPromptSupport AiRangeCondition
+qwen3-4b-2507	sql/library/package.ai.md	package	False	0	2942	0	0	0	0	0	0	True	0	0	0	author book book_copy branch copies_free copies_total current_date due_on
+qwen3-4b-2507	sql/package.ai.md	package	False	0	3370	0	0	0	0	0	0	True	0	0	0	FOR SYSUTCDATETIME Since StockLevel SupplierFeed SyncLog UPDATE author
+qwen3-4b-2507	sql/shop/package.ai.md	package	False	0	1529	0	0	0	0	0	0	True	0	0	0	FOR UPDATE customer_order order_item orders_mysql product sql
+qwen3-4b-2507	sql/warehouse/package.ai.md	package	False	0	1997	0	0	0	0	0	0	True	0	0	0	SYSUTCDATETIME Since StockLevel SupplierFeed SyncLog dbo sql stock_sync_tsql
+qwen3-4b-2507	project.ai.md	project	False	0	3601	0	0	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	java/config/AiConditionEvaluator.java	java	False	9800	2851	4	3	42	0	0	0	True	0	0	0	
 qwen3-coder-30b	java/config/AiConditionGroup.java	java	False	1750	1414	2	1	38	0	0	0	True	0	0	0	
 qwen3-coder-30b	java/config/AiFactExtractor.java	java	False	4856	2040	3	2	50	0	0	0	True	0	0	0	
