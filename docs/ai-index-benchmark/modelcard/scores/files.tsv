@@ -332,6 +332,43 @@ nemotron-3.5-lightning	sql/package.ai.md	package	False	0	5227	0	0	0	0	0	0	True	0
 nemotron-3.5-lightning	sql/shop/package.ai.md	package	False	0	1969	0	0	0	0	0	0	True	0	0	0	FOR UPDATE add_order_item customer_order order_item product
 nemotron-3.5-lightning	sql/warehouse/package.ai.md	package	False	0	1815	0	0	0	0	0	0	True	0	0	0	Changes DATETIME2 ReceivedAt SYSUTCDATETIME Since Sku StockLevel SupplierFeed
 nemotron-3.5-lightning	project.ai.md	project	False	0	2861	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/config/AiConditionEvaluator.java	java	False	9800	3464	4	4	11	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/config/AiConditionGroup.java	java	False	1750	1748	2	2	39	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/config/AiFactExtractor.java	java	False	4856	1862	3	2	47	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/config/AiGenerationConfig.java	java	False	51188	11644	88	86	265	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/config/AiOversizeStrategy.java	java	False	3315	1923	3	3	38	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/config/SrcMorphConfiguration.java	java	False	17710	5007	37	37	162	2	0	0	True	0	0	0	extends implements
+nemotron-3.5-lightning-noreason	java/provider/AiCompletionParser.java	java	False	4337	1623	2	2	26	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/provider/AiGenerationProvider.java	java	False	1725	1291	1	0	30	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/provider/AiGenerationProviderFactory.java	java	False	3673	2770	2	1	47	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3474	4	3	69	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/provider/LlamaCppJniConfig.java	java	False	36703	3278	44	44	112	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	4873	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	other/kernels/histogram.cl	other	False	1653	2100	9	9	67	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	other/ringbuf/ringbuf.c	other	False	1794	2332	12	10	49	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	other/ringbuf/ringbuf.h	other	False	1292	2870	14	14	76	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	other/scripts/rotate_backups.sh	other	False	1202	1643	5	1	28	1	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ
+nemotron-3.5-lightning-noreason	other/scripts/sales_report.py	other	False	2290	1806	9	8	60	3	0	0	True	0	0	0	YYYY tregion trevenue
+nemotron-3.5-lightning-noreason	sql/library/01_schema.sql	sql	False	1622	2374	19	19	126	4	0	0	True	0	0	0	author_author_id_seq book_book_id_seq loan_loan_id_seq member_member_id_seq
+nemotron-3.5-lightning-noreason	sql/library/02_views.sql	sql	False	1240	2086	13	13	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	sql/library/03_routines.sql	sql	False	2546	3549	14	14	146	1	0	0	True	0	0	0	loan_audit_audit_id_seq
+nemotron-3.5-lightning-noreason	sql/library/04_migration_v2.sql	sql	False	1660	3122	12	12	84	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	sql/library/05_seed_data.sql	sql	False	54543	1026	4	4	0	0	4	3	True	0	0	0	
+nemotron-3.5-lightning-noreason	sql/shop/orders_mysql.sql	sql	False	2481	2742	15	15	118	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2000	14	13	103	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	java/config/package.ai.md	package	False	0	5282	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+nemotron-3.5-lightning-noreason	java/package.ai.md	package	False	0	6946	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+nemotron-3.5-lightning-noreason	java/provider/package.ai.md	package	False	0	6830	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport ArrayNode
+nemotron-3.5-lightning-noreason	other/kernels/package.ai.md	package	False	0	2122	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE __global __local atomic_inc barrier bin const
+nemotron-3.5-lightning-noreason	other/package.ai.md	package	False	0	3578	0	0	0	0	0	0	True	0	0	0	CLK_LOCAL_MEM_FENCE Decimal RINGBUF_EINVAL RINGBUF_ENOMEM argparse atomic_inc backup_dir barrier
+nemotron-3.5-lightning-noreason	other/ringbuf/package.ai.md	package	False	0	2687	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity extern free head malloc
+nemotron-3.5-lightning-noreason	other/scripts/package.ai.md	package	False	0	2218	0	0	0	0	0	0	True	0	0	0	Decimal InvalidOperation Order ValueError YYYY amount argparse backup_dir
+nemotron-3.5-lightning-noreason	package.ai.md	package	False	0	7022	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+nemotron-3.5-lightning-noreason	sql/library/package.ai.md	package	False	0	4066	0	0	0	0	0	0	True	0	0	0	CASCADE CHECKOUT CONSTRAINT DELETE INSERT NEW OLD RETURN
+nemotron-3.5-lightning-noreason	sql/package.ai.md	package	False	0	3221	0	0	0	0	0	0	True	0	0	0	Changes INSERT MERGE OnHand SYSUTCDATETIME Since Sku StockLevel
+nemotron-3.5-lightning-noreason	sql/shop/package.ai.md	package	False	0	1592	0	0	0	0	0	0	True	0	0	0	DUPLICATE FOR KEY SELECT UPDATE add_order_item customer_order order_item
+nemotron-3.5-lightning-noreason	sql/warehouse/package.ai.md	package	False	0	1466	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning-noreason	project.ai.md	project	False	0	2743	0	0	0	0	0	0	True	0	0	0	
 qwen2.5-coder-7b	java/config/AiConditionEvaluator.java	java	False	9800	3250	4	4	99	0	0	0	True	0	0	0	
 qwen2.5-coder-7b	java/config/AiConditionGroup.java	java	False	1750	1280	2	2	32	0	0	0	True	0	0	0	
 qwen2.5-coder-7b	java/config/AiFactExtractor.java	java	False	4856	1405	3	3	43	0	0	0	True	0	0	0	
@@ -480,6 +517,43 @@ qwen3.5-35b-a3b	sql/package.ai.md	package	False	0	2256	0	0	0	0	0	0	True	0	0	0	DA
 qwen3.5-35b-a3b	sql/shop/package.ai.md	package	False	0	1495	0	0	0	0	0	0	True	0	0	0	FOR UPDATE add_order_item created_at customer_id customer_order idx_order_customer order_id
 qwen3.5-35b-a3b	sql/warehouse/package.ai.md	package	False	0	1520	0	0	0	0	0	0	True	0	0	0	Changes DATETIME2 ERROR_MESSAGE ErrorMessage MERGE OnHand Quantity ReceivedAt
 qwen3.5-35b-a3b	project.ai.md	project	False	0	2362	0	0	0	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/config/AiConditionEvaluator.java	java	False	9800	3025	4	4	86	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/config/AiConditionGroup.java	java	False	1750	2360	2	2	65	2	0	0	True	0	0	0	extends implements
+qwen3.5-35b-a3b-noreason	java/config/AiFactExtractor.java	java	False	4856	2760	3	3	59	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/config/AiGenerationConfig.java	java	False	51188	9652	88	88	189	1	0	0	True	0	0	0	lang
+qwen3.5-35b-a3b-noreason	java/config/AiOversizeStrategy.java	java	False	3315	1926	3	3	37	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/config/SrcMorphConfiguration.java	java	False	17710	5291	37	37	179	2	0	0	True	0	0	0	extends implements
+qwen3.5-35b-a3b-noreason	java/provider/AiCompletionParser.java	java	False	4337	2009	2	2	23	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/provider/AiGenerationProvider.java	java	False	1725	2080	1	1	35	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/provider/AiGenerationProviderFactory.java	java	False	3673	2871	2	1	72	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3971	4	4	113	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/provider/LlamaCppJniConfig.java	java	False	36703	9244	44	44	205	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	4424	0	0	144	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	other/kernels/histogram.cl	other	False	1653	2255	9	9	61	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	other/ringbuf/ringbuf.c	other	False	1794	2203	12	10	43	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	other/ringbuf/ringbuf.h	other	False	1292	2558	14	14	56	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	other/scripts/rotate_backups.sh	other	False	1202	1931	5	2	26	1	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ
+qwen3.5-35b-a3b-noreason	other/scripts/sales_report.py	other	False	2290	2090	9	9	54	2	0	0	True	0	0	0	Generator YYYY
+qwen3.5-35b-a3b-noreason	sql/library/01_schema.sql	sql	False	1622	2140	19	19	66	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	sql/library/02_views.sql	sql	False	1240	2202	13	13	84	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	sql/library/03_routines.sql	sql	False	2546	2353	14	14	65	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	sql/library/04_migration_v2.sql	sql	False	1660	2612	12	12	68	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	sql/library/05_seed_data.sql	sql	False	54543	1326	4	4	50	0	4	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	sql/shop/orders_mysql.sql	sql	False	2481	2418	15	15	67	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2566	14	13	132	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	java/config/package.ai.md	package	False	0	4345	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+qwen3.5-35b-a3b-noreason	java/package.ai.md	package	False	0	6871	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+qwen3.5-35b-a3b-noreason	java/provider/package.ai.md	package	False	0	3791	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable
+qwen3.5-35b-a3b-noreason	other/kernels/package.ai.md	package	False	0	2256	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE __global __local atomic_inc get_ group_count histogram
+qwen3.5-35b-a3b-noreason	other/package.ai.md	package	False	0	3318	0	0	0	0	0	0	True	0	0	0	CLK_LOCAL_MEM_FENCE Decimal Order amount argparse atomic_inc capacity csv
+qwen3.5-35b-a3b-noreason	other/ringbuf/package.ai.md	package	False	0	2895	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity data free head malloc
+qwen3.5-35b-a3b-noreason	other/scripts/package.ai.md	package	False	0	2363	0	0	0	0	0	0	True	0	0	0	Decimal Order YYYY amount argparse collections csv currency
+qwen3.5-35b-a3b-noreason	package.ai.md	package	False	0	5067	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+qwen3.5-35b-a3b-noreason	sql/library/package.ai.md	package	False	0	4052	0	0	0	0	0	0	True	0	0	0	CHECK _migration_v2 _seed_data author book book_copy branch copies_free
+qwen3.5-35b-a3b-noreason	sql/package.ai.md	package	False	0	3714	0	0	0	0	0	0	True	0	0	0	CHECK ERROR_MESSAGE FOR MERGE SYSUTCDATETIME StockLevel SupplierFeed SyncLog
+qwen3.5-35b-a3b-noreason	sql/shop/package.ai.md	package	False	0	1870	0	0	0	0	0	0	True	0	0	0	DUPLICATE FOR INSERT KEY SELECT UPDATE add_order_item customer_order
+qwen3.5-35b-a3b-noreason	sql/warehouse/package.ai.md	package	False	0	2178	0	0	0	0	0	0	True	0	0	0	ERROR_MESSAGE INSERT MERGE OUTPUT OnHand ReceivedAt RowsInserted RowsUpdated
+qwen3.5-35b-a3b-noreason	project.ai.md	project	False	0	3039	0	0	0	0	0	0	True	0	0	0	
 qwen3.5-4b	java/config/AiConditionEvaluator.java	java	False	9800	2815	4	4	41	0	0	0	True	0	0	0	
 qwen3.5-4b	java/config/AiConditionGroup.java	java	False	1750	1890	2	2	53	0	0	0	True	0	0	0	
 qwen3.5-4b	java/config/AiFactExtractor.java	java	False	4856	2174	3	2	44	1	0	0	True	0	0	0	utility
