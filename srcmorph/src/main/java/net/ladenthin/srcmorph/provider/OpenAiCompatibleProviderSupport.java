@@ -21,6 +21,7 @@ import net.ladenthin.llama.value.Usage;
 import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.support.ReplaceWithLibrary;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -74,13 +75,27 @@ final class OpenAiCompatibleProviderSupport {
     /** The {@code Accept} header of a request for a streamed answer. */
     static final String ACCEPT_EVENT_STREAM = "text/event-stream";
 
+    /**
+     * The jllama class that assembles a stream like {@link #assembleStream(String)} does. It is in
+     * java-llama.cpp {@code main} but in no release yet; srcmorph carries its own copy until then (see
+     * {@link ReplaceWithLibrary} and {@code TODO.md}).
+     */
+    static final String JLLAMA_STREAM_ASSEMBLER = "net.ladenthin.llama.json.ChatStreamAssembler";
+
+    /** The release expected to carry {@link #JLLAMA_STREAM_ASSEMBLER}. */
+    static final String JLLAMA_STREAM_ASSEMBLER_RELEASE =
+            "net.ladenthin:llama after 6.0.0 (bernardladenthin/java-llama.cpp#595)";
+
     /** The field prefix of a Server-Sent Events line that carries data; every other line is skipped. */
+    @ReplaceWithLibrary(value = JLLAMA_STREAM_ASSEMBLER, since = JLLAMA_STREAM_ASSEMBLER_RELEASE)
     static final String SSE_DATA_PREFIX = "data:";
 
     /** The data of the event that ends an OpenAI stream. */
+    @ReplaceWithLibrary(value = JLLAMA_STREAM_ASSEMBLER, since = JLLAMA_STREAM_ASSEMBLER_RELEASE)
     static final String SSE_DONE = "[DONE]";
 
     /** The finish reason of an assembled answer whose stream named none. */
+    @ReplaceWithLibrary(value = JLLAMA_STREAM_ASSEMBLER, since = JLLAMA_STREAM_ASSEMBLER_RELEASE)
     private static final String NO_FINISH_REASON = "";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -203,6 +218,7 @@ final class OpenAiCompatibleProviderSupport {
      * @return the assembled chat-completion JSON
      * @throws IOException if a data line is not JSON, a chunk carries an error, or {@code [DONE]} is missing
      */
+    @ReplaceWithLibrary(value = JLLAMA_STREAM_ASSEMBLER, since = JLLAMA_STREAM_ASSEMBLER_RELEASE)
     static String assembleStream(final String sse) throws IOException {
         final StringBuilder content = new StringBuilder();
         String finishReason = NO_FINISH_REASON;

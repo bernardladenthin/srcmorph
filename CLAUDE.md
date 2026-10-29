@@ -123,7 +123,9 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   from the old mojo so it is unit- and PIT-testable without a Maven runtime), `AiCompletionParser`.
 - **`support/`** — foundation helpers with no dependency on anything above them: `AiChecksumSupport`,
   `AiTimeSupport`, `AiPathSupport`, `AiSourceExcludeFilter`, `AiProgressBar`, `AiSourceChunker`,
-  `AiDeterministicSummary`, `AiGenerationTimeEstimator`, `Java8CompatibilityHelper`, `ConvertToRecord`.
+  `AiDeterministicSummary`, `AiGenerationTimeEstimator`, `Java8CompatibilityHelper`, `ConvertToRecord`,
+  `ReplaceWithLibrary` (marks a copy of a library class whose release is not out yet;
+  `ReplaceWithLibraryTest` fails once the library class is on the classpath, see `TODO.md`).
 
 **Architecture rules** (`CoreArchitectureTest`, ArchUnit): `coreIsMavenFree` (the load-bearing rule
 above), `layeredArchitecture` (`engine` on top → `indexer` → `provider`/`document`/`prompt` → `config`
