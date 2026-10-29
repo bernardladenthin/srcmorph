@@ -2,7 +2,8 @@
 
 Which model to put behind srcmorph, measured on one fixed corpus: how much each model compacts
 Java, SQL and other source files, how many of the names that matter it keeps, how many it makes up,
-and how well it holds the `.ai.md` format. Hosted models (OpenRouter and Hugging Face's router) and local GGUF models
+and how well it holds the `.ai.md` format. Hosted models (OpenRouter, Hugging Face's router and
+GitHub Copilot through the [Copilot API Gateway](../copilot-api-gateway.md)) and local GGUF models
 (llama.cpp on a laptop GPU) ran the same three phases with the same prompts.
 
 The June 2026 benchmark ([COMPARISON.md](COMPARISON.md)) compared local models on Java only; the
@@ -20,7 +21,7 @@ parts. In the two scatter charts, a line joins the models that no other model be
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="modelcard/charts/quality-vs-speed-dark.svg">
-  <img alt="Scatter chart of quality score against seconds per source file for all 20 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
+  <img alt="Scatter chart of quality score against seconds per source file for all 21 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
 </picture>
 
 <picture>
@@ -83,6 +84,19 @@ cost are from the card's run, as in the charts.
   - **Qwen3-4B-Instruct-2507** gets all four seed counts, but Java recall is only 74 %.
 
   Neither comes close to gpt-oss-20b, which costs about one cent.
+- **GitHub Copilot through the [Copilot API Gateway](../copilot-api-gateway.md): MAI-Code-1.1-Flash**
+  (93.0 %, one run, 11.2 s per file) costs nothing beyond a Copilot plan. It ran streamed
+  (`stream: true`) through the gateway's VS Code extension; the gateway's limit of 10 requests a
+  minute did not slow it (about 5 a minute).
+  - SQL recall (98 %), all four seed counts, a clean format and the best other-file recall of all
+    runs (98 %) are top-group.
+  - Java recall (75 %) is not: it describes the 88 getters and setters of `AiGenerationConfig.java`
+    and the 37 accessors of `SrcMorphConfiguration.java` as groups and names 2 and 3 of them
+    (`LlamaCppJniConfig.java`: 8 of 44), as Luna did in one repeat run. The other nine Java files
+    have full recall.
+  - It writes the longest index of all runs (83 KB for the 24 file summaries; its other-file
+    summaries are 1.75 times as long as their sources) and searches below the top group (91 %
+    first, see [Search](#search-do-the-summaries-lead-to-the-right-file)).
 - **Avoid for this task:**
   - **Granite 4.0 H-Tiny** starts 7 summaries with "Here is the markdown summary …", wraps 13 in a
     ```` ```markdown ```` fence (34 fence lines), writes 129 `#`–`###` headings, and calls the
@@ -132,7 +146,7 @@ cost are from the card's run, as in the charts.
    provider the cut-off warning is logged under the `LlamaCppJniProviderSupport` logger, which points
    at the wrong backend. Both are in [`TODO.md`](../../TODO.md).
 4. **Format discipline depends on the model, not on the prompt.** All prompts are the v1 prompts, and
-   13 of 20 runs follow them without a slip. The June code-fence regression of DeepSeek and
+   14 of 21 runs follow them without a slip. The June code-fence regression of DeepSeek and
    Seed-Coder came with prompt v2 and does not show up with v1. Granite H-Tiny, which was clean in
    June, is not clean here.
 
@@ -188,8 +202,8 @@ summaries of each run two ways:
 
 Two baselines go through the same retrievers: the paths alone, and the source files themselves.
 hit@1 counts a question as found when an answer file comes first, hit@3 when it is among the first
-three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's 22 contexts and
-0.81 USD for the repeat runs. Results are in
+three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's 22 contexts,
+0.81 USD for the repeat runs and 0.09 USD for MAI-Code-1.1-Flash, which was added later. Results are in
 [`modelcard/scores/search.json`](modelcard/scores/search.json), and per question in
 [`search.tsv`](modelcard/scores/search.tsv); those of the repeat runs next to their outputs.
 
@@ -212,13 +226,14 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
 | Qwen3.5-35B-A3B, reasoning off | 93 % | 98 % | 0.95 | 86 % | 98 % |
 | Qwen3-Coder-30B-A3B | 91 % | 98 % | 0.94 | 84 % | 95 % |
 | Seed-Coder-8B | 91 % | 95 % | 0.93 | 77 % | 93 % |
+| MAI-Code-1.1-Flash | 91 % | 95 % | 0.93 | 81 % | 93 % |
 | Qwen3.8-27B, reasoning off | 86 % | 98 % | 0.92 | 84 % | 98 % |
 | Granite 4.0 H-Tiny | 81 % | 91 % | 0.86 | 74 % | 88 % |
 | Qwen3.5-35B-A3B | 79 % | 88 % | 0.83 | 67 % | 74 % |
 | *Baseline: paths only* | 74 % | 91 % | 0.82 | – | – |
 | *Baseline: source files* | 72 % | 79 % | 0.76 | 84 % | 98 % |
 
-- **The summaries help a model find the right file.** With any of 18 of the 20 runs the reader
+- **The summaries help a model find the right file.** With any of 19 of the 21 runs the reader
   finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
   source (about 65 000 tokens instead of about 16 000) only 72 %.
 - **Keyword search gains nothing from them.** BM25 over the summaries (67 to 86 % first) is not
@@ -226,7 +241,7 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
 - **What hurts search is a missing or broken summary, not a missing name.** The two runs that fall
   behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries) and Granite H-Tiny (its
   format slips). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
-- **Among the other 18 runs the order is noise.** The reader misreads one to three questions per
+- **Among the other 19 runs the order is noise.** The reader misreads one to three questions per
   run even when the summary is clear. For example, with Qwen3.8-27B's summaries (reasoning off) it
   ranks `AiConditionEvaluator.java` first for "Where is every checkout and return written to an
   audit trail?", which is answered by `03_routines.sql`. Over the repeat runs, the six hosted
@@ -240,7 +255,9 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
   71 KB for the 24 files, gpt-oss-20b writes 51 to 58 KB), and over the 32 scored runs without
   empty or broken summaries a longer index tends to search worse with this reader (correlation
   −0.46). Length does not explain it alone, though: the same model with reasoning low writes 74 KB
-  and finds 95 %.
+  and finds 95 %. MAI-Code-1.1-Flash, added later, writes the longest index (83 KB) and misses the
+  two questions about blocked members and the audit trail, although its `03_routines.sql` summary
+  names `is_blocked` and `loan_audit`.
 - One answer was corrected after the first scoring: "Can a single model definition use a different
   backend than the one the run names?" now also accepts `AiGenerationConfig.java`, whose
   `getProvider()` documents exactly that. Before the correction 18 of 20 runs missed it.
@@ -303,6 +320,7 @@ Ordered by what would change a decision:
 | gpt-oss-20b ¹ | OpenRouter | 37 | 7.1 | 11.8 | 0.0122 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | HF / nscale | 37 | 6.5 | 12.3 | see text | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | HF / nscale | 37 | 2.4 | 3.9 | see text | 0 |
+| MAI-Code-1.1-Flash | Copilot API Gateway | 37 | 6.3 | 11.2 | Copilot plan | 0 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 95.2 | 172.3 | 0 (local) | 0 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 6.3 | 11.1 | 0 (local) | 0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | local GGUF (RTX 3070) | 37 | 6.1 | 9.6 | 0 (local) | 0 |
@@ -328,6 +346,7 @@ Ordered by what would change a decision:
 | gpt-oss-20b ¹ | 5.25 | 100% | 5.45 | 98% | 0/4 | 0.94 | 87% | 0.8 |
 | Qwen3-4B-Instruct-2507 ¹ | 4.72 | 74% | 4.49 | 84% | 4/4 | 0.91 | 79% | 1.0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 4.23 | 86% | 5.57 | 87% | 0/4 | 0.99 | 62% | 0.8 |
+| MAI-Code-1.1-Flash | 4.06 | 75% | 2.58 | 98% | 4/4 | 0.57 | 98% | 1.2 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | 4.22 | 88% | 5.72 | 95% | 4/4 | 0.90 | 85% | 0.2 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | 4.08 | 100% | 5.36 | 94% | 0/4 | 0.91 | 78% | 0.0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | 4.32 | 92% | 4.42 | 95% | 4/4 | 0.91 | 68% | 1.1 |
@@ -353,6 +372,7 @@ Ordered by what would change a decision:
 | gpt-oss-20b ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 0 | 6 | 0 | 0 | 0 |
+| MAI-Code-1.1-Flash | 0 | 0 | 0 | 0 | 0 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | 0 | 0 | 0 | 0 | 0 |
@@ -388,14 +408,14 @@ plugin's self-test profile, copied into [`modelcard/prompts.json`](modelcard/pro
 
 ### Settings
 
-| | OpenRouter | Local (llama.cpp JNI) |
-|---|---|---|
-| Context | 131 072 | 32 768 |
-| `maxOutputTokens` | 4096 (16 384 for the reasoning-low runs of Nemotron 3.5 Lightning and Qwen3.5-35B-A3B, see finding 1) | 4096 |
-| Temperature | 0.2 | 0.2 (seed 42) |
-| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | thinking off where the template has a switch (Gemma 4, Qwen3.5) |
-| Weights | whatever precision the OpenRouter route serves (not stated per request) | Q4_K_M (Granite H-Small UD-Q4_K_XL) |
-| Hardware | — | RTX 3070 Laptop (8 GB), CUDA 13 natives of `net.ladenthin:llama` 6.0.0, layers auto-fitted, 8 CPU threads |
+| | OpenRouter | Copilot API Gateway | Local (llama.cpp JNI) |
+|---|---|---|---|
+| Context | 131 072 | 120 000 (the model's `max_input_tokens` is 127 790) | 32 768 |
+| `maxOutputTokens` | 4096 (16 384 for the reasoning-low runs of Nemotron 3.5 Lightning and Qwen3.5-35B-A3B, see finding 1) | 4096 (the gateway does not pass it on) | 4096 |
+| Temperature | 0.2 | 0.2 | 0.2 (seed 42) |
+| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | not set | thinking off where the template has a switch (Gemma 4, Qwen3.5) |
+| Weights | whatever precision the OpenRouter route serves (not stated per request) | whatever GitHub Copilot serves | Q4_K_M (Granite H-Small UD-Q4_K_XL) |
+| Hardware | — | — (the gateway runs in VS Code on the benchmark machine, `stream: true`) | RTX 3070 Laptop (8 GB), CUDA 13 natives of `net.ladenthin:llama` 6.0.0, layers auto-fitted, 8 CPU threads |
 
 Everything is in [`modelcard/models.json`](modelcard/models.json); a model's `note` says why it
 deviates from the common settings.
@@ -424,7 +444,7 @@ deviates from the common settings.
   charts divide it by the corpus's 0.23 MB of source code, which includes the package and project
   summaries the run also writes. Hugging
   Face's router reports no per-run usage. The "see text" entries are priced at nscale's list price
-  under Recommendations.
+  under Recommendations. A Copilot run is covered by the Copilot plan and has no per-run price.
 
 [`modelcard/run.py`](modelcard/run.py) runs a model, [`modelcard/score.py`](modelcard/score.py)
 writes [`scores/files.tsv`](modelcard/scores/files.tsv) (one row per model and file) and
@@ -451,8 +471,9 @@ measurement.
 - **The SQL and other fixtures are small** (1–3 KB, the seed data aside). Compaction on files that
   small mostly measures how much a model writes regardless of input; the Java files (up to 51 KB)
   say more about compaction.
-- **Not measured:** MAI-Code-1.1-Flash (Microsoft) is only on Azure AI Foundry and GitHub Copilot,
-  neither on OpenRouter nor on Hugging Face's router.
+- **MAI-Code-1.1-Flash ran through GitHub Copilot**, not OpenRouter or Hugging Face's router (it is
+  on neither; Microsoft serves it on Azure AI Foundry and GitHub Copilot). The gateway extension
+  sits between srcmorph and Copilot, so its time includes VS Code's language-model API.
 
 ### Earlier SQL measurements
 

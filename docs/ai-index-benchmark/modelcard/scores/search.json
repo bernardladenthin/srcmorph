@@ -113,6 +113,18 @@
     "mrr": 0.86
    }
   },
+  "mai-code-1.1-flash": {
+   "bm25": {
+    "hit1": 0.814,
+    "hit3": 0.93,
+    "mrr": 0.884
+   },
+   "reader": {
+    "hit1": 0.907,
+    "hit3": 0.953,
+    "mrr": 0.926
+   }
+  },
   "nemotron-3.5-lightning": {
    "bm25": {
     "hit1": 0.767,

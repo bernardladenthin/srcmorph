@@ -141,6 +141,10 @@ same C header (`ringbuf.h` of the benchmark corpus, 13 identifiers):
 
 One file shows that a model works, not which one is best. For that, run the model-card benchmark
 ([ai-index-benchmark/MODEL-CARD.md](ai-index-benchmark/MODEL-CARD.md)) on the models you consider.
+`mai-code-1.1-flash` (MAI-Code-1.1-Flash, `max_input_tokens` 127,790) ran it through this gateway on
+2026-10-30: all 37 summaries of the three phases, 11.2 s per file, quality score 93 % (SQL and the
+other files at the top, Java recall 75 %: it groups the accessors of large bean classes instead of
+naming them).
 Rules of thumb:
 
 - **`gpt-4o-mini`** takes only about 12k input tokens: fine for small files, too small for long

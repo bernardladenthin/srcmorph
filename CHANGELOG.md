@@ -35,7 +35,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 - **Guide: the models of a GitHub Copilot subscription through the Copilot API Gateway**
   ([docs/copilot-api-gateway.md](./docs/copilot-api-gateway.md)): setup, the settings that keep
   the gateway private, an example configuration (`examples/copilot-api-gateway/srcmorph.yaml`), model
-  choice and the limits of the route.
+  choice and the limits of the route. The model card
+  ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds
+  MAI-Code-1.1-Flash, run streamed through the gateway: quality score 93 %, 11.2 s per file.
 - **CI tests the provider against three real APIs on every run**, each in addition to the others:
   jllama's `NativeServer` (started in-process by `OpenAiCompatibleLiveTest`), a llama.cpp
   `llama-server` container (both on the committed SmolLM2 GGUF), and OpenRouter with

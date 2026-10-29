@@ -692,6 +692,83 @@
    "leaks": 0
   }
  },
+ "mai-code-1.1-flash": {
+  "java": {
+   "files": 12,
+   "missing": 0,
+   "empty": 0,
+   "srcBytes": 159594,
+   "bodyBytes": 39295,
+   "compaction": 4.06,
+   "recall": 0.753,
+   "inventedPer100": 1.8,
+   "numbers": "0/0",
+   "noLead": 0,
+   "badHeadings": 0,
+   "fences": 0,
+   "leaks": 0
+  },
+  "other": {
+   "files": 5,
+   "missing": 0,
+   "empty": 0,
+   "srcBytes": 8231,
+   "bodyBytes": 14367,
+   "compaction": 0.57,
+   "recall": 0.983,
+   "inventedPer100": 1.5,
+   "numbers": "0/0",
+   "noLead": 0,
+   "badHeadings": 0,
+   "fences": 0,
+   "leaks": 0
+  },
+  "sql": {
+   "files": 7,
+   "missing": 0,
+   "empty": 0,
+   "srcBytes": 66780,
+   "bodyBytes": 25871,
+   "compaction": 2.58,
+   "recall": 0.985,
+   "inventedPer100": 0.4,
+   "numbers": "4/4",
+   "noLead": 0,
+   "badHeadings": 0,
+   "fences": 0,
+   "leaks": 0
+  },
+  "package": {
+   "files": 12,
+   "missing": 0,
+   "empty": 0,
+   "srcBytes": 0,
+   "bodyBytes": 56187,
+   "compaction": null,
+   "recall": null,
+   "inventedPer100": null,
+   "numbers": "0/0",
+   "noLead": 0,
+   "badHeadings": 0,
+   "fences": 0,
+   "leaks": 0
+  },
+  "project": {
+   "files": 1,
+   "missing": 0,
+   "empty": 0,
+   "srcBytes": 0,
+   "bodyBytes": 3025,
+   "compaction": null,
+   "recall": null,
+   "inventedPer100": null,
+   "numbers": "0/0",
+   "noLead": 0,
+   "badHeadings": 0,
+   "fences": 0,
+   "leaks": 0
+  }
+ },
  "nemotron-3.5-lightning": {
   "java": {
    "files": 12,

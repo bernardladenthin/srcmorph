@@ -32,20 +32,25 @@ SOURCE_BYTES = 159594 + 66780 + 8231  # Java + SQL + other files of the corpus (
 OUT = HERE / "charts"
 
 # Validated categorical slots 1-3 (all-pairs, light and dark) with a marker per backend as the
-# second channel, so the backend never rests on color alone.
+# second channel, so the backend never rests on color alone. No fourth slot passes all-pairs against
+# these three (yellow, magenta and violet each fail the normal-vision floor), so the Copilot gateway
+# is drawn in the secondary ink with its own marker, last, so it stays on top of Gemma 4 E4B.
 BACKENDS = {
     "openrouter": ("OpenRouter", "o"),
     "huggingface": ("Hugging Face router", "s"),
     "local": ("Local GGUF, RTX 3070 Laptop", "^"),
+    "copilot": ("GitHub Copilot via the API Gateway", "D"),
 }
 THEMES = {
     "light": {"surface": "#fcfcfb", "ink": "#0b0b0b", "ink2": "#52514e", "muted": "#898781",
               "grid": "#e1e0d9", "axis": "#c3c2b7",
-              "series": {"openrouter": "#2a78d6", "huggingface": "#eb6834", "local": "#1baf7a"},
+              "series": {"openrouter": "#2a78d6", "huggingface": "#eb6834", "local": "#1baf7a",
+                         "copilot": "#52514e"},
               "ramp": ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]},
     "dark": {"surface": "#1a1a19", "ink": "#f0efec", "ink2": "#c3c2b7", "muted": "#898781",
              "grid": "#2c2c2a", "axis": "#383835",
-             "series": {"openrouter": "#3987e5", "huggingface": "#d95926", "local": "#199e70"},
+             "series": {"openrouter": "#3987e5", "huggingface": "#d95926", "local": "#199e70",
+                        "copilot": "#c3c2b7"},
              "ramp": ["#0d366b", "#104281", "#184f95", "#1c5cab", "#256abf", "#2a78d6", "#3987e5"]},
 }
 FONT = ["Segoe UI", "DejaVu Sans", "sans-serif"]
@@ -368,7 +373,7 @@ def main():
                       "Lines: per group, no other model is both faster and better. Arrows: the same model "
                       "with reasoning switched off. Hosted times depend on the "
                       "provider's load; local times are one RTX 3070 Laptop (8 GB).",
-                      [(("openrouter", "huggingface"), (0, (4, 3)), "hosted"), (("local",), (0, (1, 2)), "local")])
+                      [(("openrouter", "huggingface", "copilot"), (0, (4, 3)), "hosted"), (("local",), (0, (1, 2)), "local")])
         scatter_chart(data, theme, lambda d: d["cost"] / mb if d["backend"] == "openrouter" else None,
                       "USD per MB of source code (log scale, lower is cheaper)",
                       "Quality against cost (OpenRouter)", "quality-vs-cost",

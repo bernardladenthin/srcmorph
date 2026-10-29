@@ -332,6 +332,43 @@ granite-4.0-h-tiny	sql/package.ai.md	package	False	0	276	0	0	0	0	0	0	True	0	0	0
 granite-4.0-h-tiny	sql/shop/package.ai.md	package	False	0	1663	0	0	0	0	0	0	True	0	0	0	CANCELLED DATETIME ENUM INT NEW PAID SHIPPED SMALLINT
 granite-4.0-h-tiny	sql/warehouse/package.ai.md	package	False	0	2220	0	0	0	0	0	0	True	0	0	0	ErrorMessage FeedRowId MERGE OnHand Quantity ReceivedAt RowsInserted RowsUpdated
 granite-4.0-h-tiny	project.ai.md	project	False	0	2567	0	0	0	0	0	0	True	0	0	0	
+mai-code-1.1-flash	java/config/AiConditionEvaluator.java	java	False	9800	3854	4	4	114	0	0	0	True	0	0	0	
+mai-code-1.1-flash	java/config/AiConditionGroup.java	java	False	1750	2580	2	2	75	2	0	0	True	0	0	0	extends implements
+mai-code-1.1-flash	java/config/AiFactExtractor.java	java	False	4856	3202	3	3	84	0	0	0	True	0	0	0	
+mai-code-1.1-flash	java/config/AiGenerationConfig.java	java	False	51188	2861	88	2	45	0	0	0	True	0	0	0	
+mai-code-1.1-flash	java/config/AiOversizeStrategy.java	java	False	3315	2878	3	3	82	8	0	0	True	0	0	0	Enum java lang
+mai-code-1.1-flash	java/config/SrcMorphConfiguration.java	java	False	17710	3547	37	3	100	4	0	0	True	0	0	0	extends implements sealed total
+mai-code-1.1-flash	java/provider/AiCompletionParser.java	java	False	4337	2046	2	2	20	0	0	0	True	0	0	0	
+mai-code-1.1-flash	java/provider/AiGenerationProvider.java	java	False	1725	2618	1	1	55	1	0	0	True	0	0	0	lang
+mai-code-1.1-flash	java/provider/AiGenerationProviderFactory.java	java	False	3673	3496	2	2	111	0	0	0	True	0	0	0	
+mai-code-1.1-flash	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	4363	4	4	163	3	0	0	True	0	0	0	constructor extends volatile
+mai-code-1.1-flash	java/provider/LlamaCppJniConfig.java	java	False	36703	2753	44	8	56	2	0	0	True	0	0	0	total
+mai-code-1.1-flash	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	5097	0	0	186	0	0	0	True	0	0	0	
+mai-code-1.1-flash	other/kernels/histogram.cl	other	False	1653	2344	9	9	106	0	0	0	True	0	0	0	
+mai-code-1.1-flash	other/ringbuf/ringbuf.c	other	False	1794	3204	12	11	126	1	0	0	True	0	0	0	wrap
+mai-code-1.1-flash	other/ringbuf/ringbuf.h	other	False	1292	3348	14	14	113	0	0	0	True	0	0	0	
+mai-code-1.1-flash	other/scripts/rotate_backups.sh	other	False	1202	2889	5	5	92	2	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ code
+mai-code-1.1-flash	other/scripts/sales_report.py	other	False	2290	2582	9	9	80	5	0	0	True	0	0	0	Iterator YYYY tamount tregion
+mai-code-1.1-flash	sql/library/01_schema.sql	sql	False	1622	2171	19	17	0	0	0	0	True	0	0	0	
+mai-code-1.1-flash	sql/library/02_views.sql	sql	False	1240	3947	13	13	231	4	0	0	True	0	0	0	DELETE INSERT MERGE UPDATE
+mai-code-1.1-flash	sql/library/03_routines.sql	sql	False	2546	5317	14	14	320	1	0	0	True	0	0	0	FOREIGN
+mai-code-1.1-flash	sql/library/04_migration_v2.sql	sql	False	1660	3625	12	12	267	0	0	0	True	0	0	0	
+mai-code-1.1-flash	sql/library/05_seed_data.sql	sql	False	54543	2073	4	4	0	0	4	4	True	0	0	0	
+mai-code-1.1-flash	sql/shop/orders_mysql.sql	sql	False	2481	3847	15	15	218	0	0	0	True	0	0	0	
+mai-code-1.1-flash	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	4891	14	14	378	0	0	0	True	0	0	0	
+mai-code-1.1-flash	java/config/package.ai.md	package	False	0	5099	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig AiFileContext
+mai-code-1.1-flash	java/package.ai.md	package	False	0	6716	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactExtractor AiFileContext AiGenerationConfig
+mai-code-1.1-flash	java/provider/package.ai.md	package	False	0	4695	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport ArrayNode ChatResponse
+mai-code-1.1-flash	other/kernels/package.ai.md	package	False	0	2464	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE __global __kernel __local atomic_inc barrier bin
+mai-code-1.1-flash	other/package.ai.md	package	False	0	6047	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE Decimal InvalidOperation KEEP None Order RINGBUF_EINVAL
+mai-code-1.1-flash	other/ringbuf/package.ai.md	package	False	0	3338	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity const data dst free
+mai-code-1.1-flash	other/scripts/package.ai.md	package	False	0	3814	0	0	0	0	0	0	True	0	0	0	Decimal InvalidOperation KEEP None Order SOURCE_DIR ValueError YYYY
+mai-code-1.1-flash	package.ai.md	package	False	0	6767	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactExtractor AiGenerationConfig AiGenerationProviderFactory AiGenerationRequest
+mai-code-1.1-flash	sql/library/package.ai.md	package	False	0	5052	0	0	0	0	0	0	True	0	0	0	BIGSERIAL CHECKOUT COALESCE COUNT CURRENT_DATE FILTER INTERVAL MAX
+mai-code-1.1-flash	sql/package.ai.md	package	False	0	5995	0	0	0	0	0	0	True	0	0	0	BEGIN CATCH CHECKOUT COALESCE COMMIT COUNT CURRENT_DATE CURRENT_TIMESTAMP
+mai-code-1.1-flash	sql/shop/package.ai.md	package	False	0	2859	0	0	0	0	0	0	True	0	0	0	CANCELLED CURRENT_TIMESTAMP ENUM FOR MESSAGE_TEXT NEW PAID SELECT
+mai-code-1.1-flash	sql/warehouse/package.ai.md	package	False	0	3341	0	0	0	0	0	0	True	0	0	0	BEGIN CATCH COMMIT Changes ERROR_MESSAGE ErrorMessage INSERT INTO
+mai-code-1.1-flash	project.ai.md	project	False	0	3025	0	0	0	0	0	0	True	0	0	0	
 nemotron-3.5-lightning	java/config/AiConditionEvaluator.java	java	False	9800	2177	4	4	0	0	0	0	True	0	0	0	
 nemotron-3.5-lightning	java/config/AiConditionGroup.java	java	False	1750	1727	2	2	49	0	0	0	True	0	0	0	
 nemotron-3.5-lightning	java/config/AiFactExtractor.java	java	False	4856	2593	3	3	59	0	0	0	True	0	0	0	
