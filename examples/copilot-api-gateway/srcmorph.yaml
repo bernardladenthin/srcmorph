@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# One model of a GitHub Copilot subscription through the GitHub Copilot API Gateway VS Code
+# extension, on this machine at 127.0.0.1:3030. Set the gateway up first: docs/copilot-api-gateway.md.
+# Every file is sent to GitHub Copilot and costs one request of the plan's quota.
+#
+# command:
+#   Plan               prints which file gets which model and prompt; sends nothing, writes nothing
+#   GenerateFileIndex  one .ai.md per source file
+# Start with Plan, then switch to GenerateFileIndex. A second run only redoes changed files.
+command: Plan
+
+srcMorph:
+  # On Windows use forward slashes ("C:/path/to/project"): in a double-quoted YAML string, "C:\x" is
+  # an escape.
+  baseDirectory: "/path/to/project"
+  outputDirectory: "/path/to/project/target/srcmorph-ai"
+  subtrees:
+    - "src/main/java"
+  fileExtensions:
+    - ".java"
+
+  generationProvider: openai-compatible
+
+  promptDefinitions:
+    - key: java
+      template: "Summarize this Java file as structured Markdown: purpose, public API, collaborators."
+
+  aiDefinitions:
+    - key: copilot
+      provider: openai-compatible
+      baseUrl: "http://127.0.0.1:3030/v1"   # plain http carries the key to a loopback host only
+      remoteModel: claude-haiku-4.5          # an id from GET /v1/models of the gateway
+      apiKeyEnv: COPILOT_GATEWAY_API_KEY     # the NAME of the variable holding the gateway's apiKey
+      stream: true                           # required: the gateway's non-streaming path adds and runs VS Code tools
+      contextSize: 32768                     # at most the model's max_input_tokens
+      maxOutputTokens: 2048
+      temperature: 0.2
+
+  fieldGenerations:
+    - promptKey: java
+      aiDefinitionKey: copilot
+      fallback: true                         # the rule for every file no other rule matches
+      onOversize: sample                     # default "fail" stops the run on a file larger than the window

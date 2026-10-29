@@ -144,6 +144,7 @@ public class LlamaCppJniConfigTest {
         assertThat(config.remoteModel(), is(AiGenerationConfig.DEFAULT_REMOTE_MODEL));
         assertThat(config.baseUrl(), is(AiGenerationConfig.DEFAULT_BASE_URL));
         assertThat(config.apiKeyEnv(), is(AiGenerationConfig.DEFAULT_API_KEY_ENV));
+        assertThat(config.stream(), is(AiGenerationConfig.DEFAULT_STREAM));
         assertThat(config.reasoningEffort(), is(AiGenerationConfig.DEFAULT_REASONING_EFFORT));
         assertThat(config.reasoningBudgetTokens(), is(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS));
         assertThat(config.dryMultiplier(), is(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER));
@@ -196,6 +197,7 @@ public class LlamaCppJniConfigTest {
                 .remoteModel("openai/gpt-6-luna")
                 .baseUrl("http://127.0.0.1:8080/v1")
                 .apiKeyEnv("MY_KEY")
+                .stream(true)
                 .reasoningEffort("high")
                 .reasoningBudgetTokens(512)
                 .dryMultiplier(0.5f)
@@ -240,6 +242,7 @@ public class LlamaCppJniConfigTest {
         assertThat(config.remoteModel(), is("openai/gpt-6-luna"));
         assertThat(config.baseUrl(), is("http://127.0.0.1:8080/v1"));
         assertThat(config.apiKeyEnv(), is("MY_KEY"));
+        assertThat(config.stream(), is(true));
         assertThat(config.reasoningEffort(), is("high"));
         assertThat(config.reasoningBudgetTokens(), is(512));
         assertThat(config.dryMultiplier(), is(0.5f));

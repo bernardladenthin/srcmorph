@@ -35,6 +35,10 @@ import org.jspecify.annotations.Nullable;
  * {@code Authorization: Bearer}; it never sits in a configuration file. No variable, or an empty
  * one, sends no key, which a local server without {@code --api-key} accepts. An answer outside 2xx
  * fails the call with the status and the start of the body; there is no automatic retry.</p>
+ *
+ * <p>With {@code stream} set, the answer is requested as Server-Sent Events, read to the end and
+ * assembled into the same chat response (see {@link OpenAiCompatibleProviderSupport#assembleStream});
+ * the read timeout then applies between two events instead of to the whole answer.</p>
  */
 @ToString
 public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationProvider {
@@ -105,7 +109,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     }
 
     private ChatResponse chatResponse(final AiGenerationRequest request) throws IOException {
-        return chatResponseParser.parseResponse(post(support.requestBody(request)));
+        return chatResponseParser.parseResponse(support.completionJson(post(support.requestBody(request))));
     }
 
     private String post(final String body) throws IOException {
@@ -119,7 +123,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             connection.setReadTimeout(READ_TIMEOUT_MILLIS);
             connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Accept", support.accept());
             connection.setRequestProperty("X-Title", APPLICATION_TITLE);
             if (key != null) {
                 connection.setRequestProperty("Authorization", "Bearer " + key);

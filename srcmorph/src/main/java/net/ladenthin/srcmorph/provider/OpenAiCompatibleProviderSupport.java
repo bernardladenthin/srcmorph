@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.provider;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.URL;
 import java.util.List;
 import java.util.Objects;
@@ -65,6 +68,21 @@ final class OpenAiCompatibleProviderSupport {
     /** Appended to an error body cut at {@link #ERROR_BODY_EXCERPT}. */
     private static final String ELLIPSIS = "...";
 
+    /** The {@code Accept} header of a request for one JSON answer. */
+    static final String ACCEPT_JSON = "application/json";
+
+    /** The {@code Accept} header of a request for a streamed answer. */
+    static final String ACCEPT_EVENT_STREAM = "text/event-stream";
+
+    /** The field prefix of a Server-Sent Events line that carries data; every other line is skipped. */
+    static final String SSE_DATA_PREFIX = "data:";
+
+    /** The data of the event that ends an OpenAI stream. */
+    static final String SSE_DONE = "[DONE]";
+
+    /** The finish reason of an assembled answer whose stream named none. */
+    private static final String NO_FINISH_REASON = "";
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final LlamaCppJniConfig config;
@@ -98,7 +116,9 @@ final class OpenAiCompatibleProviderSupport {
      * The JSON body of one chat-completions request: the same two messages the {@code llamacpp-jni}
      * provider sends, plus the portable sampling knobs. {@code top_k} and {@code min_p} go out only
      * when positive, {@code seed} only when set ({@code >= 0}), {@code stop} only when non-empty,
-     * {@code model} and {@code reasoning.effort} only when non-blank.
+     * {@code model} and {@code reasoning.effort} only when non-blank. {@code stream} is the model's
+     * switch; a streamed request also asks for the usage chunk ({@code stream_options.include_usage}),
+     * which carries the token counts the timings report.
      *
      * @param request the file to describe
      * @return the request body
@@ -140,8 +160,96 @@ final class OpenAiCompatibleProviderSupport {
         if (!compatibilityHelper.isBlank(reasoningEffort)) {
             body.putObject("reasoning").put("effort", reasoningEffort);
         }
-        body.put("stream", false);
+        body.put("stream", config.stream());
+        if (config.stream()) {
+            body.putObject("stream_options").put("include_usage", true);
+        }
         return MAPPER.writeValueAsString(body);
+    }
+
+    /**
+     * The {@code Accept} header of the request: an event stream when the model streams, JSON otherwise.
+     *
+     * @return {@link #ACCEPT_EVENT_STREAM} or {@link #ACCEPT_JSON}
+     */
+    String accept() {
+        return config.stream() ? ACCEPT_EVENT_STREAM : ACCEPT_JSON;
+    }
+
+    /**
+     * The chat-completion JSON of a successful answer: the body itself, or, when the model streams,
+     * the body's events assembled by {@link #assembleStream(String)}.
+     *
+     * @param responseBody the body of a 2xx answer
+     * @return a chat-completion JSON for {@code ChatResponseParser}
+     * @throws IOException if a streamed body is not a complete OpenAI stream
+     */
+    String completionJson(final String responseBody) throws IOException {
+        return config.stream() ? assembleStream(responseBody) : responseBody;
+    }
+
+    /**
+     * Assembles an OpenAI chat-completions event stream into the chat-completion JSON a non-streaming
+     * request would have been answered with, as far as srcmorph reads it: the first choice's message
+     * content (the {@code delta.content} of every chunk, in order), its last finish reason, and the
+     * usage object of the usage chunk.
+     *
+     * <p>Only {@code data:} lines count; blank lines, comments (a server's {@code : ping} heartbeat
+     * during a long prefill) and other fields are skipped, and nothing after {@code data: [DONE]} is
+     * read. A stream that ends without {@code [DONE]} fails instead of passing for a short answer, and
+     * so does a chunk that carries an {@code error} (a provider failing in the middle of the stream).</p>
+     *
+     * @param sse the whole response body
+     * @return the assembled chat-completion JSON
+     * @throws IOException if a data line is not JSON, a chunk carries an error, or {@code [DONE]} is missing
+     */
+    static String assembleStream(final String sse) throws IOException {
+        final StringBuilder content = new StringBuilder();
+        String finishReason = NO_FINISH_REASON;
+        @Nullable JsonNode usage = null;
+        boolean done = false;
+        // readLine ends a line at LF, CRLF or CR, the three line ends an event stream may use
+        final BufferedReader lines = new BufferedReader(new StringReader(sse));
+        for (String line = lines.readLine(); line != null; line = lines.readLine()) {
+            if (!line.startsWith(SSE_DATA_PREFIX)) {
+                continue;
+            }
+            final String data = line.substring(SSE_DATA_PREFIX.length()).trim();
+            if (SSE_DONE.equals(data)) {
+                done = true;
+                break;
+            }
+            final JsonNode chunk = MAPPER.readTree(data);
+            if (chunk.hasNonNull("error")) {
+                throw new IOException("The stream reported an error: " + chunk.get("error"));
+            }
+            for (final JsonNode choice : chunk.path("choices")) {
+                final JsonNode delta = choice.path("delta").path("content");
+                if (delta.isTextual()) {
+                    content.append(delta.asText());
+                }
+                final JsonNode reason = choice.path("finish_reason");
+                if (reason.isTextual()) {
+                    finishReason = reason.asText();
+                }
+            }
+            final JsonNode chunkUsage = chunk.path("usage");
+            if (chunkUsage.isObject()) {
+                usage = chunkUsage;
+            }
+        }
+        if (!done) {
+            throw new IOException(
+                    "The stream ended without 'data: " + SSE_DONE + "' after " + sse.length() + " characters");
+        }
+        final ObjectNode completion = MAPPER.createObjectNode();
+        final ObjectNode choice = completion.putArray("choices").addObject();
+        choice.putObject("message").put("role", "assistant").put("content", content.toString());
+        choice.put("finish_reason", finishReason);
+        if (usage != null) {
+            completion.set("usage", usage);
+        }
+        return MAPPER.writeValueAsString(completion);
     }
 
     /**

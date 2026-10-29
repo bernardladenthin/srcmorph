@@ -74,6 +74,7 @@ public class AiModelDefinition {
     private String remoteModel = AiGenerationConfig.DEFAULT_REMOTE_MODEL;
     private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
     private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
+    private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -752,6 +753,26 @@ public class AiModelDefinition {
      */
     public void setApiKeyEnv(final String apiKeyEnv) {
         this.apiKeyEnv = apiKeyEnv == null ? AiGenerationConfig.DEFAULT_API_KEY_ENV : apiKeyEnv;
+    }
+
+    /**
+     * Returns whether the {@code openai-compatible} provider requests a streamed answer for this model.
+     *
+     * @return {@code true} for Server-Sent Events, {@code false} for one JSON answer; defaults to
+     *         {@link AiGenerationConfig#DEFAULT_STREAM}
+     */
+    public boolean isStream() {
+        return stream;
+    }
+
+    /**
+     * Sets whether the {@code openai-compatible} provider requests a streamed answer for this model;
+     * see {@link AiGenerationConfig#DEFAULT_STREAM}.
+     *
+     * @param stream {@code true} for Server-Sent Events, {@code false} for one JSON answer
+     */
+    public void setStream(final boolean stream) {
+        this.stream = stream;
     }
 
     /**

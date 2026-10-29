@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import net.ladenthin.llama.json.ChatResponseParser;
 import net.ladenthin.llama.value.ChatChoice;
 import net.ladenthin.llama.value.ChatMessage;
 import net.ladenthin.llama.value.ChatResponse;
@@ -170,6 +171,184 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(body.has("seed"), is(false));
         assertThat(body.has("stop"), is(false));
         assertThat(body.has("reasoning"), is(false));
+    }
+
+    @Test
+    public void requestBody_default_doesNotStream() throws Exception {
+        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        assertThat(body.get("stream").asBoolean(), is(false));
+        assertThat(body.has("stream_options"), is(false));
+    }
+
+    @Test
+    public void requestBody_stream_asksForTheEventStreamAndItsUsageChunk() throws Exception {
+        final JsonNode body = body(LlamaCppJniConfig.builder("").stream(true).build());
+        assertThat(body.get("stream").asBoolean(), is(true));
+        assertThat(body.get("stream_options").get("include_usage").asBoolean(), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="accept / completionJson">
+    @Test
+    public void accept_followsTheStreamSwitch() {
+        assertThat(support(LlamaCppJniConfig.builder("").build()).accept(), is("application/json"));
+        assertThat(support(LlamaCppJniConfig.builder("").stream(true).build()).accept(), is("text/event-stream"));
+    }
+
+    @Test
+    public void completionJson_notStreaming_returnsTheBodyUnchanged() throws Exception {
+        // a body that is no event stream: assembling it would fail for want of [DONE]
+        final String body = "{\"choices\":[]}";
+        assertThat(support(LlamaCppJniConfig.builder("").build()).completionJson(body), is(body));
+    }
+
+    @Test
+    public void completionJson_streaming_assemblesTheEvents() throws Exception {
+        final String json = support(LlamaCppJniConfig.builder("").stream(true).build())
+                .completionJson(
+                        event("{\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}]}") + DONE);
+        assertThat(
+                json,
+                is("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"hi\"},"
+                        + "\"finish_reason\":\"stop\"}]}"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="assembleStream">
+    private static final String DONE = "data: [DONE]\n\n";
+
+    private static String event(final String json) {
+        return "data: " + json + "\n\n";
+    }
+
+    private static String token(final String content) {
+        return event("{\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,"
+                + "\"delta\":{\"content\":" + content + "},\"finish_reason\":null}],\"usage\":null}");
+    }
+
+    private static ChatResponse assembled(final String sse) throws IOException {
+        return new ChatResponseParser().parseResponse(OpenAiCompatibleProviderSupport.assembleStream(sse));
+    }
+
+    /** The shape of an OpenAI stream with {@code include_usage}, as OpenRouter and llama-server send it. */
+    @Test
+    public void assembleStream_openAiStream_joinsTheDeltasAndKeepsFinishReasonAndUsage() throws Exception {
+        // arrange
+        final String sse = event("{\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},"
+                        + "\"finish_reason\":null}]}")
+                + token("\"A tiny \"")
+                + token("\"test class.\"")
+                + event("{\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}")
+                + event("{\"choices\":[],\"usage\":{\"prompt_tokens\":42,\"completion_tokens\":7,"
+                        + "\"prompt_tokens_details\":{\"cached_tokens\":40}}}")
+                + DONE;
+
+        // act
+        final ChatResponse response = assembled(sse);
+
+        // assert
+        assertThat(response.getFirstContent(), is("A tiny test class."));
+        assertThat(response.getChoices().get(0).getFinishReason(), is("length"));
+        assertThat(response.getChoices().get(0).getMessage().getRole(), is("assistant"));
+        assertThat(response.getUsage().getPromptTokens(), is(42L));
+        assertThat(response.getUsage().getCompletionTokens(), is(7L));
+        assertThat(response.getUsage().getCachedTokens(), is(40L));
+    }
+
+    /**
+     * What the GitHub Copilot API Gateway and jllama's {@code NativeServer} send besides data: comment
+     * heartbeats, CRLF line ends, and {@code data:} without the space.
+     */
+    @Test
+    public void assembleStream_commentsOtherFieldsAndCrLf_areSkipped() throws Exception {
+        final String sse = ": ping\r\n\r\n"
+                + "event: message\r\nid: 7\r\n"
+                + "data:{\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\r\n\r\n"
+                + ": ping\r\n\r\n"
+                + "data: [DONE]\r\n\r\n";
+        final ChatResponse response = assembled(sse);
+        assertThat(response.getFirstContent(), is("ok"));
+        assertThat(response.getChoices().get(0).getFinishReason(), is("stop"));
+    }
+
+    @Test
+    public void assembleStream_nullDeltasAndALaterNullFinishReason_changeNothing() throws Exception {
+        final String sse = token("\"a\"")
+                + token("null")
+                + event("{\"choices\":[{\"delta\":{\"content\":\"b\"},\"finish_reason\":\"stop\"}]}")
+                + token("null")
+                + DONE;
+        final ChatResponse response = assembled(sse);
+        assertThat(response.getFirstContent(), is("ab"));
+        assertThat(response.getChoices().get(0).getFinishReason(), is("stop"));
+    }
+
+    @Test
+    public void assembleStream_aLaterChunkWithoutUsage_keepsTheUsage() throws Exception {
+        final String sse = event("{\"choices\":[],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}")
+                + token("\"late\"")
+                + DONE;
+        final ChatResponse response = assembled(sse);
+        assertThat(response.getUsage().getPromptTokens(), is(3L));
+        assertThat(response.getUsage().getCompletionTokens(), is(2L));
+    }
+
+    @Test
+    public void assembleStream_noUsageChunk_reportsNoUsageAndNoFinishReason() throws Exception {
+        final String json = OpenAiCompatibleProviderSupport.assembleStream(token("\"x\"") + DONE);
+        assertThat(
+                json,
+                is("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"x\"},"
+                        + "\"finish_reason\":\"\"}]}"));
+    }
+
+    @Test
+    public void assembleStream_afterDone_nothingIsRead() throws Exception {
+        final ChatResponse response = assembled(token("\"kept\"") + DONE + "data: not json\n\n");
+        assertThat(response.getFirstContent(), is("kept"));
+    }
+
+    @Test
+    public void assembleStream_noDone_failsInsteadOfPassingForAShortAnswer() {
+        final String sse = token("\"half\"");
+        final IOException thrown =
+                assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream(sse));
+        assertThat(
+                thrown.getMessage(),
+                is("The stream ended without 'data: [DONE]' after " + sse.length() + " characters"));
+    }
+
+    @Test
+    public void assembleStream_plainJsonAnswer_failsForWantOfDone() {
+        // a server that ignores stream:true and answers with one JSON object
+        assertThrows(
+                IOException.class,
+                () -> OpenAiCompatibleProviderSupport.assembleStream(
+                        "{\"choices\":[{\"message\":{\"content\":\"x\"}}]}"));
+    }
+
+    @Test
+    public void assembleStream_errorChunk_fails() {
+        final String sse = token("\"partial\"")
+                + event("{\"error\":{\"message\":\"Provider returned error\",\"code\":502}}")
+                + DONE;
+        final IOException thrown =
+                assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream(sse));
+        assertThat(
+                thrown.getMessage(),
+                is("The stream reported an error: {\"message\":\"Provider returned error\",\"code\":502}"));
+    }
+
+    @Test
+    public void assembleStream_nullError_isNoError() throws Exception {
+        final ChatResponse response =
+                assembled(event("{\"error\":null,\"choices\":[{\"delta\":{\"content\":\"fine\"}}]}") + DONE);
+        assertThat(response.getFirstContent(), is("fine"));
+    }
+
+    @Test
+    public void assembleStream_malformedData_fails() {
+        assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream("data: {oops\n\n" + DONE));
     }
     // </editor-fold>
 

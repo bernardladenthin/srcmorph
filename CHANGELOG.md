@@ -25,6 +25,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   same parsing, so the `.ai.md` comes out the same way. Remote models skip the GGUF checks before a
   run and instead must name an `http(s)` `baseUrl`. Local stays the default: nothing leaves the
   machine unless a model says `openai-compatible`.
+- **`openai-compatible` provider: `stream`.** A model with `stream: true` asks for the answer as
+  Server-Sent Events (with `stream_options.include_usage`, so the token counts still arrive) and
+  assembles it into the same chat response, so the summary does not change; a stream without
+  `data: [DONE]` or with an `error` chunk fails the file instead of passing for a short answer.
+  Default `false`. Needed for the GitHub Copilot API Gateway VS Code extension, whose
+  non-streaming path adds every VS Code language-model tool to the request and runs the tool
+  calls the model makes; its streaming path does not.
+- **Guide: the models of a GitHub Copilot subscription through the Copilot API Gateway**
+  ([docs/copilot-api-gateway.md](./docs/copilot-api-gateway.md)): setup, the settings that keep
+  the gateway private, an example configuration (`examples/copilot-api-gateway/srcmorph.yaml`), model
+  choice and the limits of the route.
 - **CI tests the provider against three real APIs on every run**, each in addition to the others:
   jllama's `NativeServer` (started in-process by `OpenAiCompatibleLiveTest`), a llama.cpp
   `llama-server` container (both on the committed SmolLM2 GGUF), and OpenRouter with
