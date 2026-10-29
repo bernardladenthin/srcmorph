@@ -20,7 +20,7 @@ parts. In the two scatter charts, a line joins the models that no other model be
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="modelcard/charts/quality-vs-speed-dark.svg">
-  <img alt="Scatter chart of quality score against seconds per source file for all 18 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
+  <img alt="Scatter chart of quality score against seconds per source file for all 20 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
 </picture>
 
 <picture>
@@ -64,8 +64,10 @@ What decides here is quality first, then speed and cost.
     more names (Java 92 %, other files 68 %).
   - **Granite 4.0 H-Small** matches E4B's quality at five times the time.
 - **Not worth their cost here:**
-  - **Qwen3.8-27B** is about as faithful as Luna, but costs 18 times as much (1.7 USD per MB) and
-    its summaries are among the longest.
+  - **Qwen3.8-27B with reasoning off** comes within half a point of Luna (98.6 %) at 7.7 s per
+    file, but costs 3.5 times as much (0.34 USD per MB). With reasoning on it cost 18 times as much.
+  - **Gemma 4 31B with reasoning off** (94 %, 10.5 s per file) costs as much as Luna (0.097 USD per
+    MB) for five points less.
   - **Gemma 4 12B** gets the seed counts right, but takes 172 s per file: the Q4_K_M weights do not
     fit in 8 GB, so part of the model runs on the CPU.
 - **Hugging Face router (nscale): the cheapest, not the best.** Both models together cost under
@@ -88,9 +90,10 @@ What decides here is quality first, then speed and cost.
 
 ### Findings
 
-1. **For this task, reasoning costs time and money and adds no quality.** Nemotron 3.5 Lightning
-   and Qwen3.5-35B-A3B ran twice on OpenRouter: first with `reasoning.effort` = `low` and 16 384
-   output tokens, then with `reasoning.effort` = `none` and the common 4096.
+1. **For this task, reasoning costs time and money and adds no quality.** Four OpenRouter models
+   ran twice: first with `reasoning.effort` = `low`, then with `none`. With `low`, Nemotron 3.5
+   Lightning and Qwen3.5-35B-A3B had 16 384 output tokens; every other run had the common 4096.
+   Every model got at least as good with reasoning off, and every one got faster and cheaper.
 
    | | Quality | s/file | USD | Cut off |
    |---|---|---|---|---|
@@ -98,12 +101,18 @@ What decides here is quality first, then speed and cost.
    | Qwen3.5-35B-A3B, reasoning off | **95 %** | **5.2** | **0.047** | 0 |
    | Nemotron 3.5 Lightning, reasoning low | 89 % | 34.1 | 0.046 | 3 (2 empty) |
    | Nemotron 3.5 Lightning, reasoning off | **90 %** | **10.0** | **0.012** | 0 |
+   | Gemma 4 31B, reasoning low | 91 % | 37.0 | 0.049 | 1 |
+   | Gemma 4 31B, reasoning off | **94 %** | **10.5** | **0.023** | 0 |
+   | Qwen3.8-27B, reasoning low | 98 % | 14.8 | 0.403 | 0 |
+   | Qwen3.8-27B, reasoning off | **99 %** | **7.7** | **0.080** | 0 |
 
    Reasoning tokens count against `maxOutputTokens`. Even at `low`, one test request for a
-   one-line `add` method spent 419 (Nemotron) and 799 (Qwen3.5) tokens on reasoning, for answers of
-   22 and 27 tokens. At 4096 tokens Nemotron left 15 of 24 file summaries empty. `none` turns
+   one-line `add` method spent 799 (Qwen3.5), 419 (Nemotron), 163 (Gemma 4 31B) and 25
+   (Qwen3.8) tokens on reasoning, for answers of 18 to 32 tokens. GPT-6 Luna and Qwen3-Coder spent
+   none, so they were not run again. At 4096 tokens Nemotron left 15 of 24 file summaries empty. `none` turns
    reasoning off on both routes (0 reasoning tokens), and srcmorph's existing `reasoningEffort`
-   setting sends it. gpt-oss-20b stayed at `low`: the June benchmark found that its best setting.
+   setting sends it. gpt-oss-20b cannot run without reasoning: OpenRouter answers `none` with
+   "Reasoning is mandatory for this endpoint", and `low` was its best setting in June.
 2. **llama.cpp turns Gemma 4's thinking on by default.** With the stock chat template, Gemma 4 12B
    spent all 4096 tokens of every file on thinking and wrote no summary, at about 4.4 tokens/s.
    `chatTemplateEnableThinking: false` fixes it. With it, E4B also writes about half the tokens it
@@ -117,7 +126,7 @@ What decides here is quality first, then speed and cost.
    provider the cut-off warning is logged under the `LlamaCppJniProviderSupport` logger, which points
    at the wrong backend. Both are in [`TODO.md`](../../TODO.md).
 4. **Format discipline depends on the model, not on the prompt.** All prompts are the v1 prompts, and
-   11 of 18 runs follow them without a slip. The June code-fence regression of DeepSeek and
+   13 of 20 runs follow them without a slip. The June code-fence regression of DeepSeek and
    Seed-Coder came with prompt v2 and does not show up with v1. Granite H-Tiny, which was clean in
    June, is not clean here.
 
@@ -135,6 +144,32 @@ models.
 - **Gemma 4** was not in June. With thinking off, E4B is the best local model on this hardware.
 - **June's verdict on reasoning holds:** reasoning was a throughput tax with no quality gain there,
   and here it is a tax in both money and time.
+
+### What to measure next
+
+Ordered by what would change a decision:
+
+1. **Repeatability.** Every number above comes from one run at temperature 0.2. Three runs each of
+   GPT-6 Luna, gpt-oss-20b, Qwen3.5-35B-A3B (reasoning off) and Gemma 4 E4B would show how far the
+   scores move between runs, and whether the top group's few points of difference are real. Cost:
+   about 0.25 USD and 20 minutes of the local GPU.
+2. **Usefulness for search, the actual purpose of an `.ai.md`.** Recall counts names; it does not
+   show whether a summary leads to the right file. A set of about 30 developer questions with a
+   known answer file (for example "where is the output-token budget enforced?"), searched over each
+   model's `.ai.md` tree with the same retriever (BM25 or one embedding model), gives hit@1 and
+   hit@3 per model.
+3. **Correctness of what is stated.** Recall and invented names are proxies; a summary can name
+   every method and still describe one wrongly. A hand check of about five files per top model,
+   each statement marked right or wrong against the source, or a judge model with that check
+   sampled by hand.
+4. **Large files.** The largest file here is 51 KB. srcmorph's oversize path (map-reduce over
+   chunks) has been timed but not judged for quality. One 300 KB to 1 MB file per kind through the
+   top models would show where quality drops and what it costs.
+5. **Token usage per call.** srcmorph does not log the usage the API returns. With it, cost and
+   speed could be explained per file (input against output against reasoning), and the Hugging
+   Face runs could be priced exactly.
+6. **Local options this card does not cover:** Gemma 4 E4B at Q8_0 against Q4_K_M (it fits in
+   8 GB either way), and the prompt v2 of June against v1 on the winners.
 <!-- assessment:end -->
 
 ## Results
@@ -146,12 +181,14 @@ models.
 |---|---|---|---|---|---|---|
 | GPT-6 Luna | OpenRouter | 37 | 4.4 | 6.9 | 0.0224 | 0 |
 | Gemma 4 31B it | OpenRouter | 37 | 25.0 | 37.0 | 0.0486 | 1 (`java/provider/AiCompletionParser.java`) |
+| Gemma 4 31B it (reasoning off) | OpenRouter | 37 | 6.1 | 10.5 | 0.0227 | 0 |
 | Nemotron 3.5 Lightning 30B-A3B | OpenRouter | 37 | 19.7 | 34.1 | 0.0459 | 3 (`java/config/SrcMorphConfiguration.java`, `java/provider/LlamaCppJniAiGenerationProvider.java`, `java/provider/LlamaCppJniConfig.java`) |
 | Nemotron 3.5 Lightning 30B-A3B (reasoning off) | OpenRouter | 37 | 5.2 | 10.0 | 0.0118 | 0 |
 | Qwen3-Coder-30B-A3B-Instruct ¹ | OpenRouter | 37 | 17.7 | 34.1 | 0.0175 | 0 |
 | Qwen3.5-35B-A3B | OpenRouter | 37 | 28.5 | 55.6 | 0.2371 | 5 (`java/config/AiFactExtractor.java`, `java/config/AiGenerationConfig.java`, `java/config/AiOversizeStrategy.java`, `java/config/SrcMorphConfiguration.java`, `java/provider/AiCompletionParser.java`) |
 | Qwen3.5-35B-A3B (reasoning off) | OpenRouter | 37 | 2.9 | 5.2 | 0.0473 | 0 |
 | Qwen3.8-27B | OpenRouter | 37 | 8.7 | 14.8 | 0.4030 | 0 |
+| Qwen3.8-27B (reasoning off) | OpenRouter | 37 | 5.4 | 7.7 | 0.0798 | 0 |
 | gpt-oss-20b ¹ | OpenRouter | 37 | 7.1 | 11.8 | 0.0122 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | HF / nscale | 37 | 6.5 | 12.3 | see text | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | HF / nscale | 37 | 2.4 | 3.9 | see text | 0 |
@@ -169,12 +206,14 @@ models.
 |---|---|---|---|---|---|---|---|---|
 | GPT-6 Luna | 4.09 | 100% | 4.29 | 100% | 4/4 | 0.82 | 96% | 0.4 |
 | Gemma 4 31B it | 4.79 | 78% | 5.85 | 95% | 0/4 | 0.88 | 92% | 0.5 |
+| Gemma 4 31B it (reasoning off) | 5.00 | 88% | 5.86 | 94% | 0/4 | 0.89 | 95% | 0.6 |
 | Nemotron 3.5 Lightning 30B-A3B | 3.86 | 80% | 4.52 | 91% | 0/4 | 0.84 | 92% | 0.8 |
 | Nemotron 3.5 Lightning 30B-A3B (reasoning off) | 3.72 | 81% | 3.95 | 99% | 3/4 | 0.77 | 78% | 0.8 |
 | Qwen3-Coder-30B-A3B-Instruct ¹ | 5.05 | 78% | 5.45 | 85% | 0/4 | 0.91 | 73% | 5.8 |
 | Qwen3.5-35B-A3B | 4.66 | 49% | 5.06 | 96% | 4/4 | 0.96 | 79% | 0.6 |
 | Qwen3.5-35B-A3B (reasoning off) | 3.22 | 96% | 4.28 | 99% | 0/4 | 0.75 | 85% | 0.5 |
 | Qwen3.8-27B | 3.49 | 98% | 4.18 | 98% | 4/4 | 0.69 | 96% | 1.6 |
+| Qwen3.8-27B (reasoning off) | 3.69 | 100% | 4.31 | 98% | 0/4 | 0.66 | 97% | 1.0 |
 | gpt-oss-20b ¹ | 5.25 | 100% | 5.45 | 98% | 0/4 | 0.94 | 87% | 0.8 |
 | Qwen3-4B-Instruct-2507 ¹ | 4.72 | 74% | 4.49 | 84% | 4/4 | 0.91 | 79% | 1.0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 4.23 | 86% | 5.57 | 87% | 0/4 | 0.99 | 62% | 0.8 |
@@ -192,12 +231,14 @@ models.
 |---|---|---|---|---|---|
 | GPT-6 Luna | 0 | 0 | 0 | 0 | 0 |
 | Gemma 4 31B it | 1 | 0 | 0 | 0 | 0 |
+| Gemma 4 31B it (reasoning off) | 0 | 0 | 0 | 0 | 0 |
 | Nemotron 3.5 Lightning 30B-A3B | 0 | 0 | 0 | 0 | 2 |
 | Nemotron 3.5 Lightning 30B-A3B (reasoning off) | 0 | 0 | 0 | 0 | 0 |
 | Qwen3-Coder-30B-A3B-Instruct ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen3.5-35B-A3B | 0 | 0 | 0 | 0 | 5 |
 | Qwen3.5-35B-A3B (reasoning off) | 0 | 0 | 0 | 0 | 0 |
 | Qwen3.8-27B | 0 | 0 | 0 | 0 | 0 |
+| Qwen3.8-27B (reasoning off) | 0 | 0 | 0 | 0 | 0 |
 | gpt-oss-20b ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 0 | 6 | 0 | 0 | 0 |
@@ -241,7 +282,7 @@ plugin's self-test profile, copied into [`modelcard/prompts.json`](modelcard/pro
 | Context | 131 072 | 32 768 |
 | `maxOutputTokens` | 4096 (16 384 for the reasoning-low runs of Nemotron 3.5 Lightning and Qwen3.5-35B-A3B, see finding 1) | 4096 |
 | Temperature | 0.2 | 0.2 (seed 42) |
-| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the two runs marked "reasoning off" | thinking off where the template has a switch (Gemma 4, Qwen3.5) |
+| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | thinking off where the template has a switch (Gemma 4, Qwen3.5) |
 | Weights | whatever precision the OpenRouter route serves (not stated per request) | Q4_K_M (Granite H-Small UD-Q4_K_XL) |
 | Hardware | — | RTX 3070 Laptop (8 GB), CUDA 13 natives of `net.ladenthin:llama` 6.0.0, layers auto-fitted, 8 CPU threads |
 

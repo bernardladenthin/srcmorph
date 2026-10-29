@@ -134,7 +134,9 @@ def place_labels(ax, items, theme):
         for dx, dy in offsets:
             ha = "left" if dx > 0 else ("right" if dx < 0 else "center")
             label = ax.annotate(text, (x, y), xytext=(dx, dy), textcoords="offset points", ha=ha,
-                                va="bottom", fontsize=8, color=t["ink2"], fontfamily=FONT)
+                                va="bottom", fontsize=8, color=t["ink2"], fontfamily=FONT, zorder=4,
+                                bbox={"boxstyle": "square,pad=0.08", "facecolor": t["surface"],
+                                      "edgecolor": "none", "alpha": 0.85})
             box = label.get_window_extent(renderer).expanded(1.04, 1.12)
             hits_mark = any(box.overlaps(Bbox.from_extents(mx - 7, my - 7, mx + 7, my + 7)) for mx, my in marks)
             fits = (box.x0 >= inside.x0 and box.x1 <= inside.x1 and box.y0 >= inside.y0
@@ -179,6 +181,14 @@ def scatter_chart(data, theme, x_of, xlabel, title, name, note, fronts):
             ax.scatter([x_of(d) for d in group], [d["quality"] for d in group], s=70,
                        marker=BACKENDS[backend][1], color=t["series"][backend], edgecolors=t["surface"],
                        linewidths=2, zorder=3)
+    # An arrow from a model's reasoning-low run to the same model with reasoning off.
+    by_key = {d["key"]: d for d in shown}
+    for d in shown:
+        base = by_key.get(d["key"].removesuffix("-noreason")) if d["key"].endswith("-noreason") else None
+        if base:
+            ax.annotate("", xy=(x_of(d), d["quality"]), xytext=(x_of(base), base["quality"]),
+                        arrowprops={"arrowstyle": "-|>", "color": t["muted"], "linewidth": 0.9,
+                                    "shrinkA": 6, "shrinkB": 6, "mutation_scale": 9}, zorder=2)
     xs = [x_of(d) for d in shown]
     ax.set_xlim(min(xs) / 1.6, max(xs) * 2.6)
     ys = [d["quality"] for d in shown]
@@ -258,13 +268,15 @@ def main():
     for theme in THEMES:
         scatter_chart(data, theme, lambda d: d["secondsPerFile"], "Seconds per source file (log scale, lower is faster)",
                       "Quality against speed", "quality-vs-speed",
-                      "Lines: per group, no other model is both faster and better. Hosted times depend on the "
+                      "Lines: per group, no other model is both faster and better. Arrows: the same model "
+                      "with reasoning switched off. Hosted times depend on the "
                       "provider's load; local times are one RTX 3070 Laptop (8 GB).",
                       [(("openrouter", "huggingface"), (0, (4, 3)), "hosted"), (("local",), (0, (1, 2)), "local")])
         scatter_chart(data, theme, lambda d: d["cost"] / mb if d["backend"] == "openrouter" else None,
                       "USD per MB of source code (log scale, lower is cheaper)",
                       "Quality against cost (OpenRouter)", "quality-vs-cost",
-                      "Dashed line: no other model is both cheaper and better. The Hugging Face models "
+                      "Dashed line: no other model is both cheaper and better. Arrows: the same model with "
+                      "reasoning switched off. The Hugging Face models "
                       f"cost under 0.01 USD together; the router reports no per-run usage. The corpus is "
                       f"{mb:.2f} MB; the cost includes its package and project summaries.",
                       [(("openrouter",), (0, (4, 3)), "")])

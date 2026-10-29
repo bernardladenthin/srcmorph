@@ -110,6 +110,43 @@ gemma-4-31b	sql/package.ai.md	package	False	0	2296	0	0	0	0	0	0	True	0	0	0	CASCAD
 gemma-4-31b	sql/shop/package.ai.md	package	False	0	1446	0	0	0	0	0	0	True	0	0	0	CASCADE DELETE add_order_item customer_order order_item p_order_id p_qty p_sku
 gemma-4-31b	sql/warehouse/package.ai.md	package	False	0	1406	0	0	0	0	0	0	True	0	0	0	ERROR_MESSAGE MERGE OnHand Since Sku StockLevel SupplierFeed SyncLog
 gemma-4-31b	project.ai.md	project	False	0	2424	0	0	0	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/config/AiConditionEvaluator.java	java	False	9800	2629	4	4	52	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/config/AiConditionGroup.java	java	False	1750	1058	2	2	38	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/config/AiFactExtractor.java	java	False	4856	1829	3	2	43	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/config/AiGenerationConfig.java	java	False	51188	4926	88	87	154	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/config/AiOversizeStrategy.java	java	False	3315	1654	3	3	23	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/config/SrcMorphConfiguration.java	java	False	17710	3522	37	36	106	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/provider/AiCompletionParser.java	java	False	4337	1626	2	2	13	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/provider/AiGenerationProvider.java	java	False	1725	1283	1	0	22	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/provider/AiGenerationProviderFactory.java	java	False	3673	2543	2	2	53	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3065	4	4	67	1	0	0	True	0	0	0	NullPointerException
+gemma-4-31b-noreason	java/provider/LlamaCppJniConfig.java	java	False	36703	4633	44	44	116	1	0	0	True	0	0	0	total
+gemma-4-31b-noreason	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3141	0	0	80	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	other/kernels/histogram.cl	other	False	1653	1721	9	8	25	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	other/ringbuf/ringbuf.c	other	False	1794	2094	12	11	50	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	other/ringbuf/ringbuf.h	other	False	1292	1870	14	13	38	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	other/scripts/rotate_backups.sh	other	False	1202	1849	5	5	29	1	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ
+gemma-4-31b-noreason	other/scripts/sales_report.py	other	False	2290	1693	9	9	51	2	0	0	True	0	0	0	Generator YYYY
+gemma-4-31b-noreason	sql/library/01_schema.sql	sql	False	1622	1598	19	19	0	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	sql/library/02_views.sql	sql	False	1240	1120	13	12	45	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	sql/library/03_routines.sql	sql	False	2546	1913	14	13	69	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	sql/library/04_migration_v2.sql	sql	False	1660	1613	12	12	55	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	sql/library/05_seed_data.sql	sql	False	54543	903	4	4	42	0	4	0	True	0	0	0	
+gemma-4-31b-noreason	sql/shop/orders_mysql.sql	sql	False	2481	2239	15	12	63	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2003	14	13	13	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	java/config/package.ai.md	package	False	0	2967	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+gemma-4-31b-noreason	java/package.ai.md	package	False	0	3172	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiFactCounter AiFactExtractor AiFileContext AiGenerationProvider AiGenerationProviderFactory
+gemma-4-31b-noreason	java/provider/package.ai.md	package	False	0	2825	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable ChatResponse
+gemma-4-31b-noreason	other/kernels/package.ai.md	package	False	0	987	0	0	0	0	0	0	True	0	0	0	histogram histogram_partial histogram_reduce input local_bins partial
+gemma-4-31b-noreason	other/package.ai.md	package	False	0	2384	0	0	0	0	0	0	True	0	0	0	BACKUP_DIR Order SOURCE_DIR head histogram histogram_partial histogram_reduce input
+gemma-4-31b-noreason	other/ringbuf/package.ai.md	package	False	0	1964	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM capacity free head malloc memcpy ringbuf_free_space
+gemma-4-31b-noreason	other/scripts/package.ai.md	package	False	0	1430	0	0	0	0	0	0	True	0	0	0	BACKUP_DIR KEEP Order SOURCE_DIR argparse collections csv date
+gemma-4-31b-noreason	package.ai.md	package	False	0	3457	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationProvider AiGenerationProviderFactory AiOversizeStrategy
+gemma-4-31b-noreason	sql/library/package.ai.md	package	False	0	2615	0	0	0	0	0	0	True	0	0	0	CHECK author book book_copy branch copies_free fn_checkout_book fn_late_fee
+gemma-4-31b-noreason	sql/package.ai.md	package	False	0	2588	0	0	0	0	0	0	True	0	0	0	CHECK MERGE StockLevel SupplierFeed SyncLog add_order_item author book
+gemma-4-31b-noreason	sql/shop/package.ai.md	package	False	0	1476	0	0	0	0	0	0	True	0	0	0	add_order_item customer_order order_item product stock total_cents
+gemma-4-31b-noreason	sql/warehouse/package.ai.md	package	False	0	1514	0	0	0	0	0	0	True	0	0	0	DATETIME2 ERROR_MESSAGE MERGE OnHand StockLevel SupplierFeed SyncLog dbo
+gemma-4-31b-noreason	project.ai.md	project	False	0	2537	0	0	0	0	0	0	True	0	0	0	
 gemma-4-e4b	java/config/AiConditionEvaluator.java	java	False	9800	2814	4	4	0	0	0	0	True	0	0	0	
 gemma-4-e4b	java/config/AiConditionGroup.java	java	False	1750	1491	2	2	0	0	0	0	True	0	0	0	
 gemma-4-e4b	java/config/AiFactExtractor.java	java	False	4856	1838	3	3	33	0	0	0	True	0	0	0	
@@ -628,6 +665,43 @@ qwen3.8-27b	sql/package.ai.md	package	False	0	3925	0	0	0	0	0	0	True	0	0	0	BIGSER
 qwen3.8-27b	sql/shop/package.ai.md	package	False	0	2533	0	0	0	0	0	0	True	0	0	0	DUPLICATE FOR KEY SIGNAL SQLSTATE SUM UPDATE add_order_item
 qwen3.8-27b	sql/warehouse/package.ai.md	package	False	0	1941	0	0	0	0	0	0	True	0	0	0	DATETIME2 ErrorMessage FeedRowId OnHand Quantity ReceivedAt SUM Since
 qwen3.8-27b	project.ai.md	project	False	0	3601	0	0	0	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/config/AiConditionEvaluator.java	java	False	9800	3146	4	4	98	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/config/AiConditionGroup.java	java	False	1750	1557	2	2	54	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/config/AiFactExtractor.java	java	False	4856	2600	3	3	75	2	0	0	True	0	0	0	label1 label2
+qwen3.8-27b-noreason	java/config/AiGenerationConfig.java	java	False	51188	9036	88	88	210	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/config/AiOversizeStrategy.java	java	False	3315	1811	3	3	51	3	0	0	True	0	0	0	Enum java lang
+qwen3.8-27b-noreason	java/config/SrcMorphConfiguration.java	java	False	17710	5745	37	37	166	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/provider/AiCompletionParser.java	java	False	4337	1868	2	2	21	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/provider/AiGenerationProvider.java	java	False	1725	1598	1	1	36	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/provider/AiGenerationProviderFactory.java	java	False	3673	2571	2	2	85	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3909	4	4	143	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/provider/LlamaCppJniConfig.java	java	False	36703	5363	44	44	130	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	4100	0	0	134	1	0	0	True	0	0	0	prefillRate
+qwen3.8-27b-noreason	other/kernels/histogram.cl	other	False	1653	2630	9	9	86	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	other/ringbuf/ringbuf.c	other	False	1794	2636	12	10	85	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	other/ringbuf/ringbuf.h	other	False	1292	2525	14	14	88	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	other/scripts/rotate_backups.sh	other	False	1202	2190	5	5	43	3	0	0	True	0	0	0	UTC gzip timestamp
+qwen3.8-27b-noreason	other/scripts/sales_report.py	other	False	2290	2558	9	9	81	7	0	0	True	0	0	0	CURRENCY Iterator TAB YYYY tuple
+qwen3.8-27b-noreason	sql/library/01_schema.sql	sql	False	1622	1741	19	16	61	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	sql/library/02_views.sql	sql	False	1240	1749	13	13	79	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	sql/library/03_routines.sql	sql	False	2546	2857	14	14	111	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	sql/library/04_migration_v2.sql	sql	False	1660	2497	12	12	88	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	sql/library/05_seed_data.sql	sql	False	54543	890	4	4	46	0	4	0	True	0	0	0	
+qwen3.8-27b-noreason	sql/shop/orders_mysql.sql	sql	False	2481	2520	15	15	129	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	3233	14	14	190	0	0	0	True	0	0	0	
+qwen3.8-27b-noreason	java/config/package.ai.md	package	False	0	3815	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+qwen3.8-27b-noreason	java/package.ai.md	package	False	0	4805	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest
+qwen3.8-27b-noreason	java/provider/package.ai.md	package	False	0	4678	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable
+qwen3.8-27b-noreason	other/kernels/package.ai.md	package	False	0	2203	0	0	0	0	0	0	True	0	0	0	BINS __global __local atomic_inc barrier bin const get_global_id
+qwen3.8-27b-noreason	other/package.ai.md	package	False	0	3653	0	0	0	0	0	0	True	0	0	0	BINS Decimal KEEP Order RINGBUF_EINVAL RINGBUF_ENOMEM ValueError YYYY
+qwen3.8-27b-noreason	other/ringbuf/package.ai.md	package	False	0	2829	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity data extern free head
+qwen3.8-27b-noreason	other/scripts/package.ai.md	package	False	0	3061	0	0	0	0	0	0	True	0	0	0	BACKUP_DIR Decimal DictReader InvalidOperation KEEP Order REQUIRED_COLUMNS SOURCE_DIR
+qwen3.8-27b-noreason	package.ai.md	package	False	0	4333	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiFactExtractor AiGenerationProvider AiGenerationProviderFactory FOR IOException IllegalArgumentException
+qwen3.8-27b-noreason	sql/library/package.ai.md	package	False	0	3718	0	0	0	0	0	0	True	0	0	0	AVAILABLE COALESCE CURRENT_DATE INSERT LOST ON_LOAN UPDATE _migration_v2
+qwen3.8-27b-noreason	sql/package.ai.md	package	False	0	3202	0	0	0	0	0	0	True	0	0	0	ERROR_MESSAGE FOR SYSUTCDATETIME Sku StockLevel SupplierFeed SyncLog THROW
+qwen3.8-27b-noreason	sql/shop/package.ai.md	package	False	0	2497	0	0	0	0	0	0	True	0	0	0	CANCELLED FOR INSERT NEW PAID SELECT SHIPPED SUM
+qwen3.8-27b-noreason	sql/warehouse/package.ai.md	package	False	0	2397	0	0	0	0	0	0	True	0	0	0	ERROR_MESSAGE MERGE OnHand Quantity ReceivedAt SUM SYSUTCDATETIME Since
+qwen3.8-27b-noreason	project.ai.md	project	False	0	3223	0	0	0	0	0	0	True	0	0	0	
 seed-coder-8b	java/config/AiConditionEvaluator.java	java	False	9800	1354	4	3	0	0	0	0	True	0	0	0	
 seed-coder-8b	java/config/AiConditionGroup.java	java	False	1750	1084	2	2	0	0	0	0	True	0	0	0	
 seed-coder-8b	java/config/AiFactExtractor.java	java	False	4856	980	3	2	19	0	0	0	True	0	0	0	
