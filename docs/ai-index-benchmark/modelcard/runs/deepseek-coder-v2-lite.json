@@ -1,0 +1,36 @@
+{
+ "key": "deepseek-coder-v2-lite",
+ "name": "DeepSeek-Coder-V2-Lite-Instruct (Q4_K_M)",
+ "backend": "local",
+ "definition": {
+  "key": "deepseek-coder-v2-lite",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 32768,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 7598.9,
+   "cutOff": [
+    "java/config/AiGenerationConfig.java"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 2263.9,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 34.1,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

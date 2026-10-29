@@ -1,0 +1,519 @@
+model	file	kind	missing	srcBytes	bodyBytes	idsExpected	idsFound	ticked	invented	numbersExpected	numbersStated	lead	badHeadings	fences	leaks	inventedNames
+deepseek-coder-v2-lite	java/config/AiConditionEvaluator.java	java	False	9800	2552	4	4	59	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/config/AiConditionGroup.java	java	False	1750	1867	2	2	36	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/config/AiFactExtractor.java	java	False	4856	1536	3	2	18	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/config/AiGenerationConfig.java	java	False	51188	15117	88	84	309	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/config/AiOversizeStrategy.java	java	False	3315	1625	3	3	17	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/config/SrcMorphConfiguration.java	java	False	17710	5324	37	37	157	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/provider/AiCompletionParser.java	java	False	4337	1528	2	2	10	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/provider/AiGenerationProvider.java	java	False	1725	1660	1	1	41	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/provider/AiGenerationProviderFactory.java	java	False	3673	1697	2	2	36	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	2277	4	4	52	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/provider/LlamaCppJniConfig.java	java	False	36703	5046	44	43	132	3	0	0	True	0	0	0	None
+deepseek-coder-v2-lite	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	4160	0	0	123	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	other/kernels/histogram.cl	other	False	1653	1954	9	7	14	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	other/ringbuf/ringbuf.c	other	False	1794	2098	12	8	44	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	other/ringbuf/ringbuf.h	other	False	1292	1757	14	11	47	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	other/scripts/rotate_backups.sh	other	False	1202	1385	5	1	20	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	other/scripts/sales_report.py	other	False	2290	1244	9	7	25	2	0	0	True	0	0	0	Iterator Tuple
+deepseek-coder-v2-lite	sql/library/01_schema.sql	sql	False	1622	2057	19	16	115	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	sql/library/02_views.sql	sql	False	1240	2021	13	13	28	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	sql/library/03_routines.sql	sql	False	2546	1997	14	12	38	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	sql/library/04_migration_v2.sql	sql	False	1660	1939	12	10	86	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	sql/library/05_seed_data.sql	sql	False	54543	3309	4	4	47	0	4	0	True	0	0	0	
+deepseek-coder-v2-lite	sql/shop/orders_mysql.sql	sql	False	2481	2331	15	15	50	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1907	14	12	43	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	java/config/package.ai.md	package	False	0	1737	0	0	0	0	0	0	True	0	0	0	AiConditionEvaluator AiSourceExcludeFilter Collections DateTimeParseException IllegalArgumentException Instant Nullable annotations
+deepseek-coder-v2-lite	java/package.ai.md	package	False	0	4216	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiPromptSupport AiSourceExcludeFilter ArrayNode
+deepseek-coder-v2-lite	java/provider/package.ai.md	package	False	0	2713	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiPromptSupport ArrayNode AutoCloseable
+deepseek-coder-v2-lite	other/kernels/package.ai.md	package	False	0	1536	0	0	0	0	0	0	True	0	0	0	BINS bin group_count histogram input length local_bins partial
+deepseek-coder-v2-lite	other/package.ai.md	package	False	0	3051	0	0	0	0	0	0	True	0	0	0	Decimal argparse basename bash collections csv cut date
+deepseek-coder-v2-lite	other/ringbuf/package.ai.md	package	False	0	1515	0	0	0	0	0	0	True	6	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM ringbuf ringbuf_free ringbuf_init ringbuf_read ringbuf_t ringbuf_write
+deepseek-coder-v2-lite	other/scripts/package.ai.md	package	False	0	1543	0	0	0	0	0	0	True	0	0	0	Decimal argparse backup_dir basename bash collections csv cut
+deepseek-coder-v2-lite	package.ai.md	package	False	0	12395	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiPromptSupport AiSourceExcludeFilter ArrayNode
+deepseek-coder-v2-lite	sql/library/package.ai.md	package	False	0	3275	0	0	0	0	0	0	True	0	0	0	_migration_v2 _routines _schema _seed_data _views author author_id birth_year
+deepseek-coder-v2-lite	sql/package.ai.md	package	False	0	6104	0	0	0	0	0	0	True	6	0	0	StockLevel SupplierFeed SyncLog _migration_v2 _routines _schema _seed_data _views
+deepseek-coder-v2-lite	sql/shop/package.ai.md	package	False	0	1670	0	0	0	0	0	0	True	0	0	0	customer_order order_item product
+deepseek-coder-v2-lite	sql/warehouse/package.ai.md	package	False	0	897	0	0	0	0	0	0	True	6	0	0	StockLevel SupplierFeed SyncLog dbo
+deepseek-coder-v2-lite	project.ai.md	project	False	0	3301	0	0	0	0	0	0	True	0	0	0	java kernels modelcard other provider scripts sql srcmorph
+gemma-4-12b	java/config/AiConditionEvaluator.java	java	False	9800	3224	4	4	85	0	0	0	True	0	0	0	
+gemma-4-12b	java/config/AiConditionGroup.java	java	False	1750	1262	2	2	18	0	0	0	True	0	0	0	
+gemma-4-12b	java/config/AiFactExtractor.java	java	False	4856	1973	3	2	43	0	0	0	True	0	0	0	
+gemma-4-12b	java/config/AiGenerationConfig.java	java	False	51188	6658	88	88	130	0	0	0	True	0	0	0	
+gemma-4-12b	java/config/AiOversizeStrategy.java	java	False	3315	1478	3	3	25	0	0	0	True	0	0	0	
+gemma-4-12b	java/config/SrcMorphConfiguration.java	java	False	17710	3856	37	36	108	0	0	0	True	0	0	0	
+gemma-4-12b	java/provider/AiCompletionParser.java	java	False	4337	1784	2	2	17	0	0	0	True	0	0	0	
+gemma-4-12b	java/provider/AiGenerationProvider.java	java	False	1725	1545	1	0	26	0	0	0	True	0	0	0	
+gemma-4-12b	java/provider/AiGenerationProviderFactory.java	java	False	3673	2395	2	2	67	0	0	0	True	0	0	0	
+gemma-4-12b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3307	4	4	95	1	0	0	True	0	0	0	synchronized
+gemma-4-12b	java/provider/LlamaCppJniConfig.java	java	False	36703	6976	44	44	229	0	0	0	True	0	0	0	
+gemma-4-12b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3321	0	0	81	1	0	0	True	0	0	0	NullPointerException
+gemma-4-12b	other/kernels/histogram.cl	other	False	1653	1807	9	8	45	0	0	0	True	0	0	0	
+gemma-4-12b	other/ringbuf/ringbuf.c	other	False	1794	2136	12	7	51	0	0	0	True	0	0	0	
+gemma-4-12b	other/ringbuf/ringbuf.h	other	False	1292	1984	14	11	55	0	0	0	True	0	0	0	
+gemma-4-12b	other/scripts/rotate_backups.sh	other	False	1202	1485	5	5	6	0	0	0	True	0	0	0	
+gemma-4-12b	other/scripts/sales_report.py	other	False	2290	1739	9	9	34	1	0	0	True	0	0	0	YYYY
+gemma-4-12b	sql/library/01_schema.sql	sql	False	1622	1660	19	19	0	0	0	0	True	0	0	0	
+gemma-4-12b	sql/library/02_views.sql	sql	False	1240	1282	13	13	0	0	0	0	True	0	0	0	
+gemma-4-12b	sql/library/03_routines.sql	sql	False	2546	1924	14	13	15	0	0	0	True	0	0	0	
+gemma-4-12b	sql/library/04_migration_v2.sql	sql	False	1660	1391	12	12	16	0	0	0	True	0	0	0	
+gemma-4-12b	sql/library/05_seed_data.sql	sql	False	54543	1291	4	4	0	0	4	4	True	0	0	0	
+gemma-4-12b	sql/shop/orders_mysql.sql	sql	False	2481	2200	15	12	0	0	0	0	True	0	0	0	
+gemma-4-12b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1917	14	13	21	0	0	0	True	0	0	0	
+gemma-4-12b	java/config/package.ai.md	package	False	0	2941	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiConditionGroup AiFactDefinition AiFactExtractor AiFieldGenerationConfig AiFileContext AiGenerationConfig
+gemma-4-12b	java/package.ai.md	package	False	0	3312	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiFactDefinition AiFactExtractor AiFieldGenerationConfig AiFileContext AiGenerationProvider
+gemma-4-12b	java/provider/package.ai.md	package	False	0	2770	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable Builder
+gemma-4-12b	other/kernels/package.ai.md	package	False	0	998	0	0	0	0	0	0	True	0	0	0	histogram histogram_partial histogram_reduce partial
+gemma-4-12b	other/package.ai.md	package	False	0	2876	0	0	0	0	0	0	True	0	0	0	Order argparse collections csv date datetime decimal defaultdict
+gemma-4-12b	other/ringbuf/package.ai.md	package	False	0	2318	0	0	0	0	0	0	True	0	0	0	EINVAL ENOMEM capacity data dst head ringbuf_free_space ringbuf_init
+gemma-4-12b	other/scripts/package.ai.md	package	False	0	1639	0	0	0	0	0	0	True	0	0	0	KEEP Order SOURCE_DIR argparse collections csv date datetime
+gemma-4-12b	package.ai.md	package	False	0	3666	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiFactDefinition AiFactExtractor AiFieldGenerationConfig AiFileContext AiGenerationProvider
+gemma-4-12b	sql/library/package.ai.md	package	False	0	2529	0	0	0	0	0	0	True	0	0	0	author book book_copy branch copies_free copies_total due_on fn_checkout_book
+gemma-4-12b	sql/package.ai.md	package	False	0	2774	0	0	0	0	0	0	True	0	0	0	MERGE StockLevel SupplierFeed SyncLog add_order_item author book book_copy
+gemma-4-12b	sql/shop/package.ai.md	package	False	0	1617	0	0	0	0	0	0	True	0	0	0	add_order_item customer_order order_item p_order_id p_qty p_sku price_cents product
+gemma-4-12b	sql/warehouse/package.ai.md	package	False	0	1412	0	0	0	0	0	0	True	0	0	0	MERGE OUTPUT OnHand RowsInserted RowsUpdated Since Sku StockLevel
+gemma-4-12b	project.ai.md	project	False	0	2880	0	0	0	0	0	0	True	0	0	0	
+gemma-4-31b	java/config/AiConditionEvaluator.java	java	False	9800	2628	4	3	55	0	0	0	True	0	0	0	
+gemma-4-31b	java/config/AiConditionGroup.java	java	False	1750	1064	2	2	38	0	0	0	True	0	0	0	
+gemma-4-31b	java/config/AiFactExtractor.java	java	False	4856	2238	3	2	51	0	0	0	True	0	0	0	
+gemma-4-31b	java/config/AiGenerationConfig.java	java	False	51188	4567	88	87	144	0	0	0	True	0	0	0	
+gemma-4-31b	java/config/AiOversizeStrategy.java	java	False	3315	1795	3	3	32	0	0	0	True	0	0	0	
+gemma-4-31b	java/config/SrcMorphConfiguration.java	java	False	17710	3917	37	37	110	0	0	0	True	0	0	0	
+gemma-4-31b	java/provider/AiCompletionParser.java	java	False	4337	6200	2	2	72	2	0	0	False	0	0	0	Correction says
+gemma-4-31b	java/provider/AiGenerationProvider.java	java	False	1725	1399	1	0	27	0	0	0	True	0	0	0	
+gemma-4-31b	java/provider/AiGenerationProviderFactory.java	java	False	3673	1749	2	2	39	0	0	0	True	0	0	0	
+gemma-4-31b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3095	4	4	95	0	0	0	True	0	0	0	
+gemma-4-31b	java/provider/LlamaCppJniConfig.java	java	False	36703	1727	44	8	58	2	0	0	True	0	0	0	total
+gemma-4-31b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	2935	0	0	84	0	0	0	True	0	0	0	
+gemma-4-31b	other/kernels/histogram.cl	other	False	1653	1622	9	7	28	0	0	0	True	0	0	0	
+gemma-4-31b	other/ringbuf/ringbuf.c	other	False	1794	2047	12	11	54	0	0	0	True	0	0	0	
+gemma-4-31b	other/ringbuf/ringbuf.h	other	False	1292	1964	14	13	43	0	0	0	True	0	0	0	
+gemma-4-31b	other/scripts/rotate_backups.sh	other	False	1202	1871	5	5	31	0	0	0	True	0	0	0	
+gemma-4-31b	other/scripts/sales_report.py	other	False	2290	1828	9	9	52	2	0	0	True	0	0	0	Generator YYYY
+gemma-4-31b	sql/library/01_schema.sql	sql	False	1622	1480	19	19	87	0	0	0	True	0	0	0	
+gemma-4-31b	sql/library/02_views.sql	sql	False	1240	1128	13	13	53	0	0	0	True	0	0	0	
+gemma-4-31b	sql/library/03_routines.sql	sql	False	2546	1824	14	13	74	0	0	0	True	0	0	0	
+gemma-4-31b	sql/library/04_migration_v2.sql	sql	False	1660	1415	12	12	51	0	0	0	True	0	0	0	
+gemma-4-31b	sql/library/05_seed_data.sql	sql	False	54543	1203	4	4	60	0	4	0	True	0	0	0	
+gemma-4-31b	sql/shop/orders_mysql.sql	sql	False	2481	2210	15	12	63	0	0	0	True	0	0	0	
+gemma-4-31b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2149	14	13	84	0	0	0	True	0	0	0	
+gemma-4-31b	java/config/package.ai.md	package	False	0	2804	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactDefinition AiFactExtractor AiFieldGenerationConfig AiFileContext
+gemma-4-31b	java/package.ai.md	package	False	0	3474	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory
+gemma-4-31b	java/provider/package.ai.md	package	False	0	2943	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport ChatResponse
+gemma-4-31b	other/kernels/package.ai.md	package	False	0	998	0	0	0	0	0	0	True	0	0	0	atomic_inc histogram histogram_partial histogram_reduce input local_bins partial
+gemma-4-31b	other/package.ai.md	package	False	0	2497	0	0	0	0	0	0	True	0	0	0	BACKUP_DIR Order SOURCE_DIR atomic_inc capacity czf date histogram_partial
+gemma-4-31b	other/ringbuf/package.ai.md	package	False	0	1859	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM capacity head index memcpy ringbuf_free ringbuf_free_space
+gemma-4-31b	other/scripts/package.ai.md	package	False	0	1822	0	0	0	0	0	0	True	0	0	0	BACKUP_DIR KEEP Order SOURCE_DIR argparse collections csv czf
+gemma-4-31b	package.ai.md	package	False	0	2994	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationProvider LlamaCppJniAiGenerationProvider LlamaCppJniConfig ObjectMapper
+gemma-4-31b	sql/library/package.ai.md	package	False	0	2553	0	0	0	0	0	0	True	0	0	0	CHECK NOT author book book_copy branch copies_free copies_total
+gemma-4-31b	sql/package.ai.md	package	False	0	2296	0	0	0	0	0	0	True	0	0	0	CASCADE CHECK DELETE ERROR_MESSAGE MERGE StockLevel SupplierFeed SyncLog
+gemma-4-31b	sql/shop/package.ai.md	package	False	0	1446	0	0	0	0	0	0	True	0	0	0	CASCADE DELETE add_order_item customer_order order_item p_order_id p_qty p_sku
+gemma-4-31b	sql/warehouse/package.ai.md	package	False	0	1406	0	0	0	0	0	0	True	0	0	0	ERROR_MESSAGE MERGE OnHand Since Sku StockLevel SupplierFeed SyncLog
+gemma-4-31b	project.ai.md	project	False	0	2424	0	0	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/config/AiConditionEvaluator.java	java	False	9800	2814	4	4	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/config/AiConditionGroup.java	java	False	1750	1491	2	2	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/config/AiFactExtractor.java	java	False	4856	1838	3	3	33	0	0	0	True	0	0	0	
+gemma-4-e4b	java/config/AiGenerationConfig.java	java	False	51188	7286	88	85	10	0	0	0	True	0	0	0	
+gemma-4-e4b	java/config/AiOversizeStrategy.java	java	False	3315	1260	3	3	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/config/SrcMorphConfiguration.java	java	False	17710	6538	37	37	35	0	0	0	True	0	0	0	
+gemma-4-e4b	java/provider/AiCompletionParser.java	java	False	4337	1440	2	2	17	0	0	0	True	0	0	0	
+gemma-4-e4b	java/provider/AiGenerationProvider.java	java	False	1725	1242	1	1	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/provider/AiGenerationProviderFactory.java	java	False	3673	1985	2	2	12	0	0	0	True	0	0	0	
+gemma-4-e4b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	2644	4	4	29	0	0	0	True	0	0	0	
+gemma-4-e4b	java/provider/LlamaCppJniConfig.java	java	False	36703	7362	44	44	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3231	0	0	30	0	0	0	True	0	0	0	
+gemma-4-e4b	other/kernels/histogram.cl	other	False	1653	1596	9	7	0	0	0	0	True	0	0	0	
+gemma-4-e4b	other/ringbuf/ringbuf.c	other	False	1794	2185	12	8	30	0	0	0	True	0	0	0	
+gemma-4-e4b	other/ringbuf/ringbuf.h	other	False	1292	1987	14	11	22	0	0	0	True	0	0	0	
+gemma-4-e4b	other/scripts/rotate_backups.sh	other	False	1202	1492	5	4	2	0	0	0	True	0	0	0	
+gemma-4-e4b	other/scripts/sales_report.py	other	False	2290	1774	9	8	18	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/01_schema.sql	sql	False	1622	2045	19	19	0	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/02_views.sql	sql	False	1240	1168	13	13	3	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/03_routines.sql	sql	False	2546	2048	14	14	6	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/04_migration_v2.sql	sql	False	1660	1717	12	10	18	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/05_seed_data.sql	sql	False	54543	1491	4	4	4	0	4	0	True	0	0	0	
+gemma-4-e4b	sql/shop/orders_mysql.sql	sql	False	2481	1981	15	11	0	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1999	14	14	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/config/package.ai.md	package	False	0	3073	0	0	0	0	0	0	True	0	0	0	
+gemma-4-e4b	java/package.ai.md	package	False	0	3083	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest
+gemma-4-e4b	java/provider/package.ai.md	package	False	0	3386	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable ChatResponse
+gemma-4-e4b	other/kernels/package.ai.md	package	False	0	1092	0	0	0	0	0	0	True	0	0	0	
+gemma-4-e4b	other/package.ai.md	package	False	0	2568	0	0	0	0	0	0	True	0	0	0	CLK_LOCAL_MEM_FENCE Decimal Order ValueError csv currency dataclasses decimal
+gemma-4-e4b	other/ringbuf/package.ai.md	package	False	0	1752	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM const dst ringbuf ringbuf_free_space ringbuf_init ringbuf_read
+gemma-4-e4b	other/scripts/package.ai.md	package	False	0	2088	0	0	0	0	0	0	True	0	0	0	Decimal Order ValueError argparse basename collections csv currency
+gemma-4-e4b	package.ai.md	package	False	0	2290	0	0	0	0	0	0	True	0	0	0	StockLevel SupplierFeed SyncLog _schema add_order_item customer_order dbo fn_checkout_book
+gemma-4-e4b	sql/library/package.ai.md	package	False	0	3454	0	0	0	0	0	0	True	0	0	0	CHECK FOREIGN KEY _migration_v2 _routines _schema _seed_data _views
+gemma-4-e4b	sql/package.ai.md	package	False	0	2470	0	0	0	0	0	0	True	0	0	0	StockLevel SupplierFeed SyncLog _schema add_order_item author book customer_order
+gemma-4-e4b	sql/shop/package.ai.md	package	False	0	1690	0	0	0	0	0	0	True	0	0	0	add_order_item customer_order order_item product
+gemma-4-e4b	sql/warehouse/package.ai.md	package	False	0	1622	0	0	0	0	0	0	True	0	0	0	StockLevel SupplierFeed SyncLog dbo usp_SyncStock
+gemma-4-e4b	project.ai.md	project	False	0	2754	0	0	0	0	0	0	True	0	0	0	
+gpt-6-luna	java/config/AiConditionEvaluator.java	java	False	9800	2567	4	4	51	0	0	0	True	0	0	0	
+gpt-6-luna	java/config/AiConditionGroup.java	java	False	1750	1248	2	2	31	0	0	0	True	0	0	0	
+gpt-6-luna	java/config/AiFactExtractor.java	java	False	4856	2369	3	3	45	0	0	0	True	0	0	0	
+gpt-6-luna	java/config/AiGenerationConfig.java	java	False	51188	8329	88	88	193	0	0	0	True	0	0	0	
+gpt-6-luna	java/config/AiOversizeStrategy.java	java	False	3315	1562	3	3	38	0	0	0	True	0	0	0	
+gpt-6-luna	java/config/SrcMorphConfiguration.java	java	False	17710	6347	37	37	144	0	0	0	True	0	0	0	
+gpt-6-luna	java/provider/AiCompletionParser.java	java	False	4337	1664	2	2	20	0	0	0	True	0	0	0	
+gpt-6-luna	java/provider/AiGenerationProvider.java	java	False	1725	1510	1	1	25	0	0	0	True	0	0	0	
+gpt-6-luna	java/provider/AiGenerationProviderFactory.java	java	False	3673	2390	2	2	49	0	0	0	True	0	0	0	
+gpt-6-luna	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3252	4	4	57	0	0	0	True	0	0	0	
+gpt-6-luna	java/provider/LlamaCppJniConfig.java	java	False	36703	4090	44	44	101	0	0	0	True	0	0	0	
+gpt-6-luna	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3738	0	0	76	0	0	0	True	0	0	0	
+gpt-6-luna	other/kernels/histogram.cl	other	False	1653	1715	9	9	50	0	0	0	True	0	0	0	
+gpt-6-luna	other/ringbuf/ringbuf.c	other	False	1794	2406	12	11	68	0	0	0	True	0	0	0	
+gpt-6-luna	other/ringbuf/ringbuf.h	other	False	1292	2110	14	14	52	0	0	0	True	0	0	0	
+gpt-6-luna	other/scripts/rotate_backups.sh	other	False	1202	1751	5	5	33	1	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ
+gpt-6-luna	other/scripts/sales_report.py	other	False	2290	2087	9	8	52	2	0	0	True	0	0	0	YYYY iterator
+gpt-6-luna	sql/library/01_schema.sql	sql	False	1622	1963	19	19	80	0	0	0	True	0	0	0	
+gpt-6-luna	sql/library/02_views.sql	sql	False	1240	2088	13	13	116	0	0	0	True	0	0	0	
+gpt-6-luna	sql/library/03_routines.sql	sql	False	2546	3181	14	14	130	0	0	0	True	0	0	0	
+gpt-6-luna	sql/library/04_migration_v2.sql	sql	False	1660	2000	12	12	82	0	0	0	True	0	0	0	
+gpt-6-luna	sql/library/05_seed_data.sql	sql	False	54543	1153	4	4	43	0	4	4	True	0	0	0	
+gpt-6-luna	sql/shop/orders_mysql.sql	sql	False	2481	2626	15	15	107	0	0	0	True	0	0	0	
+gpt-6-luna	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2556	14	14	115	0	0	0	True	0	0	0	
+gpt-6-luna	java/config/package.ai.md	package	False	0	3372	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+gpt-6-luna	java/package.ai.md	package	False	0	4394	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiFactCounter AiFactExtractor AiFieldGenerationConfig AiFileContext AiGenerationConfig
+gpt-6-luna	java/provider/package.ai.md	package	False	0	3989	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport Builder
+gpt-6-luna	other/kernels/package.ai.md	package	False	0	1237	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE __global __local histogram_partial histogram_reduce
+gpt-6-luna	other/package.ai.md	package	False	0	2929	0	0	0	0	0	0	True	0	0	0	BINS None Order argv currency head histogram_partial histogram_reduce
+gpt-6-luna	other/ringbuf/package.ai.md	package	False	0	1960	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity head memcpy ringbuf ringbuf_free
+gpt-6-luna	other/scripts/package.ai.md	package	False	0	1777	0	0	0	0	0	0	True	0	0	0	None Order argv currency main mkdir orders parse_orders
+gpt-6-luna	package.ai.md	package	False	0	5440	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiFactExtractor AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings
+gpt-6-luna	sql/library/package.ai.md	package	False	0	3627	0	0	0	0	0	0	True	0	0	0	COALESCE CURRENT_DATE GREATEST LEAST _migration_v2 author author_id book
+gpt-6-luna	sql/package.ai.md	package	False	0	3724	0	0	0	0	0	0	True	0	0	0	CASCADE DELETE ERROR_MESSAGE SYSUTCDATETIME StockLevel SupplierFeed SyncLog add_order_item
+gpt-6-luna	sql/shop/package.ai.md	package	False	0	1914	0	0	0	0	0	0	True	0	0	0	CASCADE DELETE SKU add_order_item customer_order enough not order_id
+gpt-6-luna	sql/warehouse/package.ai.md	package	False	0	1651	0	0	0	0	0	0	True	0	0	0	DATETIME2 ERROR_MESSAGE ReceivedAt SYSUTCDATETIME Since Sku StockLevel SupplierFeed
+gpt-6-luna	project.ai.md	project	False	0	2426	0	0	0	0	0	0	True	0	0	0	
+gpt-oss-20b	java/config/AiConditionEvaluator.java	java	False	9800	1955	4	4	55	0	0	0	True	0	0	0	
+gpt-oss-20b	java/config/AiConditionGroup.java	java	False	1750	1544	2	2	49	0	0	0	True	0	0	0	
+gpt-oss-20b	java/config/AiFactExtractor.java	java	False	4856	1338	3	3	37	0	0	0	True	0	0	0	
+gpt-oss-20b	java/config/AiGenerationConfig.java	java	False	51188	4453	88	87	147	0	0	0	True	0	0	0	
+gpt-oss-20b	java/config/AiOversizeStrategy.java	java	False	3315	1499	3	3	23	0	0	0	True	0	0	0	
+gpt-oss-20b	java/config/SrcMorphConfiguration.java	java	False	17710	4071	37	37	111	0	0	0	True	0	0	0	
+gpt-oss-20b	java/provider/AiCompletionParser.java	java	False	4337	1512	2	2	18	0	0	0	True	0	0	0	
+gpt-oss-20b	java/provider/AiGenerationProvider.java	java	False	1725	1618	1	1	44	0	0	0	True	0	0	0	
+gpt-oss-20b	java/provider/AiGenerationProviderFactory.java	java	False	3673	2381	2	2	87	0	0	0	True	0	0	0	
+gpt-oss-20b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	2633	4	4	95	0	0	0	True	0	0	0	
+gpt-oss-20b	java/provider/LlamaCppJniConfig.java	java	False	36703	4315	44	44	119	0	0	0	True	0	0	0	
+gpt-oss-20b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3064	0	0	125	0	0	0	True	0	0	0	
+gpt-oss-20b	other/kernels/histogram.cl	other	False	1653	1720	9	8	60	0	0	0	True	0	0	0	
+gpt-oss-20b	other/ringbuf/ringbuf.c	other	False	1794	1993	12	10	71	0	0	0	True	0	0	0	
+gpt-oss-20b	other/ringbuf/ringbuf.h	other	False	1292	1981	14	13	74	0	0	0	True	0	0	0	
+gpt-oss-20b	other/scripts/rotate_backups.sh	other	False	1202	1290	5	4	19	1	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ
+gpt-oss-20b	other/scripts/sales_report.py	other	False	2290	1738	9	8	60	6	0	0	True	0	0	0	Iterator TAB Tuple YYYY
+gpt-oss-20b	sql/library/01_schema.sql	sql	False	1622	1997	19	19	117	0	0	0	True	0	0	0	
+gpt-oss-20b	sql/library/02_views.sql	sql	False	1240	1200	13	13	52	0	0	0	True	0	0	0	
+gpt-oss-20b	sql/library/03_routines.sql	sql	False	2546	2081	14	14	79	0	0	0	True	0	0	0	
+gpt-oss-20b	sql/library/04_migration_v2.sql	sql	False	1660	1907	12	11	85	0	0	0	True	0	0	0	
+gpt-oss-20b	sql/library/05_seed_data.sql	sql	False	54543	655	4	4	12	0	4	0	True	0	0	0	
+gpt-oss-20b	sql/shop/orders_mysql.sql	sql	False	2481	2157	15	14	109	0	0	0	True	0	0	0	
+gpt-oss-20b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2265	14	14	111	0	0	0	True	0	0	0	
+gpt-oss-20b	java/config/package.ai.md	package	False	0	3672	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig AiFileContext
+gpt-oss-20b	java/package.ai.md	package	False	0	4468	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+gpt-oss-20b	java/provider/package.ai.md	package	False	0	3182	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable ChatResponse
+gpt-oss-20b	other/kernels/package.ai.md	package	False	0	1129	0	0	0	0	0	0	True	0	0	0	__global __local atomic_inc barrier const get_global_id get_global_size get_group_id
+gpt-oss-20b	other/package.ai.md	package	False	0	2254	0	0	0	0	0	0	True	0	0	0	Order RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK argparse atomic_inc basename collections
+gpt-oss-20b	other/ringbuf/package.ai.md	package	False	0	2394	0	0	0	0	0	0	True	0	0	0	EINVAL ENOMEM RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity const dst
+gpt-oss-20b	other/scripts/package.ai.md	package	False	0	2131	0	0	0	0	0	0	True	0	0	0	Decimal InvalidOperation Order _YYYYMMDDTHHMMSSZ argparse argv basename collections
+gpt-oss-20b	package.ai.md	package	False	0	4336	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+gpt-oss-20b	sql/library/package.ai.md	package	False	0	2816	0	0	0	0	0	0	True	0	0	0	AVAILABLE CHECKOUT CURRENT_DATE RETURN author book book_copy branch
+gpt-oss-20b	sql/package.ai.md	package	False	0	2938	0	0	0	0	0	0	True	0	0	0	CURRENT_DATE DATETIME2 ENUM ERROR_MESSAGE FOR SIGNAL SYSUTCDATETIME Since
+gpt-oss-20b	sql/shop/package.ai.md	package	False	0	1506	0	0	0	0	0	0	True	0	0	0	ENUM FOR SIGNAL UPDATE add_order_item customer_order order_item p_order_id
+gpt-oss-20b	sql/warehouse/package.ai.md	package	False	0	1951	0	0	0	0	0	0	True	0	0	0	DATETIME2 ERROR_MESSAGE MERGE OnHand ReceivedAt SYSUTCDATETIME Since Sku
+gpt-oss-20b	project.ai.md	project	False	0	3027	0	0	0	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/config/AiConditionEvaluator.java	java	False	9800	1899	4	4	24	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/config/AiConditionGroup.java	java	False	1750	1396	2	2	39	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/config/AiFactExtractor.java	java	False	4856	1736	3	3	48	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/config/AiGenerationConfig.java	java	False	51188	5985	88	86	140	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/config/AiOversizeStrategy.java	java	False	3315	1549	3	3	29	3	0	0	True	0	0	0	Enum java lang
+granite-4.0-h-small	java/config/SrcMorphConfiguration.java	java	False	17710	5281	37	37	109	1	0	0	True	0	0	0	lang
+granite-4.0-h-small	java/provider/AiCompletionParser.java	java	False	4337	1300	2	2	14	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/provider/AiGenerationProvider.java	java	False	1725	1992	1	1	34	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/provider/AiGenerationProviderFactory.java	java	False	3673	2269	2	2	25	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	1899	4	4	64	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/provider/LlamaCppJniConfig.java	java	False	36703	3118	44	44	93	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3979	0	0	127	0	0	0	True	0	0	0	
+granite-4.0-h-small	other/kernels/histogram.cl	other	False	1653	1951	9	9	20	0	0	0	True	0	0	0	
+granite-4.0-h-small	other/ringbuf/ringbuf.c	other	False	1794	2046	12	8	50	0	0	0	True	0	0	0	
+granite-4.0-h-small	other/ringbuf/ringbuf.h	other	False	1292	1790	14	14	62	1	0	0	True	0	0	0	uint32_t
+granite-4.0-h-small	other/scripts/rotate_backups.sh	other	False	1202	1725	5	4	15	0	0	0	True	0	0	0	
+granite-4.0-h-small	other/scripts/sales_report.py	other	False	2290	1527	9	6	28	1	0	0	True	0	0	0	YYYY
+granite-4.0-h-small	sql/library/01_schema.sql	sql	False	1622	1729	19	16	40	0	0	0	True	0	0	0	
+granite-4.0-h-small	sql/library/02_views.sql	sql	False	1240	1302	13	12	0	0	0	0	True	0	0	0	
+granite-4.0-h-small	sql/library/03_routines.sql	sql	False	2546	2080	14	14	66	0	0	0	True	0	0	0	
+granite-4.0-h-small	sql/library/04_migration_v2.sql	sql	False	1660	2178	12	11	71	0	0	0	True	0	0	0	
+granite-4.0-h-small	sql/library/05_seed_data.sql	sql	False	54543	1623	4	4	46	0	4	0	True	0	0	0	
+granite-4.0-h-small	sql/shop/orders_mysql.sql	sql	False	2481	2407	15	12	67	0	0	0	True	0	0	0	
+granite-4.0-h-small	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1823	14	13	60	0	0	0	True	0	0	0	
+granite-4.0-h-small	java/config/package.ai.md	package	False	0	2153	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationConfig AiOversizeStrategy AiRangeCondition AiSourceExcludeFilter
+granite-4.0-h-small	java/package.ai.md	package	False	0	2153	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationConfig AiOversizeStrategy AiRangeCondition AiSourceExcludeFilter
+granite-4.0-h-small	java/provider/package.ai.md	package	False	0	3148	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport IOException Java8CompatibilityHelper
+granite-4.0-h-small	other/kernels/package.ai.md	package	False	0	1015	0	0	0	0	0	0	True	0	0	0	histogram_partial histogram_reduce
+granite-4.0-h-small	other/package.ai.md	package	False	0	4965	0	0	0	0	0	0	True	0	0	0	Decimal Order argparse basename collections csv dataclass dataclasses
+granite-4.0-h-small	other/ringbuf/package.ai.md	package	False	0	1750	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK ringbuf ringbuf_free ringbuf_free_space ringbuf_init ringbuf_read
+granite-4.0-h-small	other/scripts/package.ai.md	package	False	0	2587	0	0	0	0	0	0	True	0	0	0	Decimal Order argparse basename collections csv dataclass dataclasses
+granite-4.0-h-small	package.ai.md	package	False	0	303	0	0	0	0	0	0	True	0	0	0	
+granite-4.0-h-small	sql/library/package.ai.md	package	False	0	3345	0	0	0	0	0	0	True	0	0	0	BIGSERIAL CASCADE CHECK DEFAULT DELETE NOT SERIAL TIMESTAMPTZ
+granite-4.0-h-small	sql/package.ai.md	package	False	0	4380	0	0	0	0	0	0	True	0	0	0	BIGSERIAL FOR MERGE OnHand SIGNAL Sku StockLevel SupplierFeed
+granite-4.0-h-small	sql/shop/package.ai.md	package	False	0	1565	0	0	0	0	0	0	True	0	0	0	FOR SIGNAL UPDATE add_order_item customer_order order_id order_item product
+granite-4.0-h-small	sql/warehouse/package.ai.md	package	False	0	1825	0	0	0	0	0	0	True	0	0	0	INSERT MERGE OnHand Quantity ReceivedAt SYSDATETIME Since Sku
+granite-4.0-h-small	project.ai.md	project	False	0	2298	0	0	0	0	0	0	True	0	0	0	StockLevel SyncLog package
+granite-4.0-h-tiny	java/config/AiConditionEvaluator.java	java	False	9800	2143	4	3	66	0	0	0	False	9	2	0	
+granite-4.0-h-tiny	java/config/AiConditionGroup.java	java	False	1750	821	2	2	0	0	0	0	False	9	2	0	
+granite-4.0-h-tiny	java/config/AiFactExtractor.java	java	False	4856	1228	3	3	0	0	0	0	False	10	2	0	
+granite-4.0-h-tiny	java/config/AiGenerationConfig.java	java	False	51188	5614	88	85	123	0	0	0	True	0	0	0	
+granite-4.0-h-tiny	java/config/AiOversizeStrategy.java	java	False	3315	973	3	2	3	1	0	0	False	9	2	0	java
+granite-4.0-h-tiny	java/config/SrcMorphConfiguration.java	java	False	17710	3413	37	37	2	0	0	0	False	9	2	0	
+granite-4.0-h-tiny	java/provider/AiCompletionParser.java	java	False	4337	1233	2	1	17	0	0	0	True	0	0	0	
+granite-4.0-h-tiny	java/provider/AiGenerationProvider.java	java	False	1725	1638	1	1	41	0	0	0	False	9	2	0	
+granite-4.0-h-tiny	java/provider/AiGenerationProviderFactory.java	java	False	3673	1737	2	2	58	4	0	0	False	9	2	0	Lombok java total
+granite-4.0-h-tiny	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	1114	4	2	19	0	0	0	True	0	0	0	
+granite-4.0-h-tiny	java/provider/LlamaCppJniConfig.java	java	False	36703	2872	44	44	0	0	0	0	False	0	2	0	
+granite-4.0-h-tiny	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	2728	0	0	0	0	0	0	False	9	2	0	
+granite-4.0-h-tiny	other/kernels/histogram.cl	other	False	1653	905	9	6	0	0	0	0	False	8	2	0	
+granite-4.0-h-tiny	other/ringbuf/ringbuf.c	other	False	1794	1513	12	8	50	0	0	0	False	8	2	0	
+granite-4.0-h-tiny	other/ringbuf/ringbuf.h	other	False	1292	1809	14	12	46	0	0	0	True	0	0	0	
+granite-4.0-h-tiny	other/scripts/rotate_backups.sh	other	False	1202	1135	5	1	18	0	0	0	True	0	0	0	
+granite-4.0-h-tiny	other/scripts/sales_report.py	other	False	2290	1549	9	7	23	1	0	0	False	8	4	0	sales_report
+granite-4.0-h-tiny	sql/library/01_schema.sql	sql	False	1622	2698	19	19	130	0	0	0	False	0	0	0	
+granite-4.0-h-tiny	sql/library/02_views.sql	sql	False	1240	1471	13	12	0	0	0	0	False	0	3	0	
+granite-4.0-h-tiny	sql/library/03_routines.sql	sql	False	2546	1649	14	9	53	2	0	0	False	8	2	0	WITH ZONE
+granite-4.0-h-tiny	sql/library/04_migration_v2.sql	sql	False	1660	1670	12	12	0	0	0	0	False	0	2	0	
+granite-4.0-h-tiny	sql/library/05_seed_data.sql	sql	False	54543	11892	4	2	0	0	4	2	False	0	1	0	
+granite-4.0-h-tiny	sql/shop/orders_mysql.sql	sql	False	2481	1371	15	8	59	2	0	0	False	0	0	0	UNQ
+granite-4.0-h-tiny	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2199	14	13	62	0	0	0	False	0	0	0	
+granite-4.0-h-tiny	java/config/package.ai.md	package	False	0	1995	0	0	0	0	0	0	True	6	0	0	ToString lombok
+granite-4.0-h-tiny	java/package.ai.md	package	False	0	1995	0	0	0	0	0	0	True	6	0	0	ToString lombok
+granite-4.0-h-tiny	java/provider/package.ai.md	package	False	0	2467	0	0	0	0	0	0	True	6	0	0	AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiPromptSupport IOException LlamaCppJniAiGenerationProvider LlamaCppJniConfig MockAiGenerationProvider
+granite-4.0-h-tiny	other/kernels/package.ai.md	package	False	0	1199	0	0	0	0	0	0	True	0	0	0	histogram_partial histogram_reduce
+granite-4.0-h-tiny	other/package.ai.md	package	False	0	3678	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK argparse collections csv date datetime
+granite-4.0-h-tiny	other/ringbuf/package.ai.md	package	False	0	1641	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK ringbuf_free ringbuf_free_space ringbuf_init ringbuf_read ringbuf_status_t
+granite-4.0-h-tiny	other/scripts/package.ai.md	package	False	0	1176	0	0	0	0	0	0	True	0	0	0	argparse collections csv date datetime defaultdict mapfile rotate_backups
+granite-4.0-h-tiny	package.ai.md	package	False	0	1712	0	0	0	0	0	0	False	6	0	0	Transactional
+granite-4.0-h-tiny	sql/library/package.ai.md	package	False	0	2320	0	0	0	0	0	0	True	0	0	0	CHECK CHECKOUT CREATE GENERATE_SERIES INDEX LATERAL RETURN SERIAL
+granite-4.0-h-tiny	sql/package.ai.md	package	False	0	276	0	0	0	0	0	0	True	0	0	0	
+granite-4.0-h-tiny	sql/shop/package.ai.md	package	False	0	1663	0	0	0	0	0	0	True	0	0	0	CANCELLED DATETIME ENUM INT NEW PAID SHIPPED SMALLINT
+granite-4.0-h-tiny	sql/warehouse/package.ai.md	package	False	0	2220	0	0	0	0	0	0	True	0	0	0	ErrorMessage FeedRowId MERGE OnHand Quantity ReceivedAt RowsInserted RowsUpdated
+granite-4.0-h-tiny	project.ai.md	project	False	0	2567	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/config/AiConditionEvaluator.java	java	False	9800	2177	4	4	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/config/AiConditionGroup.java	java	False	1750	1727	2	2	49	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/config/AiFactExtractor.java	java	False	4856	2593	3	3	59	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/config/AiGenerationConfig.java	java	False	51188	8707	88	88	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/config/AiOversizeStrategy.java	java	False	3315	1788	3	3	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/config/SrcMorphConfiguration.java	java	False	17710	0	37	0	0	0	0	0	False	0	0	0	
+nemotron-3.5-lightning	java/provider/AiCompletionParser.java	java	False	4337	1420	2	2	17	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/provider/AiGenerationProvider.java	java	False	1725	1361	1	1	39	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/provider/AiGenerationProviderFactory.java	java	False	3673	2497	2	2	87	3	0	0	True	0	0	0	factory initializes resolves
+nemotron-3.5-lightning	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	1135	4	3	25	1	0	0	True	0	0	0	extends
+nemotron-3.5-lightning	java/provider/LlamaCppJniConfig.java	java	False	36703	0	44	0	0	0	0	0	False	0	0	0	
+nemotron-3.5-lightning	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3875	0	0	116	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	other/kernels/histogram.cl	other	False	1653	1893	9	8	78	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	other/ringbuf/ringbuf.c	other	False	1794	2078	12	10	85	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	other/ringbuf/ringbuf.h	other	False	1292	2179	14	14	79	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	other/scripts/rotate_backups.sh	other	False	1202	1974	5	5	13	2	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ exitCode
+nemotron-3.5-lightning	other/scripts/sales_report.py	other	False	2290	1730	9	8	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/library/01_schema.sql	sql	False	1622	2105	19	19	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/library/02_views.sql	sql	False	1240	1299	13	13	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/library/03_routines.sql	sql	False	2546	1908	14	10	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/library/04_migration_v2.sql	sql	False	1660	3078	12	12	206	2	0	0	True	0	0	0	book_copy_copy_id_seq branch_branch_id_seq
+nemotron-3.5-lightning	sql/library/05_seed_data.sql	sql	False	54543	1106	4	4	0	0	4	0	True	0	0	0	
+nemotron-3.5-lightning	sql/shop/orders_mysql.sql	sql	False	2481	2628	15	11	61	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2649	14	13	163	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/config/package.ai.md	package	False	0	3444	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/package.ai.md	package	False	0	7043	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	java/provider/package.ai.md	package	False	0	6002	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable ChatResponse
+nemotron-3.5-lightning	other/kernels/package.ai.md	package	False	0	1970	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE atomic_inc bin histogram histogram_partial histogram_reduce local_bins
+nemotron-3.5-lightning	other/package.ai.md	package	False	0	4614	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	other/ringbuf/package.ai.md	package	False	0	2151	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity data extern free head
+nemotron-3.5-lightning	other/scripts/package.ai.md	package	False	0	1673	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	package.ai.md	package	False	0	14507	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/library/package.ai.md	package	False	0	4401	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/package.ai.md	package	False	0	5227	0	0	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/shop/package.ai.md	package	False	0	1969	0	0	0	0	0	0	True	0	0	0	FOR UPDATE add_order_item customer_order order_item product
+nemotron-3.5-lightning	sql/warehouse/package.ai.md	package	False	0	1815	0	0	0	0	0	0	True	0	0	0	Changes DATETIME2 ReceivedAt SYSUTCDATETIME Since Sku StockLevel SupplierFeed
+nemotron-3.5-lightning	project.ai.md	project	False	0	2861	0	0	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/config/AiConditionEvaluator.java	java	False	9800	2851	4	3	42	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/config/AiConditionGroup.java	java	False	1750	1414	2	1	38	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/config/AiFactExtractor.java	java	False	4856	2040	3	2	50	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/config/AiGenerationConfig.java	java	False	51188	5094	88	88	153	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/config/AiOversizeStrategy.java	java	False	3315	1590	3	3	28	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/config/SrcMorphConfiguration.java	java	False	17710	3190	37	36	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/provider/AiCompletionParser.java	java	False	4337	1654	2	2	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/provider/AiGenerationProvider.java	java	False	1725	1445	1	0	30	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/provider/AiGenerationProviderFactory.java	java	False	3673	2100	2	2	27	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	2365	4	3	76	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/provider/LlamaCppJniConfig.java	java	False	36703	4557	44	44	94	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3330	0	0	126	0	0	0	True	0	0	0	
+qwen3-coder-30b	other/kernels/histogram.cl	other	False	1653	1783	9	8	25	0	0	0	True	0	0	0	
+qwen3-coder-30b	other/ringbuf/ringbuf.c	other	False	1794	1732	12	10	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	other/ringbuf/ringbuf.h	other	False	1292	2045	14	13	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	other/scripts/rotate_backups.sh	other	False	1202	1401	5	1	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	other/scripts/sales_report.py	other	False	2290	2084	9	7	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/library/01_schema.sql	sql	False	1622	1635	19	16	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/library/02_views.sql	sql	False	1240	1205	13	12	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/library/03_routines.sql	sql	False	2546	1560	14	10	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/library/04_migration_v2.sql	sql	False	1660	2941	12	10	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/library/05_seed_data.sql	sql	False	54543	1166	4	4	69	12	4	0	True	0	0	0	char integer
+qwen3-coder-30b	sql/shop/orders_mysql.sql	sql	False	2481	1882	15	11	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1863	14	13	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	java/config/package.ai.md	package	False	0	2641	0	0	0	0	0	0	True	0	0	0	AiConditionEvaluator AiConditionGroup AiFactExtractor AiGenerationConfig AiOversizeStrategy AiSourceExcludeFilter DateTimeParseException Instant
+qwen3-coder-30b	java/package.ai.md	package	False	0	4726	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiConditionGroup AiFactExtractor AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest
+qwen3-coder-30b	java/provider/package.ai.md	package	False	0	2623	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiPromptSupport EqualsAndHashCode Function
+qwen3-coder-30b	other/kernels/package.ai.md	package	False	0	2063	0	0	0	0	0	0	True	0	0	0	__global __local atomic_inc barrier get_global_id get_local_id histogram histogram_partial
+qwen3-coder-30b	other/package.ai.md	package	False	0	2685	0	0	0	0	0	0	True	0	0	0	Decimal Order argparse csv dataclass date defaultdict histogram_partial
+qwen3-coder-30b	other/ringbuf/package.ai.md	package	False	0	2271	0	0	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	other/scripts/package.ai.md	package	False	0	1870	0	0	0	0	0	0	True	0	0	0	date tar
+qwen3-coder-30b	package.ai.md	package	False	0	4726	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiConditionGroup AiFactExtractor AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest
+qwen3-coder-30b	sql/library/package.ai.md	package	False	0	2853	0	0	0	0	0	0	True	0	0	0	CURRENT_DATE INTERVAL TIMESTAMPTZ author book book_copy branch days
+qwen3-coder-30b	sql/package.ai.md	package	False	0	2853	0	0	0	0	0	0	True	0	0	0	CURRENT_DATE INTERVAL TIMESTAMPTZ author book book_copy branch days
+qwen3-coder-30b	sql/shop/package.ai.md	package	False	0	1594	0	0	0	0	0	0	True	0	0	0	customer_order order_item orders_mysql product sql total_cents
+qwen3-coder-30b	sql/warehouse/package.ai.md	package	False	0	1481	0	0	0	0	0	0	True	0	0	0	Since StockLevel SupplierFeed SyncLog dbo sql stock_sync_tsql
+qwen3-coder-30b	project.ai.md	project	False	0	2792	0	0	0	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	java/config/AiConditionEvaluator.java	java	False	9800	2357	4	4	66	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	java/config/AiConditionGroup.java	java	False	1750	1309	2	2	47	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	java/config/AiFactExtractor.java	java	False	4856	0	3	0	0	0	0	0	False	0	0	0	
+qwen3.5-35b-a3b	java/config/AiGenerationConfig.java	java	False	51188	0	88	0	0	0	0	0	False	0	0	0	
+qwen3.5-35b-a3b	java/config/AiOversizeStrategy.java	java	False	3315	0	3	0	0	0	0	0	False	0	0	0	
+qwen3.5-35b-a3b	java/config/SrcMorphConfiguration.java	java	False	17710	0	37	0	0	0	0	0	False	0	0	0	
+qwen3.5-35b-a3b	java/provider/AiCompletionParser.java	java	False	4337	0	2	0	0	0	0	0	False	0	0	0	
+qwen3.5-35b-a3b	java/provider/AiGenerationProvider.java	java	False	1725	1213	1	1	28	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	java/provider/AiGenerationProviderFactory.java	java	False	3673	2544	2	2	76	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3010	4	4	128	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	java/provider/LlamaCppJniConfig.java	java	False	36703	2436	44	17	75	2	0	0	True	0	0	0	total
+qwen3.5-35b-a3b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3904	0	0	125	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	other/kernels/histogram.cl	other	False	1653	1907	9	9	54	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	other/ringbuf/ringbuf.c	other	False	1794	1915	12	10	44	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	other/ringbuf/ringbuf.h	other	False	1292	1659	14	13	36	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	other/scripts/rotate_backups.sh	other	False	1202	1597	5	1	30	1	0	0	True	0	0	0	code
+qwen3.5-35b-a3b	other/scripts/sales_report.py	other	False	2290	1506	9	9	47	2	0	0	True	0	0	0	Generator YYYY
+qwen3.5-35b-a3b	sql/library/01_schema.sql	sql	False	1622	1515	19	19	95	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	sql/library/02_views.sql	sql	False	1240	1369	13	13	66	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	sql/library/03_routines.sql	sql	False	2546	1997	14	13	92	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	sql/library/04_migration_v2.sql	sql	False	1660	2229	12	12	71	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	sql/library/05_seed_data.sql	sql	False	54543	1836	4	4	78	0	4	4	True	0	0	0	
+qwen3.5-35b-a3b	sql/shop/orders_mysql.sql	sql	False	2481	2073	15	12	76	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2180	14	14	101	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b	java/config/package.ai.md	package	False	0	1784	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiConditionGroup AiFileContext AiRangeCondition AiSourceExcludeFilter DateTimeParseException IllegalArgumentException
+qwen3.5-35b-a3b	java/package.ai.md	package	False	0	3212	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFileContext AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory
+qwen3.5-35b-a3b	java/provider/package.ai.md	package	False	0	2921	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable
+qwen3.5-35b-a3b	other/kernels/package.ai.md	package	False	0	1539	0	0	0	0	0	0	True	0	0	0	CLK_LOCAL_MEM_FENCE atomic_inc barrier get_global_id get_local_id group_count histogram histogram_partial
+qwen3.5-35b-a3b	other/package.ai.md	package	False	0	2120	0	0	0	0	0	0	True	0	0	0	Decimal YYYY argparse backup_dir bash csv csv_files data
+qwen3.5-35b-a3b	other/ringbuf/package.ai.md	package	False	0	1750	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM capacity data dst head memcpy ringbuf
+qwen3.5-35b-a3b	other/scripts/package.ai.md	package	False	0	1661	0	0	0	0	0	0	True	0	0	0	Decimal InvalidOperation Order ValueError YYYY argparse backup_dir bash
+qwen3.5-35b-a3b	package.ai.md	package	False	0	2724	0	0	0	0	0	0	True	0	0	0	AiCondition AiConditionEvaluator AiFileContext AiGenerationProvider AutoCloseable LlamaCppJniAiGenerationProvider LlamaCppJniConfig LlamaModel
+qwen3.5-35b-a3b	sql/library/package.ai.md	package	False	0	2591	0	0	0	0	0	0	True	0	0	0	_migration_v2 _routines _schema _seed_data _views author book book_copy
+qwen3.5-35b-a3b	sql/package.ai.md	package	False	0	2256	0	0	0	0	0	0	True	0	0	0	DATETIME2 FOR MERGE SYSUTCDATETIME StockLevel SupplierFeed SyncLog UPDATE
+qwen3.5-35b-a3b	sql/shop/package.ai.md	package	False	0	1495	0	0	0	0	0	0	True	0	0	0	FOR UPDATE add_order_item created_at customer_id customer_order idx_order_customer order_id
+qwen3.5-35b-a3b	sql/warehouse/package.ai.md	package	False	0	1520	0	0	0	0	0	0	True	0	0	0	Changes DATETIME2 ERROR_MESSAGE ErrorMessage MERGE OnHand Quantity ReceivedAt
+qwen3.5-35b-a3b	project.ai.md	project	False	0	2362	0	0	0	0	0	0	True	0	0	0	
+qwen3.5-4b	java/config/AiConditionEvaluator.java	java	False	9800	2815	4	4	41	0	0	0	True	0	0	0	
+qwen3.5-4b	java/config/AiConditionGroup.java	java	False	1750	1890	2	2	53	0	0	0	True	0	0	0	
+qwen3.5-4b	java/config/AiFactExtractor.java	java	False	4856	2174	3	2	44	1	0	0	True	0	0	0	utility
+qwen3.5-4b	java/config/AiGenerationConfig.java	java	False	51188	4869	88	86	39	2	0	0	True	0	0	0	lang
+qwen3.5-4b	java/config/AiOversizeStrategy.java	java	False	3315	2193	3	3	42	0	0	0	True	0	0	0	
+qwen3.5-4b	java/config/SrcMorphConfiguration.java	java	False	17710	7161	37	37	149	0	0	0	True	0	0	0	
+qwen3.5-4b	java/provider/AiCompletionParser.java	java	False	4337	1525	2	1	17	0	0	0	True	0	0	0	
+qwen3.5-4b	java/provider/AiGenerationProvider.java	java	False	1725	1543	1	1	26	0	0	0	True	0	0	0	
+qwen3.5-4b	java/provider/AiGenerationProviderFactory.java	java	False	3673	2673	2	2	55	0	0	0	True	0	0	0	
+qwen3.5-4b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	2959	4	4	64	0	0	0	True	0	0	0	
+qwen3.5-4b	java/provider/LlamaCppJniConfig.java	java	False	36703	3186	44	44	93	0	0	0	True	0	0	0	
+qwen3.5-4b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3993	0	0	99	1	0	0	True	0	0	0	requestbody
+qwen3.5-4b	other/kernels/histogram.cl	other	False	1653	1381	9	9	23	0	0	0	True	0	0	0	
+qwen3.5-4b	other/ringbuf/ringbuf.c	other	False	1794	2294	12	10	52	0	0	0	True	0	0	0	
+qwen3.5-4b	other/ringbuf/ringbuf.h	other	False	1292	2144	14	13	51	0	0	0	True	0	0	0	
+qwen3.5-4b	other/scripts/rotate_backups.sh	other	False	1202	1603	5	1	21	3	0	0	True	0	0	0	name_YYYYMMDDTHHMMSSZ stdout
+qwen3.5-4b	other/scripts/sales_report.py	other	False	2290	1643	9	4	23	1	0	0	True	0	0	0	YYYY
+qwen3.5-4b	sql/library/01_schema.sql	sql	False	1622	2517	19	19	51	0	0	0	True	0	0	0	
+qwen3.5-4b	sql/library/02_views.sql	sql	False	1240	2116	13	13	81	0	0	0	True	0	0	0	
+qwen3.5-4b	sql/library/03_routines.sql	sql	False	2546	2787	14	14	79	1	0	0	True	0	0	0	CURRENT_TIMESTAMP
+qwen3.5-4b	sql/library/04_migration_v2.sql	sql	False	1660	2352	12	12	77	0	0	0	True	0	0	0	
+qwen3.5-4b	sql/library/05_seed_data.sql	sql	False	54543	1810	4	4	45	0	4	4	True	0	0	0	
+qwen3.5-4b	sql/shop/orders_mysql.sql	sql	False	2481	2175	15	12	50	0	0	0	True	0	0	0	
+qwen3.5-4b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1357	14	12	57	0	0	0	True	0	0	0	
+qwen3.5-4b	java/config/package.ai.md	package	False	0	4058	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+qwen3.5-4b	java/package.ai.md	package	False	0	5519	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+qwen3.5-4b	java/provider/package.ai.md	package	False	0	3881	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport ChatResponse
+qwen3.5-4b	other/kernels/package.ai.md	package	False	0	2263	0	0	0	0	0	0	True	0	0	0	BINS atomic_inc barrier get_global_id get_global_size get_local_id get_local_size group_count
+qwen3.5-4b	other/package.ai.md	package	False	0	3868	0	0	0	0	0	0	True	0	0	0	InvalidOperation Order ValueError YYYY amount argparse atomic_inc barrier
+qwen3.5-4b	other/ringbuf/package.ai.md	package	False	0	2588	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM capacity data dst free head len
+qwen3.5-4b	other/scripts/package.ai.md	package	False	0	2536	0	0	0	0	0	0	True	0	0	0	InvalidOperation Order ValueError YYYY amount argparse collections csv
+qwen3.5-4b	package.ai.md	package	False	0	3876	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiFactExtractor AiGenerationRequest AiModelDefinition AiPromptDefinition
+qwen3.5-4b	sql/library/package.ai.md	package	False	0	3470	0	0	0	0	0	0	True	0	0	0	BIGSERIAL BOOLEAN CHECK CURRENT_DATE CURRENT_TIMESTAMP TIMESTAMPTZ _migration_v2 _routines
+qwen3.5-4b	sql/package.ai.md	package	False	0	4506	0	0	0	0	0	0	True	0	0	0	BIGSERIAL BOOLEAN CHECK MERGE OnHand Since Sku StockLevel
+qwen3.5-4b	sql/shop/package.ai.md	package	False	0	1783	0	0	0	0	0	0	True	0	0	0	add_order_item customer_order order_item product sku
+qwen3.5-4b	sql/warehouse/package.ai.md	package	False	0	2014	0	0	0	0	0	0	True	0	0	0	ErrorMessage MERGE OnHand Quantity ReceivedAt RowsInserted RowsUpdated Since
+qwen3.5-4b	project.ai.md	project	False	0	3082	0	0	0	0	0	0	True	0	0	0	java library modelcard other provider ringbuf sql srcmorph
+qwen3.8-27b	java/config/AiConditionEvaluator.java	java	False	9800	3635	4	4	106	0	0	0	True	0	0	0	
+qwen3.8-27b	java/config/AiConditionGroup.java	java	False	1750	1784	2	2	63	0	0	0	True	0	0	0	
+qwen3.8-27b	java/config/AiFactExtractor.java	java	False	4856	2336	3	3	59	0	0	0	True	0	0	0	
+qwen3.8-27b	java/config/AiGenerationConfig.java	java	False	51188	7720	88	88	270	7	0	0	True	0	0	0	AtomicReference OpenAiCompatibleAiGenerationProvider promptOverhead safetyMargin synchronized volatile
+qwen3.8-27b	java/config/AiOversizeStrategy.java	java	False	3315	1908	3	3	50	1	0	0	True	0	0	0	Enum
+qwen3.8-27b	java/config/SrcMorphConfiguration.java	java	False	17710	6239	37	37	183	0	0	0	True	0	0	0	
+qwen3.8-27b	java/provider/AiCompletionParser.java	java	False	4337	2132	2	2	22	0	0	0	True	0	0	0	
+qwen3.8-27b	java/provider/AiGenerationProvider.java	java	False	1725	1859	1	1	40	0	0	0	True	0	0	0	
+qwen3.8-27b	java/provider/AiGenerationProviderFactory.java	java	False	3673	2586	2	2	75	0	0	0	True	0	0	0	
+qwen3.8-27b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3508	4	3	108	1	0	0	True	0	0	0	firstContent
+qwen3.8-27b	java/provider/LlamaCppJniConfig.java	java	False	36703	7152	44	44	231	0	0	0	True	0	0	0	
+qwen3.8-27b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	4927	0	0	165	2	0	0	True	0	0	0	NullPointerException promptTokens
+qwen3.8-27b	other/kernels/histogram.cl	other	False	1653	2517	9	8	61	1	0	0	True	0	0	0	sizeof
+qwen3.8-27b	other/ringbuf/ringbuf.c	other	False	1794	2640	12	12	100	0	0	0	True	0	0	0	
+qwen3.8-27b	other/ringbuf/ringbuf.h	other	False	1292	2522	14	14	100	1	0	0	True	0	0	0	mod
+qwen3.8-27b	other/scripts/rotate_backups.sh	other	False	1202	2079	5	5	51	5	0	0	True	0	0	0	UTC YYYYMMDDTHHMMSSZ end gzip timestamp
+qwen3.8-27b	other/scripts/sales_report.py	other	False	2290	2118	9	8	68	8	0	0	True	0	0	0	CURRENCY Iterator TAB YYYY tuple
+qwen3.8-27b	sql/library/01_schema.sql	sql	False	1622	1949	19	19	53	0	0	0	True	0	0	0	
+qwen3.8-27b	sql/library/02_views.sql	sql	False	1240	2002	13	13	76	0	0	0	True	0	0	0	
+qwen3.8-27b	sql/library/03_routines.sql	sql	False	2546	2842	14	14	79	0	0	0	True	0	0	0	
+qwen3.8-27b	sql/library/04_migration_v2.sql	sql	False	1660	2153	12	12	74	0	0	0	True	0	0	0	
+qwen3.8-27b	sql/library/05_seed_data.sql	sql	False	54543	1281	4	4	56	1	4	4	True	0	0	0	integer
+qwen3.8-27b	sql/shop/orders_mysql.sql	sql	False	2481	3358	15	13	92	0	0	0	True	0	0	0	
+qwen3.8-27b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2406	14	14	117	0	0	0	True	0	0	0	
+qwen3.8-27b	java/config/package.ai.md	package	False	0	4478	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+qwen3.8-27b	java/package.ai.md	package	False	0	8061	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+qwen3.8-27b	java/provider/package.ai.md	package	False	0	4945	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport ArrayNode
+qwen3.8-27b	other/kernels/package.ai.md	package	False	0	1756	0	0	0	0	0	0	True	0	0	0	CLK_LOCAL_MEM_FENCE __kernel __local atomic_inc barrier bin global_size group_count
+qwen3.8-27b	other/package.ai.md	package	False	0	3199	0	0	0	0	0	0	True	0	0	0	CLK_LOCAL_MEM_FENCE KEEP Order __kernel __local argparse barrier bin
+qwen3.8-27b	other/ringbuf/package.ai.md	package	False	0	2360	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity data free head is_power_of_two
+qwen3.8-27b	other/scripts/package.ai.md	package	False	0	2200	0	0	0	0	0	0	True	0	0	0	Decimal EXIT KEEP Order SOURCE_DIR UTC ValueError YYYY
+qwen3.8-27b	package.ai.md	package	False	0	8703	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+qwen3.8-27b	sql/library/package.ai.md	package	False	0	4997	0	0	0	0	0	0	True	0	0	0	AVAILABLE BIGSERIAL CHECKOUT EXCEPTION LOST ON_LOAN RAISE RETURN
+qwen3.8-27b	sql/package.ai.md	package	False	0	3925	0	0	0	0	0	0	True	0	0	0	BIGSERIAL CATCH DATETIME2 DUPLICATE EXCEPTION FOR KEY MERGE
+qwen3.8-27b	sql/shop/package.ai.md	package	False	0	2533	0	0	0	0	0	0	True	0	0	0	DUPLICATE FOR KEY SIGNAL SQLSTATE SUM UPDATE add_order_item
+qwen3.8-27b	sql/warehouse/package.ai.md	package	False	0	1941	0	0	0	0	0	0	True	0	0	0	DATETIME2 ErrorMessage FeedRowId OnHand Quantity ReceivedAt SUM Since
+qwen3.8-27b	project.ai.md	project	False	0	3601	0	0	0	0	0	0	True	0	0	0	
+seed-coder-8b	java/config/AiConditionEvaluator.java	java	False	9800	1354	4	3	0	0	0	0	True	0	0	0	
+seed-coder-8b	java/config/AiConditionGroup.java	java	False	1750	1084	2	2	0	0	0	0	True	0	0	0	
+seed-coder-8b	java/config/AiFactExtractor.java	java	False	4856	980	3	2	19	0	0	0	True	0	0	0	
+seed-coder-8b	java/config/AiGenerationConfig.java	java	False	51188	875	88	2	0	0	0	0	True	0	0	0	
+seed-coder-8b	java/config/AiOversizeStrategy.java	java	False	3315	1056	3	3	15	0	0	0	True	0	0	0	
+seed-coder-8b	java/config/SrcMorphConfiguration.java	java	False	17710	844	37	3	0	0	0	0	True	0	0	0	
+seed-coder-8b	java/provider/AiCompletionParser.java	java	False	4337	1059	2	2	2	0	0	0	True	0	0	0	
+seed-coder-8b	java/provider/AiGenerationProvider.java	java	False	1725	1141	1	0	0	0	0	0	True	0	0	0	
+seed-coder-8b	java/provider/AiGenerationProviderFactory.java	java	False	3673	1253	2	2	28	0	0	0	True	0	0	0	
+seed-coder-8b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	1362	4	4	44	0	0	0	True	0	0	0	
+seed-coder-8b	java/provider/LlamaCppJniConfig.java	java	False	36703	3247	44	43	67	0	0	0	True	0	0	0	
+seed-coder-8b	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	1979	0	0	27	0	0	0	True	0	0	0	
+seed-coder-8b	other/kernels/histogram.cl	other	False	1653	960	9	6	15	0	0	0	True	0	0	0	
+seed-coder-8b	other/ringbuf/ringbuf.c	other	False	1794	1467	12	9	30	0	0	0	True	0	0	0	
+seed-coder-8b	other/ringbuf/ringbuf.h	other	False	1292	1432	14	11	32	0	0	0	True	0	0	0	
+seed-coder-8b	other/scripts/rotate_backups.sh	other	False	1202	959	5	1	6	0	0	0	True	0	0	0	
+seed-coder-8b	other/scripts/sales_report.py	other	False	2290	1058	9	6	9	1	0	0	True	0	0	0	generator
+seed-coder-8b	sql/library/01_schema.sql	sql	False	1622	1619	19	16	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/library/02_views.sql	sql	False	1240	1169	13	12	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/library/03_routines.sql	sql	False	2546	1463	14	10	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/library/04_migration_v2.sql	sql	False	1660	1372	12	6	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/library/05_seed_data.sql	sql	False	54543	1208	4	4	0	0	4	0	True	1	0	0	
+seed-coder-8b	sql/shop/orders_mysql.sql	sql	False	2481	1605	15	11	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	1640	14	13	0	0	0	0	True	0	0	0	
+seed-coder-8b	java/config/package.ai.md	package	False	0	1110	0	0	0	0	0	0	True	0	0	0	AiConditionEvaluator AiFactExtractor AiGenerationConfig SrcMorphConfiguration
+seed-coder-8b	java/package.ai.md	package	False	0	2149	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiFactExtractor AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory LlamaCppJniAiGenerationProvider LlamaCppJniConfig
+seed-coder-8b	java/provider/package.ai.md	package	False	0	1446	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationProvider AiGenerationProviderFactory LlamaCppJniAiGenerationProvider LlamaCppJniConfig OpenAiCompatibleProviderSupport
+seed-coder-8b	other/kernels/package.ai.md	package	False	0	842	0	0	0	0	0	0	True	0	0	0	histogram_partial histogram_reduce
+seed-coder-8b	other/package.ai.md	package	False	0	2487	0	0	0	0	0	0	True	0	0	0	histogram_partial histogram_reduce ringbuf_free ringbuf_init ringbuf_read ringbuf_t ringbuf_write rotate_backups
+seed-coder-8b	other/ringbuf/package.ai.md	package	False	0	1132	0	0	0	0	0	0	True	0	0	0	ringbuf_free ringbuf_init ringbuf_read ringbuf_t ringbuf_write size_t stddef stdint
+seed-coder-8b	other/scripts/package.ai.md	package	False	0	959	0	0	0	0	0	0	True	0	0	0	rotate_backups sales_report
+seed-coder-8b	package.ai.md	package	False	0	5677	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiFactExtractor AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory LlamaCppJniAiGenerationProvider LlamaCppJniConfig
+seed-coder-8b	sql/library/package.ai.md	package	False	0	1413	0	0	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/package.ai.md	package	False	0	2202	0	0	0	0	0	0	True	0	0	0	StockLevel SupplierFeed SyncLog add_order_item customer_order dbo order_item product
+seed-coder-8b	sql/shop/package.ai.md	package	False	0	901	0	0	0	0	0	0	True	0	0	0	add_order_item customer_order order_item product
+seed-coder-8b	sql/warehouse/package.ai.md	package	False	0	909	0	0	0	0	0	0	True	0	0	0	StockLevel SupplierFeed SyncLog dbo
+seed-coder-8b	project.ai.md	project	False	0	3037	0	0	0	0	0	0	True	0	0	0	

@@ -1,0 +1,39 @@
+{
+ "key": "nemotron-3.5-lightning",
+ "name": "Nemotron 3.5 Lightning 30B-A3B",
+ "backend": "openrouter",
+ "definition": {
+  "key": "nemotron-3.5-lightning",
+  "maxOutputTokens": 16384,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "nvidia/nemotron-3.5-lightning"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 817.2,
+   "cutOff": [
+    "java/config/SrcMorphConfiguration.java",
+    "java/provider/LlamaCppJniAiGenerationProvider.java",
+    "java/provider/LlamaCppJniConfig.java"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 354.8,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 7.8,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.045875,
+ "files": 37
+}

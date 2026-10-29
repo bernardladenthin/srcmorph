@@ -1,0 +1,34 @@
+{
+ "key": "seed-coder-8b",
+ "name": "Seed-Coder-8B-Instruct (Q4_K_M)",
+ "backend": "local",
+ "definition": {
+  "key": "seed-coder-8b",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 32768,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "Seed-Coder-8B-Instruct-Q4_K_M.gguf"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 826.4,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 332.9,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 19.2,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

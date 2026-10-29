@@ -1,0 +1,37 @@
+{
+ "key": "gemma-4-31b",
+ "name": "Gemma 4 31B it",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gemma-4-31b",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "google/gemma-4-31b-it"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 888.3,
+   "cutOff": [
+    "java/provider/AiCompletionParser.java"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 545.8,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 63.2,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.048611,
+ "files": 37
+}

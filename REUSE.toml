@@ -50,6 +50,19 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
+# Model-card benchmark data (JSON/TSV without comment syntax): the model list, the prompts, the
+# expected facts, the per-model run metadata and the scores computed from the outputs.
+[[annotations]]
+path = [
+    "docs/ai-index-benchmark/modelcard/*.json",
+    "docs/ai-index-benchmark/modelcard/runs/*.json",
+    "docs/ai-index-benchmark/modelcard/scores/*.json",
+    "docs/ai-index-benchmark/modelcard/scores/*.tsv",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
+SPDX-License-Identifier = "Apache-2.0"
+
 # The issue/PR templates are templates of bernardladenthin/actions (templates/common), checked by
 # its check-templates action, and carry the license of the other template files.
 # Last in this file on purpose: of several matching annotations the last one applies.

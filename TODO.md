@@ -10,6 +10,15 @@ everything below is genuinely still open.
 
 ## Open
 
+- **A cut-off summary is kept as if it were done.** When a generation hits `maxOutputTokens`, the
+  provider only logs a WARN and the truncated `.ai.md` counts as up to date, so an incremental run
+  regenerates it only after the source changes. The model-card benchmark hit this with reasoning
+  models, whose reasoning tokens count against the budget (`docs/ai-index-benchmark/MODEL-CARD.md`,
+  findings 1 and 3). Options: mark the header so the next run retries it, fail the file under an
+  `onTruncated` setting, or retry once with a larger budget. Same place: the OpenAI-compatible
+  provider reuses `LlamaCppJniProviderSupport.warnOnTruncatedAnswer`, so its warning is logged under
+  the llama.cpp class's logger name.
+
 - **No GPU module is launched in CI.** `smoke-jar` builds `examples/build-your-own-jar` with the CPU
   natives only and runs `Plan`; a GitHub-hosted runner has no CUDA/ROCm/SYCL/OpenVINO device, and
   only a real generation loads the native library. Closing this needs hardware: a self-hosted runner,
