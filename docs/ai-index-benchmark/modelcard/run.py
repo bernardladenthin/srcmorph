@@ -16,7 +16,8 @@ Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
   python run.py ... --backend openrouter        (every model of one backend)
 Options: --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
-         --commit <git rev of the Java snapshot>, --out, --meta, --work.
+         --commit <git rev of the Java snapshot>, --seed <n> (replaces the local backend's seed,
+         for repeat runs), --out, --meta, --work.
 """
 import argparse
 import json
@@ -72,12 +73,14 @@ def prepare_work(work, commit):
         shutil.copytree(CORPUS / kind, work / kind)
 
 
-def ai_definition(models, model, model_dir):
+def ai_definition(models, model, model_dir, seed=None):
     backend = models["backends"][model["backend"]]
     definition = {"key": model["key"]}
     definition.update(models["common"])
     definition.update(backend)
     definition.update(model["settings"])
+    if seed is not None and "seed" in definition:
+        definition["seed"] = seed
     if model["backend"] == "local":
         definition["modelPath"] = str(Path(model_dir) / definition["modelPath"])
     return definition
@@ -140,7 +143,7 @@ def cut_off_files(log_path, work, out_dir):
 
 def run_model(args, models, prompts, model):
     key = model["key"]
-    definition = ai_definition(models, model, args.model_dir)
+    definition = ai_definition(models, model, args.model_dir, args.seed)
     out_dir = Path(args.out) / key
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -189,6 +192,7 @@ def main():
     parser.add_argument("--backend", default="")
     parser.add_argument("--model-dir", default="")
     parser.add_argument("--commit", default=JAVA_COMMIT)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
     parser.add_argument("--meta", default=str(HERE / "runs"))
     parser.add_argument("--work", required=True)

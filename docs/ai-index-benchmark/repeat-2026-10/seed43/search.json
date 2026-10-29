@@ -1,0 +1,40 @@
+{
+ "meta": {
+  "questions": 43,
+  "files": 24,
+  "reader": "mistralai/mistral-small-3.2-24b-instruct"
+ },
+ "runs": {
+  "gemma-4-e4b": {
+   "bm25": {
+    "hit1": 0.791,
+    "hit3": 0.977,
+    "mrr": 0.882
+   },
+   "reader": {
+    "hit1": 0.953,
+    "hit3": 1.0,
+    "mrr": 0.977
+   }
+  },
+  "source": {
+   "bm25": {
+    "hit1": 0.837,
+    "hit3": 0.977,
+    "mrr": 0.905
+   },
+   "reader": {
+    "hit1": 0.721,
+    "hit3": 0.791,
+    "mrr": 0.756
+   }
+  },
+  "paths": {
+   "reader": {
+    "hit1": 0.744,
+    "hit3": 0.907,
+    "mrr": 0.818
+   }
+  }
+ }
+}

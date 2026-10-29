@@ -1,0 +1,37 @@
+{
+ "key": "nemotron-3.5-lightning-noreason",
+ "name": "Nemotron 3.5 Lightning 30B-A3B (reasoning off)",
+ "backend": "openrouter",
+ "definition": {
+  "key": "nemotron-3.5-lightning-noreason",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "none",
+  "remoteModel": "nvidia/nemotron-3.5-lightning"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 448.2,
+   "cutOff": [
+    "java/config/AiGenerationConfig.java"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 54.3,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 2.0,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.011895,
+ "files": 37
+}

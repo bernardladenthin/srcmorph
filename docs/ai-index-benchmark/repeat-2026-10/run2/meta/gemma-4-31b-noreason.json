@@ -1,0 +1,35 @@
+{
+ "key": "gemma-4-31b-noreason",
+ "name": "Gemma 4 31B it (reasoning off)",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gemma-4-31b-noreason",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "none",
+  "remoteModel": "google/gemma-4-31b-it"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 361.0,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 145.4,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 3.9,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.02413,
+ "files": 37
+}
