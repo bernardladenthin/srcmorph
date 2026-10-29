@@ -8,7 +8,7 @@ style: |
   section p:has(> svg) { margin: 0; width: 100%; height: 100%; }
   section p > svg { display: block; width: 100%; height: 100%; }
   .markdown-fallback { display: none; }
-  .chart-page { box-sizing: border-box; padding: 36px 48px 22px; height: 100%; }
+  .chart-page { box-sizing: border-box; padding: 36px 48px 22px; height: 100%; position: relative; }
   .chart-page h1 { font-size: 30px; margin: 0 0 4px; color: #081f49; }
   .chart-page .subtitle { font-size: 16px; color: #4b6385; margin: 0 0 12px; }
   .chart-layout { display: flex; gap: 20px; align-items: stretch; height: 470px; }
@@ -18,7 +18,8 @@ style: |
   .chart-card { padding: 18px; border: 1px solid #bdcce4; border-radius: 14px; background: #f8faff; font-size: 15px; line-height: 1.45; }
   .chart-card strong { display: block; font-size: 19px; margin-bottom: 6px; }
   .chart-card.blue { background: #002db7; color: #fff; border-color: #002db7; }
-  .chart-foot { margin-top: 15px; font-size: 12px; color: #4b6385; }
+  .chart-foot { position: absolute; left: 48px; bottom: 21px; margin: 0; font-size: 12px; color: #4b6385; }
+  .page-no { position: absolute; right: 56px; bottom: 20px; margin: 0; font-size: 13.6px; color: #4b6385; }
 ---
 
 <!--
@@ -67,68 +68,71 @@ The October model-card corpus has 24 files and 234,605 source bytes. The hosted 
 
 ---
 
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900"><defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L0 6 L6 3 z" fill="#002db7"/></marker></defs><rect x="0" y="0" width="1600" height="900" rx="0" fill="#eaf0f9" stroke="#eaf0f9" stroke-width="2"/><text x="60" y="62" fill="#081f49" font-size="42" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">Two models, two deployment choices</text><text x="62" y="98" fill="#4b6385" font-size="20" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">srcmorph + java-llama.cpp · select the model and execution environment</text><line x1="60" y1="120" x2="1540" y2="120" stroke="#bdcce4" stroke-width="2"/><rect x="60" y="155" width="715" height="535" rx="24" fill="#002db7" stroke="#002db7" stroke-width="2"/><text x="90" y="204" fill="#e4eaff" font-size="19" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">REMOTE · OPENROUTER</text><text x="90" y="259" fill="white" font-size="38" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">GPT-6 Luna</text><text x="90" y="303" fill="#e4eaff" font-size="23" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Fast hosted indexing</text><text x="90" y="386" fill="white" font-size="53" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">99%</text><text x="260" y="379" fill="white" font-size="24" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">quality proxy</text><text x="260" y="410" fill="#e4eaff" font-size="18" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">name recall + format</text><text x="90" y="488" fill="white" font-size="47" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">6.9 s</text><text x="260" y="486" fill="white" font-size="22" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">per source file</text><text x="260" y="517" fill="#e4eaff" font-size="17" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">24-file benchmark · October 2026</text><text x="90" y="625" fill="#e4eaff" font-size="19" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Use when approved remote processing fits.</text><rect x="805" y="155" width="735" height="535" rx="24" fill="#f8faff" stroke="#bdcce4" stroke-width="2"/><text x="835" y="204" fill="#4b6385" font-size="19" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">LOCAL · CPU / GPU</text><text x="835" y="259" fill="#081f49" font-size="38" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">GPT-OSS-20B</text><text x="835" y="303" fill="#4b6385" font-size="23" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Reasoning + native tool calling</text><text x="835" y="386" fill="#002db7" font-size="40" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">~121–129 s</text><text x="835" y="423" fill="#4b6385" font-size="19" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">per Java file · Ryzen 7 5800H</text><text x="835" y="490" fill="#4b6385" font-size="18" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">12 files · 16K context · 8 CPU threads</text><text x="835" y="530" fill="#4b6385" font-size="18" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">CPU-only benchmark · June 2026</text><text x="835" y="575" fill="#081f49" font-size="18" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">8 GB laptop GPU: 6 / 24 layers offloaded</text><text x="835" y="607" fill="#4b6385" font-size="18" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Remaining layers run on CPU</text><text x="835" y="655" fill="#081f49" font-size="19" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">Keep indexing and agent tasks on premises.</text><rect x="60" y="720" width="1480" height="80" rx="14" fill="#dbe7fa" stroke="#bdcce4" stroke-width="2"/><text x="85" y="767" fill="#081f49" font-size="21" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">Same workflow: route files by rule → create Markdown → give agents the right context</text><text x="60" y="870" fill="#4b6385" font-size="15" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Separate benchmarks, prompts and hardware: the timings are not a controlled comparison. Quality is a proxy; summaries are lossy.</text><text x="1530" y="870" fill="#4b6385" font-size="17" font-weight="400" text-anchor="end" font-family="Arial, sans-serif">5</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900"><rect x="0" y="0" width="1600" height="900" rx="0" fill="#eaf0f9" stroke="#eaf0f9" stroke-width="2"/><text x="60" y="62" fill="#081f49" font-size="42" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">Two deployment choices, one benchmark</text><text x="62" y="98" fill="#4b6385" font-size="20" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Same 24 files, prompts and scoring · route files by rule → Markdown → agent context</text><line x1="60" y1="120" x2="1540" y2="120" stroke="#bdcce4" stroke-width="2"/><rect x="60" y="155" width="715" height="470" rx="24" fill="#002db7" stroke="#002db7" stroke-width="2"/><text x="90" y="204" fill="#e4eaff" font-size="19" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">REMOTE · OPENROUTER</text><text x="90" y="259" fill="white" font-size="38" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">GPT-6 Luna</text><text x="90" y="303" fill="#e4eaff" font-size="23" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Best hosted quality</text><text x="90" y="386" fill="white" font-size="53" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">99%</text><text x="260" y="379" fill="white" font-size="24" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">quality proxy</text><text x="260" y="410" fill="#e4eaff" font-size="18" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">name recall + format</text><text x="90" y="488" fill="white" font-size="47" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">6.9 s</text><text x="260" y="486" fill="white" font-size="22" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">per source file</text><text x="260" y="517" fill="#e4eaff" font-size="17" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">about $0.10 per MB of source</text><text x="90" y="590" fill="#e4eaff" font-size="19" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Use when approved remote processing fits.</text><rect x="805" y="155" width="735" height="470" rx="24" fill="#f8faff" stroke="#bdcce4" stroke-width="2"/><text x="835" y="204" fill="#4b6385" font-size="19" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">LOCAL · LAPTOP GPU</text><text x="835" y="259" fill="#081f49" font-size="38" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">Gemma 4 E4B</text><text x="835" y="303" fill="#4b6385" font-size="23" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Local indexing · thinking off</text><text x="835" y="386" fill="#002db7" font-size="53" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">93%</text><text x="1005" y="379" fill="#081f49" font-size="24" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">quality proxy</text><text x="1005" y="410" fill="#4b6385" font-size="18" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">name recall + format</text><text x="835" y="488" fill="#002db7" font-size="47" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">11.1 s</text><text x="1005" y="486" fill="#081f49" font-size="22" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">per source file</text><text x="1005" y="517" fill="#4b6385" font-size="17" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">RTX 3070 Laptop (8 GB) · no API fee</text><text x="835" y="590" fill="#081f49" font-size="19" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">Keep the source code on the machine.</text><rect x="60" y="650" width="1480" height="140" rx="17" fill="#dbe7fa" stroke="#bdcce4" stroke-width="2"/><text x="85" y="693" fill="#081f49" font-size="23" font-weight="700" text-anchor="start" font-family="Arial, sans-serif">Local agent tasks with tool calling: GPT-OSS-20B</text><text x="85" y="728" fill="#4b6385" font-size="19" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Reasoning + native tool calls · reasoning cannot be switched off</text><text x="85" y="760" fill="#4b6385" font-size="19" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">8 GB GPU: does not fit, 6–16 of 24 layers offloaded by backend and context · June CPU run: ~121–129 s per Java file</text><text x="60" y="870" fill="#4b6385" font-size="15" font-weight="400" text-anchor="start" font-family="Arial, sans-serif">Luna and Gemma 4 E4B: same corpus, prompts and settings, October 2026; hosted and local weights differ. Quality is a proxy; summaries are lossy.</text><text x="1530" y="870" fill="#4b6385" font-size="17" font-weight="400" text-anchor="end" font-family="Arial, sans-serif">5</text></svg>
 
-<div class="markdown-fallback">Two deployment choices — GPT-6 Luna remote; GPT-OSS-20B local on CPU with optional partial GPU offload.</div>
+<div class="markdown-fallback">Two deployment choices, one benchmark — GPT-6 Luna remote (99%, 6.9 s per file); Gemma 4 E4B local on a laptop GPU (93%, 11.1 s per file); GPT-OSS-20B for local agents with tool calling.</div>
 
 <!--
-The October model card reports hosted GPT-6 Luna at 99% on a recall-and-format proxy and 6.9 seconds per source file. An independent June CPU experiment on a Ryzen 7 5800H, 8 threads, 12 Java files and 16K context reports GPT-OSS-20B at 121.4–129.0 seconds per file under two prompts. These are not controlled head-to-head results. A separate Vulkan experiment on an 8 GB laptop RTX 3070 offloaded 6 of 24 GPT-OSS-20B layers, retaining the rest on the CPU. See ai-index-benchmark/MODEL-CARD.md, COMPARISON.md and AGENTIC-CPU-BENCH.md.
+Both cards come from the October model card: the same 24 source files, the same prompts and the same scoring. Hosted GPT-6 Luna scores 99% on the recall-and-format proxy at 6.9 seconds per source file and about $0.10 per MB of source. Locally, Gemma 4 E4B with thinking off scores 93% at 11.1 seconds per file on an RTX 3070 Laptop GPU with 8 GB. GPT-OSS-20B is the choice for local agent work with reasoning and native tool calls, not for bulk indexing: it does not fit an 8 GB GPU (6 of 24 layers offloaded with Vulkan in AGENTIC-CPU-BENCH.md, 16 of 24 in HSMALL-VS-GPTOSS.md), and the June CPU run on a Ryzen 7 5800H took 121-129 seconds per Java file. See ai-index-benchmark/MODEL-CARD.md, COMPARISON.md, AGENTIC-CPU-BENCH.md and HSMALL-VS-GPTOSS.md.
 -->
 
 ---
 
 <div class="chart-page">
 <h1>Quality versus indexing speed</h1>
-<p class="subtitle">20 runs · hosted models and local GGUF on a laptop GPU</p>
+<p class="subtitle">12 of 20 runs · hosted models and local GGUF on a laptop GPU</p>
 <div class="chart-layout">
-<div class="chart-image"><img src="ai-index-benchmark/modelcard/charts/quality-vs-speed-light.svg" alt="Quality versus indexing speed"></div>
+<div class="chart-image"><img src="ai-index-benchmark/modelcard/charts/deck-quality-vs-speed.svg" alt="Quality versus seconds per source file for 12 runs; arrows from four models with reasoning to the same models without it"></div>
 <div class="chart-info">
-<div class="chart-card blue"><strong>How to read it</strong>Higher: stronger quality proxy<br>Left: fewer seconds per file</div>
-<div class="chart-card"><strong>GPT-6 Luna · remote</strong>99% quality proxy<br>6.9 seconds per source file</div>
-<div class="chart-card"><strong>GPT-OSS-20B</strong>Hosted in this chart<br>Local CPU results: previous slide</div>
+<div class="chart-card blue"><strong>How to read it</strong>Up: stronger quality proxy<br>Left: fewer seconds per file<br>Arrow: reasoning switched off</div>
+<div class="chart-card"><strong>Reasoning off</strong>Qwen3.5-35B: 78% → 95%<br>55.6 s → 5.2 s per file</div>
+<div class="chart-card"><strong>Gemma 4 E4B · local</strong>93% quality proxy<br>11.1 s per file, laptop GPU</div>
 </div>
 </div>
-<p class="chart-foot">Original model-card graphic · Local points use an RTX 3070 Laptop; hosted and local weights differ.</p>
+<p class="chart-foot">Model-card data · Hosted and local weights differ · All 20 runs: ai-index-benchmark/MODEL-CARD.md</p>
+<p class="page-no">6</p>
 </div>
 
 <!--
-Speed is file-generation seconds per source file on a logarithmic scale. Quality averages Java, SQL and other expected-name recall and Markdown format compliance. The chart includes 20 runs and is not a direct model-only hardware comparison. The GPT-OSS-20B point is hosted. One run per configuration; see ai-index-benchmark/MODEL-CARD.md.
+Speed is file-generation seconds per source file on a logarithmic scale. Quality averages Java, SQL and other expected-name recall and Markdown format compliance. The slide shows 12 of the 20 runs; arrows lead from a model's run with reasoning (effort low) to the same model with reasoning switched off, which was at least as good, faster and cheaper for all four. Local points are one RTX 3070 Laptop GPU; the GPT-OSS-20B point is hosted. One run per configuration; see ai-index-benchmark/MODEL-CARD.md.
 -->
 
 ---
 
 <div class="chart-page">
 <h1>Quality versus hosted cost</h1>
-<p class="subtitle">OpenRouter runs · indexing cost per MB of source</p>
+<p class="subtitle">10 OpenRouter runs · indexing cost per MB of source</p>
 <div class="chart-layout">
-<div class="chart-image"><img src="ai-index-benchmark/modelcard/charts/quality-vs-cost-light.svg" alt="Quality versus hosted cost"></div>
+<div class="chart-image"><img src="ai-index-benchmark/modelcard/charts/deck-quality-vs-cost.svg" alt="Quality versus USD per MB of source for 10 OpenRouter runs; arrows from four models with reasoning to the same models without it"></div>
 <div class="chart-info">
-<div class="chart-card blue"><strong>How to read it</strong>Higher: stronger quality proxy<br>Left: lower hosted cost</div>
-<div class="chart-card"><strong>GPT-6 Luna · remote</strong>99% quality proxy<br>About $0.095 per MB</div>
-<div class="chart-card"><strong>GPT-OSS-20B</strong>Hosted in this chart<br>Local use has no API fee</div>
+<div class="chart-card blue"><strong>How to read it</strong>Up: stronger quality proxy<br>Left: lower hosted cost<br>Arrow: reasoning switched off</div>
+<div class="chart-card"><strong>GPT-6 Luna · remote</strong>99% quality proxy<br>About $0.10 per MB</div>
+<div class="chart-card"><strong>Reasoning off</strong>2–5× cheaper<br>at equal or better quality</div>
 </div>
 </div>
-<p class="chart-foot">Original model-card graphic · Prices and workloads vary; local hardware and operation also have costs.</p>
+<p class="chart-foot">Model-card data · Prices and workloads vary · Local runs have no API fee, but hardware and energy cost</p>
+<p class="page-no">7</p>
 </div>
 
 <!--
-Costs include file, package and project generation and are OpenRouter usage divided by source corpus size. GPT-OSS-20B is hosted in this chart. Pricing and output vary with settings and source. Local inference has hardware, energy and operation costs.
+Costs include file, package and project generation and are OpenRouter usage divided by the 0.23 MB source corpus. Switching reasoning off cut the cost of the four reasoning models two to five times (Gemma 4 31B $0.049 to $0.023, Nemotron $0.046 to $0.012, Qwen3.5-35B $0.237 to $0.047, Qwen3.8-27B $0.403 to $0.080 per run) at equal or better quality. GPT-OSS-20B cannot run without reasoning. Pricing and output vary with settings and source. Local inference has hardware, energy and operation costs.
 -->
 
 ---
 
 <div class="chart-page">
 <h1>Model quality profile</h1>
-<p class="subtitle">Java · SQL · other source · format · seed-data counts</p>
+<p class="subtitle">Top 10 models, best setting each · Java · SQL · other source · format · seed-data counts</p>
 <div class="chart-layout">
-<div class="chart-image"><img src="ai-index-benchmark/modelcard/charts/quality-profile-light.svg" alt="Model quality profile"></div>
+<div class="chart-image"><img src="ai-index-benchmark/modelcard/charts/deck-quality-profile.svg" alt="Heatmap of Java, SQL and other recall, format, seed counts and quality score for the 10 best models"></div>
 <div class="chart-info">
-<div class="chart-card blue"><strong>How to read it</strong>Expected-name recall<br>Format checks and seed counts</div>
+<div class="chart-card blue"><strong>How to read it</strong>Score = mean of the first four columns<br>Seed counts shown, not scored</div>
 <div class="chart-card"><strong>GPT-6 Luna · remote</strong>100% Java / SQL name recall<br>All four seed counts</div>
-<div class="chart-card"><strong>GPT-OSS-20B</strong>Hosted in this model card<br>Seed counts shown separately</div>
+<div class="chart-card"><strong>Exact counts are rare</strong>3 of 10 state all four<br>row counts of the seed data</div>
 </div>
 </div>
-<p class="chart-foot">Original model-card graphic · Name recall is a proxy, not factual verification.</p>
+<p class="chart-foot">Model-card data · Name recall is a proxy, not factual verification</p>
+<p class="page-no">8</p>
 </div>
 
 <!--
