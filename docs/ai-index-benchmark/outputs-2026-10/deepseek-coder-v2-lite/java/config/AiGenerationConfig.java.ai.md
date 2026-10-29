@@ -1,0 +1,213 @@
+### AiGenerationConfig.java
+- H: 1.0
+- C: 93D12775
+- D: 2026-10-29T00:30:34Z
+- T: 2026-10-29T00:35:31Z
+- G: 
+- A: 0.0.0
+- X: file
+---
+> Calculates VAT for invoices
+
+#### Purpose
+- **Purpose**: Defines a mutable configuration object for AI generation settings, facilitating the transfer of parameters between the Maven configuration layer and AI provider implementations.
+
+#### Type
+- **Kind**: Class
+- **Modifiers**: Public
+- **Extends**: None
+- **Implements**: None
+- **Key Generics and Type Bounds**: None
+- **Notable Annotations**: 
+  - `@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})`
+  - `@ToString`
+
+#### Input
+- **Constructor**: 
+  - `public AiGenerationConfig()`: Creates a new `AiGenerationConfig` with all defaults applied.
+- **Fields**: 
+  - `public static final int DEFAULT_CONTEXT_SIZE`: Default context window size.
+  - `public static final int DEFAULT_MAX_OUTPUT_TOKENS`: Default maximum number of output tokens.
+  - `public static final float DEFAULT_TEMPERATURE`: Default sampling temperature.
+  - `public static final int DEFAULT_THREADS`: Default number of CPU threads.
+  - `public static final int DEFAULT_MAX_INPUT_CHARS`: Default maximum input characters.
+  - `public static final int DEFAULT_CHARS_PER_TOKEN`: Default characters per token.
+  - `public static final int DEFAULT_SAFETY_MARGIN_CHARS`: Default safety margin.
+  - `public static final boolean DEFAULT_WARN_ON_TRIM`: Whether to warn on trim.
+  - `public static final float DEFAULT_TOP_P`: Nucleus-sampling probability threshold.
+  - `public static final int DEFAULT_TOP_K`: Top-k sampling limit.
+  - `public static final float DEFAULT_MIN_P`: Min-p sampling threshold.
+  - `public static final float DEFAULT_TOP_N_SIGMA`: Top-n-sigma sampling threshold.
+  - `public static final float DEFAULT_REPEAT_PENALTY`: Repetition penalty.
+  - `public static final @Nullable Boolean DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING`: Chat-template thinking mode.
+  - `public static final boolean DEFAULT_CACHE_PROMPT`: Whether to cache prompts.
+  - `public static final boolean DEFAULT_SWA_FULL`: Whether to use full SWA KV cache.
+  - `public static final int DEFAULT_CACHE_REUSE`: KV prefix-reuse minimum chunk size.
+  - `public static final int DEFAULT_GPU_LAYERS`: Number of GPU layers.
+  - `public static final int DEFAULT_SEED`: RNG seed.
+  - `public static final int DEFAULT_CPU_MOE_LAYERS`: Number of CPU MoE layers.
+  - `public static final int DEFAULT_CPU_FFN_LAYERS`: Number of CPU FFN layers.
+  - `public static final int DEFAULT_KV_UNIFIED_PER_SLOT`: Per-slot unified KV context cap.
+  - `public static final String DEFAULT_LAZY_MODE`: Tensor-read laziness.
+  - `public static final int DEFAULT_REPEAT_LAST_N`: Repeat-penalty window.
+  - `public static final String DEFAULT_CACHE_TYPE_K`: KV-cache data type for K.
+  - `public static final String DEFAULT_CACHE_TYPE_V`: KV-cache data type for V.
+  - `public static final boolean DEFAULT_FLASH_ATTN`: Whether Flash Attention is enabled.
+  - `public static final int DEFAULT_BATCH_SIZE`: Logical batch size.
+  - `public static final int DEFAULT_UBATCH_SIZE`: Physical batch size.
+  - `public static final int DEFAULT_THREADS_BATCH`: Batch/prompt-processing thread count.
+  - `public static final int DEFAULT_MAIN_GPU`: Primary GPU index.
+  - `public static final String DEFAULT_DEVICES`: Device selection.
+  - `public static final String DEFAULT_PROVIDER`: AI provider.
+  - `public static final String DEFAULT_REMOTE_MODEL`: Model id for OpenAI provider.
+  - `public static final String DEFAULT_BASE_URL`: Base URL for OpenAI-compatible API.
+  - `public static final String DEFAULT_API_KEY_ENV`: Environment variable for API key.
+  - `public static final float DEFAULT_DRY_MULTIPLIER`: DRY sampling multiplier.
+  - `public static final float DEFAULT_DRY_BASE`: DRY base.
+  - `public static final int DEFAULT_DRY_ALLOWED_LENGTH`: DRY allowed length.
+  - `public static final int DEFAULT_DRY_PENALTY_LAST_N`: DRY penalty look-back window.
+
+#### Output
+- **Methods**: 
+  - `public @Nullable String getModelPath()`: Returns the GGUF model file path.
+  - `public void setModelPath(final @Nullable String modelPath)`: Sets the GGUF model file path.
+  - `public int getContextSize()`: Returns the context window size.
+  - `public void setContextSize(final int contextSize)`: Sets the context window size.
+  - `public int getMaxOutputTokens()`: Returns the maximum number of output tokens.
+  - `public void setMaxOutputTokens(final int maxOutputTokens)`: Sets the maximum number of output tokens.
+  - `public float getTemperature()`: Returns the sampling temperature.
+  - `public void setTemperature(final float temperature)`: Sets the sampling temperature.
+  - `public int getThreads()`: Returns the number of CPU threads.
+  - `public void setThreads(final int threads)`: Sets the number of CPU threads.
+  - `public int getCharsPerToken()`: Returns the characters per token.
+  - `public void setCharsPerToken(final int charsPerToken)`: Sets the characters per token.
+  - `public int getMaxInputChars()`: Returns the maximum input characters.
+  - `public void setMaxInputChars(final int maxInputChars)`: Sets the maximum input characters.
+  - `public boolean isWarnOnTrim()`: Returns whether to warn on trim.
+  - `public void setWarnOnTrim(final boolean warnOnTrim)`: Sets whether to warn on trim.
+  - `public float getTopP()`: Returns the top-p value.
+  - `public void setTopP(final float topP)`: Sets the top-p value.
+  - `public int getTopK()`: Returns the top-k value.
+  - `public void setTopK(final int topK)`: Sets the top-k value.
+  - `public float getRepeatPenalty()`: Returns the repeat penalty.
+  - `public void setRepeatPenalty(final float repeatPenalty)`: Sets the repeat penalty.
+  - `public float getMinP()`: Returns the min-p threshold.
+  - `public void setMinP(final float minP)`: Sets the min-p threshold.
+  - `public float getTopNSigma()`: Returns the top-n-sigma threshold.
+  - `public void setTopNSigma(final float topNSigma)`: Sets the top-n-sigma threshold.
+  - `public @Nullable Boolean getChatTemplateEnableThinking()`: Returns the chat-template thinking mode.
+  - `public void setChatTemplateEnableThinking(final @Nullable Boolean chatTemplateEnableThinking)`: Sets the chat-template thinking mode.
+  - `public boolean isCachePrompt()`: Returns whether to cache prompts.
+  - `public void setCachePrompt(final boolean cachePrompt)`: Sets whether to cache prompts.
+  - `public boolean isSwaFull()`: Returns whether to keep the full SWA KV cache.
+  - `public void setSwaFull(final boolean swaFull)`: Sets whether to keep the full SWA KV cache.
+  - `public int getCacheReuse()`: Returns the KV prefix-reuse minimum chunk size.
+  - `public void setCacheReuse(final int cacheReuse)`: Sets the KV prefix-reuse minimum chunk size.
+  - `public int getGpuLayers()`: Returns the number of GPU layers.
+  - `public void setGpuLayers(final int gpuLayers)`: Sets the number of GPU layers.
+  - `public int getCpuMoeLayers()`: Returns the number of CPU MoE layers.
+  - `public void setCpuMoeLayers(final int cpuMoeLayers)`: Sets the number of CPU MoE layers.
+  - `public int getSeed()`: Returns the RNG seed.
+  - `public void setSeed(final int seed)`: Sets the RNG seed.
+  - `public int getCpuFfnLayers()`: Returns the number of CPU FFN layers.
+  - `public void setCpuFfnLayers(final int cpuFfnLayers)`: Sets the number of CPU FFN layers.
+  - `public int getKvUnifiedPerSlot()`: Returns the per-slot unified KV context cap.
+  - `public void setKvUnifiedPerSlot(final int kvUnifiedPerSlot)`: Sets the per-slot unified KV context cap.
+  - `public String getLazyMode()`: Returns the tensor-read laziness.
+  - `public void setLazyMode(final @Nullable String lazyMode)`: Sets the tensor-read laziness.
+  - `public int getRepeatLastN()`: Returns the repeat-penalty window.
+  - `public void setRepeatLastN(final int repeatLastN)`: Sets the repeat-penalty window.
+  - `public String getCacheTypeK()`: Returns the KV-cache data type for K.
+  - `public void setCacheTypeK(final @Nullable String cacheTypeK)`: Sets the KV-cache data type for K.
+  - `public String getCacheTypeV()`: Returns the KV-cache data type for V.
+  - `public void setCacheTypeV(final @Nullable String cacheTypeV)`: Sets the KV-cache data type for V.
+  - `public boolean isFlashAttn()`: Returns whether Flash Attention is enabled.
+  - `public void setFlashAttn(final boolean flashAttn)`: Sets whether Flash Attention is enabled.
+  - `public int getBatchSize()`: Returns the logical batch size.
+  - `public void setBatchSize(final int batchSize)`: Sets the logical batch size.
+  - `public int getUbatchSize()`: Returns the physical batch size.
+  - `public void setUbatchSize(final int ubatchSize)`: Sets the physical batch size.
+  - `public int getThreadsBatch()`: Returns the batch/prompt-processing thread count.
+  - `public void setThreadsBatch(final int threadsBatch)`: Sets the batch/prompt-processing thread count.
+  - `public int getMainGpu()`: Returns the primary GPU index.
+  - `public void setMainGpu(final int mainGpu)`: Sets the primary GPU index.
+  - `public String getDevices()`: Returns the device selection.
+  - `public void setDevices(final String devices)`: Sets the device selection.
+  - `public String getProvider()`: Returns the AI provider.
+  - `public void setProvider(final String provider)`: Sets the AI provider.
+  - `public String getRemoteModel()`: Returns the model id for OpenAI provider.
+  - `public void setRemoteModel(final String remoteModel)`: Sets the model id for OpenAI provider.
+  - `public String getBaseUrl()`: Returns the base URL for OpenAI-compatible API.
+  - `public void setBaseUrl(final String baseUrl)`: Sets the base URL for OpenAI-compatible API.
+  - `public String getApiKeyEnv()`: Returns the name of the environment variable for API key.
+  - `public void setApiKeyEnv(final String apiKeyEnv)`: Sets the name of the environment variable for API key.
+  - `public float getDryMultiplier()`: Returns the DRY sampling multiplier.
+  - `public void setDryMultiplier(final float dryMultiplier)`: Sets the DRY sampling multiplier.
+  - `public float getDryBase()`: Returns the DRY base.
+  - `public void setDryBase(final float dryBase)`: Sets the DRY base.
+  - `public int getDryAllowedLength()`: Returns the DRY allowed length.
+  - `public void setDryAllowedLength(final int dryAllowedLength)`: Sets the DRY allowed length.
+  - `public int getDryPenaltyLastN()`: Returns the DRY penalty look-back window.
+  - `public void setDryPenaltyLastN(final int dryPenaltyLastN)`: Sets the DRY penalty look-back window.
+  - `public List<String> getDrySequenceBreakers()`: Returns the DRY sequence breakers.
+  - `public void setDrySequenceBreakers(final @Nullable List<String> drySequenceBreakers)`: Sets the DRY sequence breakers.
+  - `public List<String> getStopStrings()`: Returns the stop strings.
+  - `public void setStopStrings(final @Nullable List<String> stopStrings)`: Sets the stop strings.
+  - `public @Nullable AiCalibration getCalibration()`: Returns the per-machine timing calibration.
+  - `public void setCalibration(final @Nullable AiCalibration calibration)`: Sets the per-machine timing calibration.
+
+#### Core logic
+- **Core Logic**: 
+  - Defines and provides access to various AI generation parameters.
+  - Includes methods to set and get each parameter, ensuring flexibility and configurability.
+
+#### Public API
+- **Public Methods**:
+  - `public @Nullable String getModelPath()`: Returns the model file path.
+  - `public void setModelPath(final @Nullable String modelPath)`: Sets the model file path.
+  - `public int getContextSize()`: Returns the context window size.
+  - `public void setContextSize(final int contextSize)`: Sets the context window size.
+  - `public int getMaxOutputTokens()`: Returns the maximum output tokens.
+  - `public void setMaxOutputTokens(final int maxOutputTokens)`: Sets the maximum output tokens.
+  - `public float getTemperature()`: Returns the sampling temperature.
+  - `public void setTemperature(final float temperature)`: Sets the sampling temperature.
+  - `public int getThreads()`: Returns the number of CPU threads.
+  - `public void setThreads(final int threads)`: Sets the number of CPU threads.
+  - `public int getCharsPerToken()`: Returns the characters per token.
+  - `public void setCharsPerToken(final int charsPerToken)`: Sets the characters per token.
+  - `public int getMaxInputChars()`: Returns the maximum input characters.
+  - `public void setMaxInputChars(final int maxInputChars)`: Sets the maximum input characters.
+  - `public boolean isWarnOnTrim()`: Returns whether to warn on trim.
+  - `public void setWarnOnTrim(final boolean warnOnTrim)`: Sets whether to warn on trim.
+  - `public float getTopP()`: Returns the top-p value.
+  - `public void setTopP(final float topP)`: Sets the top-p value.
+  - `public int getTopK()`: Returns the top-k value.
+  - `public void setTopK(final int topK)`: Sets the top-k value.
+  - `public float getRepeatPenalty()`: Returns the repeat penalty.
+  - `public void setRepeatPenalty(final float repeatPenalty)`: Sets the repeat penalty.
+  - `public float getMinP()`: Returns the min-p threshold.
+  - `public void setMinP(final float minP)`: Sets the min-p threshold.
+  - `public float getTopNSigma()`: Returns the top-n-sigma threshold.
+  - `public void setTopNSigma(final float topNSigma)`: Sets the top-n-sigma threshold.
+  - `public @Nullable Boolean getChatTemplateEnableThinking()`: Returns the chat-template thinking mode.
+  - `public void setChatTemplateEnableThinking(final @Nullable Boolean chatTemplateEnableThinking)`: Sets the chat-template thinking mode.
+  - `public boolean isCachePrompt()`: Returns whether to cache prompts.
+  - `public void setCachePrompt(final boolean cachePrompt)`: Sets whether to cache prompts.
+  - `public boolean isSwaFull()`: Returns whether to keep the full SWA KV cache.
+  - `public void setSwaFull(final boolean swaFull)`: Sets whether to keep the full SWA KV cache.
+  - `public int getCacheReuse()`: Returns the KV prefix-reuse minimum chunk size.
+  - `public void setCacheReuse(final int cacheReuse)`: Sets the KV prefix-reuse minimum chunk size.
+  - `public int getGpuLayers()`: Returns the number of GPU layers.
+  - `public void setGpuLayers(final int gpuLayers)`: Sets the number of GPU layers.
+  - `public int getCpuMoeLayers()`: Returns the number of CPU MoE layers.
+  - `public void setCpuMoeLayers(final int cpuMoeLayers)`: Sets the number of CPU MoE layers.
+  - `public int getSeed()`: Returns the RNG seed.
+  - `public void setSeed(final int seed)`: Sets the RNG seed.
+  - `public int getCpuFfnLayers()`: Returns the number of CPU FFN layers.
+  - `public void setCpuFfnLayers(final int cpuFfnLayers)`: Sets the number of CPU FFN layers.
+  - `public int getKvUnifiedPerSlot()`: Returns the per-slot unified KV context cap.
+  - `public void setKvUnifiedPerSlot(final int kvUnifiedPerSlot)`: Sets the per-slot unified KV context cap.
+  - `public String getLazyMode()`: Returns the tensor-read laziness.
+  - `public void setLazyMode(final @Nullable String lazyMode)`: Sets the tensor-read laziness.
+  - `public int getRepeatLastN()`: Returns the repeat-penalty window.
+  - `public void setRepeatLastN(final int repeatLastN)`: Sets the repeat-penalty

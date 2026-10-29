@@ -1,0 +1,41 @@
+{
+ "key": "qwen3.5-35b-a3b",
+ "name": "Qwen3.5-35B-A3B",
+ "backend": "openrouter",
+ "definition": {
+  "key": "qwen3.5-35b-a3b",
+  "maxOutputTokens": 16384,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "qwen/qwen3.5-35b-a3b"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 1334.0,
+   "cutOff": [
+    "java/config/AiFactExtractor.java",
+    "java/config/AiGenerationConfig.java",
+    "java/config/AiOversizeStrategy.java",
+    "java/config/SrcMorphConfiguration.java",
+    "java/provider/AiCompletionParser.java"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 307.9,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 68.6,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.237069,
+ "files": 37
+}

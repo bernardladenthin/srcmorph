@@ -1,0 +1,34 @@
+{
+ "key": "granite-4.0-h-small",
+ "name": "Granite 4.0 H-Small (UD-Q4_K_XL)",
+ "backend": "local",
+ "definition": {
+  "key": "granite-4.0-h-small",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 32768,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "granite-4.0-h-small-UD-Q4_K_XL.gguf"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 1414.6,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 651.0,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 29.4,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

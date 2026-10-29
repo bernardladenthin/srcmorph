@@ -1,0 +1,35 @@
+{
+ "key": "qwen3.8-27b-noreason",
+ "name": "Qwen3.8-27B (reasoning off)",
+ "backend": "openrouter",
+ "definition": {
+  "key": "qwen3.8-27b-noreason",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "none",
+  "remoteModel": "qwen/qwen3.8-27b"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 184.2,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 140.2,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 2.0,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.079755,
+ "files": 37
+}

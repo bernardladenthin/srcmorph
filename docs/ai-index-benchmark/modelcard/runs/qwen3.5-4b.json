@@ -1,0 +1,35 @@
+{
+ "key": "qwen3.5-4b",
+ "name": "Qwen3.5-4B (Q4_K_M, thinking off)",
+ "backend": "local",
+ "definition": {
+  "key": "qwen3.5-4b",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 32768,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "Qwen3.5-4B-Q4_K_M.gguf",
+  "chatTemplateEnableThinking": false
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 229.9,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 125.8,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 9.0,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

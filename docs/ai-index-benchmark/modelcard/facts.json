@@ -1,0 +1,51 @@
+{
+  "_comment": "Expected facts per corpus fixture. 'ids': identifiers a faithful summary names (recall, matched case-sensitively as whole words). 'numbers': exact counts the summary should state. Java files need no entry: score.py derives the type name and the public method names from the source.",
+  "sql/library/01_schema.sql": {
+    "ids": ["author", "book", "member", "loan", "author_id", "book_id", "member_id", "loan_id", "isbn", "email",
+            "copies_total", "copies_free", "due_on", "returned_on", "book_free_le_total", "loan_due_after_loan",
+            "idx_book_author", "idx_loan_member", "idx_loan_open"]
+  },
+  "sql/library/02_views.sql": {
+    "ids": ["overdue_loans", "member_loan_stats", "popular_books", "idx_popular_books_id", "days_overdue",
+            "loans_total", "loans_open", "last_loan_on", "times_loaned", "loan", "member", "book", "author"]
+  },
+  "sql/library/03_routines.sql": {
+    "ids": ["loan_audit", "fn_checkout_book", "sp_return_book", "fn_late_fee", "trg_loan_audit_fn", "trg_loan_audit",
+            "p_member_id", "p_book_id", "p_days", "p_loan_id", "copies_free", "returned_on", "CHECKOUT", "RETURN"]
+  },
+  "sql/library/04_migration_v2.sql": {
+    "ids": ["branch", "book_copy", "copy_id", "barcode", "status", "joined_on", "member_since", "home_branch_id",
+            "copies_free", "copies_total", "book_free_le_total", "idx_book_copy_book"]
+  },
+  "sql/library/05_seed_data.sql": {
+    "ids": ["author", "book", "member", "loan"],
+    "numbers": [15, 110, 50, 150]
+  },
+  "sql/shop/orders_mysql.sql": {
+    "ids": ["product", "customer_order", "order_item", "add_order_item", "sku", "stock", "price_cents", "total_cents",
+            "uk_product_sku", "idx_order_customer", "fk_item_order", "fk_item_product", "p_order_id", "p_sku", "p_qty"]
+  },
+  "sql/warehouse/stock_sync_tsql.sql": {
+    "ids": ["StockLevel", "SupplierFeed", "SyncLog", "usp_SyncStock", "Since", "WarehouseId", "Sku", "OnHand",
+            "Quantity", "ReceivedAt", "RowsInserted", "RowsUpdated", "ErrorMessage", "PK_StockLevel"]
+  },
+  "other/ringbuf/ringbuf.h": {
+    "ids": ["ringbuf_t", "ringbuf_status_t", "RINGBUF_OK", "RINGBUF_EINVAL", "RINGBUF_ENOMEM", "ringbuf_init",
+            "ringbuf_free", "ringbuf_write", "ringbuf_read", "ringbuf_used", "ringbuf_free_space", "capacity", "head", "tail"]
+  },
+  "other/ringbuf/ringbuf.c": {
+    "ids": ["is_power_of_two", "min_size", "ringbuf_init", "ringbuf_free", "ringbuf_write", "ringbuf_read",
+            "ringbuf_used", "ringbuf_free_space", "malloc", "memcpy", "RINGBUF_EINVAL", "RINGBUF_ENOMEM"]
+  },
+  "other/kernels/histogram.cl": {
+    "ids": ["histogram_partial", "histogram_reduce", "BINS", "local_bins", "partial", "histogram", "group_count",
+            "atomic_inc", "barrier"]
+  },
+  "other/scripts/sales_report.py": {
+    "ids": ["Order", "parse_orders", "revenue_by_month_and_region", "main", "REQUIRED_COLUMNS", "currency",
+            "min-revenue", "ValueError", "Decimal"]
+  },
+  "other/scripts/rotate_backups.sh": {
+    "ids": ["SOURCE_DIR", "BACKUP_DIR", "KEEP", "tar", "partial"]
+  }
+}
