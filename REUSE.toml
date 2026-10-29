@@ -51,8 +51,8 @@ SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 # Model-card benchmark data (JSON/TSV without comment syntax): the model list, the prompts, the
-# expected facts, the per-model run metadata and the scores computed from the outputs, plus the
-# charts plot.py draws from them.
+# expected facts, the search questions, the per-model run metadata (also of the repeat runs) and the
+# scores computed from the outputs, plus the charts plot.py draws from them.
 [[annotations]]
 path = [
     "docs/ai-index-benchmark/modelcard/*.json",
@@ -60,6 +60,9 @@ path = [
     "docs/ai-index-benchmark/modelcard/scores/*.json",
     "docs/ai-index-benchmark/modelcard/scores/*.tsv",
     "docs/ai-index-benchmark/modelcard/charts/*.svg",
+    "docs/ai-index-benchmark/repeat-2026-10/*/meta/*.json",
+    "docs/ai-index-benchmark/repeat-2026-10/*/search.json",
+    "docs/ai-index-benchmark/repeat-2026-10/*/search.tsv",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"

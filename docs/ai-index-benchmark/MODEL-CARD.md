@@ -37,23 +37,31 @@ The charts are drawn by [`modelcard/plot.py`](modelcard/plot.py) from the same s
 
 ### Recommendations
 
-What decides here is quality first, then speed and cost.
+What decides here is quality first, then speed and cost. The models in the table that ran three
+times (see [Repeatability](#repeatability)) show the mean of their runs and the range; speed and
+cost are from the card's run, as in the charts.
 
-| Use | Model | Quality | s/file | USD per MB of source |
-|---|---|---|---|---|
-| Hosted, best | **GPT-6 Luna** | 99 % | 6.9 | 0.095 |
-| Hosted, best per dollar | **gpt-oss-20b** | 96 % | 11.8 | 0.052 |
-| Hosted, fastest near the top | **Qwen3.5-35B-A3B, reasoning off** | 95 % | 5.2 | 0.20 |
-| Local, 8 GB GPU | **Gemma 4 E4B, thinking off** | 93 % | 11.1 | – |
-| Local, when time does not matter | **Granite 4.0 H-Small** | 94 % | 58.9 | – |
+| Use | Model | Quality | Range | s/file | USD per MB of source |
+|---|---|---|---|---|---|
+| Hosted, best quality | **Qwen3.8-27B, reasoning off** | 98.7 % | 98.6–98.9 | 7.7 | 0.34 |
+| Hosted, best per dollar | **gpt-oss-20b** | 96.8 % | 96.1–97.8 | 11.8 | 0.052 |
+| Hosted, fast and cheap | **GPT-6 Luna** | 96.2 % | 93.6–99.0 | 6.9 | 0.095 |
+| Hosted, fastest | **Qwen3.5-35B-A3B, reasoning off** | 95.1 % | 94.8–95.4 | 5.2 | 0.20 |
+| Local, 8 GB GPU | **Gemma 4 E4B, thinking off** | 93.0 % | 92.8–93.2 | 11.1 | – |
+| Local, when time does not matter | **Granite 4.0 H-Small** | 94 % | one run | 58.9 | – |
 
-- **GPT-6 Luna** is the only model with full recall on Java and SQL, all four seed counts and a
-  clean format, and its run was also among the fastest. At about 0.10 USD per MB of source, a
-  10 MB repository costs about 1 USD.
-- **gpt-oss-20b** costs half as much. It keeps Luna's Java recall, but states no seed counts and
-  keeps fewer names in the other files (87 %).
-- **Qwen3.5-35B-A3B with reasoning off** is the fastest of the top group (5.2 s per file) at twice
-  Luna's price. It writes the longest Java summaries (compaction 3.22).
+- **Qwen3.8-27B with reasoning off** is the best in every one of its three runs and the steadiest
+  of the hosted models, but in the search measurement it is the weakest of the top group (84 to
+  86 % against 91 to 98 %). It costs 3.5 times as much as Luna (0.34 USD per MB), so a 10 MB
+  repository costs about 3.40 USD. With reasoning on it cost 18 times as much as Luna.
+- **gpt-oss-20b** is level with Luna over three runs at half the price, and in the search
+  measurement it is at the top (91 to 98 %). It keeps nearly every Java name, but states no seed
+  counts.
+- **GPT-6 Luna** had the best single run (99 %, full recall on Java and SQL, all four seed counts,
+  clean format), but it was its best of three: the other two scored 96 % and 94 %. It stays the
+  fastest of the top group after Qwen3.5-35B and costs about 0.10 USD per MB.
+- **Qwen3.5-35B-A3B with reasoning off** is the fastest (5.2 s per file) at twice Luna's price. It
+  writes the longest Java summaries (compaction 3.22).
 - **Nemotron 3.5 Lightning with reasoning off** is the cheapest OpenRouter model (0.050 USD per MB).
   Its quality (90 %) is held back by Java recall (81 %). It names every member of the large files,
   but leaves names out of the small ones, for example the type name in `AiGenerationProvider`. In
@@ -64,10 +72,8 @@ What decides here is quality first, then speed and cost.
     more names (Java 92 %, other files 68 %).
   - **Granite 4.0 H-Small** matches E4B's quality at five times the time.
 - **Not worth their cost here:**
-  - **Qwen3.8-27B with reasoning off** comes within half a point of Luna (98.6 %) at 7.7 s per
-    file, but costs 3.5 times as much (0.34 USD per MB). With reasoning on it cost 18 times as much.
-  - **Gemma 4 31B with reasoning off** (94 %, 10.5 s per file) costs as much as Luna (0.097 USD per
-    MB) for five points less.
+  - **Gemma 4 31B with reasoning off** (94.6 % over three runs, 10.5 s per file) costs as much as
+    Luna (0.097 USD per MB) for no gain.
   - **Gemma 4 12B** gets the seed counts right, but takes 172 s per file: the Q4_K_M weights do not
     fit in 8 GB, so part of the model runs on the CPU.
 - **Hugging Face router (nscale): the cheapest, not the best.** Both models together cost under
@@ -130,6 +136,115 @@ What decides here is quality first, then speed and cost.
    Seed-Coder came with prompt v2 and does not show up with v1. Granite H-Tiny, which was clean in
    June, is not clean here.
 
+### Repeatability
+
+Every other number on this card comes from one run at temperature 0.2. The six top hosted
+configurations ran twice more, and Gemma 4 E4B ran three more times on the same GPU: once with the
+card's seed 42 and with seeds 43 and 44. The outputs are under [`repeat-2026-10/`](repeat-2026-10/),
+and [`modelcard/repeat.py`](modelcard/repeat.py) scores them with the card's metrics into
+[`modelcard/scores/repeat.json`](modelcard/scores/repeat.json).
+
+| | Quality: card / run 2 / run 3 | Spread (points) | s/file | USD |
+|---|---|---|---|---|
+| Qwen3.8-27B, reasoning off | 98.6 / 98.7 / 98.9 % | 0.3 | 7.7 / 7.8 / 10.1 | 0.080 / 0.079 / 0.074 |
+| gpt-oss-20b | 96.1 / 97.8 / 96.6 % | 1.7 | 11.8 / 11.1 / 8.7 | 0.012 / 0.013 / 0.009 |
+| GPT-6 Luna | 99.0 / 96.0 / 93.6 % | 5.4 | 6.9 / 7.8 / 10.1 | 0.022 / – ² / 0.020 |
+| Qwen3.5-35B-A3B, reasoning off | 94.8 / 95.4 / 95.2 % | 0.6 | 5.2 / 5.3 / 6.5 | 0.047 / 0.052 / 0.051 |
+| Gemma 4 31B, reasoning off | 94.1 / 94.2 / 95.5 % | 1.5 | 10.5 / 15.0 / 16.1 | 0.023 / 0.024 / 0.030 |
+| Nemotron 3.5 Lightning, reasoning off | 89.6 / 92.1 / 91.0 % | 2.6 | 10.0 / 3.2 / 18.7 | 0.012 / 0.011 / 0.012 |
+| Gemma 4 E4B, local: seed 42 / 42 / 43 / 44 | 93.0 / 93.0 / 93.2 / 92.8 % | 0.4 | 11.1 / 11.4 / 12.7 / 12.5 | – |
+
+² The account's usage during Luna's second run also covered the first calls of the search
+measurement below (about 0.02 USD), so that run's own cost is not known.
+
+- **A local run with a fixed seed repeats exactly.** Seed 42 reproduced all 24 file summaries of
+  the card's run byte for byte. Seeds 43 and 44 changed every file, but quality by at most
+  0.4 points.
+- **Hosted runs move by 0.3 to 5.4 points.** A difference of one to three points between two
+  single runs of the top group is within that, so the card's first ranking (Luna 99.0 %, then
+  Qwen3.8 98.6 %, then gpt-oss 96.1 %) did not hold. Qwen3.8-27B was best in every run.
+- **Luna's drops come from two files.** In runs 2 and 3, `rotate_backups.sh` keeps 2 of its 5
+  expected names. In run 3 Luna describes the 88 getters and setters of `AiGenerationConfig.java`
+  as groups and names 3 of them, which costs 9 points of Java recall: the per-file mean weighs
+  that one file as much as any other. Whether grouping hurts a reader is what the search
+  measurement below checks.
+- **Hosted speed depends on where OpenRouter routes the request.** Nemotron took 3.2 to 18.7 s per
+  file over three runs, Gemma 4 31B 10.5 to 16.1 s. Cost moves less: at most a third.
+
+### Search: do the summaries lead to the right file?
+
+Recall counts names; it does not show whether a summary leads a reader to the right file, which is
+what an `.ai.md` is for. [`modelcard/search-questions.json`](modelcard/search-questions.json) has 43
+developer questions, each with the corpus file (or the two or three files) that answers it, for
+example "Where is it prevented that an API key goes out in cleartext over plain HTTP to a host that
+is not local?". They were written from the sources before any summary was read, and most avoid the
+answer file's identifiers. [`modelcard/search.py`](modelcard/search.py) searches the 24 file
+summaries of each run two ways:
+
+- **Reader:** one call per question to Mistral Small 3.2 24B (not one of the tested models), which
+  sees every summary under its path, as an agent browsing the index would, and names the three most
+  likely files.
+- **BM25** over the summary bodies, with identifiers split into words.
+
+Two baselines go through the same retrievers: the paths alone, and the source files themselves.
+hit@1 counts a question as found when an answer file comes first, hit@3 when it is among the first
+three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's 22 contexts and
+0.81 USD for the repeat runs. Results are in
+[`modelcard/scores/search.json`](modelcard/scores/search.json), and per question in
+[`search.tsv`](modelcard/scores/search.tsv); those of the repeat runs next to their outputs.
+
+| | Reader hit@1 | Reader hit@3 | MRR | BM25 hit@1 | BM25 hit@3 |
+|---|---|---|---|---|---|
+| gpt-oss-20b | 98 % | 98 % | 0.98 | 86 % | 95 % |
+| Gemma 4 31B, reasoning off | 95 % | 100 % | 0.98 | 81 % | 98 % |
+| Granite 4.0 H-Small | 95 % | 100 % | 0.98 | 81 % | 93 % |
+| Qwen3-4B-Instruct-2507 | 95 % | 100 % | 0.98 | 81 % | 98 % |
+| Gemma 4 12B, thinking off | 95 % | 100 % | 0.97 | 86 % | 93 % |
+| Qwen3.5-4B, thinking off | 95 % | 100 % | 0.97 | 84 % | 100 % |
+| Gemma 4 31B | 93 % | 100 % | 0.96 | 86 % | 95 % |
+| Gemma 4 E4B, thinking off | 93 % | 100 % | 0.96 | 81 % | 100 % |
+| GPT-6 Luna | 93 % | 100 % | 0.96 | 77 % | 98 % |
+| Nemotron 3.5 Lightning, reasoning off | 93 % | 100 % | 0.96 | 86 % | 98 % |
+| Qwen3.8-27B | 95 % | 98 % | 0.96 | 81 % | 100 % |
+| Qwen2.5-Coder-7B | 93 % | 100 % | 0.96 | 74 % | 95 % |
+| Nemotron 3.5 Lightning | 93 % | 98 % | 0.95 | 77 % | 91 % |
+| DeepSeek-Coder-V2-Lite | 93 % | 98 % | 0.95 | 77 % | 98 % |
+| Qwen3.5-35B-A3B, reasoning off | 93 % | 98 % | 0.95 | 86 % | 98 % |
+| Qwen3-Coder-30B-A3B | 91 % | 98 % | 0.94 | 84 % | 95 % |
+| Seed-Coder-8B | 91 % | 95 % | 0.93 | 77 % | 93 % |
+| Qwen3.8-27B, reasoning off | 86 % | 98 % | 0.92 | 84 % | 98 % |
+| Granite 4.0 H-Tiny | 81 % | 91 % | 0.86 | 74 % | 88 % |
+| Qwen3.5-35B-A3B | 79 % | 88 % | 0.83 | 67 % | 74 % |
+| *Baseline: paths only* | 74 % | 91 % | 0.82 | – | – |
+| *Baseline: source files* | 72 % | 79 % | 0.76 | 84 % | 98 % |
+
+- **The summaries help a model find the right file.** With any of 18 of the 20 runs the reader
+  finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
+  source (about 65 000 tokens instead of about 16 000) only 72 %.
+- **Keyword search gains nothing from them.** BM25 over the summaries (67 to 86 % first) is not
+  better than BM25 over the source (84 %): the source contains the same words and more.
+- **What hurts search is a missing or broken summary, not a missing name.** The two runs that fall
+  behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries) and Granite H-Tiny (its
+  format slips). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
+- **Among the other 18 runs the order is noise.** The reader misreads one to three questions per
+  run even when the summary is clear. For example, with Qwen3.8-27B's summaries (reasoning off) it
+  ranks `AiConditionEvaluator.java` first for "Where is every checkout and return written to an
+  audit trail?", which is answered by `03_routines.sql`. Over the repeat runs, the six hosted
+  configurations and E4B moved by 2 to 7 points (one to three questions): gpt-oss-20b 91 to 98 %,
+  GPT-6 Luna 91 to 93 %, Gemma 4 31B with reasoning off 95 to 98 %, Gemma 4 E4B 93 to 95 %.
+- **One exception holds in every run: Qwen3.8-27B with reasoning off searches worst of the top
+  group** (86, 84 and 86 %), although it has the best quality score. Its summaries are not wrong:
+  for both questions about oversized files its `AiOversizeStrategy.java` summary describes the
+  four strategies and the `<onOversize>` token, and the reader still ranks
+  `AiConditionEvaluator.java` first in all three runs. Its summaries are among the longest (about
+  71 KB for the 24 files, gpt-oss-20b writes 51 to 58 KB), and over the 32 scored runs without
+  empty or broken summaries a longer index tends to search worse with this reader (correlation
+  −0.46). Length does not explain it alone, though: the same model with reasoning low writes 74 KB
+  and finds 95 %.
+- One answer was corrected after the first scoring: "Can a single model definition use a different
+  backend than the one the run names?" now also accepts `AiGenerationConfig.java`, whose
+  `getProvider()` documents exactly that. Before the correction 18 of 20 runs missed it.
+
 ### Compared with June 2026
 
 June measured local models on CPU, Java only. This round adds SQL and other files, a GPU, and hosted
@@ -149,27 +264,23 @@ models.
 
 Ordered by what would change a decision:
 
-1. **Repeatability.** Every number above comes from one run at temperature 0.2. Three runs each of
-   GPT-6 Luna, gpt-oss-20b, Qwen3.5-35B-A3B (reasoning off) and Gemma 4 E4B would show how far the
-   scores move between runs, and whether the top group's few points of difference are real. Cost:
-   about 0.25 USD and 20 minutes of the local GPU.
-2. **Usefulness for search, the actual purpose of an `.ai.md`.** Recall counts names; it does not
-   show whether a summary leads to the right file. A set of about 30 developer questions with a
-   known answer file (for example "where is the output-token budget enforced?"), searched over each
-   model's `.ai.md` tree with the same retriever (BM25 or one embedding model), gives hit@1 and
-   hit@3 per model.
-3. **Correctness of what is stated.** Recall and invented names are proxies; a summary can name
+1. **Correctness of what is stated.** Recall and invented names are proxies; a summary can name
    every method and still describe one wrongly. A hand check of about five files per top model,
    each statement marked right or wrong against the source, or a judge model with that check
    sampled by hand.
-4. **Large files.** The largest file here is 51 KB. srcmorph's oversize path (map-reduce over
+2. **Large files.** The largest file here is 51 KB. srcmorph's oversize path (map-reduce over
    chunks) has been timed but not judged for quality. One 300 KB to 1 MB file per kind through the
    top models would show where quality drops and what it costs.
-5. **Token usage per call.** srcmorph does not log the usage the API returns. With it, cost and
+3. **Token usage per call.** srcmorph does not log the usage the API returns. With it, cost and
    speed could be explained per file (input against output against reasoning), and the Hugging
    Face runs could be priced exactly.
-6. **Local options this card does not cover:** Gemma 4 E4B at Q8_0 against Q4_K_M (it fits in
+4. **Local options this card does not cover:** Gemma 4 E4B at Q8_0 against Q4_K_M (it fits in
    8 GB either way), and the prompt v2 of June against v1 on the winners.
+5. **A harder search test.** With 24 files the reader finds nearly every answer from any decent
+   summary, so the search measurement separates only broken summaries from working ones. A larger
+   corpus with many files of the same kind (a whole module, say 200 files) and questions that need
+   a detail of one of several similar files would show whether the better summaries also search
+   better.
 <!-- assessment:end -->
 
 ## Results
@@ -322,10 +433,16 @@ writes [`scores/files.tsv`](modelcard/scores/files.tsv) (one row per model and f
 [`modelcard/plot.py`](modelcard/plot.py) draws the charts into
 [`modelcard/charts/`](modelcard/charts/), each one for a light and a dark page. The `.ai.md`
 trees are in [`outputs-2026-10/`](outputs-2026-10/), one directory per model.
+[`modelcard/repeat.py`](modelcard/repeat.py) scores the repeat runs under
+[`repeat-2026-10/`](repeat-2026-10/) (made with `run.py --out <run>/out --meta <run>/meta`, and
+`--seed` for the local ones), and [`modelcard/search.py`](modelcard/search.py) runs the search
+measurement.
 
 ### Caveats
 
-- **One run per model** at temperature 0.2: small differences are noise.
+- **One run per model** at temperature 0.2, except the seven configurations under
+  [Repeatability](#repeatability): hosted runs moved by up to 5.4 points, so differences of a few
+  points are noise.
 - **Hosted and local weights differ.** An OpenRouter route serves the weights its provider
   chose (often BF16 or FP8); the local models are 4-bit. A hosted model and a local one are not comparable on quality alone.
 - **Recall and invented names are proxies.** A summary that names every method can still describe

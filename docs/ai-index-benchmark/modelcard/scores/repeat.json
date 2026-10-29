@@ -1,0 +1,437 @@
+{
+ "gemma-4-31b-noreason": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 0.9405,
+    "recall": {
+     "java": 0.8753,
+     "sql": 0.94,
+     "other": 0.9468
+    },
+    "format": 1.0,
+    "secondsPerFile": 10.47,
+    "costUsd": 0.022705,
+    "seed": null
+   },
+   {
+    "run": "run2",
+    "quality": 0.9419,
+    "recall": {
+     "java": 0.8753,
+     "sql": 0.94,
+     "other": 0.9524
+    },
+    "format": 1.0,
+    "secondsPerFile": 15.04,
+    "costUsd": 0.02413,
+    "seed": null
+   },
+   {
+    "run": "run3",
+    "quality": 0.955,
+    "recall": {
+     "java": 0.8753,
+     "sql": 0.9612,
+     "other": 0.9833
+    },
+    "format": 1.0,
+    "secondsPerFile": 16.05,
+    "costUsd": 0.030101,
+    "seed": null
+   }
+  ],
+  "quality": {
+   "mean": 0.9458,
+   "min": 0.9405,
+   "max": 0.955,
+   "spread": 0.0145
+  },
+  "secondsPerFile": {
+   "mean": 13.8533,
+   "min": 10.47,
+   "max": 16.05,
+   "spread": 5.58
+  },
+  "costUsd": {
+   "mean": 0.0256,
+   "min": 0.022705,
+   "max": 0.030101,
+   "spread": 0.0074
+  }
+ },
+ "gemma-4-e4b": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 0.9297,
+    "recall": {
+     "java": 0.9969,
+     "sql": 0.9381,
+     "other": 0.7838
+    },
+    "format": 1.0,
+    "secondsPerFile": 11.11,
+    "costUsd": null,
+    "seed": 42
+   },
+   {
+    "run": "seed42",
+    "quality": 0.9297,
+    "recall": {
+     "java": 0.9969,
+     "sql": 0.9381,
+     "other": 0.7838
+    },
+    "format": 1.0,
+    "secondsPerFile": 11.43,
+    "costUsd": null,
+    "seed": 42
+   },
+   {
+    "run": "seed43",
+    "quality": 0.9324,
+    "recall": {
+     "java": 0.999,
+     "sql": 0.9469,
+     "other": 0.7838
+    },
+    "format": 1.0,
+    "secondsPerFile": 12.67,
+    "costUsd": null,
+    "seed": 43
+   },
+   {
+    "run": "seed44",
+    "quality": 0.9284,
+    "recall": {
+     "java": 1.0,
+     "sql": 0.9296,
+     "other": 0.7838
+    },
+    "format": 1.0,
+    "secondsPerFile": 12.5,
+    "costUsd": null,
+    "seed": 44
+   }
+  ],
+  "quality": {
+   "mean": 0.9301,
+   "min": 0.9284,
+   "max": 0.9324,
+   "spread": 0.004
+  },
+  "secondsPerFile": {
+   "mean": 11.9275,
+   "min": 11.11,
+   "max": 12.67,
+   "spread": 1.56
+  },
+  "costUsd": null
+ },
+ "gpt-6-luna": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 0.9903,
+    "recall": {
+     "java": 1.0,
+     "sql": 1.0,
+     "other": 0.9611
+    },
+    "format": 1.0,
+    "secondsPerFile": 6.95,
+    "costUsd": 0.022402,
+    "seed": null
+   },
+   {
+    "run": "run2",
+    "quality": 0.9603,
+    "recall": {
+     "java": 1.0,
+     "sql": 1.0,
+     "other": 0.8411
+    },
+    "format": 1.0,
+    "secondsPerFile": 7.83,
+    "costUsd": 0.044972,
+    "seed": null
+   },
+   {
+    "run": "run3",
+    "quality": 0.9361,
+    "recall": {
+     "java": 0.9122,
+     "sql": 1.0,
+     "other": 0.8324
+    },
+    "format": 1.0,
+    "secondsPerFile": 10.12,
+    "costUsd": 0.019992,
+    "seed": null
+   }
+  ],
+  "quality": {
+   "mean": 0.9622,
+   "min": 0.9361,
+   "max": 0.9903,
+   "spread": 0.0542
+  },
+  "secondsPerFile": {
+   "mean": 8.3,
+   "min": 6.95,
+   "max": 10.12,
+   "spread": 3.17
+  },
+  "costUsd": {
+   "mean": 0.0291,
+   "min": 0.019992,
+   "max": 0.044972,
+   "spread": 0.025
+  }
+ },
+ "gpt-oss-20b": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 0.9614,
+    "recall": {
+     "java": 0.999,
+     "sql": 0.9786,
+     "other": 0.8679
+    },
+    "format": 1.0,
+    "secondsPerFile": 11.85,
+    "costUsd": 0.012207,
+    "seed": null
+   },
+   {
+    "run": "run2",
+    "quality": 0.9779,
+    "recall": {
+     "java": 0.999,
+     "sql": 0.9684,
+     "other": 0.9444
+    },
+    "format": 1.0,
+    "secondsPerFile": 11.06,
+    "costUsd": 0.012526,
+    "seed": null
+   },
+   {
+    "run": "run3",
+    "quality": 0.9658,
+    "recall": {
+     "java": 0.9965,
+     "sql": 0.9588,
+     "other": 0.9079
+    },
+    "format": 1.0,
+    "secondsPerFile": 8.66,
+    "costUsd": 0.00935,
+    "seed": null
+   }
+  ],
+  "quality": {
+   "mean": 0.9684,
+   "min": 0.9614,
+   "max": 0.9779,
+   "spread": 0.0165
+  },
+  "secondsPerFile": {
+   "mean": 10.5233,
+   "min": 8.66,
+   "max": 11.85,
+   "spread": 3.19
+  },
+  "costUsd": {
+   "mean": 0.0114,
+   "min": 0.00935,
+   "max": 0.012526,
+   "spread": 0.0032
+  }
+ },
+ "nemotron-3.5-lightning-noreason": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 0.8957,
+    "recall": {
+     "java": 0.8085,
+     "sql": 0.9898,
+     "other": 0.7844
+    },
+    "format": 1.0,
+    "secondsPerFile": 9.95,
+    "costUsd": 0.011776,
+    "seed": null
+   },
+   {
+    "run": "run2",
+    "quality": 0.9212,
+    "recall": {
+     "java": 0.8096,
+     "sql": 0.9707,
+     "other": 0.9044
+    },
+    "format": 1.0,
+    "secondsPerFile": 3.18,
+    "costUsd": 0.011088,
+    "seed": null
+   },
+   {
+    "run": "run3",
+    "quality": 0.9098,
+    "recall": {
+     "java": 0.8409,
+     "sql": 0.9796,
+     "other": 0.8189
+    },
+    "format": 1.0,
+    "secondsPerFile": 18.68,
+    "costUsd": 0.011895,
+    "seed": null
+   }
+  ],
+  "quality": {
+   "mean": 0.9089,
+   "min": 0.8957,
+   "max": 0.9212,
+   "spread": 0.0255
+  },
+  "secondsPerFile": {
+   "mean": 10.6033,
+   "min": 3.18,
+   "max": 18.68,
+   "spread": 15.5
+  },
+  "costUsd": {
+   "mean": 0.0116,
+   "min": 0.011088,
+   "max": 0.011895,
+   "spread": 0.0008
+  }
+ },
+ "qwen3.5-35b-a3b-noreason": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 0.9478,
+    "recall": {
+     "java": 0.9545,
+     "sql": 0.9898,
+     "other": 0.8467
+    },
+    "format": 1.0,
+    "secondsPerFile": 5.19,
+    "costUsd": 0.047348,
+    "seed": null
+   },
+   {
+    "run": "run2",
+    "quality": 0.9536,
+    "recall": {
+     "java": 1.0,
+     "sql": 0.9898,
+     "other": 0.8244
+    },
+    "format": 1.0,
+    "secondsPerFile": 5.32,
+    "costUsd": 0.051536,
+    "seed": null
+   },
+   {
+    "run": "run3",
+    "quality": 0.952,
+    "recall": {
+     "java": 1.0,
+     "sql": 0.9612,
+     "other": 0.8467
+    },
+    "format": 1.0,
+    "secondsPerFile": 6.48,
+    "costUsd": 0.050777,
+    "seed": null
+   }
+  ],
+  "quality": {
+   "mean": 0.9511,
+   "min": 0.9478,
+   "max": 0.9536,
+   "spread": 0.0058
+  },
+  "secondsPerFile": {
+   "mean": 5.6633,
+   "min": 5.19,
+   "max": 6.48,
+   "spread": 1.29
+  },
+  "costUsd": {
+   "mean": 0.0499,
+   "min": 0.047348,
+   "max": 0.051536,
+   "spread": 0.0042
+  }
+ },
+ "qwen3.8-27b-noreason": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 0.986,
+    "recall": {
+     "java": 1.0,
+     "sql": 0.9774,
+     "other": 0.9667
+    },
+    "format": 1.0,
+    "secondsPerFile": 7.67,
+    "costUsd": 0.079755,
+    "seed": null
+   },
+   {
+    "run": "run2",
+    "quality": 0.9869,
+    "recall": {
+     "java": 1.0,
+     "sql": 0.981,
+     "other": 0.9667
+    },
+    "format": 1.0,
+    "secondsPerFile": 7.75,
+    "costUsd": 0.078529,
+    "seed": null
+   },
+   {
+    "run": "run3",
+    "quality": 0.9887,
+    "recall": {
+     "java": 1.0,
+     "sql": 0.9714,
+     "other": 0.9833
+    },
+    "format": 1.0,
+    "secondsPerFile": 10.1,
+    "costUsd": 0.074203,
+    "seed": null
+   }
+  ],
+  "quality": {
+   "mean": 0.9872,
+   "min": 0.986,
+   "max": 0.9887,
+   "spread": 0.0027
+  },
+  "secondsPerFile": {
+   "mean": 8.5067,
+   "min": 7.67,
+   "max": 10.1,
+   "spread": 2.43
+  },
+  "costUsd": {
+   "mean": 0.0775,
+   "min": 0.074203,
+   "max": 0.079755,
+   "spread": 0.0056
+  }
+ }
+}
