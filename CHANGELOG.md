@@ -38,6 +38,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   choice and the limits of the route. The model card
   ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds
   MAI-Code-1.1-Flash, run streamed through the gateway: quality score 93 %, 11.2 s per file.
+- **CLI command `ListModels`**: asks every OpenAI-compatible server the `aiDefinitions` name which
+  models it serves (`GET <baseUrl>/models`, with the definition's key and the same refusal to send
+  it in cleartext to another machine) and prints a table (id, token limit, OpenRouter's price) and a
+  paste-ready `aiDefinitions` YAML block, one entry per model, copied from the server's first
+  definition with `contextSize` lowered to a smaller model limit. `modelFilter` keeps the ids that
+  contain it. Reads OpenRouter, the Copilot API Gateway, llama.cpp's `llama-server` and jllama's
+  server. In the library: `ListModelsEngine`, `ModelListReport`,
+  `OpenAiCompatibleAiGenerationProvider.listModels()`.
 - **CI tests the provider against three real APIs on every run**, each in addition to the others:
   jllama's `NativeServer` (started in-process by `OpenAiCompatibleLiveTest`), a llama.cpp
   `llama-server` container (both on the committed SmolLM2 GGUF), and OpenRouter with

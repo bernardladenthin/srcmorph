@@ -97,7 +97,9 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   own AI provider lifecycle (try-with-resources; one model resident at a time):
   `GenerateEngine` (plan → validate → planOnly early-out → per-model-group indexing loop + progress
   bar), `AggregatePackagesEngine`, `AggregateProjectEngine` (deterministic listing + optional one-call
-  AI overview), `CalibrateEngine` (per-model preflight + timing). All four throw the checked
+  AI overview), `CalibrateEngine` (per-model preflight + timing), `ListModelsEngine` (`GET
+  <baseUrl>/models` per OpenAI-compatible server, rendered by `ModelListReport` as a table and a
+  paste-ready `aiDefinitions` block; no prompt, no model). All five throw the checked
   `SrcMorphException` on misconfiguration, never a Maven `MojoExecutionException` — callers (the
   plugin's mojos, the CLI's `Main`) wrap it into whatever their own surface expects.
 - **`indexer/`** — the walk/plan/write orchestration (`SourceFileIndexer`, `PackageIndexer`,
@@ -115,8 +117,9 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,
   `LlamaCppJniAiGenerationProvider`, `OpenAiCompatibleAiGenerationProvider` (HTTP to
-  `<baseUrl>/chat/completions`, key from the env var `apiKeyEnv` names; its pure logic lives in the
-  PIT-gated `OpenAiCompatibleProviderSupport`), `LlamaCppJniConfig` (built through `LlamaCppJniConfig.builder(modelPath)`; the
+  `<baseUrl>/chat/completions`, and `listModels()` from `<baseUrl>/models` into `RemoteModel`s, key
+  from the env var `apiKeyEnv` names; its pure logic lives in the PIT-gated
+  `OpenAiCompatibleProviderSupport`), `LlamaCppJniConfig` (built through `LlamaCppJniConfig.builder(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching
   `AiGenerationConfig.DEFAULT_*`) + `LlamaCppJniConfigFactory` (the pure 37-field
   mapping from a resolved `AiGenerationConfig` to the native binding's parameter objects — extracted
@@ -144,9 +147,9 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 52 classes across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 58 entries (nested classes counted) across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
-PIT-gated now**: `srcmorph-cli` (16/16) and `srcmorph-maven-plugin` (62/62) carry their own
+PIT-gated now**: `srcmorph-cli` (17/17) and `srcmorph-maven-plugin` (62/62) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
 naming the CPU natives jar of every desktop platform — since llama 6.0.0 `net.ladenthin:llama` is the
 classes only); the `gpu-cuda`/`gpu-vulkan` profiles and `-Dllama.classifier=<natives jar>` (profile
@@ -172,7 +175,7 @@ CLI driven by a single JSON or YAML configuration file:
   `net.ladenthin.srcmorph.config.SrcMorphConfiguration` the Maven plugin's mojos build from their own
   `@Parameter` fields — a JSON/YAML key under `srcMorph` reads identically to the matching plugin XML
   element. `CCommand` is `Plan | GenerateFileIndex | AggregatePackages | AggregateProject | All |
-  Calibrate`; the default is `Plan` (safe: no model load, nothing written).
+  Calibrate | ListModels`; `ListModels` reads the top-level `modelFilter` too. The default is `Plan` (safe: no model load, nothing written).
 - **No runnable jar is built or published here** (since 1.4.0). `mvn package` produces only the thin
   `srcmorph-cli` jar (its manifest names `net.ladenthin.srcmorph.cli.Main`, so `jbang` can run it).
   Users build the runnable jar with `examples/build-your-own-jar/pom.xml`: `srcmorph-cli` from
@@ -197,7 +200,8 @@ CLI driven by a single JSON or YAML configuration file:
   `src/test/resources/test-fixtures/minimal-generate.{json,yaml}` pair through both parsers),
   `ExamplesConfigBindingTest` (sweeps every shipped `examples/config_*.{json,yaml}` fixture — the
   public, documented examples — through the same strict mappers), `CliEndToEndTest` (drives the `All`
-  and `Plan` commands against the mock provider end to end, no forked process).
+  and `Plan` commands against the mock provider end to end, no forked process, and `ListModels`
+  against a loopback stub, binding the printed template back into a configuration).
 
 ### `srcmorph-maven-plugin` — the Maven plugin (renamed; formerly `llamacpp-ai-index-maven-plugin`)
 
@@ -557,7 +561,7 @@ See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-
 Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `mvn test-compile org.pitest:pitest-maven:mutationCoverage`; or scoped to one module with
 `-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (830 mutations),
-`srcmorph-maven-plugin` (62, the five mojo classes) and `srcmorph-cli` (16). The CLI's
+`srcmorph-maven-plugin` (62, the five mojo classes) and `srcmorph-cli` (17). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
 `smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts
 `Main#run end.` in its output, which is an end-to-end check a unit mutant cannot reach.

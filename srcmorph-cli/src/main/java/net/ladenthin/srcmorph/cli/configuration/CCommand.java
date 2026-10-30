@@ -45,5 +45,13 @@ public enum CCommand {
      * ({@code net.ladenthin.srcmorph.engine.CalibrateEngine}) and prints a paste-ready
      * {@code <calibration>} XML block per model to standard output.
      */
-    Calibrate
+    Calibrate,
+
+    /**
+     * Lists the models of every OpenAI-compatible server the {@code aiDefinitions} name
+     * ({@code net.ladenthin.srcmorph.engine.ListModelsEngine}, {@code GET <baseUrl>/models}) and
+     * prints a table and a paste-ready {@code aiDefinitions} YAML block to standard output; narrowed
+     * by {@link CConfiguration#modelFilter}. Sends no prompt and writes nothing.
+     */
+    ListModels
 }

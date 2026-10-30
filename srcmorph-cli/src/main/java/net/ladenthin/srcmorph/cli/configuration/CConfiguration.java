@@ -36,4 +36,10 @@ public class CConfiguration {
      * the matching Maven {@code <configuration>} XML element.
      */
     public SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
+
+    /**
+     * {@link CCommand#ListModels} only: keeps the models whose id contains this text, ignoring case
+     * (e.g. {@code grok}). Empty, the default, lists every model.
+     */
+    public String modelFilter = "";
 }

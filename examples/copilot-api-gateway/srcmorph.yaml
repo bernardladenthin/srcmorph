@@ -9,8 +9,11 @@
 # command:
 #   Plan               prints which file gets which model and prompt; sends nothing, writes nothing
 #   GenerateFileIndex  one .ai.md per source file
+#   ListModels         prints the gateway's models and an aiDefinitions entry per model, built from
+#                      the one below; sends no prompt, writes nothing. modelFilter narrows the list.
 # Start with Plan, then switch to GenerateFileIndex. A second run only redoes changed files.
 command: Plan
+# modelFilter: "claude"
 
 srcMorph:
   # On Windows use forward slashes ("C:/path/to/project"): in a double-quoted YAML string, "C:\x" is

@@ -30,7 +30,7 @@ Install the extension from the VS Code marketplace, then put this into the user 
   "githubCopilotApi.server.port": 3030,
   "githubCopilotApi.server.apiKey": "<a long random value>",
   "githubCopilotApi.server.maxConcurrentRequests": 2,
-  "githubCopilotApi.server.rateLimitPerMinute": 10,
+  "githubCopilotApi.server.rateLimitPerMinute": 30,
   "githubCopilotApi.mcp.enabled": false
 }
 ```
@@ -42,7 +42,7 @@ Why each one:
 | `host` `127.0.0.1` | The default; only this machine can connect. Never bind it to `0.0.0.0`. |
 | `apiKey` | **Mandatory.** The gateway answers every origin with `Access-Control-Allow-Origin: *`, so without a key any web page open in a browser on this machine can use it, including `POST /v1/tools/call`, which runs VS Code tools. With a key, a request without it gets `401`. |
 | `maxConcurrentRequests` | srcmorph sends one request at a time; `2` leaves room for the one request that waits for the consent dialog (below). |
-| `rateLimitPerMinute` | A cap against a runaway run; at a few seconds per file, 10 per minute is no brake. |
+| `rateLimitPerMinute` | A cap against a runaway run. Fast models (Claude Haiku, GPT-6 Luna) answer a file in 4 to 5 s, 12 to 15 requests a minute: at 10 the gateway answers `429` and the run stops, at 30 it does not. |
 | `mcp.enabled` `false` | srcmorph needs no MCP servers. |
 
 Do not start the gateway's Cloudflare tunnel: it publishes the server on the internet.
@@ -118,7 +118,10 @@ assembles them into one answer and fails the file if the stream ends without `da
 
 ## 3. Choose a model
 
-The ids and their input limits come from the gateway:
+The ids and their input limits come from the gateway. `command: ListModels` with the example
+configuration asks it and prints them, with one `aiDefinitions` entry per model, copied from the
+example's definition (`stream: true` included), `contextSize` lowered where the model's limit is
+smaller; `modelFilter: "claude"` narrows the list. By hand:
 
 ```bash
 curl -s -H "Authorization: Bearer $COPILOT_GATEWAY_API_KEY" http://127.0.0.1:3030/v1/models
@@ -169,6 +172,7 @@ Rules of thumb:
 | Answer | Cause |
 |---|---|
 | `429 Too many concurrent requests` right at the start | The consent dialog in VS Code is waiting; allow it, or restart the server. |
+| `429 Rate limit exceeded (10 requests/min)` after a few files | The model is faster than `rateLimitPerMinute`; raise it (30 is enough at one request at a time). |
 | `401` | `apiKeyEnv` names no variable, the variable is empty, or the key differs from the gateway's `apiKey`. |
 | `502 No lowest priority node found` / `Cannot have more than 128 tools` | `stream` is not `true`. |
 | `The stream ended without 'data: [DONE]'` | The gateway or VS Code dropped the connection mid-answer; run again. |

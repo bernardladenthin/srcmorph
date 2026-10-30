@@ -6,9 +6,13 @@ package net.ladenthin.srcmorph.cli;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
+import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,6 +21,7 @@ import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import org.junit.jupiter.api.Test;
@@ -242,6 +247,79 @@ public class CliEndToEndTest {
         assertThat(stdout.contains("<calibration>"), is(true));
         assertThat(stdout.contains("</calibration>"), is(true));
         assertThat(stdout.contains("mock-model"), is(true));
+    }
+
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="ListModels">
+
+    /** A model list as the GitHub Copilot API Gateway sends it, cut to two models and an alias. */
+    private static final String GATEWAY_MODELS = "{\"object\":\"list\",\"data\":["
+            + "{\"id\":\"grok-4.7\",\"object\":\"model\",\"owned_by\":\"copilot\",\"max_input_tokens\":424794},"
+            + "{\"id\":\"claude-haiku-4.5\",\"object\":\"model\",\"owned_by\":\"copilot\",\"max_input_tokens\":127790},"
+            + "{\"id\":\"copilot-grok\",\"object\":\"model\",\"aliased_model_id\":\"grok-4.7\","
+            + "\"max_input_tokens\":424794}]}";
+
+    /**
+     * {@code ListModels} asks the configured server for its models and prints, to stdout like
+     * {@code Calibrate}, an {@code aiDefinitions} block that binds back into a configuration under
+     * the CLI's strict mapper: the template is a configuration, not just text that looks like one.
+     *
+     * @throws Exception if the stub cannot start or the run fails
+     */
+    @Test
+    public void run_listModelsCommand_printsATemplateThatBindsBackIntoAConfiguration() throws Exception {
+        // arrange -- a loopback stub of the gateway's model list
+        final HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/v1/models", exchange -> {
+            final byte[] bytes = GATEWAY_MODELS.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(bytes);
+            }
+        });
+        server.start();
+        final PrintStream originalOut = System.out;
+        final ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        try {
+            final String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1";
+            final CConfiguration configuration = Main.fromYaml("command: ListModels\n"
+                    + "modelFilter: GROK\n"
+                    + "srcMorph:\n"
+                    + "  aiDefinitions:\n"
+                    + "    - key: copilot\n"
+                    + "      provider: openai-compatible\n"
+                    + "      baseUrl: \"" + baseUrl + "\"\n"
+                    + "      stream: true\n"
+                    + "      contextSize: 120000\n"
+                    + "      maxOutputTokens: 2048\n"
+                    + "      temperature: 0.2\n");
+
+            // act
+            System.setOut(new PrintStream(captured, true, StandardCharsets.UTF_8.name()));
+            new Main(configuration).run();
+        } finally {
+            System.setOut(originalOut);
+            server.stop(0);
+        }
+
+        // assert -- the filter kept one model, and the printed block is a configuration
+        final String stdout = captured.toString(StandardCharsets.UTF_8.name());
+        assertThat(stdout.contains("2 models, 1 matching 'GROK'"), is(true));
+        final StringBuilder indented = new StringBuilder("srcMorph:\n");
+        for (final String line : stdout.split("\n", -1)) {
+            indented.append("  ").append(line).append('\n');
+        }
+        final SrcMorphConfiguration template = Main.fromYaml(indented.toString()).srcMorph;
+        assertThat(template.getAiDefinitions().size(), is(1));
+        final AiModelDefinition entry = template.getAiDefinitions().get(0);
+        assertThat(entry.getKey(), is("copilot-grok-4.7"));
+        assertThat(entry.getProvider(), is("openai-compatible"));
+        assertThat(entry.getRemoteModel(), is("grok-4.7"));
+        assertThat(entry.isStream(), is(true));
+        assertThat(entry.getContextSize(), is(120000));
+        assertThat(entry.getMaxOutputTokens(), is(2048));
+        assertThat(entry.getTemperature(), is(0.2f));
     }
 
     // </editor-fold>

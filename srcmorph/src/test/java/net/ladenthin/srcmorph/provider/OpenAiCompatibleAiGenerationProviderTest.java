@@ -352,6 +352,55 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="listModels">
+    @Test
+    public void listModels_getsTheModelListWithoutABodyAndParsesIt() throws Exception {
+        // arrange
+        answer = ModelListFixtures.COPILOT_GATEWAY;
+
+        // act
+        final java.util.List<RemoteModel> models = provider(
+                        LlamaCppJniConfig.builder("").apiKeyEnv("COPILOT_GATEWAY_API_KEY").stream(true),
+                        name -> "COPILOT_GATEWAY_API_KEY".equals(name) ? "gw-key" : null)
+                .listModels();
+
+        // assert
+        assertThat(models.size(), is(3));
+        assertThat(models.get(2).id(), is("mai-code-1.1-flash"));
+        assertThat(requestMethod, is("GET"));
+        assertThat(requestPath, is("/v1/models"));
+        assertThat(requestBody, is(""));
+        assertThat(header("Accept"), is("application/json"));
+        assertThat(header("Content-type"), is(nullValue()));
+        assertThat(header("X-title"), is(OpenAiCompatibleAiGenerationProvider.APPLICATION_TITLE));
+        assertThat(header("Authorization"), is("Bearer gw-key"));
+    }
+
+    @Test
+    public void listModels_errorStatus_throwsWithStatusAndBody() {
+        status = 401;
+        answer = "{\"error\":\"Unauthorized\"}";
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).listModels());
+        assertThat(thrown.getMessage(), containsString("/v1/models answered HTTP 401: {\"error\":\"Unauthorized\"}"));
+    }
+
+    @Test
+    public void listModels_keyForAnotherHostOverPlainHttp_isRefusedBeforeConnecting() {
+        final OpenAiCompatibleAiGenerationProvider provider = new OpenAiCompatibleAiGenerationProvider(
+                LlamaCppJniConfig.builder("")
+                        .baseUrl("http://192.0.2.1:3030/v1")
+                        .apiKeyEnv("K")
+                        .build(),
+                PROMPT_SUPPORT,
+                name -> "key");
+        final IOException thrown = assertThrows(IOException.class, provider::listModels);
+        assertThat(thrown.getMessage(), startsWith("Refusing to send the API key from K in cleartext to 192.0.2.1"));
+        assertThat(requestPath, is(nullValue()));
+    }
+    // </editor-fold>
+
     @Test
     public void close_isANoOp() throws Exception {
         final OpenAiCompatibleAiGenerationProvider provider = new OpenAiCompatibleAiGenerationProvider(

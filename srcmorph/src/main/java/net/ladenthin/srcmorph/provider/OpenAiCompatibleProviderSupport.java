@@ -10,8 +10,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -38,6 +43,32 @@ final class OpenAiCompatibleProviderSupport {
 
     /** Path appended to {@code baseUrl}: the OpenAI chat-completions endpoint. */
     static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
+
+    /** Path appended to {@code baseUrl}: the OpenAI model list. */
+    static final String MODELS_PATH = "/models";
+
+    /**
+     * Where a model list entry names its token limit, as JSON pointers; the first positive one wins:
+     * {@code context_length} (OpenRouter), {@code max_input_tokens} (the GitHub Copilot API Gateway),
+     * {@code context_window} and {@code max_model_len} (other OpenAI-compatible servers, e.g. vLLM),
+     * OpenRouter's top provider, then llama-server's running context and, failing that, its training
+     * context.
+     */
+    private static final String[] CONTEXT_POINTERS = {
+        "/context_length",
+        "/max_input_tokens",
+        "/context_window",
+        "/max_model_len",
+        "/top_provider/context_length",
+        "/meta/n_ctx",
+        "/meta/n_ctx_train"
+    };
+
+    /** The field of an entry that only aliases another listed model (the Copilot gateway's Cursor aliases). */
+    private static final String ALIAS_FIELD = "aliased_model_id";
+
+    /** OpenRouter states prices per token; the model list states them per this many tokens. */
+    private static final int PRICE_SCALE_TOKENS = 6;
 
     /** How many characters of an error body go into the exception message. */
     static final int ERROR_BODY_EXCERPT = 500;
@@ -277,6 +308,20 @@ final class OpenAiCompatibleProviderSupport {
      *                                  scheme (e.g. {@code file:}) ever reaches the connection
      */
     String endpoint() {
+        return baseUrl() + CHAT_COMPLETIONS_PATH;
+    }
+
+    /**
+     * The URL of the model list: {@code baseUrl}, as for {@link #endpoint()}, plus {@link #MODELS_PATH}.
+     *
+     * @return the models URL
+     * @throws IllegalArgumentException if {@code baseUrl} is not an {@code http(s)} URL
+     */
+    String modelsEndpoint() {
+        return baseUrl() + MODELS_PATH;
+    }
+
+    private String baseUrl() {
         String base = config.baseUrl().trim();
         if (!base.startsWith(HTTP_SCHEME) && !base.startsWith(HTTPS_SCHEME)) {
             throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + base + "'");
@@ -284,7 +329,71 @@ final class OpenAiCompatibleProviderSupport {
         while (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }
-        return base + CHAT_COMPLETIONS_PATH;
+        return base;
+    }
+
+    /**
+     * Reads the answer of {@code GET <baseUrl>/models}: the {@code data} array of an OpenAI model
+     * list, one {@link RemoteModel} per entry with an {@code id}, sorted by id.
+     *
+     * <p>The token limit is the first positive of the {@link #CONTEXT_POINTERS}; the price is
+     * OpenRouter's {@code pricing.prompt} / {@code pricing.completion}, per token there and per million
+     * tokens here, and unknown when absent or negative (OpenRouter's router models state {@code -1}).
+     * An entry that only aliases another ({@code aliased_model_id}) and a repeated id are left out.</p>
+     *
+     * @param json the response body
+     * @return the models, sorted by id
+     * @throws IOException if the body is not JSON or has no {@code data} array
+     */
+    static List<RemoteModel> parseModels(final String json) throws IOException {
+        final JsonNode data = MAPPER.readTree(json).path("data");
+        if (!data.isArray()) {
+            throw new IOException("The answer is not an OpenAI model list (no 'data' array): " + excerpt(json));
+        }
+        final Map<String, RemoteModel> models = new LinkedHashMap<>();
+        for (final JsonNode entry : data) {
+            final JsonNode id = entry.path("id");
+            if (!id.isTextual() || entry.hasNonNull(ALIAS_FIELD) || models.containsKey(id.asText())) {
+                continue;
+            }
+            final JsonNode pricing = entry.path("pricing");
+            models.put(
+                    id.asText(),
+                    new RemoteModel(
+                            id.asText(),
+                            contextLength(entry),
+                            pricePerMillion(pricing.path("prompt")),
+                            pricePerMillion(pricing.path("completion"))));
+        }
+        final List<RemoteModel> sorted = new ArrayList<>(models.values());
+        sorted.sort(Comparator.comparing(RemoteModel::id));
+        return sorted;
+    }
+
+    private static int contextLength(final JsonNode entry) {
+        for (final String pointer : CONTEXT_POINTERS) {
+            final int value = entry.at(pointer).asInt();
+            if (value > 0) {
+                return value;
+            }
+        }
+        return RemoteModel.UNKNOWN_CONTEXT_LENGTH;
+    }
+
+    private static @Nullable BigDecimal pricePerMillion(final JsonNode perToken) {
+        if (!perToken.isTextual() && !perToken.isNumber()) {
+            return null;
+        }
+        final BigDecimal price;
+        try {
+            price = new BigDecimal(perToken.asText().trim());
+        } catch (final NumberFormatException e) {
+            return null;
+        }
+        if (price.signum() < 0) {
+            return null;
+        }
+        return price.movePointRight(PRICE_SCALE_TOKENS).stripTrailingZeros();
     }
 
     /**
@@ -363,9 +472,11 @@ final class OpenAiCompatibleProviderSupport {
      * @return the message
      */
     static String errorMessage(final String endpoint, final int status, final String body) {
-        final String excerpt =
-                body.length() > ERROR_BODY_EXCERPT ? body.substring(0, ERROR_BODY_EXCERPT) + ELLIPSIS : body;
-        return endpoint + " answered HTTP " + status + ": " + excerpt;
+        return endpoint + " answered HTTP " + status + ": " + excerpt(body);
+    }
+
+    private static String excerpt(final String body) {
+        return body.length() > ERROR_BODY_EXCERPT ? body.substring(0, ERROR_BODY_EXCERPT) + ELLIPSIS : body;
     }
 
     /**

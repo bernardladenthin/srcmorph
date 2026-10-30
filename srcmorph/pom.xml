@@ -708,6 +708,11 @@ SPDX-License-Identifier: Apache-2.0
                           than mutation-tested. That comment is gone and its claim no longer holds: the
                           plugin module gates all five mojo classes at threshold 100. The exclusion here
                           stands on its own reasoning above, not on the sibling's.
+
+                          ListModelsEngine is gated although it is an engine: it has no multi-step
+                          control flow, and its one provider call goes through an injectable lister, so
+                          its tests reach every branch without a server (one test asks a stub server
+                          through the public constructor).
                         -->
                         <param>net.ladenthin.srcmorph.config.AiCalibration</param>
                         <param>net.ladenthin.srcmorph.config.AiCondition</param>
@@ -763,6 +768,10 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.engine.GenerateResult</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport$ModelMeasurement</param>
+                        <param>net.ladenthin.srcmorph.engine.ListModelsEngine</param>
+                        <param>net.ladenthin.srcmorph.engine.ModelListReport</param>
+                        <param>net.ladenthin.srcmorph.engine.ModelListReport$Listing</param>
+                        <param>net.ladenthin.srcmorph.provider.RemoteModel</param>
                     </targetClasses>
                     <targetTests>
                         <param>net.ladenthin.srcmorph.*</param>

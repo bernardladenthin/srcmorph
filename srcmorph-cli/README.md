@@ -74,7 +74,7 @@ public class CConfiguration {
   "Configuration" section for the full field-by-field reference (routing-rule conditions, oversize
   strategies, per-model sampling parameters, etc.), which applies verbatim here.
 
-### The six `CCommand` values
+### The seven `CCommand` values
 
 | Command | What it does |
 |---|---|
@@ -84,6 +84,7 @@ public class CConfiguration {
 | `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`). |
 | `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails. |
 | `Calibrate` | Loads each distinct model your `fieldGenerations` would route to, measures its prefill/decode throughput, and prints a paste-ready `<calibration>` XML block per model to standard output (`CalibrateEngine`). |
+| `ListModels` | Asks every OpenAI-compatible server your `aiDefinitions` name (`GET <baseUrl>/models`, with the definition's key) which models it serves, and prints to standard output a table (id, token limit, price where the server states one, as OpenRouter does) and a paste-ready `aiDefinitions` YAML block with one entry per model, copied from that server's first definition (`ListModelsEngine`). The top-level `modelFilter` keeps the ids that contain it, ignoring case. Sends no prompt, writes nothing. |
 
 ### One shared `srcMorph` object across commands — a nuance to know
 
