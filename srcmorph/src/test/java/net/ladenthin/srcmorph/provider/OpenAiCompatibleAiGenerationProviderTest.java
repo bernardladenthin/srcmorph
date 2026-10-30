@@ -377,6 +377,24 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     }
 
     @Test
+    public void requestsPerMinute_countsEveryRequestInTheServersSharedWindow() throws Exception {
+        // arrange
+        answer = ModelListFixtures.JLLAMA;
+        final OpenAiCompatibleAiGenerationProvider provider =
+                provider(LlamaCppJniConfig.builder("").requestsPerMinute(5), NO_ENVIRONMENT);
+        final RequestRateLimiter shared = RequestRateLimiter.shared(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/v1 ", 5);
+
+        // act
+        provider.listModels();
+        answer = completion("A tiny test class.", "stop");
+        provider.generate(REQUEST);
+
+        // assert
+        assertThat(shared.startedInWindow(), is(2));
+    }
+
+    @Test
     public void listModels_errorStatus_throwsWithStatusAndBody() {
         status = 401;
         answer = "{\"error\":\"Unauthorized\"}";

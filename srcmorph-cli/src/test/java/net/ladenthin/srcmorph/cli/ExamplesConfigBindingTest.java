@@ -132,6 +132,7 @@ public class ExamplesConfigBindingTest {
         assertThat(model.getBaseUrl(), is(equalTo("http://127.0.0.1:3030/v1")));
         assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
         assertThat(model.isStream(), is(true));
+        assertThat(model.getRequestsPerMinute(), is(25));
         assertThat(srcMorph.getFieldGenerations().size(), is(1));
         assertThat(srcMorph.getFieldGenerations().get(0).isFallback(), is(true));
     }

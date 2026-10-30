@@ -321,11 +321,27 @@ final class OpenAiCompatibleProviderSupport {
         return baseUrl() + MODELS_PATH;
     }
 
+    /**
+     * Names the server a request limit counts for: the trimmed {@code baseUrl} without trailing
+     * slashes, and the name of the key variable (two keys can have two limits on one server).
+     *
+     * @return the server key
+     */
+    String serverKey() {
+        return withoutTrailingSlashes(config.baseUrl().trim()) + " "
+                + config.apiKeyEnv().trim();
+    }
+
     private String baseUrl() {
-        String base = config.baseUrl().trim();
+        final String base = config.baseUrl().trim();
         if (!base.startsWith(HTTP_SCHEME) && !base.startsWith(HTTPS_SCHEME)) {
             throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + base + "'");
         }
+        return withoutTrailingSlashes(base);
+    }
+
+    private static String withoutTrailingSlashes(final String url) {
+        String base = url;
         while (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }

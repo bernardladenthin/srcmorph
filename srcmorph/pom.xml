@@ -772,6 +772,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.engine.ModelListReport</param>
                         <param>net.ladenthin.srcmorph.engine.ModelListReport$Listing</param>
                         <param>net.ladenthin.srcmorph.provider.RemoteModel</param>
+                        <param>net.ladenthin.srcmorph.provider.RequestRateLimiter</param>
                     </targetClasses>
                     <targetTests>
                         <param>net.ladenthin.srcmorph.*</param>

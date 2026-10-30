@@ -563,6 +563,27 @@ public class OpenAiCompatibleProviderSupportTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="serverKey">
+    @Test
+    public void serverKey_isTheBaseUrlWithoutTrailingSlashesAndTheKeyVariable() {
+        assertThat(
+                support(LlamaCppJniConfig.builder("")
+                                .baseUrl(" http://127.0.0.1:3030/v1// ")
+                                .apiKeyEnv(" COPILOT_GATEWAY_API_KEY ")
+                                .build())
+                        .serverKey(),
+                is("http://127.0.0.1:3030/v1 COPILOT_GATEWAY_API_KEY"));
+    }
+
+    @Test
+    public void serverKey_doesNotCheckTheScheme() {
+        assertThat(
+                support(LlamaCppJniConfig.builder("").baseUrl("file:///etc/").build())
+                        .serverKey(),
+                is("file:///etc "));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="parseModels">
     private static RemoteModel model(final String id, final int contextLength) {
         return new RemoteModel(id, contextLength, null, null);

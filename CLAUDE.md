@@ -119,7 +119,9 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   `LlamaCppJniAiGenerationProvider`, `OpenAiCompatibleAiGenerationProvider` (HTTP to
   `<baseUrl>/chat/completions`, and `listModels()` from `<baseUrl>/models` into `RemoteModel`s, key
   from the env var `apiKeyEnv` names; its pure logic lives in the PIT-gated
-  `OpenAiCompatibleProviderSupport`), `LlamaCppJniConfig` (built through `LlamaCppJniConfig.builder(modelPath)`; the
+  `OpenAiCompatibleProviderSupport`; with `requestsPerMinute` every request first passes the
+  `RequestRateLimiter` shared by all providers of one server and limit, which waits on a
+  `Condition` instead of `Thread.sleep`), `LlamaCppJniConfig` (built through `LlamaCppJniConfig.builder(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching
   `AiGenerationConfig.DEFAULT_*`) + `LlamaCppJniConfigFactory` (the pure 37-field
   mapping from a resolved `AiGenerationConfig` to the native binding's parameter objects — extracted
@@ -147,7 +149,7 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 58 entries (nested classes counted) across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 59 entries (nested classes counted) across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (17/17) and `srcmorph-maven-plugin` (62/62) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom

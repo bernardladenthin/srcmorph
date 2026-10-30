@@ -291,6 +291,7 @@ public class CliEndToEndTest {
                     + "      provider: openai-compatible\n"
                     + "      baseUrl: \"" + baseUrl + "\"\n"
                     + "      stream: true\n"
+                    + "      requestsPerMinute: 30\n"
                     + "      contextSize: 120000\n"
                     + "      maxOutputTokens: 2048\n"
                     + "      temperature: 0.2\n");
@@ -317,6 +318,7 @@ public class CliEndToEndTest {
         assertThat(entry.getProvider(), is("openai-compatible"));
         assertThat(entry.getRemoteModel(), is("grok-4.7"));
         assertThat(entry.isStream(), is(true));
+        assertThat(entry.getRequestsPerMinute(), is(30));
         assertThat(entry.getContextSize(), is(120000));
         assertThat(entry.getMaxOutputTokens(), is(2048));
         assertThat(entry.getTemperature(), is(0.2f));

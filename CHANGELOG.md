@@ -39,6 +39,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds four runs
   streamed through the gateway: Claude Haiku 5.5 (98.2 %, 6.8 s per file), GPT-6 Luna (97.6 %),
   MAI-Code-1.1-Flash (93.0 %) and Grok 4.7 (76.4 %, its reasoning summary leaks into the answer).
+- **`openai-compatible` provider: `requestsPerMinute`.** At most this many requests to a model's
+  server start within any minute; a request beyond it waits until the oldest of the last minute is
+  a minute old, instead of being answered with `429` (the provider does not retry). Models of one
+  server with the same key and limit share the window, across the phases of a run. Default `0`, no
+  limit. The Copilot API Gateway example sets 25 against the gateway's `rateLimitPerMinute` 30;
+  `ListModels` copies it into every template entry.
 - **CLI command `ListModels`**: asks every OpenAI-compatible server the `aiDefinitions` name which
   models it serves (`GET <baseUrl>/models`, with the definition's key and the same refusal to send
   it in cleartext to another machine) and prints a table (id, token limit, OpenRouter's price) and a

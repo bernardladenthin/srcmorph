@@ -24,7 +24,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>An entry is a copy of the server's pattern definition with its own {@code key}
  * ({@code <pattern key>-<model id>}) and {@code remoteModel}. It carries the connection
- * ({@code provider}, {@code baseUrl}, {@code apiKeyEnv}, {@code stream}), the window and the two knobs
+ * ({@code provider}, {@code baseUrl}, {@code apiKeyEnv}, {@code stream}, {@code requestsPerMinute}), the
+ * window and the two knobs
  * every summary run sets ({@code maxOutputTokens}, {@code temperature}), and {@code reasoningEffort}
  * when the pattern changes it. {@code contextSize} is the pattern's, lowered to the model's limit when
  * the server names a smaller one. Other sampling knobs of the pattern are not copied.</p>
@@ -159,6 +160,9 @@ public final class ModelListReport {
         if (listing.stream()) {
             appendField(out, "stream", "true");
         }
+        if (listing.requestsPerMinute() > 0) {
+            appendField(out, "requestsPerMinute", Integer.toString(listing.requestsPerMinute()));
+        }
         appendField(out, "contextSize", Integer.toString(contextSize(listing.contextSize(), model.contextLength())));
         appendField(out, "maxOutputTokens", Integer.toString(listing.maxOutputTokens()));
         appendField(out, "temperature", Float.toString(listing.temperature()));
@@ -206,6 +210,7 @@ public final class ModelListReport {
         private final String baseUrl;
         private final String apiKeyEnv;
         private final boolean stream;
+        private final int requestsPerMinute;
         private final int contextSize;
         private final int maxOutputTokens;
         private final float temperature;
@@ -222,6 +227,7 @@ public final class ModelListReport {
             this.baseUrl = pattern.getBaseUrl().trim();
             this.apiKeyEnv = pattern.getApiKeyEnv();
             this.stream = pattern.isStream();
+            this.requestsPerMinute = pattern.getRequestsPerMinute();
             this.contextSize = pattern.getContextSize();
             this.maxOutputTokens = pattern.getMaxOutputTokens();
             this.temperature = pattern.getTemperature();
@@ -281,6 +287,15 @@ public final class ModelListReport {
          */
         public boolean stream() {
             return stream;
+        }
+
+        /**
+         * Returns the pattern's request limit.
+         *
+         * @return the pattern's {@code requestsPerMinute}; {@code 0} or less for none
+         */
+        public int requestsPerMinute() {
+            return requestsPerMinute;
         }
 
         /**

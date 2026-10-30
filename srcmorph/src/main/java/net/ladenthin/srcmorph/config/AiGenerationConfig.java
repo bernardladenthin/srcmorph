@@ -408,6 +408,16 @@ public class AiGenerationConfig {
     public static final boolean DEFAULT_STREAM = false;
 
     /**
+     * Default of the {@code openai-compatible} provider's {@code requestsPerMinute}: {@code 0}, no
+     * limit. A positive value holds a request back until fewer than that many requests to the same
+     * server started in the last 60 seconds, so a fast model stays under a server's rate limit (the
+     * GitHub Copilot API Gateway answers a request over its {@code rateLimitPerMinute} with
+     * {@code 429}, and srcmorph does not retry). Every model of one server with the same key and the
+     * same limit shares one window, across the phases of one run.
+     */
+    public static final int DEFAULT_REQUESTS_PER_MINUTE = 0;
+
+    /**
      * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
      * {@code 0.0} = disabled (llama.cpp default). A positive value penalises verbatim n-gram
      * repetition, which can break runaway repetition loops; the other {@code dry*} knobs only take
@@ -476,6 +486,7 @@ public class AiGenerationConfig {
     private String baseUrl = DEFAULT_BASE_URL;
     private String apiKeyEnv = DEFAULT_API_KEY_ENV;
     private boolean stream = DEFAULT_STREAM;
+    private int requestsPerMinute = DEFAULT_REQUESTS_PER_MINUTE;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
@@ -1156,6 +1167,26 @@ public class AiGenerationConfig {
      */
     public void setStream(final boolean stream) {
         this.stream = stream;
+    }
+
+    /**
+     * Returns how many requests a minute the {@code openai-compatible} provider sends to this
+     * model's server at most.
+     *
+     * @return the limit; {@code 0} or less for none
+     */
+    public int getRequestsPerMinute() {
+        return requestsPerMinute;
+    }
+
+    /**
+     * Sets how many requests a minute the {@code openai-compatible} provider sends to this model's
+     * server at most; see {@link #DEFAULT_REQUESTS_PER_MINUTE}.
+     *
+     * @param requestsPerMinute the limit; {@code 0} or less for none
+     */
+    public void setRequestsPerMinute(final int requestsPerMinute) {
+        this.requestsPerMinute = requestsPerMinute;
     }
 
     /**

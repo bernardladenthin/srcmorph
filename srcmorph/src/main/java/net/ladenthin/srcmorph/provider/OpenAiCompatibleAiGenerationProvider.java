@@ -41,6 +41,9 @@ import org.jspecify.annotations.Nullable;
  * assembled into the same chat response (see {@link OpenAiCompatibleProviderSupport#assembleStream});
  * the read timeout then applies between two events instead of to the whole answer.</p>
  *
+ * <p>With {@code requestsPerMinute} set, every request first waits until fewer than that many requests
+ * to the same server started in the last minute (see {@link RequestRateLimiter}).</p>
+ *
  * <p>{@link #listModels()} asks the same server which models it serves ({@code GET <baseUrl>/models}),
  * with the same key and the same refusal to send it in cleartext to another machine.</p>
  */
@@ -60,6 +63,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     private static final int READ_BUFFER_SIZE = 8192;
 
     private final OpenAiCompatibleProviderSupport support;
+
+    /** Holds requests back to {@code requestsPerMinute}; {@code null} without a limit. */
+    private final @Nullable RequestRateLimiter limiter;
 
     @ToString.Exclude
     private final LlamaCppJniProviderSupport truncationSupport;
@@ -93,6 +99,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
         Objects.requireNonNull(promptSupport, "promptSupport");
         this.support = new OpenAiCompatibleProviderSupport(config, promptSupport, environment);
         this.truncationSupport = new LlamaCppJniProviderSupport(config, promptSupport);
+        this.limiter = config.requestsPerMinute() > 0
+                ? RequestRateLimiter.shared(support.serverKey(), config.requestsPerMinute())
+                : null;
     }
 
     @Override
@@ -143,6 +152,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             throws IOException {
         // Resolved before the connection is opened: a key that must not go to this endpoint fails here.
         final String key = support.apiKeyFor(endpoint);
+        if (limiter != null) {
+            limiter.acquire();
+        }
         final HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
         try {
             connection.setRequestMethod(body == null ? "GET" : "POST");

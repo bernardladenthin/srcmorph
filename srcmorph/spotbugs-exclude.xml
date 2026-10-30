@@ -629,4 +629,31 @@ SPDX-License-Identifier: Apache-2.0
         <Method name="exchange"/>
         <Bug pattern="URLCONNECTION_SSRF_FD"/>
     </Match>
+
+    <!--
+        RequestRateLimiter (the openai-compatible provider's requestsPerMinute), two findings:
+
+        CRLF_INJECTION_LOGS on acquire: the one log line of a wait names the server, the baseUrl and
+        key variable name of the operator's own model definition - category (2) of the engine
+        suppression above, the same trust boundary.
+
+        MDM_WAIT_WITHOUT_TIMEOUT on acquire and startedInWindow: ReentrantLock.lock() without a timeout.
+        The lock guards a deque of start times and is held for a few operations; the one long wait,
+        Condition.awaitNanos, releases it and has its timeout (the time until the oldest start leaves
+        the window). A tryLock with a timeout would add a failure path for a lock no thread holds for
+        long. Scoped to the two methods.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.RequestRateLimiter"/>
+        <Method name="acquire"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.RequestRateLimiter"/>
+        <Or>
+            <Method name="acquire"/>
+            <Method name="startedInWindow"/>
+        </Or>
+        <Bug pattern="MDM_WAIT_WITHOUT_TIMEOUT"/>
+    </Match>
 </FindBugsFilter>

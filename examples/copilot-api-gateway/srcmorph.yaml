@@ -38,6 +38,7 @@ srcMorph:
       remoteModel: claude-haiku-4.5          # an id from GET /v1/models of the gateway
       apiKeyEnv: COPILOT_GATEWAY_API_KEY     # the NAME of the variable holding the gateway's apiKey
       stream: true                           # required: the gateway's non-streaming path adds and runs VS Code tools
+      requestsPerMinute: 25                  # below the gateway's rateLimitPerMinute (30): wait instead of a 429
       contextSize: 32768                     # at most the model's max_input_tokens
       maxOutputTokens: 2048
       temperature: 0.2

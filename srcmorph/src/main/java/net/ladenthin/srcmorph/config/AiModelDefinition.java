@@ -75,6 +75,7 @@ public class AiModelDefinition {
     private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
     private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
     private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
+    private int requestsPerMinute = AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -773,6 +774,27 @@ public class AiModelDefinition {
      */
     public void setStream(final boolean stream) {
         this.stream = stream;
+    }
+
+    /**
+     * Returns how many requests a minute the {@code openai-compatible} provider sends to this model's
+     * server at most.
+     *
+     * @return the limit; {@code 0} or less for none; defaults to
+     *         {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}
+     */
+    public int getRequestsPerMinute() {
+        return requestsPerMinute;
+    }
+
+    /**
+     * Sets how many requests a minute the {@code openai-compatible} provider sends to this model's
+     * server at most; see {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}.
+     *
+     * @param requestsPerMinute the limit; {@code 0} or less for none
+     */
+    public void setRequestsPerMinute(final int requestsPerMinute) {
+        this.requestsPerMinute = requestsPerMinute;
     }
 
     /**

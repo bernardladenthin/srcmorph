@@ -23,6 +23,7 @@ public class ModelListReportTest {
         pattern.setBaseUrl(" http://127.0.0.1:3030/v1 ");
         pattern.setApiKeyEnv("COPILOT_GATEWAY_API_KEY");
         pattern.setStream(true);
+        pattern.setRequestsPerMinute(25);
         pattern.setContextSize(200000);
         pattern.setMaxOutputTokens(2048);
         pattern.setTemperature(0.2f);
@@ -65,6 +66,7 @@ public class ModelListReportTest {
                         + "    remoteModel: \"auto\"\n"
                         + "    apiKeyEnv: \"COPILOT_GATEWAY_API_KEY\"\n"
                         + "    stream: true\n"
+                        + "    requestsPerMinute: 25\n"
                         + "    contextSize: 200000\n"
                         + "    maxOutputTokens: 2048\n"
                         + "    temperature: 0.2\n"
@@ -74,6 +76,7 @@ public class ModelListReportTest {
                         + "    remoteModel: \"claude-haiku-4.5\"\n"
                         + "    apiKeyEnv: \"COPILOT_GATEWAY_API_KEY\"\n"
                         + "    stream: true\n"
+                        + "    requestsPerMinute: 25\n"
                         + "    contextSize: 127790\n"
                         + "    maxOutputTokens: 2048\n"
                         + "    temperature: 0.2\n"));
@@ -216,6 +219,7 @@ public class ModelListReportTest {
         assertThat(listing.baseUrl(), is("http://127.0.0.1:3030/v1"));
         assertThat(listing.apiKeyEnv(), is("COPILOT_GATEWAY_API_KEY"));
         assertThat(listing.stream(), is(true));
+        assertThat(listing.requestsPerMinute(), is(25));
         assertThat(listing.contextSize(), is(200000));
         assertThat(listing.maxOutputTokens(), is(2048));
         assertThat(listing.temperature(), is(0.2f));
