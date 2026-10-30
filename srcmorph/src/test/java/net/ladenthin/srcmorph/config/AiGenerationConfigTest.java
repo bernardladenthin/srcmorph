@@ -275,6 +275,22 @@ public class AiGenerationConfigTest {
     }
 
     @Test
+    public void streamDefaultsOffAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.isStream(), is(false));
+        c.setStream(true);
+        assertThat(c.isStream(), is(true));
+    }
+
+    @Test
+    public void requestsPerMinuteDefaultsToNoLimitAndRoundTrips() {
+        AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getRequestsPerMinute(), is(0));
+        c.setRequestsPerMinute(25);
+        assertThat(c.getRequestsPerMinute(), is(25));
+    }
+
+    @Test
     public void setApiKeyEnvNullResetsToDefault() {
         AiGenerationConfig c = new AiGenerationConfig();
         c.setApiKeyEnv("MY_KEY");

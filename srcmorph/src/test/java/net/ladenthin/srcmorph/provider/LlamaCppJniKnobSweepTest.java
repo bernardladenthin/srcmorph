@@ -97,7 +97,8 @@ public class LlamaCppJniKnobSweepTest {
                 "devices",
                 "backend device names (e.g. \"Vulkan1\") exist only on the machine that enumerates them, "
                         + "so no value is valid on an arbitrary runner");
-        for (final String remoteKnob : new String[] {"provider", "remoteModel", "baseUrl", "apiKeyEnv"}) {
+        for (final String remoteKnob :
+                new String[] {"provider", "remoteModel", "baseUrl", "apiKeyEnv", "stream", "requestsPerMinute"}) {
             reasons.put(
                     remoteKnob,
                     "a setting of the openai-compatible provider; the llama.cpp JNI provider never reads it "

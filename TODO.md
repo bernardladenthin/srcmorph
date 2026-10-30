@@ -10,6 +10,19 @@ everything below is genuinely still open.
 
 ## Open
 
+- **Use jllama's `ChatStreamAssembler` instead of srcmorph's own stream assembly.** The `stream`
+  setting of the `openai-compatible` provider needs a Server-Sent Events body assembled into a chat
+  completion; java-llama.cpp has that as `net.ladenthin.llama.json.ChatStreamAssembler`
+  (bernardladenthin/java-llama.cpp#595), but in no release yet, so
+  `OpenAiCompatibleProviderSupport.assembleStream` and its constants are a copy, marked
+  `@ReplaceWithLibrary`. When `net.ladenthin:llama` is raised to the release that carries it,
+  `ReplaceWithLibraryTest` fails: let `completionJson` call `ChatStreamAssembler.parseStream`
+  (`toCompletionJson`, or hand its `ChatResponse` on directly) and turn its `InvalidStreamException`
+  into the `IOException` the provider throws; delete the marked code, its tests in
+  `OpenAiCompatibleProviderSupportTest`, this item, and, being the last marker, `ReplaceWithLibrary`
+  with its test. The stub-server tests in `OpenAiCompatibleAiGenerationProviderTest` stay and prove the
+  switch.
+
 - **A cut-off summary is kept as if it were done.** When a generation hits `maxOutputTokens`, the
   provider only logs a WARN and the truncated `.ai.md` counts as up to date, so an incremental run
   regenerates it only after the source changes. The model-card benchmark hit this with reasoning

@@ -76,7 +76,8 @@
 **srcmorph** is a prompt-driven source-tree transformer: it walks a source tree and processes each
 file through a configurable LLM prompt — by default via [llama.cpp](https://github.com/ggerganov/llama.cpp)
 GGUF models, entirely local, no cloud calls; optionally, per model, through any OpenAI-compatible API
-(OpenRouter, a `llama-server`) — producing layered output: per-file, then per-package,
+(OpenRouter, a `llama-server`, the models of a GitHub Copilot subscription through a local gateway:
+[docs/copilot-api-gateway.md](docs/copilot-api-gateway.md)) — producing layered output: per-file, then per-package,
 then per-project. Today it emits structured, AI-readable `.ai.md` Markdown summaries for fast semantic
 code navigation; the same rule-routed pipeline (composable file-matching conditions, per-rule
 model + prompt, oversize handling) is generic enough to eventually emit wikis, architecture docs,

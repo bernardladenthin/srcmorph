@@ -25,6 +25,34 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   same parsing, so the `.ai.md` comes out the same way. Remote models skip the GGUF checks before a
   run and instead must name an `http(s)` `baseUrl`. Local stays the default: nothing leaves the
   machine unless a model says `openai-compatible`.
+- **`openai-compatible` provider: `stream`.** A model with `stream: true` asks for the answer as
+  Server-Sent Events (with `stream_options.include_usage`, so the token counts still arrive) and
+  assembles it into the same chat response, so the summary does not change; a stream without
+  `data: [DONE]` or with an `error` chunk fails the file instead of passing for a short answer.
+  Default `false`. Needed for the GitHub Copilot API Gateway VS Code extension, whose
+  non-streaming path adds every VS Code language-model tool to the request and runs the tool
+  calls the model makes; its streaming path does not.
+- **Guide: the models of a GitHub Copilot subscription through the Copilot API Gateway**
+  ([docs/copilot-api-gateway.md](./docs/copilot-api-gateway.md)): setup, the settings that keep
+  the gateway private, an example configuration (`examples/copilot-api-gateway/srcmorph.yaml`), model
+  choice and the limits of the route. The model card
+  ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds four runs
+  streamed through the gateway: Claude Haiku 5.5 (98.2 %, 6.8 s per file), GPT-6 Luna (97.6 %),
+  MAI-Code-1.1-Flash (93.0 %) and Grok 4.7 (76.4 %, its reasoning summary leaks into the answer).
+- **`openai-compatible` provider: `requestsPerMinute`.** At most this many requests to a model's
+  server start within any minute; a request beyond it waits until the oldest of the last minute is
+  a minute old, instead of being answered with `429` (the provider does not retry). Models of one
+  server with the same key and limit share the window, across the phases of a run. Default `0`, no
+  limit. The Copilot API Gateway example sets 25 against the gateway's `rateLimitPerMinute` 30;
+  `ListModels` copies it into every template entry.
+- **CLI command `ListModels`**: asks every OpenAI-compatible server the `aiDefinitions` name which
+  models it serves (`GET <baseUrl>/models`, with the definition's key and the same refusal to send
+  it in cleartext to another machine) and prints a table (id, token limit, OpenRouter's price) and a
+  paste-ready `aiDefinitions` YAML block, one entry per model, copied from the server's first
+  definition with `contextSize` lowered to a smaller model limit. `modelFilter` keeps the ids that
+  contain it. Reads OpenRouter, the Copilot API Gateway, llama.cpp's `llama-server` and jllama's
+  server. In the library: `ListModelsEngine`, `ModelListReport`,
+  `OpenAiCompatibleAiGenerationProvider.listModels()`.
 - **CI tests the provider against three real APIs on every run**, each in addition to the others:
   jllama's `NativeServer` (started in-process by `OpenAiCompatibleLiveTest`), a llama.cpp
   `llama-server` container (both on the committed SmolLM2 GGUF), and OpenRouter with

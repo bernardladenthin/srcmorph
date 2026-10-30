@@ -273,6 +273,22 @@ public class AiModelDefinitionTest {
     }
 
     @Test
+    public void streamDefaultsOffAndRoundTrips() {
+        AiModelDefinition c = new AiModelDefinition();
+        assertThat(c.isStream(), is(false));
+        c.setStream(true);
+        assertThat(c.isStream(), is(true));
+    }
+
+    @Test
+    public void requestsPerMinuteDefaultsToNoLimitAndRoundTrips() {
+        AiModelDefinition c = new AiModelDefinition();
+        assertThat(c.getRequestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));
+        c.setRequestsPerMinute(25);
+        assertThat(c.getRequestsPerMinute(), is(25));
+    }
+
+    @Test
     public void setApiKeyEnvNullResetsToDefault() {
         AiModelDefinition c = new AiModelDefinition();
         c.setApiKeyEnv("MY_KEY");

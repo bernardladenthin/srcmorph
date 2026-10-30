@@ -14,7 +14,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CARD = HERE.parent / "MODEL-CARD.md"
 BEGIN, END = "<!-- generated:begin -->", "<!-- generated:end -->"
-BACKEND = {"openrouter": "OpenRouter", "huggingface": "HF / nscale", "local": "local GGUF (RTX 3070)"}
+BACKEND = {"openrouter": "OpenRouter", "huggingface": "HF / nscale", "copilot": "Copilot API Gateway",
+           "local": "local GGUF (RTX 3070)"}
 
 
 def fmt(value, pattern="{:.2f}", missing="–"):
@@ -47,7 +48,8 @@ def main():
         failed = [n for n, p in phases.items() if p["exit"] != 0]
         cost = run.get("costUsd")
         cost_text = fmt(cost, "{:.4f}") if run["backend"] == "openrouter" else (
-            "0 (local)" if run["backend"] == "local" else "see text")
+            "0 (local)" if run["backend"] == "local" else
+            "Copilot plan" if run["backend"] == "copilot" else "see text")
         overview.append(
             f"| {name} | {BACKEND[run['backend']]} | {run['files']}{' (failed: ' + ', '.join(failed) + ')' if failed else ''}"
             f" | {total / 60:.1f} | {files_phase.get('seconds', 0) / max(file_count, 1):.1f} | {cost_text}"

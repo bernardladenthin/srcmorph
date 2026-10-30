@@ -69,6 +69,8 @@ public final class LlamaCppJniConfigFactory {
                 .remoteModel(config.getRemoteModel())
                 .baseUrl(config.getBaseUrl())
                 .apiKeyEnv(config.getApiKeyEnv())
+                .stream(config.isStream())
+                .requestsPerMinute(config.getRequestsPerMinute())
                 .reasoningEffort(config.getReasoningEffort())
                 .reasoningBudgetTokens(config.getReasoningBudgetTokens())
                 .dryMultiplier(config.getDryMultiplier())

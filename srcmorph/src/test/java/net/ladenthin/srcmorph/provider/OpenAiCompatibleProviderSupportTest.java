@@ -11,12 +11,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import net.ladenthin.llama.json.ChatResponseParser;
 import net.ladenthin.llama.value.ChatChoice;
 import net.ladenthin.llama.value.ChatMessage;
 import net.ladenthin.llama.value.ChatResponse;
@@ -170,6 +173,184 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(body.has("seed"), is(false));
         assertThat(body.has("stop"), is(false));
         assertThat(body.has("reasoning"), is(false));
+    }
+
+    @Test
+    public void requestBody_default_doesNotStream() throws Exception {
+        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        assertThat(body.get("stream").asBoolean(), is(false));
+        assertThat(body.has("stream_options"), is(false));
+    }
+
+    @Test
+    public void requestBody_stream_asksForTheEventStreamAndItsUsageChunk() throws Exception {
+        final JsonNode body = body(LlamaCppJniConfig.builder("").stream(true).build());
+        assertThat(body.get("stream").asBoolean(), is(true));
+        assertThat(body.get("stream_options").get("include_usage").asBoolean(), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="accept / completionJson">
+    @Test
+    public void accept_followsTheStreamSwitch() {
+        assertThat(support(LlamaCppJniConfig.builder("").build()).accept(), is("application/json"));
+        assertThat(support(LlamaCppJniConfig.builder("").stream(true).build()).accept(), is("text/event-stream"));
+    }
+
+    @Test
+    public void completionJson_notStreaming_returnsTheBodyUnchanged() throws Exception {
+        // a body that is no event stream: assembling it would fail for want of [DONE]
+        final String body = "{\"choices\":[]}";
+        assertThat(support(LlamaCppJniConfig.builder("").build()).completionJson(body), is(body));
+    }
+
+    @Test
+    public void completionJson_streaming_assemblesTheEvents() throws Exception {
+        final String json = support(LlamaCppJniConfig.builder("").stream(true).build())
+                .completionJson(
+                        event("{\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}]}") + DONE);
+        assertThat(
+                json,
+                is("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"hi\"},"
+                        + "\"finish_reason\":\"stop\"}]}"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="assembleStream">
+    private static final String DONE = "data: [DONE]\n\n";
+
+    private static String event(final String json) {
+        return "data: " + json + "\n\n";
+    }
+
+    private static String token(final String content) {
+        return event("{\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,"
+                + "\"delta\":{\"content\":" + content + "},\"finish_reason\":null}],\"usage\":null}");
+    }
+
+    private static ChatResponse assembled(final String sse) throws IOException {
+        return new ChatResponseParser().parseResponse(OpenAiCompatibleProviderSupport.assembleStream(sse));
+    }
+
+    /** The shape of an OpenAI stream with {@code include_usage}, as OpenRouter and llama-server send it. */
+    @Test
+    public void assembleStream_openAiStream_joinsTheDeltasAndKeepsFinishReasonAndUsage() throws Exception {
+        // arrange
+        final String sse = event("{\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\"},"
+                        + "\"finish_reason\":null}]}")
+                + token("\"A tiny \"")
+                + token("\"test class.\"")
+                + event("{\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}")
+                + event("{\"choices\":[],\"usage\":{\"prompt_tokens\":42,\"completion_tokens\":7,"
+                        + "\"prompt_tokens_details\":{\"cached_tokens\":40}}}")
+                + DONE;
+
+        // act
+        final ChatResponse response = assembled(sse);
+
+        // assert
+        assertThat(response.getFirstContent(), is("A tiny test class."));
+        assertThat(response.getChoices().get(0).getFinishReason(), is("length"));
+        assertThat(response.getChoices().get(0).getMessage().getRole(), is("assistant"));
+        assertThat(response.getUsage().getPromptTokens(), is(42L));
+        assertThat(response.getUsage().getCompletionTokens(), is(7L));
+        assertThat(response.getUsage().getCachedTokens(), is(40L));
+    }
+
+    /**
+     * What the GitHub Copilot API Gateway and jllama's {@code NativeServer} send besides data: comment
+     * heartbeats, CRLF line ends, and {@code data:} without the space.
+     */
+    @Test
+    public void assembleStream_commentsOtherFieldsAndCrLf_areSkipped() throws Exception {
+        final String sse = ": ping\r\n\r\n"
+                + "event: message\r\nid: 7\r\n"
+                + "data:{\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\r\n\r\n"
+                + ": ping\r\n\r\n"
+                + "data: [DONE]\r\n\r\n";
+        final ChatResponse response = assembled(sse);
+        assertThat(response.getFirstContent(), is("ok"));
+        assertThat(response.getChoices().get(0).getFinishReason(), is("stop"));
+    }
+
+    @Test
+    public void assembleStream_nullDeltasAndALaterNullFinishReason_changeNothing() throws Exception {
+        final String sse = token("\"a\"")
+                + token("null")
+                + event("{\"choices\":[{\"delta\":{\"content\":\"b\"},\"finish_reason\":\"stop\"}]}")
+                + token("null")
+                + DONE;
+        final ChatResponse response = assembled(sse);
+        assertThat(response.getFirstContent(), is("ab"));
+        assertThat(response.getChoices().get(0).getFinishReason(), is("stop"));
+    }
+
+    @Test
+    public void assembleStream_aLaterChunkWithoutUsage_keepsTheUsage() throws Exception {
+        final String sse = event("{\"choices\":[],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}")
+                + token("\"late\"")
+                + DONE;
+        final ChatResponse response = assembled(sse);
+        assertThat(response.getUsage().getPromptTokens(), is(3L));
+        assertThat(response.getUsage().getCompletionTokens(), is(2L));
+    }
+
+    @Test
+    public void assembleStream_noUsageChunk_reportsNoUsageAndNoFinishReason() throws Exception {
+        final String json = OpenAiCompatibleProviderSupport.assembleStream(token("\"x\"") + DONE);
+        assertThat(
+                json,
+                is("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"x\"},"
+                        + "\"finish_reason\":\"\"}]}"));
+    }
+
+    @Test
+    public void assembleStream_afterDone_nothingIsRead() throws Exception {
+        final ChatResponse response = assembled(token("\"kept\"") + DONE + "data: not json\n\n");
+        assertThat(response.getFirstContent(), is("kept"));
+    }
+
+    @Test
+    public void assembleStream_noDone_failsInsteadOfPassingForAShortAnswer() {
+        final String sse = token("\"half\"");
+        final IOException thrown =
+                assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream(sse));
+        assertThat(
+                thrown.getMessage(),
+                is("The stream ended without 'data: [DONE]' after " + sse.length() + " characters"));
+    }
+
+    @Test
+    public void assembleStream_plainJsonAnswer_failsForWantOfDone() {
+        // a server that ignores stream:true and answers with one JSON object
+        assertThrows(
+                IOException.class,
+                () -> OpenAiCompatibleProviderSupport.assembleStream(
+                        "{\"choices\":[{\"message\":{\"content\":\"x\"}}]}"));
+    }
+
+    @Test
+    public void assembleStream_errorChunk_fails() {
+        final String sse = token("\"partial\"")
+                + event("{\"error\":{\"message\":\"Provider returned error\",\"code\":502}}")
+                + DONE;
+        final IOException thrown =
+                assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream(sse));
+        assertThat(
+                thrown.getMessage(),
+                is("The stream reported an error: {\"message\":\"Provider returned error\",\"code\":502}"));
+    }
+
+    @Test
+    public void assembleStream_nullError_isNoError() throws Exception {
+        final ChatResponse response =
+                assembled(event("{\"error\":null,\"choices\":[{\"delta\":{\"content\":\"fine\"}}]}") + DONE);
+        assertThat(response.getFirstContent(), is("fine"));
+    }
+
+    @Test
+    public void assembleStream_malformedData_fails() {
+        assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream("data: {oops\n\n" + DONE));
     }
     // </editor-fold>
 
@@ -359,6 +540,157 @@ public class OpenAiCompatibleProviderSupportTest {
         final char[] chars = new char[count];
         Arrays.fill(chars, c);
         return new String(chars);
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="modelsEndpoint">
+    @Test
+    public void modelsEndpoint_isTheTrimmedBaseUrlWithoutTrailingSlashesPlusModels() {
+        assertThat(
+                support(LlamaCppJniConfig.builder("")
+                                .baseUrl(" http://127.0.0.1:3030/v1// ")
+                                .build())
+                        .modelsEndpoint(),
+                is("http://127.0.0.1:3030/v1/models"));
+    }
+
+    @Test
+    public void modelsEndpoint_notHttp_throwsBeforeAnyConnection() {
+        final OpenAiCompatibleProviderSupport support =
+                support(LlamaCppJniConfig.builder("").baseUrl("file:///etc").build());
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::modelsEndpoint);
+        assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc'"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="serverKey">
+    @Test
+    public void serverKey_isTheBaseUrlWithoutTrailingSlashesAndTheKeyVariable() {
+        assertThat(
+                support(LlamaCppJniConfig.builder("")
+                                .baseUrl(" http://127.0.0.1:3030/v1// ")
+                                .apiKeyEnv(" COPILOT_GATEWAY_API_KEY ")
+                                .build())
+                        .serverKey(),
+                is("http://127.0.0.1:3030/v1 COPILOT_GATEWAY_API_KEY"));
+    }
+
+    @Test
+    public void serverKey_doesNotCheckTheScheme() {
+        assertThat(
+                support(LlamaCppJniConfig.builder("").baseUrl("file:///etc/").build())
+                        .serverKey(),
+                is("file:///etc "));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="parseModels">
+    private static RemoteModel model(final String id, final int contextLength) {
+        return new RemoteModel(id, contextLength, null, null);
+    }
+
+    private static List<RemoteModel> parse(final String entries) throws IOException {
+        return OpenAiCompatibleProviderSupport.parseModels("{\"data\":[" + entries + "]}");
+    }
+
+    @Test
+    public void parseModels_copilotGateway_dropsTheAliasAndTheRepeatedIdAndSortsById() throws Exception {
+        assertThat(
+                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.COPILOT_GATEWAY),
+                is(Arrays.asList(
+                        model("auto", 871793),
+                        model("claude-haiku-4.5", 127790),
+                        model("mai-code-1.1-flash", 127790))));
+    }
+
+    @Test
+    public void parseModels_openRouter_readsTheContextAndThePricePerMillionTokens() throws Exception {
+        final List<RemoteModel> models = OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.OPENROUTER);
+
+        assertThat(models.size(), is(2));
+        assertThat(models.get(0), is(model("openrouter/auto", 2000000)));
+        final RemoteModel grok = models.get(1);
+        assertThat(grok.id(), is("x-ai/grok-4.7"));
+        assertThat(grok.contextLength(), is(500000));
+        assertThat(grok.inputUsdPerMillion(), is(new BigDecimal("2")));
+        assertThat(grok.outputUsdPerMillion(), is(new BigDecimal("6")));
+    }
+
+    @Test
+    public void parseModels_llamaServer_readsTheRunningWindowFromMeta() throws Exception {
+        assertThat(
+                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.LLAMA_SERVER),
+                is(Collections.singletonList(model("/models/SmolLM2-135M-Instruct-Q3_K_M.gguf", 8192))));
+    }
+
+    @Test
+    public void parseModels_jllama_namesNoLimit() throws Exception {
+        assertThat(
+                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.JLLAMA),
+                is(Collections.singletonList(model("smollm2", RemoteModel.UNKNOWN_CONTEXT_LENGTH))));
+    }
+
+    @Test
+    public void parseModels_theFirstPositiveLimitWins_inTheDocumentedOrder() throws Exception {
+        assertThat(
+                parse("{\"id\":\"a\",\"context_length\":100,\"max_input_tokens\":200}"
+                        + ",{\"id\":\"b\",\"context_length\":0,\"max_input_tokens\":200,\"context_window\":300}"
+                        + ",{\"id\":\"c\",\"context_window\":300,\"max_model_len\":400}"
+                        + ",{\"id\":\"d\",\"max_model_len\":400,\"top_provider\":{\"context_length\":500}}"
+                        + ",{\"id\":\"e\",\"context_length\":-1,\"top_provider\":{\"context_length\":500},"
+                        + "\"meta\":{\"n_ctx\":600}}"
+                        + ",{\"id\":\"f\",\"top_provider\":{\"context_length\":0},\"meta\":{\"n_ctx\":600,"
+                        + "\"n_ctx_train\":700}}"
+                        + ",{\"id\":\"g\",\"meta\":{\"n_ctx\":0,\"n_ctx_train\":700}}"
+                        + ",{\"id\":\"h\",\"meta\":{\"n_ctx_train\":0}}"),
+                is(Arrays.asList(
+                        model("a", 100),
+                        model("b", 200),
+                        model("c", 300),
+                        model("d", 400),
+                        model("e", 500),
+                        model("f", 600),
+                        model("g", 700),
+                        model("h", 0))));
+    }
+
+    @Test
+    public void parseModels_prices_textOrNumber_unknownWhenAbsentNegativeOrNotANumber() throws Exception {
+        final List<RemoteModel> models = parse("{\"id\":\"a\",\"pricing\":{\"prompt\":\" 0.0000005 \","
+                + "\"completion\":0.0000015}}"
+                + ",{\"id\":\"b\",\"pricing\":{\"prompt\":\"0\",\"completion\":\"-1\"}}"
+                + ",{\"id\":\"c\",\"pricing\":{\"prompt\":\"free\",\"completion\":true}}"
+                + ",{\"id\":\"d\"}");
+
+        assertThat(models.get(0).inputUsdPerMillion(), is(new BigDecimal("0.5")));
+        assertThat(models.get(0).outputUsdPerMillion(), is(new BigDecimal("1.5")));
+        assertThat(models.get(1).inputUsdPerMillion(), is(BigDecimal.ZERO));
+        assertThat(models.get(1).outputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(2).inputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(2).outputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(3).inputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(3).outputUsdPerMillion(), is(nullValue()));
+    }
+
+    @Test
+    public void parseModels_anEntryWithoutATextualId_isLeftOut() throws Exception {
+        assertThat(
+                parse("{\"object\":\"model\"},{\"id\":7},{\"id\":\"kept\"}"),
+                is(Collections.singletonList(model("kept", 0))));
+    }
+
+    @Test
+    public void parseModels_noDataArray_failsWithTheStartOfTheAnswer() {
+        final IOException thrown = assertThrows(
+                IOException.class, () -> OpenAiCompatibleProviderSupport.parseModels("{\"data\":{\"id\":\"a\"}}"));
+        assertThat(
+                thrown.getMessage(),
+                is("The answer is not an OpenAI model list (no 'data' array): {\"data\":{\"id\":\"a\"}}"));
+    }
+
+    @Test
+    public void parseModels_notJson_fails() {
+        assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.parseModels("<html>502</html>"));
     }
     // </editor-fold>
 

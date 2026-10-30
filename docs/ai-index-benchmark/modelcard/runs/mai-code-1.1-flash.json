@@ -1,0 +1,34 @@
+{
+ "key": "mai-code-1.1-flash",
+ "name": "MAI-Code-1.1-Flash",
+ "backend": "copilot",
+ "definition": {
+  "key": "mai-code-1.1-flash",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "http://127.0.0.1:3030/v1",
+  "contextSize": 120000,
+  "stream": true,
+  "remoteModel": "mai-code-1.1-flash"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 268.5,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 105.0,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 4.6,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

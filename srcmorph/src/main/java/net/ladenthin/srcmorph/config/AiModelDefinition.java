@@ -74,6 +74,8 @@ public class AiModelDefinition {
     private String remoteModel = AiGenerationConfig.DEFAULT_REMOTE_MODEL;
     private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
     private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
+    private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
+    private int requestsPerMinute = AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -752,6 +754,47 @@ public class AiModelDefinition {
      */
     public void setApiKeyEnv(final String apiKeyEnv) {
         this.apiKeyEnv = apiKeyEnv == null ? AiGenerationConfig.DEFAULT_API_KEY_ENV : apiKeyEnv;
+    }
+
+    /**
+     * Returns whether the {@code openai-compatible} provider requests a streamed answer for this model.
+     *
+     * @return {@code true} for Server-Sent Events, {@code false} for one JSON answer; defaults to
+     *         {@link AiGenerationConfig#DEFAULT_STREAM}
+     */
+    public boolean isStream() {
+        return stream;
+    }
+
+    /**
+     * Sets whether the {@code openai-compatible} provider requests a streamed answer for this model;
+     * see {@link AiGenerationConfig#DEFAULT_STREAM}.
+     *
+     * @param stream {@code true} for Server-Sent Events, {@code false} for one JSON answer
+     */
+    public void setStream(final boolean stream) {
+        this.stream = stream;
+    }
+
+    /**
+     * Returns how many requests a minute the {@code openai-compatible} provider sends to this model's
+     * server at most.
+     *
+     * @return the limit; {@code 0} or less for none; defaults to
+     *         {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}
+     */
+    public int getRequestsPerMinute() {
+        return requestsPerMinute;
+    }
+
+    /**
+     * Sets how many requests a minute the {@code openai-compatible} provider sends to this model's
+     * server at most; see {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}.
+     *
+     * @param requestsPerMinute the limit; {@code 0} or less for none
+     */
+    public void setRequestsPerMinute(final int requestsPerMinute) {
+        this.requestsPerMinute = requestsPerMinute;
     }
 
     /**

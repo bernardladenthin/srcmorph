@@ -549,7 +549,8 @@ SPDX-License-Identifier: Apache-2.0
         requests, so there is no log-forging trust boundary to defend here — the same Path/String
         values were logged without incident via Maven's own Log interface before this SLF4J
         migration. Scoped to the nine converted/added classes only, so a genuine finding elsewhere in
-        the codebase still surfaces.
+        the codebase still surfaces. ListModelsEngine (added with the ListModels command) logs a model
+        key and the baseUrl of the operator's own model definition, category (2).
     -->
     <Match>
         <Or>
@@ -562,6 +563,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.engine.AggregateProjectEngine"/>
             <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
             <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+            <Class name="net.ladenthin.srcmorph.engine.ListModelsEngine"/>
         </Or>
         <Bug pattern="CRLF_INJECTION_LOGS"/>
     </Match>
@@ -613,17 +615,45 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.post. The URL is
+        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.exchange (the
+        chat-completions POST and the GET of the model list). The URL is
         the baseUrl of the user's own model definition, not input from a remote party: srcmorph is a
         build tool and CLI that runs with the rights of whoever wrote its configuration, and calling
         the server that configuration names is the whole purpose of the openai-compatible provider.
-        OpenAiCompatibleProviderSupport.endpoint() rejects any baseUrl that is not http(s), and
+        OpenAiCompatibleProviderSupport.endpoint() and modelsEndpoint() reject any baseUrl that is not http(s), and
         EngineSupport.validateRemoteModel does the same before a run starts, so file: and other
         schemes never reach openConnection.
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
-        <Method name="post"/>
+        <Method name="exchange"/>
         <Bug pattern="URLCONNECTION_SSRF_FD"/>
+    </Match>
+
+    <!--
+        RequestRateLimiter (the openai-compatible provider's requestsPerMinute), two findings:
+
+        CRLF_INJECTION_LOGS on acquire: the one log line of a wait names the server, the baseUrl and
+        key variable name of the operator's own model definition - category (2) of the engine
+        suppression above, the same trust boundary.
+
+        MDM_WAIT_WITHOUT_TIMEOUT on acquire and startedInWindow: ReentrantLock.lock() without a timeout.
+        The lock guards a deque of start times and is held for a few operations; the one long wait,
+        Condition.awaitNanos, releases it and has its timeout (the time until the oldest start leaves
+        the window). A tryLock with a timeout would add a failure path for a lock no thread holds for
+        long. Scoped to the two methods.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.RequestRateLimiter"/>
+        <Method name="acquire"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.RequestRateLimiter"/>
+        <Or>
+            <Method name="acquire"/>
+            <Method name="startedInWindow"/>
+        </Or>
+        <Bug pattern="MDM_WAIT_WITHOUT_TIMEOUT"/>
     </Match>
 </FindBugsFilter>

@@ -76,6 +76,8 @@ public class AiModelDefinitionSupportTest {
         definition.setRemoteModel("openai/gpt-6-luna");
         definition.setBaseUrl("http://127.0.0.1:8080/v1");
         definition.setApiKeyEnv("MY_KEY");
+        definition.setStream(true);
+        definition.setRequestsPerMinute(25);
         definition.setReasoningEffort("high");
         definition.setReasoningBudgetTokens(512);
         definition.setDryMultiplier(0.7f);
@@ -147,6 +149,8 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getRemoteModel(), is(equalTo("openai/gpt-6-luna")));
         assertThat(config.getBaseUrl(), is(equalTo("http://127.0.0.1:8080/v1")));
         assertThat(config.getApiKeyEnv(), is(equalTo("MY_KEY")));
+        assertThat(config.isStream(), is(true));
+        assertThat(config.getRequestsPerMinute(), is(25));
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(512)));
@@ -201,6 +205,8 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getRemoteModel(), is(equalTo(AiGenerationConfig.DEFAULT_REMOTE_MODEL)));
         assertThat(config.getBaseUrl(), is(equalTo(AiGenerationConfig.DEFAULT_BASE_URL)));
         assertThat(config.getApiKeyEnv(), is(equalTo(AiGenerationConfig.DEFAULT_API_KEY_ENV)));
+        assertThat(config.isStream(), is(AiGenerationConfig.DEFAULT_STREAM));
+        assertThat(config.getRequestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));
         assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
         assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));

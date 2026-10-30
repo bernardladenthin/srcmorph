@@ -5,6 +5,18 @@
   "reader": "mistralai/mistral-small-3.2-24b-instruct"
  },
  "runs": {
+  "claude-haiku-5.5": {
+   "bm25": {
+    "hit1": 0.791,
+    "hit3": 1.0,
+    "mrr": 0.888
+   },
+   "reader": {
+    "hit1": 0.953,
+    "hit3": 1.0,
+    "mrr": 0.973
+   }
+  },
   "deepseek-coder-v2-lite": {
    "bm25": {
     "hit1": 0.767,
@@ -77,6 +89,18 @@
     "mrr": 0.965
    }
   },
+  "gpt-6-luna-copilot": {
+   "bm25": {
+    "hit1": 0.791,
+    "hit3": 0.977,
+    "mrr": 0.878
+   },
+   "reader": {
+    "hit1": 0.884,
+    "hit3": 0.977,
+    "mrr": 0.926
+   }
+  },
   "gpt-oss-20b": {
    "bm25": {
     "hit1": 0.86,
@@ -111,6 +135,30 @@
     "hit1": 0.814,
     "hit3": 0.907,
     "mrr": 0.86
+   }
+  },
+  "grok-4.7": {
+   "bm25": {
+    "hit1": 0.814,
+    "hit3": 0.953,
+    "mrr": 0.891
+   },
+   "reader": {
+    "hit1": 0.767,
+    "hit3": 0.93,
+    "mrr": 0.849
+   }
+  },
+  "mai-code-1.1-flash": {
+   "bm25": {
+    "hit1": 0.814,
+    "hit3": 0.93,
+    "mrr": 0.884
+   },
+   "reader": {
+    "hit1": 0.907,
+    "hit3": 0.953,
+    "mrr": 0.926
    }
   },
   "nemotron-3.5-lightning": {

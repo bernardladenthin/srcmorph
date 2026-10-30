@@ -412,6 +412,8 @@ model); everything else has a default. The defaults below are the shipped values
 | `remoteModel` | *(empty)* | `openai-compatible` only: the model id requested (the `model` field, e.g. `openai/gpt-6-luna` on OpenRouter); empty sends none, which a single-model `llama-server` or `NativeServer` accepts |
 | `baseUrl` | `https://openrouter.ai/api/v1` | `openai-compatible` only: the API base; `<baseUrl>/chat/completions` is called. A local server is `http://127.0.0.1:<port>/v1`. Must be `http(s)`, checked before the run starts |
 | `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default), or a variable that is unset or empty, sends no key: a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
+| `stream` | `false` | `openai-compatible` only: request the answer as Server-Sent Events (`stream: true`, `stream_options.include_usage: true`) and assemble it into the same chat response, so the summary does not change. A stream without the closing `data: [DONE]` or with an `error` chunk fails the file. Required for the GitHub Copilot API Gateway, whose non-streaming path adds and runs VS Code's own tools (see [docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md)); it also moves the read timeout from the whole answer to the gap between two events |
+| `requestsPerMinute` | `0` | `openai-compatible` only: at most this many requests to the model's server start within any minute; a request beyond it waits until the oldest of the last minute is a minute old, instead of being answered with `429` (nothing is retried). Every model of one server with the same `apiKeyEnv` and limit counts in one window, across the phases of a run in one process. Set it below the server's own limit, e.g. 25 for the Copilot API Gateway's `rateLimitPerMinute` 30. `0` or less: no limit |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
 | `threads` | `4` (fewer on a machine with fewer cores) | CPU threads for inference. Never set more than the machine has cores: ggml's threads wait on each other, and an oversubscribed run is orders of magnitude slower |
@@ -457,7 +459,9 @@ local provider and only the portable sampling knobs: `maxOutputTokens`, `tempera
 `topK` and `minP` (when positive), `repeatPenalty`, `seed` (when set), `stopStrings` and
 `reasoningEffort`. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
 caching) are ignored. A non-2xx answer fails the file with the status and the server's error text;
-nothing is retried.
+nothing is retried. With `stream` set, the answer arrives as Server-Sent Events and is assembled
+before it is parsed. For the models of a GitHub Copilot subscription through a local gateway, see
+[docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md).
 
 ```xml
 <aiDefinition>

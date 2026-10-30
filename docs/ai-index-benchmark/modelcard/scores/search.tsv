@@ -1,4 +1,90 @@
 run	retriever	question	rank	ranked
+claude-haiku-5.5	bm25	cond-eval	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py other/kernels/histogram.cl
+claude-haiku-5.5	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py java/config/SrcMorphConfiguration.java
+claude-haiku-5.5	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	facts	1	java/config/AiFactExtractor.java java/provider/OpenAiCompatibleProviderSupport.java sql/library/05_seed_data.sql
+claude-haiku-5.5	bm25	oversize-options	1	java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java
+claude-haiku-5.5	bm25	oversize-parse	1	java/config/AiOversizeStrategy.java other/scripts/sales_report.py java/provider/LlamaCppJniAiGenerationProvider.java
+claude-haiku-5.5	bm25	input-trim	2	other/kernels/histogram.cl java/config/AiGenerationConfig.java other/scripts/sales_report.py
+claude-haiku-5.5	bm25	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+claude-haiku-5.5	bm25	run-config	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	plan-only	3	java/provider/AiGenerationProviderFactory.java sql/library/05_seed_data.sql java/config/SrcMorphConfiguration.java
+claude-haiku-5.5	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniAiGenerationProvider.java
+claude-haiku-5.5	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/AiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+claude-haiku-5.5	bm25	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+claude-haiku-5.5	bm25	moe-cpu	2	java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiOversizeStrategy.java
+claude-haiku-5.5	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java
+claude-haiku-5.5	bm25	reasoning	2	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	request-body	2	java/config/AiGenerationConfig.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java other/kernels/histogram.cl java/provider/AiGenerationProvider.java
+claude-haiku-5.5	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiOversizeStrategy.java java/provider/AiCompletionParser.java
+claude-haiku-5.5	bm25	copies-check	3	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/01_schema.sql
+claude-haiku-5.5	bm25	open-loans-index	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/05_seed_data.sql
+claude-haiku-5.5	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	bm25	popular	2	sql/library/05_seed_data.sql sql/library/02_views.sql sql/library/01_schema.sql
+claude-haiku-5.5	bm25	late-fee	1	sql/library/03_routines.sql sql/library/05_seed_data.sql sql/library/02_views.sql
+claude-haiku-5.5	bm25	blocked	2	sql/library/05_seed_data.sql sql/library/03_routines.sql sql/library/01_schema.sql
+claude-haiku-5.5	bm25	audit	1	sql/library/03_routines.sql other/ringbuf/ringbuf.h java/provider/AiCompletionParser.java
+claude-haiku-5.5	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/03_routines.sql
+claude-haiku-5.5	bm25	rename-joined	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/02_views.sql
+claude-haiku-5.5	bm25	seed-counts	1	sql/library/05_seed_data.sql sql/library/01_schema.sql sql/library/02_views.sql
+claude-haiku-5.5	bm25	shop-reserve	1	sql/shop/orders_mysql.sql sql/library/04_migration_v2.sql sql/warehouse/stock_sync_tsql.sql
+claude-haiku-5.5	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/library/03_routines.sql sql/shop/orders_mysql.sql
+claude-haiku-5.5	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql java/provider/AiGenerationProvider.java
+claude-haiku-5.5	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java sql/library/05_seed_data.sql
+claude-haiku-5.5	bm25	backup-partial	1	other/scripts/rotate_backups.sh java/provider/AiGenerationProvider.java other/ringbuf/ringbuf.h
+claude-haiku-5.5	bm25	ring-impl	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+claude-haiku-5.5	bm25	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+claude-haiku-5.5	bm25	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+claude-haiku-5.5	bm25	histogram	1	other/kernels/histogram.cl other/ringbuf/ringbuf.h java/provider/LlamaCppJniAiGenerationProvider.java
+claude-haiku-5.5	bm25	revenue	1	other/scripts/sales_report.py sql/library/04_migration_v2.sql sql/shop/orders_mysql.sql
+claude-haiku-5.5	bm25	currency	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql java/config/AiConditionGroup.java
+claude-haiku-5.5	reader	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+claude-haiku-5.5	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiOversizeStrategy.java
+claude-haiku-5.5	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+claude-haiku-5.5	reader	facts	1	java/config/AiFactExtractor.java java/config/AiConditionEvaluator.java java/config/AiOversizeStrategy.java
+claude-haiku-5.5	reader	oversize-options	1	java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java
+claude-haiku-5.5	reader	oversize-parse	1	java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java java/config/AiConditionEvaluator.java
+claude-haiku-5.5	reader	input-trim	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+claude-haiku-5.5	reader	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+claude-haiku-5.5	reader	run-config	1	java/config/SrcMorphConfiguration.java
+claude-haiku-5.5	reader	plan-only	1	java/config/SrcMorphConfiguration.java java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java
+claude-haiku-5.5	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java
+claude-haiku-5.5	reader	thinking-budget	1	java/provider/AiCompletionParser.java java/config/AiOversizeStrategy.java java/provider/AiGenerationProvider.java
+claude-haiku-5.5	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+claude-haiku-5.5	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+claude-haiku-5.5	reader	backend-override	1	java/config/AiGenerationConfig.java java/provider/AiGenerationProviderFactory.java
+claude-haiku-5.5	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+claude-haiku-5.5	reader	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java
+claude-haiku-5.5	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	reader	reasoning	1	java/config/AiGenerationConfig.java
+claude-haiku-5.5	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+claude-haiku-5.5	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+claude-haiku-5.5	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+claude-haiku-5.5	reader	copies-check	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+claude-haiku-5.5	reader	open-loans-index	3	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+claude-haiku-5.5	reader	overdue	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+claude-haiku-5.5	reader	popular	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+claude-haiku-5.5	reader	late-fee	1	sql/library/03_routines.sql sql/library/02_views.sql sql/library/01_schema.sql
+claude-haiku-5.5	reader	blocked	1	sql/library/03_routines.sql sql/library/01_schema.sql sql/library/02_views.sql
+claude-haiku-5.5	reader	audit	1	sql/library/03_routines.sql sql/library/04_migration_v2.sql sql/library/05_seed_data.sql
+claude-haiku-5.5	reader	branches	1	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/02_views.sql
+claude-haiku-5.5	reader	rename-joined	1	sql/library/04_migration_v2.sql
+claude-haiku-5.5	reader	seed-counts	1	sql/library/05_seed_data.sql sql/library/02_views.sql sql/library/01_schema.sql
+claude-haiku-5.5	reader	shop-reserve	1	sql/shop/orders_mysql.sql sql/warehouse/stock_sync_tsql.sql sql/library/03_routines.sql
+claude-haiku-5.5	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql
+claude-haiku-5.5	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql
+claude-haiku-5.5	reader	backup-keep	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+claude-haiku-5.5	reader	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+claude-haiku-5.5	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+claude-haiku-5.5	reader	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+claude-haiku-5.5	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+claude-haiku-5.5	reader	histogram	1	other/kernels/histogram.cl
+claude-haiku-5.5	reader	revenue	1	other/scripts/sales_report.py
+claude-haiku-5.5	reader	currency	1	other/scripts/sales_report.py sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql
 deepseek-coder-v2-lite	bm25	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java other/scripts/sales_report.py
 deepseek-coder-v2-lite	bm25	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java sql/library/04_migration_v2.sql
 deepseek-coder-v2-lite	bm25	cond-group	1	java/config/AiConditionGroup.java java/provider/LlamaCppJniConfig.java java/config/AiConditionEvaluator.java
@@ -515,6 +601,92 @@ gpt-6-luna	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
 gpt-6-luna	reader	histogram	1	other/kernels/histogram.cl other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
 gpt-6-luna	reader	revenue	1	other/scripts/sales_report.py sql/library/02_views.sql sql/warehouse/stock_sync_tsql.sql
 gpt-6-luna	reader	currency	1	other/scripts/sales_report.py sql/library/01_schema.sql sql/library/02_views.sql
+gpt-6-luna-copilot	bm25	cond-eval	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py java/config/SrcMorphConfiguration.java
+gpt-6-luna-copilot	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py sql/library/04_migration_v2.sql
+gpt-6-luna-copilot	bm25	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	bm25	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+gpt-6-luna-copilot	bm25	oversize-options	1	java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java java/config/AiConditionEvaluator.java
+gpt-6-luna-copilot	bm25	oversize-parse	4	other/scripts/sales_report.py java/config/AiConditionEvaluator.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	bm25	input-trim	1	java/config/AiGenerationConfig.java java/provider/OpenAiCompatibleProviderSupport.java java/config/AiOversizeStrategy.java
+gpt-6-luna-copilot	bm25	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna-copilot	bm25	run-config	1	java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	bm25	plan-only	2	java/provider/AiGenerationProviderFactory.java java/config/SrcMorphConfiguration.java sql/warehouse/stock_sync_tsql.sql
+gpt-6-luna-copilot	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/config/AiFactExtractor.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna-copilot	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna-copilot	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna-copilot	bm25	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java other/ringbuf/ringbuf.h
+gpt-6-luna-copilot	bm25	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	bm25	moe-cpu	1	java/provider/LlamaCppJniConfig.java java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-6-luna-copilot	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java other/kernels/histogram.cl
+gpt-6-luna-copilot	bm25	reasoning	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna-copilot	bm25	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-6-luna-copilot	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java sql/library/03_routines.sql java/provider/LlamaCppJniConfig.java
+gpt-6-luna-copilot	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-6-luna-copilot	bm25	copies-check	3	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/01_schema.sql
+gpt-6-luna-copilot	bm25	open-loans-index	2	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+gpt-6-luna-copilot	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	bm25	popular	1	sql/library/02_views.sql sql/library/01_schema.sql other/ringbuf/ringbuf.c
+gpt-6-luna-copilot	bm25	late-fee	1	sql/library/03_routines.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+gpt-6-luna-copilot	bm25	blocked	3	sql/library/02_views.sql sql/library/05_seed_data.sql sql/library/03_routines.sql
+gpt-6-luna-copilot	bm25	audit	1	sql/library/03_routines.sql other/ringbuf/ringbuf.c java/config/AiConditionEvaluator.java
+gpt-6-luna-copilot	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+gpt-6-luna-copilot	bm25	rename-joined	3	sql/library/01_schema.sql sql/library/05_seed_data.sql sql/library/04_migration_v2.sql
+gpt-6-luna-copilot	bm25	seed-counts	2	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+gpt-6-luna-copilot	bm25	shop-reserve	1	sql/shop/orders_mysql.sql other/ringbuf/ringbuf.c sql/warehouse/stock_sync_tsql.sql
+gpt-6-luna-copilot	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql sql/library/03_routines.sql
+gpt-6-luna-copilot	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql java/config/AiConditionEvaluator.java
+gpt-6-luna-copilot	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java sql/library/05_seed_data.sql
+gpt-6-luna-copilot	bm25	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c java/config/AiConditionEvaluator.java
+gpt-6-luna-copilot	bm25	ring-impl	1	other/ringbuf/ringbuf.h java/config/AiConditionEvaluator.java other/kernels/histogram.cl
+gpt-6-luna-copilot	bm25	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h other/kernels/histogram.cl
+gpt-6-luna-copilot	bm25	ring-errors	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h other/kernels/histogram.cl
+gpt-6-luna-copilot	bm25	histogram	1	other/kernels/histogram.cl java/config/AiConditionEvaluator.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-6-luna-copilot	bm25	revenue	1	other/scripts/sales_report.py other/kernels/histogram.cl sql/shop/orders_mysql.sql
+gpt-6-luna-copilot	bm25	currency	1	other/scripts/sales_report.py other/kernels/histogram.cl other/ringbuf/ringbuf.h
+gpt-6-luna-copilot	reader	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/SrcMorphConfiguration.java
+gpt-6-luna-copilot	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/SrcMorphConfiguration.java
+gpt-6-luna-copilot	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+gpt-6-luna-copilot	reader	facts	1	java/config/AiFactExtractor.java java/config/AiConditionEvaluator.java java/config/AiOversizeStrategy.java
+gpt-6-luna-copilot	reader	oversize-options	1	java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	reader	oversize-parse	1	java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java java/config/AiConditionEvaluator.java
+gpt-6-luna-copilot	reader	input-trim	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna-copilot	reader	sampling	0	
+gpt-6-luna-copilot	reader	run-config	1	java/config/SrcMorphConfiguration.java
+gpt-6-luna-copilot	reader	plan-only	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java
+gpt-6-luna-copilot	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna-copilot	reader	thinking-budget	3	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java java/provider/AiCompletionParser.java
+gpt-6-luna-copilot	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna-copilot	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna-copilot	reader	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java
+gpt-6-luna-copilot	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	reader	moe-cpu	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+gpt-6-luna-copilot	reader	reasoning	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna-copilot	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna-copilot	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/provider/AiGenerationProviderFactory.java
+gpt-6-luna-copilot	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+gpt-6-luna-copilot	reader	copies-check	1	sql/library/01_schema.sql
+gpt-6-luna-copilot	reader	open-loans-index	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+gpt-6-luna-copilot	reader	overdue	1	sql/library/02_views.sql
+gpt-6-luna-copilot	reader	popular	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+gpt-6-luna-copilot	reader	late-fee	1	sql/library/03_routines.sql sql/library/01_schema.sql sql/library/02_views.sql
+gpt-6-luna-copilot	reader	blocked	2	sql/library/01_schema.sql sql/library/03_routines.sql sql/library/04_migration_v2.sql
+gpt-6-luna-copilot	reader	audit	1	sql/library/03_routines.sql sql/library/01_schema.sql sql/library/02_views.sql
+gpt-6-luna-copilot	reader	branches	1	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/02_views.sql
+gpt-6-luna-copilot	reader	rename-joined	1	sql/library/04_migration_v2.sql
+gpt-6-luna-copilot	reader	seed-counts	1	sql/library/05_seed_data.sql sql/library/01_schema.sql sql/library/02_views.sql
+gpt-6-luna-copilot	reader	shop-reserve	1	sql/shop/orders_mysql.sql sql/warehouse/stock_sync_tsql.sql sql/library/03_routines.sql
+gpt-6-luna-copilot	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql
+gpt-6-luna-copilot	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql
+gpt-6-luna-copilot	reader	backup-keep	1	other/scripts/rotate_backups.sh
+gpt-6-luna-copilot	reader	backup-partial	1	other/scripts/rotate_backups.sh
+gpt-6-luna-copilot	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-6-luna-copilot	reader	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-6-luna-copilot	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+gpt-6-luna-copilot	reader	histogram	1	other/kernels/histogram.cl
+gpt-6-luna-copilot	reader	revenue	1	other/scripts/sales_report.py
+gpt-6-luna-copilot	reader	currency	1	other/scripts/sales_report.py sql/library/01_schema.sql sql/library/02_views.sql
 gpt-oss-20b	bm25	cond-eval	1	java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java java/config/AiConditionGroup.java
 gpt-oss-20b	bm25	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java other/scripts/sales_report.py
 gpt-oss-20b	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiFactExtractor.java java/config/AiConditionEvaluator.java
@@ -773,6 +945,178 @@ granite-4.0-h-tiny	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ri
 granite-4.0-h-tiny	reader	histogram	1	other/kernels/histogram.cl
 granite-4.0-h-tiny	reader	revenue	1	other/scripts/sales_report.py
 granite-4.0-h-tiny	reader	currency	1	other/scripts/sales_report.py java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+grok-4.7	bm25	cond-eval	1	java/config/AiConditionEvaluator.java other/scripts/rotate_backups.sh java/config/AiConditionGroup.java
+grok-4.7	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py java/config/AiOversizeStrategy.java
+grok-4.7	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java other/ringbuf/ringbuf.c
+grok-4.7	bm25	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/provider/OpenAiCompatibleProviderSupport.java
+grok-4.7	bm25	oversize-options	1	java/config/AiOversizeStrategy.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+grok-4.7	bm25	oversize-parse	2	java/config/AiConditionEvaluator.java java/config/AiOversizeStrategy.java java/provider/LlamaCppJniConfig.java
+grok-4.7	bm25	input-trim	3	java/config/AiOversizeStrategy.java other/scripts/sales_report.py java/config/AiGenerationConfig.java
+grok-4.7	bm25	sampling	2	java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+grok-4.7	bm25	run-config	1	java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+grok-4.7	bm25	plan-only	4	java/provider/AiGenerationProviderFactory.java sql/library/05_seed_data.sql java/config/AiOversizeStrategy.java
+grok-4.7	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+grok-4.7	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+grok-4.7	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniAiGenerationProvider.java
+grok-4.7	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java
+grok-4.7	bm25	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java
+grok-4.7	bm25	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+grok-4.7	bm25	moe-cpu	2	java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+grok-4.7	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+grok-4.7	bm25	reasoning	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+grok-4.7	bm25	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+grok-4.7	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java other/kernels/histogram.cl java/provider/LlamaCppJniAiGenerationProvider.java
+grok-4.7	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiCompletionParser.java sql/warehouse/stock_sync_tsql.sql
+grok-4.7	bm25	copies-check	4	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/05_seed_data.sql
+grok-4.7	bm25	open-loans-index	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/05_seed_data.sql
+grok-4.7	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/05_seed_data.sql
+grok-4.7	bm25	popular	1	sql/library/02_views.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+grok-4.7	bm25	late-fee	1	sql/library/03_routines.sql sql/library/05_seed_data.sql sql/library/02_views.sql
+grok-4.7	bm25	blocked	2	sql/library/05_seed_data.sql sql/library/03_routines.sql sql/library/01_schema.sql
+grok-4.7	bm25	audit	1	sql/library/03_routines.sql java/config/SrcMorphConfiguration.java java/provider/AiCompletionParser.java
+grok-4.7	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+grok-4.7	bm25	rename-joined	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+grok-4.7	bm25	seed-counts	1	sql/library/05_seed_data.sql sql/library/01_schema.sql sql/library/02_views.sql
+grok-4.7	bm25	shop-reserve	1	sql/shop/orders_mysql.sql sql/library/01_schema.sql sql/library/04_migration_v2.sql
+grok-4.7	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql java/config/AiConditionGroup.java
+grok-4.7	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql sql/library/01_schema.sql
+grok-4.7	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java sql/library/05_seed_data.sql
+grok-4.7	bm25	backup-partial	1	other/scripts/rotate_backups.sh java/provider/AiCompletionParser.java other/ringbuf/ringbuf.c
+grok-4.7	bm25	ring-impl	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c java/config/AiGenerationConfig.java
+grok-4.7	bm25	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c java/config/AiConditionEvaluator.java
+grok-4.7	bm25	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+grok-4.7	bm25	histogram	1	other/kernels/histogram.cl java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+grok-4.7	bm25	revenue	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql sql/library/04_migration_v2.sql
+grok-4.7	bm25	currency	1	other/scripts/sales_report.py java/config/AiOversizeStrategy.java sql/library/03_routines.sql
+grok-4.7	reader	cond-eval	1	java/config/AiConditionEvaluator.java
+grok-4.7	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+grok-4.7	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+grok-4.7	reader	facts	2	java/config/AiConditionEvaluator.java java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java
+grok-4.7	reader	oversize-options	2	java/config/AiConditionEvaluator.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+grok-4.7	reader	oversize-parse	2	java/config/AiConditionEvaluator.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+grok-4.7	reader	input-trim	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/config/AiFactExtractor.java
+grok-4.7	reader	sampling	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+grok-4.7	reader	run-config	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/config/AiFactExtractor.java
+grok-4.7	reader	plan-only	2	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/config/AiOversizeStrategy.java
+grok-4.7	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+grok-4.7	reader	thinking-budget	2	java/config/AiConditionEvaluator.java java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java
+grok-4.7	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniAiGenerationProvider.java
+grok-4.7	reader	backend-select	2	java/config/AiGenerationConfig.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java
+grok-4.7	reader	backend-override	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+grok-4.7	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+grok-4.7	reader	moe-cpu	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+grok-4.7	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+grok-4.7	reader	reasoning	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+grok-4.7	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+grok-4.7	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java
+grok-4.7	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+grok-4.7	reader	copies-check	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+grok-4.7	reader	open-loans-index	0	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+grok-4.7	reader	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+grok-4.7	reader	popular	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+grok-4.7	reader	late-fee	1	sql/library/03_routines.sql sql/library/04_migration_v2.sql sql/library/05_seed_data.sql
+grok-4.7	reader	blocked	0	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/SrcMorphConfiguration.java
+grok-4.7	reader	audit	0	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/AiCompletionParser.java java/config/AiConditionEvaluator.java
+grok-4.7	reader	branches	1	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/02_views.sql
+grok-4.7	reader	rename-joined	1	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/02_views.sql
+grok-4.7	reader	seed-counts	1	sql/library/05_seed_data.sql sql/library/01_schema.sql sql/library/02_views.sql
+grok-4.7	reader	shop-reserve	1	sql/shop/orders_mysql.sql java/config/AiConditionEvaluator.java
+grok-4.7	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql
+grok-4.7	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql
+grok-4.7	reader	backup-keep	1	other/scripts/rotate_backups.sh
+grok-4.7	reader	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+grok-4.7	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+grok-4.7	reader	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+grok-4.7	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+grok-4.7	reader	histogram	1	other/kernels/histogram.cl java/config/AiConditionEvaluator.java java/config/AiFactExtractor.java
+grok-4.7	reader	revenue	1	other/scripts/sales_report.py
+grok-4.7	reader	currency	1	other/scripts/sales_report.py sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql
+mai-code-1.1-flash	bm25	cond-eval	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py sql/library/03_routines.sql
+mai-code-1.1-flash	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py java/config/AiConditionGroup.java
+mai-code-1.1-flash	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java java/provider/AiCompletionParser.java
+mai-code-1.1-flash	bm25	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java
+mai-code-1.1-flash	bm25	oversize-options	1	java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java
+mai-code-1.1-flash	bm25	oversize-parse	10	other/scripts/sales_report.py java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	bm25	input-trim	5	other/kernels/histogram.cl java/config/AiOversizeStrategy.java java/config/AiFactExtractor.java
+mai-code-1.1-flash	bm25	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	bm25	run-config	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java other/scripts/rotate_backups.sh
+mai-code-1.1-flash	bm25	plan-only	2	java/provider/AiGenerationProviderFactory.java java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java
+mai-code-1.1-flash	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/config/AiFactExtractor.java
+mai-code-1.1-flash	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+mai-code-1.1-flash	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	bm25	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java
+mai-code-1.1-flash	bm25	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+mai-code-1.1-flash	bm25	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java other/kernels/histogram.cl other/scripts/rotate_backups.sh
+mai-code-1.1-flash	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	bm25	reasoning	5	java/provider/AiCompletionParser.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	bm25	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+mai-code-1.1-flash	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java other/kernels/histogram.cl java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	bm25	copies-check	2	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/03_routines.sql
+mai-code-1.1-flash	bm25	open-loans-index	2	sql/library/02_views.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+mai-code-1.1-flash	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql java/config/AiFactExtractor.java
+mai-code-1.1-flash	bm25	popular	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+mai-code-1.1-flash	bm25	late-fee	1	sql/library/03_routines.sql sql/library/02_views.sql sql/library/05_seed_data.sql
+mai-code-1.1-flash	bm25	blocked	2	sql/library/05_seed_data.sql sql/library/03_routines.sql sql/library/01_schema.sql
+mai-code-1.1-flash	bm25	audit	1	sql/library/03_routines.sql sql/warehouse/stock_sync_tsql.sql java/config/AiFactExtractor.java
+mai-code-1.1-flash	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+mai-code-1.1-flash	bm25	rename-joined	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+mai-code-1.1-flash	bm25	seed-counts	1	sql/library/05_seed_data.sql sql/library/01_schema.sql sql/library/02_views.sql
+mai-code-1.1-flash	bm25	shop-reserve	1	sql/shop/orders_mysql.sql sql/warehouse/stock_sync_tsql.sql other/scripts/sales_report.py
+mai-code-1.1-flash	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql sql/library/05_seed_data.sql
+mai-code-1.1-flash	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql java/provider/AiGenerationProvider.java
+mai-code-1.1-flash	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java sql/library/05_seed_data.sql
+mai-code-1.1-flash	bm25	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c java/config/AiConditionEvaluator.java
+mai-code-1.1-flash	bm25	ring-impl	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	bm25	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+mai-code-1.1-flash	bm25	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+mai-code-1.1-flash	bm25	histogram	1	other/kernels/histogram.cl java/provider/LlamaCppJniAiGenerationProvider.java other/ringbuf/ringbuf.h
+mai-code-1.1-flash	bm25	revenue	1	other/scripts/sales_report.py other/kernels/histogram.cl sql/shop/orders_mysql.sql
+mai-code-1.1-flash	bm25	currency	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	reader	cond-eval	1	java/config/AiConditionEvaluator.java
+mai-code-1.1-flash	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+mai-code-1.1-flash	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+mai-code-1.1-flash	reader	facts	1	java/config/AiFactExtractor.java java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+mai-code-1.1-flash	reader	oversize-options	1	java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	reader	oversize-parse	1	java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+mai-code-1.1-flash	reader	input-trim	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java
+mai-code-1.1-flash	reader	sampling	1	java/config/AiGenerationConfig.java
+mai-code-1.1-flash	reader	run-config	1	java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	reader	plan-only	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java
+mai-code-1.1-flash	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+mai-code-1.1-flash	reader	thinking-budget	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+mai-code-1.1-flash	reader	backend-override	1	java/config/AiGenerationConfig.java java/provider/AiGenerationProviderFactory.java
+mai-code-1.1-flash	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java
+mai-code-1.1-flash	reader	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+mai-code-1.1-flash	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+mai-code-1.1-flash	reader	reasoning	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java
+mai-code-1.1-flash	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+mai-code-1.1-flash	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+mai-code-1.1-flash	reader	copies-check	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+mai-code-1.1-flash	reader	open-loans-index	3	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+mai-code-1.1-flash	reader	overdue	1	sql/library/02_views.sql
+mai-code-1.1-flash	reader	popular	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+mai-code-1.1-flash	reader	late-fee	1	sql/library/03_routines.sql sql/library/02_views.sql sql/library/01_schema.sql
+mai-code-1.1-flash	reader	blocked	0	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java
+mai-code-1.1-flash	reader	audit	0	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiConditionEvaluator.java java/provider/AiGenerationProviderFactory.java
+mai-code-1.1-flash	reader	branches	1	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/02_views.sql
+mai-code-1.1-flash	reader	rename-joined	1	sql/library/04_migration_v2.sql
+mai-code-1.1-flash	reader	seed-counts	1	sql/library/05_seed_data.sql sql/library/04_migration_v2.sql sql/library/03_routines.sql
+mai-code-1.1-flash	reader	shop-reserve	1	sql/shop/orders_mysql.sql java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+mai-code-1.1-flash	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql
+mai-code-1.1-flash	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql
+mai-code-1.1-flash	reader	backup-keep	1	other/scripts/rotate_backups.sh
+mai-code-1.1-flash	reader	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+mai-code-1.1-flash	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+mai-code-1.1-flash	reader	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+mai-code-1.1-flash	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+mai-code-1.1-flash	reader	histogram	1	other/kernels/histogram.cl
+mai-code-1.1-flash	reader	revenue	1	other/scripts/sales_report.py other/scripts/rotate_backups.sh sql/library/05_seed_data.sql
+mai-code-1.1-flash	reader	currency	1	other/scripts/sales_report.py sql/library/01_schema.sql sql/library/02_views.sql
 nemotron-3.5-lightning	bm25	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiFactExtractor.java other/scripts/rotate_backups.sh
 nemotron-3.5-lightning	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py java/config/AiConditionGroup.java
 nemotron-3.5-lightning	bm25	cond-group	1	java/config/AiConditionGroup.java other/ringbuf/ringbuf.h java/config/AiConditionEvaluator.java

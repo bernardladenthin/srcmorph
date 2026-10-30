@@ -1,5 +1,5 @@
 {
-  "_comment": "One entry per benchmarked model. 'backend' picks the provider: openrouter / huggingface (openai-compatible) or local (llamacpp-jni, GGUF under modelDir). 'settings' are copied verbatim into the srcMorph aiDefinition; the common settings below apply first. 'origin' marks the June 2026 benchmark models.",
+  "_comment": "One entry per benchmarked model. 'backend' picks the provider: openrouter / huggingface / copilot (openai-compatible; copilot is the local Copilot API Gateway, streamed) or local (llamacpp-jni, GGUF under modelDir). 'settings' are copied verbatim into the srcMorph aiDefinition; the common settings below apply first. 'origin' marks the June 2026 benchmark models.",
   "common": {
     "maxOutputTokens": 4096,
     "temperature": 0.2
@@ -17,6 +17,13 @@
       "baseUrl": "https://router.huggingface.co/v1",
       "apiKeyEnv": "HF_TOKEN",
       "contextSize": 32768
+    },
+    "copilot": {
+      "provider": "openai-compatible",
+      "baseUrl": "http://127.0.0.1:3030/v1",
+      "apiKeyEnv": "COPILOT_GATEWAY_API_KEY",
+      "contextSize": 120000,
+      "stream": true
     },
     "local": {
       "provider": "llamacpp-jni",
@@ -39,6 +46,10 @@
     {"key": "gpt-oss-20b", "name": "gpt-oss-20b", "backend": "openrouter", "origin": "2026-06", "settings": {"remoteModel": "openai/gpt-oss-20b"}},
     {"key": "qwen3-4b-2507", "name": "Qwen3-4B-Instruct-2507", "backend": "huggingface", "origin": "2026-06", "settings": {"remoteModel": "Qwen/Qwen3-4B-Instruct-2507:nscale"}},
     {"key": "qwen2.5-coder-7b", "name": "Qwen2.5-Coder-7B-Instruct", "backend": "huggingface", "origin": "2026-06", "settings": {"remoteModel": "Qwen/Qwen2.5-Coder-7B-Instruct:nscale"}},
+    {"key": "mai-code-1.1-flash","name": "MAI-Code-1.1-Flash", "backend": "copilot", "note": "GitHub Copilot through the Copilot API Gateway VS Code extension (docs/copilot-api-gateway.md); max_input_tokens 127790, so the window stays below it", "settings": {"remoteModel": "mai-code-1.1-flash"}},
+    {"key": "claude-haiku-5.5", "name": "Claude Haiku 5.5", "backend": "copilot", "settings": {"remoteModel": "claude-haiku-5.5"}},
+    {"key": "gpt-6-luna-copilot", "name": "GPT-6 Luna (Copilot)", "backend": "copilot", "note": "the same model as gpt-6-luna, through GitHub Copilot instead of OpenRouter: shows what the route changes", "settings": {"remoteModel": "gpt-6-luna"}},
+    {"key": "grok-4.7", "name": "Grok 4.7", "backend": "copilot", "note": "through GitHub Copilot: on OpenRouter (x-ai/grok-4.7, reasoning mandatory) xAI refused the run after 8 files with 403 'This service is not available in your region'", "settings": {"remoteModel": "grok-4.7"}},
     {"key": "gemma-4-12b", "name": "Gemma 4 12B it (Q4_K_M, thinking off)", "backend": "local", "note": "llama.cpp renders Gemma 4 with thinking on unless told otherwise; with it on, every Java file of gemma-4-12b spent the whole 4096-token budget reasoning", "settings": {"modelPath": "gemma-4-12B-it-Q4_K_M.gguf", "chatTemplateEnableThinking": false}},
     {"key": "gemma-4-e4b", "name": "Gemma 4 E4B it (Q4_K_M, thinking off)", "backend": "local", "note": "llama.cpp renders Gemma 4 with thinking on unless told otherwise; with it on, every Java file of gemma-4-12b spent the whole 4096-token budget reasoning", "settings": {"modelPath": "gemma-4-E4B-it-Q4_K_M.gguf", "chatTemplateEnableThinking": false}},
     {"key": "qwen3.5-4b", "name": "Qwen3.5-4B (Q4_K_M, thinking off)", "backend": "local", "origin": "2026-06", "settings": {"modelPath": "Qwen3.5-4B-Q4_K_M.gguf", "chatTemplateEnableThinking": false}},

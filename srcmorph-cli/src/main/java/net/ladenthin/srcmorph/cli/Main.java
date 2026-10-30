@@ -22,6 +22,7 @@ import net.ladenthin.srcmorph.engine.AggregateProjectEngine;
 import net.ladenthin.srcmorph.engine.CalibrateEngine;
 import net.ladenthin.srcmorph.engine.CalibrationReport;
 import net.ladenthin.srcmorph.engine.GenerateEngine;
+import net.ladenthin.srcmorph.engine.ListModelsEngine;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -244,6 +245,14 @@ public class Main {
                     // snippet meant for the user to copy into their POM's <aiDefinition>, not a log
                     // line, so it must not carry a logger's timestamp/level prefix.
                     System.out.println(report.renderXml()); // NOPMD - intentional stdout, see above
+                    break;
+                }
+                case ListModels: {
+                    // stdout for the same reason as Calibrate: a paste-ready aiDefinitions block.
+                    System.out.print( // NOPMD - intentional stdout, see Calibrate
+                            new ListModelsEngine(configuration.srcMorph, configuration.modelFilter)
+                                    .execute()
+                                    .render());
                     break;
                 }
                 default:

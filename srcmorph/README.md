@@ -55,6 +55,7 @@ Maven plugin's mojos, the CLI's `Main`) translate these into whatever their own 
 | `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory. | `int` — package index files written or refreshed |
 | `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); when `fieldGenerations` has at least one entry, its **first** entry is used for one extra AI call that writes a short `#### Overview` paragraph. | `int` — `1` if written/refreshed, `0` otherwise |
 | `CalibrateEngine` | Loads each distinct model a `GenerateEngine` run would load, measures its prefill/decode throughput via a couple of representative generations, and returns a paste-ready report. | `CalibrationReport` (`measurements()`, `renderXml()` — a paste-ready `<calibration>` XML block per model) |
+| `ListModelsEngine` | Asks each OpenAI-compatible server the `aiDefinitions` name for its models (`GET <baseUrl>/models`), optionally filtered by id. | `ModelListReport` (`listings()`, `render()` — a model table as YAML comments and an `aiDefinitions` block with one entry per model) |
 
 **A design nuance worth knowing if you drive more than one engine off the same
 `SrcMorphConfiguration`** (as the CLI's `All`/`Calibrate` commands do): `GenerateEngine` *routes* each
@@ -127,7 +128,8 @@ try {
 net.ladenthin.srcmorph/
 ├── config/     mutable JavaBeans; SrcMorphConfiguration is the shared root object
 ├── engine/     GenerateEngine, AggregatePackagesEngine, AggregateProjectEngine, CalibrateEngine,
-│               SrcMorphException, GenerateResult, CalibrationReport, EngineSupport
+│               ListModelsEngine, SrcMorphException, GenerateResult, CalibrationReport,
+│               ModelListReport, EngineSupport
 ├── indexer/    the walk/plan/write orchestration engines delegate to
 ├── document/   the .ai.md model + codecs (AiMdDocument, AiMdHeader, AiMdDocumentCodec, ...)
 ├── prompt/     prompt template lookup + preparation (trimming to a model's context window)

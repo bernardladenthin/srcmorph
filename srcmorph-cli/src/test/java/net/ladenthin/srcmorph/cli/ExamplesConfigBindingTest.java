@@ -19,6 +19,7 @@ import java.util.List;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import org.junit.jupiter.api.DynamicTest;
@@ -107,6 +108,33 @@ public class ExamplesConfigBindingTest {
         assertThat(
                 Main.readString(directory.resolve("pom.xml")),
                 containsString("<mainClass>" + Main.class.getName() + "</mainClass>"));
+    }
+
+    /**
+     * {@code examples/copilot-api-gateway/} is the configuration docs/copilot-api-gateway.md walks
+     * through: a remote model, so not one of the mock fixtures above, but it must still bind, start
+     * with the safe {@code Plan}, keep the key on a loopback {@code baseUrl} and stream, without which
+     * the gateway adds VS Code's tools to the request and runs them.
+     *
+     * @throws IOException if the example file cannot be read
+     */
+    @Test
+    public void copilotApiGatewayExample_bindsAndStreamsFromLoopback() throws IOException {
+        final CConfiguration configuration = Main.fromYaml(Main.readString(
+                EXAMPLES_DIRECTORY.resolve("copilot-api-gateway").resolve("srcmorph.yaml")));
+
+        assertThat(configuration.command, is(CCommand.Plan));
+        final SrcMorphConfiguration srcMorph = configuration.srcMorph;
+        assertThat(srcMorph.getGenerationProvider(), is(equalTo("openai-compatible")));
+        assertThat(srcMorph.getAiDefinitions().size(), is(1));
+        final AiModelDefinition model = srcMorph.getAiDefinitions().get(0);
+        assertThat(model.getProvider(), is(equalTo("openai-compatible")));
+        assertThat(model.getBaseUrl(), is(equalTo("http://127.0.0.1:3030/v1")));
+        assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
+        assertThat(model.isStream(), is(true));
+        assertThat(model.getRequestsPerMinute(), is(25));
+        assertThat(srcMorph.getFieldGenerations().size(), is(1));
+        assertThat(srcMorph.getFieldGenerations().get(0).isFallback(), is(true));
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {

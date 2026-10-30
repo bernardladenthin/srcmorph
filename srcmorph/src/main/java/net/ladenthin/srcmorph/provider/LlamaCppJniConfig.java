@@ -61,6 +61,8 @@ public final class LlamaCppJniConfig {
     private final String remoteModel;
     private final String baseUrl;
     private final String apiKeyEnv;
+    private final boolean stream;
+    private final int requestsPerMinute;
     private final String reasoningEffort;
     private final int reasoningBudgetTokens;
     private final float dryMultiplier;
@@ -117,6 +119,8 @@ public final class LlamaCppJniConfig {
         this.remoteModel = builder.remoteModel;
         this.baseUrl = builder.baseUrl;
         this.apiKeyEnv = builder.apiKeyEnv;
+        this.stream = builder.stream;
+        this.requestsPerMinute = builder.requestsPerMinute;
         this.reasoningEffort = builder.reasoningEffort;
         this.reasoningBudgetTokens = builder.reasoningBudgetTokens;
         this.dryMultiplier = builder.dryMultiplier;
@@ -443,6 +447,25 @@ public final class LlamaCppJniConfig {
     }
 
     /**
+     * Returns whether the {@code openai-compatible} provider requests a streamed answer.
+     *
+     * @return {@code true} for Server-Sent Events, {@code false} for one JSON answer
+     */
+    public boolean stream() {
+        return stream;
+    }
+
+    /**
+     * Returns how many requests a minute the {@code openai-compatible} provider sends to the server at
+     * most.
+     *
+     * @return the limit; {@code 0} or less for none
+     */
+    public int requestsPerMinute() {
+        return requestsPerMinute;
+    }
+
+    /**
      * Returns the gpt-oss reasoning-effort kwarg value.
      *
      * @return reasoning effort ("low"/"medium"/"high"), or empty to omit the kwarg
@@ -560,6 +583,8 @@ public final class LlamaCppJniConfig {
         private String remoteModel = AiGenerationConfig.DEFAULT_REMOTE_MODEL;
         private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
         private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
+        private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
+        private int requestsPerMinute = AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE;
         private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
         private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
         private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -923,6 +948,30 @@ public final class LlamaCppJniConfig {
          */
         public Builder apiKeyEnv(final String apiKeyEnv) {
             this.apiKeyEnv = apiKeyEnv != null ? apiKeyEnv : AiGenerationConfig.DEFAULT_API_KEY_ENV;
+            return this;
+        }
+
+        /**
+         * Sets whether the {@code openai-compatible} provider requests a streamed answer; see
+         * {@link AiGenerationConfig#DEFAULT_STREAM}.
+         *
+         * @param stream {@code true} for Server-Sent Events, {@code false} for one JSON answer
+         * @return this builder
+         */
+        public Builder stream(final boolean stream) {
+            this.stream = stream;
+            return this;
+        }
+
+        /**
+         * Sets how many requests a minute the {@code openai-compatible} provider sends to the server at
+         * most; see {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}.
+         *
+         * @param requestsPerMinute the limit; {@code 0} or less for none
+         * @return this builder
+         */
+        public Builder requestsPerMinute(final int requestsPerMinute) {
+            this.requestsPerMinute = requestsPerMinute;
             return this;
         }
 
