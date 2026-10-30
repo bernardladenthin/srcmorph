@@ -144,10 +144,15 @@ same C header (`ringbuf.h` of the benchmark corpus, 13 identifiers):
 
 One file shows that a model works, not which one is best. For that, run the model-card benchmark
 ([ai-index-benchmark/MODEL-CARD.md](ai-index-benchmark/MODEL-CARD.md)) on the models you consider.
-`mai-code-1.1-flash` (MAI-Code-1.1-Flash, `max_input_tokens` 127,790) ran it through this gateway on
-2026-10-30: all 37 summaries of the three phases, 11.2 s per file, quality score 93 % (SQL and the
-other files at the top, Java recall 75 %: it groups the accessors of large bean classes instead of
-naming them).
+Four models ran it through this gateway on 2026-10-30, all 37 summaries of the three phases each:
+
+| `remoteModel` | Quality score | Seconds per file | Note |
+|---|---:|---:|---|
+| `claude-haiku-5.5` | 98.2 % | 6.8 | third-best of all 24 runs |
+| `gpt-6-luna` | 97.6 % | 7.9 | 99.0 % on OpenRouter, within that model's run-to-run spread |
+| `mai-code-1.1-flash` | 93.0 % | 11.2 | Java recall 75 %: groups the accessors of large bean classes |
+| `grok-4.7` | 76.4 % | 19.1 | full recall, but its reasoning summary arrives as a sentence before the lead |
+
 Rules of thumb:
 
 - **`gpt-4o-mini`** takes only about 12k input tokens: fine for small files, too small for long

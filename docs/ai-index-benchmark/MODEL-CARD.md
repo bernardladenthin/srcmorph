@@ -21,7 +21,7 @@ parts. In the two scatter charts, a line joins the models that no other model be
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="modelcard/charts/quality-vs-speed-dark.svg">
-  <img alt="Scatter chart of quality score against seconds per source file for all 21 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
+  <img alt="Scatter chart of quality score against seconds per source file for all 24 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, Claude Haiku 5.5 through GitHub Copilot, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
 </picture>
 
 <picture>
@@ -50,6 +50,7 @@ cost are from the card's run, as in the charts.
 | Hosted, fastest | **Qwen3.5-35B-A3B, reasoning off** | 95.1 % | 94.8–95.4 | 5.2 | 0.20 |
 | Local, 8 GB GPU | **Gemma 4 E4B, thinking off** | 93.0 % | 92.8–93.2 | 11.1 | – |
 | Local, when time does not matter | **Granite 4.0 H-Small** | 94 % | one run | 58.9 | – |
+| With a GitHub Copilot plan | **Claude Haiku 5.5** | 98.2 % | one run | 6.8 | Copilot plan |
 
 - **Qwen3.8-27B with reasoning off** is the best in every one of its three runs and the steadiest
   of the hosted models, but in the search measurement it is the weakest of the top group (84 to
@@ -84,19 +85,32 @@ cost are from the card's run, as in the charts.
   - **Qwen3-4B-Instruct-2507** gets all four seed counts, but Java recall is only 74 %.
 
   Neither comes close to gpt-oss-20b, which costs about one cent.
-- **GitHub Copilot through the [Copilot API Gateway](../copilot-api-gateway.md): MAI-Code-1.1-Flash**
-  (93.0 %, one run, 11.2 s per file) costs nothing beyond a Copilot plan. It ran streamed
-  (`stream: true`) through the gateway's VS Code extension; the gateway's limit of 10 requests a
-  minute did not slow it (about 5 a minute).
-  - SQL recall (98 %), all four seed counts, a clean format and the best other-file recall of all
-    runs (98 %) are top-group.
-  - Java recall (75 %) is not: it describes the 88 getters and setters of `AiGenerationConfig.java`
-    and the 37 accessors of `SrcMorphConfiguration.java` as groups and names 2 and 3 of them
-    (`LlamaCppJniConfig.java`: 8 of 44), as Luna did in one repeat run. The other nine Java files
-    have full recall.
-  - It writes the longest index of all runs (83 KB for the 24 file summaries; its other-file
-    summaries are 1.75 times as long as their sources) and searches below the top group (91 %
-    first, see [Search](#search-do-the-summaries-lead-to-the-right-file)).
+- **GitHub Copilot through the [Copilot API Gateway](../copilot-api-gateway.md)**: four runs, each
+  costing nothing beyond a Copilot plan. They ran streamed (`stream: true`) through the gateway's
+  VS Code extension with its limit at 30 requests a minute; at 10, Haiku and Luna (12 to 15 a
+  minute) were stopped by `429` after a few files.
+  - **Claude Haiku 5.5** (98.2 %, 6.8 s per file) is the third-best run of the card and on the
+    hosted front: full SQL and other-file recall, all four seed counts, a clean format, Java recall
+    93 %. In the search measurement it is in the top group (95 % first).
+  - **GPT-6 Luna through Copilot** (97.6 %, 7.9 s per file) against the same model on OpenRouter
+    (99.0 %, 6.9 s): within the 93.6 to 99.0 % Luna's three OpenRouter runs spread over, so the
+    route changes nothing measurable.
+  - **MAI-Code-1.1-Flash** (93.0 %, 11.2 s per file): SQL recall (98 %), all four seed counts, a
+    clean format and other-file recall (98 %) are top-group. Java recall (75 %) is not: it
+    describes the 88 getters and setters of `AiGenerationConfig.java` and the 37 accessors of
+    `SrcMorphConfiguration.java` as groups and names 2 and 3 of them (`LlamaCppJniConfig.java`: 8 of
+    44), as Luna did in one repeat run. The other nine Java files have full recall. It writes a long
+    index (83 KB for the 24 file summaries; its other-file summaries are 1.75 times as long as
+    their sources) and searches below the top group (91 % first, see
+    [Search](#search-do-the-summaries-lead-to-the-right-file)).
+  - **Grok 4.7** (76.4 %, 19.1 s per file) has full recall on every kind and all four seed counts,
+    but 35 of its 37 `.ai.md` start with a sentence about the task before the `>` lead ("The user
+    wants me to index the provided SQL file.", "Synthesizing a package summary from the provided
+    per-file summaries."), sometimes on the lead's own line. That is its reasoning summary arriving
+    as answer text through this route; it costs the format share almost entirely. Its index is the
+    longest of all runs (111 KB), and it searches worst of all runs (77 % first). On
+    OpenRouter (`x-ai/grok-4.7`, reasoning mandatory) xAI refused the run after 8 files with
+    `403 This service is not available in your region`.
 - **Avoid for this task:**
   - **Granite 4.0 H-Tiny** starts 7 summaries with "Here is the markdown summary …", wraps 13 in a
     ```` ```markdown ```` fence (34 fence lines), writes 129 `#`–`###` headings, and calls the
@@ -146,7 +160,7 @@ cost are from the card's run, as in the charts.
    provider the cut-off warning is logged under the `LlamaCppJniProviderSupport` logger, which points
    at the wrong backend. Both are in [`TODO.md`](../../TODO.md).
 4. **Format discipline depends on the model, not on the prompt.** All prompts are the v1 prompts, and
-   14 of 21 runs follow them without a slip. The June code-fence regression of DeepSeek and
+   16 of 24 runs follow them without a slip. The June code-fence regression of DeepSeek and
    Seed-Coder came with prompt v2 and does not show up with v1. Granite H-Tiny, which was clean in
    June, is not clean here.
 
@@ -203,7 +217,7 @@ summaries of each run two ways:
 Two baselines go through the same retrievers: the paths alone, and the source files themselves.
 hit@1 counts a question as found when an answer file comes first, hit@3 when it is among the first
 three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's 22 contexts,
-0.81 USD for the repeat runs and 0.09 USD for MAI-Code-1.1-Flash, which was added later. Results are in
+0.81 USD for the repeat runs, and 0.28 USD for the four Copilot runs, which were added later. Results are in
 [`modelcard/scores/search.json`](modelcard/scores/search.json), and per question in
 [`search.tsv`](modelcard/scores/search.tsv); those of the repeat runs next to their outputs.
 
@@ -214,6 +228,7 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
 | Granite 4.0 H-Small | 95 % | 100 % | 0.98 | 81 % | 93 % |
 | Qwen3-4B-Instruct-2507 | 95 % | 100 % | 0.98 | 81 % | 98 % |
 | Gemma 4 12B, thinking off | 95 % | 100 % | 0.97 | 86 % | 93 % |
+| Claude Haiku 5.5 (Copilot) | 95 % | 100 % | 0.97 | 79 % | 100 % |
 | Qwen3.5-4B, thinking off | 95 % | 100 % | 0.97 | 84 % | 100 % |
 | Gemma 4 31B | 93 % | 100 % | 0.96 | 86 % | 95 % |
 | Gemma 4 E4B, thinking off | 93 % | 100 % | 0.96 | 81 % | 100 % |
@@ -227,21 +242,23 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
 | Qwen3-Coder-30B-A3B | 91 % | 98 % | 0.94 | 84 % | 95 % |
 | Seed-Coder-8B | 91 % | 95 % | 0.93 | 77 % | 93 % |
 | MAI-Code-1.1-Flash | 91 % | 95 % | 0.93 | 81 % | 93 % |
+| GPT-6 Luna (Copilot) | 88 % | 98 % | 0.93 | 79 % | 98 % |
 | Qwen3.8-27B, reasoning off | 86 % | 98 % | 0.92 | 84 % | 98 % |
 | Granite 4.0 H-Tiny | 81 % | 91 % | 0.86 | 74 % | 88 % |
+| Grok 4.7 (Copilot) | 77 % | 93 % | 0.85 | 81 % | 95 % |
 | Qwen3.5-35B-A3B | 79 % | 88 % | 0.83 | 67 % | 74 % |
 | *Baseline: paths only* | 74 % | 91 % | 0.82 | – | – |
 | *Baseline: source files* | 72 % | 79 % | 0.76 | 84 % | 98 % |
 
-- **The summaries help a model find the right file.** With any of 19 of the 21 runs the reader
+- **The summaries help a model find the right file.** With any of 21 of the 24 runs the reader
   finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
   source (about 65 000 tokens instead of about 16 000) only 72 %.
 - **Keyword search gains nothing from them.** BM25 over the summaries (67 to 86 % first) is not
   better than BM25 over the source (84 %): the source contains the same words and more.
-- **What hurts search is a missing or broken summary, not a missing name.** The two runs that fall
-  behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries) and Granite H-Tiny (its
-  format slips). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
-- **Among the other 19 runs the order is noise.** The reader misreads one to three questions per
+- **What hurts search is a missing or broken summary, not a missing name.** The three runs that fall
+  behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries), Granite H-Tiny (its
+  format slips) and Grok 4.7 (a sentence about the task before almost every lead). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
+- **Among the other 21 runs the order is noise.** The reader misreads one to three questions per
   run even when the summary is clear. For example, with Qwen3.8-27B's summaries (reasoning off) it
   ranks `AiConditionEvaluator.java` first for "Where is every checkout and return written to an
   audit trail?", which is answered by `03_routines.sql`. Over the repeat runs, the six hosted
@@ -321,6 +338,9 @@ Ordered by what would change a decision:
 | Qwen3-4B-Instruct-2507 ¹ | HF / nscale | 37 | 6.5 | 12.3 | see text | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | HF / nscale | 37 | 2.4 | 3.9 | see text | 0 |
 | MAI-Code-1.1-Flash | Copilot API Gateway | 37 | 6.3 | 11.2 | Copilot plan | 0 |
+| Claude Haiku 5.5 | Copilot API Gateway | 37 | 4.0 | 6.8 | Copilot plan | 0 |
+| GPT-6 Luna (Copilot) | Copilot API Gateway | 37 | 4.0 | 7.9 | Copilot plan | 0 |
+| Grok 4.7 | Copilot API Gateway | 37 | 10.6 | 19.1 | Copilot plan | 0 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 95.2 | 172.3 | 0 (local) | 0 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 6.3 | 11.1 | 0 (local) | 0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | local GGUF (RTX 3070) | 37 | 6.1 | 9.6 | 0 (local) | 0 |
@@ -347,6 +367,9 @@ Ordered by what would change a decision:
 | Qwen3-4B-Instruct-2507 ¹ | 4.72 | 74% | 4.49 | 84% | 4/4 | 0.91 | 79% | 1.0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 4.23 | 86% | 5.57 | 87% | 0/4 | 0.99 | 62% | 0.8 |
 | MAI-Code-1.1-Flash | 4.06 | 75% | 2.58 | 98% | 4/4 | 0.57 | 98% | 1.2 |
+| Claude Haiku 5.5 | 3.76 | 93% | 3.76 | 100% | 4/4 | 0.61 | 100% | 1.7 |
+| GPT-6 Luna (Copilot) | 5.09 | 96% | 5.20 | 98% | 4/4 | 0.94 | 96% | 0.7 |
+| Grok 4.7 | 2.18 | 100% | 3.06 | 100% | 4/4 | 0.64 | 100% | 0.8 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | 4.22 | 88% | 5.72 | 95% | 4/4 | 0.90 | 85% | 0.2 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | 4.08 | 100% | 5.36 | 94% | 0/4 | 0.91 | 78% | 0.0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | 4.32 | 92% | 4.42 | 95% | 4/4 | 0.91 | 68% | 1.1 |
@@ -373,6 +396,9 @@ Ordered by what would change a decision:
 | Qwen3-4B-Instruct-2507 ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 0 | 6 | 0 | 0 | 0 |
 | MAI-Code-1.1-Flash | 0 | 0 | 0 | 0 | 0 |
+| Claude Haiku 5.5 | 0 | 0 | 0 | 0 | 0 |
+| GPT-6 Luna (Copilot) | 0 | 0 | 0 | 0 | 0 |
+| Grok 4.7 | 35 | 0 | 0 | 0 | 0 |
 | Gemma 4 12B it (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | Gemma 4 E4B it (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | Qwen3.5-4B (Q4_K_M, thinking off) ¹ | 0 | 0 | 0 | 0 | 0 |
@@ -471,9 +497,12 @@ measurement.
 - **The SQL and other fixtures are small** (1–3 KB, the seed data aside). Compaction on files that
   small mostly measures how much a model writes regardless of input; the Java files (up to 51 KB)
   say more about compaction.
-- **MAI-Code-1.1-Flash ran through GitHub Copilot**, not OpenRouter or Hugging Face's router (it is
-  on neither; Microsoft serves it on Azure AI Foundry and GitHub Copilot). The gateway extension
-  sits between srcmorph and Copilot, so its time includes VS Code's language-model API.
+- **Four runs went through GitHub Copilot**, not OpenRouter: MAI-Code-1.1-Flash is on neither
+  OpenRouter nor Hugging Face's router (Microsoft serves it on Azure AI Foundry and GitHub
+  Copilot), Grok 4.7 was refused on OpenRouter (see Recommendations), and Claude Haiku 5.5 and GPT-6
+  Luna show what the route does. The gateway extension sits between srcmorph and Copilot, so the
+  times include VS Code's language-model API, and the answers are what that API passes on (Grok's
+  reasoning summary included).
 
 ### Earlier SQL measurements
 

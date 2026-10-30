@@ -1,4 +1,41 @@
 model	file	kind	missing	srcBytes	bodyBytes	idsExpected	idsFound	ticked	invented	numbersExpected	numbersStated	lead	badHeadings	fences	leaks	inventedNames
+claude-haiku-5.5	java/config/AiConditionEvaluator.java	java	False	9800	3214	4	4	98	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/config/AiConditionGroup.java	java	False	1750	2133	2	2	64	2	0	0	True	0	0	0	extends implements
+claude-haiku-5.5	java/config/AiFactExtractor.java	java	False	4856	2930	3	3	83	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/config/AiGenerationConfig.java	java	False	51188	5117	88	19	183	6	0	0	True	0	0	0	extends getX implements setX synchronized volatile
+claude-haiku-5.5	java/config/AiOversizeStrategy.java	java	False	3315	2234	3	3	53	1	0	0	True	0	0	0	extends
+claude-haiku-5.5	java/config/SrcMorphConfiguration.java	java	False	17710	6329	37	37	157	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/provider/AiCompletionParser.java	java	False	4337	1931	2	2	21	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/provider/AiGenerationProvider.java	java	False	1725	1998	1	1	48	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/provider/AiGenerationProviderFactory.java	java	False	3673	2834	2	2	89	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	3898	4	4	166	6	0	0	True	0	0	0	NullPointerException cacheN predictedN predictedPerSecond promptN promptPerSecond
+claude-haiku-5.5	java/provider/LlamaCppJniConfig.java	java	False	36703	4135	44	44	176	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	5698	0	0	208	3	0	0	True	0	0	0	NullPointerException extends implements
+claude-haiku-5.5	other/kernels/histogram.cl	other	False	1653	2845	9	9	113	2	0	0	True	0	0	0	numGroups
+claude-haiku-5.5	other/ringbuf/ringbuf.c	other	False	1794	3080	12	12	115	1	0	0	True	0	0	0	stdint
+claude-haiku-5.5	other/ringbuf/ringbuf.h	other	False	1292	2621	14	14	106	0	0	0	True	0	0	0	
+claude-haiku-5.5	other/scripts/rotate_backups.sh	other	False	1202	2544	5	5	76	5	0	0	True	0	0	0	UTC YYYYMMDDTHHMMSSZ parent size timestamp
+claude-haiku-5.5	other/scripts/sales_report.py	other	False	2290	2368	9	9	94	7	0	0	True	0	0	0	CURRENCY Iterator OSError TAB YYYY tuple
+claude-haiku-5.5	sql/library/01_schema.sql	sql	False	1622	2413	19	19	98	4	0	0	True	0	0	0	author_author_id_seq book_book_id_seq loan_loan_id_seq member_member_id_seq
+claude-haiku-5.5	sql/library/02_views.sql	sql	False	1240	1744	13	13	92	0	0	0	True	0	0	0	
+claude-haiku-5.5	sql/library/03_routines.sql	sql	False	2546	3002	14	14	100	0	0	0	True	0	0	0	
+claude-haiku-5.5	sql/library/04_migration_v2.sql	sql	False	1660	2900	12	12	134	0	0	0	True	0	0	0	
+claude-haiku-5.5	sql/library/05_seed_data.sql	sql	False	54543	1640	4	4	73	1	4	4	True	0	0	0	YYYY
+claude-haiku-5.5	sql/shop/orders_mysql.sql	sql	False	2481	2903	15	15	101	0	0	0	True	0	0	0	
+claude-haiku-5.5	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	3170	14	14	159	0	0	0	True	0	0	0	
+claude-haiku-5.5	java/config/package.ai.md	package	False	0	3761	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+claude-haiku-5.5	java/package.ai.md	package	False	0	5192	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+claude-haiku-5.5	java/provider/package.ai.md	package	False	0	4222	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport ArrayNode
+claude-haiku-5.5	other/kernels/package.ai.md	package	False	0	1685	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE __global __local atomic_inc barrier bin const
+claude-haiku-5.5	other/package.ai.md	package	False	0	4238	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE Decimal DictReader EUR InvalidOperation KEEP OSError
+claude-haiku-5.5	other/ringbuf/package.ai.md	package	False	0	2408	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity data dst extern free
+claude-haiku-5.5	other/scripts/package.ai.md	package	False	0	2810	0	0	0	0	0	0	True	0	0	0	Decimal DictReader EUR InvalidOperation KEEP OSError Order UTC
+claude-haiku-5.5	package.ai.md	package	False	0	4052	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiConditionEvaluator AiFactExtractor AiFileContext AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiOversizeStrategy
+claude-haiku-5.5	sql/library/package.ai.md	package	False	0	3796	0	0	0	0	0	0	True	0	0	0	BEGIN BIGSERIAL CASCADE COALESCE COMMIT COUNT CURRENT_DATE DELETE
+claude-haiku-5.5	sql/package.ai.md	package	False	0	2728	0	0	0	0	0	0	True	0	0	0	BEGIN CATCH COMMIT CURRENT_DATE ERROR_MESSAGE FOR SELECT SIGNAL
+claude-haiku-5.5	sql/shop/package.ai.md	package	False	0	2439	0	0	0	0	0	0	True	0	0	0	DELIMITER FOR SELECT SIGNAL SQLSTATE UPDATE add_order_item customer_order
+claude-haiku-5.5	sql/warehouse/package.ai.md	package	False	0	2247	0	0	0	0	0	0	True	0	0	0	CATCH Changes DATETIME2 DF_StockLevel_OnHand DF_StockLevel_UpdatedAt ERROR_MESSAGE ErrorMessage FeedRowId
+claude-haiku-5.5	project.ai.md	project	False	0	2986	0	0	0	0	0	0	True	0	0	0	add_order_item
 deepseek-coder-v2-lite	java/config/AiConditionEvaluator.java	java	False	9800	2552	4	4	59	0	0	0	True	0	0	0	
 deepseek-coder-v2-lite	java/config/AiConditionGroup.java	java	False	1750	1867	2	2	36	0	0	0	True	0	0	0	
 deepseek-coder-v2-lite	java/config/AiFactExtractor.java	java	False	4856	1536	3	2	18	0	0	0	True	0	0	0	
@@ -221,6 +258,43 @@ gpt-6-luna	sql/package.ai.md	package	False	0	3724	0	0	0	0	0	0	True	0	0	0	CASCADE
 gpt-6-luna	sql/shop/package.ai.md	package	False	0	1914	0	0	0	0	0	0	True	0	0	0	CASCADE DELETE SKU add_order_item customer_order enough not order_id
 gpt-6-luna	sql/warehouse/package.ai.md	package	False	0	1651	0	0	0	0	0	0	True	0	0	0	DATETIME2 ERROR_MESSAGE ReceivedAt SYSUTCDATETIME Since Sku StockLevel SupplierFeed
 gpt-6-luna	project.ai.md	project	False	0	2426	0	0	0	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/config/AiConditionEvaluator.java	java	False	9800	2354	4	4	46	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/config/AiConditionGroup.java	java	False	1750	1090	2	2	29	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/config/AiFactExtractor.java	java	False	4856	1971	3	3	48	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/config/AiGenerationConfig.java	java	False	51188	3275	88	46	114	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/config/AiOversizeStrategy.java	java	False	3315	1300	3	3	30	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/config/SrcMorphConfiguration.java	java	False	17710	5698	37	37	124	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/provider/AiCompletionParser.java	java	False	4337	1356	2	2	17	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/provider/AiGenerationProvider.java	java	False	1725	1070	1	1	22	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/provider/AiGenerationProviderFactory.java	java	False	3673	1712	2	2	33	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	2661	4	4	48	1	0	0	True	0	0	0	NullPointerException
+gpt-6-luna-copilot	java/provider/LlamaCppJniConfig.java	java	False	36703	5554	44	44	192	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	3336	0	0	73	4	0	0	True	0	0	0	constructor extends implements toString
+gpt-6-luna-copilot	other/kernels/histogram.cl	other	False	1653	1332	9	9	29	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	other/ringbuf/ringbuf.c	other	False	1794	2215	12	12	44	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	other/ringbuf/ringbuf.h	other	False	1292	1831	14	13	44	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	other/scripts/rotate_backups.sh	other	False	1202	1671	5	5	32	2	0	0	True	0	0	0	_YYYYMMDDTHHMMSSZ status
+gpt-6-luna-copilot	other/scripts/sales_report.py	other	False	2290	1680	9	8	45	1	0	0	True	0	0	0	YYYY
+gpt-6-luna-copilot	sql/library/01_schema.sql	sql	False	1622	1685	19	17	67	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	sql/library/02_views.sql	sql	False	1240	1581	13	13	69	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	sql/library/03_routines.sql	sql	False	2546	2441	14	14	90	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	sql/library/04_migration_v2.sql	sql	False	1660	1790	12	12	76	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	sql/library/05_seed_data.sql	sql	False	54543	1051	4	4	42	0	4	4	True	0	0	0	
+gpt-6-luna-copilot	sql/shop/orders_mysql.sql	sql	False	2481	2201	15	15	94	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	2090	14	14	106	0	0	0	True	0	0	0	
+gpt-6-luna-copilot	java/config/package.ai.md	package	False	0	2983	0	0	0	0	0	0	True	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactExtractor AiFileContext AiGenerationConfig
+gpt-6-luna-copilot	java/package.ai.md	package	False	0	2986	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiCondition AiConditionEvaluator AiFactCounter AiFactExtractor AiFileContext AiGenerationConfig AiGenerationProvider
+gpt-6-luna-copilot	java/provider/package.ai.md	package	False	0	3297	0	0	0	0	0	0	True	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport AutoCloseable
+gpt-6-luna-copilot	other/kernels/package.ai.md	package	False	0	861	0	0	0	0	0	0	True	0	0	0	histogram_partial histogram_reduce
+gpt-6-luna-copilot	other/package.ai.md	package	False	0	2377	0	0	0	0	0	0	True	0	0	0	EUR Order date histogram_partial histogram_reduce main mkdir parse_orders
+gpt-6-luna-copilot	other/ringbuf/package.ai.md	package	False	0	1687	0	0	0	0	0	0	True	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM capacity head ringbuf ringbuf_free ringbuf_free_space ringbuf_init
+gpt-6-luna-copilot	other/scripts/package.ai.md	package	False	0	1795	0	0	0	0	0	0	True	0	0	0	EUR Order date main mkdir parse_orders revenue_by_month_and_region rotate_backups
+gpt-6-luna-copilot	package.ai.md	package	False	0	3630	0	0	0	0	0	0	True	0	0	0	AiConditionEvaluator AiFactExtractor AiGenerationConfig AiGenerationProviderFactory AiGenerationRequest AiSourceExcludeFilter ERROR_MESSAGE IOException
+gpt-6-luna-copilot	sql/library/package.ai.md	package	False	0	2652	0	0	0	0	0	0	True	0	0	0	CHECKOUT RETURN author book book_copy book_id branch fn_checkout_book
+gpt-6-luna-copilot	sql/package.ai.md	package	False	0	2662	0	0	0	0	0	0	True	0	0	0	ERROR_MESSAGE FOR SELECT SYSUTCDATETIME Since StockLevel SupplierFeed SyncLog
+gpt-6-luna-copilot	sql/shop/package.ai.md	package	False	0	1659	0	0	0	0	0	0	True	0	0	0	CASCADE DELETE FOR SELECT UPDATE add_order_item customer_order order_item
+gpt-6-luna-copilot	sql/warehouse/package.ai.md	package	False	0	1121	0	0	0	0	0	0	True	0	0	0	ERROR_MESSAGE ReceivedAt SYSUTCDATETIME Since Sku StockLevel SupplierFeed SyncLog
+gpt-6-luna-copilot	project.ai.md	project	False	0	2342	0	0	0	0	0	0	True	0	0	0	
 gpt-oss-20b	java/config/AiConditionEvaluator.java	java	False	9800	1955	4	4	55	0	0	0	True	0	0	0	
 gpt-oss-20b	java/config/AiConditionGroup.java	java	False	1750	1544	2	2	49	0	0	0	True	0	0	0	
 gpt-oss-20b	java/config/AiFactExtractor.java	java	False	4856	1338	3	3	37	0	0	0	True	0	0	0	
@@ -332,6 +406,43 @@ granite-4.0-h-tiny	sql/package.ai.md	package	False	0	276	0	0	0	0	0	0	True	0	0	0
 granite-4.0-h-tiny	sql/shop/package.ai.md	package	False	0	1663	0	0	0	0	0	0	True	0	0	0	CANCELLED DATETIME ENUM INT NEW PAID SHIPPED SMALLINT
 granite-4.0-h-tiny	sql/warehouse/package.ai.md	package	False	0	2220	0	0	0	0	0	0	True	0	0	0	ErrorMessage FeedRowId MERGE OnHand Quantity ReceivedAt RowsInserted RowsUpdated
 granite-4.0-h-tiny	project.ai.md	project	False	0	2567	0	0	0	0	0	0	True	0	0	0	
+grok-4.7	java/config/AiConditionEvaluator.java	java	False	9800	8010	4	4	105	3	0	0	False	0	0	0	name params returnType
+grok-4.7	java/config/AiConditionGroup.java	java	False	1750	2919	2	2	73	0	0	0	False	0	0	0	
+grok-4.7	java/config/AiFactExtractor.java	java	False	4856	3720	3	3	94	0	0	0	False	0	0	0	
+grok-4.7	java/config/AiGenerationConfig.java	java	False	51188	14363	88	88	272	3	0	0	False	0	0	0	fooN getX setX
+grok-4.7	java/config/AiOversizeStrategy.java	java	False	3315	3339	3	3	73	0	0	0	False	0	0	0	
+grok-4.7	java/config/SrcMorphConfiguration.java	java	False	17710	8219	37	37	206	5	0	0	False	0	0	0	NAME Type params returnType toString
+grok-4.7	java/provider/AiCompletionParser.java	java	False	4337	2928	2	2	42	0	0	0	False	0	0	0	
+grok-4.7	java/provider/AiGenerationProvider.java	java	False	1725	2874	1	1	48	1	0	0	False	0	0	0	lang
+grok-4.7	java/provider/AiGenerationProviderFactory.java	java	False	3673	4838	2	2	104	2	0	0	False	0	0	0	params returnType
+grok-4.7	java/provider/LlamaCppJniAiGenerationProvider.java	java	False	12915	5231	4	4	121	0	0	0	False	0	0	0	
+grok-4.7	java/provider/LlamaCppJniConfig.java	java	False	36703	9584	44	44	183	0	0	0	False	0	0	0	
+grok-4.7	java/provider/OpenAiCompatibleProviderSupport.java	java	False	11622	7280	0	0	147	1	0	0	False	0	0	0	NullPointerException
+grok-4.7	other/kernels/histogram.cl	other	False	1653	2539	9	9	89	0	0	0	False	0	0	0	
+grok-4.7	other/ringbuf/ringbuf.c	other	False	1794	3060	12	12	105	0	0	0	False	0	0	0	
+grok-4.7	other/ringbuf/ringbuf.h	other	False	1292	2438	14	14	85	0	0	0	False	0	0	0	
+grok-4.7	other/scripts/rotate_backups.sh	other	False	1202	2371	5	5	66	2	0	0	False	0	0	0	_YYYYMMDDTHHMMSSZ status
+grok-4.7	other/scripts/sales_report.py	other	False	2290	2430	9	9	74	2	0	0	False	0	0	0	Iterator YYYY
+grok-4.7	sql/library/01_schema.sql	sql	False	1622	2024	19	19	108	0	0	0	False	0	0	0	
+grok-4.7	sql/library/02_views.sql	sql	False	1240	1730	13	13	78	0	0	0	False	0	0	0	
+grok-4.7	sql/library/03_routines.sql	sql	False	2546	4939	14	14	173	1	0	0	False	0	0	0	FOREIGN
+grok-4.7	sql/library/04_migration_v2.sql	sql	False	1660	3817	12	12	125	0	0	0	False	0	0	0	
+grok-4.7	sql/library/05_seed_data.sql	sql	False	54543	2824	4	4	69	3	4	4	False	0	0	0	SELECT days
+grok-4.7	sql/shop/orders_mysql.sql	sql	False	2481	3409	15	15	187	0	0	0	False	0	0	0	
+grok-4.7	sql/warehouse/stock_sync_tsql.sql	sql	False	2688	3060	14	14	166	0	0	0	False	0	0	0	
+grok-4.7	java/config/package.ai.md	package	False	0	4314	0	0	0	0	0	0	False	0	0	0	AiCalibration AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor AiFieldGenerationConfig
+grok-4.7	java/package.ai.md	package	False	0	7208	0	0	0	0	0	0	False	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiConditionGroup AiFactCounter AiFactDefinition AiFactExtractor
+grok-4.7	java/provider/package.ai.md	package	False	0	4511	0	0	0	0	0	0	False	0	0	0	AiCompletionParser AiGenerationConfig AiGenerationProvider AiGenerationProviderFactory AiGenerationRequest AiGenerationTimings AiPromptSupport Builder
+grok-4.7	other/kernels/package.ai.md	package	False	0	2079	0	0	0	0	0	0	True	0	0	0	BINS CLK_LOCAL_MEM_FENCE __global __kernel __local atomic_inc barrier bin
+grok-4.7	other/package.ai.md	package	False	0	4802	0	0	0	0	0	0	False	0	0	0	BACKUP_DIR BINS CLK_LOCAL_MEM_FENCE Decimal EXIT InvalidOperation KEEP Order
+grok-4.7	other/ringbuf/package.ai.md	package	False	0	2751	0	0	0	0	0	0	False	0	0	0	RINGBUF_EINVAL RINGBUF_ENOMEM RINGBUF_OK capacity data dst extern free
+grok-4.7	other/scripts/package.ai.md	package	False	0	2591	0	0	0	0	0	0	False	0	0	0	BACKUP_DIR Decimal EXIT InvalidOperation KEEP Order REQUIRED_COLUMNS SOURCE_DIR
+grok-4.7	package.ai.md	package	False	0	6943	0	0	0	0	0	0	False	0	0	0	AiCalibration AiCompletionParser AiCondition AiConditionEvaluator AiFactCounter AiFactExtractor AiFileContext AiGenerationConfig
+grok-4.7	sql/library/package.ai.md	package	False	0	6043	0	0	0	0	0	0	False	0	0	0	AVAILABLE BEGIN BIGSERIAL CASCADE CHECKOUT COMMIT CURRENT_DATE DELETE
+grok-4.7	sql/package.ai.md	package	False	0	3503	0	0	0	0	0	0	False	0	0	0	CANCELLED CHECKOUT DATETIME2 ENUM ERROR_MESSAGE FOR MERGE NEW
+grok-4.7	sql/shop/package.ai.md	package	False	0	2531	0	0	0	0	0	0	False	0	0	0	CANCELLED DELIMITER DUPLICATE ENUM FOR KEY NEW PAID
+grok-4.7	sql/warehouse/package.ai.md	package	False	0	2439	0	0	0	0	0	0	False	0	0	0	COMMIT Changes DATETIME2 DF_StockLevel_OnHand DF_StockLevel_UpdatedAt ERROR_MESSAGE ErrorMessage FeedRowId
+grok-4.7	project.ai.md	project	False	0	4641	0	0	0	0	0	0	True	0	0	0	
 mai-code-1.1-flash	java/config/AiConditionEvaluator.java	java	False	9800	3854	4	4	114	0	0	0	True	0	0	0	
 mai-code-1.1-flash	java/config/AiConditionGroup.java	java	False	1750	2580	2	2	75	2	0	0	True	0	0	0	extends implements
 mai-code-1.1-flash	java/config/AiFactExtractor.java	java	False	4856	3202	3	3	84	0	0	0	True	0	0	0	

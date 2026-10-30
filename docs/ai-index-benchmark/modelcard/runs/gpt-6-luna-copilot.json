@@ -1,0 +1,34 @@
+{
+ "key": "gpt-6-luna-copilot",
+ "name": "GPT-6 Luna (Copilot)",
+ "backend": "copilot",
+ "definition": {
+  "key": "gpt-6-luna-copilot",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "http://127.0.0.1:3030/v1",
+  "contextSize": 120000,
+  "stream": true,
+  "remoteModel": "gpt-6-luna"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 190.3,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 44.1,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 2.9,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

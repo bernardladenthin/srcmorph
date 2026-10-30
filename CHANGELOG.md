@@ -36,8 +36,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   ([docs/copilot-api-gateway.md](./docs/copilot-api-gateway.md)): setup, the settings that keep
   the gateway private, an example configuration (`examples/copilot-api-gateway/srcmorph.yaml`), model
   choice and the limits of the route. The model card
-  ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds
-  MAI-Code-1.1-Flash, run streamed through the gateway: quality score 93 %, 11.2 s per file.
+  ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds four runs
+  streamed through the gateway: Claude Haiku 5.5 (98.2 %, 6.8 s per file), GPT-6 Luna (97.6 %),
+  MAI-Code-1.1-Flash (93.0 %) and Grok 4.7 (76.4 %, its reasoning summary leaks into the answer).
 - **CLI command `ListModels`**: asks every OpenAI-compatible server the `aiDefinitions` name which
   models it serves (`GET <baseUrl>/models`, with the definition's key and the same refusal to send
   it in cleartext to another machine) and prints a table (id, token limit, OpenRouter's price) and a

@@ -1,0 +1,34 @@
+{
+ "key": "grok-4.7",
+ "name": "Grok 4.7",
+ "backend": "copilot",
+ "definition": {
+  "key": "grok-4.7",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "http://127.0.0.1:3030/v1",
+  "contextSize": 120000,
+  "stream": true,
+  "remoteModel": "grok-4.7"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 457.4,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 164.5,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 16.3,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}
