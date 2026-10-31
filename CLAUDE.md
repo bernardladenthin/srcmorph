@@ -182,7 +182,13 @@ CLI driven by a single JSON or YAML configuration file:
   `net.ladenthin.srcmorph.config.SrcMorphConfiguration` the Maven plugin's mojos build from their own
   `@Parameter` fields — a JSON/YAML key under `srcMorph` reads identically to the matching plugin XML
   element. `CCommand` is `Plan | GenerateFileIndex | AggregatePackages | AggregateProject | All |
-  Calibrate | ListModels`; `ListModels` reads the top-level `modelFilter` too. The default is `Plan` (safe: no model load, nothing written).
+  Calibrate | ListModels`; `ListModels` reads the top-level `modelFilter` too, and the package and
+  project phases take the top-level `packageFieldGenerations` / `projectFieldGenerations` when set
+  (a copy of `srcMorph` with those rules, as the plugin's aggregate executions override
+  `<fieldGenerations>`), otherwise `srcMorph.fieldGenerations`. `examples/build-your-own-jar/srcmorph.yaml`
+  is the plugin's `srcmorph-selftest` profile as one CLI configuration (gpt-oss-20b + the two
+  Granite presets only, like the profile); `BuildYourOwnJarSelfTestParityTest` reads both and fails
+  when they drift. The default is `Plan` (safe: no model load, nothing written).
 - **No runnable jar is built or published here** (since 1.4.0). `mvn package` produces only the thin
   `srcmorph-cli` jar (its manifest names `net.ladenthin.srcmorph.cli.Main`, so `jbang` can run it).
   Users build the runnable jar with `examples/build-your-own-jar/pom.xml`: `srcmorph-cli` from

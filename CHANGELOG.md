@@ -20,6 +20,24 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   resolves against `modelDirectory`. Both `template` and `templateFile`, or a file that is empty or
   cannot be read, fail the run as a configuration error. In the library:
   `AiPromptTemplateLoader`, used by every engine.
+- **CLI: rules per aggregation phase, `packageFieldGenerations` and `projectFieldGenerations`.**
+  Top-level keys beside `srcMorph`: the package phase (`AggregatePackages`, and the package step of
+  `All`) and the project phase run with these rules when set, as the Maven plugin's
+  `aggregate-packages` / `aggregate-project` executions have `<fieldGenerations>` of their own.
+  Before, both phases took the first file rule, so `All` summarized packages with a file prompt and
+  model. Unset, nothing changes.
+- **`examples/build-your-own-jar/srcmorph.yaml` is the plugin's self-test profile as a CLI
+  configuration**, nearly 1:1: gpt-oss-20b (native MXFP4, 96K window) for every file, package and the
+  project overview, Granite 4.0 H-Tiny (384K window, one pass) for ~275 KB .. 1 MB and Granite 4.0
+  H-1B (16K window, map-reduce over 6 sampled chunks) beyond, with the exact whole-file counts of
+  `factDefinitions` (Java: types, methods, fields, ...; SQL: INSERT rows, tables, views, indexes,
+  routines) on every Java and SQL summary, so a sampled summary of a multi-MB SQL dump still states
+  what the data holds. It replaces the one-model, one-placeholder-prompt example; a test compares it
+  with the pom.
+- **The plugin's `srcmorph-selftest` profile carries two models only**: gpt-oss-20b
+  (`gpt-oss-20B-mxfp4`) and the two Granite presets. The other model definitions (Mistral, Llama,
+  Codestral, Qwen, Gemma, Ministral, the `EXP-*` benchmark keys, the other gpt-oss quantizations and
+  windows) are gone; their measurements stay in `docs/ai-index-benchmark`.
 - **`prompts/`: the production prompts once in the repository.** `prompts/v1/` holds the five
   prompts the October 2026 model card measured (`prompts/README.md`; the June v2 experiment and v1 as
   the June benchmark ran it are in the history, commit `cd2e15f`). The plugin's

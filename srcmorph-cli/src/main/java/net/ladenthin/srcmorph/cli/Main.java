@@ -12,10 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Locale;
 import lombok.ToString;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
+import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.AggregatePackagesEngine;
 import net.ladenthin.srcmorph.engine.AggregateProjectEngine;
@@ -24,6 +26,7 @@ import net.ladenthin.srcmorph.engine.CalibrationReport;
 import net.ladenthin.srcmorph.engine.GenerateEngine;
 import net.ladenthin.srcmorph.engine.ListModelsEngine;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -226,17 +229,17 @@ public class Main {
                     break;
                 }
                 case AggregatePackages: {
-                    new AggregatePackagesEngine(configuration.srcMorph).execute();
+                    new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).execute();
                     break;
                 }
                 case AggregateProject: {
-                    new AggregateProjectEngine(configuration.srcMorph).execute();
+                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).execute();
                     break;
                 }
                 case All: {
                     new GenerateEngine(configuration.srcMorph).execute();
-                    new AggregatePackagesEngine(configuration.srcMorph).execute();
-                    new AggregateProjectEngine(configuration.srcMorph).execute();
+                    new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).execute();
+                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).execute();
                     break;
                 }
                 case Calibrate: {
@@ -268,6 +271,25 @@ public class Main {
     }
 
     /**
+     * The configuration one aggregation phase runs with: {@link CConfiguration#srcMorph} itself when
+     * the phase has no rules of its own, otherwise a copy of it whose {@code fieldGenerations} are
+     * the phase's, as a Maven plugin execution overrides them. The shared configuration is never
+     * modified, so the file phase of {@link CCommand#All} keeps its own rules.
+     *
+     * @param phaseFieldGenerations the phase's rules ({@link CConfiguration#packageFieldGenerations}
+     *                              or {@link CConfiguration#projectFieldGenerations}), or {@code null}
+     * @return the configuration to hand the phase's engine
+     */
+    private SrcMorphConfiguration forPhase(final @Nullable List<AiFieldGenerationConfig> phaseFieldGenerations) {
+        if (phaseFieldGenerations == null) {
+            return configuration.srcMorph;
+        }
+        final SrcMorphConfiguration copy = deepCopy(configuration.srcMorph);
+        copy.setFieldGenerations(phaseFieldGenerations);
+        return copy;
+    }
+
+    /**
      * Builds a deep copy of {@code original} with {@link SrcMorphConfiguration#setPlanOnly(boolean)}
      * forced to {@code true}, regardless of what the configuration file said. Used by the
      * {@link CCommand#Plan} command so it never accidentally runs a real (model-loading) generation
@@ -289,15 +311,25 @@ public class Main {
      * @return a deep copy of {@code original} with {@code planOnly} forced {@code true}
      */
     private static SrcMorphConfiguration copyWithPlanOnlyForced(final SrcMorphConfiguration original) {
+        final SrcMorphConfiguration copy = deepCopy(original);
+        copy.setPlanOnly(true);
+        return copy;
+    }
+
+    /**
+     * Deep-copies a configuration by a round trip through a lenient JSON mapper, see
+     * {@link #copyWithPlanOnlyForced(SrcMorphConfiguration)} for why lenient.
+     *
+     * @param original the configuration to copy
+     * @return an independent copy of {@code original}
+     */
+    private static SrcMorphConfiguration deepCopy(final SrcMorphConfiguration original) {
         try {
             final ObjectMapper mapper = new ObjectMapper();
             mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-            final SrcMorphConfiguration copy =
-                    mapper.readValue(mapper.writeValueAsString(original), SrcMorphConfiguration.class);
-            copy.setPlanOnly(true);
-            return copy;
+            return mapper.readValue(mapper.writeValueAsString(original), SrcMorphConfiguration.class);
         } catch (final IOException e) {
-            throw new IllegalStateException("Failed to copy the configuration for the Plan command.", e);
+            throw new IllegalStateException("Failed to copy the configuration.", e);
         }
     }
 

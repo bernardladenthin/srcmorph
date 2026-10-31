@@ -309,8 +309,9 @@ The plugin is configured from three building blocks, declared on the plugin insi
 
 ### Routing rules (conditions, priority, skip, plan)
 Within one `generate` run you can route files to different models **and** prompts by size, language,
-age or path. Example — small/medium/large Java files to three context presets, skip generated sources,
-and a fallback for everything else:
+age or path. Example — Java files to three context windows of gpt-oss-20b (three `<aiDefinition>`s with
+the same model and different `<contextSize>`), a map-reduce over a small fast Granite window for huge
+files, skip generated sources, and a fallback for everything else:
 
 ```xml
 <fieldGenerations>
@@ -319,28 +320,28 @@ and a fallback for everything else:
     <condition><pathGlob>**/generated/**</pathGlob></condition>
   </fieldGeneration>
   <fieldGeneration>
-    <id>java-small</id><promptKey>file-body-java-terse</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
+    <id>java-small</id><promptKey>file-body-java-terse</promptKey><aiDefinitionKey>gpt-oss-16k</aiDefinitionKey>
     <condition><and><conditions>
       <condition><extensions><extension>.java</extension></extensions></condition>
       <condition><size><max>16384</max></size></condition>
     </conditions></and></condition>
   </fieldGeneration>
   <fieldGeneration>
-    <id>java-mid</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c48k</aiDefinitionKey>
+    <id>java-mid</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-48k</aiDefinitionKey>
     <condition><and><conditions>
       <condition><extensions><extension>.java</extension></extensions></condition>
       <condition><size><min>16384</min><max>49152</max></size></condition>
     </conditions></and></condition>
   </fieldGeneration>
   <fieldGeneration>
-    <id>java-large</id><promptKey>file-body-java-detailed</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+    <id>java-large</id><promptKey>file-body-java-detailed</promptKey><aiDefinitionKey>gpt-oss-20B-mxfp4</aiDefinitionKey>
     <condition><and><conditions>
       <condition><extensions><extension>.java</extension></extensions></condition>
       <condition><size><min>49152</min></size></condition>
     </conditions></and></condition>
   </fieldGeneration>
   <fieldGeneration>                                  <!-- huge files: chunk over a SMALL fast window + combine -->
-    <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-20B-c16k</aiDefinitionKey>
+    <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
     <onOversize>mapReduce</onOversize><maxChunks>6</maxChunks>   <!-- ~7 cheap calls; bounds time to ~1 h/file -->
     <facts>                                          <!-- exact whole-file counts, prepended to the body -->
       <fact><label>boolean fields</label><pattern>\bboolean\b</pattern></fact>
@@ -353,7 +354,7 @@ and a fallback for everything else:
   </fieldGeneration>
   <fieldGeneration>
     <id>fallback</id><fallback>true</fallback>
-    <promptKey>file-body-fallback</promptKey><aiDefinitionKey>gpt-oss-20B-c96k</aiDefinitionKey>
+    <promptKey>file-body-fallback</promptKey><aiDefinitionKey>gpt-oss-20B-mxfp4</aiDefinitionKey>
   </fieldGeneration>
 </fieldGenerations>
 ```
@@ -572,19 +573,21 @@ pros/cons, a source-faithfulness deep-dive, and reproduction steps in
 ### gpt-oss-20b presets, large files, and timing
 
 `gpt-oss` is a *reasoning* model whose analysis tokens share the output budget, so use
-`reasoningEffort=low` for code summaries (best quality here) and size the budget to the file. The pom
-ships three ready presets, tiered by the largest file you must cover — full rationale and measurements
-in [COMPARISON.md §11](../docs/ai-index-benchmark/COMPARISON.md):
+`reasoningEffort=low` for code summaries (best quality here) and size the budget to the file. The
+self-test profile carries gpt-oss-20b once, `gpt-oss-20B-mxfp4` at a 96K window, plus the two Granite
+presets for larger files (`granite-4.0-h-tiny-bigwindow`, `granite-4.0-h-1b-fastchunk`). What a window
+covers, measured on CPU (full rationale in [COMPARISON.md §11](../docs/ai-index-benchmark/COMPARISON.md)):
 
-| Preset | context | covers up to | ~ time (CPU) |
-|---|---|---|---|
-| `gpt-oss-20B-c16k` | 16K | ~40 KB | ~1–2 min |
-| `gpt-oss-20B-c48k` | 48K | ~125 KB | ~25 min @ 100 KB |
-| **`gpt-oss-20B-c96k` (default)** | 96K | ~260 KB | ~80 min @ 250 KB |
+| `contextSize` | covers up to | ~ time (CPU) |
+|---|---|---|
+| 16K | ~40 KB | ~1–2 min |
+| 48K | ~125 KB | ~25 min @ 100 KB |
+| **96K (the profile's)** | ~260 KB | ~80 min @ 250 KB |
 
-- **`c96k` is the default:** a measured A/B shows a wider context window costs only RAM, not per-file
-  time, so it covers every file up to ~250 KB with no trimming while small files stay just as fast.
-  Downshift only to save RAM. Hard ceiling is the 128K window (~480–500 KB of code).
+- **96K is the profile's window:** a measured A/B shows a wider context window costs only RAM, not
+  per-file time, so it covers every file up to ~250 KB with no trimming while small files stay just as
+  fast. Lower `contextSize` only to save RAM. Hard ceiling is the 128K window (~480–500 KB of code);
+  larger files route to the Granite presets.
 - **Timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt tokens),
   because attention is O(n) per token — which is why throughput drops as files grow. The plugin logs
   this estimate per file.

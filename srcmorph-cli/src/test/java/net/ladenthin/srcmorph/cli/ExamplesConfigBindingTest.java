@@ -21,9 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
@@ -91,8 +89,9 @@ public class ExamplesConfigBindingTest {
     /**
      * {@code examples/build-your-own-jar/} is how a user builds the runnable jar (docs/windows-intel-core-ultra.md):
      * its {@code srcmorph.yaml} is meant for a real model, so it is not one of the mock fixtures above,
-     * but it must still bind under the strict mapper, start with the safe {@code Plan}, and route every
-     * file through a fallback rule that handles an oversized file. Its {@code pom.xml} names the CLI's
+     * but it must still bind under the strict mapper, start with the safe {@code Plan} and find its
+     * prompt files; that it matches the plugin's self-test profile is BuildYourOwnJarSelfTestParityTest's
+     * job. Its {@code pom.xml} names the CLI's
      * main class by string, so a renamed {@link Main} would otherwise only fail on the user's machine.
      *
      * @throws IOException if an example file cannot be read
@@ -105,10 +104,7 @@ public class ExamplesConfigBindingTest {
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getGenerationProvider(), is(equalTo("llamacpp-jni")));
-        assertThat(srcMorph.getFieldGenerations().size(), is(1));
-        final AiFieldGenerationConfig rule = srcMorph.getFieldGenerations().get(0);
-        assertThat(rule.isFallback(), is(true));
-        assertThat(rule.getOnOversize(), is(equalTo(AiOversizeStrategy.SAMPLE.configValue())));
+        // the rules, facts and models themselves: BuildYourOwnJarSelfTestParityTest
         assertPromptFilesResolve(directory, srcMorph, "build-your-own-jar/srcmorph.yaml");
 
         assertThat(

@@ -25,7 +25,8 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
 - **Why `gpt-oss-20b` is the default (precision):** the per-file *accuracy* leader (won 5/6 in the
   per-file matrix), most faithful, no hallucinated `final`/examples. It is the slowest (~2× the 30B,
   harmony reasoning overhead) — the accepted cost for accuracy. Run it with `reasoningEffort=low` and
-  one of the three size-tiered presets (`gpt-oss-20B-c16k/c48k/c96k`, **default c96k**); context-window
+  a 96K window (the plugin's self-test profile keeps that one, `gpt-oss-20B-mxfp4`; the June runs had
+  16K/48K/96K presets); context-window
   limits, large-file (250 KB) validation, and the O(n²) timing model are in
   [COMPARISON.md §11](COMPARISON.md).
 - **Avoid:** `Qwen3.5-4B` (thinking tax, no quality gain) and `DeepSeek-Coder-V2-Lite` (copied the
