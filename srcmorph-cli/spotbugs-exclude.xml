@@ -68,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS on Main.run and Main.copyWithPlanOnlyForced.
+        EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS on Main.run and Main.deepCopy.
 
         Both deliberately convert a checked exception (SrcMorphException/IOException) into an
         unchecked one (IllegalStateException) by design — see the class Javadoc: "No
@@ -78,7 +78,8 @@ SPDX-License-Identifier: Apache-2.0
         equivalent call sites). Widening either method's signature with a `throws` clause is not an
         option: run() is called from main() (which only declares `throws IOException`, matching the
         one checked exception loadConfiguration can still throw before Main is even constructed),
-        and copyWithPlanOnlyForced is a private helper whose only failure mode (a broken internal
+        and deepCopy (behind copyWithPlanOnlyForced and the per-phase copies) is a private helper
+        whose only failure mode (a broken internal
         JSON round-trip of an object this class itself just serialized) is exactly the kind of
         "cannot happen from valid input" case IllegalStateException exists for.
     -->
@@ -86,24 +87,40 @@ SPDX-License-Identifier: Apache-2.0
         <Class name="net.ladenthin.srcmorph.cli.Main"/>
         <Or>
             <Method name="run"/>
-            <Method name="copyWithPlanOnlyForced"/>
+            <Method name="deepCopy"/>
         </Or>
         <Bug pattern="EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS"/>
     </Match>
 
     <!--
-        WEM_WEAK_EXCEPTION_MESSAGING on Main.copyWithPlanOnlyForced's IllegalStateException.
+        WEM_WEAK_EXCEPTION_MESSAGING on Main.deepCopy's IllegalStateException.
 
-        The static message ("Failed to copy the configuration for the Plan command.") already
-        names exactly which internal step failed; the wrapped IOException (attached as the
+        The static message ("Failed to copy the configuration.") already names exactly which
+        internal step failed; the wrapped IOException (attached as the
         cause) carries whatever Jackson-specific detail exists. This is the same
         "user-facing diagnostic, not internal state" style already suppressed for
         EngineSupport/GenerateEngine's own thrown messages in srcmorph/spotbugs-exclude.xml.
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.cli.Main"/>
-        <Method name="copyWithPlanOnlyForced"/>
+        <Method name="deepCopy"/>
         <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
+    </Match>
+
+    <!--
+        UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD on CConfiguration.packageFieldGenerations and
+        projectFieldGenerations, read by Main. Jackson writes them, from the CLI's configuration
+        file, by reflection (the class's public-field binding convention, like srcMorph and
+        modelFilter); SpotBugs sees no write in the bytecode because there is none. Unset they stay
+        null, which means "use srcMorph.fieldGenerations" - an initializer would only restate that.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.cli.configuration.CConfiguration"/>
+        <Or>
+            <Field name="packageFieldGenerations"/>
+            <Field name="projectFieldGenerations"/>
+        </Or>
+        <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD"/>
     </Match>
 
     <!--

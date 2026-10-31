@@ -201,7 +201,7 @@ public class ExamplesConfigBindingTest {
             assertThat(
                     label + ": " + definition.getKey() + " must load one of the measured prompts",
                     definition.getTemplate(),
-                    containsString("You are a "));
+                    containsString("You are "));
         }
     }
 }

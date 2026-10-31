@@ -49,7 +49,7 @@ public class BuildYourOwnJarSelfTestParityTest {
 
     private static CConfiguration yaml;
     private static Element plugin;
-    private static String aiModel;
+    private static @Nullable String aiModel;
 
     @BeforeAll
     static void load() throws Exception {
@@ -67,7 +67,8 @@ public class BuildYourOwnJarSelfTestParityTest {
         }
         plugin = children(child(child(Objects.requireNonNull(selftest), "build"), "plugins"), "plugin")
                 .get(0);
-        assertThat(text(plugin, "artifactId"), is("srcmorph-maven-plugin"));
+        // the module's own plugin, named through its own coordinates
+        assertThat(text(plugin, "artifactId"), is("${project.artifactId}"));
     }
 
     // <editor-fold defaultstate="collapsed" desc="DOM helpers">
@@ -89,7 +90,13 @@ public class BuildYourOwnJarSelfTestParityTest {
 
     private static @Nullable String text(final Element parent, final String name) {
         final List<Element> found = children(parent, name);
-        return found.isEmpty() ? null : found.get(0).getTextContent().trim().replace("${ai.model}", aiModel);
+        if (found.isEmpty()) {
+            return null;
+        }
+        final String value = found.get(0).getTextContent().trim();
+        // ai.model is read with this method too, before it is known
+        final String model = aiModel;
+        return model == null ? value : value.replace("${ai.model}", model);
     }
 
     private static Element execution(final String id) {

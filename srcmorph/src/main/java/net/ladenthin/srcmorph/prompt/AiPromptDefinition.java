@@ -33,7 +33,7 @@ public class AiPromptDefinition {
     }
 
     private String key;
-    private String template;
+    private @Nullable String template;
     private @Nullable String templateFile;
 
     /**
@@ -59,7 +59,7 @@ public class AiPromptDefinition {
      *
      * @return prompt template string, or {@code null} when the template comes from {@link #getTemplateFile()}
      */
-    public String getTemplate() {
+    public @Nullable String getTemplate() {
         return template;
     }
 
@@ -68,7 +68,7 @@ public class AiPromptDefinition {
      *
      * @param template prompt template string
      */
-    public void setTemplate(final String template) {
+    public void setTemplate(final @Nullable String template) {
         this.template = template;
     }
 
