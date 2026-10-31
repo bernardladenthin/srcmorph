@@ -10,10 +10,11 @@
       ".java"
     ],
     "generationProvider": "mock",
+    "promptDirectory": "../prompts",
     "promptDefinitions": [
       {
         "key": "file-body",
-        "template": "Summarize this file as structured markdown."
+        "templateFile": "v2/file-body-fallback.md"
       }
     ],
     "aiDefinitions": [

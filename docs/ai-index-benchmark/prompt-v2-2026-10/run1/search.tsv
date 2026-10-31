@@ -1,0 +1,302 @@
+run	retriever	question	rank	ranked
+gpt-6-luna	bm25	cond-eval	1	java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java other/scripts/sales_report.py
+gpt-6-luna	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py sql/library/04_migration_v2.sql
+gpt-6-luna	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	bm25	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna	bm25	oversize-options	2	java/config/SrcMorphConfiguration.java java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java
+gpt-6-luna	bm25	oversize-parse	3	other/scripts/sales_report.py java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiOversizeStrategy.java
+gpt-6-luna	bm25	input-trim	1	java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna	bm25	sampling	2	java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna	bm25	run-config	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna	bm25	plan-only	3	java/provider/AiGenerationProviderFactory.java java/provider/AiGenerationProvider.java java/config/SrcMorphConfiguration.java
+gpt-6-luna	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/config/AiFactExtractor.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/OpenAiCompatibleProviderSupport.java java/config/SrcMorphConfiguration.java
+gpt-6-luna	bm25	backend-override	3	java/config/SrcMorphConfiguration.java other/ringbuf/ringbuf.h java/provider/AiGenerationProviderFactory.java
+gpt-6-luna	bm25	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	bm25	moe-cpu	2	java/provider/AiGenerationProvider.java java/config/AiGenerationConfig.java other/scripts/rotate_backups.sh
+gpt-6-luna	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java other/kernels/histogram.cl java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna	bm25	reasoning	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/AiCompletionParser.java
+gpt-6-luna	bm25	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java other/kernels/histogram.cl other/ringbuf/ringbuf.h
+gpt-6-luna	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-6-luna	bm25	copies-check	2	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/03_routines.sql
+gpt-6-luna	bm25	open-loans-index	1	sql/library/01_schema.sql sql/library/02_views.sql other/ringbuf/ringbuf.c
+gpt-6-luna	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql other/scripts/rotate_backups.sh
+gpt-6-luna	bm25	popular	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+gpt-6-luna	bm25	late-fee	1	sql/library/03_routines.sql sql/library/02_views.sql sql/library/01_schema.sql
+gpt-6-luna	bm25	blocked	3	sql/library/02_views.sql sql/library/05_seed_data.sql sql/library/03_routines.sql
+gpt-6-luna	bm25	audit	1	sql/library/03_routines.sql java/provider/LlamaCppJniConfig.java other/ringbuf/ringbuf.h
+gpt-6-luna	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+gpt-6-luna	bm25	rename-joined	3	sql/library/01_schema.sql sql/library/05_seed_data.sql sql/library/04_migration_v2.sql
+gpt-6-luna	bm25	seed-counts	1	sql/library/05_seed_data.sql sql/library/01_schema.sql sql/library/04_migration_v2.sql
+gpt-6-luna	bm25	shop-reserve	1	sql/shop/orders_mysql.sql sql/warehouse/stock_sync_tsql.sql other/kernels/histogram.cl
+gpt-6-luna	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql sql/library/05_seed_data.sql
+gpt-6-luna	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql other/ringbuf/ringbuf.c
+gpt-6-luna	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java sql/library/05_seed_data.sql
+gpt-6-luna	bm25	backup-partial	1	other/scripts/rotate_backups.sh java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	bm25	ring-impl	1	other/ringbuf/ringbuf.h other/kernels/histogram.cl java/config/AiConditionEvaluator.java
+gpt-6-luna	bm25	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+gpt-6-luna	bm25	ring-errors	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h other/kernels/histogram.cl
+gpt-6-luna	bm25	histogram	1	other/kernels/histogram.cl java/config/AiConditionEvaluator.java java/config/AiGenerationConfig.java
+gpt-6-luna	bm25	revenue	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql other/kernels/histogram.cl
+gpt-6-luna	bm25	currency	1	other/scripts/sales_report.py other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-6-luna	reader	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+gpt-6-luna	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+gpt-6-luna	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+gpt-6-luna	reader	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+gpt-6-luna	reader	oversize-options	1	java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java
+gpt-6-luna	reader	oversize-parse	1	java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java java/config/AiConditionEvaluator.java
+gpt-6-luna	reader	input-trim	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	reader	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-6-luna	reader	run-config	1	java/config/SrcMorphConfiguration.java
+gpt-6-luna	reader	plan-only	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java
+gpt-6-luna	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+gpt-6-luna	reader	thinking-budget	1	java/provider/AiCompletionParser.java java/config/AiConditionEvaluator.java java/provider/AiGenerationProvider.java
+gpt-6-luna	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-6-luna	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	reader	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java
+gpt-6-luna	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-6-luna	reader	moe-cpu	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-6-luna	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+gpt-6-luna	reader	reasoning	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java
+gpt-6-luna	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java
+gpt-6-luna	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+gpt-6-luna	reader	copies-check	1	sql/library/01_schema.sql
+gpt-6-luna	reader	open-loans-index	2	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+gpt-6-luna	reader	overdue	1	sql/library/02_views.sql
+gpt-6-luna	reader	popular	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+gpt-6-luna	reader	late-fee	1	sql/library/03_routines.sql sql/library/01_schema.sql sql/library/02_views.sql
+gpt-6-luna	reader	blocked	3	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+gpt-6-luna	reader	audit	0	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+gpt-6-luna	reader	branches	1	sql/library/04_migration_v2.sql
+gpt-6-luna	reader	rename-joined	1	sql/library/04_migration_v2.sql
+gpt-6-luna	reader	seed-counts	1	sql/library/05_seed_data.sql sql/library/03_routines.sql sql/library/01_schema.sql
+gpt-6-luna	reader	shop-reserve	1	sql/shop/orders_mysql.sql java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+gpt-6-luna	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+gpt-6-luna	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+gpt-6-luna	reader	backup-keep	1	other/scripts/rotate_backups.sh
+gpt-6-luna	reader	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-6-luna	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-6-luna	reader	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+gpt-6-luna	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+gpt-6-luna	reader	histogram	1	other/kernels/histogram.cl
+gpt-6-luna	reader	revenue	1	other/scripts/sales_report.py
+gpt-6-luna	reader	currency	1	other/scripts/sales_report.py sql/warehouse/stock_sync_tsql.sql java/config/AiConditionEvaluator.java
+gpt-oss-20b	bm25	cond-eval	1	java/config/AiConditionEvaluator.java other/scripts/rotate_backups.sh java/config/AiConditionGroup.java
+gpt-oss-20b	bm25	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java sql/library/04_migration_v2.sql
+gpt-oss-20b	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java java/provider/LlamaCppJniConfig.java
+gpt-oss-20b	bm25	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java other/ringbuf/ringbuf.h
+gpt-oss-20b	bm25	oversize-options	8	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+gpt-oss-20b	bm25	oversize-parse	4	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/config/AiConditionGroup.java
+gpt-oss-20b	bm25	input-trim	1	java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java other/scripts/rotate_backups.sh
+gpt-oss-20b	bm25	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-oss-20b	bm25	run-config	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-oss-20b	bm25	plan-only	2	java/provider/AiGenerationProviderFactory.java java/config/SrcMorphConfiguration.java other/ringbuf/ringbuf.c
+gpt-oss-20b	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/LlamaCppJniConfig.java java/config/AiFactExtractor.java
+gpt-oss-20b	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-oss-20b	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-oss-20b	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-oss-20b	bm25	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java other/ringbuf/ringbuf.h
+gpt-oss-20b	bm25	model-load	2	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+gpt-oss-20b	bm25	moe-cpu	2	other/scripts/rotate_backups.sh java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-oss-20b	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+gpt-oss-20b	bm25	reasoning	1	java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java java/provider/AiCompletionParser.java
+gpt-oss-20b	bm25	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-oss-20b	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java other/kernels/histogram.cl java/config/AiGenerationConfig.java
+gpt-oss-20b	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-oss-20b	bm25	copies-check	2	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+gpt-oss-20b	bm25	open-loans-index	2	sql/library/02_views.sql sql/library/01_schema.sql other/kernels/histogram.cl
+gpt-oss-20b	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+gpt-oss-20b	bm25	popular	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+gpt-oss-20b	bm25	late-fee	1	sql/library/03_routines.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+gpt-oss-20b	bm25	blocked	1	sql/library/03_routines.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+gpt-oss-20b	bm25	audit	1	sql/library/03_routines.sql other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+gpt-oss-20b	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/03_routines.sql
+gpt-oss-20b	bm25	rename-joined	2	sql/library/05_seed_data.sql sql/library/04_migration_v2.sql sql/library/01_schema.sql
+gpt-oss-20b	bm25	seed-counts	3	sql/library/01_schema.sql sql/library/02_views.sql sql/library/05_seed_data.sql
+gpt-oss-20b	bm25	shop-reserve	1	sql/shop/orders_mysql.sql sql/warehouse/stock_sync_tsql.sql other/scripts/sales_report.py
+gpt-oss-20b	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql sql/library/03_routines.sql
+gpt-oss-20b	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql java/provider/OpenAiCompatibleProviderSupport.java
+gpt-oss-20b	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java sql/library/05_seed_data.sql
+gpt-oss-20b	bm25	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-oss-20b	bm25	ring-impl	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+gpt-oss-20b	bm25	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+gpt-oss-20b	bm25	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+gpt-oss-20b	bm25	histogram	1	other/kernels/histogram.cl other/ringbuf/ringbuf.h java/config/AiGenerationConfig.java
+gpt-oss-20b	bm25	revenue	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql other/kernels/histogram.cl
+gpt-oss-20b	bm25	currency	1	other/scripts/sales_report.py java/config/AiOversizeStrategy.java sql/shop/orders_mysql.sql
+gpt-oss-20b	reader	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiGenerationConfig.java
+gpt-oss-20b	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+gpt-oss-20b	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+gpt-oss-20b	reader	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+gpt-oss-20b	reader	oversize-options	1	java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+gpt-oss-20b	reader	oversize-parse	2	java/config/AiConditionEvaluator.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+gpt-oss-20b	reader	input-trim	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-oss-20b	reader	sampling	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+gpt-oss-20b	reader	run-config	1	java/config/SrcMorphConfiguration.java
+gpt-oss-20b	reader	plan-only	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java
+gpt-oss-20b	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+gpt-oss-20b	reader	thinking-budget	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java
+gpt-oss-20b	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+gpt-oss-20b	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+gpt-oss-20b	reader	backend-override	1	java/config/AiGenerationConfig.java java/provider/AiGenerationProviderFactory.java
+gpt-oss-20b	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-oss-20b	reader	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+gpt-oss-20b	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+gpt-oss-20b	reader	reasoning	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+gpt-oss-20b	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+gpt-oss-20b	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/provider/AiGenerationProviderFactory.java
+gpt-oss-20b	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+gpt-oss-20b	reader	copies-check	3	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java sql/library/01_schema.sql
+gpt-oss-20b	reader	open-loans-index	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+gpt-oss-20b	reader	overdue	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+gpt-oss-20b	reader	popular	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/01_schema.sql
+gpt-oss-20b	reader	late-fee	1	sql/library/03_routines.sql sql/library/02_views.sql sql/library/01_schema.sql
+gpt-oss-20b	reader	blocked	0	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java
+gpt-oss-20b	reader	audit	0	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+gpt-oss-20b	reader	branches	1	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/02_views.sql
+gpt-oss-20b	reader	rename-joined	1	sql/library/04_migration_v2.sql
+gpt-oss-20b	reader	seed-counts	1	sql/library/05_seed_data.sql sql/library/02_views.sql sql/library/03_routines.sql
+gpt-oss-20b	reader	shop-reserve	1	sql/shop/orders_mysql.sql sql/library/03_routines.sql sql/library/04_migration_v2.sql
+gpt-oss-20b	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql
+gpt-oss-20b	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql
+gpt-oss-20b	reader	backup-keep	1	other/scripts/rotate_backups.sh
+gpt-oss-20b	reader	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-oss-20b	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-oss-20b	reader	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-oss-20b	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+gpt-oss-20b	reader	histogram	1	other/kernels/histogram.cl other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+gpt-oss-20b	reader	revenue	1	other/scripts/sales_report.py sql/library/02_views.sql sql/warehouse/stock_sync_tsql.sql
+gpt-oss-20b	reader	currency	1	other/scripts/sales_report.py sql/library/01_schema.sql sql/library/02_views.sql
+source	bm25	cond-eval	1	java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java other/scripts/sales_report.py
+source	bm25	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiGenerationConfig.java java/config/AiConditionGroup.java
+source	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java java/config/AiGenerationConfig.java
+source	bm25	facts	1	java/config/AiFactExtractor.java java/provider/OpenAiCompatibleProviderSupport.java java/config/AiOversizeStrategy.java
+source	bm25	oversize-options	3	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/config/AiOversizeStrategy.java
+source	bm25	oversize-parse	2	java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	bm25	input-trim	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java
+source	bm25	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+source	bm25	run-config	1	java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	bm25	plan-only	1	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java
+source	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+source	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+source	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+source	bm25	backend-override	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java
+source	bm25	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+source	bm25	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+source	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+source	bm25	reasoning	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/AiCompletionParser.java
+source	bm25	request-body	2	java/config/AiGenerationConfig.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java
+source	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java other/kernels/histogram.cl
+source	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	bm25	copies-check	2	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/05_seed_data.sql
+source	bm25	open-loans-index	2	sql/library/02_views.sql sql/library/01_schema.sql java/provider/AiCompletionParser.java
+source	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql java/config/AiGenerationConfig.java
+source	bm25	popular	1	sql/library/02_views.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+source	bm25	late-fee	1	sql/library/03_routines.sql sql/library/05_seed_data.sql sql/library/02_views.sql
+source	bm25	blocked	2	sql/library/05_seed_data.sql sql/library/03_routines.sql sql/library/01_schema.sql
+source	bm25	audit	1	sql/library/03_routines.sql java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/03_routines.sql
+source	bm25	rename-joined	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+source	bm25	seed-counts	13	sql/library/02_views.sql other/ringbuf/ringbuf.h java/config/AiGenerationConfig.java
+source	bm25	shop-reserve	1	sql/shop/orders_mysql.sql sql/library/01_schema.sql other/scripts/sales_report.py
+source	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql other/ringbuf/ringbuf.h
+source	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql java/provider/AiGenerationProvider.java
+source	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java java/config/AiGenerationConfig.java
+source	bm25	backup-partial	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java sql/library/05_seed_data.sql
+source	bm25	ring-impl	1	other/ringbuf/ringbuf.h java/provider/AiCompletionParser.java sql/library/04_migration_v2.sql
+source	bm25	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c java/config/AiConditionEvaluator.java
+source	bm25	ring-errors	1	other/ringbuf/ringbuf.h java/provider/OpenAiCompatibleProviderSupport.java other/kernels/histogram.cl
+source	bm25	histogram	1	other/kernels/histogram.cl java/config/AiGenerationConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	bm25	revenue	1	other/scripts/sales_report.py other/kernels/histogram.cl sql/shop/orders_mysql.sql
+source	bm25	currency	1	other/scripts/sales_report.py java/config/AiFactExtractor.java sql/shop/orders_mysql.sql
+source	reader	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+source	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/SrcMorphConfiguration.java
+source	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+source	reader	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java
+source	reader	oversize-options	2	java/config/AiConditionEvaluator.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+source	reader	oversize-parse	0	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+source	reader	input-trim	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	reader	sampling	0	java/provider/LlamaCppJniConfig.java
+source	reader	run-config	1	java/config/SrcMorphConfiguration.java
+source	reader	plan-only	1	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+source	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	reader	thinking-budget	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java
+source	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+source	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java java/provider/OpenAiCompatibleProviderSupport.java
+source	reader	backend-override	1	java/config/AiGenerationConfig.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniConfig.java
+source	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java
+source	reader	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java
+source	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+source	reader	reasoning	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+source	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProviderFactory.java
+source	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProviderFactory.java
+source	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java
+source	reader	copies-check	0	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+source	reader	open-loans-index	0	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+source	reader	overdue	1	sql/library/02_views.sql
+source	reader	popular	1	sql/library/02_views.sql
+source	reader	late-fee	0	java/config/AiGenerationConfig.java java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java
+source	reader	blocked	0	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/SrcMorphConfiguration.java
+source	reader	audit	0	java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiConditionEvaluator.java java/provider/LlamaCppJniConfig.java
+source	reader	branches	1	sql/library/04_migration_v2.sql
+source	reader	rename-joined	2	java/config/SrcMorphConfiguration.java sql/library/04_migration_v2.sql sql/library/05_seed_data.sql
+source	reader	seed-counts	1	sql/library/05_seed_data.sql
+source	reader	shop-reserve	0	java/config/AiConditionEvaluator.java java/config/AiFactExtractor.java java/config/AiGenerationConfig.java
+source	reader	stock-merge	0	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+source	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiConditionEvaluator.java
+source	reader	backup-keep	1	other/scripts/rotate_backups.sh
+source	reader	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+source	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+source	reader	ring-capacity	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+source	reader	ring-errors	1	other/ringbuf/ringbuf.h
+source	reader	histogram	1	other/kernels/histogram.cl
+source	reader	revenue	1	other/scripts/sales_report.py java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProviderFactory.java
+source	reader	currency	1	other/scripts/sales_report.py java/config/AiConditionEvaluator.java java/config/AiFactExtractor.java
+paths	reader	cond-eval	2	java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+paths	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+paths	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiGenerationConfig.java
+paths	reader	facts	0	java/config/AiOversizeStrategy.java java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java
+paths	reader	oversize-options	1	java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java
+paths	reader	oversize-parse	1	java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java
+paths	reader	input-trim	1	java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+paths	reader	sampling	1	java/config/AiGenerationConfig.java
+paths	reader	run-config	0	java/config/AiGenerationConfig.java
+paths	reader	plan-only	0	java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+paths	reader	thinking-strip	2	java/config/AiOversizeStrategy.java java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java
+paths	reader	thinking-budget	0	java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java
+paths	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java java/provider/OpenAiCompatibleProviderSupport.java
+paths	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/AiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+paths	reader	backend-override	1	java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+paths	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/provider/AiGenerationProvider.java
+paths	reader	moe-cpu	2	java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+paths	reader	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/config/AiGenerationConfig.java
+paths	reader	reasoning	1	java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java java/provider/AiCompletionParser.java
+paths	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java java/config/AiGenerationConfig.java
+paths	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java java/provider/AiGenerationProvider.java
+paths	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java
+paths	reader	copies-check	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+paths	reader	open-loans-index	2	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+paths	reader	overdue	1	sql/library/02_views.sql
+paths	reader	popular	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/04_migration_v2.sql
+paths	reader	late-fee	1	sql/library/03_routines.sql sql/library/02_views.sql sql/library/01_schema.sql
+paths	reader	blocked	3	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+paths	reader	audit	3	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+paths	reader	branches	1	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/02_views.sql
+paths	reader	rename-joined	1	sql/library/04_migration_v2.sql sql/library/03_routines.sql sql/library/02_views.sql
+paths	reader	seed-counts	1	sql/library/05_seed_data.sql
+paths	reader	shop-reserve	1	sql/shop/orders_mysql.sql sql/library/03_routines.sql sql/library/02_views.sql
+paths	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql
+paths	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql java/config/AiOversizeStrategy.java java/config/AiGenerationConfig.java
+paths	reader	backup-keep	1	other/scripts/rotate_backups.sh
+paths	reader	backup-partial	1	other/scripts/rotate_backups.sh
+paths	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+paths	reader	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+paths	reader	ring-errors	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+paths	reader	histogram	1	other/kernels/histogram.cl
+paths	reader	revenue	1	other/scripts/sales_report.py
+paths	reader	currency	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql sql/library/02_views.sql

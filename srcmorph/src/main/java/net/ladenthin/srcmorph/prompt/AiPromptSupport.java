@@ -67,10 +67,13 @@ public final class AiPromptSupport {
             Objects.requireNonNull(
                     definition.getKey(),
                     () -> "promptDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
-            Objects.requireNonNull(
-                    definition.getTemplate(),
-                    () -> "promptDefinitions[" + index + "].template is required (bad entry: " + definition + ")");
-            templates.put(definition.getKey(), definition.getTemplate());
+            final String template = definition.getTemplate();
+            if (template == null) {
+                // A template file was read by AiPromptTemplateLoader before; here every template is inline.
+                throw new NullPointerException(
+                        "promptDefinitions[" + index + "].template is required (bad entry: " + definition + ")");
+            }
+            templates.put(definition.getKey(), template);
         }
     }
 

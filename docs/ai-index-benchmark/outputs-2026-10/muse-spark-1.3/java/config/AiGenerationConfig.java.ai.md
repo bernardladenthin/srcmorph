@@ -1,0 +1,133 @@
+### AiGenerationConfig.java
+- H: 1.0
+- C: 93D12775
+- D: 2026-10-31T10:13:39Z
+- T: 2026-10-31T10:14:07Z
+- G: 
+- A: 0.0.0
+- X: file
+---
+> Configures AI code-summarization generation parameters for local and remote LLM inference runs.
+#### Purpose
+- Mutable JavaBean carrying single AI generation step parameters between Maven config layer and AI providers.
+- Holds llama.cpp sampling, KV-cache, GPU-offload, batching, DRY, reasoning, trimming, provider-routing defaults.
+#### Type
+- public class `AiGenerationConfig`, mutable, identity-managed.
+- Annotations: `@ToString` Lombok, `@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})`.
+- No `equals`/`hashCode` generated; `toString` over instance fields for build-log diagnostics.
+#### Input
+- Constructor `AiGenerationConfig()` applies field-initializer defaults, no parameters.
+- Setters accept `modelPath`, `contextSize`, `maxOutputTokens`, `temperature`, `threads`, `charsPerToken`, `maxInputChars`, `warnOnTrim`, `topP`, `topK`, `minP`, `topNSigma`, `repeatPenalty`, `chatTemplateEnableThinking`, `cachePrompt`, `swaFull`, `cacheReuse`, `gpuLayers`, `seed`, `cpuMoeLayers`, `cpuFfnLayers`, `kvUnifiedPerSlot`, `lazyMode`, `repeatLastN`, `cacheTypeK`, `cacheTypeV`, `flashAttn`, `batchSize`, `ubatchSize`, `threadsBatch`, `mainGpu`, `devices`, `provider`, `remoteModel`, `baseUrl`, `apiKeyEnv`, `reasoningEffort`, `reasoningBudgetTokens`, `dryMultiplier`, `dryBase`, `dryAllowedLength`, `dryPenaltyLastN`, `drySequenceBreakers`, `stopStrings`, `calibration`.
+- Null-tolerant setters coerce null to default for `lazyMode`, `cacheTypeK`, `cacheTypeV`, `devices`, `provider`, `remoteModel`, `baseUrl`, `apiKeyEnv`, `drySequenceBreakers`, `stopStrings`.
+- Nullable inputs: `modelPath`, `chatTemplateEnableThinking`, `lazyMode`, `cacheTypeK/V`, `devices`, `provider`, `remoteModel`, `baseUrl`, `apiKeyEnv`, `drySequenceBreakers`, `stopStrings`, `calibration`.
+#### Output
+- Getters return configured `AiGenerationConfig` values; `getDrySequenceBreakers`, `getStopStrings` return unmodifiable views.
+- Mutates 45 private instance fields; no files/streams written.
+- 42 `DEFAULT_*` constants expose fallback values for context, sampling, caching, GPU, batching, DRY, routing.
+#### Core logic
+- Defaults initialization via field initializers referencing `DEFAULT_*` constants; `DEFAULT_THREADS = min(4, availableProcessors)`.
+- Tri-state `chatTemplateEnableThinking` null omits `enable_thinking` kwarg, true/false forwarded verbatim.
+- Automatic `maxInputChars` protocol: `charsPerToken>0` enables calculation from context/output/overhead/safety margin, `0` falls back to `DEFAULT_MAX_INPUT_CHARS`.
+- String defaults use empty sentinel meaning omit flag: `lazyMode`, `cacheTypeK/V`, `devices`, `provider`, `remoteModel`, `apiKeyEnv`, `reasoningEffort`.
+- Integer `-1` sentinel meaning do not set for `reasoningBudgetTokens`, `gpuLayers`, `seed`, `cpuMoeLayers`, `cpuFfnLayers`, `kvUnifiedPerSlot`, `repeatLastN`, `batchSize`, `ubatchSize`, `threadsBatch`, `mainGpu`, `dryPenaltyLastN`.
+- List fields `drySequenceBreakers`, `stopStrings` defensively replaced on set, unmodifiable on get.
+#### Public API
+- AiGenerationConfig() -> AiGenerationConfig creates defaults-applied config.
+- getModelPath() -> String returns GGUF path.
+- setModelPath(String) -> void sets GGUF path.
+- getContextSize() -> int returns context tokens.
+- setContextSize(int) -> void sets context tokens.
+- getMaxOutputTokens() -> int returns max output tokens.
+- setMaxOutputTokens(int) -> void sets max output tokens.
+- getTemperature() -> float returns sampling temperature.
+- setTemperature(float) -> void sets sampling temperature.
+- getThreads() -> int returns inference threads.
+- setThreads(int) -> void sets inference threads.
+- getCharsPerToken() -> int returns chars-per-token ratio.
+- setCharsPerToken(int) -> void sets chars-per-token ratio.
+- getMaxInputChars() -> int returns max input chars.
+- setMaxInputChars(int) -> void sets max input chars.
+- isWarnOnTrim() -> boolean returns trim-warning flag.
+- setWarnOnTrim(boolean) -> void sets trim-warning flag.
+- getTopP() -> float returns nucleus threshold.
+- setTopP(float) -> void sets nucleus threshold.
+- getTopK() -> int returns top-k limit.
+- setTopK(int) -> void sets top-k limit.
+- getRepeatPenalty() -> float returns repetition penalty.
+- setRepeatPenalty(float) -> void sets repetition penalty.
+- getMinP() -> float returns min-p threshold.
+- setMinP(float) -> void sets min-p threshold.
+- getTopNSigma() -> float returns top-n-sigma threshold.
+- setTopNSigma(float) -> void sets top-n-sigma threshold.
+- getChatTemplateEnableThinking() -> Boolean returns thinking tri-state.
+- setChatTemplateEnableThinking(Boolean) -> void sets thinking tri-state.
+- isCachePrompt() -> boolean returns prompt-caching flag.
+- setCachePrompt(boolean) -> void sets prompt-caching flag.
+- isSwaFull() -> boolean returns SWA-full flag.
+- setSwaFull(boolean) -> void sets SWA-full flag.
+- getCacheReuse() -> int returns cache-reuse chunk.
+- setCacheReuse(int) -> void sets cache-reuse chunk.
+- getGpuLayers() -> int returns GPU layers.
+- setGpuLayers(int) -> void sets GPU layers.
+- getCpuMoeLayers() -> int returns CPU MoE layers.
+- setCpuMoeLayers(int) -> void sets CPU MoE layers.
+- getSeed() -> int returns RNG seed.
+- setSeed(int) -> void sets RNG seed.
+- getCpuFfnLayers() -> int returns CPU FFN layers.
+- setCpuFfnLayers(int) -> void sets CPU FFN layers.
+- getKvUnifiedPerSlot() -> int returns KV per-slot cap.
+- setKvUnifiedPerSlot(int) -> void sets KV per-slot cap.
+- getLazyMode() -> String returns tensor-read laziness.
+- setLazyMode(String) -> void sets tensor-read laziness.
+- getRepeatLastN() -> int returns repeat window.
+- setRepeatLastN(int) -> void sets repeat window.
+- getCacheTypeK() -> String returns K cache type.
+- setCacheTypeK(String) -> void sets K cache type.
+- getCacheTypeV() -> String returns V cache type.
+- setCacheTypeV(String) -> void sets V cache type.
+- isFlashAttn() -> boolean returns Flash Attention flag.
+- setFlashAttn(boolean) -> void sets Flash Attention flag.
+- getBatchSize() -> int returns logical batch size.
+- setBatchSize(int) -> void sets logical batch size.
+- getUbatchSize() -> int returns physical batch size.
+- setUbatchSize(int) -> void sets physical batch size.
+- getThreadsBatch() -> int returns batch thread count.
+- setThreadsBatch(int) -> void sets batch thread count.
+- getMainGpu() -> int returns primary GPU index.
+- setMainGpu(int) -> void sets primary GPU index.
+- getDevices() -> String returns device list.
+- setDevices(String) -> void sets device list.
+- getProvider() -> String returns model provider.
+- setProvider(String) -> void sets model provider.
+- getRemoteModel() -> String returns remote model id.
+- setRemoteModel(String) -> void sets remote model id.
+- getBaseUrl() -> String returns OpenAI-compatible base URL.
+- setBaseUrl(String) -> void sets OpenAI-compatible base URL.
+- getApiKeyEnv() -> String returns API-key env name.
+- setApiKeyEnv(String) -> void sets API-key env name.
+- getReasoningEffort() -> String returns reasoning-effort level.
+- setReasoningEffort(String) -> void sets reasoning-effort level.
+- getReasoningBudgetTokens() -> int returns reasoning token budget.
+- setReasoningBudgetTokens(int) -> void sets reasoning token budget.
+- getDryMultiplier() -> float returns DRY multiplier.
+- setDryMultiplier(float) -> void sets DRY multiplier.
+- getDryBase() -> float returns DRY base.
+- setDryBase(float) -> void sets DRY base.
+- getDryAllowedLength() -> int returns DRY allowed length.
+- setDryAllowedLength(int) -> void sets DRY allowed length.
+- getDryPenaltyLastN() -> int returns DRY look-back window.
+- setDryPenaltyLastN(int) -> void sets DRY look-back window.
+- getDrySequenceBreakers() -> List<String> returns DRY breakers view.
+- setDrySequenceBreakers(List<String>) -> void sets DRY breakers.
+- getStopStrings() -> List<String> returns stop strings view.
+- setStopStrings(List<String>) -> void sets stop strings.
+- getCalibration() -> AiCalibration returns timing calibration.
+- setCalibration(AiCalibration) -> void sets timing calibration.
+#### Dependencies
+- Imports `java.util.ArrayList`, `java.util.Collections`, `java.util.List`, `lombok.ToString`, `org.jspecify.annotations.Nullable`.
+- Referenced types `AiCalibration`, `String`, `Boolean`, `List<String>`, `Runtime`.
+#### Exceptions / Errors
+- No thrown/caught exceptions; no validation, setters accept any numeric range.
+- Null-handling: nullable getters may return null; null setters reset lists to empty and strings to `DEFAULT_*`.
+#### Concurrency
+- Mutable non-synchronized JavaBean, not thread-safe; assumes Maven-plugin single-threaded population then read-only use.

@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.engine;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.GgufModelInfo;
 import net.ladenthin.srcmorph.provider.GgufModelInspector;
@@ -70,19 +72,25 @@ final class EngineSupport {
     }
 
     /**
-     * Builds an {@link AiPromptSupport} from the configured prompt definitions, translating a
-     * misconfiguration ({@link NullPointerException} from a missing {@code key}/{@code template}) into
-     * a {@link SrcMorphException} so the caller reports it as a configuration error.
+     * Builds an {@link AiPromptSupport} from the configured prompt definitions, first reading every
+     * {@code templateFile} ({@link AiPromptTemplateLoader}, relative to {@code promptDirectory}), and
+     * translating a misconfiguration into a {@link SrcMorphException} so the caller reports it as a
+     * configuration error: a missing {@code key}/{@code template} ({@link NullPointerException}), both
+     * {@code template} and {@code templateFile} or an empty template file
+     * ({@link IllegalArgumentException}), a template file that cannot be read ({@link IOException}).
      *
      * @param promptDefinitions the configured prompt definitions, or {@code null} for none
+     * @param promptDirectory   directory relative template files are resolved against, or {@code null}
+     *                          for the working directory
      * @return prompt support instance backed by the configured definitions
-     * @throws SrcMorphException if any prompt definition is missing a required field
+     * @throws SrcMorphException if any prompt definition is misconfigured or its file cannot be read
      */
-    static AiPromptSupport buildPromptSupport(final @Nullable List<AiPromptDefinition> promptDefinitions)
+    static AiPromptSupport buildPromptSupport(
+            final @Nullable List<AiPromptDefinition> promptDefinitions, final @Nullable File promptDirectory)
             throws SrcMorphException {
         try {
-            return new AiPromptSupport(promptDefinitions);
-        } catch (final NullPointerException e) {
+            return new AiPromptSupport(new AiPromptTemplateLoader(promptDirectory).load(promptDefinitions));
+        } catch (final NullPointerException | IllegalArgumentException | IOException e) {
             throw new SrcMorphException("Invalid plugin configuration: " + e.getMessage(), e);
         }
     }

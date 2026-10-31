@@ -41,6 +41,18 @@
     "mrr": 0.938
    }
   },
+  "muse-spark-1.3": {
+   "bm25": {
+    "hit1": 0.86,
+    "hit3": 1.0,
+    "mrr": 0.922
+   },
+   "reader": {
+    "hit1": 0.93,
+    "hit3": 1.0,
+    "mrr": 0.965
+   }
+  },
   "nemotron-3.5-lightning-noreason": {
    "bm25": {
     "hit1": 0.86,

@@ -5,9 +5,11 @@
 
 The corpus is 12 Java files of srcmorph itself (taken from a fixed commit with `git archive`) plus
 the SQL and other fixtures under ../corpus. Every model gets the same three phases with the same
-v1 prompts (prompts.json): GenerateFileIndex (prompt routed by extension: .java, .sql, everything
-else to the fallback), AggregatePackages, AggregateProject. The .ai.md tree goes to
-<out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
+prompts: GenerateFileIndex (prompt routed by extension: .java, .sql, everything else to the
+fallback), AggregatePackages, AggregateProject. The prompts are the files of one set under the
+repository's prompts/ directory (--prompts, default v2, the current set), passed to srcmorph as templateFile entries
+with promptDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
+.ai.md tree goes to <out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
 
 API keys are never read from a file here: the caller puts OPENROUTER_API_KEY / HF_TOKEN into the
 environment, and a model only receives the variable its backend names.
@@ -15,7 +17,8 @@ environment, and a model only receives the variable its backend names.
 Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
   python run.py ... --backend openrouter        (every model of one backend)
-Options: --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
+Options: --prompts <set under prompts/> (default v2; a set needs the five keys' files),
+         --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
          --commit <git rev of the Java snapshot>, --seed <n> (replaces the local backend's seed,
          for repeat runs), --out, --meta, --work.
 """
@@ -35,6 +38,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 CORPUS = HERE.parent / "corpus"
+PROMPTS = REPO / "prompts"
+PROMPT_KEYS = ("file-body-java", "file-body-sql", "file-body-fallback", "package-body", "project-body")
 
 JAVA_COMMIT = "1e056c23652992a07cca0056d2783cbf6520f5a1"
 JAVA_ROOT = "srcmorph/src/main/java/net/ladenthin/srcmorph/"
@@ -109,7 +114,8 @@ def phase_config(phase, work, out_dir, prompts, definition):
             "generationProvider": definition["provider"],
             "projectName": "srcmorph-modelcard",
             "force": True,
-            "promptDefinitions": list(prompts.values()),
+            "promptDirectory": str(PROMPTS),
+            "promptDefinitions": prompts,
             "aiDefinitions": [definition],
             "fieldGenerations": rules,
         },
@@ -160,7 +166,7 @@ def run_model(args, models, prompts, model):
             # The GGUF by file name only: where the models sit on the benchmark machine is not data.
             "definition": {k: (Path(v).name if k == "modelPath" else v)
                            for k, v in definition.items() if k != "apiKeyEnv"},
-            "javaCommit": args.commit, "phases": {}}
+            "javaCommit": args.commit, "prompts": args.prompts, "phases": {}}
     usage_before = openrouter_usage() if model["backend"] == "openrouter" else None
     for phase in PHASES:
         config_path = log_dir / f"config_{phase}.json"
@@ -196,10 +202,16 @@ def main():
     parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
     parser.add_argument("--meta", default=str(HERE / "runs"))
     parser.add_argument("--work", required=True)
+    parser.add_argument("--prompts", default="v2")
     args = parser.parse_args()
 
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
-    prompts = json.loads((HERE / "prompts.json").read_text(encoding="utf-8"))
+    prompts = []
+    for prompt_key in PROMPT_KEYS:
+        template_file = f"{args.prompts}/{prompt_key}.md"
+        if not (PROMPTS / template_file).is_file():
+            sys.exit(f"prompt set {args.prompts}: {PROMPTS / template_file} is missing")
+        prompts.append({"key": prompt_key, "templateFile": template_file})
     wanted = [m for m in models["models"]
               if (args.models and m["key"] in args.models.split(",")) or (args.backend and m["backend"] == args.backend)]
     if not wanted:

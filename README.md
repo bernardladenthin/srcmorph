@@ -119,11 +119,14 @@ Maven Central regardless; see `CLAUDE.md`.)
     <version>1.3.0</version>
     <configuration>
         <generationProvider>mock</generationProvider>
+        <!-- the measured prompts of srcmorph's prompts/ directory, copied into the project -->
+        <promptDirectory>${project.basedir}/src/srcmorph/prompts</promptDirectory>
         <promptDefinitions>
             <promptDefinition>
                 <key>file-body</key>
-                <!-- the system prompt; srcmorph sends the file name and source separately -->
-                <template>Summarize this file as structured markdown.</template>
+                <!-- the system prompt; srcmorph sends the file name and source separately.
+                     <template>...</template> writes it inline instead. -->
+                <templateFile>v2/file-body-fallback.md</templateFile>
             </promptDefinition>
         </promptDefinitions>
         <fieldGenerations>

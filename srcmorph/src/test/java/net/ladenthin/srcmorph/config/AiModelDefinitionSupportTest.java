@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import net.ladenthin.srcmorph.support.AbsolutePathRequirement;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -323,6 +324,7 @@ public class AiModelDefinitionSupportTest {
     }
 
     @Test
+    @AbsolutePathRequirement
     public void getConfig_absoluteModelPathWithModelDirectory_isUsedAsItIs(@TempDir final File elsewhere) {
         // arrange: one model below the directory, one outside of it
         final String absolute = new File(elsewhere, "other.gguf").getAbsolutePath();
@@ -357,6 +359,7 @@ public class AiModelDefinitionSupportTest {
     }
 
     @Test
+    @AbsolutePathRequirement
     public void resolveModelPath_pathWithARoot_staysUnchanged(@TempDir final File modelDirectory) {
         // absolute on every platform; on Windows a root-relative path (no drive)
         assertThat(
@@ -365,6 +368,7 @@ public class AiModelDefinitionSupportTest {
     }
 
     @Test
+    @AbsolutePathRequirement
     @EnabledOnOs(OS.WINDOWS)
     public void resolveModelPath_windowsDriveRelativePath_staysUnchanged(@TempDir final File modelDirectory) {
         assertThat(AiModelDefinitionSupport.resolveModelPath(modelDirectory, "M:x.gguf"), is(equalTo("M:x.gguf")));

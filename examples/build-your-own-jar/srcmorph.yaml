@@ -2,17 +2,35 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# What run.sh / run.bat do with it: every file under baseDirectory/subtrees with one of the fileExtensions
-# is matched to a rule in fieldGenerations. The rule names a prompt (promptDefinitions) and a model
+# The srcmorph-selftest profile of srcmorph-maven-plugin/pom.xml as one CLI configuration, nearly 1:1
+# (ExamplesConfigBindingTest checks the rules, facts and models against the pom). What run.sh /
+# run.bat do with it: every file under baseDirectory/subtrees with one of the fileExtensions is
+# matched to a rule in fieldGenerations; the rule names a prompt (promptDefinitions) and a model
 # (aiDefinitions). srcmorph sends the prompt as the system message and the file's name and source as
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
+#
+# Two models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
+# IBM Granite 4.0 for larger files - H-Tiny with a 384K window in one pass up to ~1 MB, H-1B with a
+# 16K window beyond, map-reducing a few sampled chunks. A Java or SQL summary starts with exact
+# whole-file counts (factDefinitions: INSERT rows, tables, views, methods, ...), so a sampled
+# summary of a multi-MB SQL dump still states what the data holds.
 #
 # command:
 #   Plan               prints which file gets which model and prompt; loads nothing, writes nothing
 #   GenerateFileIndex  one .ai.md per source file
-#   All                GenerateFileIndex, then one summary per package and one for the project
-# Start with Plan, then switch to GenerateFileIndex. A second run only redoes changed files.
+#   All                GenerateFileIndex, then one summary per package (packageFieldGenerations) and
+#                      the project index with an overview (projectFieldGenerations)
+# Start with Plan, then switch to GenerateFileIndex or All. A second run only redoes changed files.
 command: Plan
+
+# The package and the project phase have rules of their own, as the plugin's aggregate-packages and
+# aggregate-project executions do.
+packageFieldGenerations:
+  - promptKey: package-body
+    aiDefinitionKey: gpt-oss-20B-mxfp4
+projectFieldGenerations:
+  - promptKey: project-body
+    aiDefinitionKey: gpt-oss-20B-mxfp4
 
 srcMorph:
   # On Windows use forward slashes ("C:/path/to/project"): in a double-quoted YAML string, "C:\x" is
@@ -23,25 +41,168 @@ srcMorph:
     - "src/main/java"
   fileExtensions:
     - ".java"
+    - ".sql"
+  excludes:
+    - "**/package-info.java"
+    - "**/module-info.java"
 
   generationProvider: llamacpp-jni      # "mock" runs without a model, for a dry test of the setup
   modelDirectory: "/path/to/models"     # a relative modelPath below is relative to this directory
 
+  # The measured prompts of this repository (prompts/README.md), one file per prompt; a relative
+  # templateFile resolves against promptDirectory, which is relative to the working directory (run.sh
+  # and run.bat start here). Copy the files and point promptDirectory at your copy to change them, or
+  # write a prompt inline with template: "...".
+  promptDirectory: "../../prompts"
   promptDefinitions:
-    - key: java
-      template: "Summarize this Java file as structured Markdown: purpose, public API, collaborators."
+    - key: file-body-java
+      templateFile: v2/file-body-java.md
+    - key: file-body-sql
+      templateFile: v2/file-body-sql.md
+    - key: file-body-fallback
+      templateFile: v2/file-body-fallback.md
+    - key: package-body
+      templateFile: v2/package-body.md
+    - key: project-body
+      templateFile: v2/project-body.md
 
   aiDefinitions:
-    - key: local
+    # gpt-oss-20b in its native MXFP4: reasoningEffort low (best for dense summaries), a 96K window
+    # (costs RAM, not time: ~12 GB model + ~11 GB KV when full), temp 0.7 with min-p 0.05.
+    - key: gpt-oss-20B-mxfp4
+      modelPath: gpt-oss-20b-mxfp4.gguf
+      contextSize: 98304
+      maxOutputTokens: 6144
+      temperature: 0.7
+      threads: 8                        # more only after measuring, never more than cores
+      charsPerToken: 3
+      warnOnTrim: true
+      topP: 1.0
+      topK: 0
+      minP: 0.05
+      repeatPenalty: 1.0
+      reasoningEffort: low
+    # ~275 KB .. ~1 MB in one pass: Granite 4.0 H-Tiny's KV grows only linearly, so 384K fits 8 GB.
+    - key: granite-4.0-h-tiny-bigwindow
       modelPath: granite-4.0-h-tiny-Q4_K_M.gguf
-      contextSize: 16384                # tokens; a file larger than this is handled by onOversize
-      maxOutputTokens: 1024
-      temperature: 0.15
-      threads: 4                        # the default; more only after measuring, never more than cores
-      gpuLayers: 99                     # 99 = everything on the GPU module in the jar, 0 = CPU only
+      contextSize: 393216
+      maxOutputTokens: 4096
+      temperature: 0.2
+      threads: 8
+      charsPerToken: 3
+      warnOnTrim: true
+      topP: 1.0
+      topK: 0
+      minP: 0.05
+      repeatPenalty: 1.0
+      reasoningEffort: ""               # Granite has no gpt-oss reasoning channels
+    # Larger than ~1 MB: map-reduce over a SMALL 16K window (cheap prefill per chunk), maxChunks
+    # sampled chunks (head, tail, spread) per file, next to the exact facts.
+    - key: granite-4.0-h-1b-fastchunk
+      modelPath: granite-4.0-h-1b-Q4_K_M.gguf
+      contextSize: 16384
+      maxOutputTokens: 1536
+      temperature: 0.2
+      threads: 8
+      charsPerToken: 3
+      warnOnTrim: true
+      topP: 1.0
+      topK: 0
+      minP: 0.05
+      repeatPenalty: 1.0
+      reasoningEffort: ""
 
+  # Exact whole-file counts, prepended to the summary of every rule that names them by factsKey.
+  # Regex heuristics: "methods (approx)" includes constructors; the field count sees only fields with
+  # a strong modifier.
+  factDefinitions:
+    - key: java-facts
+      facts:
+        - label: 'type declarations'
+          pattern: '(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w'
+        - label: 'public declarations'
+          pattern: '\bpublic\b'
+        - label: 'TODO/FIXME'
+          pattern: '\b(?:TODO|FIXME)\b'
+        - label: '@Override'
+          pattern: '@Override\b'
+        - label: 'methods (approx)'
+          pattern: '(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]'
+        - label: 'constructors'
+          pattern: '(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{'
+        - label: 'field declarations (w/ modifier)'
+          pattern: '(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]*)?;'
+    - key: sql-facts
+      facts:
+        - label: 'INSERT rows'
+          pattern: '(?im)^\s*INSERT\s+INTO\b'
+        - label: 'tables'
+          pattern: '(?im)^\s*CREATE\s+TABLE\b'
+        - label: 'views'
+          pattern: '(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b'
+        - label: 'indexes'
+          pattern: '(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b'
+        - label: 'functions/procedures'
+          pattern: '(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b'
+
+  # By priority, the most specific wins: huge (>1 MB) -> fastchunk map-reduce, big-window
+  # (~275 KB .. 1 MB) -> one Granite pass, then gpt-oss for Java, SQL and every other file.
   fieldGenerations:
-    - promptKey: java
-      aiDefinitionKey: local
-      fallback: true                    # the rule for every file no other rule matches
-      onOversize: sample                # default "fail" stops the run on a file larger than the window
+    - id: huge-java
+      promptKey: file-body-java
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 200
+      onOversize: mapReduce             # or sample (head only, one call) / deterministic (no model)
+      maxChunks: 6
+      factsKey: java-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {min: 1000000}
+    - id: huge-sql
+      promptKey: file-body-sql
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 200
+      onOversize: mapReduce
+      maxChunks: 6
+      factsKey: sql-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".sql"]
+            - size: {min: 1000000}
+    - id: big-window-java
+      promptKey: file-body-java
+      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      priority: 100
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {min: 275000}
+    - id: big-window-sql
+      promptKey: file-body-sql
+      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      priority: 100
+      condition:
+        and:
+          conditions:
+            - extensions: [".sql"]
+            - size: {min: 275000}
+    - id: java
+      promptKey: file-body-java
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: java-facts
+      condition:
+        extensions: [".java"]
+    - id: sql
+      promptKey: file-body-sql
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: sql-facts
+      condition:
+        extensions: [".sql"]
+    - id: fallback                      # the rule for every file no other rule matches
+      promptKey: file-body-fallback
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      fallback: true

@@ -740,6 +740,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.prompt.AiPromptDefinition</param>
                         <param>net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport</param>
                         <param>net.ladenthin.srcmorph.prompt.AiPromptSupport</param>
+                        <param>net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader</param>
                         <param>net.ladenthin.srcmorph.provider.AiCompletionParser</param>
                         <param>net.ladenthin.srcmorph.provider.GgufModelInfo</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationTimings</param>

@@ -1,0 +1,137 @@
+### AiGenerationConfig.java
+- H: 1.0
+- C: 93D12775
+- D: 2026-10-31T15:20:26Z
+- T: 2026-10-31T15:20:55Z
+- G: 
+- A: 0.0.0
+- X: file
+---
+> Carries all AI summarization knobs for indexing source files with local or remote LLMs.
+#### Purpose
+- Mutable JavaBean bridging Maven plugin configuration and AI provider implementations for single generation step.
+- Holds model path, sampling, KV-cache, GPU offload, remote endpoint, trimming, retry/stop controls with defaults.
+#### Type
+- public class AiGenerationConfig, mutable, identity-managed, no equals/hashCode.
+- Annotations: @ToString Lombok over instance fields, @SuppressWarnings NullAway.Init.
+#### Input
+- Constructor AiGenerationConfig() applies field-initializer defaults, no parameters.
+- Setters accept sampling ints/floats/booleans: contextSize, maxOutputTokens, temperature, threads, topP/topK/minP/topNSigma, repeatPenalty/repeatLastN, dry* knobs.
+- Setters accept Strings/Booleans/Lists: modelPath, lazyMode, cacheTypeK/V, devices, provider, remoteModel, baseUrl, apiKeyEnv, reasoningEffort, chatTemplateEnableThinking, drySequenceBreakers, stopStrings, calibration AiCalibration.
+- Null-tolerant setters coalesce to defaults: lazyMode, cacheTypeK/V, devices, provider, remoteModel, baseUrl, apiKeyEnv, drySequenceBreakers, stopStrings.
+#### Output
+- Getters expose 45 instance fields; List getters return Collections.unmodifiableList views.
+- Lombok toString emits all instance fields for build-log diagnostics.
+- Mutates own fields via setters; no files/streams written.
+#### Core logic
+- Defines 42 DEFAULT_* constants for context, sampling, cache, GPU, remote, DRY defaults.
+- Defaults sampling for summarisation: temperature 0.15, topP 0.9, topK 40, minP 0.0, topNSigma -1.0, repeatPenalty 1.0.
+- Defaults performance: contextSize 32768, maxOutputTokens 128, threads min(4,cores), cachePrompt true, swaFull true, cacheReuse 256.
+- Tri-state chatTemplateEnableThinking null omits enable_thinking kwarg, true/false forwarded verbatim.
+- Sentinel -1 means do-not-set for reasoningBudgetTokens, gpuLayers, seed, cpuMoe/ffnLayers, kvUnifiedPerSlot, repeatLastN, dryPenaltyLastN, batch/ubatch/threadsBatch/mainGpu.
+- Empty-string means do-not-set for lazyMode, cacheTypeK/V, devices, provider, remoteModel, apiKeyEnv.
+- Automatic maxInputChars calculation supported via charsPerToken 4, safetyMargin 500, warnOnTrim true; 0 disables.
+- Remote routing via provider, remoteModel, baseUrl https://openrouter.ai/api/v1, apiKeyEnv variable name.
+#### Public API
+- AiGenerationConfig() -> AiGenerationConfig : creates config with defaults applied.
+- getModelPath() -> String : returns GGUF path or null.
+- setModelPath(String) -> void : sets GGUF model path.
+- getContextSize() -> int : returns context window tokens.
+- setContextSize(int) -> void : sets context window tokens.
+- getMaxOutputTokens() -> int : returns max output tokens.
+- setMaxOutputTokens(int) -> void : sets max output tokens.
+- getTemperature() -> float : returns sampling temperature.
+- setTemperature(float) -> void : sets sampling temperature.
+- getThreads() -> int : returns inference CPU threads.
+- setThreads(int) -> void : sets inference CPU threads.
+- getCharsPerToken() -> int : returns chars-per-token estimate.
+- setCharsPerToken(int) -> void : sets chars-per-token estimate.
+- getMaxInputChars() -> int : returns max input characters.
+- setMaxInputChars(int) -> void : sets max input characters.
+- isWarnOnTrim() -> boolean : reports trim warning enabled.
+- setWarnOnTrim(boolean) -> void : sets trim warning flag.
+- getTopP() -> float : returns nucleus threshold.
+- setTopP(float) -> void : sets nucleus threshold.
+- getTopK() -> int : returns top-k limit.
+- setTopK(int) -> void : sets top-k limit.
+- getRepeatPenalty() -> float : returns repetition penalty.
+- setRepeatPenalty(float) -> void : sets repetition penalty.
+- getMinP() -> float : returns min-p threshold.
+- setMinP(float) -> void : sets min-p threshold.
+- getTopNSigma() -> float : returns top-n-sigma threshold.
+- setTopNSigma(float) -> void : sets top-n-sigma threshold.
+- getChatTemplateEnableThinking() -> Boolean : returns thinking mode tri-state.
+- setChatTemplateEnableThinking(Boolean) -> void : sets thinking mode tri-state.
+- isCachePrompt() -> boolean : reports prompt caching enabled.
+- isSwaFull() -> boolean : reports full SWA KV.
+- setSwaFull(boolean) -> void : sets full SWA KV.
+- getCacheReuse() -> int : returns cache-reuse chunk size.
+- setCacheReuse(int) -> void : sets cache-reuse chunk size.
+- getGpuLayers() -> int : returns GPU offload layers.
+- setGpuLayers(int) -> void : sets GPU offload layers.
+- getCpuMoeLayers() -> int : returns CPU MoE layers.
+- setCpuMoeLayers(int) -> void : sets CPU MoE layers.
+- getSeed() -> int : returns RNG seed.
+- setSeed(int) -> void : sets RNG seed.
+- getCpuFfnLayers() -> int : returns CPU FFN layers.
+- setCpuFfnLayers(int) -> void : sets CPU FFN layers.
+- getKvUnifiedPerSlot() -> int : returns unified KV cap.
+- setKvUnifiedPerSlot(int) -> void : sets unified KV cap.
+- getLazyMode() -> String : returns tensor-read laziness.
+- setLazyMode(String) -> void : sets tensor-read laziness.
+- getRepeatLastN() -> int : returns repeat-penalty window.
+- setRepeatLastN(int) -> void : sets repeat-penalty window.
+- getCacheTypeK() -> String : returns K cache type.
+- setCacheTypeK(String) -> void : sets K cache type.
+- getCacheTypeV() -> String : returns V cache type.
+- setCacheTypeV(String) -> void : sets V cache type.
+- isFlashAttn() -> boolean : reports Flash Attention enabled.
+- setFlashAttn(boolean) -> void : sets Flash Attention flag.
+- getBatchSize() -> int : returns logical batch size.
+- setBatchSize(int) -> void : sets logical batch size.
+- getUbatchSize() -> int : returns physical batch size.
+- setUbatchSize(int) -> void : sets physical batch size.
+- getThreadsBatch() -> int : returns batch thread count.
+- setThreadsBatch(int) -> void : sets batch thread count.
+- getMainGpu() -> int : returns primary GPU index.
+- setMainGpu(int) -> void : sets primary GPU index.
+- getDevices() -> String : returns device selection list.
+- setDevices(String) -> void : sets device selection list.
+- getProvider() -> String : returns model provider override.
+- setProvider(String) -> void : sets model provider override.
+- getRemoteModel() -> String : returns remote model id.
+- setRemoteModel(String) -> void : sets remote model id.
+- getBaseUrl() -> String : returns OpenAI-compatible base URL.
+- setBaseUrl(String) -> void : sets OpenAI-compatible base URL.
+- getApiKeyEnv() -> String : returns API key variable.
+- setApiKeyEnv(String) -> void : sets API key variable.
+- setCachePrompt(boolean) -> void : sets prompt caching flag.
+- getReasoningEffort() -> String : returns reasoning-effort level.
+- setReasoningEffort(String) -> void : sets reasoning-effort level.
+- getReasoningBudgetTokens() -> int : returns reasoning token budget.
+- setReasoningBudgetTokens(int) -> void : sets reasoning token budget.
+- getDryMultiplier() -> float : returns DRY multiplier.
+- setDryMultiplier(float) -> void : sets DRY multiplier.
+- getDryBase() -> float : returns DRY base.
+- setDryBase(float) -> void : sets DRY base.
+- getDryAllowedLength() -> int : returns DRY allowed length.
+- setDryAllowedLength(int) -> void : sets DRY allowed length.
+- getDryPenaltyLastN() -> int : returns DRY look-back window.
+- setDryPenaltyLastN(int) -> void : sets DRY look-back window.
+- getDrySequenceBreakers() -> List<String> : returns DRY breakers view.
+- setDrySequenceBreakers(List<String>) -> void : sets DRY breakers list.
+- getStopStrings() -> List<String> : returns stop strings view.
+- setStopStrings(List<String>) -> void : sets stop strings list.
+- getCalibration() -> AiCalibration : returns timing calibration or null.
+- setCalibration(AiCalibration) -> void : sets timing calibration.
+#### Dependencies
+- java.util.ArrayList, Collections, List for drySequenceBreakers, stopStrings.
+- lombok.ToString for diagnostics, org.jspecify.annotations.Nullable for modelPath, chatTemplateEnableThinking, calibration.
+- net.ladenthin.srcmorph.config.AiCalibration calibration type, java.lang.Runtime for DEFAULT_THREADS.
+#### Exceptions / Errors
+- No thrown exceptions; null modelPath/calibration/chatTemplateEnableThinking signify unset.
+- Null String/List setter arguments reset to DEFAULT_* or empty ArrayList, never stores null lists.
+- Negative/empty sentinels must be guarded by providers before binding calls.
+#### Concurrency
+- Mutable non-synchronized JavaBean, not thread-safe, managed by identity.
+- Unmodifiable List views prevent external mutation without setter; underlying ArrayList still mutable via setter.

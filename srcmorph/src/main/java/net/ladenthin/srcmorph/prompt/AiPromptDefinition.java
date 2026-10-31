@@ -4,9 +4,16 @@
 package net.ladenthin.srcmorph.prompt;
 
 import lombok.ToString;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Maven plugin configuration POJO that pairs a lookup key with a prompt template string.
+ * Maven plugin configuration POJO that pairs a lookup key with a prompt template: either the text
+ * itself ({@code template}) or a file holding it ({@code templateFile}), exactly one of the two.
+ *
+ * <p>A {@code templateFile} lets several configurations share one prompt file instead of a copy
+ * each. A relative path is resolved against the configuration's {@code promptDirectory}, or against
+ * the working directory without one; {@link AiPromptTemplateLoader} reads it, as UTF-8, before the
+ * prompts are registered.</p>
  *
  * <p>Fields are populated by the Maven plugin framework via reflection from the
  * configuration XML; the no-arg constructor cannot guarantee non-null initialization.
@@ -26,7 +33,8 @@ public class AiPromptDefinition {
     }
 
     private String key;
-    private String template;
+    private @Nullable String template;
+    private @Nullable String templateFile;
 
     /**
      * Returns the prompt template lookup key.
@@ -49,9 +57,9 @@ public class AiPromptDefinition {
     /**
      * Returns the prompt template string.
      *
-     * @return prompt template string
+     * @return prompt template string, or {@code null} when the template comes from {@link #getTemplateFile()}
      */
-    public String getTemplate() {
+    public @Nullable String getTemplate() {
         return template;
     }
 
@@ -60,7 +68,26 @@ public class AiPromptDefinition {
      *
      * @param template prompt template string
      */
-    public void setTemplate(final String template) {
+    public void setTemplate(final @Nullable String template) {
         this.template = template;
+    }
+
+    /**
+     * Returns the file the prompt template is read from.
+     *
+     * @return path of the template file, or {@code null} when the template is given inline
+     */
+    public @Nullable String getTemplateFile() {
+        return templateFile;
+    }
+
+    /**
+     * Sets the file the prompt template is read from, instead of an inline {@link #setTemplate template}.
+     *
+     * @param templateFile path of the template file, relative to the configuration's
+     *                     {@code promptDirectory} (or the working directory without one), or absolute
+     */
+    public void setTemplateFile(final @Nullable String templateFile) {
+        this.templateFile = templateFile;
     }
 }

@@ -66,9 +66,11 @@ public class CConfiguration {
   plugin's mojos build from their own `@Parameter` fields. **Every key under `srcMorph` in your JSON/YAML
   file reads identically to the matching Maven `<configuration>` XML element** — `baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, `generationProvider`,
-  `promptDefinitions`, `aiDefinitions`, `modelDirectory`, `fieldGenerations`, `factDefinitions`, the
-  `llama*` fallback parameters, `force`, `planOnly`, `projectName`. A relative `modelDirectory` (like
-  every relative path here) is relative to the working directory the CLI is started in. If you already know the plugin's XML shape, you
+  `promptDefinitions`, `promptDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations`,
+  `factDefinitions`, the `llama*` fallback parameters, `force`, `planOnly`, `projectName`. A relative
+  `modelDirectory` or `promptDirectory` (like every relative path here) is relative to the working
+  directory the CLI is started in. A prompt is a `template` or a `templateFile`; the examples read the
+  measured prompts of [`../prompts/`](../prompts/README.md). If you already know the plugin's XML shape, you
   already know this shape — see
   [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s
   "Configuration" section for the full field-by-field reference (routing-rule conditions, oversize
@@ -80,9 +82,9 @@ public class CConfiguration {
 |---|---|
 | `Plan` | Runs `GenerateEngine` with `planOnly` **forced** to `true`, regardless of what the file says — builds and logs the routing plan (which model + prompt each file would get) and stops. No model is loaded, nothing is written. The default; always safe to run. |
 | `GenerateFileIndex` | Phase 1, exactly as configured: indexes source files and fills in their AI-generated summaries (`GenerateEngine`). |
-| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`). |
-| `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`). |
-| `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails. |
+| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the top-level `packageFieldGenerations` as its rules when set (like the plugin's `aggregate-packages` execution), otherwise `srcMorph.fieldGenerations`. |
+| `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`), with the top-level `projectFieldGenerations` when set, otherwise `srcMorph.fieldGenerations`. |
+| `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails; each aggregation phase with its own rules when set. [`examples/build-your-own-jar/srcmorph.yaml`](../examples/build-your-own-jar/srcmorph.yaml) is the plugin's self-test profile in this form. |
 | `Calibrate` | Loads each distinct model your `fieldGenerations` would route to, measures its prefill/decode throughput, and prints a paste-ready `<calibration>` XML block per model to standard output (`CalibrateEngine`). |
 | `ListModels` | Asks every OpenAI-compatible server your `aiDefinitions` name (`GET <baseUrl>/models`, with the definition's key) which models it serves, and prints to standard output a table (id, token limit, price where the server states one, as OpenRouter does) and a paste-ready `aiDefinitions` YAML block with one entry per model, copied from that server's first definition (`ListModelsEngine`). The top-level `modelFilter` keeps the ids that contain it, ignoring case. Sends no prompt, writes nothing. |
 

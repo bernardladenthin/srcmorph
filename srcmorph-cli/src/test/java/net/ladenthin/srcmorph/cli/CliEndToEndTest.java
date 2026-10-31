@@ -4,7 +4,9 @@
 package net.ladenthin.srcmorph.cli;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayOutputStream;
@@ -16,7 +18,9 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
@@ -24,6 +28,7 @@ import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -88,6 +93,184 @@ public class CliEndToEndTest {
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(true));
         // Phase 3: the single project-level index.
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(true));
+    }
+
+    /**
+     * The prompt comes from a file below {@code promptDirectory}, as every shipped example's does: the
+     * run reads it before the first file and completes.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    public void run_allCommand_readsThePromptFromItsTemplateFile() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        final Path promptDirectory = tempDir.resolve("prompts");
+        Files.createDirectories(promptDirectory.resolve("v1"));
+        Files.write(
+                promptDirectory.resolve("v1/file-body.md"),
+                "You are a code indexer.\n".getBytes(StandardCharsets.UTF_8));
+        final AiPromptDefinition prompt = new AiPromptDefinition();
+        prompt.setKey("file-body");
+        prompt.setTemplateFile("v1/file-body.md");
+        configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
+        configuration.srcMorph.setPromptDirectory(promptDirectory.toFile());
+
+        new Main(configuration).run();
+
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+    }
+
+    /**
+     * An absolute path is always possible (the {@code absolute-path} requirement of the core's
+     * {@code AbsolutePathRequirement}): an absolute {@code templateFile} is read as it is, with no
+     * {@code promptDirectory} and with one pointing somewhere else.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    @Tag("absolute-path")
+    public void run_allCommand_absoluteTemplateFile_isReadWithOrWithoutAPromptDirectory() throws Exception {
+        final Path absolute = Files.write(
+                Files.createDirectories(tempDir.resolve("shared-prompts")).resolve("file-body.md"),
+                "You are a code indexer.\n".getBytes(StandardCharsets.UTF_8));
+        final Path unrelatedDirectory = tempDir.resolve("unrelated");
+        for (final boolean withDirectory : new boolean[] {false, true}) {
+            final CConfiguration configuration = buildAllCommandConfiguration();
+            final AiPromptDefinition prompt = new AiPromptDefinition();
+            prompt.setKey("file-body");
+            prompt.setTemplateFile(absolute.toAbsolutePath().toString());
+            configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
+            configuration.srcMorph.setPromptDirectory(withDirectory ? unrelatedDirectory.toFile() : null);
+            configuration.srcMorph.setForce(true);
+
+            new Main(configuration).run();
+
+            assertThat(
+                    "promptDirectory " + (withDirectory ? unrelatedDirectory : "unset"),
+                    Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")),
+                    is(true));
+        }
+    }
+
+    /**
+     * A missing prompt file stops the run before anything is written, naming the file.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void run_allCommand_missingTemplateFile_failsWithItsPath() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        final AiPromptDefinition prompt = new AiPromptDefinition();
+        prompt.setKey("file-body");
+        prompt.setTemplateFile("v1/missing.md");
+        configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
+        configuration.srcMorph.setPromptDirectory(tempDir.resolve("prompts").toFile());
+
+        final IllegalStateException thrown =
+                assertThrows(IllegalStateException.class, () -> new Main(configuration).run());
+
+        assertThat(String.valueOf(thrown.getCause()), containsString("missing.md cannot be read"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    /** Every message of {@code thrown} and its causes, so a test does not depend on which layer wraps. */
+    private static String causeChain(final Throwable thrown) {
+        final StringBuilder chain = new StringBuilder();
+        for (Throwable cause = thrown; cause != null; cause = cause.getCause()) {
+            chain.append(cause).append('\n');
+        }
+        return chain.toString();
+    }
+
+    private static AiFieldGenerationConfig phaseRule(final String promptKey) {
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setPromptKey(promptKey);
+        rule.setAiDefinitionKey("mock-model");
+        return rule;
+    }
+
+    private static AiPromptDefinition inlinePrompt(final String key) {
+        final AiPromptDefinition prompt = new AiPromptDefinition();
+        prompt.setKey(key);
+        prompt.setTemplate("Summarize.");
+        return prompt;
+    }
+
+    /**
+     * As the Maven plugin's aggregate executions do, the package and the project phase run with
+     * rules of their own: here prompts the file phase's rule never names. The run completes, and the
+     * shared configuration keeps the file phase's rules.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    public void run_allCommand_withPhaseRules_runsEachPhaseWithItsOwnRules() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.srcMorph.setPromptDefinitions(
+                Arrays.asList(inlinePrompt("file-body"), inlinePrompt("package-body"), inlinePrompt("project-body")));
+        final List<AiFieldGenerationConfig> fileRules = configuration.srcMorph.getFieldGenerations();
+        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("package-body"));
+        configuration.projectFieldGenerations = Collections.singletonList(phaseRule("project-body"));
+
+        new Main(configuration).run();
+
+        final Path outputRoot = tempDir.resolve("out");
+        assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(true));
+        assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(true));
+        assertThat(configuration.srcMorph.getFieldGenerations() == fileRules, is(true));
+    }
+
+    /**
+     * The package phase really takes its own rule: one naming a prompt nobody defined stops it, while
+     * the file phase before it, on the shared rules, completed.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void run_allCommand_packageRuleWithAnUnknownPrompt_failsInThePackagePhase() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("no-such-prompt"));
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("no-such-prompt"));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+    }
+
+    /**
+     * The project phase likewise; {@link CCommand#AggregateProject} alone takes its rule too.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void run_aggregateProjectCommand_projectRuleWithAnUnknownPrompt_fails() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.All;
+        new Main(configuration).run();
+        configuration.command = CCommand.AggregateProject;
+        configuration.projectFieldGenerations = Collections.singletonList(phaseRule("no-such-prompt"));
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("no-such-prompt"));
+    }
+
+    /**
+     * And {@link CCommand#AggregatePackages} alone takes the package rule.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void run_aggregatePackagesCommand_packageRuleWithAnUnknownPrompt_fails() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.GenerateFileIndex;
+        new Main(configuration).run();
+        configuration.command = CCommand.AggregatePackages;
+        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("no-such-prompt"));
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("no-such-prompt"));
     }
 
     @Test

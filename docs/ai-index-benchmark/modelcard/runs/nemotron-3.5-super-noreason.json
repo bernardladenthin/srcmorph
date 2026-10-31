@@ -1,0 +1,35 @@
+{
+ "key": "nemotron-3.5-super-noreason",
+ "name": "Nemotron 3.5 Super VL 120B-A12B (reasoning off)",
+ "backend": "openrouter",
+ "definition": {
+  "key": "nemotron-3.5-super-noreason",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "none",
+  "remoteModel": "nvidia/nemotron-3.5-super-vl"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 256.0,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 54.3,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 1.6,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.031463,
+ "files": 37
+}

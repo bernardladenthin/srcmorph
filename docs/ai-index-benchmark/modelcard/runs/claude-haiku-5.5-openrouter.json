@@ -1,0 +1,37 @@
+{
+ "key": "claude-haiku-5.5-openrouter",
+ "name": "Claude Haiku 5.5 (OpenRouter)",
+ "backend": "openrouter",
+ "definition": {
+  "key": "claude-haiku-5.5-openrouter",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "anthropic/claude-haiku-5.5"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 157.5,
+   "cutOff": [
+    "java/config/AiGenerationConfig.java"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 83.4,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 3.5,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.046265,
+ "files": 37
+}
