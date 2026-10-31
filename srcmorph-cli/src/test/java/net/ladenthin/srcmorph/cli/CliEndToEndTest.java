@@ -96,7 +96,7 @@ public class CliEndToEndTest {
     }
 
     /**
-     * The prompt comes from a file below {@code promptDirectory}, as every shipped example's does: the
+     * The prompt comes from a file below {@code profileDirectory}, as every shipped example's does: the
      * run reads it before the first file and completes.
      *
      * @throws Exception if the run fails
@@ -104,16 +104,16 @@ public class CliEndToEndTest {
     @Test
     public void run_allCommand_readsThePromptFromItsTemplateFile() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
-        final Path promptDirectory = tempDir.resolve("prompts");
-        Files.createDirectories(promptDirectory.resolve("v1"));
+        final Path profileDirectory = tempDir.resolve("prompts");
+        Files.createDirectories(profileDirectory.resolve("v1"));
         Files.write(
-                promptDirectory.resolve("v1/file-body.md"),
+                profileDirectory.resolve("v1/file-body.md"),
                 "You are a code indexer.\n".getBytes(StandardCharsets.UTF_8));
         final AiPromptDefinition prompt = new AiPromptDefinition();
         prompt.setKey("file-body");
         prompt.setTemplateFile("v1/file-body.md");
         configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
-        configuration.srcMorph.setPromptDirectory(promptDirectory.toFile());
+        configuration.srcMorph.setProfileDirectory(profileDirectory.toFile());
 
         new Main(configuration).run();
 
@@ -123,13 +123,13 @@ public class CliEndToEndTest {
     /**
      * An absolute path is always possible (the {@code absolute-path} requirement of the core's
      * {@code AbsolutePathRequirement}): an absolute {@code templateFile} is read as it is, with no
-     * {@code promptDirectory} and with one pointing somewhere else.
+     * {@code profileDirectory} and with one pointing somewhere else.
      *
      * @throws Exception if the run fails
      */
     @Test
     @Tag("absolute-path")
-    public void run_allCommand_absoluteTemplateFile_isReadWithOrWithoutAPromptDirectory() throws Exception {
+    public void run_allCommand_absoluteTemplateFile_isReadWithOrWithoutAProfileDirectory() throws Exception {
         final Path absolute = Files.write(
                 Files.createDirectories(tempDir.resolve("shared-prompts")).resolve("file-body.md"),
                 "You are a code indexer.\n".getBytes(StandardCharsets.UTF_8));
@@ -140,13 +140,13 @@ public class CliEndToEndTest {
             prompt.setKey("file-body");
             prompt.setTemplateFile(absolute.toAbsolutePath().toString());
             configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
-            configuration.srcMorph.setPromptDirectory(withDirectory ? unrelatedDirectory.toFile() : null);
+            configuration.srcMorph.setProfileDirectory(withDirectory ? unrelatedDirectory.toFile() : null);
             configuration.srcMorph.setForce(true);
 
             new Main(configuration).run();
 
             assertThat(
-                    "promptDirectory " + (withDirectory ? unrelatedDirectory : "unset"),
+                    "profileDirectory " + (withDirectory ? unrelatedDirectory : "unset"),
                     Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")),
                     is(true));
         }
@@ -164,7 +164,7 @@ public class CliEndToEndTest {
         prompt.setKey("file-body");
         prompt.setTemplateFile("v1/missing.md");
         configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
-        configuration.srcMorph.setPromptDirectory(tempDir.resolve("prompts").toFile());
+        configuration.srcMorph.setProfileDirectory(tempDir.resolve("prompts").toFile());
 
         final IllegalStateException thrown =
                 assertThrows(IllegalStateException.class, () -> new Main(configuration).run());

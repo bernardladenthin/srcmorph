@@ -14,17 +14,7 @@
     ],
     "generationProvider": "mock",
     "projectName": "my-project",
-    "promptDirectory": "../prompts",
-    "promptDefinitions": [
-      {
-        "key": "file-body-java",
-        "templateFile": "v2/file-body-java.md"
-      },
-      {
-        "key": "file-body-fallback",
-        "templateFile": "v2/file-body-fallback.md"
-      }
-    ],
+    "profileDirectory": "../profiles/v2",
     "aiDefinitions": [
       {
         "key": "mock-model",

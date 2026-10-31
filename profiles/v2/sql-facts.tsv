@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# SQL fact counters: one per line, label TAB pattern (Java regex). srcmorph counts the pattern's
+# matches over the whole source file and writes them as exact facts before the AI summary.
+# Statements are counted where they start a line, case-insensitive, for PostgreSQL, MySQL and
+# T-SQL. "VALUES rows (approx)" counts the row tuples of VALUES lists (a tuple after VALUES or
+# after "),"), so a multi-row INSERT counts every row; rows an INSERT ... SELECT reads from a
+# table are not seen, and a tuple nested inside a row counts once more. SqlFactPatternsTest
+# pins every case.
+INSERT statements	(?im)^\s*INSERT\s+INTO\b
+VALUES rows (approx)	(?i)(?:\bVALUES|\),)\s*\(
+tables	(?im)^\s*CREATE\s+(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+)?TABLE\b
+views	(?im)^\s*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:MATERIALIZED\s+)?VIEW\b
+indexes	(?im)^\s*CREATE\s+(?:UNIQUE\s+)?(?:CLUSTERED\s+|NONCLUSTERED\s+)?INDEX\b
+functions/procedures	(?im)^\s*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:FUNCTION|PROCEDURE|PROC)\b
+triggers	(?im)^\s*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:CONSTRAINT\s+)?TRIGGER\b
+types	(?im)^\s*CREATE\s+TYPE\b
+ALTER TABLE	(?im)^\s*ALTER\s+TABLE\b

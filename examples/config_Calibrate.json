@@ -4,13 +4,7 @@
     "baseDirectory": ".",
     "outputDirectory": "target/srcmorph-ai",
     "generationProvider": "mock",
-    "promptDirectory": "../prompts",
-    "promptDefinitions": [
-      {
-        "key": "file-body",
-        "templateFile": "v2/file-body-fallback.md"
-      }
-    ],
+    "profileDirectory": "../profiles/v2",
     "aiDefinitions": [
       {
         "key": "mock-model",
@@ -23,7 +17,7 @@
     ],
     "fieldGenerations": [
       {
-        "promptKey": "file-body",
+        "promptKey": "file-body-fallback",
         "aiDefinitionKey": "mock-model",
         "fallback": true
       }

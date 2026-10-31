@@ -119,19 +119,13 @@ Maven Central regardless; see `CLAUDE.md`.)
     <version>1.3.0</version>
     <configuration>
         <generationProvider>mock</generationProvider>
-        <!-- the measured prompts of srcmorph's prompts/ directory, copied into the project -->
-        <promptDirectory>${project.basedir}/src/srcmorph/prompts</promptDirectory>
-        <promptDefinitions>
-            <promptDefinition>
-                <key>file-body</key>
-                <!-- the system prompt; srcmorph sends the file name and source separately.
-                     <template>...</template> writes it inline instead. -->
-                <templateFile>v2/file-body-fallback.md</templateFile>
-            </promptDefinition>
-        </promptDefinitions>
+        <!-- the profile: srcmorph's profiles/v2/ copied into the project. A promptKey names
+             <key>.md there, the system prompt; srcmorph sends the file name and source
+             separately. -->
+        <profileDirectory>${project.basedir}/src/srcmorph/profile</profileDirectory>
         <fieldGenerations>
             <fieldGeneration>
-                <promptKey>file-body</promptKey>
+                <promptKey>file-body-fallback</promptKey>
                 <aiDefinitionKey>coder</aiDefinitionKey>
                 <fallback>true</fallback>
             </fieldGeneration>

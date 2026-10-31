@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.srcmorph.config.AiFactDefinitionLoader;
 import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
@@ -24,6 +25,7 @@ import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.support.AiProgressBar;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,8 +101,8 @@ public final class GenerateEngine {
             throw new SrcMorphException("No <fieldGenerations> configured for the generate goal.");
         }
 
-        final AiPromptSupport promptSupport =
-                EngineSupport.buildPromptSupport(config.getPromptDefinitions(), config.getPromptDirectory());
+        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
         final AiModelDefinitionSupport modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
@@ -254,8 +256,14 @@ public final class GenerateEngine {
      */
     private void resolveSharedFacts(final List<AiFieldGenerationConfig> fieldGenerations) throws SrcMorphException {
         try {
-            new AiFactDefinitionSupport(config.getFactDefinitions()).resolveFactsKeys(fieldGenerations);
-        } catch (final IllegalArgumentException | NullPointerException e) {
+            final List<@Nullable String> usedKeys = new ArrayList<>(fieldGenerations.size());
+            for (final AiFieldGenerationConfig rule : fieldGenerations) {
+                usedKeys.add(rule.getFactsKey());
+            }
+            new AiFactDefinitionSupport(new AiFactDefinitionLoader(config.getProfileDirectory())
+                            .load(config.getFactDefinitions(), usedKeys))
+                    .resolveFactsKeys(fieldGenerations);
+        } catch (final IllegalArgumentException | NullPointerException | IOException e) {
             throw new SrcMorphException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
         }
     }

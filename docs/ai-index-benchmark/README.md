@@ -66,7 +66,7 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
   omission rule, JavaBean accessor grouping, an explicit "no invented keywords" ban,
   single-child package pass-through, and a tighter brevity instruction.
 
-Both are in the history of [`prompts/`](../../prompts/README.md) (commit `cd2e15f`: `prompts/v2/`,
+Both are in the history of [`profiles/`](../../profiles/README.md) (commit `cd2e15f`: `prompts/v2/`,
 and v1 as these cells ran it in `prompts/archive/2026-06/v1/`). The current set, also named v2, is
 a different one: v1 with the additions the October 2026 model card measured (its finding 5).
 
@@ -91,7 +91,7 @@ mvn prepare-package -P ai-index-selftest -DskipTests \
 `EXP-*` model definitions, the `config`+`provider` subtree scope, and the
 `package-info`/`module-info` excludes live in the self-test profile (`srcmorph-selftest` in
 `srcmorph-maven-plugin/pom.xml` today, `ai-index-selftest` in the root `pom.xml` then, marked
-`claude2026_06_26_00`); its v2 prompts are in the history of `prompts/` (commit `cd2e15f`). The model files are catalogued in `X:\Modelle\index.md`.
+`claude2026_06_26_00`); its v2 prompts are in the history of `profiles/` (commit `cd2e15f`). The model files are catalogued in `X:\Modelle\index.md`.
 
 > These are temporary experiment scaffolds on the `claude2026_06_26_00` branch, not production
 > configuration.

@@ -239,7 +239,7 @@ Qwen3.8-27B; the other models have not been run with v2.
    accessors of `AiGenerationConfig.java` as a family, both drop constants and configuration
    variables of the scripts and C files (`REQUIRED_COLUMNS`, `SOURCE_DIR`, `BINS`, `RINGBUF_OK`),
    internal helpers and library calls, and named SQL constraints and indexes, and gpt-oss states
-   no seed counts. [`prompts/v2/`](../../prompts/README.md) adds one instruction per kind, with
+   no seed counts. [`profiles/v2/`](../../profiles/README.md) adds one instruction per kind, with
    example names that occur nowhere in this corpus; the package and project prompts are unchanged.
    Three runs each on OpenRouter (`run.py --prompts v2`, outputs under
    [`prompt-v2-2026-10/`](prompt-v2-2026-10/)):
@@ -258,7 +258,7 @@ Qwen3.8-27B; the other models have not been run with v2.
    43 questions lower on average, within the two to seven points runs of one prompt spread over
    (BM25 over gpt-oss's summaries lost about two). Two cautions: v2 was written from the misses on
    this corpus, so part of the gain may be fitted to it, and the other models have not been run
-   with it. v2 is the current prompt set; v1 is in the history (`prompts/README.md`).
+   with it. v2 is the current prompt set; v1 is in the history (`profiles/README.md`).
 
 ### Repeatability
 
@@ -576,10 +576,10 @@ Every model ran the three CLI phases `GenerateFileIndex`, `AggregatePackages` an
 `AggregateProject` with `force` on. File prompts are routed by extension: `.java` →
 `file-body-java`, `.sql` → `file-body-sql`, everything else → `file-body-fallback`; the package
 and project phases use `package-body` and `project-body`. These are the v1 prompts (in the
-history of [`prompts/`](../../prompts/README.md), `prompts/v1/` in commit `6fe8335`); the card's
+history of [`profiles/`](../../profiles/README.md), `prompts/v1/` in commit `6fe8335`); the card's
 runs got them from the plugin pom's inline copy, with a leading line break and a trailing line
 break plus 36 spaces around the same text. Only finding 5 runs the current set,
-`prompts/v2/` (`run.py --prompts v2`, the default now).
+`profiles/v2/` (`run.py --profile v2`, the default now).
 
 ### Settings
 
