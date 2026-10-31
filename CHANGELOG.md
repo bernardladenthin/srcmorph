@@ -20,9 +20,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   resolves against `modelDirectory`. Both `template` and `templateFile`, or a file that is empty or
   cannot be read, fail the run as a configuration error. In the library:
   `AiPromptTemplateLoader`, used by every engine.
-- **`prompts/`: every measured prompt once in the repository.** `prompts/v1/` holds the five
-  production prompts the October 2026 model card measured, `prompts/v2/` the June experiment, and
-  `prompts/archive/2026-06/v1/` v1 as the June benchmark ran it (`prompts/README.md`). The plugin's
+- **`prompts/`: the production prompts once in the repository.** `prompts/v1/` holds the five
+  prompts the October 2026 model card measured (`prompts/README.md`; the June v2 experiment and v1 as
+  the June benchmark ran it are in the history, commit `cd2e15f`). The plugin's
   `srcmorph-selftest` profile, the model-card benchmark (`run.py --prompts <set>`, replacing
   `modelcard/prompts.json`), the examples (which had one-line placeholder prompts) and the plugin's
   integration-test fixture all read these files, so the CI smoke of the user-built jar and the

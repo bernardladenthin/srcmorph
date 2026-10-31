@@ -116,8 +116,8 @@ SPDX-License-Identifier: Apache-2.0
         <!-- EXPERIMENT KNOBS (commented out, kept for re-runs). Re-enable these and switch
              the executions' aiDefinitionKey/promptKey back to ${exp.model}/${exp.filePrompt}/
              ${exp.pkgPrompt} to drive model + prompt per run via -D for benchmarking, e.g.:
-             -Dexp.model=EXP-Granite-4.0-H-Tiny -Dexp.filePrompt=file-body-java-v2
-             -Dexp.pkgPrompt=package-body-v2 -Dai.index.output.directory=.../src/site/ai__run1
+             -Dexp.model=EXP-Granite-4.0-H-Tiny -Dexp.filePrompt=file-body-java
+             -Dexp.pkgPrompt=package-body -Dai.index.output.directory=.../src/site/ai__run1
         <exp.model>Qwen3-Coder-30B-A3B-Instruct-UD-Q4_K_XL-C64k</exp.model>
         <exp.filePrompt>file-body-java</exp.filePrompt>
         <exp.pkgPrompt>package-body</exp.pkgPrompt>
@@ -1715,16 +1715,11 @@ SPDX-License-Identifier: Apache-2.0
                                     <key>project-body</key>
                                     <templateFile>v1/project-body.md</templateFile>
                                 </promptDefinition>
-                                <!-- Experiment prompts v2 (claude2026_06_26_00): selected via -Dexp.filePrompt /
-                                     -Dexp.pkgPrompt, see prompts/README.md. -->
-                                <promptDefinition>
-                                    <key>file-body-java-v2</key>
-                                    <templateFile>v2/file-body-java.md</templateFile>
-                                </promptDefinition>
-                                <promptDefinition>
-                                    <key>package-body-v2</key>
-                                    <templateFile>v2/package-body.md</templateFile>
-                                </promptDefinition>
+                                <!-- A prompt set to compare against v1 goes into prompts/ as its own
+                                     directory and gets a definition here with its own key (for example
+                                     file-body-java-v2 with <templateFile>v2/file-body-java.md</templateFile>),
+                                     selected via -Dexp.filePrompt / -Dexp.pkgPrompt. The June experiment
+                                     that did so is in the history, see prompts/README.md. -->
                             </promptDefinitions>
 
                         </configuration>
@@ -1757,8 +1752,8 @@ SPDX-License-Identifier: Apache-2.0
                             Example invocation:
                                 mvn prepare-package -P srcmorph-selftest -DskipTests \
                                   -Dexp.model=EXP-Granite-4.0-H-Tiny \
-                                  -Dexp.filePrompt=file-body-java-v2 \
-                                  -Dexp.pkgPrompt=package-body-v2 \
+                                  -Dexp.filePrompt=file-body-java \
+                                  -Dexp.pkgPrompt=package-body \
                                   -Dai.index.output.directory=.../src/site/ai__run1
                         -->
                         <executions>
