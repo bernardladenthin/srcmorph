@@ -165,8 +165,11 @@ public class AiGenerationConfig {
      *
      * <p>{@code "low"} keeps the discarded chain-of-thought minimal for the short, structured
      * summaries this plugin produces (the gpt-oss model default would be {@code "medium"}). It is
-     * passed as the {@code reasoning_effort} chat-template kwarg; non-gpt-oss chat templates ignore
-     * it. An empty value omits the kwarg entirely so the model's own template default applies.</p>
+     * passed as the {@code reasoning_effort} chat-template kwarg; most other chat templates ignore
+     * it. An empty value omits the kwarg entirely so the model's own template default applies. The
+     * local provider sends thinking off as llama.cpp's server does, {@code enable_thinking}
+     * {@code false} and no {@code reasoning_effort}: {@code "none"} sends that instead of the effort,
+     * and with {@code chatTemplateEnableThinking} {@code false} the effort is not sent.</p>
      */
     public static final String DEFAULT_REASONING_EFFORT = "low";
 

@@ -444,7 +444,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `mainGpu` | `-1` | Primary GPU index (`--main-gpu`); `-1` = leave default. Matters on multi-GPU hosts (e.g. a Vulkan build enumerates every GPU) |
 | `devices` | *(empty)* | Explicit device selection (`--device`), comma-separated backend device names (e.g. `Vulkan1`); takes precedence over `mainGpu` |
 | `chatTemplateEnableThinking` | *(unset)* | Chat-template thinking mode (`enable_thinking` kwarg): `true` or `false` is forwarded verbatim, unset omits the kwarg so the model's own template default applies. Set `false` for Gemma 4 to keep thought tokens out of stored output |
-| `reasoningEffort` | `low` | gpt-oss harmony reasoning effort (`low`/`medium`/`high`); empty omits the kwarg (e.g. for non-gpt-oss models) |
+| `reasoningEffort` | `low` | Reasoning effort (`low`/`medium`/`high`), the `reasoning_effort` kwarg for gpt-oss harmony and templates such as Kolibri-1's; empty omits the kwarg (e.g. for models without it). Thinking off is sent as llama.cpp's server sends it, `enable_thinking` `false` and no `reasoning_effort`: `none` sends that instead of the effort, and while `chatTemplateEnableThinking` is `false` the effort is not sent, since a template that reads it first (Kolibri-1) would reason anyway |
 | `reasoningBudgetTokens` | `-1` | Cap on harmony reasoning tokens (`-1` = unrestricted) |
 | `dryMultiplier` | `0.0` | DRY repetition-penalty multiplier (`0.0` = disabled); the other `dry*` knobs only apply when this is `> 0` |
 | `dryBase` | `1.75` | DRY exponential base |

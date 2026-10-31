@@ -65,8 +65,14 @@ final class LlamaCppJniProviderSupport {
     /** Chat-template kwarg controlling Qwen-style thinking (ignored by non-Qwen templates). */
     private static final String ENABLE_THINKING_KWARG = "enable_thinking";
 
-    /** Chat-template kwarg for the gpt-oss reasoning-effort level (ignored by non-gpt-oss templates). */
+    /** Chat-template kwarg for the reasoning-effort level (gpt-oss, Kolibri-1; most templates ignore it). */
     private static final String REASONING_EFFORT_KWARG = "reasoning_effort";
+
+    /**
+     * The reasoning effort that switches reasoning off. llama.cpp's server treats a request's
+     * {@code reasoning_effort} of exactly this value as thinking off and drops the kwarg.
+     */
+    private static final String REASONING_EFFORT_NONE = "none";
 
     /** Number of chat-template kwargs put into the map (used for presizing). */
     private static final int CHAT_TEMPLATE_KWARG_COUNT = 2;
@@ -97,20 +103,42 @@ final class LlamaCppJniProviderSupport {
      * every run sent it, and the only way to stop the noise was to set the knob to {@code false},
      * which means something else entirely.</p>
      *
+     * <p>Thinking off is one state, reached through either knob, and it is sent the way llama.cpp's
+     * server handles it: {@code enable_thinking} {@code false} and no {@code reasoning_effort}. Its
+     * own {@code --reasoning off} sets only {@code enable_thinking}, and a request whose
+     * {@code reasoning_effort} is {@code "none"} gets {@code enable_thinking} {@code false} and the
+     * kwarg removed. The kwargs here are the model's default kwargs, which skip that request-level
+     * mapping, so it is done here:</p>
+     * <ul>
+     *   <li>{@code chatTemplateEnableThinking} {@code false} sends no {@code reasoning_effort},
+     *       whatever its value. The effort defaults to {@code "low"} for gpt-oss, and a template that
+     *       reads {@code reasoning_effort} before {@code enable_thinking} (Aleph Alpha's Kolibri-1)
+     *       otherwise reasons at that level although thinking was switched off.</li>
+     *   <li>{@code reasoningEffort} {@code "none"} sends {@code enable_thinking} {@code false}
+     *       instead of the effort, also over {@code chatTemplateEnableThinking} {@code true}, as the
+     *       server does; llama.cpp then knows thinking is off as well, not only the template.</li>
+     * </ul>
+     * <p>gpt-oss has no thinking switch: its configurations leave {@code chatTemplateEnableThinking}
+     * unset and keep their effort.</p>
+     *
      * @return the kwargs to send; empty when neither knob is configured
      */
     Map<String, String> buildChatTemplateKwargs() {
         final Map<String, String> chatTemplateKwargs =
                 new HashMap<>(compatibilityHelper.hashMapCapacityFor(CHAT_TEMPLATE_KWARG_COUNT));
-        // Qwen-style thinking. Unset (null) omits the kwarg so the model's own template default applies.
         final Boolean enableThinking = config.chatTemplateEnableThinking();
-        if (enableThinking != null) {
+        final String reasoningEffort = config.reasoningEffort();
+        final boolean thinkingOff =
+                Boolean.FALSE.equals(enableThinking) || REASONING_EFFORT_NONE.equals(reasoningEffort);
+        // Thinking unset (null) and no "none" effort omits the kwarg so the template's own default applies.
+        if (thinkingOff) {
+            chatTemplateKwargs.put(ENABLE_THINKING_KWARG, String.valueOf(false));
+        } else if (enableThinking != null) {
             chatTemplateKwargs.put(ENABLE_THINKING_KWARG, String.valueOf(enableThinking.booleanValue()));
         }
-        // gpt-oss honors reasoning_effort; non-gpt-oss chat templates ignore it. An empty
-        // configured value omits the kwarg so the model's own template default applies.
-        if (!compatibilityHelper.isBlank(config.reasoningEffort())) {
-            chatTemplateKwargs.put(REASONING_EFFORT_KWARG, config.reasoningEffort());
+        // An empty configured effort omits the kwarg so the template's own default applies.
+        if (!thinkingOff && !compatibilityHelper.isBlank(reasoningEffort)) {
+            chatTemplateKwargs.put(REASONING_EFFORT_KWARG, reasoningEffort);
         }
         return chatTemplateKwargs;
     }

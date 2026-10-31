@@ -39,6 +39,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds four runs
   streamed through the gateway: Claude Haiku 5.5 (98.2 %, 6.8 s per file), GPT-6 Luna (97.6 %),
   MAI-Code-1.1-Flash (93.0 %) and Grok 4.7 (76.4 %, its reasoning summary leaks into the answer).
+  Two more runs: Mistral Large 4 on OpenRouter (95.0 %, 32.1 s per file, 0.38 USD; its reasoning
+  cannot be switched off) and Aleph Alpha's Kolibri-1 locally (92.2 %, 61.8 s per file, Q4_K_M
+  with all 50 expert layers in RAM).
 - **`openai-compatible` provider: `requestsPerMinute`.** At most this many requests to a model's
   server start within any minute; a request beyond it waits until the oldest of the last minute is
   a minute old, instead of being answered with `429` (the provider does not retry). Models of one
@@ -96,6 +99,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   The example pom is therefore under test on every pull request.
 
 ### Fixed
+- **A local model reasoned with thinking switched off.** The llama.cpp provider sent
+  `reasoningEffort` (default `low`, meant for gpt-oss) to every chat template as the
+  `reasoning_effort` kwarg, also with `chatTemplateEnableThinking: false`. A template that reads it
+  first, as Aleph Alpha's Kolibri-1 does, then reasoned at `low` and spent the output budget on it
+  (the model-card run's first file came back empty). Thinking off is now sent the way llama.cpp's
+  server handles it, `enable_thinking` `false` and no `reasoning_effort`, reached through either
+  knob: with `chatTemplateEnableThinking: false` the effort is not sent, and `reasoningEffort: none`
+  sends `enable_thinking` `false` instead of the effort (before, only the template saw `none`, and
+  llama.cpp itself took thinking for on). gpt-oss, which has no thinking switch, keeps its effort.
 - **A summary that quotes a thinking-block marker lost most of its text.** `AiCompletionParser`
   dropped everything up to the *last* `<channel|>` anywhere in a response, so a model describing a
   Gemma-4 parser, a prompt or anything else that names the marker had its answer cut down to the
