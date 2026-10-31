@@ -6,9 +6,9 @@
 The corpus is 12 Java files of srcmorph itself (taken from a fixed commit with `git archive`) plus
 the SQL and other fixtures under ../corpus. Every model gets the same three phases with the same
 prompts: GenerateFileIndex (prompt routed by extension: .java, .sql, everything else to the
-fallback), AggregatePackages, AggregateProject. The prompts are the files of one set under the
-repository's prompts/ directory (--prompts, default v2, the current set), passed to srcmorph as templateFile entries
-with promptDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
+fallback), AggregatePackages, AggregateProject. The prompts are the files of one profile under the
+repository's profiles/ directory (--profile, default v2, the current one), passed to srcmorph as its
+profileDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
 .ai.md tree goes to <out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
 
 API keys are never read from a file here: the caller puts OPENROUTER_API_KEY / HF_TOKEN into the
@@ -17,7 +17,12 @@ environment, and a model only receives the variable its backend names.
 Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
   python run.py ... --backend openrouter        (every model of one backend)
-Options: --prompts <set under prompts/> (default v2; a set needs the five keys' files),
+Options: --profile <profile under profiles/> (default v2; it needs the five prompt keys' files),
+         --profile-dir <directory holding the profiles> (default the repository's profiles/; an
+         earlier prompt set is restored from the history into a directory of its own, see
+         profiles/README.md),
+         --corpus <directory with java/, sql/, other/> (default: the srcmorph Java snapshot plus
+         ../corpus; another corpus of the same layout is scored with score.py --facts),
          --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
          --commit <git rev of the Java snapshot>, --seed <n> (replaces the local backend's seed,
          for repeat runs), --out, --meta, --work.
@@ -38,7 +43,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 CORPUS = HERE.parent / "corpus"
-PROMPTS = REPO / "prompts"
+PROFILES = REPO / "profiles"
 PROMPT_KEYS = ("file-body-java", "file-body-sql", "file-body-fallback", "package-body", "project-body")
 
 JAVA_COMMIT = "1e056c23652992a07cca0056d2783cbf6520f5a1"
@@ -61,10 +66,15 @@ EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh"]
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 
 
-def prepare_work(work, commit):
-    """Java snapshot under work/java/{config,provider}, fixtures under work/sql and work/other."""
+def prepare_work(work, commit, corpus=None):
+    """Java snapshot under work/java/{config,provider}, fixtures under work/sql and work/other; with a
+    corpus directory, its java/, sql/ and other/ trees instead."""
     if work.exists():
         shutil.rmtree(work)
+    if corpus is not None:
+        for kind in ("java", "sql", "other"):
+            shutil.copytree(Path(corpus) / kind, work / kind)
+        return
     paths = [JAVA_ROOT + f for f in JAVA_FILES]
     archive = subprocess.run(["git", "-C", str(REPO), "archive", "--format=tar", commit] + paths,
                              check=True, capture_output=True).stdout
@@ -91,7 +101,7 @@ def ai_definition(models, model, model_dir, seed=None):
     return definition
 
 
-def phase_config(phase, work, out_dir, prompts, definition):
+def phase_config(phase, work, out_dir, profile, definition):
     key = definition["key"]
     if phase == "GenerateFileIndex":
         rules = [
@@ -114,8 +124,7 @@ def phase_config(phase, work, out_dir, prompts, definition):
             "generationProvider": definition["provider"],
             "projectName": "srcmorph-modelcard",
             "force": True,
-            "promptDirectory": str(PROMPTS),
-            "promptDefinitions": prompts,
+            "profileDirectory": str(profile),
             "aiDefinitions": [definition],
             "fieldGenerations": rules,
         },
@@ -147,7 +156,7 @@ def cut_off_files(log_path, work, out_dir):
     return files
 
 
-def run_model(args, models, prompts, model):
+def run_model(args, models, profile, model):
     key = model["key"]
     definition = ai_definition(models, model, args.model_dir, args.seed)
     out_dir = Path(args.out) / key
@@ -166,11 +175,13 @@ def run_model(args, models, prompts, model):
             # The GGUF by file name only: where the models sit on the benchmark machine is not data.
             "definition": {k: (Path(v).name if k == "modelPath" else v)
                            for k, v in definition.items() if k != "apiKeyEnv"},
-            "javaCommit": args.commit, "prompts": args.prompts, "phases": {}}
+            "javaCommit": None if args.corpus else args.commit,
+            "corpus": Path(args.corpus).name if args.corpus else "srcmorph",
+            "profile": args.profile, "phases": {}}
     usage_before = openrouter_usage() if model["backend"] == "openrouter" else None
     for phase in PHASES:
         config_path = log_dir / f"config_{phase}.json"
-        config_path.write_text(json.dumps(phase_config(phase, Path(args.work), out_dir, prompts, definition),
+        config_path.write_text(json.dumps(phase_config(phase, Path(args.work), out_dir, profile, definition),
                                           indent=1), encoding="utf-8")
         start = time.time()
         with open(log_dir / f"{phase}.log", "w", encoding="utf-8") as log:
@@ -202,25 +213,25 @@ def main():
     parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
     parser.add_argument("--meta", default=str(HERE / "runs"))
     parser.add_argument("--work", required=True)
-    parser.add_argument("--prompts", default="v2")
+    parser.add_argument("--profile", default="v2")
+    parser.add_argument("--profile-dir", default=str(PROFILES))
+    parser.add_argument("--corpus", default="")
     args = parser.parse_args()
 
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
-    prompts = []
+    profile = Path(args.profile_dir).resolve() / args.profile
     for prompt_key in PROMPT_KEYS:
-        template_file = f"{args.prompts}/{prompt_key}.md"
-        if not (PROMPTS / template_file).is_file():
-            sys.exit(f"prompt set {args.prompts}: {PROMPTS / template_file} is missing")
-        prompts.append({"key": prompt_key, "templateFile": template_file})
+        if not (profile / f"{prompt_key}.md").is_file():
+            sys.exit(f"profile {args.profile}: {profile / prompt_key}.md is missing")
     wanted = [m for m in models["models"]
               if (args.models and m["key"] in args.models.split(",")) or (args.backend and m["backend"] == args.backend)]
     if not wanted:
         sys.exit("no model selected")
     if not args.model_dir and any(m["backend"] == "local" for m in wanted):
         sys.exit("--model-dir is required for the local GGUF models")
-    prepare_work(Path(args.work), args.commit)
+    prepare_work(Path(args.work), args.commit, args.corpus or None)
     for model in wanted:
-        run_model(args, models, prompts, model)
+        run_model(args, models, profile, model)
 
 
 if __name__ == "__main__":

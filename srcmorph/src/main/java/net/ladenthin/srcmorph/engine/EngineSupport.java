@@ -73,23 +73,34 @@ final class EngineSupport {
 
     /**
      * Builds an {@link AiPromptSupport} from the configured prompt definitions, first reading every
-     * {@code templateFile} ({@link AiPromptTemplateLoader}, relative to {@code promptDirectory}), and
+     * {@code templateFile} ({@link AiPromptTemplateLoader}, relative to {@code profileDirectory}), and
      * translating a misconfiguration into a {@link SrcMorphException} so the caller reports it as a
      * configuration error: a missing {@code key}/{@code template} ({@link NullPointerException}), both
      * {@code template} and {@code templateFile} or an empty template file
      * ({@link IllegalArgumentException}), a template file that cannot be read ({@link IOException}).
      *
      * @param promptDefinitions the configured prompt definitions, or {@code null} for none
-     * @param promptDirectory   directory relative template files are resolved against, or {@code null}
-     *                          for the working directory
+     * @param profileDirectory  directory relative template files and the prompts named by key are
+     *                          resolved against, or {@code null} for the working directory and no lookup
+     *                          by key
+     * @param fieldGenerations  the rules whose prompt keys are looked up in the profile directory when no
+     *                          definition has them, or {@code null} for none
      * @return prompt support instance backed by the configured definitions
      * @throws SrcMorphException if any prompt definition is misconfigured or its file cannot be read
      */
     static AiPromptSupport buildPromptSupport(
-            final @Nullable List<AiPromptDefinition> promptDefinitions, final @Nullable File promptDirectory)
+            final @Nullable List<AiPromptDefinition> promptDefinitions,
+            final @Nullable File profileDirectory,
+            final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
             throws SrcMorphException {
+        final List<@Nullable String> usedKeys = new ArrayList<>();
+        if (fieldGenerations != null) {
+            for (final AiFieldGenerationConfig rule : fieldGenerations) {
+                usedKeys.add(rule.getPromptKey());
+            }
+        }
         try {
-            return new AiPromptSupport(new AiPromptTemplateLoader(promptDirectory).load(promptDefinitions));
+            return new AiPromptSupport(new AiPromptTemplateLoader(profileDirectory).load(promptDefinitions, usedKeys));
         } catch (final NullPointerException | IllegalArgumentException | IOException e) {
             throw new SrcMorphException("Invalid plugin configuration: " + e.getMessage(), e);
         }

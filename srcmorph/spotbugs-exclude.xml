@@ -495,7 +495,7 @@ SPDX-License-Identifier: Apache-2.0
         PATH_TRAVERSAL_IN on AiPathSupport.resolveAgainst and its helper hasRoot, the one rule for
         every configured path that may be relative to a directory: a model's modelPath and the
         fallback llamaModelPath against modelDirectory, a prompt's templateFile against
-        promptDirectory. They join the directory and a relative path into one, and ask
+        profileDirectory. They join the directory and a relative path into one, and ask
         Paths.get(path).getRoot() whether the path stands on its own; both values come from the
         operator's own POM XML or CLI configuration, the same trust boundary as validateLocalModel
         above. A path outside the directory is a requirement, not an escape: an absolute path is
@@ -512,19 +512,29 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        PATH_TRAVERSAL_IN on AiPromptTemplateLoader.load and read. Reading the file a prompt
-        definition names (templateFile, resolved against promptDirectory) is the entire purpose of
-        the class; the path comes from the operator's own POM XML or CLI configuration, the same trust
-        boundary as resolveAgainst above, on a local batch tool with full access to that filesystem
-        anyway. The file is read as UTF-8 text and becomes the system prompt; nothing is written or
-        executed. Scoped to the two methods.
+        PATH_TRAVERSAL_IN on the profile files: AiProfileFileSupport.conventionalFile and read, and the
+        two loaders' load (AiPromptTemplateLoader, AiFactDefinitionLoader). Reading the file a prompt or
+        fact definition names (templateFile / factsFile, resolved against profileDirectory), or the
+        <key>.md / <key>.tsv of the profile a rule's key names, is the entire purpose of these classes;
+        the directory and the keys come from the operator's own POM XML or CLI configuration, the same
+        trust boundary as resolveAgainst above, on a local batch tool with full access to that
+        filesystem anyway. The files are read as UTF-8 text and become a system prompt or regex
+        counters; nothing is written or executed. Scoped to those methods.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader"/>
+        <Class name="net.ladenthin.srcmorph.support.AiProfileFileSupport"/>
         <Or>
-            <Method name="load"/>
+            <Method name="conventionalFile"/>
             <Method name="read"/>
         </Or>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+    <Match>
+        <Or>
+            <Class name="net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader"/>
+            <Class name="net.ladenthin.srcmorph.config.AiFactDefinitionLoader"/>
+        </Or>
+        <Method name="load"/>
         <Bug pattern="PATH_TRAVERSAL_IN"/>
     </Match>
 

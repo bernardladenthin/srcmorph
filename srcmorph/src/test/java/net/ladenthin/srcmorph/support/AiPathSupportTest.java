@@ -62,7 +62,7 @@ public class AiPathSupportTest {
     @AbsolutePathRequirement
     public void resolveAgainst_rootedPath_staysUnchanged() {
         // absolute on every platform; on Windows a root-relative path (no drive)
-        assertThat(AiPathSupport.resolveAgainst(new File("prompts"), "/prompts/x.md"), is("/prompts/x.md"));
+        assertThat(AiPathSupport.resolveAgainst(new File("prompts"), "/profiles/x.md"), is("/profiles/x.md"));
     }
 
     @Test

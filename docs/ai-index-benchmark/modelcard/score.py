@@ -17,7 +17,7 @@ For every model under <out> (one directory per model key) and every source file 
 Writes <scores>/files.tsv (one row per model and file) and <scores>/summary.json (per model and kind),
 which MODEL-CARD.md is built from.
 
-Usage: python score.py --work <prepared corpus dir> [--out ...] [--scores ...]
+Usage: python score.py --work <prepared corpus dir> [--out ...] [--scores ...] [--facts <json>]
 """
 import argparse
 import json
@@ -151,8 +151,9 @@ def main():
     parser.add_argument("--work", required=True)
     parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
     parser.add_argument("--scores", default=str(HERE / "scores"))
+    parser.add_argument("--facts", default=str(HERE / "facts.json"))
     args = parser.parse_args()
-    facts = json.loads((HERE / "facts.json").read_text(encoding="utf-8"))
+    facts = json.loads(Path(args.facts).read_text(encoding="utf-8"))
     work = Path(args.work)
     scores = Path(args.scores)
     scores.mkdir(parents=True, exist_ok=True)

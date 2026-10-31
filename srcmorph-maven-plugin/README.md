@@ -138,14 +138,15 @@ The plugin is configured from three building blocks, declared on the plugin insi
 `<build><plugins>`:
 
 1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
-2. **`<promptDefinitions>`** — define each prompt template once, each with a `<key>`. A template is
-   the **system prompt** and takes **no placeholders**: the file/package name and the source (for
-   packages, the child summaries; for the optional project overview, the per-package leads) are sent
-   as a separate user message (`AiPromptSupport`). A `%s` in a template reaches the model literally.
-   A prompt is either written inline (`<template>`) or read from a file (`<templateFile>`, UTF-8, used
-   verbatim), so several projects can share one file instead of a copy each; a relative
-   `<templateFile>` resolves against `<promptDirectory>`. The measured prompts of this repository are
-   in [`prompts/`](../prompts/README.md), one file each.
+2. **`<profileDirectory>`** — the profile: one directory with a file per prompt
+   (`<key>.md`) and per group of exact fact counters (`<key>.tsv`), named by key from the rules, so no
+   prompt text and no regex is written into the pom. A prompt is the **system prompt** and takes **no
+   placeholders**: the file/package name and the source (for packages, the child summaries; for the
+   optional project overview, the per-package leads) are sent as a separate user message
+   (`AiPromptSupport`). A `%s` in a prompt reaches the model literally. The measured profile of this
+   repository is [`profiles/v2/`](../profiles/README.md); copy it into your project or point at a
+   checkout. A `<promptDefinitions>` entry with an inline `<template>` (or its own `<templateFile>`)
+   still works and wins over a file of the same key, as does a `<factDefinitions>` entry for facts.
 3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
    `<aiDefinitionKey>` (model id, which carries the full parameter set) and selects files with a
    composable **`<condition>`** tree: `<and>`/`<or>`/`<not>` over the leaves `<extensions>`, `<size>`
@@ -185,14 +186,17 @@ The plugin is configured from three building blocks, declared on the plugin insi
    Quality from a real model is best within Granite's validated 128K (~500 KB) and degrades gradually
    beyond it — a whole-file (or chunked) summary still beats a trimmed one.
 
-   **Exact counts with `<facts>` (optional, every file — not just oversize).** A sampled/chunked AI
+   **Exact counts with `<factsKey>` (optional, every file — not just oversize).** A sampled/chunked AI
    summary can't reliably *count* things (no single call sees the whole file — it will guess "25 rows").
-   Add a `<facts>` list to a rule and each `{label, pattern}` reports its regex match count over the
+   A rule's `<factsKey>` names a group of counters, `<profileDirectory>/<key>.tsv` (one
+   `label<TAB>regex` per line, `#` comments), and each reports its regex match count over the
    **whole** source, prepended to the body of every file the rule matches as an exact facts line — so
    downstream agents get authoritative structural counts in every summary. It's fully generic — the
-   meaning is in the regex, so the same mechanism counts SQL `INSERT` rows or Java `\bboolean\b` fields;
+   meaning is in the regex, so the same mechanism counts SQL rows or Java `\bboolean\b` fields;
    multi-line matching is opt-in via the inline `(?m)` flag. Keep patterns robust (a fact that miscounts
-   is worse than none). Example: `**Facts (exact, whole file):** INSERT rows: 36738; tables: 122; views: 4`.
+   is worse than none); the profile's `java-facts` and `sql-facts` are pinned by tests. Example:
+   `**Facts (exact, whole file):** INSERT statements: 5; VALUES rows (approx): 33; tables: 2`. A rule
+   can also list its counters inline in `<facts>`, as in the example below.
 
 ```xml
 <plugin>
@@ -220,24 +224,12 @@ The plugin is configured from three building blocks, declared on the plugin insi
             </aiDefinition>
         </aiDefinitions>
 
-        <!-- 2) Prompts: one prompt per language plus a fallback, a package prompt, and the
-                optional project-overview prompt. These read the measured prompts of srcmorph's
-                prompts/v2/ (copy the directory into your project, or point promptDirectory at a
-                checkout); the last one shows an inline template. -->
-        <promptDirectory>${project.basedir}/src/srcmorph/prompts</promptDirectory>
+        <!-- 2) The profile: srcmorph's profiles/v2/ copied into your project (or a checkout of
+                it). Every promptKey and factsKey below is a file there: file-body-java.md,
+                file-body-fallback.md, package-body.md, java-facts.tsv. The one definition below
+                shows an inline prompt instead of a file. -->
+        <profileDirectory>${project.basedir}/src/srcmorph/profile</profileDirectory>
         <promptDefinitions>
-            <promptDefinition>
-                <key>file-body-java</key>
-                <templateFile>v2/file-body-java.md</templateFile>
-            </promptDefinition>
-            <promptDefinition>
-                <key>file-body-fallback</key>
-                <templateFile>v2/file-body-fallback.md</templateFile>
-            </promptDefinition>
-            <promptDefinition>
-                <key>package-body</key>
-                <templateFile>v2/package-body.md</templateFile>
-            </promptDefinition>
             <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
             <promptDefinition>
                 <key>project-body</key>
@@ -261,6 +253,7 @@ The plugin is configured from three building blocks, declared on the plugin insi
                         <id>java</id>
                         <promptKey>file-body-java</promptKey>
                         <aiDefinitionKey>coder</aiDefinitionKey>
+                        <factsKey>java-facts</factsKey>
                         <condition>
                             <extensions><extension>.java</extension></extensions>
                         </condition>
@@ -390,10 +383,13 @@ Run-level parameters (set in `<configuration>`):
   one of them elsewhere. Unset (default), a relative `modelPath` is relative to the working directory.
   A relative `modelDirectory` itself is relative to the module's `${basedir}`, as Maven resolves every
   `File` parameter.
-- `promptDirectory` (`srcmorph.promptDirectory`) — the directory a relative `templateFile` of
-  `promptDefinitions` is resolved against, like `modelDirectory` for model paths: an absolute
-  `templateFile` is used as it is, and unset (default) a relative one is relative to the working
-  directory. A relative `promptDirectory` itself is relative to the module's `${basedir}`.
+- `profileDirectory` (`srcmorph.profileDirectory`) — the profile: a rule's `promptKey` that no
+  `promptDefinitions` entry has is read from `<profileDirectory>/<key>.md`, its `factsKey` that no
+  `factDefinitions` entry has from `<profileDirectory>/<key>.tsv`; a key found in neither fails the goal
+  before any model loads, naming the file it looked for. A relative `templateFile` or `factsFile`
+  resolves against it too, like `modelDirectory` for model paths; an absolute one is used as it is.
+  Unset (default), nothing is looked up by key and a relative file is relative to the working
+  directory. A relative `profileDirectory` itself is relative to the module's `${basedir}`.
 - `force` — regenerate even when a body already exists (default: `false`)
 - `skip` — global switch: skip **every** phase (default: `false`)
 - Per-phase switches — turn any of the three phases on/off independently (each default `false`).
@@ -407,7 +403,10 @@ Run-level parameters (set in `<configuration>`):
 - `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key; a
   prompt has a `key` and either a `template` (the text) or a `templateFile` (a UTF-8 file holding it,
   read verbatim, a leading byte order mark dropped). Both at once, or a file that is empty or cannot
-  be read, fail the goal as a configuration error.
+  be read, fail the goal as a configuration error. Prompts of the profile need no entry here.
+- `factDefinitions` (goal `generate`) — named groups of fact counters, referenced by a rule's
+  `factsKey`: a `key` and either `facts` (`label` + `pattern` each) or a `factsFile` (the profile's
+  `.tsv` format). Groups of the profile need no entry here.
 - `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
 
 ### Per-model `<aiDefinition>` parameters
@@ -487,10 +486,11 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 ```
 
 ## Prompt System
-Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
-from `<fieldGenerations>`. The self-test profile defines five, each a file of
-[`prompts/v2/`](../prompts/README.md) read through `<promptDirectory>` and `<templateFile>`; the
-benchmark and the examples read the same files, so each prompt exists once in the repository:
+Prompts are referenced by key from `<fieldGenerations>` and read from the profile
+(`<profileDirectory>`). The self-test profile uses five, each a file of
+[`profiles/v2/`](../profiles/README.md), and its Java and SQL rules the `java-facts` and `sql-facts`
+counters there; the benchmark and the examples read the same files, so each prompt and each counter
+exists once in the repository:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
   the tables it reads vs writes, and relationships)

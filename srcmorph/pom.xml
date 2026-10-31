@@ -751,12 +751,14 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.config.AiOversizeStrategy</param>
                         <param>net.ladenthin.srcmorph.config.AiFactCounter</param>
                         <param>net.ladenthin.srcmorph.config.AiFactDefinition</param>
+                        <param>net.ladenthin.srcmorph.config.AiFactDefinitionLoader</param>
                         <param>net.ladenthin.srcmorph.config.AiFactDefinitionSupport</param>
                         <param>net.ladenthin.srcmorph.config.AiFactExtractor</param>
                         <param>net.ladenthin.srcmorph.support.AiChecksumSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiDeterministicSummary</param>
                         <param>net.ladenthin.srcmorph.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.srcmorph.support.AiPathSupport</param>
+                        <param>net.ladenthin.srcmorph.support.AiProfileFileSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiProgressBar</param>
                         <param>net.ladenthin.srcmorph.support.AiSourceExcludeFilter</param>
                         <param>net.ladenthin.srcmorph.support.AiTimeSupport</param>

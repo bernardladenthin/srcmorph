@@ -33,6 +33,14 @@ public class AiFactDefinitionTest {
     }
 
     @Test
+    public void factsFile_defaultsNullAndRoundTrips() {
+        final AiFactDefinition d = new AiFactDefinition();
+        assertThat(d.getFactsFile(), is(nullValue()));
+        d.setFactsFile("v2/sql-facts.tsv");
+        assertThat(d.getFactsFile(), is(equalTo("v2/sql-facts.tsv")));
+    }
+
+    @Test
     public void toString_includesKey() {
         final AiFactDefinition d = new AiFactDefinition();
         d.setKey("sql-facts");

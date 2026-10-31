@@ -6,55 +6,32 @@ package net.ladenthin.srcmorph.config;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Validates the Java structural {@code <facts>} regexes shipped in the POM's {@code java-facts} group,
- * in the real {@link java.util.regex} engine (the same engine {@code AiFactExtractor} uses), against the
- * tricky-case self-tests. These are deliberately approximate ("methods (approx)", "field declarations")
- * — the tests pin the accepted false-positive/negative boundary so the patterns cannot silently drift.
- *
- * <p>Keep these three patterns in sync with the {@code java-facts} {@code <factDefinitions>} in
- * {@code pom.xml} (there they are XML-escaped: {@code <} becomes {@code &lt;}).</p>
+ * Validates the Java structural fact counters of the current profile ({@code profiles/v2/java-facts.tsv},
+ * read through {@link ProfileFactPatterns}, so the shipped file is what is tested), in the real
+ * {@link java.util.regex} engine {@code AiFactExtractor} uses, against the tricky-case self-tests. These
+ * are deliberately approximate ("methods (approx)", "field declarations") - the tests pin the accepted
+ * false-positive/negative boundary so the patterns cannot silently drift.
  */
 public class JavaStructureFactPatternsTest {
 
+    private static final Map<String, String> PATTERNS = ProfileFactPatterns.load("java-facts");
+
     /** Methods: modifiers, type params, generic/array return, multi-line params, throws, {@code {} or ;}. */
-    private static final String METHOD_PATTERN =
-            "(?m)^[ \\t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)"
-                    + "[ \\t]+)*"
-                    + "(?:<[^>]+>[ \\t]*)?"
-                    + "(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\\b)"
-                    + "[A-Za-z_$][\\w$.]*(?:<[^;{}=]*>)?(?:\\[\\])*[ \\t]+"
-                    + "([A-Za-z_$]\\w*)[ \\t]*"
-                    + "\\([^;{]*\\)"
-                    + "(?:[ \\t]*throws[ \\t][\\w$., \\t]+)?"
-                    + "[ \\t]*[{;]";
+    private static final String METHOD_PATTERN = ProfileFactPatterns.pattern(PATTERNS, "methods (approx)");
 
     /** Field declarations that carry a STRONG modifier (final-only excluded, to skip final locals). */
-    private static final String FIELD_PATTERN = "(?m)^[ \\t]*"
-            + "(?:(?:public|private|protected|static|transient|volatile|final)[ \\t]+)*"
-            + "(?:public|private|protected|static|transient|volatile)[ \\t]+"
-            + "(?:(?:public|private|protected|static|transient|volatile|final)[ \\t]+)*"
-            + "(?!class\\b|interface\\b|enum\\b|record\\b|void\\b|new\\b)"
-            + "[A-Za-z_$][\\w$.]*(?:<[^;{}=]*>)?(?:\\[\\])*[ \\t]+"
-            + "([A-Za-z_$]\\w*(?:[ \\t]*,[ \\t]*[A-Za-z_$]\\w*)*)"
-            + "[ \\t]*(?:=[^;]*)?;";
+    private static final String FIELD_PATTERN =
+            ProfileFactPatterns.pattern(PATTERNS, "field declarations (w/ modifier)");
 
     /** Constructors: capitalized name directly followed by {@code (}, ending in {@code {}. */
-    private static final String CTOR_PATTERN = "(?m)^[ \\t]*(?:(?:public|private|protected)[ \\t]+)?"
-            + "([A-Z][A-Za-z0-9_$]*)[ \\t]*\\([^;{]*\\)"
-            + "(?:[ \\t]*throws[ \\t][\\w$., \\t]+)?[ \\t]*\\{";
+    private static final String CTOR_PATTERN = ProfileFactPatterns.pattern(PATTERNS, "constructors");
 
     private static int count(final String pattern, final String source) {
-        final Matcher matcher = Pattern.compile(pattern).matcher(source);
-        int count = 0;
-        while (matcher.find()) {
-            count++;
-        }
-        return count;
+        return ProfileFactPatterns.count(pattern, source);
     }
 
     // <editor-fold defaultstate="collapsed" desc="methods">

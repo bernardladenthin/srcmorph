@@ -89,7 +89,7 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   a Jackson `ObjectMapper`/`YAMLMapper`, or plain Java code. The root object is
   **`SrcMorphConfiguration`**: one bean holding everything a run needs (`baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, the size band, `force`, `planOnly`,
-  `generationProvider`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`, the
+  `generationProvider`, `profileDirectory`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`, the
   `llama*` fallback params, `pluginVersion`/`aiVersion`/`projectName`). **Field names intentionally
   mirror the Maven plugin's current `@Parameter` names** so a JSON/YAML key reads identically to the
   matching `<configuration>` XML element — see `SrcMorphConfiguration`'s own Javadoc.
@@ -113,11 +113,16 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   `AiGenerationRequest`/`AiGenerationResult`).
 - **`prompt/`** — `AiPromptDefinition` (a `key` and either an inline `template` or a
   `templateFile`), `AiPromptTemplateLoader` (reads every `templateFile`, relative to the
-  configuration's `promptDirectory`, before the prompts are registered), `AiPreparedPrompt`,
-  `AiPromptSupport`, `AiPromptPreparationSupport`. The measured prompts live once in the repo-root
-  `prompts/` directory (`prompts/README.md`); the plugin's self-test profile, the model-card
-  benchmark, the examples and the plugin-it fixture all read them from there, so do not paste a
-  prompt text into a configuration again.
+  configuration's `profileDirectory`, and every prompt key a rule uses without a definition from
+  `<profileDirectory>/<key>.md`, before the prompts are registered), `AiPreparedPrompt`,
+  `AiPromptSupport`, `AiPromptPreparationSupport`. The fact counters work the same way:
+  `config.AiFactDefinitionLoader` reads a `factsFile` or `<profileDirectory>/<key>.tsv` (`label<TAB>regex`
+  per line) for a rule's `factsKey`; `support.AiProfileFileSupport` is the shared file convention.
+  The measured profile (prompts + fact counters) lives once in the repo-root `profiles/v2/`
+  (`profiles/README.md`); the plugin's self-test profile, the model-card benchmark, the examples and
+  the plugin-it fixture all name only keys and read it from there, so do not paste a prompt text or
+  a regex into a configuration again. `SqlFactPatternsTest` / `JavaStructureFactPatternsTest` read
+  the shipped `.tsv` files, never copies.
 - **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
   `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,
@@ -154,7 +159,7 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 60 entries (nested classes counted) across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 62 entries (nested classes counted) across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (22/22) and `srcmorph-maven-plugin` (62/62) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
@@ -573,7 +578,7 @@ See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-te
 See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-mutation-testing.md).
 Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `mvn test-compile org.pitest:pitest-maven:mutationCoverage`; or scoped to one module with
-`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (830 mutations),
+`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (1107 mutations),
 `srcmorph-maven-plugin` (62, the five mojo classes) and `srcmorph-cli` (22). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
 `smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts
