@@ -21,7 +21,7 @@ parts. In the two scatter charts, a line joins the models that no other model be
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="modelcard/charts/quality-vs-speed-dark.svg">
-  <img alt="Scatter chart of quality score against seconds per source file for all 24 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, Claude Haiku 5.5 through GitHub Copilot, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
+  <img alt="Scatter chart of quality score against seconds per source file for all 26 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, Claude Haiku 5.5 through GitHub Copilot, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
 </picture>
 
 <picture>
@@ -73,11 +73,27 @@ cost are from the card's run, as in the charts.
   - **Qwen3.5-4B with thinking off** is as fast (9.6 s) and gets all four seed counts, but drops
     more names (Java 92 %, other files 68 %).
   - **Granite 4.0 H-Small** matches E4B's quality at five times the time.
+  - **Kolibri-1** (Aleph Alpha's 78B mixture-of-experts with 3.5B active, October 2026,
+    Apache 2.0; 92.2 %, 61.8 s per file) is the largest local model here and lands just below E4B
+    at five and a half times the time. It has full Java recall, a clean format and almost no
+    invented names (0.1 per 100), but SQL recall of 90 %, other-file recall of 79 % and no seed
+    counts; it searches like E4B (93 % first). Its Q4_K_M weights are 46 GiB, so it runs only with
+    all 50 expert layers in RAM (`cpuMoeLayers: 50`, about 45 GB of a 63 GB machine) and the rest
+    on the GPU, at 4.4 tokens/s. With 4 expert layers on the 8 GB GPU as well, VRAM overflowed into
+    Windows' shared GPU memory and generation fell to 2.3 tokens/s; with too little free RAM,
+    Windows paged the weights back in from the disk and prompt processing fell to 7 to 10 tokens/s.
+    Its thinking needs `reasoningEffort: none`, see finding 2.
 - **Not worth their cost here:**
   - **Gemma 4 31B with reasoning off** (94.6 % over three runs, 10.5 s per file) costs as much as
     Luna (0.097 USD per MB) for no gain.
   - **Gemma 4 12B** gets the seed counts right, but takes 172 s per file: the Q4_K_M weights do not
     fit in 8 GB, so part of the model runs on the CPU.
+  - **Mistral Large 4** (95.0 %, 32.1 s per file, 0.38 USD, 1.6 USD per MB) is the second most
+    expensive run of the card, 17 times Luna's cost, for a lower score. Its reasoning cannot be
+    switched off (see finding 1). SQL and other-file recall are full and it states all four seed
+    counts, but Java recall is 82 %: it names 18 of the 44 builder methods of
+    `LlamaCppJniConfig.java` and leaves the type name out of `AiGenerationProvider`. One package
+    summary carries a reasoning marker, and it searches below the top group (86 % first).
 - **Hugging Face router (nscale): the cheapest, not the best.** Both models together cost under
   0.01 USD at 0.01 / 0.03 USD per million input / output tokens.
   - **Qwen2.5-Coder-7B** is the fastest run of all (3.9 s per file), with Java recall at 86 %. It
@@ -146,13 +162,21 @@ cost are from the card's run, as in the charts.
    none, so they were not run again. At 4096 tokens Nemotron left 15 of 24 file summaries empty. `none` turns
    reasoning off on both routes (0 reasoning tokens), and srcmorph's existing `reasoningEffort`
    setting sends it. gpt-oss-20b cannot run without reasoning: OpenRouter answers `none` with
-   "Reasoning is mandatory for this endpoint", and `low` was its best setting in June.
+   "Reasoning is mandatory for this endpoint", and `low` was its best setting in June. Neither can
+   Mistral Large 4: Mistral answers `none` with HTTP 400 ("reasoning_effort none is not supported
+   for this model"). At `low` and the common 4096 it left 9 of 37 `.ai.md` empty (0.31 USD); the
+   card's run has 16 384 output tokens and none cut off.
 2. **llama.cpp turns Gemma 4's thinking on by default.** With the stock chat template, Gemma 4 12B
    spent all 4096 tokens of every file on thinking and wrote no summary, at about 4.4 tokens/s.
    `chatTemplateEnableThinking: false` fixes it. With it, E4B also writes about half the tokens it
    wrote before (for example 620 instead of 1306 per file). So both Gemma 4 models and Qwen3.5-4B ran
    with thinking off. That is why Qwen3.5-4B no longer pays the "thinking tax" the June benchmark
-   held against it.
+   held against it. **Kolibri-1 needs `reasoningEffort: none` as well.** The local provider sends
+   `reasoningEffort` (default `low`) to the chat template as the `reasoning_effort` kwarg, which
+   gpt-oss reads and most templates ignore. Kolibri's template reads it before `enable_thinking`,
+   so with `chatTemplateEnableThinking: false` alone the first file spent all 4096 tokens on
+   reasoning and came back empty. `none` is a value the template accepts and turns thinking off
+   (in [`TODO.md`](../../TODO.md)).
 3. **srcmorph keeps a cut-off summary as if it were done.** A cut-off generation produces only a WARN
    (`Generated text for … was cut off …`), and the truncated `.ai.md` counts as up to date. An
    incremental run regenerates it only after the source changes. An empty body is written as well
@@ -160,7 +184,7 @@ cost are from the card's run, as in the charts.
    provider the cut-off warning is logged under the `LlamaCppJniProviderSupport` logger, which points
    at the wrong backend. Both are in [`TODO.md`](../../TODO.md).
 4. **Format discipline depends on the model, not on the prompt.** All prompts are the v1 prompts, and
-   16 of 24 runs follow them without a slip. The June code-fence regression of DeepSeek and
+   17 of 26 runs follow them without a slip. The June code-fence regression of DeepSeek and
    Seed-Coder came with prompt v2 and does not show up with v1. Granite H-Tiny, which was clean in
    June, is not clean here.
 
@@ -217,7 +241,8 @@ summaries of each run two ways:
 Two baselines go through the same retrievers: the paths alone, and the source files themselves.
 hit@1 counts a question as found when an answer file comes first, hit@3 when it is among the first
 three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's 22 contexts,
-0.81 USD for the repeat runs, and 0.28 USD for the four Copilot runs, which were added later. Results are in
+0.81 USD for the repeat runs, 0.28 USD for the four Copilot runs and 0.15 USD for Mistral Large 4
+and Kolibri-1, which were added later. Results are in
 [`modelcard/scores/search.json`](modelcard/scores/search.json), and per question in
 [`search.tsv`](modelcard/scores/search.tsv); those of the repeat runs next to their outputs.
 
@@ -232,6 +257,7 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
 | Qwen3.5-4B, thinking off | 95 % | 100 % | 0.97 | 84 % | 100 % |
 | Gemma 4 31B | 93 % | 100 % | 0.96 | 86 % | 95 % |
 | Gemma 4 E4B, thinking off | 93 % | 100 % | 0.96 | 81 % | 100 % |
+| Kolibri-1, thinking off | 93 % | 100 % | 0.96 | 79 % | 100 % |
 | GPT-6 Luna | 93 % | 100 % | 0.96 | 77 % | 98 % |
 | Nemotron 3.5 Lightning, reasoning off | 93 % | 100 % | 0.96 | 86 % | 98 % |
 | Qwen3.8-27B | 95 % | 98 % | 0.96 | 81 % | 100 % |
@@ -244,13 +270,14 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
 | MAI-Code-1.1-Flash | 91 % | 95 % | 0.93 | 81 % | 93 % |
 | GPT-6 Luna (Copilot) | 88 % | 98 % | 0.93 | 79 % | 98 % |
 | Qwen3.8-27B, reasoning off | 86 % | 98 % | 0.92 | 84 % | 98 % |
+| Mistral Large 4 | 86 % | 98 % | 0.92 | 84 % | 95 % |
 | Granite 4.0 H-Tiny | 81 % | 91 % | 0.86 | 74 % | 88 % |
 | Grok 4.7 (Copilot) | 77 % | 93 % | 0.85 | 81 % | 95 % |
 | Qwen3.5-35B-A3B | 79 % | 88 % | 0.83 | 67 % | 74 % |
 | *Baseline: paths only* | 74 % | 91 % | 0.82 | – | – |
 | *Baseline: source files* | 72 % | 79 % | 0.76 | 84 % | 98 % |
 
-- **The summaries help a model find the right file.** With any of 21 of the 24 runs the reader
+- **The summaries help a model find the right file.** With any of 23 of the 26 runs the reader
   finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
   source (about 65 000 tokens instead of about 16 000) only 72 %.
 - **Keyword search gains nothing from them.** BM25 over the summaries (67 to 86 % first) is not
@@ -258,7 +285,7 @@ three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's
 - **What hurts search is a missing or broken summary, not a missing name.** The three runs that fall
   behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries), Granite H-Tiny (its
   format slips) and Grok 4.7 (a sentence about the task before almost every lead). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
-- **Among the other 21 runs the order is noise.** The reader misreads one to three questions per
+- **Among the other 23 runs the order is noise.** The reader misreads one to three questions per
   run even when the summary is clear. For example, with Qwen3.8-27B's summaries (reasoning off) it
   ranks `AiConditionEvaluator.java` first for "Where is every checkout and return written to an
   audit trail?", which is answered by `03_routines.sql`. Over the repeat runs, the six hosted
@@ -335,6 +362,7 @@ Ordered by what would change a decision:
 | Qwen3.8-27B | OpenRouter | 37 | 8.7 | 14.8 | 0.4030 | 0 |
 | Qwen3.8-27B (reasoning off) | OpenRouter | 37 | 5.4 | 7.7 | 0.0798 | 0 |
 | gpt-oss-20b ¹ | OpenRouter | 37 | 7.1 | 11.8 | 0.0122 | 0 |
+| Mistral Large 4 | OpenRouter | 37 | 20.1 | 32.1 | 0.3772 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | HF / nscale | 37 | 6.5 | 12.3 | see text | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | HF / nscale | 37 | 2.4 | 3.9 | see text | 0 |
 | MAI-Code-1.1-Flash | Copilot API Gateway | 37 | 6.3 | 11.2 | Copilot plan | 0 |
@@ -347,6 +375,7 @@ Ordered by what would change a decision:
 | Granite 4.0 H-Tiny (Q4_K_M) ¹ | local GGUF (RTX 3070) | 37 | 3.3 | 5.8 | 0 (local) | 1 (`sql/library/05_seed_data.sql`) |
 | Granite 4.0 H-Small (UD-Q4_K_XL) ¹ | local GGUF (RTX 3070) | 37 | 34.9 | 58.9 | 0 (local) | 0 |
 | Seed-Coder-8B-Instruct (Q4_K_M) ¹ | local GGUF (RTX 3070) | 37 | 19.6 | 34.4 | 0 (local) | 0 |
+| Kolibri-1 (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 34.0 | 61.8 | 0 (local) | 0 |
 | DeepSeek-Coder-V2-Lite-Instruct (Q4_K_M) ¹ | local GGUF (RTX 3070) | 37 | 164.9 | 316.6 | 0 (local) | 1 (`java/config/AiGenerationConfig.java`) |
 
 ### Compaction and faithfulness per file kind
@@ -364,6 +393,7 @@ Ordered by what would change a decision:
 | Qwen3.8-27B | 3.49 | 98% | 4.18 | 98% | 4/4 | 0.69 | 96% | 1.6 |
 | Qwen3.8-27B (reasoning off) | 3.69 | 100% | 4.31 | 98% | 0/4 | 0.66 | 97% | 1.0 |
 | gpt-oss-20b ¹ | 5.25 | 100% | 5.45 | 98% | 0/4 | 0.94 | 87% | 0.8 |
+| Mistral Large 4 | 3.42 | 82% | 3.43 | 100% | 4/4 | 0.67 | 100% | 1.1 |
 | Qwen3-4B-Instruct-2507 ¹ | 4.72 | 74% | 4.49 | 84% | 4/4 | 0.91 | 79% | 1.0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 4.23 | 86% | 5.57 | 87% | 0/4 | 0.99 | 62% | 0.8 |
 | MAI-Code-1.1-Flash | 4.06 | 75% | 2.58 | 98% | 4/4 | 0.57 | 98% | 1.2 |
@@ -376,6 +406,7 @@ Ordered by what would change a decision:
 | Granite 4.0 H-Tiny (Q4_K_M) ¹ | 6.26 | 85% | 2.91 | 79% | 2/4 | 1.19 | 63% | 1.2 |
 | Granite 4.0 H-Small (UD-Q4_K_XL) ¹ | 4.93 | 100% | 5.08 | 92% | 0/4 | 0.91 | 83% | 0.5 |
 | Seed-Coder-8B-Instruct (Q4_K_M) ¹ | 9.83 | 68% | 6.63 | 81% | 0/4 | 1.40 | 61% | 0.6 |
+| Kolibri-1 (Q4_K_M, thinking off) | 4.44 | 100% | 5.16 | 90% | 0/4 | 1.00 | 79% | 0.1 |
 | DeepSeek-Coder-V2-Lite-Instruct (Q4_K_M) ¹ | 3.60 | 96% | 4.29 | 91% | 0/4 | 0.98 | 64% | 0.5 |
 
 ### Format discipline (all 37 `.ai.md` per model)
@@ -393,6 +424,7 @@ Ordered by what would change a decision:
 | Qwen3.8-27B | 0 | 0 | 0 | 0 | 0 |
 | Qwen3.8-27B (reasoning off) | 0 | 0 | 0 | 0 | 0 |
 | gpt-oss-20b ¹ | 0 | 0 | 0 | 0 | 0 |
+| Mistral Large 4 | 0 | 0 | 0 | 1 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 0 | 6 | 0 | 0 | 0 |
 | MAI-Code-1.1-Flash | 0 | 0 | 0 | 0 | 0 |
@@ -405,6 +437,7 @@ Ordered by what would change a decision:
 | Granite 4.0 H-Tiny (Q4_K_M) ¹ | 20 | 129 | 34 | 0 | 0 |
 | Granite 4.0 H-Small (UD-Q4_K_XL) ¹ | 0 | 0 | 0 | 0 | 0 |
 | Seed-Coder-8B-Instruct (Q4_K_M) ¹ | 0 | 1 | 0 | 0 | 0 |
+| Kolibri-1 (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | DeepSeek-Coder-V2-Lite-Instruct (Q4_K_M) ¹ | 0 | 18 | 0 | 0 | 0 |
 
 ¹ also in the June 2026 benchmark ([COMPARISON.md](COMPARISON.md)).
@@ -437,11 +470,11 @@ plugin's self-test profile, copied into [`modelcard/prompts.json`](modelcard/pro
 | | OpenRouter | Copilot API Gateway | Local (llama.cpp JNI) |
 |---|---|---|---|
 | Context | 131 072 | 120 000 (the model's `max_input_tokens` is 127 790) | 32 768 |
-| `maxOutputTokens` | 4096 (16 384 for the reasoning-low runs of Nemotron 3.5 Lightning and Qwen3.5-35B-A3B, see finding 1) | 4096 (the gateway does not pass it on) | 4096 |
+| `maxOutputTokens` | 4096 (16 384 for the reasoning-low runs of Nemotron 3.5 Lightning and Qwen3.5-35B-A3B and for Mistral Large 4, see finding 1) | 4096 (the gateway does not pass it on) | 4096 |
 | Temperature | 0.2 | 0.2 | 0.2 (seed 42) |
-| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | not set | thinking off where the template has a switch (Gemma 4, Qwen3.5) |
+| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | not set | thinking off where the template has a switch (Gemma 4, Qwen3.5, Kolibri-1; Kolibri-1 also `reasoningEffort: none`, see finding 2) |
 | Weights | whatever precision the OpenRouter route serves (not stated per request) | whatever GitHub Copilot serves | Q4_K_M (Granite H-Small UD-Q4_K_XL) |
-| Hardware | — | — (the gateway runs in VS Code on the benchmark machine, `stream: true`) | RTX 3070 Laptop (8 GB), CUDA 13 natives of `net.ladenthin:llama` 6.0.0, layers auto-fitted, 8 CPU threads |
+| Hardware | — | — (the gateway runs in VS Code on the benchmark machine, `stream: true`) | RTX 3070 Laptop (8 GB), 63 GB RAM, CUDA 13 natives of `net.ladenthin:llama` 6.0.0, layers auto-fitted (Kolibri-1: every layer on the GPU except the 50 expert layers, `cpuMoeLayers`), 8 CPU threads |
 
 Everything is in [`modelcard/models.json`](modelcard/models.json); a model's `note` says why it
 deviates from the common settings.

@@ -1,0 +1,35 @@
+{
+ "key": "mistral-large-4",
+ "name": "Mistral Large 4",
+ "backend": "openrouter",
+ "definition": {
+  "key": "mistral-large-4",
+  "maxOutputTokens": 16384,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "mistralai/mistral-large-4-0"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 771.6,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 415.3,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 21.4,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.377227,
+ "files": 37
+}

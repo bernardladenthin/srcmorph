@@ -1,0 +1,38 @@
+{
+ "key": "kolibri-1",
+ "name": "Kolibri-1 (Q4_K_M, thinking off)",
+ "backend": "local",
+ "definition": {
+  "key": "kolibri-1",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 32768,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "Kolibri-1-Q4_K_M.gguf",
+  "chatTemplateEnableThinking": false,
+  "reasoningEffort": "none",
+  "gpuLayers": 99,
+  "cpuMoeLayers": 50
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 1482.4,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 517.5,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 37.8,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

@@ -39,6 +39,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   ([docs/ai-index-benchmark/MODEL-CARD.md](./docs/ai-index-benchmark/MODEL-CARD.md)) adds four runs
   streamed through the gateway: Claude Haiku 5.5 (98.2 %, 6.8 s per file), GPT-6 Luna (97.6 %),
   MAI-Code-1.1-Flash (93.0 %) and Grok 4.7 (76.4 %, its reasoning summary leaks into the answer).
+  Two more runs: Mistral Large 4 on OpenRouter (95.0 %, 32.1 s per file, 0.38 USD; its reasoning
+  cannot be switched off) and Aleph Alpha's Kolibri-1 locally (92.2 %, 61.8 s per file, Q4_K_M
+  with all 50 expert layers in RAM).
 - **`openai-compatible` provider: `requestsPerMinute`.** At most this many requests to a model's
   server start within any minute; a request beyond it waits until the oldest of the last minute is
   a minute old, instead of being answered with `429` (the provider does not retry). Models of one
