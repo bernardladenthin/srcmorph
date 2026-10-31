@@ -1,0 +1,35 @@
+{
+ "key": "muse-spark-1.3",
+ "name": "Muse Spark 1.3 (Contributor)",
+ "backend": "openrouter",
+ "definition": {
+  "key": "muse-spark-1.3",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "meta/muse-spark-1.3-contributor"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 242.9,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 105.6,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 7.6,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.019027,
+ "files": 37
+}

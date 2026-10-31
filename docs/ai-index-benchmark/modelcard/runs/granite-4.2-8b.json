@@ -1,0 +1,35 @@
+{
+ "key": "granite-4.2-8b",
+ "name": "Granite 4.2 8B (Q4_K_M, thinking off)",
+ "backend": "local",
+ "definition": {
+  "key": "granite-4.2-8b",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 32768,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "granite-4.2-8b-Q4_K_M.gguf",
+  "chatTemplateEnableThinking": false
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 3299.7,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 1526.2,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 36.1,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

@@ -81,15 +81,15 @@
                     <promptDefinitions>
                         <promptDefinition>
                             <key>file-body-java</key>
-                            <templateFile>v1/file-body-java.md</templateFile>
+                            <templateFile>v2/file-body-java.md</templateFile>
                         </promptDefinition>
                         <promptDefinition>
                             <key>file-body-fallback</key>
-                            <templateFile>v1/file-body-fallback.md</templateFile>
+                            <templateFile>v2/file-body-fallback.md</templateFile>
                         </promptDefinition>
                         <promptDefinition>
                             <key>package-body</key>
-                            <templateFile>v1/package-body.md</templateFile>
+                            <templateFile>v2/package-body.md</templateFile>
                         </promptDefinition>
                         <promptDefinition>
                             <key>project-body</key>

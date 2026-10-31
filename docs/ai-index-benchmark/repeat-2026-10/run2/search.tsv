@@ -257,6 +257,92 @@ gpt-oss-20b	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
 gpt-oss-20b	reader	histogram	1	other/kernels/histogram.cl other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
 gpt-oss-20b	reader	revenue	1	other/scripts/sales_report.py
 gpt-oss-20b	reader	currency	1	other/scripts/sales_report.py sql/library/01_schema.sql sql/library/02_views.sql
+muse-spark-1.3	bm25	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+muse-spark-1.3	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py java/config/AiConditionGroup.java
+muse-spark-1.3	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java java/provider/OpenAiCompatibleProviderSupport.java
+muse-spark-1.3	bm25	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/provider/OpenAiCompatibleProviderSupport.java
+muse-spark-1.3	bm25	oversize-options	1	java/config/AiOversizeStrategy.java java/provider/LlamaCppJniConfig.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	bm25	oversize-parse	1	java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	bm25	input-trim	1	java/config/AiGenerationConfig.java java/config/AiOversizeStrategy.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	bm25	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	bm25	run-config	1	java/config/SrcMorphConfiguration.java other/scripts/rotate_backups.sh java/provider/OpenAiCompatibleProviderSupport.java
+muse-spark-1.3	bm25	plan-only	2	java/provider/AiGenerationProviderFactory.java java/config/SrcMorphConfiguration.java sql/warehouse/stock_sync_tsql.sql
+muse-spark-1.3	bm25	thinking-strip	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	bm25	thinking-budget	1	java/provider/AiCompletionParser.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	bm25	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	bm25	backend-select	1	java/provider/AiGenerationProviderFactory.java java/provider/AiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+muse-spark-1.3	bm25	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java java/provider/AiGenerationProvider.java
+muse-spark-1.3	bm25	model-load	3	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	bm25	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/config/AiGenerationConfig.java
+muse-spark-1.3	bm25	jni-config	1	java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java java/provider/OpenAiCompatibleProviderSupport.java
+muse-spark-1.3	bm25	reasoning	1	java/config/AiGenerationConfig.java java/provider/AiCompletionParser.java java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	bm25	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	bm25	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProviderFactory.java other/kernels/histogram.cl
+muse-spark-1.3	bm25	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiCompletionParser.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	bm25	copies-check	2	sql/library/04_migration_v2.sql sql/library/01_schema.sql sql/library/03_routines.sql
+muse-spark-1.3	bm25	open-loans-index	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/05_seed_data.sql
+muse-spark-1.3	bm25	overdue	1	sql/library/02_views.sql sql/library/03_routines.sql sql/library/05_seed_data.sql
+muse-spark-1.3	bm25	popular	1	sql/library/02_views.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+muse-spark-1.3	bm25	late-fee	1	sql/library/03_routines.sql sql/library/05_seed_data.sql sql/library/02_views.sql
+muse-spark-1.3	bm25	blocked	1	sql/library/03_routines.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+muse-spark-1.3	bm25	audit	1	sql/library/03_routines.sql java/config/SrcMorphConfiguration.java sql/warehouse/stock_sync_tsql.sql
+muse-spark-1.3	bm25	branches	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+muse-spark-1.3	bm25	rename-joined	1	sql/library/04_migration_v2.sql sql/library/05_seed_data.sql sql/library/01_schema.sql
+muse-spark-1.3	bm25	seed-counts	1	sql/library/05_seed_data.sql sql/library/01_schema.sql sql/library/02_views.sql
+muse-spark-1.3	bm25	shop-reserve	1	sql/shop/orders_mysql.sql other/scripts/sales_report.py sql/warehouse/stock_sync_tsql.sql
+muse-spark-1.3	bm25	stock-merge	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql sql/library/05_seed_data.sql
+muse-spark-1.3	bm25	stock-fail	1	sql/warehouse/stock_sync_tsql.sql sql/shop/orders_mysql.sql java/provider/AiGenerationProvider.java
+muse-spark-1.3	bm25	backup-keep	1	other/scripts/rotate_backups.sh java/config/SrcMorphConfiguration.java java/provider/OpenAiCompatibleProviderSupport.java
+muse-spark-1.3	bm25	backup-partial	1	other/scripts/rotate_backups.sh other/ringbuf/ringbuf.c java/config/AiConditionEvaluator.java
+muse-spark-1.3	bm25	ring-impl	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c other/kernels/histogram.cl
+muse-spark-1.3	bm25	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h other/kernels/histogram.cl
+muse-spark-1.3	bm25	ring-errors	1	other/ringbuf/ringbuf.h other/kernels/histogram.cl other/ringbuf/ringbuf.c
+muse-spark-1.3	bm25	histogram	1	other/kernels/histogram.cl other/ringbuf/ringbuf.h java/config/AiGenerationConfig.java
+muse-spark-1.3	bm25	revenue	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql other/kernels/histogram.cl
+muse-spark-1.3	bm25	currency	1	other/scripts/sales_report.py sql/shop/orders_mysql.sql java/provider/AiCompletionParser.java
+muse-spark-1.3	reader	cond-eval	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	cond-validate	1	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java java/config/AiFactExtractor.java
+muse-spark-1.3	reader	cond-group	2	java/config/AiConditionEvaluator.java java/config/AiConditionGroup.java
+muse-spark-1.3	reader	facts	1	java/config/AiFactExtractor.java java/config/AiOversizeStrategy.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	oversize-options	1	java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	oversize-parse	1	java/config/AiOversizeStrategy.java java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	input-trim	1	java/config/AiGenerationConfig.java java/config/SrcMorphConfiguration.java java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	reader	sampling	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	run-config	1	java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	plan-only	1	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java
+muse-spark-1.3	reader	thinking-strip	1	java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	reader	thinking-budget	2	java/config/AiConditionEvaluator.java java/provider/AiCompletionParser.java java/provider/AiGenerationProvider.java
+muse-spark-1.3	reader	backend-interface	1	java/provider/AiGenerationProvider.java java/provider/AiGenerationProviderFactory.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	reader	backend-select	1	java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	reader	backend-override	2	java/config/SrcMorphConfiguration.java java/provider/AiGenerationProviderFactory.java java/config/AiGenerationConfig.java
+muse-spark-1.3	reader	model-load	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java java/provider/AiGenerationProviderFactory.java
+muse-spark-1.3	reader	moe-cpu	1	java/provider/LlamaCppJniAiGenerationProvider.java java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	reader	jni-config	1	java/provider/LlamaCppJniConfig.java
+muse-spark-1.3	reader	reasoning	1	java/config/AiGenerationConfig.java java/provider/LlamaCppJniConfig.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	request-body	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/LlamaCppJniConfig.java java/provider/LlamaCppJniAiGenerationProvider.java
+muse-spark-1.3	reader	key-cleartext	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProviderFactory.java
+muse-spark-1.3	reader	http-error	1	java/provider/OpenAiCompatibleProviderSupport.java java/provider/AiGenerationProvider.java
+muse-spark-1.3	reader	copies-check	1	sql/library/01_schema.sql
+muse-spark-1.3	reader	open-loans-index	1	sql/library/01_schema.sql sql/library/02_views.sql sql/library/03_routines.sql
+muse-spark-1.3	reader	overdue	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+muse-spark-1.3	reader	popular	1	sql/library/02_views.sql sql/library/01_schema.sql sql/library/03_routines.sql
+muse-spark-1.3	reader	late-fee	1	sql/library/03_routines.sql sql/library/01_schema.sql sql/library/02_views.sql
+muse-spark-1.3	reader	blocked	2	sql/library/01_schema.sql sql/library/03_routines.sql sql/library/05_seed_data.sql
+muse-spark-1.3	reader	audit	1	sql/library/03_routines.sql sql/library/04_migration_v2.sql sql/library/05_seed_data.sql
+muse-spark-1.3	reader	branches	1	sql/library/04_migration_v2.sql
+muse-spark-1.3	reader	rename-joined	1	sql/library/04_migration_v2.sql
+muse-spark-1.3	reader	seed-counts	1	sql/library/05_seed_data.sql sql/library/04_migration_v2.sql sql/library/01_schema.sql
+muse-spark-1.3	reader	shop-reserve	1	sql/shop/orders_mysql.sql java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java
+muse-spark-1.3	reader	stock-merge	1	sql/warehouse/stock_sync_tsql.sql
+muse-spark-1.3	reader	stock-fail	1	sql/warehouse/stock_sync_tsql.sql
+muse-spark-1.3	reader	backup-keep	1	other/scripts/rotate_backups.sh
+muse-spark-1.3	reader	backup-partial	1	other/scripts/rotate_backups.sh
+muse-spark-1.3	reader	ring-impl	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+muse-spark-1.3	reader	ring-capacity	1	other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h other/scripts/rotate_backups.sh
+muse-spark-1.3	reader	ring-errors	1	other/ringbuf/ringbuf.h other/ringbuf/ringbuf.c
+muse-spark-1.3	reader	histogram	1	other/kernels/histogram.cl other/ringbuf/ringbuf.c other/ringbuf/ringbuf.h
+muse-spark-1.3	reader	revenue	1	other/scripts/sales_report.py other/scripts/rotate_backups.sh other/kernels/histogram.cl
+muse-spark-1.3	reader	currency	1	other/scripts/sales_report.py sql/library/01_schema.sql sql/library/02_views.sql
 nemotron-3.5-lightning-noreason	bm25	cond-eval	1	java/config/AiConditionEvaluator.java other/scripts/rotate_backups.sh java/config/AiOversizeStrategy.java
 nemotron-3.5-lightning-noreason	bm25	cond-validate	1	java/config/AiConditionEvaluator.java other/scripts/sales_report.py java/config/AiConditionGroup.java
 nemotron-3.5-lightning-noreason	bm25	cond-group	1	java/config/AiConditionGroup.java java/config/AiConditionEvaluator.java java/config/SrcMorphConfiguration.java

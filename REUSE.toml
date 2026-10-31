@@ -63,6 +63,9 @@ path = [
     "docs/ai-index-benchmark/repeat-2026-10/*/meta/*.json",
     "docs/ai-index-benchmark/repeat-2026-10/*/search.json",
     "docs/ai-index-benchmark/repeat-2026-10/*/search.tsv",
+    "docs/ai-index-benchmark/prompt-v2-2026-10/*/meta/*.json",
+    "docs/ai-index-benchmark/prompt-v2-2026-10/*/search.json",
+    "docs/ai-index-benchmark/prompt-v2-2026-10/*/search.tsv",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"

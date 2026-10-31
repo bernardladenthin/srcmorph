@@ -7,7 +7,7 @@ The corpus is 12 Java files of srcmorph itself (taken from a fixed commit with `
 the SQL and other fixtures under ../corpus. Every model gets the same three phases with the same
 prompts: GenerateFileIndex (prompt routed by extension: .java, .sql, everything else to the
 fallback), AggregatePackages, AggregateProject. The prompts are the files of one set under the
-repository's prompts/ directory (--prompts, default v1), passed to srcmorph as templateFile entries
+repository's prompts/ directory (--prompts, default v2, the current set), passed to srcmorph as templateFile entries
 with promptDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
 .ai.md tree goes to <out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
 
@@ -17,7 +17,7 @@ environment, and a model only receives the variable its backend names.
 Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
   python run.py ... --backend openrouter        (every model of one backend)
-Options: --prompts <set under prompts/> (default v1; a set needs the five keys' files),
+Options: --prompts <set under prompts/> (default v2; a set needs the five keys' files),
          --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
          --commit <git rev of the Java snapshot>, --seed <n> (replaces the local backend's seed,
          for repeat runs), --out, --meta, --work.
@@ -202,7 +202,7 @@ def main():
     parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
     parser.add_argument("--meta", default=str(HERE / "runs"))
     parser.add_argument("--work", required=True)
-    parser.add_argument("--prompts", default="v1")
+    parser.add_argument("--prompts", default="v2")
     args = parser.parse_args()
 
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))

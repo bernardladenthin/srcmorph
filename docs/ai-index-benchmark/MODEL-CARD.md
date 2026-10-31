@@ -21,12 +21,12 @@ parts. In the two scatter charts, a line joins the models that no other model be
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="modelcard/charts/quality-vs-speed-dark.svg">
-  <img alt="Scatter chart of quality score against seconds per source file for all 26 runs. Hosted front: Qwen2.5-Coder-7B, Qwen3.5-35B-A3B with reasoning off, Claude Haiku 5.5 through GitHub Copilot, GPT-6 Luna. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, Granite 4.0 H-Small." src="modelcard/charts/quality-vs-speed-light.svg">
+  <img alt="Scatter chart of quality score against seconds per source file for all 35 runs. Hosted front: Mercury 3, Claude Haiku 5.5 through GitHub Copilot, GPT-6 Luna, Muse Spark 1.3. Local front: Granite 4.0 H-Tiny, Qwen3.5-4B, Gemma 4 E4B, gpt-oss-20b." src="modelcard/charts/quality-vs-speed-light.svg">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="modelcard/charts/quality-vs-cost-dark.svg">
-  <img alt="Scatter chart of quality score against USD per MB of source for the OpenRouter models. Front: Nemotron 3.5 Lightning with reasoning off, gpt-oss-20b, GPT-6 Luna." src="modelcard/charts/quality-vs-cost-light.svg">
+  <img alt="Scatter chart of quality score against USD per MB of source for the OpenRouter models. Front: Nemotron 3.5 Lightning with reasoning off, gpt-oss-20b, Muse Spark 1.3." src="modelcard/charts/quality-vs-cost-light.svg">
 </picture>
 
 <picture>
@@ -44,14 +44,28 @@ cost are from the card's run, as in the charts.
 
 | Use | Model | Quality | Range | s/file | USD per MB of source |
 |---|---|---|---|---|---|
+| Hosted, best quality (public code only) | **Muse Spark 1.3 (Contributor)** | 99.8 % | 99.4–100 | 10.1 | 0.083 |
 | Hosted, best quality | **Qwen3.8-27B, reasoning off** | 98.7 % | 98.6–98.9 | 7.7 | 0.34 |
 | Hosted, best per dollar | **gpt-oss-20b** | 96.8 % | 96.1–97.8 | 11.8 | 0.052 |
 | Hosted, fast and cheap | **GPT-6 Luna** | 96.2 % | 93.6–99.0 | 6.9 | 0.095 |
-| Hosted, fastest | **Qwen3.5-35B-A3B, reasoning off** | 95.1 % | 94.8–95.4 | 5.2 | 0.20 |
-| Local, 8 GB GPU | **Gemma 4 E4B, thinking off** | 93.0 % | 92.8–93.2 | 11.1 | – |
-| Local, when time does not matter | **Granite 4.0 H-Small** | 94 % | one run | 58.9 | – |
+| Hosted, fastest | **Mercury 3** | 96.6 % | one run | 2.6 | 0.12 |
+| Local, best quality | **gpt-oss-20b (MXFP4)** | 95.8 % | one run | 33.1 | – |
+| Local, 8 GB GPU, fast | **Gemma 4 E4B, thinking off** | 93.0 % | 92.8–93.2 | 11.1 | – |
 | With a GitHub Copilot plan | **Claude Haiku 5.5** | 98.2 % | one run | 6.8 | Copilot plan |
 
+The table is measured with the v1 prompts. The current prompts, v2 (finding 5), lift GPT-6 Luna to
+100 % in all three of its runs and gpt-oss-20b to 99.0 %, so both stand level with Muse and above
+Qwen3.8-27B; the other models have not been run with v2.
+
+- **Muse Spark 1.3 in Meta's Contributor tier** (100 %, 10.1 s per file, 0.019 USD for the run) is
+  the only run with nothing missing: full recall on every kind, all four seed counts, a clean format,
+  and the best search of all runs (98 % first). Two more runs scored 100 % and 99.4 % (one name of
+  the other files missing) and searched 91 % and 93 % first, so it is also the steadiest of the
+  top group (see [Repeatability](#repeatability)). The Contributor tier costs a twelfth
+  of the standard one (0.10 / 0.20 against 1.25 / 4.25 USD per million tokens) because Meta trains
+  on its prompts, as third-party sources report; OpenRouter refuses it until the account allows
+  providers that train on paid requests, in both its privacy settings and the workspace guardrail.
+  Fine for public code like this corpus, not for code that must not leave the company.
 - **Qwen3.8-27B with reasoning off** is the best in every one of its three runs and the steadiest
   of the hosted models, but in the search measurement it is the weakest of the top group (84 to
   86 % against 91 to 98 %). It costs 3.5 times as much as Luna (0.34 USD per MB), so a 10 MB
@@ -60,19 +74,35 @@ cost are from the card's run, as in the charts.
   measurement it is at the top (91 to 98 %). It keeps nearly every Java name, but states no seed
   counts.
 - **GPT-6 Luna** had the best single run (99 %, full recall on Java and SQL, all four seed counts,
-  clean format), but it was its best of three: the other two scored 96 % and 94 %. It stays the
-  fastest of the top group after Qwen3.5-35B and costs about 0.10 USD per MB.
-- **Qwen3.5-35B-A3B with reasoning off** is the fastest (5.2 s per file) at twice Luna's price. It
-  writes the longest Java summaries (compaction 3.22).
+  clean format), but it was its best of three: the other two scored 96 % and 94 %. It is among the
+  fastest of the top group (6.9 s per file; Claude Haiku 5.5 6.8 s, Mercury 3 2.6 s) and costs about
+  0.10 USD per MB.
+- **Mercury 3** (Inception's diffusion model; 96.6 %, 2.6 s per file, 0.12 USD per MB) is twice as
+  fast as any other run. SQL recall is full with all four seed counts, other files 98 %, Java 88 %;
+  one package summary was cut off at 4096 tokens, and it searches below the top group (88 % first).
+- **Nemotron 3.5 Super VL with reasoning off** (97.9 %, 10.7 s per file, 0.14 USD per MB) has full
+  Java recall; with reasoning `low` it scored 90.4 % (finding 1).
+- **Qwen3.5-35B-A3B with reasoning off** is fast (5.2 s per file) at twice Luna's price. It writes the
+  longest Java summaries (compaction 3.22).
 - **Nemotron 3.5 Lightning with reasoning off** is the cheapest OpenRouter model (0.050 USD per MB).
   Its quality (90 %) is held back by Java recall (81 %). It names every member of the large files,
   but leaves names out of the small ones, for example the type name in `AiGenerationProvider`. In
   the per-file mean, a small file weighs as much as a large one.
-- **Gemma 4 E4B with thinking off** is the local pick. It has full Java recall, no invented names,
-  a clean format, and takes 11 s per file on an RTX 3070 Laptop.
+- **gpt-oss-20b locally** (native MXFP4, layers auto-fitted on the RTX 3070 Laptop; 95.8 %, 33 s
+  per file) keeps its hosted quality (96.1 % on OpenRouter): the best local run, Java recall 99.9 %,
+  a clean format, no seed counts, 91 % first in search. It writes at about 26 tokens/s. This is the
+  model of the plugin's self-test profile and of `examples/build-your-own-jar`.
+- **Gemma 4 E4B with thinking off** is the fast local pick. It has full Java recall, no invented
+  names, a clean format, and takes 11 s per file on an RTX 3070 Laptop.
   - **Qwen3.5-4B with thinking off** is as fast (9.6 s) and gets all four seed counts, but drops
     more names (Java 92 %, other files 68 %).
   - **Granite 4.0 H-Small** matches E4B's quality at five times the time.
+  - **Gemma 4 26B-A4B with thinking off** (93.2 %, 85 s per file) is no better than E4B at eight
+    times the time.
+  - **Granite 4.2 8B with thinking off** (94.2 %, 137.5 s per file): IBM's 4.2 line reasons by
+    default (its template thinks unless `enable_thinking` is false). Quality is good, but llama.cpp's
+    auto-fit left the GPU idle and the computation on the CPU at the card's 32K context (17 GB of
+    RAM for a 5 GB model), so long files ran at 2 to 4 tokens/s.
   - **Kolibri-1** (Aleph Alpha's 78B mixture-of-experts with 3.5B active, October 2026,
     Apache 2.0; 92.2 %, 61.8 s per file) is the largest local model here and lands just below E4B
     at five and a half times the time. It has full Java recall, a clean format and almost no
@@ -100,7 +130,7 @@ cost are from the card's run, as in the charts.
     summary carries a reasoning marker, and it searches below the top group (86 % first).
 - **Hugging Face router (nscale): the cheapest, not the best.** Both models together cost under
   0.01 USD at 0.01 / 0.03 USD per million input / output tokens.
-  - **Qwen2.5-Coder-7B** is the fastest run of all (3.9 s per file), with Java recall at 86 %. It
+  - **Qwen2.5-Coder-7B** is the second-fastest run (3.9 s per file, after Mercury 3), with Java recall at 86 %. It
     states no seed counts and writes 6 `#`–`###` headings.
   - **Qwen3-4B-Instruct-2507** gets all four seed counts, but Java recall is only 74 %.
 
@@ -109,9 +139,12 @@ cost are from the card's run, as in the charts.
   costing nothing beyond a Copilot plan. They ran streamed (`stream: true`) through the gateway's
   VS Code extension with its limit at 30 requests a minute; at 10, Haiku and Luna (12 to 15 a
   minute) were stopped by `429` after a few files.
-  - **Claude Haiku 5.5** (98.2 %, 6.8 s per file) is the third-best run of the card and on the
+  - **Claude Haiku 5.5** (98.2 %, 6.8 s per file) is the fourth-best run of the card and on the
     hosted front: full SQL and other-file recall, all four seed counts, a clean format, Java recall
-    93 %. In the search measurement it is in the top group (95 % first).
+    93 %. In the search measurement it is in the top group (95 % first). The same model on
+    OpenRouter scored 93.9 % (6.6 s per file, 0.046 USD): OpenRouter enforces `maxOutputTokens`
+    4096 and cut `AiGenerationConfig.java` off while it listed the 88 accessors one by one, which
+    the gateway does not pass on; other-file recall was 88 % there.
   - **GPT-6 Luna through Copilot** (97.6 %, 7.9 s per file) against the same model on OpenRouter
     (99.0 %, 6.9 s): within the 93.6 to 99.0 % Luna's three OpenRouter runs spread over, so the
     route changes nothing measurable.
@@ -140,11 +173,15 @@ cost are from the card's run, as in the charts.
     `#`–`###` headings.
   - **Qwen3-Coder-30B** describes column types (`char`, `integer`) that the seed-data file does not
     contain (17 invented per 100 on SQL) and drops names on Java (78 %).
+  - **LFM 2.5 24B-A2B** (Liquid AI; 87.0 %, 164 s per file) always reasons: its template opens a
+    `<think>` block with no switch, so it ran with 16 384 output tokens and wrote 2000 to 6000
+    reasoning tokens per file at 35 tokens/s. Java recall 71 %. Its LFM Open License allows
+    commercial use only below 10 M USD annual revenue.
   - **Any reasoning model with reasoning on** — see finding 1.
 
 ### Findings
 
-1. **For this task, reasoning costs time and money and adds no quality.** Four OpenRouter models
+1. **For this task, reasoning costs time and money and adds no quality.** Five OpenRouter models
    ran twice: first with `reasoning.effort` = `low`, then with `none`. With `low`, Nemotron 3.5
    Lightning and Qwen3.5-35B-A3B had 16 384 output tokens; every other run had the common 4096.
    Every model got at least as good with reasoning off, and every one got faster and cheaper.
@@ -159,6 +196,8 @@ cost are from the card's run, as in the charts.
    | Gemma 4 31B, reasoning off | **94 %** | **10.5** | **0.023** | 0 |
    | Qwen3.8-27B, reasoning low | 98 % | 14.8 | 0.403 | 0 |
    | Qwen3.8-27B, reasoning off | **99 %** | **7.7** | **0.080** | 0 |
+   | Nemotron 3.5 Super VL, reasoning low | 90 % | 38.8 | 0.059 | 5 (3 empty) |
+   | Nemotron 3.5 Super VL, reasoning off | **98 %** | **10.7** | **0.031** | 0 |
 
    Reasoning tokens count against `maxOutputTokens`. Even at `low`, one test request for a
    one-line `add` method spent 799 (Qwen3.5), 419 (Nemotron), 163 (Gemma 4 31B) and 25
@@ -191,14 +230,40 @@ cost are from the card's run, as in the charts.
    provider the cut-off warning is logged under the `LlamaCppJniProviderSupport` logger, which points
    at the wrong backend. Both are in [`TODO.md`](../../TODO.md).
 4. **Format discipline depends on the model, not on the prompt.** All prompts are the v1 prompts, and
-   17 of 26 runs follow them without a slip. The June code-fence regression of DeepSeek and
-   Seed-Coder came with prompt v2 and does not show up with v1. Granite H-Tiny, which was clean in
-   June, is not clean here.
+   25 of 35 runs follow them without a slip. The June code-fence regression of DeepSeek and
+   Seed-Coder came with June's experimental prompt v2 and does not show up with v1. Granite
+   H-Tiny, which was clean in June, is not clean here.
+5. **Prompt v2: the names v1 lost, asked for explicitly.** The missed names of gpt-oss-20b and GPT-6
+   Luna over their three v1 runs fall into a few kinds: gpt-oss leaves the type's own name out of
+   the large Java files (the prompt says the file name is already rendered), Luna once groups the 88
+   accessors of `AiGenerationConfig.java` as a family, both drop constants and configuration
+   variables of the scripts and C files (`REQUIRED_COLUMNS`, `SOURCE_DIR`, `BINS`, `RINGBUF_OK`),
+   internal helpers and library calls, and named SQL constraints and indexes, and gpt-oss states
+   no seed counts. [`prompts/v2/`](../../prompts/README.md) adds one instruction per kind, with
+   example names that occur nowhere in this corpus; the package and project prompts are unchanged.
+   Three runs each on OpenRouter (`run.py --prompts v2`, outputs under
+   [`prompt-v2-2026-10/`](prompt-v2-2026-10/)):
+
+   | | Quality: run 1 / 2 / 3 | Mean | Reader hit@1 | Mean | s/file | USD |
+   |---|---|---|---|---|---|---|
+   | GPT-6 Luna, v1 | 99.0 / 96.0 / 93.6 % | 96.2 % | 93 / 91 / 91 % | 92 % | 6.9 / 7.8 / 10.1 | 0.022 / – / 0.020 |
+   | GPT-6 Luna, v2 | 100 / 100 / 100 % | **100 %** | 88 / 93 / 86 % | 89 % | 8.0 / 7.2 / 7.0 | 0.026 / 0.018 / 0.017 |
+   | gpt-oss-20b, v1 | 96.1 / 97.8 / 96.6 % | 96.8 % | 98 / 95 / 91 % | 95 % | 11.8 / 11.1 / 8.7 | 0.012 / 0.013 / 0.009 |
+   | gpt-oss-20b, v2 | 100 / 100 / 97.0 % | **99.0 %** | 88 / 93 / 95 % | 92 % | 15.6 / 15.4 / 22.7 | 0.006 / 0.006 / 0.006 |
+
+   With v2 Luna keeps every expected name in every run, and gpt-oss misses only other-file names in
+   one run; gpt-oss states three of the four seed counts in every run (v1: none in two). Neither
+   writes a code fence or a `###` heading, and the index grows by at most a tenth (gpt-oss 54 to
+   59 KB, v1 50 to 57 KB). The search measurement did not move beyond its noise: about one of the
+   43 questions lower on average, within the two to seven points runs of one prompt spread over
+   (BM25 over gpt-oss's summaries lost about two). Two cautions: v2 was written from the misses on
+   this corpus, so part of the gain may be fitted to it, and the other models have not been run
+   with it. v2 is the current prompt set; v1 is in the history (`prompts/README.md`).
 
 ### Repeatability
 
 Every other number on this card comes from one run at temperature 0.2. The six top hosted
-configurations ran twice more, and Gemma 4 E4B ran three more times on the same GPU: once with the
+configurations and Muse Spark 1.3 ran twice more, and Gemma 4 E4B ran three more times on the same GPU: once with the
 card's seed 42 and with seeds 43 and 44. The outputs are under [`repeat-2026-10/`](repeat-2026-10/),
 and [`modelcard/repeat.py`](modelcard/repeat.py) scores them with the card's metrics into
 [`modelcard/scores/repeat.json`](modelcard/scores/repeat.json).
@@ -211,6 +276,7 @@ and [`modelcard/repeat.py`](modelcard/repeat.py) scores them with the card's met
 | Qwen3.5-35B-A3B, reasoning off | 94.8 / 95.4 / 95.2 % | 0.6 | 5.2 / 5.3 / 6.5 | 0.047 / 0.052 / 0.051 |
 | Gemma 4 31B, reasoning off | 94.1 / 94.2 / 95.5 % | 1.5 | 10.5 / 15.0 / 16.1 | 0.023 / 0.024 / 0.030 |
 | Nemotron 3.5 Lightning, reasoning off | 89.6 / 92.1 / 91.0 % | 2.6 | 10.0 / 3.2 / 18.7 | 0.012 / 0.011 / 0.012 |
+| Muse Spark 1.3 (Contributor) | 100 / 100 / 99.4 % | 0.6 | 10.1 / 11.3 / 10.6 | 0.019 / 0.020 / 0.015 |
 | Gemma 4 E4B, local: seed 42 / 42 / 43 / 44 | 93.0 / 93.0 / 93.2 / 92.8 % | 0.4 | 11.1 / 11.4 / 12.7 / 12.5 | – |
 
 ² The account's usage during Luna's second run also covered the first calls of the search
@@ -248,43 +314,52 @@ summaries of each run two ways:
 Two baselines go through the same retrievers: the paths alone, and the source files themselves.
 hit@1 counts a question as found when an answer file comes first, hit@3 when it is among the first
 three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's 22 contexts,
-0.81 USD for the repeat runs, 0.28 USD for the four Copilot runs and 0.15 USD for Mistral Large 4
-and Kolibri-1, which were added later. Results are in
+0.81 USD for the repeat runs, 0.28 USD for the four Copilot runs, 0.15 USD for Mistral Large 4
+and Kolibri-1 and 0.53 USD for the nine runs of 2026-10-31, which were added later. Results are in
 [`modelcard/scores/search.json`](modelcard/scores/search.json), and per question in
 [`search.tsv`](modelcard/scores/search.tsv); those of the repeat runs next to their outputs.
 
 | | Reader hit@1 | Reader hit@3 | MRR | BM25 hit@1 | BM25 hit@3 |
 |---|---|---|---|---|---|
+| Muse Spark 1.3 (Contributor) | 98 % | 100 % | 0.99 | 81 % | 100 % |
 | gpt-oss-20b | 98 % | 98 % | 0.98 | 86 % | 95 % |
 | Gemma 4 31B, reasoning off | 95 % | 100 % | 0.98 | 81 % | 98 % |
 | Granite 4.0 H-Small | 95 % | 100 % | 0.98 | 81 % | 93 % |
 | Qwen3-4B-Instruct-2507 | 95 % | 100 % | 0.98 | 81 % | 98 % |
+| Nemotron 3.5 Super VL, reasoning off | 95 % | 100 % | 0.98 | 88 % | 95 % |
 | Gemma 4 12B, thinking off | 95 % | 100 % | 0.97 | 86 % | 93 % |
 | Claude Haiku 5.5 (Copilot) | 95 % | 100 % | 0.97 | 79 % | 100 % |
 | Qwen3.5-4B, thinking off | 95 % | 100 % | 0.97 | 84 % | 100 % |
+| Qwen3.8-27B | 95 % | 98 % | 0.96 | 81 % | 100 % |
 | Gemma 4 31B | 93 % | 100 % | 0.96 | 86 % | 95 % |
 | Gemma 4 E4B, thinking off | 93 % | 100 % | 0.96 | 81 % | 100 % |
 | Kolibri-1, thinking off | 93 % | 100 % | 0.96 | 79 % | 100 % |
 | GPT-6 Luna | 93 % | 100 % | 0.96 | 77 % | 98 % |
 | Nemotron 3.5 Lightning, reasoning off | 93 % | 100 % | 0.96 | 86 % | 98 % |
-| Qwen3.8-27B | 95 % | 98 % | 0.96 | 81 % | 100 % |
 | Qwen2.5-Coder-7B | 93 % | 100 % | 0.96 | 74 % | 95 % |
 | Nemotron 3.5 Lightning | 93 % | 98 % | 0.95 | 77 % | 91 % |
 | DeepSeek-Coder-V2-Lite | 93 % | 98 % | 0.95 | 77 % | 98 % |
 | Qwen3.5-35B-A3B, reasoning off | 93 % | 98 % | 0.95 | 86 % | 98 % |
+| Claude Haiku 5.5 (OpenRouter) | 91 % | 100 % | 0.95 | 91 % | 100 % |
+| Gemma 4 26B-A4B, thinking off | 93 % | 95 % | 0.94 | 81 % | 95 % |
 | Qwen3-Coder-30B-A3B | 91 % | 98 % | 0.94 | 84 % | 95 % |
+| Granite 4.2 8B, thinking off | 88 % | 100 % | 0.94 | 88 % | 95 % |
 | Seed-Coder-8B | 91 % | 95 % | 0.93 | 77 % | 93 % |
 | MAI-Code-1.1-Flash | 91 % | 95 % | 0.93 | 81 % | 93 % |
+| gpt-oss-20b (local) | 91 % | 95 % | 0.93 | 91 % | 100 % |
+| LFM 2.5 24B-A2B | 91 % | 95 % | 0.93 | 77 % | 98 % |
 | GPT-6 Luna (Copilot) | 88 % | 98 % | 0.93 | 79 % | 98 % |
 | Qwen3.8-27B, reasoning off | 86 % | 98 % | 0.92 | 84 % | 98 % |
 | Mistral Large 4 | 86 % | 98 % | 0.92 | 84 % | 95 % |
+| Mercury 3 | 88 % | 91 % | 0.89 | 79 % | 95 % |
+| Nemotron 3.5 Super VL | 86 % | 88 % | 0.87 | 74 % | 86 % |
 | Granite 4.0 H-Tiny | 81 % | 91 % | 0.86 | 74 % | 88 % |
 | Grok 4.7 (Copilot) | 77 % | 93 % | 0.85 | 81 % | 95 % |
 | Qwen3.5-35B-A3B | 79 % | 88 % | 0.83 | 67 % | 74 % |
 | *Baseline: paths only* | 74 % | 91 % | 0.82 | – | – |
 | *Baseline: source files* | 72 % | 79 % | 0.76 | 84 % | 98 % |
 
-- **The summaries help a model find the right file.** With any of 23 of the 26 runs the reader
+- **The summaries help a model find the right file.** With any of 32 of the 35 runs the reader
   finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
   source (about 65 000 tokens instead of about 16 000) only 72 %.
 - **Keyword search gains nothing from them.** BM25 over the summaries (67 to 86 % first) is not
@@ -292,7 +367,7 @@ and Kolibri-1, which were added later. Results are in
 - **What hurts search is a missing or broken summary, not a missing name.** The three runs that fall
   behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries), Granite H-Tiny (its
   format slips) and Grok 4.7 (a sentence about the task before almost every lead). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
-- **Among the other 23 runs the order is noise.** The reader misreads one to three questions per
+- **Among the other 32 runs the order is noise.** The reader misreads one to three questions per
   run even when the summary is clear. For example, with Qwen3.8-27B's summaries (reasoning off) it
   ranks `AiConditionEvaluator.java` first for "Where is every checkout and return written to an
   audit trail?", which is answered by `03_routines.sql`. Over the repeat runs, the six hosted
@@ -306,7 +381,7 @@ and Kolibri-1, which were added later. Results are in
   71 KB for the 24 files, gpt-oss-20b writes 51 to 58 KB), and over the 32 scored runs without
   empty or broken summaries a longer index tends to search worse with this reader (correlation
   −0.46). Length does not explain it alone, though: the same model with reasoning low writes 74 KB
-  and finds 95 %. MAI-Code-1.1-Flash, added later, writes the longest index (83 KB) and misses the
+  and finds 95 %. MAI-Code-1.1-Flash, added later, writes one of the longest indexes (83 KB) and misses the
   two questions about blocked members and the audit trail, although its `03_routines.sql` summary
   names `is_blocked` and `loan_audit`.
 - One answer was corrected after the first scoring: "Can a single model definition use a different
@@ -324,7 +399,8 @@ models.
 - **Qwen3-4B-Instruct-2507**, June's budget pick over Qwen3.5-4B, now falls behind it: Java recall
   74 % against 92 %. Qwen3-4B ran hosted here, Qwen3.5-4B locally at Q4, and Qwen3.5-4B had thinking
   off.
-- **Gemma 4** was not in June. With thinking off, E4B is the best local model on this hardware.
+- **Gemma 4** was not in June. With thinking off, E4B is the fastest good local model on this
+  hardware; gpt-oss-20b, run locally here too, is the better one at three times the time.
 - **June's verdict on reasoning holds:** reasoning was a throughput tax with no quality gain there,
   and here it is a tax in both money and time.
 
@@ -344,7 +420,10 @@ Ordered by what would change a decision:
    Face runs could be priced exactly.
 4. **Local options this card does not cover:** Gemma 4 E4B at Q8_0 against Q4_K_M (it fits in
    8 GB either way), and the prompt v2 of June against v1 on the winners.
-5. **A harder search test.** With 24 files the reader finds nearly every answer from any decent
+5. **Prompt v2 on a corpus it was not written on**, and on the other models: v2 was written from
+   this corpus's misses (finding 5), so a second corpus (another project's Java, SQL and scripts)
+   would separate the general gain from the fitted part.
+6. **A harder search test.** With 24 files the reader finds nearly every answer from any decent
    summary, so the search measurement separates only broken summaries from working ones. A larger
    corpus with many files of the same kind (a whole module, say 200 files) and questions that need
    a detail of one of several similar files would show whether the better summaries also search
@@ -370,6 +449,11 @@ Ordered by what would change a decision:
 | Qwen3.8-27B (reasoning off) | OpenRouter | 37 | 5.4 | 7.7 | 0.0798 | 0 |
 | gpt-oss-20b ¹ | OpenRouter | 37 | 7.1 | 11.8 | 0.0122 | 0 |
 | Mistral Large 4 | OpenRouter | 37 | 20.1 | 32.1 | 0.3772 | 0 |
+| Mercury 3 | OpenRouter | 37 | 1.8 | 2.6 | 0.0265 | 1 (`package.ai.md`) |
+| Claude Haiku 5.5 (OpenRouter) | OpenRouter | 37 | 4.1 | 6.6 | 0.0463 | 1 (`java/config/AiGenerationConfig.java`) |
+| Muse Spark 1.3 (Contributor) | OpenRouter | 37 | 5.9 | 10.1 | 0.0190 | 0 |
+| Nemotron 3.5 Super VL 120B-A12B | OpenRouter | 37 | 21.7 | 38.8 | 0.0591 | 5 (`java/config/AiGenerationConfig.java`, `java/config/SrcMorphConfiguration.java`, `java/provider/LlamaCppJniConfig.java`, `java/provider/OpenAiCompatibleProviderSupport.java`, `package.ai.md`) |
+| Nemotron 3.5 Super VL 120B-A12B (reasoning off) | OpenRouter | 37 | 5.2 | 10.7 | 0.0315 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | HF / nscale | 37 | 6.5 | 12.3 | see text | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | HF / nscale | 37 | 2.4 | 3.9 | see text | 0 |
 | MAI-Code-1.1-Flash | Copilot API Gateway | 37 | 6.3 | 11.2 | Copilot plan | 0 |
@@ -382,6 +466,10 @@ Ordered by what would change a decision:
 | Granite 4.0 H-Tiny (Q4_K_M) ¹ | local GGUF (RTX 3070) | 37 | 3.3 | 5.8 | 0 (local) | 1 (`sql/library/05_seed_data.sql`) |
 | Granite 4.0 H-Small (UD-Q4_K_XL) ¹ | local GGUF (RTX 3070) | 37 | 34.9 | 58.9 | 0 (local) | 0 |
 | Seed-Coder-8B-Instruct (Q4_K_M) ¹ | local GGUF (RTX 3070) | 37 | 19.6 | 34.4 | 0 (local) | 0 |
+| Granite 4.2 8B (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 81.0 | 137.5 | 0 (local) | 0 |
+| LFM 2.5 24B-A2B (Q4_K_M) | local GGUF (RTX 3070) | 37 | 99.3 | 163.9 | 0 (local) | 0 |
+| gpt-oss-20b (MXFP4, local) | local GGUF (RTX 3070) | 37 | 20.1 | 33.1 | 0 (local) | 0 |
+| Gemma 4 26B-A4B it (UD-Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 47.9 | 85.0 | 0 (local) | 0 |
 | Kolibri-1 (Q4_K_M, thinking off) | local GGUF (RTX 3070) | 37 | 34.0 | 61.8 | 0 (local) | 0 |
 | DeepSeek-Coder-V2-Lite-Instruct (Q4_K_M) ¹ | local GGUF (RTX 3070) | 37 | 164.9 | 316.6 | 0 (local) | 1 (`java/config/AiGenerationConfig.java`) |
 
@@ -401,6 +489,11 @@ Ordered by what would change a decision:
 | Qwen3.8-27B (reasoning off) | 3.69 | 100% | 4.31 | 98% | 0/4 | 0.66 | 97% | 1.0 |
 | gpt-oss-20b ¹ | 5.25 | 100% | 5.45 | 98% | 0/4 | 0.94 | 87% | 0.8 |
 | Mistral Large 4 | 3.42 | 82% | 3.43 | 100% | 4/4 | 0.67 | 100% | 1.1 |
+| Mercury 3 | 3.22 | 88% | 3.94 | 100% | 4/4 | 0.66 | 98% | 0.7 |
+| Claude Haiku 5.5 (OpenRouter) | 3.43 | 88% | 3.47 | 100% | 4/4 | 0.58 | 88% | 1.5 |
+| Muse Spark 1.3 (Contributor) | 3.86 | 100% | 4.71 | 100% | 4/4 | 0.96 | 100% | 0.5 |
+| Nemotron 3.5 Super VL 120B-A12B | 2.20 | 73% | 4.11 | 100% | 4/4 | 0.65 | 97% | 2.9 |
+| Nemotron 3.5 Super VL 120B-A12B (reasoning off) | 3.32 | 100% | 4.70 | 97% | 4/4 | 0.75 | 95% | 0.6 |
 | Qwen3-4B-Instruct-2507 ¹ | 4.72 | 74% | 4.49 | 84% | 4/4 | 0.91 | 79% | 1.0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 4.23 | 86% | 5.57 | 87% | 0/4 | 0.99 | 62% | 0.8 |
 | MAI-Code-1.1-Flash | 4.06 | 75% | 2.58 | 98% | 4/4 | 0.57 | 98% | 1.2 |
@@ -413,6 +506,10 @@ Ordered by what would change a decision:
 | Granite 4.0 H-Tiny (Q4_K_M) ¹ | 6.26 | 85% | 2.91 | 79% | 2/4 | 1.19 | 63% | 1.2 |
 | Granite 4.0 H-Small (UD-Q4_K_XL) ¹ | 4.93 | 100% | 5.08 | 92% | 0/4 | 0.91 | 83% | 0.5 |
 | Seed-Coder-8B-Instruct (Q4_K_M) ¹ | 9.83 | 68% | 6.63 | 81% | 0/4 | 1.40 | 61% | 0.6 |
+| Granite 4.2 8B (Q4_K_M, thinking off) | 2.92 | 91% | 3.62 | 94% | 0/4 | 0.61 | 92% | 1.4 |
+| LFM 2.5 24B-A2B (Q4_K_M) | 6.61 | 71% | 4.60 | 96% | 0/4 | 0.92 | 81% | 0.0 |
+| gpt-oss-20b (MXFP4, local) | 5.04 | 100% | 5.14 | 97% | 0/4 | 0.89 | 86% | 0.9 |
+| Gemma 4 26B-A4B it (UD-Q4_K_M, thinking off) | 4.36 | 88% | 5.45 | 94% | 0/4 | 0.91 | 91% | 0.8 |
 | Kolibri-1 (Q4_K_M, thinking off) | 4.44 | 100% | 5.16 | 90% | 0/4 | 1.00 | 79% | 0.1 |
 | DeepSeek-Coder-V2-Lite-Instruct (Q4_K_M) ¹ | 3.60 | 96% | 4.29 | 91% | 0/4 | 0.98 | 64% | 0.5 |
 
@@ -432,6 +529,11 @@ Ordered by what would change a decision:
 | Qwen3.8-27B (reasoning off) | 0 | 0 | 0 | 0 | 0 |
 | gpt-oss-20b ¹ | 0 | 0 | 0 | 0 | 0 |
 | Mistral Large 4 | 0 | 0 | 0 | 1 | 0 |
+| Mercury 3 | 0 | 0 | 0 | 0 | 0 |
+| Claude Haiku 5.5 (OpenRouter) | 0 | 0 | 0 | 0 | 0 |
+| Muse Spark 1.3 (Contributor) | 0 | 0 | 0 | 0 | 0 |
+| Nemotron 3.5 Super VL 120B-A12B | 0 | 0 | 0 | 0 | 3 |
+| Nemotron 3.5 Super VL 120B-A12B (reasoning off) | 0 | 0 | 0 | 0 | 0 |
 | Qwen3-4B-Instruct-2507 ¹ | 0 | 0 | 0 | 0 | 0 |
 | Qwen2.5-Coder-7B-Instruct ¹ | 0 | 6 | 0 | 0 | 0 |
 | MAI-Code-1.1-Flash | 0 | 0 | 0 | 0 | 0 |
@@ -444,6 +546,10 @@ Ordered by what would change a decision:
 | Granite 4.0 H-Tiny (Q4_K_M) ¹ | 20 | 129 | 34 | 0 | 0 |
 | Granite 4.0 H-Small (UD-Q4_K_XL) ¹ | 0 | 0 | 0 | 0 | 0 |
 | Seed-Coder-8B-Instruct (Q4_K_M) ¹ | 0 | 1 | 0 | 0 | 0 |
+| Granite 4.2 8B (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
+| LFM 2.5 24B-A2B (Q4_K_M) | 0 | 0 | 0 | 0 | 0 |
+| gpt-oss-20b (MXFP4, local) | 0 | 0 | 0 | 0 | 0 |
+| Gemma 4 26B-A4B it (UD-Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | Kolibri-1 (Q4_K_M, thinking off) | 0 | 0 | 0 | 0 | 0 |
 | DeepSeek-Coder-V2-Lite-Instruct (Q4_K_M) ¹ | 0 | 18 | 0 | 0 | 0 |
 
@@ -469,10 +575,11 @@ All fixtures are written for this benchmark (Apache-2.0); the seed data is produ
 Every model ran the three CLI phases `GenerateFileIndex`, `AggregatePackages` and
 `AggregateProject` with `force` on. File prompts are routed by extension: `.java` →
 `file-body-java`, `.sql` → `file-body-sql`, everything else → `file-body-fallback`; the package
-and project phases use `package-body` and `project-body`. These are the v1 prompts, the files
-of [`prompts/v1/`](../../prompts/README.md) that the plugin's self-test profile reads too
-(`run.py --prompts v1`). The card's runs got them from the plugin pom's inline copy, with a
-leading line break and a trailing line break plus 36 spaces around the same text.
+and project phases use `package-body` and `project-body`. These are the v1 prompts (in the
+history of [`prompts/`](../../prompts/README.md), `prompts/v1/` in commit `6fe8335`); the card's
+runs got them from the plugin pom's inline copy, with a leading line break and a trailing line
+break plus 36 spaces around the same text. Only finding 5 runs the current set,
+`prompts/v2/` (`run.py --prompts v2`, the default now).
 
 ### Settings
 
@@ -481,8 +588,8 @@ leading line break and a trailing line break plus 36 spaces around the same text
 | Context | 131 072 | 120 000 (the model's `max_input_tokens` is 127 790) | 32 768 |
 | `maxOutputTokens` | 4096 (16 384 for the reasoning-low runs of Nemotron 3.5 Lightning and Qwen3.5-35B-A3B and for Mistral Large 4, see finding 1) | 4096 (the gateway does not pass it on) | 4096 |
 | Temperature | 0.2 | 0.2 | 0.2 (seed 42) |
-| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | not set | thinking off where the template has a switch (Gemma 4, Qwen3.5, Kolibri-1; Kolibri-1 also `reasoningEffort: none`, which renders the same prompt, see finding 2) |
-| Weights | whatever precision the OpenRouter route serves (not stated per request) | whatever GitHub Copilot serves | Q4_K_M (Granite H-Small UD-Q4_K_XL) |
+| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | not set | thinking off where the template has a switch (Gemma 4, Qwen3.5, Granite 4.2, Kolibri-1; Kolibri-1 also `reasoningEffort: none`, which renders the same prompt, see finding 2); LFM 2.5 has none and always reasons (16 384 output tokens) |
+| Weights | whatever precision the OpenRouter route serves (not stated per request) | whatever GitHub Copilot serves | Q4_K_M (Granite H-Small UD-Q4_K_XL, Gemma 4 26B-A4B UD-Q4_K_M, gpt-oss-20b its native MXFP4) |
 | Hardware | — | — (the gateway runs in VS Code on the benchmark machine, `stream: true`) | RTX 3070 Laptop (8 GB), 63 GB RAM, CUDA 13 natives of `net.ladenthin:llama` 6.0.0, layers auto-fitted (Kolibri-1: every layer on the GPU except the 50 expert layers, `cpuMoeLayers`), 8 CPU threads |
 
 Everything is in [`modelcard/models.json`](modelcard/models.json); a model's `note` says why it

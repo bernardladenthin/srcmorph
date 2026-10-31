@@ -3,7 +3,7 @@
 This directory captures a controlled comparison of **local GGUF models** and **two prompt
 versions** for the plugin's code-summarization task (`.ai.md` generation), run on CPU.
 
-- **[MODEL-CARD.md](MODEL-CARD.md)** — October 2026: 21 models in 26 runs (8 on OpenRouter, four of them again with reasoning off; 2 on the Hugging Face router; 4 on GitHub Copilot through the Copilot API Gateway, GPT-6 Luna again; 8 local GGUF on an RTX 3070 Laptop, Aleph Alpha's Kolibri-1 with its experts in RAM) on Java, SQL and other files: compaction, recall of the names that matter, invented names, format, speed, cost, with charts of quality against speed and cost. Hosted pick GPT-6 Luna, local pick Gemma 4 E4B with thinking off; reasoning costs time and money without adding quality.
+- **[MODEL-CARD.md](MODEL-CARD.md)** — October 2026: 27 models in 35 runs (12 on OpenRouter, five of them again with reasoning off; 2 on the Hugging Face router; 4 on GitHub Copilot through the Copilot API Gateway, GPT-6 Luna again, Claude Haiku 5.5 also on OpenRouter; 12 local GGUF on an RTX 3070 Laptop, gpt-oss-20b also locally, Aleph Alpha's Kolibri-1 with its experts in RAM) on Java, SQL and other files: compaction, recall of the names that matter, invented names, format, speed, cost, with charts of quality against speed and cost. Hosted picks GPT-6 Luna and gpt-oss-20b (Muse Spark 1.3 for public code), local pick gpt-oss-20b (Gemma 4 E4B when speed matters); reasoning costs time and money without adding quality.
 - **[COMPARISON.md](COMPARISON.md)** — scored results, per-model pros/cons, source deep-dive, recommendation.
 - **[HSMALL-VS-GPTOSS.md](HSMALL-VS-GPTOSS.md)** — focused Granite 4.0 H‑Small (UD‑Q4_K_XL) vs gpt‑oss‑20B head‑to‑head, **CPU + GPU**, on the current 24‑file tree: quality parity, but H‑Small is slower (9B active) — the Mamba win is memory + long‑context prefill, not decode.
 - **[AGENTIC-CPU-BENCH.md](AGENTIC-CPU-BENCH.md)** — agentic **reaction‑time** benchmark (tool‑calling via `llama-server --jinja`): which local models can do native tool_calls, and reaction time vs. context size. h‑tiny (hybrid) beats gpt‑oss at every context and the lead grows; big coders are async‑only on CPU.
@@ -66,9 +66,9 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
   omission rule, JavaBean accessor grouping, an explicit "no invented keywords" ban,
   single-child package pass-through, and a tighter brevity instruction.
 
-v1 is a set of files now, [`prompts/v1/`](../../prompts/README.md). v2 and the June text of v1 as
-these cells ran it are in the history of `prompts/` (commit `cd2e15f`: `prompts/v2/` and
-`prompts/archive/2026-06/v1/`).
+Both are in the history of [`prompts/`](../../prompts/README.md) (commit `cd2e15f`: `prompts/v2/`,
+and v1 as these cells ran it in `prompts/archive/2026-06/v1/`). The current set, also named v2, is
+a different one: v1 with the additions the October 2026 model card measured (its finding 5).
 
 ### Baseline
 
@@ -91,7 +91,7 @@ mvn prepare-package -P ai-index-selftest -DskipTests \
 `EXP-*` model definitions, the `config`+`provider` subtree scope, and the
 `package-info`/`module-info` excludes live in the self-test profile (`srcmorph-selftest` in
 `srcmorph-maven-plugin/pom.xml` today, `ai-index-selftest` in the root `pom.xml` then, marked
-`claude2026_06_26_00`); the v2 prompts are in the history of `prompts/` (commit `cd2e15f`). The model files are catalogued in `X:\Modelle\index.md`.
+`claude2026_06_26_00`); its v2 prompts are in the history of `prompts/` (commit `cd2e15f`). The model files are catalogued in `X:\Modelle\index.md`.
 
 > These are temporary experiment scaffolds on the `claude2026_06_26_00` branch, not production
 > configuration.

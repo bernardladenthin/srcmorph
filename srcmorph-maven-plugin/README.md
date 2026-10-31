@@ -222,21 +222,21 @@ The plugin is configured from three building blocks, declared on the plugin insi
 
         <!-- 2) Prompts: one prompt per language plus a fallback, a package prompt, and the
                 optional project-overview prompt. These read the measured prompts of srcmorph's
-                prompts/v1/ (copy the directory into your project, or point promptDirectory at a
+                prompts/v2/ (copy the directory into your project, or point promptDirectory at a
                 checkout); the last one shows an inline template. -->
         <promptDirectory>${project.basedir}/src/srcmorph/prompts</promptDirectory>
         <promptDefinitions>
             <promptDefinition>
                 <key>file-body-java</key>
-                <templateFile>v1/file-body-java.md</templateFile>
+                <templateFile>v2/file-body-java.md</templateFile>
             </promptDefinition>
             <promptDefinition>
                 <key>file-body-fallback</key>
-                <templateFile>v1/file-body-fallback.md</templateFile>
+                <templateFile>v2/file-body-fallback.md</templateFile>
             </promptDefinition>
             <promptDefinition>
                 <key>package-body</key>
-                <templateFile>v1/package-body.md</templateFile>
+                <templateFile>v2/package-body.md</templateFile>
             </promptDefinition>
             <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
             <promptDefinition>
@@ -489,7 +489,7 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
 from `<fieldGenerations>`. The self-test profile defines five, each a file of
-[`prompts/v1/`](../prompts/README.md) read through `<promptDirectory>` and `<templateFile>`; the
+[`prompts/v2/`](../prompts/README.md) read through `<promptDirectory>` and `<templateFile>`; the
 benchmark and the examples read the same files, so each prompt exists once in the repository:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,

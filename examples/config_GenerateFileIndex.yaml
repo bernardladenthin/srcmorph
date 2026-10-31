@@ -10,7 +10,7 @@ srcMorph:
   promptDirectory: "../prompts"   # the measured prompts of this repository, see prompts/README.md
   promptDefinitions:
     - key: file-body
-      templateFile: v1/file-body-fallback.md
+      templateFile: v2/file-body-fallback.md
   aiDefinitions:
     - key: mock-model
       modelPath: unused-with-mock-provider.gguf

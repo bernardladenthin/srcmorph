@@ -975,23 +975,23 @@ SPDX-License-Identifier: Apache-2.0
                             <promptDefinitions>
                                 <promptDefinition>
                                     <key>file-body-java</key>
-                                    <templateFile>v1/file-body-java.md</templateFile>
+                                    <templateFile>v2/file-body-java.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>file-body-sql</key>
-                                    <templateFile>v1/file-body-sql.md</templateFile>
+                                    <templateFile>v2/file-body-sql.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>file-body-fallback</key>
-                                    <templateFile>v1/file-body-fallback.md</templateFile>
+                                    <templateFile>v2/file-body-fallback.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>package-body</key>
-                                    <templateFile>v1/package-body.md</templateFile>
+                                    <templateFile>v2/package-body.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>project-body</key>
-                                    <templateFile>v1/project-body.md</templateFile>
+                                    <templateFile>v2/project-body.md</templateFile>
                                 </promptDefinition>
                                 <!-- A prompt set to compare against v1 goes into prompts/ as its own
                                      directory and gets a definition here with its own key (for example

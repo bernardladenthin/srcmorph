@@ -88,8 +88,8 @@ config.setGenerationProvider("mock"); // or "llamacpp-jni" with a real GGUF mode
 
 AiPromptDefinition prompt = new AiPromptDefinition();
 prompt.setKey("file-body");
-// the measured prompt of srcmorph's prompts/v1/; setTemplate("...") writes it inline instead
-prompt.setTemplateFile("v1/file-body-fallback.md");
+// the measured prompt of srcmorph's prompts/v2/; setTemplate("...") writes it inline instead
+prompt.setTemplateFile("v2/file-body-fallback.md");
 config.setPromptDirectory(new File("prompts"));
 config.setPromptDefinitions(Collections.singletonList(prompt));
 

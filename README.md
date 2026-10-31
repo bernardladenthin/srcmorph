@@ -126,7 +126,7 @@ Maven Central regardless; see `CLAUDE.md`.)
                 <key>file-body</key>
                 <!-- the system prompt; srcmorph sends the file name and source separately.
                      <template>...</template> writes it inline instead. -->
-                <templateFile>v1/file-body-fallback.md</templateFile>
+                <templateFile>v2/file-body-fallback.md</templateFile>
             </promptDefinition>
         </promptDefinitions>
         <fieldGenerations>

@@ -38,10 +38,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   (`gpt-oss-20B-mxfp4`) and the two Granite presets. The other model definitions (Mistral, Llama,
   Codestral, Qwen, Gemma, Ministral, the `EXP-*` benchmark keys, the other gpt-oss quantizations and
   windows) are gone; their measurements stay in `docs/ai-index-benchmark`.
-- **`prompts/`: the production prompts once in the repository.** `prompts/v1/` holds the five
-  prompts the October 2026 model card measured (`prompts/README.md`; the June v2 experiment and v1 as
-  the June benchmark ran it are in the history, commit `cd2e15f`). The plugin's
-  `srcmorph-selftest` profile, the model-card benchmark (`run.py --prompts <set>`, replacing
+- **`prompts/`: the production prompts once in the repository, now v2.** `prompts/v2/` holds the
+  five prompts: v1, which the October 2026 model card measured, with targeted additions (the type's
+  own name; getters and setters named one by one; SQL constraint and index names and row counts per
+  table; constants, configuration variables, helpers and library calls of other files). Three runs
+  each on OpenRouter: GPT-6 Luna 100 % in all three (v1 93.6 to 99.0 %), gpt-oss-20b 99.0 % (v1
+  96.8 %), search unchanged within its noise (model card, finding 5). v1, the June v2 experiment and
+  v1 as the June benchmark ran it are in the history (`prompts/README.md`). The plugin's
+  `srcmorph-selftest` profile, the model-card benchmark (`run.py --prompts <set>`, default v2, replacing
   `modelcard/prompts.json`), the examples (which had one-line placeholder prompts) and the plugin's
   integration-test fixture all read these files, so the CI smoke of the user-built jar and the
   plugin IT exercise `templateFile` as well.
@@ -74,7 +78,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   MAI-Code-1.1-Flash (93.0 %) and Grok 4.7 (76.4 %, its reasoning summary leaks into the answer).
   Two more runs: Mistral Large 4 on OpenRouter (95.0 %, 32.1 s per file, 0.38 USD; its reasoning
   cannot be switched off) and Aleph Alpha's Kolibri-1 locally (92.2 %, 61.8 s per file, Q4_K_M
-  with all 50 expert layers in RAM).
+  with all 50 expert layers in RAM). Nine more on 2026-10-31: Muse Spark 1.3 in Meta's Contributor
+  tier (100 %, the best search; Meta trains on its prompts), Nemotron 3.5 Super VL (97.9 % with
+  reasoning off, 90.4 % with it), Mercury 3 (96.6 % at 2.6 s per file, the fastest), Claude Haiku 5.5
+  on OpenRouter (93.9 %: OpenRouter enforces the 4096-token limit the Copilot gateway ignores), and
+  locally gpt-oss-20b (95.8 %, its hosted quality, the best local run), Granite 4.2 8B (94.2 %),
+  Gemma 4 26B-A4B (93.2 %) and LFM 2.5 24B-A2B (87.0 %, always reasons).
 - **`openai-compatible` provider: `requestsPerMinute`.** At most this many requests to a model's
   server start within any minute; a request beyond it waits until the oldest of the last minute is
   a minute old, instead of being answered with `429` (the provider does not retry). Models of one

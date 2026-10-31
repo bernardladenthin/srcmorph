@@ -56,15 +56,15 @@ srcMorph:
   promptDirectory: "../../prompts"
   promptDefinitions:
     - key: file-body-java
-      templateFile: v1/file-body-java.md
+      templateFile: v2/file-body-java.md
     - key: file-body-sql
-      templateFile: v1/file-body-sql.md
+      templateFile: v2/file-body-sql.md
     - key: file-body-fallback
-      templateFile: v1/file-body-fallback.md
+      templateFile: v2/file-body-fallback.md
     - key: package-body
-      templateFile: v1/package-body.md
+      templateFile: v2/package-body.md
     - key: project-body
-      templateFile: v1/project-body.md
+      templateFile: v2/project-body.md
 
   aiDefinitions:
     # gpt-oss-20b in its native MXFP4: reasoningEffort low (best for dense summaries), a 96K window

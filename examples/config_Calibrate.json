@@ -8,7 +8,7 @@
     "promptDefinitions": [
       {
         "key": "file-body",
-        "templateFile": "v1/file-body-fallback.md"
+        "templateFile": "v2/file-body-fallback.md"
       }
     ],
     "aiDefinitions": [

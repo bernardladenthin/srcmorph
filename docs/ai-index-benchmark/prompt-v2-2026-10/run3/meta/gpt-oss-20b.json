@@ -1,0 +1,36 @@
+{
+ "key": "gpt-oss-20b",
+ "name": "gpt-oss-20b",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gpt-oss-20b",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "openai/gpt-oss-20b"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "prompts": "v2",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 545.9,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 141.4,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 16.4,
+   "cutOff": []
+  }
+ },
+ "costUsd": 0.005502,
+ "files": 37
+}

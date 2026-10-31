@@ -1,0 +1,34 @@
+{
+ "key": "gpt-oss-20b-local",
+ "name": "gpt-oss-20b (MXFP4, local)",
+ "backend": "local",
+ "definition": {
+  "key": "gpt-oss-20b-local",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 32768,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "gpt-oss-20b-mxfp4-ggml-org-2026-10.gguf"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 794.6,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 386.2,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 23.7,
+   "cutOff": []
+  }
+ },
+ "files": 37
+}

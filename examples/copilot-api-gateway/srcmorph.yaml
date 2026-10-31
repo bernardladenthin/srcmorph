@@ -34,7 +34,7 @@ srcMorph:
   promptDirectory: "../../prompts"
   promptDefinitions:
     - key: file-body-java
-      templateFile: v1/file-body-java.md
+      templateFile: v2/file-body-java.md
 
   aiDefinitions:
     - key: copilot

@@ -251,6 +251,67 @@
    "spread": 0.0032
   }
  },
+ "muse-spark-1.3": {
+  "runs": [
+   {
+    "run": "card",
+    "quality": 1.0,
+    "recall": {
+     "java": 1.0,
+     "sql": 1.0,
+     "other": 1.0
+    },
+    "format": 1.0,
+    "secondsPerFile": 10.12,
+    "costUsd": 0.019027,
+    "seed": null
+   },
+   {
+    "run": "run2",
+    "quality": 1.0,
+    "recall": {
+     "java": 1.0,
+     "sql": 1.0,
+     "other": 1.0
+    },
+    "format": 1.0,
+    "secondsPerFile": 11.25,
+    "costUsd": 0.020264,
+    "seed": null
+   },
+   {
+    "run": "run3",
+    "quality": 0.9944,
+    "recall": {
+     "java": 1.0,
+     "sql": 1.0,
+     "other": 0.9778
+    },
+    "format": 1.0,
+    "secondsPerFile": 10.6,
+    "costUsd": 0.015451,
+    "seed": null
+   }
+  ],
+  "quality": {
+   "mean": 0.9981,
+   "min": 0.9944,
+   "max": 1.0,
+   "spread": 0.0056
+  },
+  "secondsPerFile": {
+   "mean": 10.6567,
+   "min": 10.12,
+   "max": 11.25,
+   "spread": 1.13
+  },
+  "costUsd": {
+   "mean": 0.0182,
+   "min": 0.015451,
+   "max": 0.020264,
+   "spread": 0.0048
+  }
+ },
  "nemotron-3.5-lightning-noreason": {
   "runs": [
    {

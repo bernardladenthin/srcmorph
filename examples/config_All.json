@@ -18,11 +18,11 @@
     "promptDefinitions": [
       {
         "key": "file-body-java",
-        "templateFile": "v1/file-body-java.md"
+        "templateFile": "v2/file-body-java.md"
       },
       {
         "key": "file-body-fallback",
-        "templateFile": "v1/file-body-fallback.md"
+        "templateFile": "v2/file-body-fallback.md"
       }
     ],
     "aiDefinitions": [
