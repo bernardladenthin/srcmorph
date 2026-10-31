@@ -12,6 +12,21 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **Prompt files: `templateFile` and `promptDirectory`.** A prompt definition takes either its
+  text (`template`) or a UTF-8 file holding it (`templateFile`, read verbatim, a leading byte order
+  mark dropped), so several configurations share one prompt instead of a copy each. A relative
+  `templateFile` resolves against the new `promptDirectory` (CLI and library: relative to the
+  working directory; plugin: `srcmorph.promptDirectory`, relative to `${basedir}`), as a model path
+  resolves against `modelDirectory`. Both `template` and `templateFile`, or a file that is empty or
+  cannot be read, fail the run as a configuration error. In the library:
+  `AiPromptTemplateLoader`, used by every engine.
+- **`prompts/`: every measured prompt once in the repository.** `prompts/v1/` holds the five
+  production prompts the October 2026 model card measured, `prompts/v2/` the June experiment, and
+  `prompts/archive/2026-06/v1/` v1 as the June benchmark ran it (`prompts/README.md`). The plugin's
+  `srcmorph-selftest` profile, the model-card benchmark (`run.py --prompts <set>`, replacing
+  `modelcard/prompts.json`), the examples (which had one-line placeholder prompts) and the plugin's
+  integration-test fixture all read these files, so the CI smoke of the user-built jar and the
+  plugin IT exercise `templateFile` as well.
 - **`openai-compatible` provider: a model can run on any OpenAI-compatible API.** OpenRouter (the
   default `baseUrl`), a llama.cpp `llama-server`, jllama's `NativeServer` or any server answering
   `POST <baseUrl>/chat/completions`. Four new per-model settings: `provider` (overrides the run's

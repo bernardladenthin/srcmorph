@@ -72,41 +72,28 @@
                         </aiDefinition>
                     </aiDefinitions>
 
+                    <!-- Three prompts come from the repository's prompts/ directory through
+                         <promptDirectory> + <templateFile>, one stays inline in <template>: both
+                         forms bind here. A relative <templateFile> exists only below
+                         <promptDirectory>, so an unbound <promptDirectory> fails the run instead of
+                         passing unseen. -->
+                    <promptDirectory>${project.basedir}/../../prompts</promptDirectory>
                     <promptDefinitions>
                         <promptDefinition>
                             <key>file-body-java</key>
-                            <template><![CDATA[Summarize ONE Java source file as structured markdown.
-
-File: %s
-
-Source:
-%s]]></template>
+                            <templateFile>v1/file-body-java.md</templateFile>
                         </promptDefinition>
                         <promptDefinition>
                             <key>file-body-fallback</key>
-                            <template><![CDATA[Summarize ONE source file as structured markdown.
-
-File: %s
-
-Source:
-%s]]></template>
+                            <templateFile>v1/file-body-fallback.md</templateFile>
                         </promptDefinition>
                         <promptDefinition>
                             <key>package-body</key>
-                            <template><![CDATA[Summarize ONE package from its already-generated file summaries.
-
-Package: %s
-
-File summaries:
-%s]]></template>
+                            <templateFile>v1/package-body.md</templateFile>
                         </promptDefinition>
                         <promptDefinition>
                             <key>project-body</key>
-                            <template><![CDATA[Write a short overview of the whole project from its per-package leads.
-
-Index file: %s
-
-%s]]></template>
+                            <template>Write a short overview of the whole project from its per-package leads.</template>
                         </promptDefinition>
                     </promptDefinitions>
 

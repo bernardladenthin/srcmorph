@@ -27,21 +27,26 @@ srcMorph:
   generationProvider: llamacpp-jni      # "mock" runs without a model, for a dry test of the setup
   modelDirectory: "/path/to/models"     # a relative modelPath below is relative to this directory
 
+  # The measured prompts of this repository (prompts/README.md), one file per prompt; a relative
+  # templateFile resolves against promptDirectory, which is relative to the working directory (run.sh
+  # and run.bat start here). Copy the files and point promptDirectory at your copy to change them, or
+  # write a prompt inline with template: "...".
+  promptDirectory: "../../prompts"
   promptDefinitions:
-    - key: java
-      template: "Summarize this Java file as structured Markdown: purpose, public API, collaborators."
+    - key: file-body-java
+      templateFile: v1/file-body-java.md
 
   aiDefinitions:
     - key: local
       modelPath: granite-4.0-h-tiny-Q4_K_M.gguf
       contextSize: 16384                # tokens; a file larger than this is handled by onOversize
-      maxOutputTokens: 1024
+      maxOutputTokens: 4096             # the v1 prompt asks for a structured summary of every section
       temperature: 0.15
       threads: 4                        # the default; more only after measuring, never more than cores
       gpuLayers: 99                     # 99 = everything on the GPU module in the jar, 0 = CPU only
 
   fieldGenerations:
-    - promptKey: java
+    - promptKey: file-body-java
       aiDefinitionKey: local
       fallback: true                    # the rule for every file no other rule matches
       onOversize: sample                # default "fail" stops the run on a file larger than the window

@@ -4,7 +4,9 @@
 package net.ladenthin.srcmorph.cli;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayOutputStream;
@@ -24,6 +26,7 @@ import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -88,6 +91,84 @@ public class CliEndToEndTest {
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(true));
         // Phase 3: the single project-level index.
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(true));
+    }
+
+    /**
+     * The prompt comes from a file below {@code promptDirectory}, as every shipped example's does: the
+     * run reads it before the first file and completes.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    public void run_allCommand_readsThePromptFromItsTemplateFile() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        final Path promptDirectory = tempDir.resolve("prompts");
+        Files.createDirectories(promptDirectory.resolve("v1"));
+        Files.write(
+                promptDirectory.resolve("v1/file-body.md"),
+                "You are a code indexer.\n".getBytes(StandardCharsets.UTF_8));
+        final AiPromptDefinition prompt = new AiPromptDefinition();
+        prompt.setKey("file-body");
+        prompt.setTemplateFile("v1/file-body.md");
+        configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
+        configuration.srcMorph.setPromptDirectory(promptDirectory.toFile());
+
+        new Main(configuration).run();
+
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+    }
+
+    /**
+     * An absolute path is always possible (the {@code absolute-path} requirement of the core's
+     * {@code AbsolutePathRequirement}): an absolute {@code templateFile} is read as it is, with no
+     * {@code promptDirectory} and with one pointing somewhere else.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    @Tag("absolute-path")
+    public void run_allCommand_absoluteTemplateFile_isReadWithOrWithoutAPromptDirectory() throws Exception {
+        final Path absolute = Files.write(
+                Files.createDirectories(tempDir.resolve("shared-prompts")).resolve("file-body.md"),
+                "You are a code indexer.\n".getBytes(StandardCharsets.UTF_8));
+        final Path unrelatedDirectory = tempDir.resolve("unrelated");
+        for (final boolean withDirectory : new boolean[] {false, true}) {
+            final CConfiguration configuration = buildAllCommandConfiguration();
+            final AiPromptDefinition prompt = new AiPromptDefinition();
+            prompt.setKey("file-body");
+            prompt.setTemplateFile(absolute.toAbsolutePath().toString());
+            configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
+            configuration.srcMorph.setPromptDirectory(withDirectory ? unrelatedDirectory.toFile() : null);
+            configuration.srcMorph.setForce(true);
+
+            new Main(configuration).run();
+
+            assertThat(
+                    "promptDirectory " + (withDirectory ? unrelatedDirectory : "unset"),
+                    Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")),
+                    is(true));
+        }
+    }
+
+    /**
+     * A missing prompt file stops the run before anything is written, naming the file.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void run_allCommand_missingTemplateFile_failsWithItsPath() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        final AiPromptDefinition prompt = new AiPromptDefinition();
+        prompt.setKey("file-body");
+        prompt.setTemplateFile("v1/missing.md");
+        configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
+        configuration.srcMorph.setPromptDirectory(tempDir.resolve("prompts").toFile());
+
+        final IllegalStateException thrown =
+                assertThrows(IllegalStateException.class, () -> new Main(configuration).run());
+
+        assertThat(String.valueOf(thrown.getCause()), containsString("missing.md cannot be read"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     @Test

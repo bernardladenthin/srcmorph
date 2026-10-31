@@ -186,6 +186,7 @@ EXPECTED_PROPS="$(printf '%s\n' \
     srcmorph.package.skip \
     srcmorph.planOnly \
     srcmorph.project.skip \
+    srcmorph.promptDirectory \
     srcmorph.skip \
     srcmorph.subtrees | sort)"
 if ! diff <(echo "$ACTUAL_PROPS") <(echo "$EXPECTED_PROPS") > "$LOGS/props.diff" 2>&1; then

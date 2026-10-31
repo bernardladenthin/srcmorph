@@ -111,8 +111,13 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
 - **`document/`** — the `.ai.md` model + codecs (`AiMdDocument`, `AiMdHeader`, `AiMdDocumentCodec`,
   `AiMdHeaderCodec`, `AiMdHeaderSupport`, `AiMdChildEntryLineFormatter`, `AiMdLeadExtractor`,
   `AiGenerationRequest`/`AiGenerationResult`).
-- **`prompt/`** — `AiPromptDefinition`, `AiPreparedPrompt`, `AiPromptSupport`,
-  `AiPromptPreparationSupport`.
+- **`prompt/`** — `AiPromptDefinition` (a `key` and either an inline `template` or a
+  `templateFile`), `AiPromptTemplateLoader` (reads every `templateFile`, relative to the
+  configuration's `promptDirectory`, before the prompts are registered), `AiPreparedPrompt`,
+  `AiPromptSupport`, `AiPromptPreparationSupport`. The measured prompts live once in the repo-root
+  `prompts/` directory (`prompts/README.md`); the plugin's self-test profile, the model-card
+  benchmark, the examples and the plugin-it fixture all read them from there, so do not paste a
+  prompt text into a configuration again.
 - **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
   `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,
@@ -149,7 +154,7 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 59 entries (nested classes counted) across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 60 entries (nested classes counted) across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (17/17) and `srcmorph-maven-plugin` (62/62) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom

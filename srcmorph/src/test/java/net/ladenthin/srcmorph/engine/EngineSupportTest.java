@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.engine;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
@@ -106,7 +107,7 @@ public class EngineSupportTest {
     // <editor-fold defaultstate="collapsed" desc="buildPromptSupport">
     @Test
     public void buildPromptSupport_nullListBuildsEmptySupport() throws SrcMorphException {
-        final AiPromptSupport support = EngineSupport.buildPromptSupport(null);
+        final AiPromptSupport support = EngineSupport.buildPromptSupport(null, null);
         assertThat(support, is(notNullValue()));
     }
 
@@ -116,8 +117,47 @@ public class EngineSupportTest {
         bad.setTemplate("template with no key");
 
         final SrcMorphException e =
-                assertThrows(SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(bad)));
+                assertThrows(SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(bad), null));
         assertThat(e.getMessage(), containsString("Invalid plugin configuration:"));
+    }
+
+    @Test
+    public void buildPromptSupport_templateFile_isReadFromThePromptDirectory() throws Exception {
+        Files.write(tempDir.resolve("file-body-java.md"), "You are a Java code indexer.".getBytes(UTF_8));
+        final AiPromptDefinition fromFile = new AiPromptDefinition();
+        fromFile.setKey("file-body-java");
+        fromFile.setTemplateFile("file-body-java.md");
+
+        final AiPromptSupport support = EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile());
+
+        assertThat(support.systemPrompt("file-body-java"), is("You are a Java code indexer."));
+    }
+
+    @Test
+    public void buildPromptSupport_missingTemplateFile_throwsSrcMorphException() {
+        final AiPromptDefinition fromFile = new AiPromptDefinition();
+        fromFile.setKey("file-body-java");
+        fromFile.setTemplateFile("missing.md");
+
+        final SrcMorphException e = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile()));
+
+        assertThat(e.getMessage(), containsString("Invalid plugin configuration: promptDefinitions[0]"));
+        assertThat(e.getMessage(), containsString("missing.md cannot be read"));
+    }
+
+    @Test
+    public void buildPromptSupport_templateAndTemplateFile_throwsSrcMorphException() {
+        final AiPromptDefinition both = new AiPromptDefinition();
+        both.setKey("file-body-java");
+        both.setTemplate("inline");
+        both.setTemplateFile("file.md");
+
+        final SrcMorphException e = assertThrows(
+                SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(both), null));
+
+        assertThat(e.getMessage(), containsString("sets both template and templateFile"));
     }
     // </editor-fold>
 

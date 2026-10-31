@@ -469,8 +469,10 @@ All fixtures are written for this benchmark (Apache-2.0); the seed data is produ
 Every model ran the three CLI phases `GenerateFileIndex`, `AggregatePackages` and
 `AggregateProject` with `force` on. File prompts are routed by extension: `.java` →
 `file-body-java`, `.sql` → `file-body-sql`, everything else → `file-body-fallback`; the package
-and project phases use `package-body` and `project-body`. These are the v1 prompts of the
-plugin's self-test profile, copied into [`modelcard/prompts.json`](modelcard/prompts.json).
+and project phases use `package-body` and `project-body`. These are the v1 prompts, the files
+of [`prompts/v1/`](../../prompts/README.md) that the plugin's self-test profile reads too
+(`run.py --prompts v1`). The card's runs got them from the plugin pom's inline copy, with a
+leading line break and a trailing line break plus 36 spaces around the same text.
 
 ### Settings
 

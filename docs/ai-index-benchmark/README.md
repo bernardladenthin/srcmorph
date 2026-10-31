@@ -65,6 +65,9 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
   omission rule, JavaBean accessor grouping, an explicit "no invented keywords" ban,
   single-child package pass-through, and a tighter brevity instruction.
 
+Both are files now, in [`prompts/`](../../prompts/README.md): `v1/`, `v2/`, and the June text of v1
+as these cells ran it in `archive/2026-06/v1/`.
+
 ### Baseline
 
 `outputs/ai__qwen3coder-30b__v1__fullproject-c64k/` is the earlier **full-project** run
@@ -83,9 +86,10 @@ mvn prepare-package -P ai-index-selftest -DskipTests \
   -Dai.index.output.directory=<output dir>
 ```
 
-`EXP-*` model definitions, the v2 prompt templates, the `config`+`provider` subtree scope, and
-the `package-info`/`module-info` excludes all live in the `ai-index-selftest` profile in
-`pom.xml` (marked `claude2026_06_26_00`). The model files are catalogued in `X:\Modelle\index.md`.
+`EXP-*` model definitions, the `config`+`provider` subtree scope, and the
+`package-info`/`module-info` excludes live in the self-test profile (`srcmorph-selftest` in
+`srcmorph-maven-plugin/pom.xml` today, `ai-index-selftest` in the root `pom.xml` then, marked
+`claude2026_06_26_00`); the v2 prompts are in `prompts/v2/`. The model files are catalogued in `X:\Modelle\index.md`.
 
 > These are temporary experiment scaffolds on the `claude2026_06_26_00` branch, not production
 > configuration.

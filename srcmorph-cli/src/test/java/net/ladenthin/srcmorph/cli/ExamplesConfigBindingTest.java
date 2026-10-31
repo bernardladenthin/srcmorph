@@ -5,9 +5,11 @@ package net.ladenthin.srcmorph.cli;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
@@ -16,12 +18,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -104,6 +109,7 @@ public class ExamplesConfigBindingTest {
         final AiFieldGenerationConfig rule = srcMorph.getFieldGenerations().get(0);
         assertThat(rule.isFallback(), is(true));
         assertThat(rule.getOnOversize(), is(equalTo(AiOversizeStrategy.SAMPLE.configValue())));
+        assertPromptFilesResolve(directory, srcMorph, "build-your-own-jar/srcmorph.yaml");
 
         assertThat(
                 Main.readString(directory.resolve("pom.xml")),
@@ -120,8 +126,8 @@ public class ExamplesConfigBindingTest {
      */
     @Test
     public void copilotApiGatewayExample_bindsAndStreamsFromLoopback() throws IOException {
-        final CConfiguration configuration = Main.fromYaml(Main.readString(
-                EXAMPLES_DIRECTORY.resolve("copilot-api-gateway").resolve("srcmorph.yaml")));
+        final Path directory = EXAMPLES_DIRECTORY.resolve("copilot-api-gateway");
+        final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph.yaml")));
 
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
@@ -135,6 +141,7 @@ public class ExamplesConfigBindingTest {
         assertThat(model.getRequestsPerMinute(), is(25));
         assertThat(srcMorph.getFieldGenerations().size(), is(1));
         assertThat(srcMorph.getFieldGenerations().get(0).isFallback(), is(true));
+        assertPromptFilesResolve(directory, srcMorph, "copilot-api-gateway/srcmorph.yaml");
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {
@@ -163,5 +170,42 @@ public class ExamplesConfigBindingTest {
                 fileName + ": fieldGenerations must not be empty",
                 srcMorph.getFieldGenerations().size(),
                 greaterThan(0));
+        assertPromptFilesResolve(EXAMPLES_DIRECTORY, srcMorph, fileName);
+    }
+
+    /**
+     * Every example takes its prompts from the repository's {@code prompts/} directory instead of a
+     * copy of its own. The paths are relative to the directory the example is run from (its run
+     * scripts and the CI smoke start there), so this reads each {@code templateFile} the way srcmorph
+     * does from that directory: a moved prompt or a wrong {@code ../} fails here, not on a user's
+     * machine. Every example names a file, none an inline template.
+     *
+     * @param runDirectory the working directory the example is run from
+     * @param srcMorph     the bound configuration
+     * @param label        the example, for the messages
+     * @throws IOException if a template file cannot be read
+     */
+    private static void assertPromptFilesResolve(
+            final Path runDirectory, final SrcMorphConfiguration srcMorph, final String label) throws IOException {
+        final List<AiPromptDefinition> definitions = srcMorph.getPromptDefinitions();
+        assertThat(label + ": promptDefinitions must be set", definitions, is(notNullValue()));
+        assertThat(label + ": promptDefinitions must not be empty", definitions, is(not(empty())));
+        assertThat(label + ": promptDirectory must be set", srcMorph.getPromptDirectory(), is(notNullValue()));
+        for (final AiPromptDefinition definition : definitions) {
+            assertThat(
+                    label + ": " + definition.getKey() + " must name a templateFile",
+                    definition.getTemplateFile(),
+                    is(notNullValue()));
+        }
+        final Path promptDirectory = runDirectory.resolve(
+                Objects.requireNonNull(srcMorph.getPromptDirectory()).getPath());
+        final List<AiPromptDefinition> loaded =
+                Objects.requireNonNull(new AiPromptTemplateLoader(promptDirectory.toFile()).load(definitions));
+        for (final AiPromptDefinition definition : loaded) {
+            assertThat(
+                    label + ": " + definition.getKey() + " must load one of the measured prompts",
+                    definition.getTemplate(),
+                    containsString("You are a "));
+        }
     }
 }

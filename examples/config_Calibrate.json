@@ -4,10 +4,11 @@
     "baseDirectory": ".",
     "outputDirectory": "target/srcmorph-ai",
     "generationProvider": "mock",
+    "promptDirectory": "../prompts",
     "promptDefinitions": [
       {
         "key": "file-body",
-        "template": "Summarize this file as structured markdown."
+        "templateFile": "v1/file-body-fallback.md"
       }
     ],
     "aiDefinitions": [

@@ -107,6 +107,15 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     @Parameter(property = "srcmorph.modelDirectory")
     protected File modelDirectory;
 
+    /**
+     * Directory a relative {@code templateFile} of {@link #promptDefinitions} is resolved against; an
+     * absolute template file is used as it is. Maven resolves a relative directory against
+     * {@code ${basedir}}. Unset, a relative template file is relative to the working directory of the
+     * Maven JVM.
+     */
+    @Parameter(property = "srcmorph.promptDirectory")
+    protected File promptDirectory;
+
     /** Per-field AI generation configurations controlling which prompt and AI definition to use. */
     @Parameter
     protected List<AiFieldGenerationConfig> fieldGenerations;
@@ -189,6 +198,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
         config.setPromptDefinitions(promptDefinitions);
         config.setAiDefinitions(aiDefinitions);
         config.setModelDirectory(modelDirectory);
+        config.setPromptDirectory(promptDirectory);
         config.setFieldGenerations(fieldGenerations);
         config.setLlamaModelPath(llamaModelPath);
         config.setLlamaContextSize(getLlamaContextSize());

@@ -27,9 +27,14 @@ srcMorph:
 
   generationProvider: openai-compatible
 
+  # The measured prompts of this repository (prompts/README.md), one file per prompt; a relative
+  # templateFile resolves against promptDirectory, which is relative to the working directory (start srcmorph
+  # from this directory). Copy the files and point promptDirectory at your copy to change them, or
+  # write a prompt inline with template: "...".
+  promptDirectory: "../../prompts"
   promptDefinitions:
-    - key: java
-      template: "Summarize this Java file as structured Markdown: purpose, public API, collaborators."
+    - key: file-body-java
+      templateFile: v1/file-body-java.md
 
   aiDefinitions:
     - key: copilot
@@ -40,11 +45,11 @@ srcMorph:
       stream: true                           # required: the gateway's non-streaming path adds and runs VS Code tools
       requestsPerMinute: 25                  # below the gateway's rateLimitPerMinute (30): wait instead of a 429
       contextSize: 32768                     # at most the model's max_input_tokens
-      maxOutputTokens: 2048
+      maxOutputTokens: 4096                  # the v1 prompt asks for a structured summary of every section
       temperature: 0.2
 
   fieldGenerations:
-    - promptKey: java
+    - promptKey: file-body-java
       aiDefinitionKey: copilot
       fallback: true                         # the rule for every file no other rule matches
       onOversize: sample                     # default "fail" stops the run on a file larger than the window

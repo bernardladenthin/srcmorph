@@ -14,14 +14,15 @@
     ],
     "generationProvider": "mock",
     "projectName": "my-project",
+    "promptDirectory": "../prompts",
     "promptDefinitions": [
       {
         "key": "file-body-java",
-        "template": "Summarize ONE Java source file as structured markdown: types, public API, dependencies."
+        "templateFile": "v1/file-body-java.md"
       },
       {
         "key": "file-body-fallback",
-        "template": "Summarize ONE source file as structured markdown."
+        "templateFile": "v1/file-body-fallback.md"
       }
     ],
     "aiDefinitions": [

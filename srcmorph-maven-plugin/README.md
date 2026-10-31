@@ -142,6 +142,10 @@ The plugin is configured from three building blocks, declared on the plugin insi
    the **system prompt** and takes **no placeholders**: the file/package name and the source (for
    packages, the child summaries; for the optional project overview, the per-package leads) are sent
    as a separate user message (`AiPromptSupport`). A `%s` in a template reaches the model literally.
+   A prompt is either written inline (`<template>`) or read from a file (`<templateFile>`, UTF-8, used
+   verbatim), so several projects can share one file instead of a copy each; a relative
+   `<templateFile>` resolves against `<promptDirectory>`. The measured prompts of this repository are
+   in [`prompts/`](../prompts/README.md), one file each.
 3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
    `<aiDefinitionKey>` (model id, which carries the full parameter set) and selects files with a
    composable **`<condition>`** tree: `<and>`/`<or>`/`<not>` over the leaves `<extensions>`, `<size>`
@@ -216,22 +220,23 @@ The plugin is configured from three building blocks, declared on the plugin insi
             </aiDefinition>
         </aiDefinitions>
 
-        <!-- 2) Prompts (abbreviated): one prompt per language plus a fallback, a package
-                prompt, and the optional project-overview prompt. See the srcmorph-selftest
-                profile in this module's pom.xml for the full, tested file-body-java /
-                file-body-sql / file-body-fallback / package-body / project-body templates. -->
+        <!-- 2) Prompts: one prompt per language plus a fallback, a package prompt, and the
+                optional project-overview prompt. These read the measured prompts of srcmorph's
+                prompts/v1/ (copy the directory into your project, or point promptDirectory at a
+                checkout); the last one shows an inline template. -->
+        <promptDirectory>${project.basedir}/src/srcmorph/prompts</promptDirectory>
         <promptDefinitions>
             <promptDefinition>
                 <key>file-body-java</key>
-                <template><![CDATA[Summarize ONE Java source file as structured markdown.]]></template>
+                <templateFile>v1/file-body-java.md</templateFile>
             </promptDefinition>
             <promptDefinition>
                 <key>file-body-fallback</key>
-                <template><![CDATA[Summarize ONE source file as structured markdown.]]></template>
+                <templateFile>v1/file-body-fallback.md</templateFile>
             </promptDefinition>
             <promptDefinition>
                 <key>package-body</key>
-                <template><![CDATA[Summarize ONE package from its already-generated file summaries.]]></template>
+                <templateFile>v1/package-body.md</templateFile>
             </promptDefinition>
             <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
             <promptDefinition>
@@ -384,6 +389,10 @@ Run-level parameters (set in `<configuration>`):
   one of them elsewhere. Unset (default), a relative `modelPath` is relative to the working directory.
   A relative `modelDirectory` itself is relative to the module's `${basedir}`, as Maven resolves every
   `File` parameter.
+- `promptDirectory` (`srcmorph.promptDirectory`) — the directory a relative `templateFile` of
+  `promptDefinitions` is resolved against, like `modelDirectory` for model paths: an absolute
+  `templateFile` is used as it is, and unset (default) a relative one is relative to the working
+  directory. A relative `promptDirectory` itself is relative to the module's `${basedir}`.
 - `force` — regenerate even when a body already exists (default: `false`)
 - `skip` — global switch: skip **every** phase (default: `false`)
 - Per-phase switches — turn any of the three phases on/off independently (each default `false`).
@@ -394,7 +403,10 @@ Run-level parameters (set in `<configuration>`):
 
   So `-Dsrcmorph.package.skip=true` runs file + project only, `-Dsrcmorph.skip=true` runs
   nothing, and the defaults run all three.
-- `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key
+- `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key; a
+  prompt has a `key` and either a `template` (the text) or a `templateFile` (a UTF-8 file holding it,
+  read verbatim, a leading byte order mark dropped). Both at once, or a file that is empty or cannot
+  be read, fail the goal as a configuration error.
 - `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
 
 ### Per-model `<aiDefinition>` parameters
@@ -475,7 +487,9 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 
 ## Prompt System
 Prompts are defined in the plugin configuration (`<promptDefinitions>`) and referenced by key
-from `<fieldGenerations>`. The self-test profile defines five:
+from `<fieldGenerations>`. The self-test profile defines five, each a file of
+[`prompts/v1/`](../prompts/README.md) read through `<promptDirectory>` and `<templateFile>`; the
+benchmark and the examples read the same files, so each prompt exists once in the repository:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
   the tables it reads vs writes, and relationships)

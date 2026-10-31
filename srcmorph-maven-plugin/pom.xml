@@ -1687,318 +1687,43 @@ SPDX-License-Identifier: Apache-2.0
                             </aiDefinitions>
 
                             <!--
-                                Prompt template definitions shared across all executions.
-                                Each promptKey is referenced from fieldGenerations in the executions below.
+                                Prompt templates shared across all executions, one file each under the
+                                repository's prompts/ directory (prompts/README.md says which is which and
+                                where it was measured). Each promptKey is referenced from fieldGenerations
+                                in the executions below; a relative <templateFile> resolves against
+                                <promptDirectory>.
                             -->
+                            <promptDirectory>${project.basedir}/../prompts</promptDirectory>
                             <promptDefinitions>
                                 <promptDefinition>
                                     <key>file-body-java</key>
-                                    <template><![CDATA[
-You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index. Prioritize core logic, types, and data flow. Avoid filler words. Write in English.
-
-## Output: start with the lead, then the sections below.
-Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
-> <one-sentence domain essence>
-
-Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
-
-#### Purpose
-One or two bullets: what the type is for.
-
-#### Type
-Kind (class / interface / enum / record / annotation) and modifiers (abstract, final, sealed). extends X; implements Y; key generics and type bounds. Notable annotations (@Mojo, @Entity, Lombok, etc.).
-
-#### Input
-What comes in: constructor and method parameters, injected dependencies, consumed fields, read resources (files, buffers, streams, config).
-
-#### Output
-What comes out: return types, produced state, mutated fields, written resources, side effects.
-
-#### Core logic
-The essential steps / algorithm / responsibility as bullets. This is the most important section.
-
-#### Public API
-Each public/protected member as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For a FAMILY of near-identical members (e.g. `fooN`), do not list them all: in the analysis channel enumerate and count them one per line, then in the final answer emit only the exact total and index range, e.g. `foo1..fooN (N total)`.
-
-#### Dependencies
-Imports and referenced types, as searchable names.
-
-#### Exceptions / Errors
-Notable thrown/caught exceptions, null-handling, and error conditions.
-
-#### Concurrency
-Threading, synchronization, immutability, or thread-safety notes, if any.
-
-## Rules
-- Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
-- Weave class / type / domain names into the bullets so they are searchable.
-- No code fences, no ```markdown / ```java, no XML tags, no formatter comments.
-- COUNT EXACTLY. When you state a count of methods/fields/members, count them precisely from the source and recount before finalizing. Never round, approximate, or write "similar"/"~".
-- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
-
-## Critical
-If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, or behavior beyond the shown source.
-
-The file path and its full source are provided in the next (user) message: the path on the first
-line, then a blank line, then the source. Index only what is literally present there.
-                                    ]]></template>
+                                    <templateFile>v1/file-body-java.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>file-body-sql</key>
-                                    <template><![CDATA[
-You are a SQL schema indexer. Produce a dense, structured markdown summary of ONE SQL source file (DDL/DML: tables, views, procedures, functions, triggers) for a searchable code index. Prioritize the schema shape, the tables read vs written, columns, and relationships. Avoid filler words. Write in English.
-
-## Output: start with the lead, then the sections below.
-Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what data it models or what operation it performs), not how it is named:
-> <one-sentence domain essence>
-
-Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
-
-#### Purpose
-One or two bullets: what this SQL object is for.
-
-#### Type
-SQL object kind: table / view / materialized view / procedure / function / trigger / index / sequence. Note the dialect if evident (PostgreSQL, MySQL, Oracle, T-SQL).
-
-#### Schema
-For tables/views: each column as `name type` plus constraints (PK, FK, NOT NULL, UNIQUE, DEFAULT, CHECK). Mark the primary key and any indexes.
-
-#### Reads
-Tables and columns this object READS from (FROM / JOIN / subquery sources, function inputs).
-
-#### Writes
-Tables and columns this object WRITES (INSERT / UPDATE / DELETE / MERGE targets, or the table a trigger fires on).
-
-#### Relationships
-Foreign keys and join relationships to other tables, as searchable `table.column -> table.column` pairs.
-
-#### Routine logic
-For procedures / functions / triggers: parameters, the essential steps, and the result or effect, as bullets.
-
-#### Dependencies
-Other tables, views, functions, or sequences referenced, as searchable names.
-
-## Rules
-- Markdown bullets and short clauses, not prose paragraphs.
-- Weave table / column / constraint / domain names into the bullets so they are searchable.
-- No code fences, no ```markdown / ```sql, no XML tags, no formatter comments.
-- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
-
-## Critical
-If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any table, column, or relationship beyond the shown source.
-
-The file path and its full source are provided in the next (user) message: the path on the first
-line, then a blank line, then the source. Index only what is literally present there.
-                                    ]]></template>
+                                    <templateFile>v1/file-body-sql.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>file-body-fallback</key>
-                                    <template><![CDATA[
-You are a multi-language code indexer. Produce a dense, structured markdown summary of ONE source file (Java, C/C++, OpenCL, SQL, or similar) for a searchable code index. Prioritize core logic and data flow. Avoid filler words. Write in English.
-
-## Output: start with the lead, then the sections below.
-Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms: the business/functional purpose a developer would search for (what it accomplishes), not how it is named or structured. Prefer the words a human would search ("Calculates VAT for invoices") over class mechanics ("Service class with three methods"):
-> <one-sentence domain essence>
-
-Then output these sections as markdown. Omit any section that does not apply. Use '####' for section labels. Never use '###' or higher.
-
-#### Purpose
-One or two bullets: what the file/unit is for.
-
-#### Type
-Kind (class / interface / enum / record / header / kernel / SQL object) and language. For OO code: extends X; implements Y; key generics. For C: header vs implementation, exported vs static. For SQL: table / view / procedure / function / trigger.
-
-#### Input
-What comes in: key parameters, consumed fields, read resources (files, buffers, streams, kernels, tables/columns, env/config).
-
-#### Output
-What comes out: return types, produced state, written resources/tables, side effects.
-
-#### Core logic
-The essential steps / algorithm / responsibility as bullets. This is the most important section.
-
-#### Public API
-Each public/exported unit as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For SQL: procedures/functions with params and result.
-
-#### Dependencies
-Imports / includes / referenced modules or tables, as searchable names.
-
-#### Exceptions / Errors
-Notable thrown/handled exceptions or error conditions.
-
-## Rules
-- Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
-- Weave class / type / table / domain names into the bullets so they are searchable.
-- No code fences, no ```markdown / ```java / ```sql, no XML tags, no formatter comments.
-- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
-
-## Critical
-If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, table, or behavior beyond the shown source.
-
-The file path and its full source are provided in the next (user) message: the path on the first
-line, then a blank line, then the source. Index only what is literally present there.
-                                    ]]></template>
+                                    <templateFile>v1/file-body-fallback.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>package-body</key>
-                                    <template><![CDATA[
-You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source code). Produce one dense, structured markdown summary of the whole package for a searchable code index. Synthesize and group - do not just concatenate the file summaries. Avoid filler. Write in English.
-
-## Output: start with the lead, then the sections below.
-Begin with a single blockquote line - one sentence capturing what this package does as a whole in DOMAIN terms: the business/functional responsibility a developer would search for, not how it is named or layered:
-> <one-sentence domain essence>
-
-Then output these sections as markdown. Omit any that do not apply. Use '####' for labels. Never '###' or higher.
-
-#### Purpose
-One or two bullets: the package's overall responsibility.
-
-#### Responsibilities
-The main functional groups inside the package, as bullets. Group files by role; do not list every file separately for large packages.
-
-#### Key units
-The central classes / interfaces / modules / SQL objects and their job, one clause each, with their searchable names.
-
-#### Data flow
-How inputs move through the package to outputs, if a clear pipeline or collaboration exists across the files.
-
-#### Dependencies
-Notable internal collaborations and external modules/packages/tables the package depends on.
-
-#### Cross-cutting
-Recurring patterns across files: shared base types/interfaces, common exception/error handling, threading/concurrency notes, configuration.
-
-## Rules
-- Markdown bullets and short clauses, not prose paragraphs.
-- Weave type / module / table / domain names in as searchable terms.
-- Base every statement only on the provided file summaries. Do NOT invent units, methods, tables, or behavior not present in them.
-- No code fences, no ```markdown, no XML tags, no formatter comments.
-- The package-name heading is already rendered above your output. Start immediately with the blockquote lead. Never empty.
-
-## Critical
-If the input contains "[EOF - source was truncated]", summarize ONLY what is present. Never infer or invent files or content beyond the provided summaries.
-
-The package path and its already-generated per-file summaries are provided in the next (user)
-message: the path on the first line, then a blank line, then the summaries to synthesize.
-                                    ]]></template>
+                                    <templateFile>v1/package-body.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>project-body</key>
-                                    <template><![CDATA[
-You are writing a short overview for the very top of a project's code index. You receive the project's
-per-package one-line leads (already generated, one sentence per package). Synthesize them: name the main
-subsystems and how they fit together, in 2 to 4 sentences. Use domain terms a developer would search for.
-No headings, no bullet lists, no code fences, no XML tags, no formatter comments. Write in English. Base
-every statement only on the provided leads - never invent packages or behavior not present in them.
-
-The index file path and the per-package one-line leads are provided in the next (user) message:
-the path on the first line, then a blank line, then the leads to synthesize.
-                                    ]]></template>
+                                    <templateFile>v1/project-body.md</templateFile>
                                 </promptDefinition>
-                                <!-- ============================================================
-                                     EXPERIMENT PROMPTS v2 (claude2026_06_26_00)
-                                     Targets issues found in the v1 output: section omission on
-                                     trivial files, accessor over-enumeration, invented "keywords",
-                                     and verbosity. Selected via -Dexp.filePrompt / -Dexp.pkgPrompt.
-                                     ============================================================ -->
+                                <!-- Experiment prompts v2 (claude2026_06_26_00): selected via -Dexp.filePrompt /
+                                     -Dexp.pkgPrompt, see prompts/README.md. -->
                                 <promptDefinition>
                                     <key>file-body-java-v2</key>
-                                    <template><![CDATA[
-You are a Java code indexer. Produce a dense, structured markdown summary of ONE Java source file for a searchable code index read by AI agents. Prioritize core logic, types, and data flow. Be terse. Write in English.
-
-## Output
-Begin with a single blockquote line - one sentence capturing what this file does in DOMAIN terms (the searchable business/functional purpose, not class mechanics):
-> <one-sentence domain essence>
-
-Then output ONLY the sections below that carry real information. OMIT any section that would be empty, "none", or "not applicable" - do not emit a heading just to say nothing. Use '####' for section labels, never '###' or higher.
-
-TRIVIAL-FILE RULE: if the unit has no public behavior to describe (e.g. a marker/annotation, an enum that only lists constants, or a near-empty type), output ONLY the blockquote lead and a single '#### Purpose' line, and stop.
-
-#### Purpose
-One or two bullets: what the type is for.
-
-#### Type
-One line: kind (class/interface/enum/record/annotation) + modifiers; extends/implements; key generics; notable annotations (@Mojo, Lombok, etc.).
-
-#### Input
-What comes in: constructor/method parameters, injected dependencies, consumed fields, read resources.
-
-#### Output
-What comes out: return types, produced/mutated state, written resources, side effects.
-
-#### Core logic
-The essential steps/algorithm/responsibility as bullets. The most important section.
-
-#### Public API
-Each public/protected member as `name(params) -> returnType` + a <=6-word purpose clause. EXCEPTION: for plain data/config classes that are only getters/setters (e.g. Lombok beans), DO NOT list each accessor - write one line: "JavaBean getters/setters for: <comma-separated field names>".
-
-#### Dependencies
-Referenced types as searchable names. EXCLUDE this file's own type and java.lang.* .
-
-#### Exceptions / Errors
-Notable thrown/caught exceptions, null-handling, error conditions.
-
-#### Concurrency
-Threading, immutability, or thread-safety notes - only if the source actually shows them.
-
-## Rules
-- Markdown bullets and short clauses, not prose paragraphs.
-- Weave class/type/domain names into the bullets so they are searchable.
-- Describe ONLY what is literally in the source. NEVER invent units, fields, behavior, or concepts; in particular never mention keywords, tags, embeddings, search, or features the code does not contain.
-- No code fences, no ```markdown/```java, no XML tags, no formatter comments.
-- The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
-
-## Critical
-If the source contains "[EOF - source was truncated]", index ONLY what is literally present.
-
-The file path and its full source are provided in the next (user) message: the path on the first
-line, then a blank line, then the source. Index only what is literally present there.
-                                    ]]></template>
+                                    <templateFile>v2/file-body-java.md</templateFile>
                                 </promptDefinition>
                                 <promptDefinition>
                                     <key>package-body-v2</key>
-                                    <template><![CDATA[
-You are a multi-language code indexer. You receive the already-generated per-file summaries of all files in ONE package or directory (NOT raw source). Produce one dense, structured markdown summary of the whole package for a searchable code index read by AI agents. Synthesize and group - do not concatenate. Be terse. Write in English.
-
-## Output
-Begin with a single blockquote line - one sentence capturing what this package does as a whole in DOMAIN terms:
-> <one-sentence domain essence>
-
-SINGLE-CHILD RULE: if the input describes only ONE child package/file and no other content, output ONLY the blockquote lead restating that child's responsibility, and stop - emit no sections.
-
-Otherwise output ONLY the sections below that carry real information. OMIT any that would be empty. Use '####' for labels, never '###' or higher.
-
-#### Purpose
-One or two bullets: the package's overall responsibility.
-
-#### Responsibilities
-The main functional groups inside the package, as bullets. Group files by role; do not list every file for large packages.
-
-#### Key units
-The central classes/interfaces/modules and their job, one clause each, with searchable names.
-
-#### Data flow
-How inputs move through the package to outputs, if a clear pipeline exists across the files.
-
-#### Dependencies
-Notable internal collaborations and external modules the package depends on. Focus on cross-unit/cross-package relationships, not raw JDK/Lombok imports.
-
-#### Cross-cutting
-Recurring patterns across files: shared base types, common error handling, concurrency, configuration.
-
-## Rules
-- Markdown bullets and short clauses, not prose paragraphs.
-- Weave type/module/domain names in as searchable terms.
-- Base every statement ONLY on the provided file summaries. NEVER invent units, methods, behavior, or concepts (in particular never mention keywords, tags, or embeddings) not present in them.
-- No code fences, no ```markdown, no XML tags, no formatter comments.
-- The package-name heading is already rendered above your output. Start immediately with the blockquote lead. Never empty.
-
-## Critical
-If the input contains "[EOF - source was truncated]", summarize ONLY what is present.
-
-The package path and its already-generated per-file summaries are provided in the next (user)
-message: the path on the first line, then a blank line, then the summaries to synthesize.
-                                    ]]></template>
+                                    <templateFile>v2/package-body.md</templateFile>
                                 </promptDefinition>
                             </promptDefinitions>
 

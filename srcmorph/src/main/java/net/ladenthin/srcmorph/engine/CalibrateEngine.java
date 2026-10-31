@@ -71,7 +71,8 @@ public final class CalibrateEngine {
             throw new SrcMorphException("No <fieldGenerations> configured; nothing to calibrate.");
         }
 
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(config.getPromptDefinitions());
+        final AiPromptSupport promptSupport =
+                EngineSupport.buildPromptSupport(config.getPromptDefinitions(), config.getPromptDirectory());
         final AiModelDefinitionSupport modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
