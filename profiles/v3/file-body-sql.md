@@ -10,16 +10,16 @@ Then output these sections as markdown. Omit any section that does not apply. Us
 One or two bullets: what this SQL object is for.
 
 #### Type
-SQL object kind: table / view / materialized view / procedure / function / trigger / index / sequence. Note the dialect if evident (PostgreSQL, MySQL, Oracle, T-SQL).
+SQL object kind: table / view / materialized view / procedure / function / trigger / index / sequence / type / extension. Note the dialect if evident (PostgreSQL, MySQL, Oracle, T-SQL). Name every extension the file creates or requires (CREATE EXTENSION) and every type it creates (CREATE TYPE), an enum with its values.
 
 #### Schema
-For tables/views: each column as `name type` plus constraints (PK, FK, NOT NULL, UNIQUE, DEFAULT, CHECK). Mark the primary key and any indexes. Name every constraint and index by its declared name (e.g. `uk_customer_email`, `idx_order_date`, `PK_Invoice`), including those added by ALTER TABLE.
+For tables/views: each column as `name type` plus constraints (PK, FK, NOT NULL, UNIQUE, DEFAULT, CHECK). Mark the primary key. List every index as its own bullet: name, table, columns or expressions, method and operator class when given, also in a file that creates no table. Name every constraint and index by its declared name (e.g. `uk_customer_email`, `idx_order_date`, `PK_Invoice`), including those added by ALTER TABLE.
 
 #### Reads
 Tables and columns this object READS from (FROM / JOIN / subquery sources, function inputs).
 
 #### Writes
-Tables and columns this object WRITES (INSERT / UPDATE / DELETE / MERGE targets, or the table a trigger fires on). For data (INSERT ... VALUES): state the exact number of rows inserted into each table; count the value tuples and recount before finalizing.
+Tables and columns this object WRITES (INSERT / UPDATE / DELETE / MERGE targets, or the table a trigger fires on). For data (INSERT ... VALUES): state the exact number of rows inserted into each table; count the value tuples and recount before finalizing. When several INSERTs write the same table, write the count of each INSERT as an addition, then the total (e.g. `voucher: 4 + 2 = 6 rows`).
 
 #### Relationships
 Foreign keys and join relationships to other tables, as searchable `table.column -> table.column` pairs.

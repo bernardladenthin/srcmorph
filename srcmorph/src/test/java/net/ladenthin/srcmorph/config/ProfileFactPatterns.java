@@ -15,13 +15,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The fact counters of the repository's current profile ({@code profiles/v2/<key>.tsv}), read with the
+ * The fact counters of the repository's current profile ({@code profiles/v3/<key>.tsv}), read with the
  * production parser, so a pattern test checks the file that ships and never a copy of it.
  */
 final class ProfileFactPatterns {
 
     /** The current profile, relative to the {@code srcmorph} module (Surefire's working directory). */
-    static final Path PROFILE_DIRECTORY = Paths.get("../profiles/v2");
+    static final Path PROFILE_DIRECTORY = Paths.get("../profiles/v3");
 
     private ProfileFactPatterns() {
         // static helpers only

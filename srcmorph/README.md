@@ -85,7 +85,7 @@ config.setBaseDirectory(new File("."));
 config.setOutputDirectory(new File("target/srcmorph-ai"));
 config.setGenerationProvider("mock"); // or "llamacpp-jni" with a real GGUF model below
 
-// the profile: srcmorph's profiles/v2/ copied into the project; a rule's promptKey names
+// the profile: srcmorph's profiles/v3/ copied into the project; a rule's promptKey names
 // <key>.md there (an AiPromptDefinition with setTemplate("...") writes a prompt inline instead)
 config.setProfileDirectory(new File("src/srcmorph/profile"));
 

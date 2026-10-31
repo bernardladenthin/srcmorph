@@ -12,7 +12,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Validates the SQL fact counters of the current profile ({@code profiles/v2/sql-facts.tsv}, read
+ * Validates the SQL fact counters of the current profile ({@code profiles/v3/sql-facts.tsv}, read
  * through {@link ProfileFactPatterns}, so the shipped file is what is tested) on PostgreSQL, MySQL and
  * T-SQL shapes, in the real {@link java.util.regex} engine {@code AiFactExtractor} uses. Each counter
  * gets the forms it has to see and the near misses it must not count; the approximate one ("VALUES

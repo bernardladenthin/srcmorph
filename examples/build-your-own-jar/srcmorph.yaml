@@ -53,7 +53,7 @@ srcMorph:
   # file per key. A rule's promptKey names <profileDirectory>/<key>.md, its factsKey
   # <profileDirectory>/<key>.tsv (label TAB regex per line). Relative to the working directory (run.sh
   # and run.bat start here); copy the directory and point profileDirectory at the copy to change it.
-  profileDirectory: "../../profiles/v2"
+  profileDirectory: "../../profiles/v3"
 
   aiDefinitions:
     # gpt-oss-20b in its native MXFP4: reasoningEffort low (best for dense summaries), a 96K window

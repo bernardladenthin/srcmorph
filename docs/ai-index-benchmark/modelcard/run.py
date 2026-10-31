@@ -7,7 +7,7 @@ The corpus is 12 Java files of srcmorph itself (taken from a fixed commit with `
 the SQL and other fixtures under ../corpus. Every model gets the same three phases with the same
 prompts: GenerateFileIndex (prompt routed by extension: .java, .sql, everything else to the
 fallback), AggregatePackages, AggregateProject. The prompts are the files of one profile under the
-repository's profiles/ directory (--profile, default v2, the current one), passed to srcmorph as its
+repository's profiles/ directory (--profile, default v3, the current one), passed to srcmorph as its
 profileDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
 .ai.md tree goes to <out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
 
@@ -17,7 +17,7 @@ environment, and a model only receives the variable its backend names.
 Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
   python run.py ... --backend openrouter        (every model of one backend)
-Options: --profile <profile under profiles/> (default v2; it needs the five prompt keys' files),
+Options: --profile <profile under profiles/> (default v3; it needs the five prompt keys' files),
          --profile-dir <directory holding the profiles> (default the repository's profiles/; an
          earlier prompt set is restored from the history into a directory of its own, see
          profiles/README.md),
@@ -213,7 +213,7 @@ def main():
     parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
     parser.add_argument("--meta", default=str(HERE / "runs"))
     parser.add_argument("--work", required=True)
-    parser.add_argument("--profile", default="v2")
+    parser.add_argument("--profile", default="v3")
     parser.add_argument("--profile-dir", default=str(PROFILES))
     parser.add_argument("--corpus", default="")
     args = parser.parse_args()

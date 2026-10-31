@@ -144,7 +144,7 @@ The plugin is configured from three building blocks, declared on the plugin insi
    placeholders**: the file/package name and the source (for packages, the child summaries; for the
    optional project overview, the per-package leads) are sent as a separate user message
    (`AiPromptSupport`). A `%s` in a prompt reaches the model literally. The measured profile of this
-   repository is [`profiles/v2/`](../profiles/README.md); copy it into your project or point at a
+   repository is [`profiles/v3/`](../profiles/README.md); copy it into your project or point at a
    checkout. A `<promptDefinitions>` entry with an inline `<template>` (or its own `<templateFile>`)
    still works and wins over a file of the same key, as does a `<factDefinitions>` entry for facts.
 3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
@@ -224,7 +224,7 @@ The plugin is configured from three building blocks, declared on the plugin insi
             </aiDefinition>
         </aiDefinitions>
 
-        <!-- 2) The profile: srcmorph's profiles/v2/ copied into your project (or a checkout of
+        <!-- 2) The profile: srcmorph's profiles/v3/ copied into your project (or a checkout of
                 it). Every promptKey and factsKey below is a file there: file-body-java.md,
                 file-body-fallback.md, package-body.md, java-facts.tsv. The one definition below
                 shows an inline prompt instead of a file. -->
@@ -488,7 +488,7 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 ## Prompt System
 Prompts are referenced by key from `<fieldGenerations>` and read from the profile
 (`<profileDirectory>`). The self-test profile uses five, each a file of
-[`profiles/v2/`](../profiles/README.md), and its Java and SQL rules the `java-facts` and `sql-facts`
+[`profiles/v3/`](../profiles/README.md), and its Java and SQL rules the `java-facts` and `sql-facts`
 counters there; the benchmark and the examples read the same files, so each prompt and each counter
 exists once in the repository:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)

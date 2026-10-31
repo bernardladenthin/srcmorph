@@ -111,7 +111,7 @@ SPDX-License-Identifier: Apache-2.0
 
         <!-- The srcmorph-selftest profile's <profileDirectory>: the prompt and fact-counter set
              its rules name by key (profiles/README.md). -->
-        <ai.profileDir>${project.basedir}/../profiles/v2</ai.profileDir>
+        <ai.profileDir>${project.basedir}/../profiles/v3</ai.profileDir>
 
         <!-- Prompt-cache toggle (default on). Reuses the shared prompt-template prefix KV across
              files. Override per run for benchmarking, e.g. -Dai.cachePrompt=false. -->
@@ -971,8 +971,8 @@ SPDX-License-Identifier: Apache-2.0
                             <!--
                                 The profile: the prompts and fact counters of the measured set, one file per
                                 key in the repository's profiles/ directory (profiles/README.md). A rule's
-                                <promptKey> names profiles/v2/<key>.md and its <factsKey>
-                                profiles/v2/<key>.tsv, so no prompt text and no regex is repeated here. Another
+                                <promptKey> names profiles/v3/<key>.md and its <factsKey>
+                                profiles/v3/<key>.tsv, so no prompt text and no regex is repeated here. Another
                                 set: -Dai.profileDir=/path/to/set.
                             -->
                             <profileDirectory>${ai.profileDir}</profileDirectory>
@@ -1086,7 +1086,7 @@ SPDX-License-Identifier: Apache-2.0
                                             <maxChunks>6</maxChunks>
                                             <!-- Deterministic, EXACT whole-file counts prepended to the AI body. The
                                                  sampled map-reduce prose can't count reliably (no call sees the whole
-                                                 file), so each counter of profiles/v2/sql-facts.tsv reports its regex
+                                                 file), so each counter of profiles/v3/sql-facts.tsv reports its regex
                                                  match count over the FULL source. Fully generic/language-agnostic - the
                                                  meaning is in the regex, so the same mechanism counts SQL rows here or
                                                  `\bboolean\b` fields in Java. -->
@@ -1150,7 +1150,7 @@ SPDX-License-Identifier: Apache-2.0
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <!-- Exact, whole-file structural counts prepended to EVERY Java summary (not just
                                                  oversize files), giving downstream agents authoritative numbers the prose need
-                                                 not restate. The counters are profiles/v2/java-facts.tsv, named by key here
+                                                 not restate. The counters are profiles/v3/java-facts.tsv, named by key here
                                                  (and by huge-java) instead of repeating them inline. -->
                                             <factsKey>java-facts</factsKey>
                                             <condition>

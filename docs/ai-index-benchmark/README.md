@@ -67,8 +67,9 @@ versions** for the plugin's code-summarization task (`.ai.md` generation), run o
   single-child package pass-through, and a tighter brevity instruction.
 
 Both are in the history of [`profiles/`](../../profiles/README.md) (commit `cd2e15f`: `prompts/v2/`,
-and v1 as these cells ran it in `prompts/archive/2026-06/v1/`). The current set, also named v2, is
-a different one: v1 with the additions the October 2026 model card measured (its finding 5).
+and v1 as these cells ran it in `prompts/archive/2026-06/v1/`). The October 2026 v2 is
+a different set: v1 with the additions the October 2026 model card measured (its finding 5); the
+current set is v3 (finding 6).
 
 ### Baseline
 

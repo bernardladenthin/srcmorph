@@ -118,7 +118,7 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   `AiPromptSupport`, `AiPromptPreparationSupport`. The fact counters work the same way:
   `config.AiFactDefinitionLoader` reads a `factsFile` or `<profileDirectory>/<key>.tsv` (`label<TAB>regex`
   per line) for a rule's `factsKey`; `support.AiProfileFileSupport` is the shared file convention.
-  The measured profile (prompts + fact counters) lives once in the repo-root `profiles/v2/`
+  The measured profile (prompts + fact counters) lives once in the repo-root `profiles/v3/`
   (`profiles/README.md`); the plugin's self-test profile, the model-card benchmark, the examples and
   the plugin-it fixture all name only keys and read it from there, so do not paste a prompt text or
   a regex into a configuration again. `SqlFactPatternsTest` / `JavaStructureFactPatternsTest` read

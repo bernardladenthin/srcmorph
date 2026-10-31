@@ -42,16 +42,21 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   (`gpt-oss-20B-mxfp4`) and the two Granite presets. The other model definitions (Mistral, Llama,
   Codestral, Qwen, Gemma, Ministral, the `EXP-*` benchmark keys, the other gpt-oss quantizations and
   windows) are gone; their measurements stay in `docs/ai-index-benchmark`.
-- **`profiles/`: the production prompts and fact counters once in the repository, now v2.**
-  `profiles/v2/` holds the five prompts and the `java-facts` / `sql-facts` counters, which the plugin
+- **`profiles/`: the production prompts and fact counters once in the repository, now v3.**
+  `profiles/v3/` holds the five prompts and the `java-facts` / `sql-facts` counters, which the plugin
   pom and the example configuration no longer write out; `SqlFactPatternsTest` and
   `JavaStructureFactPatternsTest` read these files instead of copies. The prompts are v1, which the October 2026 model card measured, with targeted additions (the type's
   own name; getters and setters named one by one; SQL constraint and index names and row counts per
   table; constants, configuration variables, helpers and library calls of other files). Three runs
   each on OpenRouter: GPT-6 Luna 100 % in all three (v1 93.6 to 99.0 %), gpt-oss-20b 99.0 % (v1
-  96.8 %), search unchanged within its noise (model card, finding 5). v1, the June v2 experiment and
-  v1 as the June benchmark ran it are in the history (`profiles/README.md`). The plugin's
-  `srcmorph-selftest` profile, the model-card benchmark (`run.py --profile <name>`, default v2, replacing
+  96.8 %), search unchanged within its noise (model card, finding 5). v3 adds what gpt-oss-20b still
+  lost on a second corpus: a table's row total over several `INSERT`s as an addition, extensions
+  and types by name, every index as its own bullet, the entry point `main`, command-line commands
+  and options by the name a user types, and a script's arguments by their variable; gpt-oss-20b
+  100 % in three runs on the benchmark corpus and 99.8 % on the second (v2: 99.0 % on both), GPT-6
+  Luna 100 % on both (finding 6). v1, v2, the June v2 experiment and v1 as the June benchmark ran
+  it are in the history (`profiles/README.md`). The plugin's
+  `srcmorph-selftest` profile, the model-card benchmark (`run.py --profile <name>`, default v3, replacing
   `modelcard/prompts.json`), the examples (which had one-line placeholder prompts) and the plugin's
   integration-test fixture all read these files, so the CI smoke of the user-built jar and the
   plugin IT exercise `templateFile` as well.

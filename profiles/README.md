@@ -7,17 +7,17 @@ the prompts and the exact fact counters, one file per key. A configuration names
 no regular expression is repeated in a configuration, so a profile can be copied, versioned and
 handed on as a whole.
 
-[`v2/`](v2/) is the current profile:
+[`v3/`](v3/) is the current profile:
 
 | File | Key | For |
 |---|---|---|
-| [`v2/file-body-java.md`](v2/file-body-java.md) | `promptKey: file-body-java` | one Java source file |
-| [`v2/file-body-sql.md`](v2/file-body-sql.md) | `promptKey: file-body-sql` | one SQL file, as schema |
-| [`v2/file-body-fallback.md`](v2/file-body-fallback.md) | `promptKey: file-body-fallback` | any other source file |
-| [`v2/package-body.md`](v2/package-body.md) | `promptKey: package-body` | a package, from its file summaries |
-| [`v2/project-body.md`](v2/project-body.md) | `promptKey: project-body` | the project overview, from the package leads |
-| [`v2/java-facts.tsv`](v2/java-facts.tsv) | `factsKey: java-facts` | exact counts in front of every Java summary |
-| [`v2/sql-facts.tsv`](v2/sql-facts.tsv) | `factsKey: sql-facts` | exact counts in front of every SQL summary |
+| [`v3/file-body-java.md`](v3/file-body-java.md) | `promptKey: file-body-java` | one Java source file |
+| [`v3/file-body-sql.md`](v3/file-body-sql.md) | `promptKey: file-body-sql` | one SQL file, as schema |
+| [`v3/file-body-fallback.md`](v3/file-body-fallback.md) | `promptKey: file-body-fallback` | any other source file |
+| [`v3/package-body.md`](v3/package-body.md) | `promptKey: package-body` | a package, from its file summaries |
+| [`v3/project-body.md`](v3/project-body.md) | `promptKey: project-body` | the project overview, from the package leads |
+| [`v3/java-facts.tsv`](v3/java-facts.tsv) | `factsKey: java-facts` | exact counts in front of every Java summary |
+| [`v3/sql-facts.tsv`](v3/sql-facts.tsv) | `factsKey: sql-facts` | exact counts in front of every SQL summary |
 
 ## Prompt files
 
@@ -64,16 +64,48 @@ forms (including the known over- and undercount of `VALUES rows (approx)`), and
   the same key: inline (`template`, `facts`) or naming its own file (`templateFile`, `factsFile`,
   relative to `profileDirectory`).
 
-Who reads `v2/`:
+Who reads `v3/`:
 
 - the `srcmorph-selftest` profile of [`srcmorph-maven-plugin/pom.xml`](../srcmorph-maven-plugin/pom.xml)
   (`<ai.profileDir>`, overridable with `-Dai.profileDir=`);
 - the model-card benchmark, [`docs/ai-index-benchmark/modelcard/run.py`](../docs/ai-index-benchmark/modelcard/run.py)
-  (`--profile v2` by default);
-- the examples under [`examples/`](../examples/) (`profileDirectory: "../profiles/v2"`, or
-  `"../../profiles/v2"` one level deeper), so the CI smoke of the user-built jar reads it too;
+  (`--profile v3` by default);
+- the examples under [`examples/`](../examples/) (`profileDirectory: "../profiles/v3"`, or
+  `"../../profiles/v3"` one level deeper), so the CI smoke of the user-built jar reads it too;
 - the plugin's integration-test fixture, [`.github/plugin-it/pom.xml`](../.github/plugin-it/pom.xml),
   which also checks that the `java-facts` counts reach the summaries.
+
+## v3 against v2
+
+v2 was written from the misses on the benchmark corpus, so it ran three times on a second corpus as
+well, which is kept outside this repository: Java with its SQL migrations, a shell script, C and
+Python from other open-source projects. Its gain carried over (gpt-oss-20b 94.6 % with v1, 99.0 %
+with v2; GPT-6 Luna 98.6 % and 100 %). The prompts of v3 are v2's with additions for what gpt-oss
+still lost there:
+
+- **SQL:** when several `INSERT`s write one table, each statement's count as an addition, then the
+  total (the model counted every statement right and summed wrong); every `CREATE EXTENSION` and
+  `CREATE TYPE` by name, an enum with its values; every index as its own bullet with its table,
+  columns or expressions, method and operator class, also in a file that creates no table.
+- **Other files:** the program entry point `main`; for a command-line tool every command,
+  subcommand and option by the name a user types, also where the function behind it is named
+  differently; a script's arguments by the variable that holds them.
+- The Java, package and project prompts and both fact files are unchanged.
+
+The last two additions came from the drafts in between: with the command-line sentence alone,
+gpt-oss described a shell script's arguments as `$1` instead of naming `SOURCE_DIR`, and an
+index-only migration lost its index list. Three runs of v3 each, both corpora:
+
+| Corpus | Model | v2 | v3 |
+|---|---|---|---|
+| benchmark | gpt-oss-20b | 99.0 % (97.0 to 100) | 100 % in all three |
+| benchmark | GPT-6 Luna | 100 % | 100 % |
+| second | gpt-oss-20b | 99.0 % (98.2 to 100) | 99.8 % (99.3 to 100) |
+| second | GPT-6 Luna | 100 % | 100 % |
+
+No format slip, the index did not grow, and the search measurement stayed where it was (model
+card, finding 6). gpt-oss's results move by a few points between runs of one unchanged prompt, so
+these numbers separate a miss that recurs from one that does not, not a one-point difference.
 
 ## v2 against v1
 
@@ -104,13 +136,14 @@ materialized views, triggers, types and `ALTER TABLE` are counted.
 
 ## A new version, and the earlier ones
 
-The next profile goes into `v3/` with a file for each key, is measured with `run.py --profile v3`,
-and replaces `v2/` when it wins; the configurations above then switch to it, and `v2/` goes. Only the
+The next profile goes into `v4/` with a file for each key, is measured with `run.py --profile v4`,
+and replaces `v3/` when it wins; the configurations above then switch to it, and `v3/` goes. Only the
 current profile is kept here, the earlier prompt sets are in the history (`git show <commit>:<path>`
 prints one; the directory was called `prompts/` then):
 
 | Set | Where | What |
 |---|---|---|
+| v2 | `profiles/v2/` in commit `b89d028` | the set before v3; the model card's finding 5 measured it |
 | v1 | `prompts/v1/` in commit `6fe8335` | the set every run of the October 2026 model card used; before these files existed (commit `cd2e15f`) it was inline in the plugin pom and in the benchmark's `prompts.json`, where the pom's CDATA added a leading line break and a trailing line break plus 36 spaces |
 | the June 2026 experiment, then also called v2 | `prompts/v2/` in commit `cd2e15f` | trivial-file omission, JavaBean accessor grouping, a "no invented keywords" ban, single-child package pass-through, more brevity; not adopted, because code-specialized models started wrapping sections in code fences ([COMPARISON.md](../docs/ai-index-benchmark/COMPARISON.md) "Prompt v1 vs v2") |
 | v1 as the June 2026 benchmark ran it | `prompts/archive/2026-06/v1/` in commit `cd2e15f` | before the system/user split (`4743e77`), with the `File: %s` / `Source: %s` placeholders at its end |

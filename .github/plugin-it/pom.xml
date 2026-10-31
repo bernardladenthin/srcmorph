@@ -78,7 +78,7 @@
                          <promptDefinition>, which wins over a file of the same key. None of those
                          keys exists without <profileDirectory>, so an unbound <profileDirectory>
                          fails the run instead of passing unseen. -->
-                    <profileDirectory>${project.basedir}/../../profiles/v2</profileDirectory>
+                    <profileDirectory>${project.basedir}/../../profiles/v3</profileDirectory>
                     <promptDefinitions>
                         <promptDefinition>
                             <key>project-body</key>

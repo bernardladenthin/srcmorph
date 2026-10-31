@@ -119,7 +119,7 @@ Maven Central regardless; see `CLAUDE.md`.)
     <version>1.3.0</version>
     <configuration>
         <generationProvider>mock</generationProvider>
-        <!-- the profile: srcmorph's profiles/v2/ copied into the project. A promptKey names
+        <!-- the profile: srcmorph's profiles/v3/ copied into the project. A promptKey names
              <key>.md there, the system prompt; srcmorph sends the file name and source
              separately. -->
         <profileDirectory>${project.basedir}/src/srcmorph/profile</profileDirectory>

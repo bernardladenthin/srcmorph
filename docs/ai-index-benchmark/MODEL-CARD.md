@@ -53,9 +53,9 @@ cost are from the card's run, as in the charts.
 | Local, 8 GB GPU, fast | **Gemma 4 E4B, thinking off** | 93.0 % | 92.8–93.2 | 11.1 | – |
 | With a GitHub Copilot plan | **Claude Haiku 5.5** | 98.2 % | one run | 6.8 | Copilot plan |
 
-The table is measured with the v1 prompts. The current prompts, v2 (finding 5), lift GPT-6 Luna to
-100 % in all three of its runs and gpt-oss-20b to 99.0 %, so both stand level with Muse and above
-Qwen3.8-27B; the other models have not been run with v2.
+The table is measured with the v1 prompts. The later sets lift GPT-6 Luna to 100 % in all of its
+runs and gpt-oss-20b to 99.0 % with v2 and 100 % with v3, the current one (findings 5 and 6), so
+both stand level with Muse and above Qwen3.8-27B; the other models have not been run with them.
 
 - **Muse Spark 1.3 in Meta's Contributor tier** (100 %, 10.1 s per file, 0.019 USD for the run) is
   the only run with nothing missing: full recall on every kind, all four seed counts, a clean format,
@@ -258,7 +258,36 @@ Qwen3.8-27B; the other models have not been run with v2.
    43 questions lower on average, within the two to seven points runs of one prompt spread over
    (BM25 over gpt-oss's summaries lost about two). Two cautions: v2 was written from the misses on
    this corpus, so part of the gain may be fitted to it, and the other models have not been run
-   with it. v2 is the current prompt set; v1 is in the history (`profiles/README.md`).
+   with it. v3 (finding 6) has replaced v2; v1 and v2 are in the history (`profiles/README.md`).
+6. **Prompt v3: v2 on a second corpus, and what it still lost there.** To test the first caution of
+   finding 5, both models ran v1 and v2 three times each on a second corpus that is not part of
+   this repository (Java with its SQL migrations, a shell script, C and Python from other
+   open-source projects), scored the same way against hand-written expected names and numbers.
+   v2's gain carried over: gpt-oss-20b 94.6 to 99.0 %, GPT-6 Luna 98.6 to 100 %. What gpt-oss
+   still lost there became [`profiles/v3/`](../../profiles/README.md): a table's total over several
+   `INSERT`s, written as an addition (it counted each statement right and summed wrong); every
+   `CREATE EXTENSION` and `CREATE TYPE` by name; the entry point `main`; and a command-line tool's
+   commands and options by the name a user types, also where the function behind one is named
+   differently. Two drafts lost names elsewhere: with the command-line sentence alone,
+   gpt-oss wrote a shell script's arguments as `$1` instead of `SOURCE_DIR`, and an index-only
+   migration lost its index list, so v3 also asks for a script's arguments by their variable and
+   for every index as its own bullet. Three runs each on OpenRouter (`run.py --profile v3`, outputs
+   under [`prompt-v3-2026-10/`](prompt-v3-2026-10/)):
+
+   | | Quality: run 1 / 2 / 3 | Mean | Reader hit@1 | Mean | s/file | USD |
+   |---|---|---|---|---|---|---|
+   | GPT-6 Luna, v3 | 100 / 100 / 100 % | **100 %** | 93 / 88 / 88 % | 90 % | 7.8 / 6.7 / 7.5 | 0.020 / 0.018 / 0.015 |
+   | gpt-oss-20b, v3 | 100 / 100 / 100 % | **100 %** | 91 / 95 / 91 % | 92 % | 7.9 / 15.8 / 15.3 | 0.008 / 0.007 / 0.009 |
+
+   gpt-oss now keeps every expected name of this corpus in every run; the one number it leaves out
+   in all three is the 110 of `05_seed_data.sql`, as with v2. On the second corpus it went from
+   99.0 to 99.8 % (one run missed an operator class, one a table total), Luna stayed at 100 %. No
+   code fence, no `###` heading, the index did not grow (gpt-oss 53 to 57 KB, Luna 65 to 66 KB),
+   and the reader's hit@1 stayed at 92 and 90 % (v2: 92 and 89 %). The drafts also showed how much
+   gpt-oss varies between runs: with the SQL prompt unchanged between two of them, its SQL recall
+   on the second corpus went from 100 % in three runs to 91 to 97 %. Three runs tell a miss that
+   recurs from one that does not, not a one-point difference. The other models have not been run
+   with v3.
 
 ### Repeatability
 
@@ -420,9 +449,9 @@ Ordered by what would change a decision:
    Face runs could be priced exactly.
 4. **Local options this card does not cover:** Gemma 4 E4B at Q8_0 against Q4_K_M (it fits in
    8 GB either way), and the prompt v2 of June against v1 on the winners.
-5. **Prompt v2 on a corpus it was not written on**, and on the other models: v2 was written from
-   this corpus's misses (finding 5), so a second corpus (another project's Java, SQL and scripts)
-   would separate the general gain from the fitted part.
+5. **The current prompts on the other models.** v2 and v3 have run on gpt-oss-20b and GPT-6 Luna
+   only, on this corpus and on a second one (findings 5 and 6); the other top models and the local
+   ones have not.
 6. **A harder search test.** With 24 files the reader finds nearly every answer from any decent
    summary, so the search measurement separates only broken summaries from working ones. A larger
    corpus with many files of the same kind (a whole module, say 200 files) and questions that need
@@ -578,8 +607,8 @@ Every model ran the three CLI phases `GenerateFileIndex`, `AggregatePackages` an
 and project phases use `package-body` and `project-body`. These are the v1 prompts (in the
 history of [`profiles/`](../../profiles/README.md), `prompts/v1/` in commit `6fe8335`); the card's
 runs got them from the plugin pom's inline copy, with a leading line break and a trailing line
-break plus 36 spaces around the same text. Only finding 5 runs the current set,
-`profiles/v2/` (`run.py --profile v2`, the default now).
+break plus 36 spaces around the same text. Findings 5 and 6 run v2 and
+v3; `profiles/v3/` is the current set (`run.py --profile v3`, the default now).
 
 ### Settings
 

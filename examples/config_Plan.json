@@ -10,7 +10,7 @@
       ".java"
     ],
     "generationProvider": "mock",
-    "profileDirectory": "../profiles/v2",
+    "profileDirectory": "../profiles/v3",
     "aiDefinitions": [
       {
         "key": "mock-model",

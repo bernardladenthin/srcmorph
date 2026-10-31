@@ -14,7 +14,7 @@
     ],
     "generationProvider": "mock",
     "projectName": "my-project",
-    "profileDirectory": "../profiles/v2",
+    "profileDirectory": "../profiles/v3",
     "aiDefinitions": [
       {
         "key": "mock-model",

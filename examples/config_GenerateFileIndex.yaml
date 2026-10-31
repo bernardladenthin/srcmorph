@@ -7,7 +7,7 @@ srcMorph:
   fileExtensions:
     - ".java"
   generationProvider: mock
-  profileDirectory: "../profiles/v2"   # the measured prompts of this repository, see profiles/README.md
+  profileDirectory: "../profiles/v3"   # the measured prompts of this repository, see profiles/README.md
   aiDefinitions:
     - key: mock-model
       modelPath: unused-with-mock-provider.gguf

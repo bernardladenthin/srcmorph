@@ -13,7 +13,7 @@ One or two bullets: what the file/unit is for.
 Kind (class / interface / enum / record / header / kernel / SQL object) and language. For OO code: extends X; implements Y; key generics. For C: header vs implementation, exported vs static. For SQL: table / view / procedure / function / trigger.
 
 #### Input
-What comes in: key parameters, consumed fields, read resources (files, buffers, streams, kernels, tables/columns, env/config).
+What comes in: key parameters (a script's arguments by the variable that holds them, e.g. `TARGET_HOST`), consumed fields, read resources (files, buffers, streams, kernels, tables/columns, env/config).
 
 #### Output
 What comes out: return types, produced state, written resources/tables, side effects.
@@ -22,7 +22,7 @@ What comes out: return types, produced state, written resources/tables, side eff
 The essential steps / algorithm / responsibility as bullets. This is the most important section.
 
 #### Public API
-Each public/exported unit as `name(params) -> returnType` + a clause (max 6 words) on its purpose, then the internal (static / private / helper) functions by name. For SQL: procedures/functions with params and result.
+Each public/exported unit as `name(params) -> returnType` + a clause (max 6 words) on its purpose, then the internal (static / private / helper) functions by name, including the program entry point (`main`). For SQL: procedures/functions with params and result. For a command-line interface: every command, subcommand and option by the exact name a user types (e.g. `sync-users`, `--dry-run`), also where it differs from the function implementing it.
 
 #### Constants and configuration
 Every named constant, macro, enum value and status code, and every configuration or environment variable the file defines or reads (e.g. `MAX_RETRIES`, `STATUS_OK`, `OUTPUT_DIR`, `TIMEOUT_SECONDS`), by its exact name, with its value or default when the source gives one.

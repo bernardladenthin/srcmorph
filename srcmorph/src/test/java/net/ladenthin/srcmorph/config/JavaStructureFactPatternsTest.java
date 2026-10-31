@@ -10,7 +10,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Validates the Java structural fact counters of the current profile ({@code profiles/v2/java-facts.tsv},
+ * Validates the Java structural fact counters of the current profile ({@code profiles/v3/java-facts.tsv},
  * read through {@link ProfileFactPatterns}, so the shipped file is what is tested), in the real
  * {@link java.util.regex} engine {@code AiFactExtractor} uses, against the tricky-case self-tests. These
  * are deliberately approximate ("methods (approx)", "field declarations") - the tests pin the accepted
