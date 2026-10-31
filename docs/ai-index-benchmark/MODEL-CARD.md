@@ -79,10 +79,14 @@ cost are from the card's run, as in the charts.
     invented names (0.1 per 100), but SQL recall of 90 %, other-file recall of 79 % and no seed
     counts; it searches like E4B (93 % first). Its Q4_K_M weights are 46 GiB, so it runs only with
     all 50 expert layers in RAM (`cpuMoeLayers: 50`, about 45 GB of a 63 GB machine) and the rest
-    on the GPU, at 4.4 tokens/s. With 4 expert layers on the 8 GB GPU as well, VRAM overflowed into
-    Windows' shared GPU memory and generation fell to 2.3 tokens/s; with too little free RAM,
-    Windows paged the weights back in from the disk and prompt processing fell to 7 to 10 tokens/s.
-    Its thinking needs `reasoningEffort: none`, see finding 2.
+    on the GPU. Once the weights are in RAM it reads the prompt at 100 to 130 tokens/s and writes at
+    about 25 tokens/s; the first file, while the weights were still read from a USB SSD, ran at 22
+    and 4.2 tokens/s, and the 61.8 s per file include it, as every local run includes its loading.
+    With 4 expert layers on the 8 GB GPU as well, VRAM filled up (8.0 of 8.2 GB) and overflowed into
+    Windows' shared GPU memory: the first file then ran at 7 to 10 and 2.3 tokens/s, and a first
+    attempt with 47 GB of RAM available was stopped when only 2.4 GB were left.
+    Its thinking was on until srcmorph stopped sending `reasoning_effort` with thinking off, see
+    finding 2.
 - **Not worth their cost here:**
   - **Gemma 4 31B with reasoning off** (94.6 % over three runs, 10.5 s per file) costs as much as
     Luna (0.097 USD per MB) for no gain.
@@ -171,12 +175,15 @@ cost are from the card's run, as in the charts.
    `chatTemplateEnableThinking: false` fixes it. With it, E4B also writes about half the tokens it
    wrote before (for example 620 instead of 1306 per file). So both Gemma 4 models and Qwen3.5-4B ran
    with thinking off. That is why Qwen3.5-4B no longer pays the "thinking tax" the June benchmark
-   held against it. **Kolibri-1 needs `reasoningEffort: none` as well.** The local provider sends
-   `reasoningEffort` (default `low`) to the chat template as the `reasoning_effort` kwarg, which
-   gpt-oss reads and most templates ignore. Kolibri's template reads it before `enable_thinking`,
-   so with `chatTemplateEnableThinking: false` alone the first file spent all 4096 tokens on
-   reasoning and came back empty. `none` is a value the template accepts and turns thinking off
-   (in [`TODO.md`](../../TODO.md)).
+   held against it. **Kolibri-1 reasoned with thinking off.** The local provider sent
+   `reasoningEffort` (default `low`, meant for gpt-oss) to every chat template as the
+   `reasoning_effort` kwarg. Kolibri's template reads it before `enable_thinking`, so with
+   `chatTemplateEnableThinking: false` the first file spent all 4096 tokens on reasoning and came
+   back empty. The card's run set `reasoningEffort: none`, a value the template accepts. srcmorph
+   now sends thinking off the way llama.cpp's server handles it, `enable_thinking` `false` and no
+   `reasoning_effort`, whether `chatTemplateEnableThinking: false` or `reasoningEffort: none` asks
+   for it. Kolibri's template renders the same prompt for that as for the run's kwargs (checked by
+   rendering it with Jinja), so the run stands for the fixed provider.
 3. **srcmorph keeps a cut-off summary as if it were done.** A cut-off generation produces only a WARN
    (`Generated text for … was cut off …`), and the truncated `.ai.md` counts as up to date. An
    incremental run regenerates it only after the source changes. An empty body is written as well
@@ -472,7 +479,7 @@ plugin's self-test profile, copied into [`modelcard/prompts.json`](modelcard/pro
 | Context | 131 072 | 120 000 (the model's `max_input_tokens` is 127 790) | 32 768 |
 | `maxOutputTokens` | 4096 (16 384 for the reasoning-low runs of Nemotron 3.5 Lightning and Qwen3.5-35B-A3B and for Mistral Large 4, see finding 1) | 4096 (the gateway does not pass it on) | 4096 |
 | Temperature | 0.2 | 0.2 | 0.2 (seed 42) |
-| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | not set | thinking off where the template has a switch (Gemma 4, Qwen3.5, Kolibri-1; Kolibri-1 also `reasoningEffort: none`, see finding 2) |
+| Reasoning | `reasoning.effort` = `low` where the model has it; `none` for the runs marked "reasoning off" | not set | thinking off where the template has a switch (Gemma 4, Qwen3.5, Kolibri-1; Kolibri-1 also `reasoningEffort: none`, which renders the same prompt, see finding 2) |
 | Weights | whatever precision the OpenRouter route serves (not stated per request) | whatever GitHub Copilot serves | Q4_K_M (Granite H-Small UD-Q4_K_XL) |
 | Hardware | — | — (the gateway runs in VS Code on the benchmark machine, `stream: true`) | RTX 3070 Laptop (8 GB), 63 GB RAM, CUDA 13 natives of `net.ladenthin:llama` 6.0.0, layers auto-fitted (Kolibri-1: every layer on the GPU except the 50 expert layers, `cpuMoeLayers`), 8 CPU threads |
 

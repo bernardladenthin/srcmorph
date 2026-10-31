@@ -31,13 +31,6 @@ everything below is genuinely still open.
   `onTruncated` setting, or retry once with a larger budget. Same place: the OpenAI-compatible
   provider reuses `LlamaCppJniProviderSupport.warnOnTruncatedAnswer`, so its warning is logged under
   the llama.cpp class's logger name.
-- **The local provider sends `reasoningEffort` to every chat template.** `buildChatTemplateKwargs`
-  passes the default `low` as the `reasoning_effort` kwarg unless a model sets it, meant for
-  gpt-oss. A template that reads it before `enable_thinking`, as Aleph Alpha's Kolibri-1 does,
-  then reasons although `chatTemplateEnableThinking` is `false`: the model-card run left the first
-  file empty until `reasoningEffort: none` was set (`docs/ai-index-benchmark/MODEL-CARD.md`,
-  finding 2). Options: send the kwarg only when the model sets it, or let `enableThinking: false`
-  win and send `none`.
 
 - **No GPU module is launched in CI.** `smoke-jar` builds `examples/build-your-own-jar` with the CPU
   natives only and runs `Plan`; a GitHub-hosted runner has no CUDA/ROCm/SYCL/OpenVINO device, and

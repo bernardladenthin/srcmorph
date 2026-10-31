@@ -99,6 +99,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   The example pom is therefore under test on every pull request.
 
 ### Fixed
+- **A local model reasoned with thinking switched off.** The llama.cpp provider sent
+  `reasoningEffort` (default `low`, meant for gpt-oss) to every chat template as the
+  `reasoning_effort` kwarg, also with `chatTemplateEnableThinking: false`. A template that reads it
+  first, as Aleph Alpha's Kolibri-1 does, then reasoned at `low` and spent the output budget on it
+  (the model-card run's first file came back empty). Thinking off is now sent the way llama.cpp's
+  server handles it, `enable_thinking` `false` and no `reasoning_effort`, reached through either
+  knob: with `chatTemplateEnableThinking: false` the effort is not sent, and `reasoningEffort: none`
+  sends `enable_thinking` `false` instead of the effort (before, only the template saw `none`, and
+  llama.cpp itself took thinking for on). gpt-oss, which has no thinking switch, keeps its effort.
 - **A summary that quotes a thinking-block marker lost most of its text.** `AiCompletionParser`
   dropped everything up to the *last* `<channel|>` anywhere in a response, so a model describing a
   Gemma-4 parser, a prompt or anything else that names the marker had its answer cut down to the

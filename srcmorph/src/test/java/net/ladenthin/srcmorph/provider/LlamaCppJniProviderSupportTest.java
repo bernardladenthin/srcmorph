@@ -453,6 +453,7 @@ public class LlamaCppJniProviderSupportTest {
 
         // assert
         assertThat(kwargs.containsKey(KWARG_ENABLE_THINKING), is(false));
+        assertThat(kwargs.get(KWARG_REASONING_EFFORT), is("low"));
     }
 
     /** The other half of "unset means unset": a blank reasoning effort omits its kwarg too. */
@@ -487,9 +488,14 @@ public class LlamaCppJniProviderSupportTest {
 
         // assert
         assertThat(kwargs.get(KWARG_ENABLE_THINKING), is("true"));
+        assertThat(kwargs.get(KWARG_REASONING_EFFORT), is("low"));
     }
 
-    /** The Gemma-4 case the knob exists for: suppress the thinking block at the Jinja level. */
+    /**
+     * The Gemma-4 case the knob exists for: suppress the thinking block at the Jinja level. The
+     * default reasoning effort goes unsent with it: Kolibri-1's template reads
+     * {@code reasoning_effort} first and reasoned at {@code "low"} although thinking was off.
+     */
     @Test
     public void buildChatTemplateKwargs_thinkingSetToFalse_isSentAsFalse() {
         // arrange
@@ -502,6 +508,7 @@ public class LlamaCppJniProviderSupportTest {
 
         // assert
         assertThat(kwargs.get(KWARG_ENABLE_THINKING), is("false"));
+        assertThat(kwargs.containsKey(KWARG_REASONING_EFFORT), is(false));
     }
 
     /**
@@ -513,7 +520,6 @@ public class LlamaCppJniProviderSupportTest {
         // arrange
         final LlamaCppJniConfig configured = LlamaCppJniConfig.builder("/does/not/exist.gguf")
                 .reasoningEffort("high")
-                .chatTemplateEnableThinking(Boolean.FALSE)
                 .build();
 
         // act
@@ -521,6 +527,60 @@ public class LlamaCppJniProviderSupportTest {
 
         // assert
         assertThat(kwargs.get(KWARG_REASONING_EFFORT), is("high"));
+        assertThat(kwargs.containsKey(KWARG_ENABLE_THINKING), is(false));
+    }
+
+    /** Thinking off wins over a configured effort too, as llama.cpp's own {@code --reasoning off} does. */
+    @Test
+    public void buildChatTemplateKwargs_thinkingOffWithConfiguredEffort_sendsOnlyThinkingOff() {
+        // arrange
+        final LlamaCppJniConfig configured = LlamaCppJniConfig.builder("/does/not/exist.gguf")
+                .reasoningEffort("high")
+                .chatTemplateEnableThinking(Boolean.FALSE)
+                .build();
+
+        // act
+        final Map<String, String> kwargs = providerWith(configured).buildChatTemplateKwargs();
+
+        // assert
+        assertThat(kwargs.size(), is(1));
+        assertThat(kwargs.get(KWARG_ENABLE_THINKING), is("false"));
+    }
+
+    /**
+     * The other way to thinking off: llama.cpp's server maps a request's {@code reasoning_effort}
+     * {@code "none"} to {@code enable_thinking} {@code false} and drops the kwarg. The model's
+     * default kwargs skip that mapping, so without it the template alone would know thinking is off.
+     */
+    @Test
+    public void buildChatTemplateKwargs_reasoningEffortNone_sendsThinkingOffInstead() {
+        // arrange
+        final LlamaCppJniConfig none = LlamaCppJniConfig.builder("/does/not/exist.gguf")
+                .reasoningEffort("none")
+                .build();
+
+        // act
+        final Map<String, String> kwargs = providerWith(none).buildChatTemplateKwargs();
+
+        // assert
+        assertThat(kwargs.size(), is(1));
+        assertThat(kwargs.get(KWARG_ENABLE_THINKING), is("false"));
+    }
+
+    /** {@code "none"} wins over thinking switched on, as it does in llama.cpp's server. */
+    @Test
+    public void buildChatTemplateKwargs_reasoningEffortNoneWithThinkingOn_sendsThinkingOff() {
+        // arrange
+        final LlamaCppJniConfig conflicting = LlamaCppJniConfig.builder("/does/not/exist.gguf")
+                .reasoningEffort("none")
+                .chatTemplateEnableThinking(Boolean.TRUE)
+                .build();
+
+        // act
+        final Map<String, String> kwargs = providerWith(conflicting).buildChatTemplateKwargs();
+
+        // assert
+        assertThat(kwargs.size(), is(1));
         assertThat(kwargs.get(KWARG_ENABLE_THINKING), is("false"));
     }
 
