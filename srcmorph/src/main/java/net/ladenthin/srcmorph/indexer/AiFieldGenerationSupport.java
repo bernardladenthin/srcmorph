@@ -10,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiCalibration;
 import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
@@ -22,7 +21,6 @@ import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.AiPreparedPrompt;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.provider.AiContextOverflowException;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
 import net.ladenthin.srcmorph.support.AiDeterministicSummary;
@@ -122,66 +120,12 @@ public class AiFieldGenerationSupport {
     /** Leading/trailing lines shown in a {@link AiOversizeStrategy#DETERMINISTIC} body. */
     private static final int DETERMINISTIC_SAMPLE_LINES = 20;
 
-    /** Upper bound on the character overlap between map-reduce chunks. */
-    private static final int MAP_REDUCE_OVERLAP_CHARS = 2000;
-
-    /** Fraction (1/n) of the chunk size used as overlap when smaller than {@link #MAP_REDUCE_OVERLAP_CHARS}. */
-    private static final int MAP_REDUCE_OVERLAP_DIVISOR = 20;
-
-    /** Minimum per-chunk source budget, so a tiny window never yields zero-length chunks. */
-    private static final int MIN_CHUNK_CHARS = 1000;
-
-    /**
-     * Safety headroom (percent) subtracted from the map-reduce window before sizing chunks and reduce
-     * batches. {@code charsPerToken} is only an <em>estimate</em>; token-dense content (e.g. SQL with
-     * many digits/punctuation, ~2.8 chars/token) tokenizes to more tokens than a char budget computed
-     * from a higher {@code charsPerToken} assumes, which would otherwise let a chunk overflow the model's
-     * context window at run time (the native layer then rejects the request). Shrinking the map-reduce
-     * window by this margin keeps chunks safely inside the window even when real density is up to this
-     * percent below the configured {@code charsPerToken}.
-     */
-    private static final int MAP_REDUCE_TOKEN_HEADROOM_PERCENT = 20;
-
-    /**
-     * Maximum number of partial summaries combined into a single reduce call. Bounds the reduce prompt
-     * size and guarantees the hierarchical reduce makes progress (fan-in {@code >= 2}) so it terminates.
-     */
-    private static final int MAX_REDUCE_FANIN = 16;
-
-    /** Label prefix for one partial summary inside a reduce prompt. */
-    private static final String REDUCE_PART_LABEL = "Part ";
-
-    /** Approximate per-partial label + separator overhead when packing a reduce batch to the window. */
-    private static final int REDUCE_LABEL_OVERHEAD_CHARS = 16;
-
-    /** Percent divisor used when applying {@link #MAP_REDUCE_TOKEN_HEADROOM_PERCENT}. */
-    private static final int PERCENT = 100;
-
-    /**
-     * Maximum number of times a single generation is retried with a smaller window after the provider
-     * rejects the prompt for exceeding the model's context. The char-based window is an estimate; on
-     * token-dense content that estimate can undershoot even outside map-reduce (e.g. a dense file that
-     * just "fits", or a {@code sample} head), so this is the last-resort safety net for the single-shot
-     * path — it degrades gracefully (trims a little more) instead of failing the whole build.
-     */
-    private static final int MAX_OVERFLOW_RETRIES = 3;
-
-    /** Window multiplier (percent) applied on each context-overflow retry, shrinking the prompt. */
-    private static final int OVERFLOW_RETRY_BACKOFF_PERCENT = 75;
-
-    /**
-     * Substring identifying a context-overflow error in the provider's exception message chain
-     * (llama.cpp: "request (N tokens) exceeds the available context size (M tokens)…"). Matched on the
-     * message rather than a binding-specific exception type to keep the indexer decoupled from the JNI
-     * binding.
-     */
-    private static final String CONTEXT_OVERFLOW_MARKER = "exceeds the available context size";
-
     private final AiGenerationProvider generationProvider;
     private final AiPromptPreparationSupport promptPreparationSupport;
     private final AiModelDefinitionSupport modelDefinitionSupport;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
     private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
+    private final AiRouteEstimator routeEstimator = new AiRouteEstimator();
 
     /**
      * Per-{@code (aiDefinitionKey, promptKey)} cache of the computed {@code maxInputChars}
@@ -334,7 +278,7 @@ public class AiFieldGenerationSupport {
                 : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
         // Use the model's measured <calibration> when present, so the live per-file ETA matches the
         // (already calibrated) plan ETA instead of the built-in reference-CPU model.
-        final long estimatedSeconds = estimateSeconds(processedSourceChars, generationConfig);
+        final long estimatedSeconds = routeEstimator.estimateSeconds(processedSourceChars, generationConfig);
         LOGGER.info(
                 PROCESSING_LOG_PREFIX + "{} '{}'" + PROCESSING_LOG_SIZE_INFIX + "{}" + PROCESSING_LOG_TOKENS_INFIX
                         + "{}" + PROCESSING_LOG_ETA_INFIX + "{}" + PROCESSING_LOG_DISCLAIMER,
@@ -373,7 +317,7 @@ public class AiFieldGenerationSupport {
      * set) bounds the run time by sampling representative chunks across the file; {@code maxChunks <= 0}
      * processes every chunk (the whole file).
      *
-     * <p>The chunk window is shrunk by {@link #MAP_REDUCE_TOKEN_HEADROOM_PERCENT} so a token-dense chunk
+     * <p>The chunk window is shrunk by {@link AiMapReduceSupport#TOKEN_HEADROOM_PERCENT} so a token-dense chunk
      * cannot overflow the model's context (see that constant's Javadoc).</p>
      *
      * @param fieldGeneration        the routing rule (prompt key + {@code maxChunks})
@@ -395,10 +339,9 @@ public class AiFieldGenerationSupport {
                 promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
         // Reserve token-safety headroom: real chars/token can be below the configured charsPerToken for
         // dense content, so size chunks (and every map/reduce prompt) against a shrunken window.
-        final int safeWindow =
-                effectiveMaxInputChars - (effectiveMaxInputChars * MAP_REDUCE_TOKEN_HEADROOM_PERCENT / PERCENT);
-        final int sourceBudget = Math.max(MIN_CHUNK_CHARS, safeWindow - basePromptLength);
-        final int overlap = Math.min(MAP_REDUCE_OVERLAP_CHARS, sourceBudget / MAP_REDUCE_OVERLAP_DIVISOR);
+        final int safeWindow = AiMapReduceSupport.safeWindow(effectiveMaxInputChars);
+        final int sourceBudget = AiMapReduceSupport.sourceBudget(safeWindow, basePromptLength);
+        final int overlap = AiMapReduceSupport.overlap(sourceBudget);
         final List<String> chunks =
                 AiSourceChunker.chunk(sourceText, sourceBudget, overlap, fieldGeneration.getMaxChunks());
         LOGGER.info(
@@ -419,7 +362,7 @@ public class AiFieldGenerationSupport {
 
     /**
      * Combines per-chunk partial summaries into one body via a <strong>hierarchical</strong> reduce:
-     * partials are packed into batches that fit the window (each batch at most {@link #MAX_REDUCE_FANIN}
+     * partials are packed into batches that fit the window (each batch at most {@link AiMapReduceSupport#MAX_REDUCE_FANIN}
      * partials), every batch is summarized, and the process repeats on the batch summaries until a single
      * summary remains. This avoids the single-reduce trap where hundreds of partials overflow one call
      * and the file's tail is silently trimmed away, so {@code maxChunks <= 0} (whole-file) coverage
@@ -449,43 +392,24 @@ public class AiFieldGenerationSupport {
         int round = 0;
         while (level.size() > 1) {
             round++;
-            final List<String> next = new ArrayList<>(level.size());
-            int i = 0;
-            while (i < level.size()) {
-                final StringBuilder batch = new StringBuilder();
-                int inBatch = 0;
-                while (inBatch < MAX_REDUCE_FANIN
-                        && i < level.size()
-                        && (inBatch == 0
-                                || batch.length() + level.get(i).length() + REDUCE_LABEL_OVERHEAD_CHARS
-                                        <= sourceBudget)) {
-                    batch.append(REDUCE_PART_LABEL)
-                            .append(inBatch + 1)
-                            .append(":\n")
-                            .append(level.get(i))
-                            .append("\n\n");
-                    inBatch++;
-                    i++;
-                }
-                next.add(summarizeChunk(fieldGeneration, contextFile, batch.toString(), baseHeader, safeWindow)
+            final List<String> batches = AiMapReduceSupport.reduceBatches(level, sourceBudget);
+            if (batches.size() >= level.size()) {
+                // Pathological: partials too large to combine two at a time. Collapse to one trimmed reduce
+                // so the method always terminates rather than looping without shrinking.
+                return summarizeChunk(
+                                fieldGeneration,
+                                contextFile,
+                                AiMapReduceSupport.combineAll(level),
+                                baseHeader,
+                                safeWindow)
+                        .trim();
+            }
+            final List<String> next = new ArrayList<>(batches.size());
+            for (final String batch : batches) {
+                next.add(summarizeChunk(fieldGeneration, contextFile, batch, baseHeader, safeWindow)
                         .trim());
             }
             LOGGER.info("  mapReduce reduce round {}: {} -> {} partial(s)", round, level.size(), next.size());
-            if (next.size() >= level.size()) {
-                // Pathological: partials too large to combine two-at-a-time. Collapse to one trimmed reduce
-                // so the method always terminates rather than looping without shrinking.
-                final StringBuilder all = new StringBuilder();
-                int n = 0;
-                for (final String partial : level) {
-                    all.append(REDUCE_PART_LABEL)
-                            .append(++n)
-                            .append(":\n")
-                            .append(partial)
-                            .append("\n\n");
-                }
-                return summarizeChunk(fieldGeneration, contextFile, all.toString(), baseHeader, safeWindow)
-                        .trim();
-            }
             level = next;
         }
         return level.get(0);
@@ -564,7 +488,7 @@ public class AiFieldGenerationSupport {
 
     /**
      * Trims {@code source} to {@code window} and generates, retrying with a progressively smaller window
-     * (up to {@link #MAX_OVERFLOW_RETRIES}) when the provider rejects the prompt for exceeding the model's
+     * (up to {@link AiOverflowBackoff#MAX_RETRIES}) when the provider rejects the prompt for exceeding the model's
      * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
      * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
      * exception propagates immediately.
@@ -591,80 +515,22 @@ public class AiFieldGenerationSupport {
             try {
                 return generationProvider.generate(
                         new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
-            } catch (final AiContextOverflowException e) {
-                budget = smallerWindow(attempt, budget, contextFile, e);
-            } catch (final RuntimeException e) {
-                if (!isContextOverflow(e)) {
+            } catch (final IOException | RuntimeException e) {
+                final int reduced = AiOverflowBackoff.isContextOverflow(e)
+                        ? AiOverflowBackoff.nextWindow(attempt, budget)
+                        : AiOverflowBackoff.NO_SMALLER_WINDOW;
+                if (reduced == AiOverflowBackoff.NO_SMALLER_WINDOW) {
                     throw e;
                 }
-                budget = smallerWindow(attempt, budget, contextFile, e);
+                LOGGER.warn(
+                        "AI provider rejected the prompt (context overflow) for {}; retrying with a smaller window"
+                                + " ({} -> {} chars)",
+                        contextFile,
+                        budget,
+                        reduced);
+                budget = reduced;
             }
         }
-    }
-
-    /**
-     * Returns the window for the next attempt after a context overflow, or rethrows the overflow once
-     * the retries are exhausted or the window is already at the floor (shrinking further would not help).
-     *
-     * @param attempt     the attempt that overflowed, from {@code 0}
-     * @param budget      its window
-     * @param contextFile the source file path, for the log
-     * @param overflow    the overflow
-     * @param <E>         the overflow's type
-     * @return the smaller window
-     * @throws E the overflow, when there is no smaller window to try
-     */
-    private static <E extends Exception> int smallerWindow(
-            final int attempt, final int budget, final Path contextFile, final E overflow) throws E {
-        final int reduced = Math.max(MIN_CHUNK_CHARS, budget * OVERFLOW_RETRY_BACKOFF_PERCENT / PERCENT);
-        if (attempt >= MAX_OVERFLOW_RETRIES || reduced >= budget) {
-            throw overflow;
-        }
-        LOGGER.warn(
-                "AI provider rejected the prompt (context overflow) for {}; retrying with a smaller window"
-                        + " ({} -> {} chars)",
-                contextFile,
-                budget,
-                reduced);
-        return reduced;
-    }
-
-    /**
-     * Returns whether {@code error} (or any cause in its chain) is a model context-overflow, matched on
-     * the provider's message ({@link #CONTEXT_OVERFLOW_MARKER}).
-     *
-     * @param error the thrown error
-     * @return {@code true} when the error indicates the prompt exceeded the context window
-     */
-    private static boolean isContextOverflow(final Throwable error) {
-        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-            final String message = cause.getMessage();
-            if (message != null && message.contains(CONTEXT_OVERFLOW_MARKER)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Estimates one generation's seconds for the given char count, using the model's {@code <calibration>}
-     * (measured per-machine throughput) when present, otherwise the estimator's built-in model. Mirrors
-     * {@code SourceFileIndexer}'s plan-time estimate so the live per-file ETA agrees with the plan.
-     *
-     * @param sourceChars the processed source character count
-     * @param config      the model's generation config (may carry a calibration)
-     * @return the estimated seconds
-     */
-    private long estimateSeconds(final int sourceChars, final AiGenerationConfig config) {
-        final AiCalibration calibration = config.getCalibration();
-        if (calibration == null) {
-            return timeEstimator.estimateSeconds(sourceChars);
-        }
-        return timeEstimator.estimateSecondsCalibrated(
-                sourceChars,
-                calibration.getPrefillTokensPerSecond(),
-                calibration.getDecodeTokensPerSecond(),
-                calibration.getCharsPerToken());
     }
 
     /**

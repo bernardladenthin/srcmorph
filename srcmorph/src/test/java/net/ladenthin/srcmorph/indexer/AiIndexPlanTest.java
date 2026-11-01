@@ -91,6 +91,16 @@ public class AiIndexPlanTest {
     }
 
     @Test
+    public void exceedsWindow_aSourceThatFillsTheWindowExactly_fits() {
+        final AiIndexPlan plan = new AiIndexPlan();
+        plan.addRoute("modelA", Paths.get("Exact.java"), rule("p1"), 10, 5000L, 5000L);
+        plan.addRoute("modelA", Paths.get("OneMore.java"), rule("p1"), 10, 5001L, 5000L);
+
+        assertThat(plan.routesByModel().get("modelA").get(0).exceedsWindow(), is(false));
+        assertThat(plan.routesByModel().get("modelA").get(1).exceedsWindow(), is(true));
+    }
+
+    @Test
     public void renderMarkdown_flagsOverWindowFilesAndCells() {
         final Path base = Paths.get("");
         final AiIndexPlan plan = new AiIndexPlan();

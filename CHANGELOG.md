@@ -12,6 +12,20 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **A source is read once, with `\n` line endings.** The checksum, the plan's window check, the
+  prompt, the facts and the map-reduce chunks see the same text, whether the working copy has
+  `\r\n` (Windows with `core.autocrlf`), `\r` or `\n`: a CRLF checkout no longer has another
+  checksum than an LF one, and no `\r` reaches the model. The checksum is now taken over that text
+  instead of the file's bytes, so a summary written from a CRLF working copy is regenerated once.
+  The line count of a `lines` condition and the deterministic body count `\r\n` and `\r` as line
+  endings too (`AiSourceLines`); the deterministic body no longer carries `\r` into its fenced lines.
+  The pure parts of the field generation moved to classes on the PIT gate: the time estimate of the
+  plan and of a run (`AiRouteEstimator`, one code path instead of two copies), the map-reduce sizing
+  and reduce batches (`AiMapReduceSupport`), and the smaller window after a context overflow
+  (`AiOverflowBackoff`, which also recognizes a remote `AiContextOverflowException` in a cause
+  chain). A reduce round whose partials are too long to combine now goes straight to the last-resort
+  single reduce instead of first summarizing every batch for nothing. `LlamaCppJniConfig$Builder`
+  and `AiIndexPlan$Entry` are on the gate; `AiChecksumSupport.calculateCrc32Hex(Path)` is gone.
 - **One rule per aggregation phase; the `llama*` fallback parameters are gone.** `aggregate-packages`
   takes exactly one rule (its prompt and model) and `aggregate-project` none or one; more fail the
   goal before anything is written, as does a missing package rule. Before, the package phase

@@ -16,10 +16,6 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-7. **Tests and the PIT gate.** `LlamaCppJniConfig$Builder` and `AiIndexPlan$Entry` on the gate; the
-   pure logic of `AiFieldGenerationSupport` (overflow backoff, reduce batching) and `SourceFileIndexer`
-   (time estimate, line count) moved to gated support classes; mock-provider tests of `sample`,
-   `mapReduce` and `deterministic` from plan to written file; CRLF sources through indexer and chunker.
 6. **CLI, plugin, docs.** The plugin descriptor states Maven 3.6.3 and Java 8 (asserted in
    plugin-it); relative CLI paths resolve against the configuration file's directory; the example pom
    and READMEs say which release the examples need; the CLI prints its usage and fails without

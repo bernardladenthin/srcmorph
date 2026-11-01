@@ -12,6 +12,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +21,8 @@ import net.ladenthin.srcmorph.config.AiCondition;
 import net.ladenthin.srcmorph.config.AiConditionGroup;
 import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiRangeCondition;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -415,5 +418,43 @@ public class SourceFileIndexerTest {
         assertThat(
                 indexer.targetFile(temp.resolve("src/main/java/com/example/Foo.java")),
                 is(equalTo(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))));
+    }
+
+    @Test
+    public void indexFile_crLfSource_reachesTheModelAndTheChunksWithLineFeedsOnly() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path big = temp.resolve("src/main/java/com/example/Big.java");
+        final StringBuilder source = new StringBuilder();
+        for (int i = 0; i < 400; i++) {
+            source.append("int field").append(i).append(" = ").append(i).append(";\r\n");
+        }
+        writeJava(big, source.toString());
+        final AiModelDefinition small = new AiModelDefinition();
+        small.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        small.setModelPath("mock.gguf");
+        small.setCharsPerToken(1);
+        small.setContextSize(4_000);
+        final List<String> sent = new ArrayList<>();
+        final AiFieldGenerationSupport recording = new AiFieldGenerationSupport(
+                request -> {
+                    sent.add(request.sourceText());
+                    return "summary";
+                },
+                new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions())),
+                new AiModelDefinitionSupport(Collections.singletonList(small)));
+        final AiFieldGenerationConfig rule = CommonTestFixtures.createFileFieldGeneration();
+        rule.setOnOversize("mapReduce");
+        rule.setMaxChunks(3);
+
+        final AiIndexOutcome outcome = indexer(
+                        temp, temp.resolve("src/site/ai"), Collections.<String>emptyList(), 0L, 0L)
+                .indexFile(big, rule, recording);
+
+        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        // three chunks and one reduce
+        assertThat(sent.size(), is(4));
+        for (final String text : sent) {
+            assertThat(text.indexOf('\r'), is(-1));
+        }
     }
 }

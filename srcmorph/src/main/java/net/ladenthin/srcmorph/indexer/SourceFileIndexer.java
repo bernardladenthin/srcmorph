@@ -11,7 +11,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiCalibration;
 import net.ladenthin.srcmorph.config.AiCondition;
 import net.ladenthin.srcmorph.config.AiConditionEvaluator;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
@@ -19,7 +18,6 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiFileContext;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -31,6 +29,7 @@ import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
+import net.ladenthin.srcmorph.support.AiSourceLines;
 import net.ladenthin.srcmorph.support.AiTimeSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
@@ -84,6 +83,7 @@ public class SourceFileIndexer {
     private final AiFieldGenerationSelector fieldGenerationSelector = new AiFieldGenerationSelector();
     private final AiConditionEvaluator conditionEvaluator = new AiConditionEvaluator();
     private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
+    private final AiRouteEstimator routeEstimator = new AiRouteEstimator();
 
     /**
      * Creates a new {@link SourceFileIndexer}. The AI provider and rules are supplied later
@@ -204,7 +204,9 @@ public class SourceFileIndexer {
             final Path fileNamePath = file.getFileName();
             final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
             final long fileSizeBytes = Files.size(file);
-            final int lineCount = lineFiltersUsed ? countLines(compatibilityHelper.readString(file)) : 0;
+            final boolean routed = modelDefinitionSupport != null && promptPreparationSupport != null;
+            final String source = lineFiltersUsed || routed ? readSource(file) : "";
+            final int lineCount = lineFiltersUsed ? AiSourceLines.count(source) : 0;
             final String relativePath =
                     baseDirectory.relativize(file).toString().replace('\\', '/');
             final long lastModified = Files.getLastModifiedTime(file).toMillis();
@@ -221,9 +223,9 @@ public class SourceFileIndexer {
                 final int basePromptLength = promptPreparationSupport.getBasePromptLength(rule.getPromptKey(), file);
                 final long availableSourceChars =
                         AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
-                final long sourceChars = compatibilityHelper.readString(file).length();
-                final long routeSeconds =
-                        estimateRouteSeconds(rule, modelConfig, fileSizeBytes, sourceChars, availableSourceChars);
+                final long sourceChars = source.length();
+                final long routeSeconds = routeEstimator.estimateRouteSeconds(
+                        rule, modelConfig, fileSizeBytes, sourceChars, availableSourceChars);
                 plan.addRoute(rule.getAiDefinitionKey(), file, rule, routeSeconds, sourceChars, availableSourceChars);
             } else {
                 final long estimatedSeconds =
@@ -232,64 +234,6 @@ public class SourceFileIndexer {
             }
         }
         return plan;
-    }
-
-    /**
-     * Estimates the generation time for one routed file, accounting for the rule's oversize strategy so
-     * the plan ETA stays realistic for huge files (the per-call cost is bounded by the model window, not
-     * the raw file size). A file that fits the window uses the normal size-based estimate; an over-window
-     * file is estimated per strategy: {@code deterministic} is free, {@code sample}/{@code fail} cost one
-     * window pass, and {@code mapReduce} costs (chunks + reduce) window passes (capped by {@code maxChunks}).
-     *
-     * @param rule                 the routing rule
-     * @param modelConfig          the routed model's config (its {@code <calibration>} is used when present)
-     * @param fileSizeBytes        the file size in bytes
-     * @param sourceChars          the source length in characters
-     * @param availableSourceChars the per-call source-character budget of the routed model+prompt
-     * @return the estimated seconds
-     */
-    private long estimateRouteSeconds(
-            final AiFieldGenerationConfig rule,
-            final AiGenerationConfig modelConfig,
-            final long fileSizeBytes,
-            final long sourceChars,
-            final long availableSourceChars) {
-        if (sourceChars <= availableSourceChars) {
-            return estimateSeconds(fileSizeBytes, modelConfig);
-        }
-        final long windowSeconds = estimateSeconds(availableSourceChars, modelConfig);
-        final AiOversizeStrategy strategy = rule.getOversizeStrategy();
-        if (strategy == AiOversizeStrategy.DETERMINISTIC) {
-            return 0L;
-        }
-        if (strategy == AiOversizeStrategy.MAP_REDUCE) {
-            final long denom = Math.max(1L, availableSourceChars);
-            final long naturalChunks = Math.max(1L, (sourceChars + denom - 1) / denom);
-            final long chunks = rule.getMaxChunks() > 0 ? Math.min(rule.getMaxChunks(), naturalChunks) : naturalChunks;
-            return (chunks + 1) * windowSeconds;
-        }
-        return windowSeconds;
-    }
-
-    /**
-     * Estimates one generation's seconds for the given char count, using the model's {@code <calibration>}
-     * (measured per-machine throughput) when present and valid, otherwise the estimator's built-in model.
-     *
-     * @param chars       the character count to estimate for
-     * @param modelConfig the routed model's config (may carry a calibration)
-     * @return the estimated seconds
-     */
-    private long estimateSeconds(final long chars, final AiGenerationConfig modelConfig) {
-        final int cappedChars = (int) Math.min(chars, Integer.MAX_VALUE);
-        final AiCalibration calibration = modelConfig.getCalibration();
-        if (calibration == null) {
-            return timeEstimator.estimateSeconds(cappedChars);
-        }
-        return timeEstimator.estimateSecondsCalibrated(
-                cappedChars,
-                calibration.getPrefillTokensPerSecond(),
-                calibration.getDecodeTokensPerSecond(),
-                calibration.getCharsPerToken());
     }
 
     /**
@@ -330,7 +274,9 @@ public class SourceFileIndexer {
 
         final Path sourceFileNamePath = sourceFile.getFileName();
         final String fileName = sourceFileNamePath != null ? sourceFileNamePath.toString() : sourceFile.toString();
-        final String checksum = checksumSupport.calculateCrc32Hex(sourceFile);
+        // read once, with \n line endings: the checksum, the prompt and the facts see the same text
+        final String sourceText = readSource(sourceFile);
+        final String checksum = checksumSupport.calculateCrc32Hex(sourceText);
         final String sourceModified =
                 timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
@@ -349,8 +295,6 @@ public class SourceFileIndexer {
             LOGGER.info("Unchanged AI index file: {}", targetFile);
             return AiIndexOutcome.UNCHANGED;
         }
-
-        final String sourceText = compatibilityHelper.readString(sourceFile);
 
         final AiGenerationResult result = support.generate(rule, sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
         if (!result.complete()) {
@@ -385,6 +329,18 @@ public class SourceFileIndexer {
     }
 
     /**
+     * Reads a source file as the run sees it: UTF-8, with every line ending made {@code \n}, so a
+     * working copy with {@code \r\n} has the checksum, the window and the prompt of one with {@code \n}.
+     *
+     * @param file the source file
+     * @return its text
+     * @throws IOException if it cannot be read
+     */
+    private String readSource(final Path file) throws IOException {
+        return AiSourceLines.normalize(compatibilityHelper.readString(file));
+    }
+
+    /**
      * Returns {@code true} when {@code path} matches a configured exclude glob. The path is
      * relativised against {@link #baseDirectory} and normalised to {@code /} separators before matching.
      *
@@ -414,27 +370,6 @@ public class SourceFileIndexer {
             return false;
         }
         return true;
-    }
-
-    /**
-     * Counts the lines in {@code text} for the line-based prompt selector: the number of newline
-     * characters, plus one when the text is non-empty and does not end with a newline (so a trailing
-     * newline does not add a phantom empty line). An empty file counts as zero lines.
-     *
-     * @param text the source text
-     * @return the line count
-     */
-    private int countLines(final String text) {
-        if (text.isEmpty()) {
-            return 0;
-        }
-        int newlines = 0;
-        for (int i = 0; i < text.length(); i++) {
-            if (text.charAt(i) == '\n') {
-                newlines++;
-            }
-        }
-        return text.charAt(text.length() - 1) == '\n' ? newlines : newlines + 1;
     }
 
     private boolean matchesExtension(final Path path) {

@@ -728,7 +728,11 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement</param>
                         <param>net.ladenthin.srcmorph.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexPlan</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexTally</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiMapReduceSupport</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiOverflowBackoff</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiRouteEstimator</param>
                         <param>net.ladenthin.srcmorph.document.AiGenerationRequest</param>
                         <param>net.ladenthin.srcmorph.document.AiGenerationResult</param>
                         <param>net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter</param>
@@ -760,6 +764,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.config.AiFactExtractor</param>
                         <param>net.ladenthin.srcmorph.support.AiChecksumSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiDeterministicSummary</param>
+                        <param>net.ladenthin.srcmorph.support.AiSourceLines</param>
                         <param>net.ladenthin.srcmorph.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.srcmorph.support.AiPathSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiProfileFileSupport</param>
@@ -769,6 +774,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.support.Java8CompatibilityHelper</param>
                         <param>net.ladenthin.srcmorph.config.SrcMorphConfiguration</param>
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfig</param>
+                        <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfig$Builder</param>
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory</param>
                                 <param>net.ladenthin.srcmorph.provider.LlamaCppJniProviderSupport</param>
                         <param>net.ladenthin.srcmorph.engine.EngineSupport</param>

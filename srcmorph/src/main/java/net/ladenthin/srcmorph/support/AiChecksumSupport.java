@@ -3,10 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.support;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.zip.CRC32;
 import lombok.ToString;
 
@@ -17,18 +14,6 @@ public class AiChecksumSupport {
     /** Creates a new {@link AiChecksumSupport}. */
     public AiChecksumSupport() {
         // no-op
-    }
-
-    /**
-     * Computes the CRC32 checksum of the contents of {@code file} as an 8-character hexadecimal string.
-     *
-     * @param file file whose contents are checksummed
-     * @return uppercase 8-character CRC32 hex string
-     * @throws IOException if the file cannot be read
-     */
-    public String calculateCrc32Hex(final Path file) throws IOException {
-        final byte[] bytes = Files.readAllBytes(file);
-        return calculateCrc32Hex(bytes);
     }
 
     /**

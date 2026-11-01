@@ -30,6 +30,8 @@ import net.ladenthin.srcmorph.config.AiFactDefinition;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
+import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -175,19 +177,21 @@ public class GenerateEngineTest {
     private ListAppender<ILoggingEvent> logAppender;
 
     /**
-     * Both loggers that can report a missing subtree. The warning a user actually sees comes from
-     * {@code EngineSupport.resolveSubtrees}, not from {@link GenerateEngine} -- see the test below.
+     * The loggers the tests read: the engine's, the engine support's, and the field generation's, which
+     * reports what an oversize strategy did.
      */
-    private static List<Logger> subtreeLoggers() {
-        return Arrays.asList((Logger) LoggerFactory.getLogger(GenerateEngine.class), (Logger)
-                LoggerFactory.getLogger(EngineSupport.class));
+    private static List<Logger> capturedLoggers() {
+        return Arrays.asList(
+                (Logger) LoggerFactory.getLogger(GenerateEngine.class),
+                (Logger) LoggerFactory.getLogger(EngineSupport.class),
+                (Logger) LoggerFactory.getLogger(AiFieldGenerationSupport.class));
     }
 
     @BeforeEach
     public void attachLogAppender() {
         logAppender = new ListAppender<>();
         logAppender.start();
-        for (final Logger logger : subtreeLoggers()) {
+        for (final Logger logger : capturedLoggers()) {
             logger.setLevel(Level.DEBUG);
             logger.addAppender(logAppender);
         }
@@ -195,7 +199,7 @@ public class GenerateEngineTest {
 
     @AfterEach
     public void detachLogAppender() {
-        for (final Logger logger : subtreeLoggers()) {
+        for (final Logger logger : capturedLoggers()) {
             logger.detachAppender(logAppender);
         }
     }
@@ -518,5 +522,106 @@ public class GenerateEngineTest {
                 assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
 
         assertThat(thrown.getMessage(), containsString("leaves no room for the source in the window of model"));
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="oversize strategies, from the plan to the written file">
+
+    /**
+     * {@link #baseConfig()} plus {@code Big.java}, about 8 800 characters, on a model with a window of
+     * about 3 200, routed by one rule with the given {@code onOversize} and {@code maxChunks} 3.
+     */
+    private SrcMorphConfiguration oversizeConfig(final String onOversize) throws IOException {
+        final SrcMorphConfiguration config = baseConfig();
+        final AiModelDefinition small = mockModelDefinition();
+        // a window of about 3 200 characters: 4 000 tokens of one character, less the output and margin
+        small.setCharsPerToken(1);
+        small.setContextSize(4_000);
+        config.setAiDefinitions(Collections.singletonList(small));
+        final AiFieldGenerationConfig rule = javaFileRule();
+        rule.setOnOversize(onOversize);
+        rule.setMaxChunks(3);
+        config.setFieldGenerations(Collections.singletonList(rule));
+        final StringBuilder big = new StringBuilder();
+        for (int i = 0; i < 400; i++) {
+            big.append("int field").append(i).append(" = ").append(i).append(";\n");
+        }
+        Files.write(
+                tempDir.resolve("src/main/java/com/example/Big.java"),
+                big.toString().getBytes(StandardCharsets.UTF_8));
+        return config;
+    }
+
+    private String writtenBody(final String fileName) throws IOException {
+        return new AiMdDocumentCodec()
+                .read(tempDir.resolve("out/main/java/com/example/" + fileName + ".ai.md"))
+                .body();
+    }
+
+    private boolean logged(final Level level, final String part) {
+        for (final String message : capturedMessages(level)) {
+            if (message.contains(part)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    public void execute_deterministic_writesTheBodyWithoutAModel() throws Exception {
+        final GenerateResult result = new GenerateEngine(oversizeConfig("deterministic")).execute();
+
+        assertThat(result.written(), is(2));
+        assertThat(writtenBody("Big.java"), containsString("summarized deterministically (no AI)"));
+        assertThat(writtenBody("Big.java"), containsString("First 20 lines"));
+        assertThat(writtenBody("Foo.java"), containsString("Mock summary for Foo.java"));
+    }
+
+    @Test
+    public void execute_sample_writesTheSummaryOfTheTrimmedHead() throws Exception {
+        final GenerateResult result = new GenerateEngine(oversizeConfig("sample")).execute();
+
+        assertThat(result.written(), is(2));
+        assertThat(writtenBody("Big.java"), containsString("Mock summary for Big.java"));
+        assertThat(logged(Level.WARN, "Trimmed AI input for file"), is(true));
+    }
+
+    @Test
+    public void execute_mapReduce_summarizesTheChunksAndReducesThem() throws Exception {
+        final GenerateResult result = new GenerateEngine(oversizeConfig("mapReduce")).execute();
+
+        assertThat(result.written(), is(2));
+        assertThat(writtenBody("Big.java"), containsString("Mock summary for Big.java"));
+        assertThat(logged(Level.INFO, "in 3 chunk(s)"), is(true));
+        assertThat(logged(Level.INFO, "mapReduce reduce round 1: 3 -> 1 partial(s)"), is(true));
+    }
+
+    @Test
+    public void execute_fail_stopsAtThePlan() throws Exception {
+        final SrcMorphConfiguration config = oversizeConfig("fail");
+
+        assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+    // </editor-fold>
+
+    /**
+     * A working copy with {@code \r\n} line endings (Windows with {@code core.autocrlf}) has the
+     * checksum of one with {@code \n}: a run over it after a run over the {@code \n} copy finds the
+     * summary up to date.
+     *
+     * @throws Exception if a run fails
+     */
+    @Test
+    public void execute_aCrLfCopyOfASummarizedSource_isUnchanged() throws Exception {
+        final SrcMorphConfiguration config = baseConfig();
+        assertThat(new GenerateEngine(config).execute().written(), is(1));
+        Files.write(
+                tempDir.resolve("src/main/java/com/example/Foo.java"),
+                "class Foo {}\r\n".getBytes(StandardCharsets.UTF_8));
+
+        final GenerateResult again = new GenerateEngine(config).execute();
+
+        assertThat(again.written(), is(0));
+        assertThat(again.unchanged(), is(1));
     }
 }
