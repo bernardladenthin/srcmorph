@@ -12,6 +12,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **The plan shows the source tokens.** Every routed file has an estimated token count (its
+  characters over its model's `charsPerToken`), every model section the sum, and a section sums them per
+  directory, so the plan says where a run's tokens and cost go before it starts.
 - **A record of every run.** With `runRecordFile` set, the file phase writes a JSON record: per routed
   file its rule, prompt, model, outcome, calls, prompt / cached / completion tokens, the finish reason
   of its last call, its wall time and the CRC32 of its prompt and its facts, and the totals

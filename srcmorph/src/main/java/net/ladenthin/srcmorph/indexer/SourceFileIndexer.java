@@ -226,7 +226,17 @@ public class SourceFileIndexer {
                 final long sourceChars = source.length();
                 final long routeSeconds = routeEstimator.estimateRouteSeconds(
                         rule, modelConfig, fileSizeBytes, sourceChars, availableSourceChars, basePromptLength);
-                plan.addRoute(rule.getAiDefinitionKey(), file, rule, routeSeconds, sourceChars, availableSourceChars);
+                final double charsPerToken = modelConfig.getCharsPerToken() > 0
+                        ? modelConfig.getCharsPerToken()
+                        : AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;
+                plan.addRoute(
+                        rule.getAiDefinitionKey(),
+                        file,
+                        rule,
+                        routeSeconds,
+                        sourceChars,
+                        availableSourceChars,
+                        AiIndexPlan.estimatedTokens(sourceChars, charsPerToken));
             } else {
                 final long estimatedSeconds =
                         timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));

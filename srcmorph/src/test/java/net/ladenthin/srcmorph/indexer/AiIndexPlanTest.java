@@ -64,7 +64,9 @@ public class AiIndexPlanTest {
         assertThat(md, containsString("## AI index plan"));
         assertThat(md, containsString("**Total:**"));
         assertThat(md, containsString("### Model `modelA`"));
-        assertThat(md, containsString("| File | Rule | Prompt | Window | Est. |"));
+        assertThat(md, containsString("| File | Rule | Prompt | Window | Tokens | Est. |"));
+        // a route without a window check has neither a window cell nor a token estimate
+        assertThat(md, containsString("| file-body-java | - | - |"));
         assertThat(md, containsString("Foo.java"));
         assertThat(md, containsString("java-small")); // the rule id shows in its own column
         assertThat(md, containsString("file-body-java"));
@@ -217,7 +219,7 @@ public class AiIndexPlanTest {
         // around the table, so a substring check would pass even against an empty window cell.
         assertThat(rendered, containsString("| ok |"));
         assertThat(rendered, containsString("| (!) 9000>1000"));
-        assertThat(rendered, containsString("| - |"));
+        assertThat(rendered, containsString("| p1 | - | - |"));
     }
 
     /**
@@ -239,4 +241,45 @@ public class AiIndexPlanTest {
     }
 
     // </editor-fold>
+
+    @Test
+    public void renderMarkdown_tokensPerFilePerModelAndPerDirectory() {
+        final Path base = Paths.get("base");
+        final AiIndexPlan plan = new AiIndexPlan();
+        plan.addRoute("modelA", base.resolve("a/A1.java"), rule("p1"), 10, 4_000L, 9_000L, 1_000L);
+        plan.addRoute("modelA", base.resolve("a/A2.java"), rule("p1"), 10, 2_000L, 9_000L, 500L);
+        plan.addRoute("modelB", base.resolve("b/c/B.java"), rule("p2"), 10, 800L, 9_000L, 200L);
+        plan.addRoute("modelB", base.resolve("Root.java"), rule("p2"), 10, 40L, 9_000L, 10L);
+        // no window check: no tokens, and no part of the sums
+        plan.addRoute("modelB", base.resolve("b/c/Plain.java"), rule("p2"), 10);
+
+        final String md = plan.renderMarkdown(base);
+
+        assertThat(md, containsString("### Model `modelA` - 2 file(s), ~1500 source tokens, est. "));
+        assertThat(md, containsString("### Model `modelB` - 3 file(s), ~210 source tokens, est. "));
+        assertThat(md, containsString("| ~1000 |"));
+        assertThat(
+                md,
+                containsString("### Source tokens by directory\n\n| Directory | Files | Tokens |\n|---|---|---|\n"
+                        + "| . | 1 | ~10 |\n| a | 2 | ~1500 |\n| b/c | 1 | ~200 |\n"));
+    }
+
+    @Test
+    public void renderMarkdown_noWindowCheckedRoute_noTokenSection() {
+        final AiIndexPlan plan = new AiIndexPlan();
+        plan.addRoute("modelA", Paths.get("Foo.java"), rule("p1"), 10);
+
+        assertThat(plan.renderMarkdown(Paths.get("")).contains("Source tokens by directory"), is(false));
+    }
+
+    @Test
+    public void addRoute_withoutTokens_estimatesThemAtTheDefaultRatio() {
+        final AiIndexPlan plan = new AiIndexPlan();
+        plan.addRoute("modelA", Paths.get("Foo.java"), rule("p1"), 10, 49L, 9_000L);
+
+        // 49 characters at 4.8 per token are 10.2, rounded up
+        assertThat(plan.routesByModel().get("modelA").get(0).sourceTokens(), is(11L));
+        assertThat(AiIndexPlan.estimatedTokens(48L, 4.8d), is(10L));
+        assertThat(AiIndexPlan.estimatedTokens(0L, 3.0d), is(0L));
+    }
 }

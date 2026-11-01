@@ -16,7 +16,6 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-9. **Tokens in the plan.** The plan shows the estimated tokens per file and per directory.
 8. **Benchmark and measurement.** `score.py`: the coverage line out of the scored text like the facts
    line, code fences out of the name recall, common words only in
    backticks, annotated getters, fewer false "invented" names, a `failed` column; the model card
