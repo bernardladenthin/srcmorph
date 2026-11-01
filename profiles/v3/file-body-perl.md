@@ -13,7 +13,7 @@ One or two bullets: what the file is for, script or module.
 Script or module; its package name(s); exported names (@EXPORT, @EXPORT_OK); object-oriented (bless, constructor) or procedural.
 
 #### Input
-Command-line options by the exact name a user types (Getopt::Long specs such as `max-age=i`) and the variable each sets, @ARGV arguments, every %ENV key it reads with its default, the files and handles it reads.
+Command-line options by the exact name a user types (`--max-age` for the Getopt::Long spec `max-age=i`) and the variable each sets, @ARGV arguments, every %ENV key it reads with its default, the files and handles it reads.
 
 #### Output
 What comes out: return values, printed output and its formats, files written, exit statuses.
@@ -36,7 +36,7 @@ die, croak and confess conditions, eval blocks, error return values.
 ## Rules
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Write sub, variable, option and module names exactly as in the source, in backticks.
-- POD, heredocs and everything after `__END__` are documentation or data: use them to understand the purpose, but do not list a sub or a name that occurs only there as code.
+- POD, heredocs and everything after `__END__` or `__DATA__` are documentation or data: use them to understand the purpose, but do not list a sub or a name that occurs only there as code.
 - No code fences, no ```markdown / ```perl, no XML tags, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 

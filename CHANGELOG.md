@@ -30,10 +30,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   named in Perl's POD, a function or a `set -e` inside a shell heredoc, a commented-out POM dependency
   or an `INSERT` in a SQL block comment then no longer counts, while `^` anchors see the same lines.
   `AiFactExtractor.counts` returns the counts by label; a facts file of ignore lines only is refused.
+  Several ignore lines blank in file order, so the profile's files have one per language, an
+  alternation of all its regions where the one that starts first wins, as in a lexer (a `<!--` inside
+  CDATA, POD inside a Perl heredoc or a `/*` inside a SQL string opens nothing), and their counters
+  anchor with `^[ \t]*`, not `^\s*`, which is quadratic over the line breaks a long blanked region
+  leaves (a 40 000-line SQL comment: 44 s before, 0.05 s now).
 - **Fact files for shell, Perl and XML: `shell-facts`, `perl-facts`, `xml-facts`, `pom-facts`.** Bash,
-  POSIX sh and ksh93 (functions, getopts loops and option arms, named positional parameters,
-  exported, readonly and defaulted variables, script-level assignments, sourced files, traps,
-  `set -e`, exit statuses, ksh `typeset` and discipline functions), Perl (packages, subs, modules
+  POSIX sh and ksh93 (functions, getopts loops and their option letters, dash-option case arms,
+  named positional parameters, exported and readonly variables by name, defaulted variables,
+  script-level assignments, sourced files, traps, `set -e`, exit statuses, ksh `typeset` and
+  discipline functions), Perl (packages, subs, modules
   used and required, `use constant`, `our` and file-scope `my`, `%ENV` keys, `GetOptions`, `die` /
   `croak` / `confess`), XML (elements, namespaces, `id` / `name` attributes, XSD types, XSLT
   templates, Spring beans) and Maven POMs (dependencies, managed sections, plugins, modules,
@@ -48,12 +54,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   lower-case and derived ones too), every function and the tables or hosts of its heredocs; the
   Perl prompt for subs, `Getopt::Long` options, `%ENV` keys, constants and imports; the XML prompt
   for what the file defines by kind (POM, Spring context, XSD, XSLT, other data). On the
-  benchmark's language corpus gpt-oss-20b went from 95.7 to 99.3 % over three runs, GPT-6 Luna
-  from 99.6 to 100 %; the other two corpora stayed within their run-to-run variation
-  (`profiles/README.md`, model card finding 7). The self-test's `shell`, `perl`, `pom` and `xml`
-  rules and the example configuration use them; the Granite tiers for big XML stay on
-  `file-body-fallback`, since both Granite models named fewer of a catalog's elements with the XML
-  prompt.
+  benchmark's language corpus gpt-oss-20b went from 95.7 to 97.7 % over six runs (99.1 % without
+  one empty answer of the provider), GPT-6 Luna from 99.6 to 99.9 %; on the other two corpora
+  gpt-oss lost a few names of unchanged Java and SQL prompts, which three runs cannot tell from
+  variation (`profiles/README.md`, model card finding 7). The self-test's `shell`, `perl`, `pom`
+  and `xml` rules and the example configuration use them; the Granite tiers for big XML stay on
+  `file-body-fallback` for now, since both Granite models named fewer of a catalog's elements with
+  the XML prompt (one run each).
 - **Benchmark: a language corpus, a large-file corpus and the fact counters in `run.py`.**
   `docs/ai-index-benchmark/corpus-languages/` holds nine files written for it (Perl, Bash, ksh93,
   POSIX sh, a POM, a Spring context, an XSD, an XSLT), with their expected names in
@@ -176,8 +183,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   found missing: `INSERT statements` counts MySQL's `INSERT IGNORE` / `LOW_PRIORITY` and
   `REPLACE INTO`, views, routines and triggers Oracle's `EDITIONABLE` / `FORCE`, `indexes`
   `FULLTEXT` / `SPATIAL` / `BITMAP`; `sequences`, `extensions`, `schemas and databases` and
-  `packages and package bodies` are new, and `/* ... */` block comments are ignored (MySQL's `/*! */`
-  and Oracle's `/*+ */` are not, they hold SQL).
+  `packages and package bodies` are new, and `--` comments, string literals and `/* ... */` block
+  comments are ignored in one pass (MySQL's `/*! */` and Oracle's `/*+ */` are not, they hold SQL;
+  an unclosed `/*` comments out the rest of the file).
 - **Dependencies and build plugins:** logback-classic 1.6.6 (test scope), NullAway 0.14.3,
   maven-surefire-plugin 3.6.1, jacoco-maven-plugin 0.8.16, palantir-java-format 2.103.0 (no formatting
   change) and `anthropics/claude-code-action` v1.0.264.

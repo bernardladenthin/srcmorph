@@ -3,21 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Perl fact counters: one per line, label TAB pattern (Java regex), counted over the whole file. The
-# [ignore] lines run first: they blank POD, everything after __END__ / __DATA__, heredoc bodies and
-# comment lines (keeping the line breaks), so a sub named in the documentation or in a usage text does
-# not count. Counts are regex heuristics: a sub generated with eval or a glob assignment is not seen.
-# PerlFactPatternsTest pins every case.
-[ignore] POD	(?ms)^=[a-zA-Z]\w*\b.*?(?:^=cut\b[^\n]*|\z)
-[ignore] __END__ and __DATA__	(?ms)^__(?:END|DATA)__\b.*\z
-[ignore] heredoc bodies	(?ms)<<~?[ \t]*(["']?)([A-Za-z_]\w*)\1[^\n]*\n.*?^[ \t]*\2[ \t]*$
-[ignore] comment lines	(?m)^[ \t]*#[^\n]*
+# [ignore] line runs first and reads the file as perl does, leftmost region first: it blanks POD,
+# everything after __END__ / __DATA__, heredoc bodies (<<"EOT", <<'EOT', <<\EOT, <<EOT, <<~EOT) and
+# comment lines, keeping the line breaks, so a sub named in the documentation or in a usage text does
+# not count, and a heredoc marker inside a comment or POD inside a heredoc opens nothing. Counts are
+# regex heuristics: a sub generated with eval or a glob assignment is not seen, and of two heredocs
+# started on one line (print <<A, <<B;) only the first body is blanked. "die, croak and confess"
+# counts the calls that start a statement or follow or / and / || / && / //, so the German article in
+# a message does not count. PerlFactPatternsTest pins every case.
+[ignore] POD, __END__, heredoc bodies and comment lines	(?ms)^=[a-zA-Z]\w*\b.*?(?:^=cut\b[^\n]*|\z)|^__(?:END|DATA)__\b.*\z|<<(?:~[ \t]*)?(?:\\([A-Za-z_]\w*)|(["'])([A-Za-z_]\w*)\2|([A-Za-z_]\w*))[^\n]*\n.*?^[ \t]*(?:\1|\3|\4)[ \t]*$|^[ \t]*#[^\n]*
 packages	(?m)^[ \t]*package[ \t]+[A-Za-z_]\w*(?:::\w+)*
-subs	(?m)^[ \t]*(?:(?:my|our|state)[ \t]+)?sub[ \t]+[A-Za-z_]\w*(?:::\w+)*[ \t]*(?:\([^)]*\)[ \t]*)?(?::[ \t]*\w+(?:\([^)]*\))?[ \t]*)*(?:\{|$)
+subs	(?m)^[ \t]*(?:(?:my|our|state)[ \t]+)?sub[ \t]+[A-Za-z_]\w*(?:::\w+)*(?:[ \t]*\((?:[^()]|\([^()]*\))*\))?(?:[ \t]*:[ \t]*\w+(?:\([^)]*\))?)*(?:[ \t]*\((?:[^()]|\([^()]*\))*\))?[ \t]*(?:\{|$)
 modules used	(?m)^[ \t]*use[ \t]+[A-Z]\w*(?:::\w+)*
-modules required	(?m)^[ \t]*require[ \t]+(?:[A-Za-z_]\w*(?:::\w+)*|["'][^"'\n]+["'])
+modules required	(?m)^[ \t]*require[ \t]+(?:(?!v\d)[A-Za-z_]\w*(?:::\w+)*|["'][^"'\n]+["'])
 use constant statements	(?m)^[ \t]*use[ \t]+constant\b
 package variables (our)	(?m)^[ \t]*our[ \t]+(?:\([^)]*\)|[$@%]\w+)
 file-scope lexicals (my at column 0)	(?m)^my[ \t]+(?:\([^)]*\)|[$@%]\w+)
 environment variables read	\$ENV\{[ \t]*['"]?\w+['"]?[ \t]*\}
 GetOptions calls	\bGetOptions(?:FromArray|FromString)?[ \t]*\(
-die, croak and confess	\b(?:die|croak|confess)\b
+die, croak and confess	(?m)(?:^[ \t]*|[;{}][ \t]*|\b(?:or|and)[ \t]+|(?:\|\||&&|//)[ \t]*)(?:die|croak|confess)\b(?![ \t]*=>)

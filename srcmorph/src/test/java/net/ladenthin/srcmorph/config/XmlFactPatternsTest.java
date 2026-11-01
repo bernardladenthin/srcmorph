@@ -68,6 +68,21 @@ public class XmlFactPatternsTest {
     }
 
     @Test
+    public void elements_commentOpenerInsideCdata_opensNothing() {
+        assertThat(count(XML, "elements", "<r><![CDATA[ <!-- ]]><b/><c/><!-- c --><d/></r>\n"), is(4));
+    }
+
+    @Test
+    public void elements_cdataOpenerInsideAComment_opensNothing() {
+        assertThat(count(XML, "elements", "<r><!-- <![CDATA[ --><b/><c/><![CDATA[ x ]]><d/></r>\n"), is(4));
+    }
+
+    @Test
+    public void elements_markupInAProcessingInstruction_doesNotCount() {
+        assertThat(count(XML, "elements", "<?php echo \"<b>\"; ?>\n<r/>\n"), is(1));
+    }
+
+    @Test
     public void namespaceDeclarations_defaultAndPrefixed_count() {
         assertThat(
                 count(
@@ -83,6 +98,16 @@ public class XmlFactPatternsTest {
         assertThat(
                 count(XML, "id and name attributes", "<bean id=\"a\" name=\"b\"/>\n<x pid=\"c\" names=\"d\"/>\n"),
                 is(2));
+    }
+
+    @Test
+    public void idAndNameAttributes_prefixedOnesCountANamespaceDeclarationDoesNot() {
+        assertThat(
+                count(
+                        XML,
+                        "id and name attributes",
+                        "<TextView android:id=\"@+id/t\" android:name=\"n\" xml:id=\"i\" xmlns:name=\"urn:x\"/>\n"),
+                is(3));
     }
 
     @Test
@@ -103,14 +128,17 @@ public class XmlFactPatternsTest {
                         XML,
                         "XSLT templates",
                         "<xsl:template match=\"/\">\n<xsl:call-template name=\"x\"/>\n"
-                                + "<xsl:apply-templates/>\n</xsl:template>\n<xsl:template name=\"x\"/>\n"),
+                                + "<xsl:apply-templates/>\n</xsl:template>\n<xsl:template name=\"x\"/>\n<templates/>\n"),
                 is(2));
     }
 
     @Test
     public void springBeans_beanElementsCountTheBeansRootDoesNot() {
         assertThat(
-                count(XML, "Spring beans", "<beans>\n<bean id=\"a\"/>\n<!-- <bean id=\"old\"/> -->\n</beans>\n"),
+                count(
+                        XML,
+                        "Spring beans",
+                        "<beans>\n<bean id=\"a\"/>\n<!-- <bean id=\"old\"/> -->\n<bean-name>x</bean-name>\n</beans>\n"),
                 is(1));
     }
     // </editor-fold>
@@ -167,6 +195,8 @@ public class XmlFactPatternsTest {
     @Test
     public void corpus_shipmentXsd() {
         final String source = ProfileFactPatterns.languageCorpusFile("other/xml/shipment.xsd");
+        assertThat(count(XML, "elements", source), is(31));
+        assertThat(count(XML, "id and name attributes", source), is(20));
         assertThat(count(XML, "XSD type definitions", source), is(5));
         assertThat(count(XML, "namespace declarations", source), is(2));
     }
@@ -174,12 +204,15 @@ public class XmlFactPatternsTest {
     @Test
     public void corpus_statementToHtmlXsl() {
         final String source = ProfileFactPatterns.languageCorpusFile("other/xml/statement-to-html.xsl");
+        assertThat(count(XML, "elements", source), is(34));
+        assertThat(count(XML, "id and name attributes", source), is(8));
         assertThat(count(XML, "XSLT templates", source), is(4));
     }
 
     @Test
     public void corpus_invoiceServicePom() {
         final String source = ProfileFactPatterns.languageCorpusFile("other/xml/invoice-service-pom.xml");
+        assertThat(count(XML, "elements", source), is(59));
         assertThat(count(POM, "dependencies", source), is(6));
         assertThat(count(POM, "managed dependency sections", source), is(0));
         assertThat(count(POM, "plugins", source), is(2));

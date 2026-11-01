@@ -5,7 +5,9 @@ package net.ladenthin.srcmorph.config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,11 +19,19 @@ import org.junit.jupiter.api.Test;
  * through {@link ProfileFactPatterns}, so the shipped file is what is tested) on PostgreSQL, MySQL and
  * T-SQL shapes, in the real {@link java.util.regex} engine {@code AiFactExtractor} uses. Each counter
  * gets the forms it has to see and the near misses it must not count; the approximate one ("VALUES
- * rows (approx)") gets its known over- and undercount pinned, so a change to it is a decision.
+ * rows (approx)") gets its known over- and undercount pinned, so a change to it is a decision. The
+ * {@code [ignore]} line reads the file as a lexer does; the last tests pin its regions and that a
+ * long blanked region stays linear.
  */
 public class SqlFactPatternsTest {
 
     private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("sql-facts");
+
+    /** Lines of the long inputs of the run-time tests. */
+    private static final int LONG_INPUT_LINES = 40_000;
+
+    /** What a long input may take; the quadratic patterns these tests replaced took about 44 s. */
+    private static final Duration LONG_INPUT_LIMIT = Duration.ofSeconds(10);
 
     private static int count(final String label, final String sql) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(COUNTERS, sql);
@@ -95,6 +105,89 @@ public class SqlFactPatternsTest {
     @Test
     public void insertStatements_afterAnInlineBlockComment_count() {
         assertThat(count("INSERT statements", "/* seed */ INSERT INTO t VALUES (1);\n"), is(1));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="comments and string literals">
+    @Test
+    public void ignore_blockCommentOpenerInAStringLiteral_opensNothing() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT INTO t VALUES ('/*');\nINSERT INTO t VALUES (2);\nINSERT INTO t VALUES (3);\n"
+                                + "/* real */\n"),
+                is(3));
+    }
+
+    @Test
+    public void ignore_blockCommentOpenerInADashComment_opensNothing() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "-- TODO /* fix\nINSERT INTO t VALUES (1);\nINSERT INTO t VALUES (2);\n/* real */\n"),
+                is(2));
+    }
+
+    @Test
+    public void ignore_doubledAndBackslashEscapedQuotes_stayInsideTheLiteral() {
+        final String sql = "INSERT INTO t VALUES ('O\\'Brien /* x'),('b');\nINSERT INTO t VALUES ('it''s */ ok');\n";
+        assertThat(count("INSERT statements", sql), is(2));
+        assertThat(count("VALUES rows (approx)", sql), is(3));
+    }
+
+    @Test
+    public void ignore_dashesInAStringLiteral_areNoComment() {
+        assertThat(
+                count("INSERT statements", "INSERT INTO t VALUES ('a -- b'), ('c');\nINSERT INTO t VALUES ('d');\n"),
+                is(2));
+    }
+
+    @Test
+    public void ignore_unclosedBlockComment_commentsOutTheRest() {
+        assertThat(
+                count("INSERT statements", "INSERT INTO t VALUES (1);\n/* never closed\nINSERT INTO t VALUES (2);\n"),
+                is(1));
+    }
+
+    @Test
+    public void ignore_mySqlVersionCommentAndOracleHint_stay() {
+        final String sql = "/*!40101 SET NAMES utf8 */;\n/*!50001 CREATE VIEW v AS SELECT 1 */;\n"
+                + "/* CREATE TABLE fake (x int); */\nCREATE TABLE real_t (x int);\n";
+        assertThat(count("tables", sql), is(1));
+        // the version comment's view does not start its line, so it is not seen either way
+        assertThat(count("views", sql), is(0));
+    }
+
+    @Test
+    public void ignore_longBlockComment_staysLinear() {
+        final StringBuilder sql = new StringBuilder("/*\n");
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            sql.append("INSERT INTO old VALUES (").append(i).append(");\n");
+        }
+        sql.append("*/\nINSERT INTO t VALUES (1);\n");
+        assertThat(
+                assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("INSERT statements", sql.toString())), is(1));
+    }
+
+    @Test
+    public void ignore_manyBlockCommentOpenersInStringLiterals_stayLinear() {
+        final StringBuilder sql = new StringBuilder();
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            sql.append("INSERT INTO routes (p) VALUES ('/api/*');\n");
+        }
+        assertThat(
+                assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("INSERT statements", sql.toString())),
+                is(LONG_INPUT_LINES));
+    }
+
+    @Test
+    public void statements_afterManyBlankLines_stayLinear() {
+        final StringBuilder sql = new StringBuilder();
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            sql.append('\n');
+        }
+        sql.append("  CREATE TABLE t (x int);\n");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("tables", sql.toString())), is(1));
     }
     // </editor-fold>
 

@@ -38,7 +38,8 @@ public class ShellFactPatternsTest {
                 is(Arrays.asList(
                         "functions",
                         "getopts loops",
-                        "option case arms",
+                        "getopts option letters",
+                        "dash-option case arms",
                         "named positional parameters",
                         "exported variables",
                         "readonly variables",
@@ -79,6 +80,30 @@ public class ShellFactPatternsTest {
     }
 
     @Test
+    public void functions_heredocWithAnyEndWord_isBlanked() {
+        assertThat(count("functions", "cat <<!\nfake() {\nexit 1\n!\nreal() {\n}\n"), is(1));
+        assertThat(count("functions", "psql <<'END-OF-SQL'\nfake() {\nEND-OF-SQL\nreal() {\n}\n"), is(1));
+        assertThat(count("functions", "cat <<\\EOF\nfake() {\nEOF\nreal() {\n}\n"), is(1));
+    }
+
+    @Test
+    public void functions_heredocEndMarker_standsAloneAfterTabsOnlyForDash() {
+        // an indented marker does not end a plain heredoc, nor a space-indented one a <<- heredoc
+        assertThat(count("functions", "cat <<EOF\nfake() {\n  EOF\nother() {\nEOF\nreal() {\n}\n"), is(1));
+        assertThat(count("functions", "cat <<-EOF\n\tfake() {\n  EOF\n\tother() {\n\tEOF\nreal() {\n}\n"), is(1));
+    }
+
+    @Test
+    public void functions_heredocMarkerInsideAComment_opensNothing() {
+        assertThat(count("functions", "# see cat <<EOF below\na() {\n}\ncat <<EOF\nfake() {\nEOF\nb() {\n}\n"), is(2));
+    }
+
+    @Test
+    public void functions_heredocWithCrLfLineEnds_isBlanked() {
+        assertThat(count("functions", "cat <<EOF\r\nfake() {\r\nEOF\r\nreal() {\r\n}\r\n"), is(1));
+    }
+
+    @Test
     public void functions_hereString_isNoHeredoc() {
         assertThat(count("functions", "read x <<< \"$y\"\nf() {\n}\n"), is(1));
     }
@@ -93,10 +118,20 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void optionCaseArms_dashOptions_countAndBareWordsAndCatchAllsDoNot() {
+    public void getoptsOptionLetters_everyLetterOfTheOptionString_counts() {
         assertThat(
                 count(
-                        "option case arms",
+                        "getopts option letters",
+                        "while getopts \":hv:o:\" opt; do\ndone\nwhile getopts ab: o; do :; done\n"
+                                + "getopts \"$OPTS\" opt\n"),
+                is(5));
+    }
+
+    @Test
+    public void dashOptionCaseArms_dashOptions_countAndBareWordsAndCatchAllsDoNot() {
+        assertThat(
+                count(
+                        "dash-option case arms",
                         "case \"$1\" in\n  -h|--help) usage ;;\n  -o|--output) OUT=\"$2\"; shift ;;\n"
                                 + "  --dry-run=*) DRY=1 ;;\n  -*) die ;;\n  *) break ;;\n  start) go ;;\nesac\n"),
                 is(3));
@@ -115,12 +150,22 @@ public class ShellFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="variables">
     @Test
-    public void exportedVariables_exportAndDeclareX_count() {
+    public void exportedVariables_exportAndDeclareX_countAndFunctionsDoNot() {
         assertThat(
                 count(
                         "exported variables",
-                        "export PATH=\"$PATH:/opt\"\nexport JAVA_HOME\ndeclare -x LANG=C\nexport -f myfn\n"),
-                is(4));
+                        "export PATH=\"$PATH:/opt\"\nexport JAVA_HOME\ndeclare -x LANG=C\nexport -f myfn\n"
+                                + "export -n GONE\nexport -p\n"),
+                is(3));
+    }
+
+    @Test
+    public void exportedVariables_everyNameOfALine_counts() {
+        assertThat(
+                count(
+                        "exported variables",
+                        "export A=1 B=2\nexport PATH=\"$PATH:/opt\" X\nexport X=$(cat f) Y=\"a b\"\n"),
+                is(6));
     }
 
     @Test
@@ -131,6 +176,11 @@ public class ShellFactPatternsTest {
                         "readonly VERSION=1.2\ndeclare -r MAX=5\ndeclare -ir N=3\ntypeset -r K=1\n"
                                 + "readonly -a ARR=(1 2)\n"),
                 is(5));
+    }
+
+    @Test
+    public void readonlyVariables_everyNameAndLocalR_countAndFunctionsDoNot() {
+        assertThat(count("readonly variables", "readonly A B C\nreadonly -f fn\nlocal -r x=1\n"), is(4));
     }
 
     @Test
@@ -170,6 +220,16 @@ public class ShellFactPatternsTest {
     }
 
     @Test
+    public void setE_afterOtherOptionWords_counts() {
+        assertThat(
+                count(
+                        "set -e",
+                        "set -x -e\nset -u -e\nset -o pipefail -o errexit\nset -o nounset -o errexit\n"
+                                + "set -eo pipefail\nset -o pipefail\nset -- -e\n"),
+                is(5));
+    }
+
+    @Test
     public void exitStatementsWithAStatus_onlyLiteralStatuses() {
         assertThat(count("exit statements with a status", "exit 0\n[ -f x ] || exit 2\nexit \"$rc\"\nexit\n"), is(2));
     }
@@ -198,6 +258,9 @@ public class ShellFactPatternsTest {
         final String source = ProfileFactPatterns.languageCorpusFile("other/shell/deploy_release.sh");
         assertThat(count("functions", source), is(8));
         assertThat(count("getopts loops", source), is(1));
+        // e, t, n, p and h; the options are getopts letters, so no case arm starts with a dash
+        assertThat(count("getopts option letters", source), is(5));
+        assertThat(count("dash-option case arms", source), is(0));
         assertThat(count("named positional parameters", source), is(2));
         assertThat(count("exported variables", source), is(1));
         assertThat(count("readonly variables", source), is(1));
@@ -208,6 +271,8 @@ public class ShellFactPatternsTest {
         // the remote script's "set -e" sits in a heredoc and is blanked
         assertThat(count("set -e", source), is(1));
         assertThat(count("exit statements with a status", source), is(3));
+        assertThat(count("typeset declarations", source), is(0));
+        assertThat(count("ksh discipline functions", source), is(0));
     }
 
     @Test
@@ -215,6 +280,8 @@ public class ShellFactPatternsTest {
         final String source = ProfileFactPatterns.languageCorpusFile("other/shell/nightly_extract.ksh");
         assertThat(count("functions", source), is(5));
         assertThat(count("getopts loops", source), is(1));
+        assertThat(count("getopts option letters", source), is(2));
+        assertThat(count("dash-option case arms", source), is(0));
         assertThat(count("named positional parameters", source), is(2));
         assertThat(count("exported variables", source), is(2));
         assertThat(count("readonly variables", source), is(2));
@@ -222,6 +289,9 @@ public class ShellFactPatternsTest {
         assertThat(count("script-level assignments", source), is(1));
         assertThat(count("exit statements with a status", source), is(1));
         assertThat(count("typeset declarations", source), is(10));
+        assertThat(count("traps", source), is(0));
+        assertThat(count("sourced files", source), is(0));
+        assertThat(count("set -e", source), is(0));
     }
 
     @Test
@@ -232,6 +302,8 @@ public class ShellFactPatternsTest {
         assertThat(count("script-level assignments", source), is(4));
         assertThat(count("exit statements with a status", source), is(4));
         assertThat(count("set -e", source), is(0));
+        assertThat(count("getopts loops", source), is(0));
+        assertThat(count("dash-option case arms", source), is(0));
     }
     // </editor-fold>
 }

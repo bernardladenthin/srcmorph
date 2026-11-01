@@ -52,6 +52,15 @@ in a shell heredoc, a commented-out POM dependency or an `INSERT` inside a SQL b
 out of the counts. An ignore line is not reported, and a file of ignore lines only is refused. In a
 configuration the same is a counter with `ignore: true`.
 
+Several ignore lines blank in file order, each over the text the one before left, so a region that
+can hold another one's opener (a `<!--` inside CDATA, POD or `__END__` inside a Perl heredoc, a `/*`
+inside a SQL string) would be cut at the wrong place. The files here therefore have one ignore line
+per language, an alternation of all its regions: the region that starts first wins, as in a lexer.
+Blanking removes the characters, so `INSERT/* x */INTO` reads as `INSERTINTO`. A counter anchored at
+a line start allows spaces and tabs there (`^[ \t]*`), never `\s*`: a blanked region leaves a run of
+line breaks, and `^\s*` over one is quadratic (a 40 000-line block comment took 44 s, now 0.05 s;
+`SqlFactPatternsTest` pins it).
+
 The counters are regex heuristics, and their labels say so where they are approximate. The tests read
 these files, not copies, and count through the production extractor, so the ignore lines apply:
 `SqlFactPatternsTest` pins every SQL counter on PostgreSQL, MySQL, T-SQL and Oracle forms (including
@@ -62,7 +71,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `sql-facts` | Counts |
 |---|---|
-| `[ignore] block comments` | `/* ... */`, but not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL |
+| `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL |
 | `INSERT statements` | `INSERT INTO` at the start of a line, also `INSERT IGNORE` / `LOW_PRIORITY` and `REPLACE INTO` |
 | `VALUES rows (approx)` | the row tuples of `VALUES` lists, so a multi-row `INSERT` counts each row; rows an `INSERT ... SELECT` reads from a table are not seen |
 | `tables`, `views`, `indexes` | `CREATE` statements, also `TEMP`/`UNLOGGED` tables, `MATERIALIZED`, `OR REPLACE`/`OR ALTER` and Oracle's `FORCE EDITIONABLE` views, `UNIQUE`/`CLUSTERED`/`FULLTEXT`/`SPATIAL`/`BITMAP` indexes |
@@ -73,27 +82,27 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `shell-facts` (Bash, sh, ksh93) | Counts |
 |---|---|
-| `[ignore]` comment lines, heredoc bodies | a whole-line `#` comment; a heredoc from `<<` to its end marker, quoted or `<<-` indented |
+| `[ignore]` comment lines and heredoc bodies | a whole-line `#` comment; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-` |
 | `functions` | `name()`, `name ()` and `function name` definitions |
-| `getopts loops`, `option case arms` | `getopts` calls; `case` arms of `-x` / `--long` options |
+| `getopts loops`, `getopts option letters`, `dash-option case arms` | `getopts` calls; each letter of a literal option string; `case` arms of `-x` / `--long` options, as a hand-written option loop has them |
 | `named positional parameters` | an argument assigned to a name (`SRC="$1"`, `local mode=${3:-fast}`) |
-| `exported variables`, `readonly variables`, `defaulted variables` | `export` / `declare -x`; `readonly` / `declare -r` / `typeset -r`; `${NAME:-default}` and `${NAME:=default}` |
+| `exported variables`, `readonly variables`, `defaulted variables` | every name of an `export` / `declare -x` line, not `export -f` / `-n`; every name of a `readonly` / `declare -r` / `typeset -r` / `local -r` line, not `readonly -f`; `${NAME:-default}` and `${NAME:=default}` |
 | `script-level assignments` | an assignment at column 0 |
 | `sourced files`, `traps`, `set -e`, `exit statements with a status` | `source` / `.`; `trap` (not `trap -p`); `set -e` / `-o errexit`; `exit` with a literal status |
 | `typeset declarations`, `ksh discipline functions` | ksh93's `typeset`; `function name.get` / `.set` / `.unset` / `.append` |
 
 | `perl-facts` | Counts |
 |---|---|
-| `[ignore]` POD, `__END__`/`__DATA__`, heredoc bodies, comment lines | from a `=word` line to `=cut`; from `__END__` to the end; `<<"END"`, `<<~END` bodies; whole-line `#` comments |
-| `packages`, `subs` | `package` statements and blocks; named, lexical (`my sub`), signature and attribute subs, not anonymous subs or forward declarations |
-| `modules used`, `modules required` | `use Some::Module` (not pragmas or versions); `require Module` / `require 'file'` |
+| `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<<\END`, `<<END`, `<<~END` bodies; whole-line `#` comments; leftmost first |
+| `packages`, `subs` | `package` statements and blocks; named, lexical (`my sub`), signature and attribute subs (`sub f :prototype($$) ($x, $y)`), not anonymous subs or forward declarations |
+| `modules used`, `modules required` | `use Some::Module` (not pragmas or versions); `require Module` / `require 'file'` (not versions) |
 | `use constant statements`, `package variables (our)`, `file-scope lexicals (my at column 0)` | each `use constant`; `our` declarations; a `my` at column 0 |
-| `environment variables read`, `GetOptions calls`, `die, croak and confess` | `$ENV{KEY}`; `GetOptions(...)` and its variants; every mention of the three, an import included |
+| `environment variables read`, `GetOptions calls`, `die, croak and confess` | `$ENV{KEY}`; `GetOptions(...)` and its variants; a call of the three where a statement starts or after `or` / `and` / `\|\|` / `&&` / `//`, so neither `use Carp qw(croak)` nor the German article in a message counts |
 
 | `xml-facts` / `pom-facts` | Counts |
 |---|---|
-| `[ignore]` comments, CDATA sections | `<!-- ... -->`; `<![CDATA[ ... ]]>` (xml-facts only) |
-| `elements`, `namespace declarations`, `id and name attributes` | start tags; `xmlns` / `xmlns:prefix`; `id=` and `name=` attributes |
+| `[ignore]` comments, CDATA and processing instructions | `<!-- ... -->`, `<![CDATA[ ... ]]>` and `<? ... ?>`, leftmost first (xml-facts); `<!-- ... -->` (pom-facts) |
+| `elements`, `namespace declarations`, `id and name attributes` | start tags; `xmlns` / `xmlns:prefix`; `id=` and `name=` attributes, also prefixed ones (`android:id`, `xml:id`) |
 | `XSD type definitions`, `XSLT templates`, `Spring beans` | named `complexType` / `simpleType`; `template` elements (not calls); `bean` elements |
 | `dependencies`, `managed dependency sections`, `plugins`, `modules`, `profiles`, `test-scoped dependencies` | pom-facts: each `<dependency>` (managed and profile ones included), `<dependencyManagement>`, `<plugin>`, `<module>`, `<profile>`, `<scope>test</scope>` |
 
@@ -145,26 +154,39 @@ lower-case ksh variables, a POM's plugins, an XSLT's keys. The prompts ask for t
 The shell prompt took four drafts on gpt-oss: with the first two, it wrote `tmp` without the value it is
 built from (the `.partial` file of the benchmark's backup script); with "each as `name=value`" it
 copied the assignments into a code fence in two of three runs; "one bullet each" kept both. Three
-runs each on OpenRouter, scored as the model card scores (`score.py --facts`):
+runs each on OpenRouter, six with the language prompts on the language corpus, scored as the model
+card scores (`score.py --facts`; outputs in
+[`languages-2026-11/`](../docs/ai-index-benchmark/languages-2026-11/)):
 
 | Corpus | Model | before (`file-body-fallback`) | with the language prompts |
 |---|---|---|---|
-| language corpus | gpt-oss-20b | 95.7 % (95.6 to 96.1) | 99.3 % (98.5 to 100) |
-| language corpus | GPT-6 Luna | 99.6 % (99.3 to 100) | 100 % in all three |
+| language corpus | gpt-oss-20b | 95.7 % (95.6 to 96.1) | 97.7 % (89.5 to 100; 99.1 % without one empty answer) |
+| language corpus | GPT-6 Luna | 99.6 % (99.3 to 100) | 99.9 % (99.3 to 100) |
 | benchmark | gpt-oss-20b | 100 % in all three | 99.6 % (99.0 to 100) |
 | benchmark | GPT-6 Luna | 100 % | 100 % |
 | second | gpt-oss-20b | 99.8 % (99.3 to 100) | 99.5 % (98.5 to 100) |
 | second | GPT-6 Luna | 100 % | 100 % |
 
-On the language corpus gpt-oss's deploy script went from 70 to 100 %, the POM from 85 to 100 %,
-the ksh script from 89 to 98 %. On the other two corpora every miss with the language prompts is
-in a Java or SQL file, whose prompts did not change: gpt-oss's usual variation between runs. No
-run wrote a code fence or a `###` heading in a shell, Perl or XML summary.
+On the language corpus gpt-oss's deploy script went from 70 to 98 %, the POM from 85 to 100 %,
+the ksh script from 89 to 97 % (in the five runs that answered it). Runs 4 to 6 came after one
+wording change in `file-body-perl` (an option as the user types it, `--max-age`, its spec only as
+the source), which left the Perl files where they were. gpt-oss scored 100, 98.5, 99.3, 98.9, 99.7
+and 89.5 %: in run 6 the provider returned an empty answer for the ksh script, which srcmorph wrote
+as a summary without a body (it logs `AI provider returned empty body`); without that file the run
+scores 98.2 % and the six runs 99.1 %.
+
+On the other two corpora every miss with the language prompts is in a Java or SQL file, whose
+prompts did not change. One of them recurs: gpt-oss lost `book_free_le_total` of the benchmark's
+SQL migration in two of three runs, which v3 kept in all three. Three runs cannot tell that from
+variation (Fisher's exact test, p = 0.4), nor show that it is one; the same holds for the reader's
+hit@1 of 95 against 92 %, 1.3 of 43 questions. No run wrote a code fence or a `###` heading in a
+shell, Perl or XML summary.
 
 The size tiers for big XML files (`huge-xml`, `big-window-xml` in the plugin's self-test) stay on
-`file-body-fallback`: with `file-body-xml`, both Granite models named fewer of an 850 KB catalog's
-elements (86 to 14 % and 86 to 57 %, one run each), and H-1B took the prompt's example sentence
-as its lead.
+`file-body-fallback` for now: with `file-body-xml`, both Granite models named fewer of an 870 KB
+catalog's elements (86 to 14 % and 86 to 57 %), and H-1B took the prompt's example sentence as its
+lead. That rests on one run each, and H-Tiny's 86 % with the generic prompt came from copying the
+catalog's first records into a code fence.
 
 ## v3 against v2
 

@@ -239,7 +239,8 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    accessors of `AiGenerationConfig.java` as a family, both drop constants and configuration
    variables of the scripts and C files (`REQUIRED_COLUMNS`, `SOURCE_DIR`, `BINS`, `RINGBUF_OK`),
    internal helpers and library calls, and named SQL constraints and indexes, and gpt-oss states
-   no seed counts. [`profiles/v2/`](../../profiles/README.md) adds one instruction per kind, with
+   no seed counts. Profile v2 (`profiles/v2/` in commit `b89d028`, see
+   [`profiles/README.md`](../../profiles/README.md)) adds one instruction per kind, with
    example names that occur nowhere in this corpus; the package and project prompts are unchanged.
    Three runs each on OpenRouter (`run.py --prompts v2`, outputs under
    [`prompt-v2-2026-10/`](prompt-v2-2026-10/)):
@@ -294,23 +295,42 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    an XSD, an XSLT), showed what gpt-oss-20b lost with it: a deploy script's options and globals
    (70 % of its names), a POM's plugins, lower-case ksh variables. `profiles/v3/` now has
    `file-body-shell`, `file-body-perl` and `file-body-xml` (what they ask for:
-   [`profiles/README.md`](../../profiles/README.md)). Three runs each on OpenRouter, outputs
-   under [`languages-2026-11/`](languages-2026-11/):
+   [`profiles/README.md`](../../profiles/README.md)). Three runs each on OpenRouter, six with the
+   new prompts on the language corpus, outputs under [`languages-2026-11/`](languages-2026-11/)
+   (the generic prompt's in `languages-generic/`):
 
    | | Language corpus: generic / own prompts | This corpus | Second corpus | Reader hit@1 |
    |---|---|---|---|---|
-   | GPT-6 Luna | 99.6 / **100 %** | 100 % | 100 % | 93 / 88 / 93 % (91 %) |
-   | gpt-oss-20b | 95.7 / **99.3 %** | 99.6 % | 99.5 % | 93 / 95 / 98 % (95 %) |
+   | GPT-6 Luna | 99.6 / **99.9 %** | 100 % | 100 % | 93 / 88 / 93 % (91 %) |
+   | gpt-oss-20b | 95.7 / **97.7 %** (99.1 % without one empty answer) | 99.6 % | 99.5 % | 93 / 95 / 98 % (95 %) |
+
+   Runs 4 to 6 on the language corpus came after one wording change in `file-body-perl` (an option
+   as the user types it, `--max-age`, its Getopt::Long spec only as the source), which left the Perl
+   files where they were; gpt-oss still writes the spec. gpt-oss scored 100, 98.5, 99.3, 98.9,
+   99.7 and 89.5 %: in run 6 the provider returned an empty answer for the ksh script, which
+   srcmorph wrote as a summary without a body (it logs `AI provider returned empty body`); without
+   that file the run scores 98.2 % and the six runs 99.1 %.
 
    On this corpus and the second one, every miss with the new prompts is in a Java or SQL file,
-   whose prompts are unchanged; v3 before them scored 100 and 99.8 % for gpt-oss there, within its
-   run-to-run variation. One shell draft showed what a prompt can cost: asked for every
-   assignment as `name=value`, gpt-oss copied them into a code fence in two of three runs, and
-   "one bullet each" kept the values without the fence.
+   whose prompts are unchanged; v3 before them scored 100 and 99.8 % for gpt-oss there. On this
+   corpus gpt-oss lost the same name of one SQL migration (`book_free_le_total`) in two of the
+   three runs, which v3 kept in all three: three runs cannot tell that from run-to-run variation
+   (Fisher's exact test, p = 0.4), nor show that it is one. The reader's hit@1 is the same case:
+   95 against 92 % for gpt-oss is 1.3 of 43 questions, inside the 2 to 7 points one configuration
+   moves between runs ([Search](#search-do-the-summaries-lead-to-the-right-file)). One shell draft
+   showed what a prompt can cost: asked for every assignment as `name=value`, gpt-oss copied them
+   into a code fence in two of three runs, and "one bullet each" kept the values without the
+   fence.
 
    [`modelcard/large.py`](modelcard/large.py) writes three files no window of this card holds: a
-   1.6 MB SQL dump (3 tables, 30 000 rows), an 850 KB XML catalog and a 276 KB Java enum of 6 000
-   constants. Run with the fact counters and `onOversize` `mapReduce` over at most 6 chunks:
+   1.6 MB SQL dump (3 tables, 30 000 rows), an 870 KB XML catalog and a 283 KB Java enum of 6 000
+   constants. Run with the fact counters and `onOversize` `mapReduce` over at most 6 chunks; more
+   chunks than that are a sample: at `charsPerToken` 2 gpt-oss's window cuts the dump into about
+   nine, and srcmorph summarizes six of them, evenly spaced, while Luna reads all five of its
+   chunks. Every name the score expects stands in the dump's first chunk, so the score does not
+   see the rows gpt-oss skipped; the facts line counts them all. The cost is the change of the
+   account's OpenRouter usage over a run, which is booked late: Luna's third run shows 0.02 USD for
+   the work the first two show as 0.16.
 
    | | Quality: run 1 / 2 / 3 | USD per run |
    |---|---|---|
@@ -325,8 +345,10 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
      copy a prompt's example sentence as the lead: H-1B the XML prompt's ("Builds the reporting
      module and its PDF export") for the catalog, H-Tiny the Java prompt's for the enum. With the
      XML prompt both scored lower on the catalog (86 to 14 % and 86 to 57 % of its names), so the
-     self-test's Granite tiers for big XML keep the generic prompt. gpt-oss and Luna name every
-     table, index and view of the dump.
+     self-test's Granite tiers for big XML keep the generic prompt for now. That rests on one run
+     each, and H-Tiny's 86 % with the generic prompt came from copying the catalog's first records
+     into a code fence, which names the products but summarizes nothing. gpt-oss and Luna name
+     every table, index and view of the dump.
    - **A data file has fewer characters per token than code.** At srcmorph's default of 4,
      gpt-oss's first chunk of the SQL dump was refused by the provider (about 135 000 tokens for a
      131 072 window); at 3 the second chunk was (149 394 tokens); the dump's numbers and IBANs run

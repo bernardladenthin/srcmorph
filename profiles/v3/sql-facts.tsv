@@ -4,24 +4,28 @@
 #
 # SQL fact counters: one per line, label TAB pattern (Java regex). srcmorph counts the pattern's
 # matches over the whole source file and writes them as exact facts before the AI summary.
-# The [ignore] line runs first: it blanks /* ... */ block comments (keeping the line breaks), but not
-# MySQL's /*! ... */ version comments or Oracle's /*+ ... */ hints, which hold real SQL; a statement
-# after an inline comment then starts its line. Statements are counted where they start a line,
+# The [ignore] line runs first and reads the file as a lexer does, leftmost region first: it blanks
+# -- comments, '...' string literals ('' and a backslash escape a quote, as in MySQL) and /* ... */
+# block comments, keeping the line breaks, so a /* inside a string or a -- comment opens nothing. It
+# keeps MySQL's /*! ... */ version comments and Oracle's /*+ ... */ hints, which hold real SQL. A /*
+# that is never closed comments out the rest of the file, as PostgreSQL and MySQL read it; a nested
+# PostgreSQL comment ends at its first */. Statements are counted where they start a line (after
+# spaces or tabs, never across a line break, which keeps a long blanked region linear),
 # case-insensitive, for PostgreSQL, MySQL, T-SQL and Oracle. "VALUES rows (approx)" counts the row
 # tuples of VALUES lists (a tuple after VALUES or after "),"), so a multi-row INSERT counts every row;
 # rows an INSERT ... SELECT reads from a table are not seen, and a tuple nested inside a row counts
 # once more. SqlFactPatternsTest pins every case.
-[ignore] block comments	(?s)/\*(?![!+]).*?\*/
-INSERT statements	(?im)^\s*(?:INSERT(?:\s+(?:IGNORE|LOW_PRIORITY|DELAYED|HIGH_PRIORITY))*|REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*)\s+INTO\b
+[ignore] comments and string literals	(?s)--[^\n]*|'(?:[^'\\]++|''|\\.)*+'|/\*(?![!+])(?:.*?\*/|.*)
+INSERT statements	(?im)^[ \t]*(?:INSERT(?:\s+(?:IGNORE|LOW_PRIORITY|DELAYED|HIGH_PRIORITY))*|REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*)\s+INTO\b
 VALUES rows (approx)	(?i)(?:\bVALUES|\),)\s*\(
-tables	(?im)^\s*CREATE\s+(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+)?TABLE\b
-views	(?im)^\s*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NO\s+)?FORCE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:MATERIALIZED\s+)?VIEW\b
-indexes	(?im)^\s*CREATE\s+(?:UNIQUE\s+|FULLTEXT\s+|SPATIAL\s+|BITMAP\s+)?(?:CLUSTERED\s+|NONCLUSTERED\s+)?INDEX\b
-functions/procedures	(?im)^\s*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:FUNCTION|PROCEDURE|PROC)\b
-triggers	(?im)^\s*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:CONSTRAINT\s+)?TRIGGER\b
-types	(?im)^\s*CREATE\s+TYPE\b
-ALTER TABLE	(?im)^\s*ALTER\s+TABLE\b
-sequences	(?im)^\s*CREATE\s+(?:(?:TEMP|TEMPORARY|UNLOGGED)\s+)?SEQUENCE\b
-extensions	(?im)^\s*CREATE\s+EXTENSION\b
-schemas and databases	(?im)^\s*CREATE\s+(?:SCHEMA|DATABASE)\b
-packages and package bodies	(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:NON)?EDITIONABLE\s+)?PACKAGE\b
+tables	(?im)^[ \t]*CREATE\s+(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+)?TABLE\b
+views	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NO\s+)?FORCE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:MATERIALIZED\s+)?VIEW\b
+indexes	(?im)^[ \t]*CREATE\s+(?:UNIQUE\s+|FULLTEXT\s+|SPATIAL\s+|BITMAP\s+)?(?:CLUSTERED\s+|NONCLUSTERED\s+)?INDEX\b
+functions/procedures	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:FUNCTION|PROCEDURE|PROC)\b
+triggers	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:CONSTRAINT\s+)?TRIGGER\b
+types	(?im)^[ \t]*CREATE\s+TYPE\b
+ALTER TABLE	(?im)^[ \t]*ALTER\s+TABLE\b
+sequences	(?im)^[ \t]*CREATE\s+(?:(?:TEMP|TEMPORARY|UNLOGGED)\s+)?SEQUENCE\b
+extensions	(?im)^[ \t]*CREATE\s+EXTENSION\b
+schemas and databases	(?im)^[ \t]*CREATE\s+(?:SCHEMA|DATABASE)\b
+packages and package bodies	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:NON)?EDITIONABLE\s+)?PACKAGE\b

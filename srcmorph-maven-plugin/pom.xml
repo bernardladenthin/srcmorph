@@ -1023,9 +1023,11 @@ SPDX-License-Identifier: Apache-2.0
                                         Walk Java, SQL, shell, Perl and XML sources. The per-file prompt
                                         and fact counters are then chosen by extension in fieldGenerations
                                         below: .java -> the Java-focused prompt, .sql -> the SQL-schema
-                                        prompt, everything else -> the generic fallback, each with the
-                                        counters of its language. (The subtrees here are Java-only, so the
-                                        other entries document the capability without firing.)
+                                        prompt, shell, Perl and XML files -> their own prompts (a POM with
+                                        the Maven counters too), anything else -> the generic fallback,
+                                        each with the counters of its language. (The subtrees here are
+                                        Java-only, so the other entries document the capability without
+                                        firing.)
                                     -->
                                     <fileExtensions>
                                         <fileExtension>.java</fileExtension>
@@ -1179,7 +1181,9 @@ SPDX-License-Identifier: Apache-2.0
                                             </condition>
                                         </fieldGeneration>
                                         <!-- Big XML data (catalogs, exports) takes the same size tiers as Java and SQL, with its counts, and the
-                                             generic prompt: with file-body-xml both Granite models named fewer of a catalog's elements. -->
+                                             generic prompt for now: with file-body-xml both Granite models named fewer of a catalog's elements,
+                                             in one run each, and H-Tiny's generic summary scored by copying the first records (MODEL-CARD
+                                             finding 7). -->
                                         <fieldGeneration>
                                             <id>huge-xml</id>
                                             <promptKey>file-body-fallback</promptKey>

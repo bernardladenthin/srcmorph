@@ -79,6 +79,33 @@ public class PerlFactPatternsTest {
     }
 
     @Test
+    public void subs_heredocMarkerInsideAComment_opensNothing() {
+        assertThat(count("subs", "# usage: print <<EOF\nsub a {}\nprint <<EOF;\nx\nEOF\nsub b {}\n"), is(2));
+    }
+
+    @Test
+    public void subs_podAndEndInsideAHeredoc_areHeredocText() {
+        assertThat(count("subs", "print <<'EOP';\n=head1 NAME\n\nfoo\n\nEOP\nsub real {}\nsub real2 {}\n"), is(2));
+        assertThat(count("subs", "print <<'EOT';\n__END__\nEOT\nsub after {}\n"), is(1));
+    }
+
+    @Test
+    public void subs_backslashHeredoc_isBlanked() {
+        assertThat(count("subs", "print <<\\EOT;\nsub nope {\nEOT\nsub real {}\n"), is(1));
+    }
+
+    @Test
+    public void subs_shiftWithASpaceBeforeAWord_isNoHeredoc() {
+        assertThat(count("subs", "my $x = 1 << SHIFT;\nsub a {}\nSHIFT\nsub b {}\n"), is(2));
+    }
+
+    @Test
+    public void subs_attributesBeforeASignatureAndNestedParentheses_count() {
+        assertThat(
+                count("subs", "sub f :prototype($$) ($x, $y) {\nsub g ($x = default()) {\nsub h ($x, $y) {\n"), is(3));
+    }
+
+    @Test
     public void subs_podWithoutCut_isBlankedToTheEnd() {
         assertThat(count("subs", "sub real {}\n=pod\n\nsub in_pod {}\n"), is(1));
     }
@@ -102,7 +129,11 @@ public class PerlFactPatternsTest {
 
     @Test
     public void modulesRequired_moduleAndFileFormsCountAVersionDoesNot() {
-        assertThat(count("modules required", "require Exporter;\nrequire 'lib/conf.pl';\nrequire 5.006;\n"), is(2));
+        assertThat(
+                count(
+                        "modules required",
+                        "require Exporter;\nrequire 'lib/conf.pl';\nrequire 5.006;\nrequire v5.10;\n"),
+                is(2));
     }
 
     @Test
@@ -150,13 +181,23 @@ public class PerlFactPatternsTest {
     }
 
     @Test
-    public void dieCroakAndConfess_countEveryMentionIncludingAnImport() {
-        // "use Carp qw(croak)" counts too: the counter sees words, not calls
+    public void dieCroakAndConfess_callsCountAndTheImportDoesNot() {
         assertThat(
                 count(
                         "die, croak and confess",
-                        "use Carp qw(croak);\nopen my $fh, '<', $f or die \"no $f\";\ncroak 'bad';\n"),
-                is(3));
+                        "use Carp qw(croak);\nopen my $fh, '<', $f or die \"no $f\";\ncroak 'bad';\n"
+                                + "die \"x\" unless $ok;\neval { confess \"deep\" };\n$v // die \"undef\";\n"
+                                + "foo(); die \"after\";\nmy $y = $z || croak('no');\n"),
+                is(7));
+    }
+
+    @Test
+    public void dieCroakAndConfess_theWordInAMessageAHashKeyAndAMethod_doNotCount() {
+        assertThat(
+                count(
+                        "die, croak and confess",
+                        "print \"Bitte die Datei pruefen\\n\";\nmy %h = (die => 1);\n$obj->die;\n"),
+                is(0));
     }
     // </editor-fold>
 
@@ -171,7 +212,8 @@ public class PerlFactPatternsTest {
         assertThat(count("use constant statements", source), is(2));
         assertThat(count("package variables (our)", source), is(2));
         assertThat(count("file-scope lexicals (my at column 0)", source), is(1));
-        assertThat(count("die, croak and confess", source), is(3));
+        // two croak calls; the croak of the import does not count
+        assertThat(count("die, croak and confess", source), is(2));
     }
 
     @Test

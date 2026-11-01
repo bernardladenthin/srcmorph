@@ -141,7 +141,7 @@ def main():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(text.encode("utf-8"))
         facts[rel] = fact
-        print(f"{rel}: {len(text.encode('utf-8')) / 1024:.0f} KB")
+        print(f"{rel}: {len(text.encode('utf-8')) / 1000:.0f} KB")
     (out / "facts-large.json").write_text(json.dumps(facts, indent=1) + "\n", encoding="utf-8")
 
 
