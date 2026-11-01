@@ -4,9 +4,9 @@
 """Draws the model-card charts from runs/*.json and scores/files.tsv.
 
 The quality score of a model is the mean of four shares, each 0..1:
-Java recall, SQL recall, other-file recall (all three as in score.py, an empty body scoring 0),
-and the share of its 37 .ai.md that hold the format: a body with the '>' lead, no '#'-'###'
-heading, no code fence and no leaked reasoning marker.
+Java recall, SQL recall, other-file recall (all three as in score.py, a failed body scoring 0),
+and the share of its .ai.md that hold the format: a summary that did not fail, with the '>' lead, no
+'#'-'###' heading, no code fence and no leaked reasoning marker.
 
 Every chart is written twice, for a light and a dark page (charts/<name>-light.svg and
 charts/<name>-dark.svg), so MODEL-CARD.md can pick one with <picture>. A second, light-only set
@@ -28,7 +28,6 @@ from matplotlib.text import Text  # noqa: E402
 from matplotlib.transforms import Bbox  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-SOURCE_BYTES = 159594 + 66780 + 8231  # Java + SQL + other files of the corpus (MODEL-CARD.md, Method)
 OUT = HERE / "charts"
 
 # Validated categorical slots 1-3 (all-pairs, light and dark) with a marker per backend as the
@@ -112,26 +111,32 @@ def load():
         files = rows[key]
         recall = {}
         for kind in ("java", "sql", "other"):
-            per_file = [int(r["idsFound"]) / int(r["idsExpected"]) if int(r["bodyBytes"] or 0) else 0.0
-                        for r in files if r["kind"] == kind and r["missing"] == "False"
-                        and int(r["idsExpected"] or 0)]
-            recall[kind] = sum(per_file) / len(per_file)
-        clean = sum(1 for r in files if r["missing"] == "False" and int(r["bodyBytes"] or 0)
-                    and r["lead"] == "True" and r["badHeadings"] == "0" and r["fences"] == "0"
-                    and r["leaks"] == "0")
+            per_file = [0.0 if r["failed"] else int(r["idsFound"]) / int(r["idsExpected"])
+                        for r in files if r["kind"] == kind and int(r["idsExpected"] or 0)]
+            recall[kind] = sum(per_file) / len(per_file) if per_file else 0.0
+        clean = sum(1 for r in files if not r["failed"] and r["lead"] == "True" and r["badHeadings"] == "0"
+                    and r["fences"] == "0" and r["leaks"] == "0")
         fmt_share = clean / len(files)
-        seed = next(r for r in files if r["file"].endswith("05_seed_data.sql"))
+        seed = next((r for r in files if r["file"].endswith("05_seed_data.sql")), {})
         run = runs[key]
         source_files = sum(1 for r in files if r["kind"] in ("java", "sql", "other"))
         data.append({
             "key": key, "name": short_name(model), "backend": model["backend"],
             "recall": recall, "format": fmt_share,
-            "seed": int(seed["numbersStated"] or 0) / 4,
+            "seed": int(seed.get("numbersStated") or 0) / 4,
             "quality": (recall["java"] + recall["sql"] + recall["other"] + fmt_share) / 4,
             "secondsPerFile": run["phases"]["GenerateFileIndex"]["seconds"] / source_files,
             "cost": run.get("costUsd"),
         })
     return data
+
+
+def source_bytes():
+    """The corpus's source bytes (Java, SQL and other files), from the first model's rows of files.tsv."""
+    with open(HERE / "scores" / "files.tsv", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f, delimiter="	"))
+    first = rows[0]["model"]
+    return sum(int(r["srcBytes"]) for r in rows if r["model"] == first and r["kind"] in ("java", "sql", "other"))
 
 
 def style(ax, theme, size):
@@ -366,7 +371,7 @@ def main():
     OUT.mkdir(exist_ok=True)
     plt.rcParams["svg.hashsalt"] = "srcmorph-modelcard"
     data = load()
-    mb = SOURCE_BYTES / 1e6
+    mb = source_bytes() / 1e6
     for theme in THEMES:
         scatter_chart(data, theme, lambda d: d["secondsPerFile"], "Seconds per source file (log scale, lower is faster)",
                       "Quality against speed", "quality-vs-speed",

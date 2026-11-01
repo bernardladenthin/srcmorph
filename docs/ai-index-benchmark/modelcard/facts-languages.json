@@ -1,30 +1,35 @@
 {
- "_comment": "Expected facts of the language corpus (../corpus-languages: Perl, Bash, ksh, POSIX sh, XML), as in facts.json: 'ids' a faithful summary names, 'numbers' values it states. Scored with score.py --facts facts-languages.json.",
+ "_comment": "Expected facts of the language corpus (../corpus-languages: Perl, Bash, ksh, POSIX sh, XML), as in facts.json: 'ids' a faithful summary names, 'numbers' values it states, 'words' the ids that count only marked as code. Scored with score.py --facts facts-languages.json.",
  "other/perl/LogDigest.pm": {
   "ids": ["LogDigest", "new", "parse_line", "add", "summarize", "top_n", "_normalize_host", "MAX_LINES",
           "DEFAULT_LEVEL", "SLOW_REQUEST_MS", "LEVEL_RANK", "POSIX", "List::Util", "croak"],
+  "words": ["new", "add", "summarize"],
   "numbers": [1500]
  },
  "other/perl/log_digest.pl": {
   "ids": ["LOG_DIGEST_CONFIG", "usage", "read_aliases", "main", "Getopt::Long", "top", "level", "json",
           "exclude-host", "LogDigest", "JSON::PP", "top_n"],
+  "words": ["usage", "main", "top", "level"],
   "numbers": [10]
  },
  "other/shell/deploy_release.sh": {
   "ids": ["DEPLOY_USER", "SSH_KEY", "RELEASE_ROOT", "SERVICE_NAME", "HEALTH_TIMEOUT", "ENVIRONMENT", "TAG",
           "DRY_RUN", "HOSTS", "log", "die", "usage", "check_prereqs", "load_hosts", "deploy_host",
           "wait_healthy", "cleanup", "rsync", "systemctl", "getopts", "lib/common.sh"],
+  "words": ["log", "die", "usage", "cleanup"],
   "numbers": [30]
  },
  "other/shell/nightly_extract.ksh": {
   "ids": ["ORACLE_SID", "ORACLE_SID_DEFAULT", "EXPORT_DIR_DEFAULT", "MAX_RETRIES", "NLS_LANG", "business_day",
           "export_dir", "log", "fail", "require_tools", "run_export", "write_control", "sqlplus", "gzip",
           "settled_payment"],
+  "words": ["log", "fail"],
   "numbers": [3]
  },
  "other/shell/healthcheck.sh": {
   "ids": ["PID_FILE", "HEARTBEAT_FILE", "MAX_HEARTBEAT_AGE", "WORKER_BIN", "is_running", "heartbeat_age",
           "start_worker", "stop_worker", "start", "stop", "restart", "status", "health"],
+  "words": ["start", "stop", "restart", "status", "health"],
   "numbers": [120]
  },
  "other/xml/invoice-service-pom.xml": {

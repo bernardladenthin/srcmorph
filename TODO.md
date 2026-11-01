@@ -16,13 +16,17 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-8. **Benchmark and measurement.** `score.py`: the coverage line out of the scored text like the facts
-   line, code fences out of the name recall, common words only in
-   backticks, annotated getters, fewer false "invented" names, a `failed` column; the model card
-   re-scored. `run.py` validates its options and records `maxChunks`, hashes, version, tokens and the
-   per-request cost; `search.py` keys its cache by prompt and backs off; `large.py` writes its facts
-   beside the corpus and plants names in the middle of the dump. Then three runs each of gpt-oss-20b
-   and GPT-6 Luna on the language, benchmark and large corpora.
+8. **Benchmark and measurement.** `score.py` is done (copied fences, everyday words, Java
+   signatures, invented names, a `failed` and a `cutOff` column, tests in `modelcard/tests/`), and
+   `scores/` is re-scored with it. Open: rendering the model card from the new scores (`report.py`,
+   `plot.py`) and the text that cites them -- deliberately not done yet, the card keeps its
+   October numbers until that is decided; the large corpus's Granite H-Tiny catalog falls from
+   86 to 0 % once a copied fence no longer counts, which is what the XML-prompt decision for the
+   self-test's Granite tiers rested on. `run.py` validates its options and records `maxChunks`,
+   hashes, version, tokens and the per-request cost (`runRecordFile`); `search.py` keys its cache
+   by prompt and backs off; `large.py` writes its facts beside the corpus and plants names in the
+   middle of the dump. Then three runs each of gpt-oss-20b and GPT-6 Luna on the language,
+   benchmark and large corpora.
 
 ### Other open items
 

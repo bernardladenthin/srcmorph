@@ -31,8 +31,9 @@ def main():
                 "|---|---|---|---|---|---|---|"]
     kinds = ["| Model | Java comp. | Java recall | SQL comp. | SQL recall | Seed counts | Other comp. | Other recall | Invented /100 |",
              "|---|---|---|---|---|---|---|---|---|"]
-    fmt_rows = ["| Model | No lead | `###` headings | Code fences | Reasoning leaks | Empty |",
-                "|---|---|---|---|---|---|"]
+    fmt_rows = ["| Model | No lead | `###` headings | Code fences | Reasoning leaks | Failed | Cut off |",
+                "|---|---|---|---|---|---|---|"]
+    per_model = set()
     for model in models:
         if model.get("corpus"):
             continue  # measured on its own corpus (large.py), not on the card's
@@ -40,7 +41,7 @@ def main():
         run, kinds_of = runs.get(key), summary.get(key)
         name = model["name"] + (" ¹" if model.get("origin") else "")
         if run is None or kinds_of is None:
-            overview.append(f"| {name} | {BACKEND[model['backend']]} | not run | | | | |")
+            overview.append(f"| {name} | {BACKEND.get(model['backend'], model['backend'])} | not run | | | | |")
             continue
         phases = run["phases"]
         total = sum(p["seconds"] for p in phases.values())
@@ -53,7 +54,7 @@ def main():
             "0 (local)" if run["backend"] == "local" else
             "Copilot plan" if run["backend"] == "copilot" else "see text")
         overview.append(
-            f"| {name} | {BACKEND[run['backend']]} | {run['files']}{' (failed: ' + ', '.join(failed) + ')' if failed else ''}"
+            f"| {name} | {BACKEND.get(run['backend'], run['backend'])} | {run['files']}{' (failed: ' + ', '.join(failed) + ')' if failed else ''}"
             f" | {total / 60:.1f} | {files_phase.get('seconds', 0) / max(file_count, 1):.1f} | {cost_text}"
             f" | {len(cut)}{' (' + ', '.join('`' + c + '`' for c in cut) + ')' if cut else ''} |")
         java, sql, other = kinds_of.get("java", {}), kinds_of.get("sql", {}), kinds_of.get("other", {})
@@ -65,10 +66,17 @@ def main():
             f" | {fmt(other.get('compaction'))} | {fmt(other.get('recall'), '{:.0%}')}"
             f" | {fmt(sum(invented) / len(invented) if invented else None, '{:.1f}')} |")
         all_kinds = list(kinds_of.values())
+        per_model.add(sum(k["files"] for k in all_kinds))
+        reasons = {}
+        for k in all_kinds:
+            for reason, count in k["failed"].items():
+                reasons[reason] = reasons.get(reason, 0) + count
+        failed_text = str(sum(reasons.values())) + (
+            " (" + ", ".join(f"{r} {c}" for r, c in sorted(reasons.items())) + ")" if reasons else "")
         fmt_rows.append(
             f"| {name} | {sum(k['noLead'] for k in all_kinds)} | {sum(k['badHeadings'] for k in all_kinds)}"
             f" | {sum(k['fences'] for k in all_kinds)} | {sum(k['leaks'] for k in all_kinds)}"
-            f" | {sum(k['empty'] + k['missing'] for k in all_kinds)} |")
+            f" | {failed_text} | {sum(k['cutOff'] for k in all_kinds)} |")
 
     generated = "\n".join([
         BEGIN,
@@ -80,7 +88,7 @@ def main():
         "",
         *kinds,
         "",
-        "### Format discipline (all 37 `.ai.md` per model)",
+        "### Format discipline (all " + "/".join(str(n) for n in sorted(per_model)) + " `.ai.md` per model)",
         "",
         *fmt_rows,
         "",
