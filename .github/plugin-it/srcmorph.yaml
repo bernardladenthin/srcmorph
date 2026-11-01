@@ -28,7 +28,7 @@ srcMorph:
   aiDefinitions:
     - key: fixture-model
       modelPath: unused-with-the-mock-provider.gguf
-      contextSize: 2048
+      contextSize: 4096    # the profile's Java prompt and a fixture file fit with room
       maxOutputTokens: 64
       temperature: 0.15
       threads: 2
