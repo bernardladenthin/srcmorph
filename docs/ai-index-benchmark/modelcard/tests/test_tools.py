@@ -68,6 +68,15 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(files["srcMorph"]["runRecordFile"], "r.json")
         self.assertNotIn("runRecordFile", packages["srcMorph"])
 
+    def test_theAggregationPhases_takeTheirRuleWhereTheCliReadsIt(self):
+        definition = {"key": "m", "provider": "mock"}
+        packages = run.phase_config("AggregatePackages", Path("w"), Path("o"), run.PROFILES / "v3", definition)
+        project = run.phase_config("AggregateProject", Path("w"), Path("o"), run.PROFILES / "v3", definition)
+
+        self.assertEqual(packages["packageFieldGenerations"], [{"promptKey": "package-body", "aiDefinitionKey": "m"}])
+        self.assertNotIn("projectFieldGenerations", packages)
+        self.assertEqual(project["projectFieldGenerations"], [{"promptKey": "project-body", "aiDefinitionKey": "m"}])
+
     def test_profileHashes_ofTheFilesTheRulesName(self):
         profile = run.PROFILES / "v3"
         hashes = run.profile_hashes(profile, run.file_rules(profile, "m", facts=True))

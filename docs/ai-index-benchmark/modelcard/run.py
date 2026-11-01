@@ -167,12 +167,11 @@ def file_rules(profile, key, facts=False, oversize=None, max_chunks=None):
 
 def phase_config(phase, work, out_dir, profile, definition, facts=False, oversize=None, max_chunks=None,
                  run_record=None):
+    """The CLI configuration of one phase. The file phase's rules are srcMorph's fieldGenerations; the
+    package and project phases take their one rule from packageFieldGenerations and
+    projectFieldGenerations, as the CLI reads them."""
     key = definition["key"]
-    if phase == "GenerateFileIndex":
-        rules = file_rules(profile, key, facts, oversize, max_chunks)
-    else:
-        prompt = "package-body" if phase == "AggregatePackages" else "project-body"
-        rules = [{"promptKey": prompt, "aiDefinitionKey": key}]
+    rules = file_rules(profile, key, facts, oversize, max_chunks)
     config = {
         "command": phase,
         "srcMorph": {
@@ -188,6 +187,10 @@ def phase_config(phase, work, out_dir, profile, definition, facts=False, oversiz
             "fieldGenerations": rules,
         },
     }
+    if phase == "AggregatePackages":
+        config["packageFieldGenerations"] = [{"promptKey": "package-body", "aiDefinitionKey": key}]
+    elif phase == "AggregateProject":
+        config["projectFieldGenerations"] = [{"promptKey": "project-body", "aiDefinitionKey": key}]
     if run_record is not None and phase == "GenerateFileIndex":
         config["srcMorph"]["runRecordFile"] = str(run_record)
     return config
