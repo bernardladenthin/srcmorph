@@ -32,6 +32,7 @@ import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
+import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -650,6 +651,79 @@ public class GenerateEngineTest {
     }
 
     // <editor-fold defaultstate="collapsed" desc="run record">
+    /** A factory whose providers summarize every file but one, for which they throw {@code failure}. */
+    private static AiGenerationProviderFactory failingFor(final String fileName, final RuntimeException failure) {
+        return new AiGenerationProviderFactory() {
+            @Override
+            public AiGenerationProvider create(
+                    final String providerName,
+                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
+                return request -> {
+                    if (request.sourceFile().getFileName().toString().equals(fileName)) {
+                        throw failure;
+                    }
+                    return "A summary.";
+                };
+            }
+        };
+    }
+
+    @Test
+    public void execute_anUncheckedProviderError_failsThatFileOnly_andTheRecordHasIt() throws Exception {
+        // arrange: the llama.cpp binding throws unchecked exceptions only
+        final SrcMorphConfiguration config = baseConfig();
+        Files.write(
+                tempDir.resolve("src/main/java/com/example/Bar.java"),
+                "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
+        final Path recordFile = tempDir.resolve("run.json");
+        config.setRunRecordFile(recordFile.toFile());
+
+        // act
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class,
+                () -> new GenerateEngine(config, failingFor("Bar.java", new IllegalStateException("native")))
+                        .execute());
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("1 file(s) were not written"));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+        final String record = new String(Files.readAllBytes(recordFile), StandardCharsets.UTF_8);
+        assertThat(record, containsString("\"failed\""));
+        assertThat(record, containsString("\"written\""));
+    }
+
+    @Test
+    public void execute_anAbortedRun_stillWritesTheRecordOfTheFilesDone() throws Exception {
+        // arrange: an Error is no file's failure; it ends the run
+        final SrcMorphConfiguration config = baseConfig();
+        Files.write(
+                tempDir.resolve("src/main/java/com/example/Bar.java"),
+                "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
+        final Path recordFile = tempDir.resolve("run.json");
+        config.setRunRecordFile(recordFile.toFile());
+        final AiGenerationProviderFactory aborting = new AiGenerationProviderFactory() {
+            @Override
+            public AiGenerationProvider create(
+                    final String providerName,
+                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
+                return request -> {
+                    if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
+                        throw new java.io.InterruptedIOException("interrupted");
+                    }
+                    return "A summary.";
+                };
+            }
+        };
+
+        // act
+        assertThrows(java.io.InterruptedIOException.class, () -> new GenerateEngine(config, aborting).execute());
+
+        // assert: the record exists and holds what was done before the interrupt
+        assertThat(Files.exists(recordFile), is(true));
+    }
+
     @Test
     public void execute_runRecordFile_recordsEveryRoutedFile() throws Exception {
         final SrcMorphConfiguration config = baseConfig();

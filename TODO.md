@@ -35,7 +35,8 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
 Eleven parallel reviews (the whole PR, then config, fact counters, indexer, provider, engine, plugin,
 CLI and examples, docs, benchmark tooling, tests and gates) checked the PR at b74aa6b; every item
 below was verified against the code. Fixed and deleted from here: the chunker's repeated chunks
-behind a long line, and the overflow retry that cut a fitting source behind the rule's back.
+behind a long line, the overflow retry that cut a fitting source behind the rule's back, a provider's
+unchecked error ending the run, the run record lost on an abort, the documentation drift.
 
 **Decisions first** (they change what the fixes below look like):
 
@@ -60,14 +61,6 @@ behind a long line, and the overflow retry that cut a fitting source behind the 
 
 **Core (engine, indexer, provider, config):**
 
-- An unchecked provider exception (the local JNI provider throws only those; a model that fails to
-  load) ends the whole run; the per-file catch takes `IOException` only. Catch it per file too.
-- The run record is written only after the loop: an abort (the case above, a provider that cannot be
-  created in a later model group, a failing `close()`) loses it. Write it in `finally`; a failed
-  record write must not hide the run's own failure.
-- The per-file catch swallows `InterruptedIOException` and local write errors (paid for, then lost)
-  and logs `getMessage()` only (an `AccessDeniedException` is just a path): rethrow interrupts, log
-  the exception class.
 - The checksum is taken over decoded text, so an edit in a non-UTF-8 file (an umlaut in Latin-1)
   counts as unchanged; take it over the bytes with only the line endings normalized.
 - `check()` accepts an unknown provider name; the run then fails later with a raw
@@ -164,9 +157,10 @@ behind a long line, and the overflow retry that cut a fitting source behind the 
   is the file's directory, so it cannot catch a base-directory regression; run it from the root.
 - SonarCloud reports 98 new issues that are not readable without a token.
 
-**Documentation:** the drift the docs review found (the plugin README's
-`-Dsrcmorph.generationProvider`, stale CHANGELOG statements, counts, Calibrate's XML block, the
-working-directory rule in three places, …) is being fixed in one docs commit.
+**Documentation:** the docs already describe two code changes still open above (relative paths
+against the file's directory, Calibrate's YAML block); `examples/run_calibrate.*`, `plugin-it.sh` and
+`srcmorph/spotbugs-exclude.xml` still name the XML block, and the `languages-2026-11` README's
+`--max-chunks 6` command is refused by today's `run.py`.
 
 ### Other open items
 

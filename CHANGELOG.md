@@ -347,6 +347,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **One failed file never ends the run, and the run record survives an abort.** The per-file catch
+  took `IOException` only, while the llama.cpp binding throws unchecked exceptions, so one native
+  error ended the whole run; an unchecked error now fails its file like a failed request (an
+  interrupt still ends the run), and the log names the exception's class. The run record is written
+  however the run ends; a failed write is added to the run's own failure instead of replacing it.
+
 - **A line longer than the chunk budget no longer multiplies the chunks.** Behind such a line (a dump
   with one `INSERT` per line, minified code) the chunker cut at the previous line end again and moved
   on by one character, so a 50-line header before an 80 000-character line made 504 chunks, 499 of

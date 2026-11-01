@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph.engine;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,6 +67,7 @@ public final class GenerateEngine {
     private static final AiChecksumSupport CHECKSUMS = new AiChecksumSupport();
 
     private final SrcMorphConfiguration config;
+    private final AiGenerationProviderFactory providerFactory;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -74,7 +76,18 @@ public final class GenerateEngine {
      * @param config the run configuration
      */
     public GenerateEngine(final SrcMorphConfiguration config) {
+        this(config, new AiGenerationProviderFactory());
+    }
+
+    /**
+     * Creates a new {@link GenerateEngine} whose providers come from {@code providerFactory}.
+     *
+     * @param config          the run configuration
+     * @param providerFactory the factory of each model group's provider
+     */
+    GenerateEngine(final SrcMorphConfiguration config, final AiGenerationProviderFactory providerFactory) {
         this.config = config;
+        this.providerFactory = providerFactory;
     }
 
     /**
@@ -228,7 +241,6 @@ public final class GenerateEngine {
         //    Progress is the running sum of each finished file's PLAN estimate over the grand total
         //    (no re-estimation), logged as a bar + percent after every file, with the estimated time
         //    left and the actual wall-clock elapsed for comparison.
-        final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
         final AiGenerationTimeEstimator estimator = new AiGenerationTimeEstimator();
         final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
         final int totalFiles = plan.routedCount();
@@ -239,65 +251,79 @@ public final class GenerateEngine {
         int wrote = 0;
         int unchanged = 0;
         int failed = 0;
-        for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
-                plan.routesByModel().entrySet()) {
-            final String aiDefinitionKey = group.getKey();
-            LOGGER.info(
-                    "Loading model '{}' for {} file(s)",
-                    aiDefinitionKey,
-                    group.getValue().size());
-            try (AiGenerationProvider provider = providerFactory.create(
-                    config.getGenerationProvider(),
-                    EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, aiDefinitionKey),
-                    promptSupport)) {
-                final AiFieldGenerationSupport support =
-                        new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
-                for (final AiIndexPlan.Entry entry : group.getValue()) {
-                    AiIndexOutcome outcome;
-                    final long fileStartNanos = System.nanoTime();
-                    try {
-                        outcome = fileIndexer.indexFile(entry.file(), entry.rule(), support);
-                    } catch (final IOException e) {
-                        // one failed request (after its retries) does not end the run
-                        LOGGER.error("Summarizing {} failed: {}", entry.file(), String.valueOf(e.getMessage()));
-                        outcome = AiIndexOutcome.FAILED;
+        // the record is written however the run ends, and a failed write never hides why it ended
+        try {
+            for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
+                    plan.routesByModel().entrySet()) {
+                final String aiDefinitionKey = group.getKey();
+                LOGGER.info(
+                        "Loading model '{}' for {} file(s)",
+                        aiDefinitionKey,
+                        group.getValue().size());
+                try (AiGenerationProvider provider = providerFactory.create(
+                        config.getGenerationProvider(),
+                        EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, aiDefinitionKey),
+                        promptSupport)) {
+                    final AiFieldGenerationSupport support =
+                            new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
+                    for (final AiIndexPlan.Entry entry : group.getValue()) {
+                        AiIndexOutcome outcome;
+                        final long fileStartNanos = System.nanoTime();
+                        try {
+                            outcome = fileIndexer.indexFile(entry.file(), entry.rule(), support);
+                        } catch (final InterruptedIOException e) {
+                            // an interrupt ends the run, it is not one file's failure
+                            throw e;
+                        } catch (final IOException | RuntimeException e) {
+                            // one failed request (after its retries) does not end the run, nor does an unchecked
+                            // error of a provider (the llama.cpp binding throws only those)
+                            LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
+                            LOGGER.debug("Summarizing {} failed", entry.file(), e);
+                            outcome = AiIndexOutcome.FAILED;
+                        }
+                        record.add(recordEntry(
+                                basePath,
+                                entry,
+                                aiDefinitionKey,
+                                outcome,
+                                support.takeUsage(),
+                                System.nanoTime() - fileStartNanos,
+                                promptSupport));
+                        if (outcome == AiIndexOutcome.WRITTEN) {
+                            wrote++;
+                        } else if (outcome == AiIndexOutcome.UNCHANGED) {
+                            unchanged++;
+                        } else {
+                            failed++;
+                        }
+                        doneEstimatedSeconds += entry.estimatedSeconds();
+                        doneFiles++;
+                        final long elapsedSeconds = (System.nanoTime() - runStartNanos) / NANOS_PER_SECOND;
+                        final long remainingSeconds = Math.max(0L, totalEstimatedSeconds - doneEstimatedSeconds);
+                        LOGGER.info(
+                                "{} {}/{} files - est. {}/{} done, {} left (estimate) | {} elapsed (actual)",
+                                AiProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds),
+                                doneFiles,
+                                totalFiles,
+                                estimator.formatDuration(doneEstimatedSeconds),
+                                estimator.formatDuration(totalEstimatedSeconds),
+                                estimator.formatDuration(remainingSeconds),
+                                estimator.formatDuration(elapsedSeconds));
                     }
-                    record.add(recordEntry(
-                            basePath,
-                            entry,
-                            aiDefinitionKey,
-                            outcome,
-                            support.takeUsage(),
-                            System.nanoTime() - fileStartNanos,
-                            promptSupport));
-                    if (outcome == AiIndexOutcome.WRITTEN) {
-                        wrote++;
-                    } else if (outcome == AiIndexOutcome.UNCHANGED) {
-                        unchanged++;
-                    } else {
-                        failed++;
-                    }
-                    doneEstimatedSeconds += entry.estimatedSeconds();
-                    doneFiles++;
-                    final long elapsedSeconds = (System.nanoTime() - runStartNanos) / NANOS_PER_SECOND;
-                    final long remainingSeconds = Math.max(0L, totalEstimatedSeconds - doneEstimatedSeconds);
-                    LOGGER.info(
-                            "{} {}/{} files - est. {}/{} done, {} left (estimate) | {} elapsed (actual)",
-                            AiProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds),
-                            doneFiles,
-                            totalFiles,
-                            estimator.formatDuration(doneEstimatedSeconds),
-                            estimator.formatDuration(totalEstimatedSeconds),
-                            estimator.formatDuration(remainingSeconds),
-                            estimator.formatDuration(elapsedSeconds));
                 }
             }
+        } catch (final IOException | RuntimeException | Error e) {
+            // the record of the files done so far; a failed write is added to the abort, not put in its place
+            final IOException writeFailure = writeRecord(record);
+            if (writeFailure != null) {
+                e.addSuppressed(writeFailure);
+            }
+            throw e;
         }
-
-        final File runRecordFile = config.getRunRecordFile();
-        if (runRecordFile != null) {
-            record.write(runRecordFile.toPath());
-            LOGGER.info("Run record written: {}", runRecordFile);
+        final IOException writeFailure = writeRecord(record);
+        // files that were not written are the run's failure; a failed record write only when there is none
+        if (writeFailure != null && failed == 0) {
+            throw writeFailure;
         }
 
         final int skippedCount = plan.skipped().size();
@@ -314,6 +340,27 @@ public final class GenerateEngine {
         LOGGER.info("AI index generation finished.");
 
         return new GenerateResult(false, wrote, unchanged, skippedCount);
+    }
+
+    /**
+     * Writes the run record when {@code runRecordFile} is set.
+     *
+     * @param record the record of the files done so far
+     * @return the write's failure, logged already, or {@code null}
+     */
+    private @Nullable IOException writeRecord(final RunRecord record) {
+        final File runRecordFile = config.getRunRecordFile();
+        if (runRecordFile == null) {
+            return null;
+        }
+        try {
+            record.write(runRecordFile.toPath());
+            LOGGER.info("Run record written: {}", runRecordFile);
+            return null;
+        } catch (final IOException e) {
+            LOGGER.error("Writing the run record {} failed: {}", runRecordFile, e.toString());
+            return e;
+        }
     }
 
     /**
