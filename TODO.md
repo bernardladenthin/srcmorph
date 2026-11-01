@@ -37,7 +37,8 @@ CLI and examples, docs, benchmark tooling, tests and gates) checked the PR at b7
 below was verified against the code. Fixed and deleted from here: the chunker's repeated chunks
 behind a long line, the overflow retry that cut a fitting source behind the rule's back, a provider's
 unchecked error ending the run, the run record lost on an abort, the documentation drift, relative
-paths against the working directory, Calibrate's XML block.
+paths against the working directory, Calibrate's XML block, the unchecked package and project
+rules, an unknown provider name, `All` with `planOnly`, keys set to nothing, the echoed strategy.
 
 **Decisions first** (they change what the fixes below look like):
 
@@ -64,14 +65,6 @@ paths against the working directory, Calibrate's XML block.
 
 - The checksum is taken over decoded text, so an edit in a non-UTF-8 file (an umlaut in Latin-1)
   counts as unchanged; take it over the bytes with only the line endings normalized.
-- `check()` accepts an unknown provider name; the run then fails later with a raw
-  `IllegalArgumentException`, after earlier model groups have generated.
-- The package and project rules are never validated (`onOversize`, `onIncomplete`, `maxChunks` with
-  `mapReduce`, `sampleChunks` without it) and their `factsKey` is never resolved, although the
-  CHANGELOG says the overview honours its rule's facts; `check` passes all of it.
-- An empty `srcMorph:` (or a key set to nothing) puts `null` into non-null fields: a bare
-  `NullPointerException` in the loader, an NPE in the plugin for `pluginVersion`. Skip nulls in both
-  mappers.
 - The OpenAI-compatible provider resends a POST after a read timeout (600 s) up to `maxRetries`
   times, each possibly billed; retry connect timeouts only. Also: `Retry-After` of ten or more digits
   or an HTTP date falls back to the short backoff; 501, 505 and a 429 with `insufficient_quota` are
@@ -79,9 +72,6 @@ paths against the working directory, Calibrate's XML block.
 - CodeQL #271 (`NumberFormatException` in the `Retry-After` parse) cannot happen behind the
   `[0-9]{1,9}` match; parse the digits without `parseLong` and the alert has nothing to point at.
   CodeQL #272: drop `@EqualsAndHashCode` from the mutable `RunRecord` (keep it on `Entry`).
-- The aggregation engines return early when the output directory is missing, before they check
-  their rule, so a wrong rule count passes silently on a fresh tree.
-- `All` with `planOnly: true` plans the file phase and still runs the package and project phases.
 - Overlapping or nested subtrees (the plugin adds every existing resource directory, e.g.
   `<directory>${project.basedir}</directory>`) collect files twice, and the run fails with "X and X
   would both be summarized"; deduplicate subtrees and candidates by their real path.
@@ -89,9 +79,6 @@ paths against the working directory, Calibrate's XML block.
   `project.version`); an unknown `${x}` stays literal and becomes a directory name.
 - `[ignore]` blanking deletes the region instead of replacing it with spaces, so `FROM t/* x */JOIN u`
   counts no `JOIN`.
-- `getOversizeStrategy()` is a bean getter: the echoed configuration carries `oversizeStrategy`, which
-  the strict reader refuses on read-back.
-- A rule with both `facts` and `factsKey` silently loses the inline facts.
 - A summary written by 1.3.0 from an incomplete answer (facts line only, a project without its
   Overview) is never repaired: audit item 2 promised it, the header check rewrites only a missing
   file or a blank body.
@@ -103,8 +90,7 @@ paths against the working directory, Calibrate's XML block.
   lines" drops a line when the source ends with `\n`; the plan's token figures ignore the oversize
   strategy; the reduce estimate assumes a fan-in of 16; `onIncomplete: keep` writes a cut answer
   without a marker; the per-file time of a local group's first file includes the model load; the
-  record's totals have no skipped count and no run wall time; `requiredPhaseRule` accepts a `skip`
-  rule; credentials in a `baseUrl` would be echoed in messages; `AiCompletionParser` keeps reasoning
+  record's totals have no skipped count and no run wall time; credentials in a `baseUrl` would be echoed in messages; `AiCompletionParser` keeps reasoning
   when the template injected the opening `<think>`.
 
 **Fact counters (`profiles/v3/`, after the benchmark runs, which read the profile):**

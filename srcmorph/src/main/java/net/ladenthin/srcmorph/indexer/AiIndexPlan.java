@@ -330,7 +330,7 @@ public final class AiIndexPlan {
      * @return the parsed oversize strategy
      */
     private static AiOversizeStrategy strategyOf(final Entry entry) {
-        return entry.rule().getOversizeStrategy();
+        return entry.rule().oversizeStrategy();
     }
 
     /**

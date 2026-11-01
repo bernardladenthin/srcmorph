@@ -9,7 +9,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import net.ladenthin.srcmorph.config.AiFactDefinitionLoader;
+import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
@@ -183,7 +186,39 @@ final class EngineSupport {
         if (rule == null || isBlank(rule.getPromptKey()) || isBlank(rule.getAiDefinitionKey())) {
             throw new SrcMorphException("The rule of " + phase + " needs a promptKey and an aiDefinitionKey");
         }
+        if (rule.isSkip()) {
+            throw new SrcMorphException("The rule of " + phase + " cannot be a skip rule: " + rule);
+        }
+        try {
+            new AiFieldGenerationSelector().validateRule(rule);
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException("Invalid rule of " + phase + ": " + e.getMessage(), e);
+        }
         return rule;
+    }
+
+    /**
+     * Resolves each rule's {@code factsKey} to its group (a definition or {@code <profileDirectory>/<key>.tsv}),
+     * copying the counters onto the rule's facts, for the file rules and the phases' rule alike.
+     *
+     * @param config the run configuration (its fact definitions and profile directory)
+     * @param rules  the rules, changed in place
+     * @throws SrcMorphException if a key is found nowhere, a group is malformed, or a rule names its facts
+     *                           twice
+     */
+    static void resolveFactsKeys(final SrcMorphConfiguration config, final List<AiFieldGenerationConfig> rules)
+            throws SrcMorphException {
+        try {
+            final List<@Nullable String> usedKeys = new ArrayList<>(rules.size());
+            for (final AiFieldGenerationConfig rule : rules) {
+                usedKeys.add(rule.getFactsKey());
+            }
+            new AiFactDefinitionSupport(new AiFactDefinitionLoader(config.getProfileDirectory())
+                            .load(config.getFactDefinitions(), usedKeys))
+                    .resolveFactsKeys(rules);
+        } catch (final IllegalArgumentException | NullPointerException | IOException e) {
+            throw new SrcMorphException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
+        }
     }
 
     private static boolean isBlank(final @Nullable String value) {
@@ -253,6 +288,14 @@ final class EngineSupport {
                 validateRemoteModel(aiDefinitionKey, modelConfig);
             } else if (AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
                 validateLocalModel(aiDefinitionKey, modelConfig);
+            } else if (provider != null
+                    && !isBlank(provider)
+                    && !AiGenerationProviderFactory.PROVIDER_MOCK.equals(provider)) {
+                // otherwise the run would fail at this model's group, after the earlier groups generated
+                throw new SrcMorphException("Model '" + aiDefinitionKey + "' has the unknown provider '" + provider
+                        + "'; a provider is " + AiGenerationProviderFactory.PROVIDER_MOCK + ", "
+                        + AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI + " or "
+                        + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
             }
         }
     }

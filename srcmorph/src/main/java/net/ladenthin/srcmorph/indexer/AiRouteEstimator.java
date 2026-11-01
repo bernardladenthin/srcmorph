@@ -75,7 +75,7 @@ public final class AiRouteEstimator {
         if (sourceChars <= availableSourceChars) {
             return estimateSeconds(fileSizeBytes, modelConfig);
         }
-        final AiOversizeStrategy strategy = rule.getOversizeStrategy();
+        final AiOversizeStrategy strategy = rule.oversizeStrategy();
         if (strategy == AiOversizeStrategy.DETERMINISTIC) {
             return 0L;
         }

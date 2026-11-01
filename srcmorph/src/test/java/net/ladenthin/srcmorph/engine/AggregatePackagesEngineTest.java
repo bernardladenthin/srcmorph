@@ -50,10 +50,40 @@ public class AggregatePackagesEngineTest {
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(tempDir.resolve("out-does-not-exist").toFile());
         config.setGenerationProvider("mock");
+        config.setFieldGenerations(CommonTestFixtures.createPackageFieldGenerations());
 
         final int aggregated = new AggregatePackagesEngine(config).execute();
 
         assertThat(aggregated, is(0));
+    }
+
+    @Test
+    public void execute_missingOutputDirectory_stillFailsAMissingRule() {
+        // the rule is checked first, so a fresh tree does not hide a wrong configuration
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(tempDir.toFile());
+        config.setOutputDirectory(tempDir.resolve("out-does-not-exist").toFile());
+        config.setGenerationProvider("mock");
+
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new AggregatePackagesEngine(config).execute());
+
+        assertThat(thrown.getMessage(), org.hamcrest.CoreMatchers.containsString("takes exactly one rule"));
+    }
+
+    @Test
+    public void check_aRuleThatSamplesWithoutMaxChunks_isRefused() {
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(tempDir.toFile());
+        config.setOutputDirectory(tempDir.resolve("out").toFile());
+        config.setGenerationProvider("mock");
+        config.setFieldGenerations(CommonTestFixtures.createPackageFieldGenerations());
+        config.getFieldGenerations().get(0).setOnOversize("sampleChunks");
+
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new AggregatePackagesEngine(config).check());
+
+        assertThat(thrown.getMessage(), org.hamcrest.CoreMatchers.containsString("Invalid rule of aggregate-packages"));
     }
 
     @Test

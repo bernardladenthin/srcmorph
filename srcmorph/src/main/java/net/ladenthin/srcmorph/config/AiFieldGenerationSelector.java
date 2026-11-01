@@ -63,6 +63,30 @@ public final class AiFieldGenerationSelector {
     }
 
     /**
+     * Validates what one rule says on its own, for a file rule and the package and project phases' rule
+     * alike: its {@code onOversize} and {@code onIncomplete} tokens, a {@code maxChunks} that would be
+     * applied ({@code sampleChunks} needs one, every other strategy none), and its facts by the rules a
+     * facts file is held to.
+     *
+     * @param config the rule
+     * @throws IllegalArgumentException if the rule is invalid, naming it
+     */
+    public void validateRule(final AiFieldGenerationConfig config) {
+        // an unknown onOversize token throws IllegalArgumentException naming the value
+        final boolean sampleChunks = config.oversizeStrategy() == AiOversizeStrategy.SAMPLE_CHUNKS;
+        if (sampleChunks != config.getMaxChunks() > 0) {
+            throw new IllegalArgumentException(
+                    sampleChunks
+                            ? "onOversize: sampleChunks needs a maxChunks above 0 (how many chunks to read): " + config
+                            : "maxChunks applies only to onOversize: sampleChunks (mapReduce reads every chunk): "
+                                    + config);
+        }
+        config.incompleteStrategy();
+        final String rule = config.getId() != null ? config.getId() : String.valueOf(config.getPromptKey());
+        AiFactExtractor.validate("the facts of rule '" + rule + "'", config.getFacts());
+    }
+
+    /**
      * Validates a rule set, throwing {@link IllegalArgumentException} on a misconfiguration so the build
      * fails fast.
      *
@@ -79,21 +103,7 @@ public final class AiFieldGenerationSelector {
             if (config == null) {
                 continue;
             }
-            // Fail fast on an unknown onOversize token (throws IllegalArgumentException naming the value),
-            // and on a maxChunks that would not be applied (it samples only under sampleChunks).
-            final boolean sampleChunks = config.getOversizeStrategy() == AiOversizeStrategy.SAMPLE_CHUNKS;
-            if (sampleChunks != config.getMaxChunks() > 0) {
-                throw new IllegalArgumentException(
-                        sampleChunks
-                                ? "onOversize: sampleChunks needs a maxChunks above 0 (how many chunks to read): "
-                                        + config
-                                : "maxChunks applies only to onOversize: sampleChunks (mapReduce reads every chunk): "
-                                        + config);
-            }
-            config.incompleteStrategy();
-            // Fail fast on a malformed <facts> group, by the rules a facts file is held to.
-            final String rule = config.getId() != null ? config.getId() : String.valueOf(config.getPromptKey());
-            AiFactExtractor.validate("the facts of rule '" + rule + "'", config.getFacts());
+            validateRule(config);
             if (config.isFallback()) {
                 fallbackCount++;
                 if (config.isSkip()) {

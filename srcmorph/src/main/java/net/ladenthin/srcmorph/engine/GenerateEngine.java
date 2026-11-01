@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFactCounter;
-import net.ladenthin.srcmorph.config.AiFactDefinitionLoader;
-import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
@@ -147,7 +145,7 @@ public final class GenerateEngine {
         final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
         // Resolve each rule's factsKey to its shared factDefinitions group (copies the counters onto the
         // rule's facts) BEFORE validation, so the resolved fact patterns are validated too.
-        resolveSharedFacts(fieldGenerations);
+        EngineSupport.resolveFactsKeys(config, fieldGenerations);
 
         final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model), as a
@@ -454,27 +452,5 @@ public final class GenerateEngine {
             return compatibilityHelper.listOf(DEFAULT_FILE_EXTENSION);
         }
         return configured;
-    }
-
-    /**
-     * Resolves each rule's {@code factsKey} to its shared {@code <factDefinitions>} group, copying the
-     * counters onto the rule's {@code facts}. Translates a misconfiguration (unknown key, or a definition
-     * with a null key) into a {@link SrcMorphException} so the caller reports a configuration error.
-     *
-     * @param fieldGenerations the routing rules whose {@code factsKey} references are resolved in place
-     * @throws SrcMorphException if a {@code factsKey} matches no group or a definition has a null key
-     */
-    private void resolveSharedFacts(final List<AiFieldGenerationConfig> fieldGenerations) throws SrcMorphException {
-        try {
-            final List<@Nullable String> usedKeys = new ArrayList<>(fieldGenerations.size());
-            for (final AiFieldGenerationConfig rule : fieldGenerations) {
-                usedKeys.add(rule.getFactsKey());
-            }
-            new AiFactDefinitionSupport(new AiFactDefinitionLoader(config.getProfileDirectory())
-                            .load(config.getFactDefinitions(), usedKeys))
-                    .resolveFactsKeys(fieldGenerations);
-        } catch (final IllegalArgumentException | NullPointerException | IOException e) {
-            throw new SrcMorphException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
-        }
     }
 }

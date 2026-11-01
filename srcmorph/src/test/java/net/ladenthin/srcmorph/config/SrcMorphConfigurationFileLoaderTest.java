@@ -203,6 +203,41 @@ public class SrcMorphConfigurationFileLoaderTest {
     }
 
     @Test
+    public void load_aSectionOrKeySetToNothing_keepsItsDefault() throws IOException {
+        // act
+        final SrcMorphConfigurationFile empty =
+                SrcMorphConfigurationFileLoader.load(write("empty.yaml", "srcMorph:\n"), defaultBase(), NO_PROPERTIES);
+        final SrcMorphConfiguration nothing = SrcMorphConfigurationFileLoader.load(
+                        write("nothing.yaml", "srcMorph:\n  pluginVersion:\n  aiVersion: ~\n"),
+                        defaultBase(),
+                        NO_PROPERTIES)
+                .getSrcMorph();
+
+        // assert
+        assertThat(empty.getSrcMorph().getBaseDirectory(), is(equalTo(defaultBase())));
+        assertThat(nothing.getPluginVersion(), is(equalTo(new SrcMorphConfiguration().getPluginVersion())));
+        assertThat(nothing.getAiVersion(), is(equalTo(new SrcMorphConfiguration().getAiVersion())));
+    }
+
+    @Test
+    public void echo_carriesTheStrategyTokensOnly_soItReadsBack() throws IOException {
+        // arrange
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setPromptKey("p");
+        rule.setOnOversize("mapReduce");
+        final SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
+        srcMorph.setFieldGenerations(java.util.Collections.singletonList(rule));
+
+        // act
+        final String json = SrcMorphConfigurationFileLoader.newJsonMapper().writeValueAsString(srcMorph);
+
+        // assert
+        assertThat(json.contains("oversizeStrategy"), is(false));
+        assertThat(json.contains("\"onOversize\":\"mapReduce\""), is(true));
+        SrcMorphConfigurationFileLoader.newJsonMapper().readValue(json, SrcMorphConfiguration.class);
+    }
+
+    @Test
     public void load_aRelativeModelPath_resolvesAgainstTheFilesDirectory() throws IOException {
         // arrange
         final Path file = write(

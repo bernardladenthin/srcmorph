@@ -348,7 +348,7 @@ public class AiFieldGenerationSupport {
             final AiMdHeader baseHeader,
             final int window)
             throws IOException {
-        final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
+        final AiOversizeStrategy oversize = fieldGeneration.oversizeStrategy();
         if (oversize == AiOversizeStrategy.FAIL) {
             final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
                     new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader),
@@ -486,13 +486,13 @@ public class AiFieldGenerationSupport {
         final int overlap = AiMapReduceSupport.overlap(sourceBudget);
         final List<String> all = AiSourceChunker.chunk(sourceText, sourceBudget, overlap, 0);
         // mapReduce reads every chunk; sampleChunks reads maxChunks of them, and the summary says which
-        final List<String> chunks = fieldGeneration.getOversizeStrategy() == AiOversizeStrategy.SAMPLE_CHUNKS
+        final List<String> chunks = fieldGeneration.oversizeStrategy() == AiOversizeStrategy.SAMPLE_CHUNKS
                 ? AiSourceChunker.select(all, fieldGeneration.getMaxChunks())
                 : all;
         LOGGER.info(
                 "Oversize file '{}' -> {}: {} chars, {} of {} chunk(s)",
                 contextFile,
-                fieldGeneration.getOversizeStrategy().configValue(),
+                fieldGeneration.oversizeStrategy().configValue(),
                 sourceText.length(),
                 chunks.size(),
                 all.size());

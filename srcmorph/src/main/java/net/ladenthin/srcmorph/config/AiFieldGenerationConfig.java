@@ -264,12 +264,13 @@ public class AiFieldGenerationConfig {
     }
 
     /**
-     * Returns the parsed oversize strategy ({@link AiOversizeStrategy#FAIL} when unset/blank).
+     * Returns the parsed oversize strategy ({@link AiOversizeStrategy#FAIL} when unset/blank). Not a bean
+     * getter, so a serialized configuration carries only the token.
      *
      * @return the oversize strategy
      * @throws IllegalArgumentException if {@code onOversize} is non-blank and matches no strategy
      */
-    public AiOversizeStrategy getOversizeStrategy() {
+    public AiOversizeStrategy oversizeStrategy() {
         return AiOversizeStrategy.fromConfig(onOversize);
     }
 

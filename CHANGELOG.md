@@ -354,6 +354,23 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **The package and project rules are checked like file rules.** Their `onOversize`, `onIncomplete`
+  and `maxChunks` were never validated (a `maxChunks` under `mapReduce` was dropped silently, a typo
+  failed after the model had loaded), and their `factsKey` was never resolved although the overview
+  honours its rule's facts; `check` and the run now refuse such a rule, and a `skip` rule, naming the
+  phase, and resolve the facts. The rule is checked before the missing-output early return, so a
+  wrong one fails on a fresh tree too.
+- **A rule with both `facts` and `factsKey` is refused** instead of losing the inline facts.
+- **An unknown provider name fails before the run**, in `check` as well, instead of at its model's
+  group after the earlier groups have generated.
+- **`All` with `planOnly: true` only plans**: the package and project phases no longer run.
+- **A key set to nothing keeps its default.** `srcMorph:` with no value ended in a bare
+  `NullPointerException`, and `pluginVersion:` put `null` into a non-null field; both mappers now
+  skip null values (`Nulls.SKIP`).
+- **The echoed configuration reads back.** `getOversizeStrategy()` was a bean getter, so the echo
+  carried `oversizeStrategy`, which the strict reader refuses; it is `oversizeStrategy()` now, like
+  `incompleteStrategy()`.
+
 - **One failed file never ends the run, and the run record survives an abort.** The per-file catch
   took `IOException` only, while the llama.cpp binding throws unchecked exceptions, so one native
   error ended the whole run; an unchecked error now fails its file like a failed request (an

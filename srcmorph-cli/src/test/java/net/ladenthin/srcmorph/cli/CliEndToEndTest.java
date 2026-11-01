@@ -97,6 +97,19 @@ public class CliEndToEndTest {
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(true));
     }
 
+    @Test
+    public void run_allCommand_planOnly_writesNothing() throws Exception {
+        // arrange
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.srcMorph.setPlanOnly(true);
+
+        // act
+        new Main(configuration).run();
+
+        // assert: no file, no package and no project summary
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
     /**
      * The prompt comes from a file below {@code profileDirectory}, as every shipped example's does: the
      * run reads it before the first file and completes.

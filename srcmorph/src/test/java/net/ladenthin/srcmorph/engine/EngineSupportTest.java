@@ -390,6 +390,26 @@ public class EngineSupportTest {
     }
 
     @Test
+    public void validateRoutedModelPaths_anUnknownProvider_isRefusedBeforeTheRun() {
+        // act
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.validateRoutedModelPaths(
+                        "mock",
+                        supportWithRemote("openai-compatibel", "http://127.0.0.1:1/v1"),
+                        Arrays.asList(routedRule(false, "routed"))));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("unknown provider 'openai-compatibel'"));
+    }
+
+    @Test
+    public void validateRoutedModelPaths_theMockProvider_passes() throws SrcMorphException {
+        EngineSupport.validateRoutedModelPaths(
+                "mock", supportWithModelPath("absent.gguf"), Arrays.asList(routedRule(false, "routed")));
+    }
+
+    @Test
     public void validateRoutedModelPaths_missingModelFile_throwsNamingTheDefinitionAndPath() {
         // arrange
         final String missing = modelDir.resolve("nope.gguf").toString();

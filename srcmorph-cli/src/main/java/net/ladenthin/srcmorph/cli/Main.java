@@ -292,6 +292,11 @@ public class Main {
                 }
                 case All: {
                     new GenerateEngine(configuration.srcMorph).execute();
+                    if (configuration.srcMorph.isPlanOnly()) {
+                        // planOnly plans the file phase; the package and project phases would write
+                        LOGGER.info("planOnly: the package and project phases do not run.");
+                        break;
+                    }
                     new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).execute();
                     new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).execute();
                     break;
@@ -358,7 +363,7 @@ public class Main {
      * loads user-authored config files and must fail fast on a typo): the source object also carries
      * derived, read-only, setter-less getters that a strict mapper's serialize-then-deserialize
      * round-trip would otherwise reject as "unknown properties" (e.g.
-     * {@code AiFieldGenerationConfig#getOversizeStrategy()}, computed from the raw
+     * {@code AiFieldGenerationConfig#oversizeStrategy()}, computed from the raw
      * {@code onOversize} string field). This copy step never touches user input — {@code original}
      * was already accepted by the strict mapper when the configuration file was first loaded — so
      * leniency here does not weaken the config-file-typo-fails-fast contract.</p>

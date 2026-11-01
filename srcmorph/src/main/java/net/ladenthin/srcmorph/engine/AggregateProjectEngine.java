@@ -74,6 +74,12 @@ public final class AggregateProjectEngine {
         LOGGER.info("Output directory: {}", outputPath);
         LOGGER.info("Force           : {}", config.isForce());
 
+        // the rule is checked before anything else, so a wrong one fails on a fresh tree too
+        final AiFieldGenerationConfig overview =
+                EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        if (overview != null) {
+            EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
+        }
         if (!outputPath.toFile().exists()) {
             LOGGER.info("AI output directory does not exist, skipping project index: {}", outputPath);
             return 0;
@@ -84,8 +90,6 @@ public final class AggregateProjectEngine {
                 projectName == null || compatibilityHelper.isBlank(projectName) ? DEFAULT_PROJECT_TITLE : projectName;
 
         final AiIndexOutcome outcome;
-        final AiFieldGenerationConfig overview =
-                EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
         if (overview != null) {
             outcome = aggregateWithOverview(outputPath, title, overview);
         } else {
@@ -120,6 +124,7 @@ public final class AggregateProjectEngine {
             LOGGER.info("Check passed: the project index has no overview rule and calls no model.");
             return;
         }
+        EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
         EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
         EngineSupport.validateRoutedModelPaths(

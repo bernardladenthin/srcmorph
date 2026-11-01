@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.config;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -77,22 +79,32 @@ public final class SrcMorphConfigurationFileLoader {
     /**
      * Returns the strict JSON mapper the configuration is read and echoed with.
      *
-     * @return a new mapper that fails on an unknown key
+     * @return a new mapper that fails on an unknown key and reads a key set to nothing as unset
      */
     public static ObjectMapper newJsonMapper() {
-        final ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        return mapper;
+        return strict(new ObjectMapper());
     }
 
     /**
      * Returns the strict YAML mapper the configuration is read and echoed with.
      *
-     * @return a new mapper that fails on an unknown key
+     * @return a new mapper that fails on an unknown key and reads a key set to nothing as unset
      */
     public static YAMLMapper newYamlMapper() {
-        final YAMLMapper mapper = new YAMLMapper();
+        return strict(new YAMLMapper());
+    }
+
+    /**
+     * Makes a mapper strict: an unknown key fails, and a key set to nothing ({@code srcMorph:} with no
+     * value, {@code null}) keeps the field's default instead of putting {@code null} into it.
+     *
+     * @param mapper the mapper
+     * @param <M>    the mapper type
+     * @return the same mapper
+     */
+    private static <M extends ObjectMapper> M strict(final M mapper) {
         mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        mapper.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
         return mapper;
     }
 
@@ -124,8 +136,8 @@ public final class SrcMorphConfigurationFileLoader {
                 content.getSrcMorph(),
                 directory,
                 defaultBaseDirectory,
-                srcMorph != null && srcMorph.has(BASE_DIRECTORY_KEY),
-                srcMorph != null && srcMorph.has(OUTPUT_DIRECTORY_KEY));
+                srcMorph != null && srcMorph.hasNonNull(BASE_DIRECTORY_KEY),
+                srcMorph != null && srcMorph.hasNonNull(OUTPUT_DIRECTORY_KEY));
         return content;
     }
 

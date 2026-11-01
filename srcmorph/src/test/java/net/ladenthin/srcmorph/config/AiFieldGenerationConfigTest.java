@@ -84,9 +84,9 @@ public class AiFieldGenerationConfigTest {
     @Test
     public void oversizeStrategy_defaultsFailAndReflectsToken() {
         final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
-        assertThat(c.getOversizeStrategy(), is(AiOversizeStrategy.FAIL));
+        assertThat(c.oversizeStrategy(), is(AiOversizeStrategy.FAIL));
         c.setOnOversize("deterministic");
-        assertThat(c.getOversizeStrategy(), is(AiOversizeStrategy.DETERMINISTIC));
+        assertThat(c.oversizeStrategy(), is(AiOversizeStrategy.DETERMINISTIC));
     }
 
     @Test

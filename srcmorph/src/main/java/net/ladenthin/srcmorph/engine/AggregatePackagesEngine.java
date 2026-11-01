@@ -59,6 +59,7 @@ public final class AggregatePackagesEngine {
     public void check() throws SrcMorphException {
         final AiFieldGenerationConfig rule =
                 EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        EngineSupport.resolveFactsKeys(config, Collections.singletonList(rule));
         EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
         EngineSupport.validateRoutedModelPaths(
@@ -96,13 +97,15 @@ public final class AggregatePackagesEngine {
         LOGGER.info("Force           : {}", config.isForce());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
 
+        // the rule is checked before anything else, so a wrong one fails on a fresh tree too
+        final AiFieldGenerationConfig rule =
+                EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        EngineSupport.resolveFactsKeys(config, Collections.singletonList(rule));
         if (!outputPath.toFile().exists()) {
             LOGGER.info("AI output directory does not exist, skipping package aggregation: {}", outputPath);
             return 0;
         }
 
-        final AiFieldGenerationConfig rule =
-                EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
         final AiModelDefinitionSupport modelDefinitionSupport =
