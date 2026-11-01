@@ -11,9 +11,9 @@
 #
 # Two models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
 # IBM Granite 4.0 for larger files - H-Tiny with a 384K window in one pass up to ~1 MB, H-1B with a
-# 16K window beyond, map-reducing a few sampled chunks. A Java, SQL, shell, Perl or XML summary starts
-# with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables, methods, ...), so a
-# sampled summary of a multi-MB SQL dump still states what the data holds.
+# 16K window beyond, summarizing a few sampled chunks (sampleChunks). A Java, SQL, shell, Perl or XML
+# summary starts with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables,
+# methods, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
 #
 # command:
 #   Plan               prints which file gets which model and prompt; loads nothing, writes nothing

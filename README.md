@@ -33,7 +33,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/srcmorph/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/srcmorph?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/srcmorph/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/srcmorph)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/srcmorph?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/srcmorph)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(47%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(77%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_srcmorph&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_srcmorph)  
@@ -98,7 +98,7 @@ diagrams, or even source-to-source transformations.
 
 | Module | Artifact | What it is |
 |---|---|---|
-| [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` engines. Use this to embed srcmorph in your own tooling. |
+| [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate`/list-models engines. Use this to embed srcmorph in your own tooling. |
 | [`srcmorph-cli/`](srcmorph-cli/README.md) | `net.ladenthin:srcmorph-cli` | A standalone CLI driven by one JSON or YAML configuration file. You build the runnable jar for your machine with one `mvn package` ([`examples/build-your-own-jar/`](examples/build-your-own-jar/)). |
 | [`srcmorph-maven-plugin/`](srcmorph-maven-plugin/README.md) | `net.ladenthin:srcmorph-maven-plugin` | The Maven plugin, a thin wrapper around `srcmorph` — **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` (goal prefix `srcmorph`, was `ai-index`; properties `srcmorph.*`, were `aiIndex.*`). |
 
@@ -200,7 +200,7 @@ Maven is the supported path; JBang is a shortcut.
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -211,7 +211,7 @@ config.setBaseDirectory(new File("."));
 new GenerateEngine(config).execute();
 ```
 
-See [`srcmorph/README.md`](srcmorph/README.md) for the full API tour (the four engines, exception
+See [`srcmorph/README.md`](srcmorph/README.md) for the full API tour (the five engines, exception
 types, and a complete embedding example).
 
 ## How It Works

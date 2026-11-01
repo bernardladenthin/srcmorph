@@ -14,14 +14,14 @@ retrieval.
 > `<distributionManagement><relocation>` pointing here) and the redirect verified working — see the
 > root README's migration note. Internally, the plugin depends on
 > [`net.ladenthin:srcmorph`](../srcmorph/README.md) (a sibling reactor module) for all of
-> its engine/indexing logic — the 5 Mojo classes in this module are thin wrappers that map their
-> `@Parameter` fields onto a shared `SrcMorphConfiguration` and delegate to one of `srcmorph`'s
-> `engine.*` classes. That split is an internal implementation detail; nothing below changes for a
-> user of this plugin.
+> its engine/indexing logic — the five goal mojos in this module read the configuration file through
+> the core's `SrcMorphConfigurationFileLoader`, fill what it leaves unset from the Maven project, and
+> delegate to one of `srcmorph`'s `engine.*` classes. That split is an internal implementation
+> detail; nothing below changes for a user of this plugin.
 
 ## Features
 - Generate AI summaries for source files
-- Per-language prompts — Java, SQL schema, and a generic fallback — selected by file extension
+- Per-language prompts — Java, SQL schema, shell, Perl, XML and a generic fallback — selected by file extension
 - Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
 - Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
@@ -104,15 +104,16 @@ nothing else. What the file leaves unset, Maven fills from the project:
 | Key | Unset in the file |
 |---|---|
 | `baseDirectory` | `${project.basedir}` |
-| `subtrees` | the project's source directory and resource directories that exist |
+| `subtrees` | the project's source directory and resource directories that exist below the base directory (a resource's includes and excludes are not applied) |
 | `outputDirectory` | `src/site/ai` below the base directory |
 | `projectName` | `${project.name}` |
 | `pluginVersion` | `${project.version}` |
 
-Relative paths in the file resolve against the file's directory. A `${name}` in a value is a Maven
-property (the command line's `-D`, then the project's, then the system's), so
-`gpuLayers: ${ai.gpuLayers}` takes `-Dai.gpuLayers=12`; an unknown one stays as it is. Every goal takes
-its section of the file:
+Relative paths in the file resolve against the file's directory: the directories, `runRecordFile`,
+and a `modelPath`, `templateFile` or `factsFile` through `modelDirectory` / `profileDirectory`,
+which are the file's directory when unset. A `${name}` in a value is a Maven property (the command
+line's `-D`, then the project's, then the system's), so `gpuLayers: ${ai.gpuLayers}` takes
+`-Dai.gpuLayers=12`; an unknown one stays as it is. Every goal takes its section of the file:
 
 | Goal | Rules |
 |---|---|
@@ -143,10 +144,11 @@ The file has three building blocks:
    `fallback: true` (no condition) catches the rest. A file that matches no rule and no fallback
    **fails the build**. So one `generate` run can index different file kinds/sizes with **different
    models *and* prompts**; it loads each model once. Run with `-Dsrcmorph.planOnly=true` to print the
-   routing plan (a copy-pasteable Markdown table: file → rule id → prompt → context-window fit → rough
-   time estimate, summed per model and overall) and stop before loading any model. The plan also checks
-   each file against its routed model's **context window**: a file too large for the window would lose
-   content if trimmed. What happens then is **configuration only** — the plugin never picks a model for
+   routing plan (a copy-pasteable Markdown table: file → rule id → prompt → context-window fit →
+   estimated source tokens → rough time estimate; the tokens summed per model and per directory, the
+   time per model and overall) and stop before loading any model. The plan also checks each file
+   against its routed model's **context window**: a file too large for the window would lose content
+   if trimmed. What happens then is **configuration only** — the plugin never picks a model for
    you — and is chosen per rule with `onOversize`:
    - **`fail`** *(default)* — abort the build (a hard fail). The fix is a rule with a size `condition`
      that routes oversized files to a model with a large enough window (see the
@@ -262,8 +264,8 @@ srcMorph:
 
 [`srcmorph-selftest.yaml`](srcmorph-selftest.yaml) is the full configuration this module indexes
 itself with (`-P srcmorph-selftest`), three models and the rules of every language;
-[`.github/plugin-it/`](../.github/plugin-it/) is the fixture the integration test runs this example
-with, on the `mock` provider.
+[`.github/plugin-it/`](../.github/plugin-it/) is the fixture the integration test runs, a
+configuration of the same shape on the `mock` provider.
 
 ### Routing rules (conditions, priority, skip, plan)
 Within one `generate` run you can route files to different models **and** prompts by size, language,
@@ -385,11 +387,11 @@ model); everything else has a default. The defaults below are the shipped values
 | Key | Default | Description |
 |---|---|---|
 | `key` | *(required)* | Identifier referenced by a rule's `aiDefinitionKey` |
-| `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the working directory). Not used by an `openai-compatible` model |
+| `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the configuration file's directory). Not used by an `openai-compatible` model |
 | `provider` | *(empty)* | The backend of this model: `llamacpp-jni`, `openai-compatible` or `mock`; empty uses the run's `generationProvider`. Lets one run send some files to a local GGUF and others to a remote model |
 | `remoteModel` | *(empty)* | `openai-compatible` only: the model id requested (the `model` field, e.g. `openai/gpt-6-luna` on OpenRouter); empty sends none, which a single-model `llama-server` or `NativeServer` accepts |
 | `baseUrl` | `https://openrouter.ai/api/v1` | `openai-compatible` only: the API base; `<baseUrl>/chat/completions` is called. A local server is `http://127.0.0.1:<port>/v1`. Must be `http(s)`, checked before the run starts |
-| `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default), or a variable that is unset or empty, sends no key (a named variable that is not set fails the run before any request, as does a key that would go over plain `http` to another machine): a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
+| `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default) sends no key. A named variable that is unset or empty fails the run before any request, as does a key that would go over plain `http` to another machine: a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
 | `stream` | `false` | `openai-compatible` only: request the answer as Server-Sent Events (`stream: true`, `stream_options.include_usage: true`) and assemble it into the same chat response, so the summary does not change. A stream without the closing `data: [DONE]` or with an `error` chunk fails the file. Required for the GitHub Copilot API Gateway, whose non-streaming path adds and runs VS Code's own tools (see [docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md)); it also moves the read timeout from the whole answer to the gap between two events |
 | `requestsPerMinute` | `0` | `openai-compatible` only: at most this many requests to the model's server start within any minute; a request beyond it waits until the oldest of the last minute is a minute old, instead of being answered with `429`. Every model of one server with the same `apiKeyEnv` and limit counts in one window, across the phases of a run in one process. Set it below the server's own limit, e.g. 25 for the Copilot API Gateway's `rateLimitPerMinute` 30. `0` or less: no limit |
 | `maxRetries` | `3` | `openai-compatible` only: how often a request that failed with `408`, `429`, a `5xx` status or a read timeout is sent again, after the server's `Retry-After` (in seconds, at most 5 minutes) or an exponential backoff from 1 s (at most 60 s, plus up to a quarter as jitter). Any other failure is final at once; a prompt the server refuses as longer than the model's context (`413`, or `400` saying so) is shrunk and asked again, as for a local model. `0` sends every request once. A request that still fails counts its file as failed; the other files are indexed and the goal fails at its end |
@@ -453,7 +455,7 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 
 ## Prompt System
 Prompts are referenced by key from the rules and read from the profile (`profileDirectory`). The
-self-test configuration uses the eight prompt files and the seven fact-counter files of
+self-test configuration uses the eight prompt files and the six fact-counter files of
 [`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
 prompt and each counter exists once in the repository:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
@@ -493,8 +495,9 @@ Both carry one entry per measured model — `modelKey`, `loadSeconds`,
 `prefillTokensPerSecond`, `decodeTokensPerSecond`, `charsPerToken`,
 `midPrefillTokensPerSecond`, `cachedPromptTokens` — so a calibration run can be diffed
 across machines or committed as a baseline, instead of existing only as console output.
-The three figures that also appear in the paste-ready `<calibration>` block are formatted
-identically, so the two can never disagree about what was measured.
+The three figures that also appear in the paste-ready YAML `calibration:` block (for the model's
+entry under `aiDefinitions`) are formatted identically, so the two can never disagree about what
+was measured.
 
 ## Design Principles
 - Deterministic metadata (hash-based change detection)
@@ -590,15 +593,18 @@ runs on the CPU:
 ```
 
 ```
-mvn srcmorph:generate -Dsrcmorph.generationProvider=llamacpp-jni      # + the GPU runtime on PATH (see below)
+mvn srcmorph:generate      # srcmorph.yaml sets generationProvider: llamacpp-jni; + the GPU runtime on PATH (see below)
 ```
+
+The provider is set in the configuration file: `generationProvider: llamacpp-jni` under `srcMorph`,
+or a model's own `provider`. The plugin has no property for it.
 
 **Alternative — a natives directory (no POM change).** Unpack the CPU natives jar's directory and
 copy the GPU module jar's files into it, then point `net.ladenthin.llama.lib.path` at that directory;
 it is tried before the natives jars (the binding's README, "Natives outside Maven"):
 
 ```
-mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dsrcmorph.generationProvider=llamacpp-jni
+mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native
 ```
 
 > [!NOTE]

@@ -42,7 +42,7 @@ Why each one:
 | `host` `127.0.0.1` | The default; only this machine can connect. Never bind it to `0.0.0.0`. |
 | `apiKey` | **Mandatory.** The gateway answers every origin with `Access-Control-Allow-Origin: *`, so without a key any web page open in a browser on this machine can use it, including `POST /v1/tools/call`, which runs VS Code tools. With a key, a request without it gets `401`. |
 | `maxConcurrentRequests` | srcmorph sends one request at a time; `2` leaves room for the one request that waits for the consent dialog (below). |
-| `rateLimitPerMinute` | A cap against a runaway run. Fast models (Claude Haiku, GPT-6 Luna) answer a file in 4 to 5 s, 12 to 15 requests a minute: at 10 the gateway answers `429` and the run stops, at 30 it does not. srcmorph's own `requestsPerMinute` (below) keeps a run under it whatever the model's speed. |
+| `rateLimitPerMinute` | A cap against a runaway run. Fast models (Claude Haiku, GPT-6 Luna) answer a file in 4 to 5 s, 12 to 15 requests a minute: at 10 the gateway answers `429` and srcmorph waits and retries (a file that still fails fails the run at its end), at 30 it does not. srcmorph's own `requestsPerMinute` (below) keeps a run under it whatever the model's speed. |
 | `mcp.enabled` `false` | srcmorph needs no MCP servers. |
 
 Do not start the gateway's Cloudflare tunnel: it publishes the server on the internet.
@@ -161,7 +161,8 @@ Rules of thumb:
 - **`gpt-4o-mini`** takes only about 12k input tokens: fine for small files, too small for long
   Java classes. Set `contextSize` to `12000` or less.
 - **A cheap model for the file summaries**, a stronger one for the package and project summaries:
-  the routing rules (`fieldGenerations`) can name a different model per phase.
+  the file rules (`srcMorph.fieldGenerations`) and the top-level `packageFieldGenerations` /
+  `projectFieldGenerations` each name their own model.
 - Prefer models with a `0x` or low multiplier for whole trees.
 
 ## 4. Limits of this route
@@ -187,7 +188,8 @@ Rules of thumb:
 |---|---|
 | `429 Too many concurrent requests` right at the start | The consent dialog in VS Code is waiting; allow it, or restart the server. |
 | `429 Rate limit exceeded (10 requests/min)` after a few files | The model is faster than `rateLimitPerMinute`; set `requestsPerMinute` below it, or raise it (30 is enough at one request at a time). |
-| `401` | `apiKeyEnv` names no variable, the variable is empty, or the key differs from the gateway's `apiKey`. |
+| `401` | `apiKeyEnv` is empty (no key is sent), or the key differs from the gateway's `apiKey`. |
+| `its apiKeyEnv names COPILOT_GATEWAY_API_KEY, which is not set` | The variable is unset or empty in the shell that started srcmorph. |
 | `502 No lowest priority node found` / `Cannot have more than 128 tools` | `stream` is not `true`. |
 | `The stream ended without 'data: [DONE]'` | The gateway or VS Code dropped the connection mid-answer; run again. |
 | `Refusing to send the API key ... in cleartext` | `baseUrl` is plain `http` to a host that is not loopback. |

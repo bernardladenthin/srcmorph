@@ -259,21 +259,21 @@ Static methods are acceptable **only** for:
 
 ## 7. Key-Indexed Definition Pattern
 
-When a plugin `<configuration>` block contains a list of named definitions (e.g. prompt templates, AI model configs) that other parts of the configuration reference by a string key, apply the **key-indexed definition pattern**:
+When the configuration file contains a list of named definitions (e.g. prompt templates, AI model configs) that other parts of the configuration reference by a string key, apply the **key-indexed definition pattern**:
 
-1. **Definition POJO** — a regular JavaBean class (not a record, because Maven injects via reflection) that holds the key and all configuration fields. Fields default to the corresponding `*Config.DEFAULT_*` constants.
+1. **Definition POJO** — a regular JavaBean class (not a record, because Jackson binds it through its setters) that holds the key and all configuration fields. Fields default to the corresponding `*Config.DEFAULT_*` constants.
 2. **Support class** — converts the list of definition POJOs into a `Map<String, ConfigType>` at construction time, then exposes `getConfig(String key)` which throws `IllegalArgumentException` (with the missing key in the message) for unknown keys.
 3. **Reference by key** — any configuration class that previously held an inline nested config object is refactored to hold only a `String aiDefinitionKey` (or similar) that is resolved at runtime via the support class.
 
 ### Why this pattern?
 
 - Eliminates duplication when the same model parameters are needed in multiple places.
-- Removes the need for Maven profiles to vary model configuration; all definitions live inline in the plugin's `<configuration>` block.
-- The support class is constructed once per Mojo execution and passed into collaborators, making the dependency explicit and testable.
+- Removes the need for Maven profiles to vary model configuration; all definitions live once in the configuration file.
+- The support class is constructed once per engine run and passed into collaborators, making the dependency explicit and testable.
 
 ### Example
 
-**Definition POJO (Maven @Parameter):**
+**Definition POJO (bound by Jackson):**
 ```java
 public class AiModelDefinition {
     private String key;

@@ -28,9 +28,8 @@ srcMorph:
   generationProvider: openai-compatible
 
   # The profile: the measured prompts of this repository (profiles/README.md), one file per key. A
-  # rule's promptKey names <profileDirectory>/<key>.md; the directory is relative to the working
-  # directory (start srcmorph from this one). Copy it and point profileDirectory at the copy to change
-  # a prompt.
+  # rule's promptKey names <profileDirectory>/<key>.md; the directory is relative to this file's
+  # directory. Copy it and point profileDirectory at the copy to change a prompt.
   profileDirectory: "../../profiles/v3"
 
   aiDefinitions:

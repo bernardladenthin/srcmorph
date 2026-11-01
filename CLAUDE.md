@@ -56,7 +56,8 @@ llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
 │   └── src/main/java/net/ladenthin/srcmorph/
 │       ├── config/      18+ POJOs (incl. the shared root SrcMorphConfiguration)
 │       ├── engine/      GenerateEngine, AggregatePackagesEngine, AggregateProjectEngine,
-│       │                CalibrateEngine, SrcMorphException, GenerateResult, CalibrationReport, EngineSupport
+│       │                CalibrateEngine, ListModelsEngine, SrcMorphException, GenerateResult,
+│       │                CalibrationReport, ModelListReport, RunRecord, EngineSupport
 │       ├── indexer/      SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport, ...
 │       ├── document/  prompt/  provider/  support/
 │   └── src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf   (real-model tests live here)
@@ -65,7 +66,7 @@ llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
 │       ├── Main.java                       BitcoinAddressFinder cli/Main.java pattern
 │       └── configuration/                  CConfiguration + CCommand (BAF public-field style)
 ├── srcmorph-maven-plugin/                   Maven plugin  net.ladenthin:srcmorph-maven-plugin, goalPrefix srcmorph
-│   └── src/main/java/net/ladenthin/maven/srcmorph/mojo/   (4 goal mojos + the abstract AbstractAiIndexMojo base; renamed package/properties)
+│   └── src/main/java/net/ladenthin/maven/srcmorph/mojo/   (5 goal mojos + the abstract AbstractAiIndexMojo base + RuleSection; renamed package/properties)
 ├── examples/                               config_*.json/.yaml + run_*.sh/.bat + simplelogger.properties
 │   └── build-your-own-jar/                 pom.xml + build/run scripts: srcmorph-cli + this machine's natives -> srcmorph.jar
 ├── docs/                                   RELEASE.md + the ai-index model-benchmark writeups
@@ -83,7 +84,8 @@ removed after its `1.0.4` release; see "Project Overview" above).
 Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
 `CoreArchitectureTest#coreIsMavenFree`, the load-bearing ArchUnit rule for this module). Depends on
 `net.ladenthin:llama` (the llama.cpp JNI binding, used only by the `provider` package), SLF4J, jspecify
-+ checker-qual, Lombok (provided). Package root: `net.ladenthin.srcmorph`.
++ checker-qual, Jackson (databind + YAML, for `SrcMorphConfigurationFileLoader`), Lombok (provided).
+Package root: `net.ladenthin.srcmorph`.
 
 - **`config/`** — mutable JavaBeans (no Maven annotations) bound by Jackson from the one configuration
   file of the CLI and the plugin, or built in plain Java code. The run's object is
@@ -95,9 +97,11 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the CLI's `command` /
   `modelFilter`), read by **`SrcMorphConfigurationFileLoader`** the same way for both surfaces: the
   extension picks JSON or YAML, a `${name}` in a parsed value is a property of the caller (the plugin:
-  Maven's; the CLI: the system properties), unknown keys fail, and relative directories resolve
+  Maven's; the CLI: the system properties), unknown keys fail, and every relative path resolves
   against the file's directory (an unset `baseDirectory` is the caller's default, an unset
-  `outputDirectory` is `src/site/ai` below the base).
+  `outputDirectory` is `src/site/ai` below the base; an unset `modelDirectory` / `profileDirectory`
+  is the file's directory, so a relative `modelPath`, `templateFile` or `factsFile` resolves there
+  too).
 - **`engine/`** — one class per phase, each constructed from a `SrcMorphConfiguration` and owning its
   own AI provider lifecycle (try-with-resources; one model resident at a time):
   `GenerateEngine` (plan → validate → planOnly early-out → per-model-group indexing loop + progress
@@ -159,7 +163,7 @@ above), `layeredArchitecture` (`engine` on top → `indexer` → `provider`/`doc
 `jniConfinedToProvider` (only the `provider` package may touch the llama.cpp JNI binding).
 
 **Test suite** (`srcmorph/src/test/java/net/ladenthin/srcmorph/`, package-renamed 1:1 with production):
-~64 test files, incl. jqwik properties, an ArchUnit suite, a Lincheck race test
+~95 test files, incl. jqwik properties, an ArchUnit suite, a Lincheck race test
 (`AtomicCounterLincheckTest`), and the model-backed real tests gated on
 `src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf`. **`LlamaCppJniKnobSweepTest` drives every
 model knob at a non-default value through a real generation** (one case per knob, ~35 s for all of
@@ -229,9 +233,9 @@ CLI driven by a single JSON or YAML configuration file:
 - **Tests**: `MainTest`, `configuration.ConfigBindingTest` (round-trips a private
   `src/test/resources/test-fixtures/minimal-generate.{json,yaml}` pair through both parsers),
   `ExamplesConfigBindingTest` (sweeps every shipped `examples/config_*.{json,yaml}` fixture — the
-  public, documented examples — through the same strict mappers), `CliEndToEndTest` (drives the `All`
-  and `Plan` commands against the mock provider end to end, no forked process, and `ListModels`
-  against a loopback stub, binding the printed template back into a configuration).
+  public, documented examples — through the same strict mappers), `CliEndToEndTest` (drives every
+  command against the mock provider end to end, no forked process, `ListModels` against a loopback
+  stub, binding the printed template back into a configuration).
 
 ### `srcmorph-maven-plugin` — the Maven plugin (renamed; formerly `llamacpp-ai-index-maven-plugin`)
 
@@ -239,7 +243,7 @@ CLI driven by a single JSON or YAML configuration file:
 `net.ladenthin:llamacpp-ai-index-maven-plugin`), package `net.ladenthin.maven.srcmorph.mojo` (was
 `net.ladenthin.maven.llamacpp.aiindex.mojo`), goal prefix `srcmorph` (was `ai-index`), every
 `@Parameter` property now spelled `srcmorph.*` (e.g. `srcmorph.skip`, `srcmorph.file.skip`,
-`srcmorph.planOnly`, `srcmorph.generationProvider` — was `aiIndex.*`).
+`srcmorph.planOnly`, `srcmorph.configurationFile` — was `aiIndex.*`).
 The old coordinates were kept alive on Maven Central via a one-time relocation-stub publish (see
 "Project Overview" above and its own paragraph below) — never describe the plugin using the old
 coordinates/package/properties in new documentation or code. The plugin's *contents* stay thin: it
@@ -280,12 +284,11 @@ themselves (five goals, `RuleSection`).
   when adding a `@Parameter`: `MojoGoalTest` and friends set the *field*, so they cannot see the
   `property` string, what Maven injects (`${project.*}`, `${session.userProperties}`), the goal prefix
   or the generated descriptor — a renamed property used to ship green. The IT installs the reactor
-  (`-pl srcmorph-maven-plugin -am`, which provably excludes `srcmorph-cli` and its ~80 MB assembly),
-  then runs the fixture through a real Maven lifecycle with the `mock` provider: no GGUF, no GPU, no
-  network. Its fixture (`pom.xml` with the goals only, `srcmorph.yaml`) mirrors the worked example in
-  this module's `README.md`, so a README that drifts from the working configuration fails it; its last
-  step plans the module's own `srcmorph-selftest` profile. It gates `publish-snapshot` and
-  `publish-release`. A trap when extending it, found by falsifying assertions rather than by reading:
+  (`-pl srcmorph-maven-plugin -am`, which excludes `srcmorph-cli`), then runs the fixture through a
+  real Maven lifecycle with the `mock` provider: no GGUF, no GPU, no network. Its fixture (`pom.xml`
+  with the goals only, `srcmorph.yaml`) has the shape of the worked example in this module's
+  `README.md`; no test reads the README itself, so keep the two in step by hand. Its last step plans
+  the module's own `srcmorph-selftest` profile. It gates `publish-snapshot` and `publish-release`. A trap when extending it, found by falsifying assertions rather than by reading:
   the fixture must
   **not** get a `settings.xml` with a `<pluginGroups>` entry — `mvn srcmorph:generate` resolves
   without one (Maven matches the prefix against the descriptor of the plugin the fixture declares),
@@ -453,8 +456,8 @@ CLI's and the plugin's are not aggregated).
 | `org.slf4j:slf4j-api` | 2.0.20 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
 | `org.slf4j:slf4j-simple` | 2.0.20 (converged in the parent) | `srcmorph-cli` (runtime binding) |
 | `ch.qos.logback:logback-classic` | 1.6.6 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
-| `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph-cli` (JSON config) |
-| `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph-cli` (YAML config) |
+| `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph` (`SrcMorphConfigurationFileLoader`, JSON), `srcmorph-cli` |
+| `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph` (`SrcMorphConfigurationFileLoader`, YAML), `srcmorph-cli` |
 | `org.apache.maven:maven-plugin-api` | 3.10.0 | `srcmorph-maven-plugin` (provided); the descriptor states Maven 3.6.3 regardless |
 | `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.16.0 | `srcmorph-maven-plugin` (provided) |
 
@@ -634,8 +637,11 @@ capacity hint, `return chunks` vs `emptyList()` on empty input, two clamps the s
 `Math.max` absorbs, the loop head the `end >= length` break already guarantees, and `select`'s
 `total <= maxChunks`, where the equality branch computes the identity mapping. Reaching 100% on
 either would mean exposing internals or deleting a deliberately defensive guard. The orchestration
-layers (`indexer.*`, the plugin's `mojo.*` walk) and the JNI provider stay out for a different
-reason: they need a Maven/native context rather than pure-unit mutation.
+classes (the walking indexers `SourceFileIndexer` / `PackageIndexer` / `ProjectIndexer`,
+`AiFieldGenerationSupport`, the four multi-step engines) and the JNI provider stay out for a
+different reason: they own provider lifecycles or a native context rather than pure logic. The pure
+parts of `indexer` (`AiIndexPlan`, `AiRouteEstimator`, `AiMapReduceSupport`, ...) and the plugin's
+mojos are on their gates.
 
 ## JPMS Module Descriptor
 

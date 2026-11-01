@@ -49,10 +49,11 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   properties); the POM names the goals, `configurationFile`, the skip switches and the run switches
   `srcmorph.force` / `srcmorph.planOnly`, which override the file when `true`. What the file leaves
   unset, Maven fills: `baseDirectory`, `subtrees` (the source directory and the resource directories
-  that exist), `projectName`, `pluginVersion`. A `${name}` in a value of the file is a Maven property
-  (the CLI: a system property), filled after parsing, so a Windows path needs no escaping. Each goal
-  takes its section: `generate` and `calibrate` the file rules, `aggregate-packages` the
-  `packageFieldGenerations`, `aggregate-project` the `projectFieldGenerations`. The self-test profile
+  that exist below the base directory), `projectName`, `pluginVersion`. A `${name}` in a value of the
+  file is a Maven property (the CLI: a system property), filled after parsing, so a Windows path needs
+  no escaping. Each goal takes its section: `generate` and `calibrate` the file rules,
+  `aggregate-packages` the `packageFieldGenerations`, `aggregate-project` the
+  `projectFieldGenerations`. The self-test profile
   is `srcmorph-maven-plugin/srcmorph-selftest.yaml` (its `-Dai.*` still work), with the repository
   root as base, so its two subtrees lie inside it. Relative paths of the file, for the CLI too,
   resolve against the file's directory instead of the working directory (the root README's quickstart
@@ -133,10 +134,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 - **Profiles: prompts and fact counters as files, named by key (`profileDirectory`).** A profile is
   one directory with a file per prompt (`<key>.md`, the system prompt verbatim) and per group of
   exact fact counters (`<key>.tsv`: `label<TAB>regex` per line, `#` comments). With
-  `profileDirectory` set (CLI and library: relative to the working directory; plugin:
-  `srcmorph.profileDirectory`, relative to `${basedir}`; absolute always as it is), a rule's
-  `promptKey` and `factsKey` that no definition has are read from there, so a configuration names
-  keys only and repeats no prompt text and no regex. A key found nowhere fails the run before a model
+  `profileDirectory` set (in the configuration file: relative to the file's directory; in a
+  `SrcMorphConfiguration` built in code: relative to the working directory; absolute always as it
+  is), a rule's `promptKey` and `factsKey` that no definition has are read from there, so a
+  configuration names keys only and repeats no prompt text and no regex. A key found nowhere fails the run before a model
   loads, naming the file it looked for; a pattern that does not compile fails it with file and line.
   A definition still works and wins over a file of the same key: a prompt is a `template` or a
   `templateFile`, a fact group `facts` or the new `factsFile` (both files relative to
@@ -202,27 +203,30 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `models.json` has the two Granite presets of the self-test for the large corpus;
   `--chars-per-token` replaces every model's estimate, for data that tokenizes denser than code.
 - **CLI: rules per aggregation phase, `packageFieldGenerations` and `projectFieldGenerations`.**
-  Top-level keys beside `srcMorph`: the package phase (`AggregatePackages`, and the package step of
-  `All`) and the project phase run with these rules when set, as the Maven plugin's
-  `aggregate-packages` / `aggregate-project` executions have `<fieldGenerations>` of their own.
+  Top-level keys beside `srcMorph`, read by the CLI's package phase (`AggregatePackages`, and the
+  package step of `All`) and project phase and by the plugin's `aggregate-packages` /
+  `aggregate-project`: the package phase takes exactly one rule, the project phase none or one.
   Before, both phases took the first file rule, so `All` summarized packages with a file prompt and
-  model. Unset, nothing changes.
+  model.
 - **`examples/build-your-own-jar/srcmorph.yaml` is the plugin's self-test profile as a CLI
   configuration**, nearly 1:1: gpt-oss-20b (native MXFP4, 96K window) for every file, package and the
   project overview, Granite 4.0 H-Tiny (384K window, one pass) for ~275 KB .. 1 MB and Granite 4.0
-  H-1B (16K window, map-reduce over 6 sampled chunks) beyond, with the exact whole-file counts of
-  the profile's `java-facts` and `sql-facts` (Java: types, methods, fields, ...; SQL: INSERT
-  statements and rows, tables, views, indexes, routines, triggers, types) on every Java and SQL
-  summary, so a sampled summary of a multi-MB SQL dump still states what the data holds. It replaces the one-model, one-placeholder-prompt example; a test compares it
-  with the pom.
-- **The plugin's `srcmorph-selftest` profile carries two models only**: gpt-oss-20b
+  H-1B (16K window, `sampleChunks` with `maxChunks: 6`) beyond, with the exact whole-file counts of
+  the profile's fact files (Java: types, methods, fields, ...; SQL: INSERT statements and rows,
+  tables, views, indexes, routines, triggers, types; and the shell, Perl, XML and POM counters) on
+  every summary of those kinds, so a sampled summary of a multi-MB SQL dump still states what the
+  data holds. It replaces the one-model, one-placeholder-prompt example; a test compares it with
+  `srcmorph-maven-plugin/srcmorph-selftest.yaml`.
+- **The plugin's `srcmorph-selftest` profile carries three model definitions only**: gpt-oss-20b
   (`gpt-oss-20B-mxfp4`) and the two Granite presets. The other model definitions (Mistral, Llama,
   Codestral, Qwen, Gemma, Ministral, the `EXP-*` benchmark keys, the other gpt-oss quantizations and
   windows) are gone; their measurements stay in `docs/ai-index-benchmark`.
 - **`profiles/`: the production prompts and fact counters once in the repository, now v3.**
-  `profiles/v3/` holds the five prompts and the `java-facts` / `sql-facts` counters, which the plugin
-  pom and the example configuration no longer write out; `SqlFactPatternsTest` and
-  `JavaStructureFactPatternsTest` read these files instead of copies. The prompts are v1, which the October 2026 model card measured, with targeted additions (the type's
+  `profiles/v3/` holds the prompts (`file-body-java`, `-sql`, `-shell`, `-perl`, `-xml`, `-fallback`,
+  `package-body`, `project-body`) and the fact counters (`java-facts`, `sql-facts`, `shell-facts`,
+  `perl-facts`, `xml-facts`, `pom-facts`), which the self-test and the example configurations no
+  longer write out; `SqlFactPatternsTest` and `JavaStructureFactPatternsTest` read these files
+  instead of copies. The prompts are v1, which the October 2026 model card measured, with targeted additions (the type's
   own name; getters and setters named one by one; SQL constraint and index names and row counts per
   table; constants, configuration variables, helpers and library calls of other files). Three runs
   each on OpenRouter: GPT-6 Luna 100 % in all three (v1 93.6 to 99.0 %), gpt-oss-20b 99.0 % (v1
@@ -235,8 +239,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   it are in the history (`profiles/README.md`). The plugin's
   `srcmorph-selftest` profile, the model-card benchmark (`run.py --profile <name>`, default v3, replacing
   `modelcard/prompts.json`), the examples (which had one-line placeholder prompts) and the plugin's
-  integration-test fixture all read these files, so the CI smoke of the user-built jar and the
-  plugin IT exercise `templateFile` as well.
+  integration-test fixture all read these files by key from the profile directory, so the CI smoke
+  of the user-built jar and the plugin IT read the profile as well (the IT also a `templateFile`).
 - **`openai-compatible` provider: a model can run on any OpenAI-compatible API.** OpenRouter (the
   default `baseUrl`), a llama.cpp `llama-server`, jllama's `NativeServer` or any server answering
   `POST <baseUrl>/chat/completions`. Four new per-model settings: `provider` (overrides the run's
@@ -274,9 +278,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   Gemma 4 26B-A4B (93.2 %) and LFM 2.5 24B-A2B (87.0 %, always reasons).
 - **`openai-compatible` provider: `requestsPerMinute`.** At most this many requests to a model's
   server start within any minute; a request beyond it waits until the oldest of the last minute is
-  a minute old, instead of being answered with `429` (the provider does not retry). Models of one
-  server with the same key and limit share the window, across the phases of a run. Default `0`, no
-  limit. The Copilot API Gateway example sets 25 against the gateway's `rateLimitPerMinute` 30;
+  a minute old, instead of being answered with `429`. Models of one server with the same key and
+  limit share the window, across the phases of a run. Default `0`, no limit. The Copilot API Gateway example sets 25 against the gateway's `rateLimitPerMinute` 30;
   `ListModels` copies it into every template entry.
 - **CLI command `ListModels`**: asks every OpenAI-compatible server the `aiDefinitions` name which
   models it serves (`GET <baseUrl>/models`, with the definition's key and the same refusal to send
@@ -319,7 +322,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   an unclosed `/*` comments out the rest of the file).
 - **Dependencies and build plugins:** logback-classic 1.6.6 (test scope), NullAway 0.14.3,
   maven-surefire-plugin 3.6.1, jacoco-maven-plugin 0.8.16, palantir-java-format 2.103.0 (no formatting
-  change) and `anthropics/claude-code-action` v1.0.264.
+  change) and `anthropics/claude-code-action` v1.0.264. The core depends on `jackson-databind` and
+  `jackson-dataformat-yaml` (with it SnakeYAML) for `SrcMorphConfigurationFileLoader`; up to 1.3.0
+  only the CLI did.
 - **The GPG signing-key preflight runs only when something is published.** The two jobs
   `verify-signing-key` and `verify-signing-key-gradle` ran on every trigger: red on every pull request,
   because the `maven-central` environment admits only `main` and `v*` tags, and on a push to `main`
@@ -359,7 +364,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   card's runs had no facts lines, their scores do not change.
 - **The self-test's `big-window-java` and `big-window-sql` rules (~275 KB .. 1 MB) wrote no facts
   line**, although the smaller and the larger files had one; they name `java-facts` / `sql-facts` now,
-  in the plugin pom and in `examples/build-your-own-jar/srcmorph.yaml`.
+  in `srcmorph-maven-plugin/srcmorph-selftest.yaml` and in `examples/build-your-own-jar/srcmorph.yaml`.
 - **A local model reasoned with thinking switched off.** The llama.cpp provider sent
   `reasoningEffort` (default `low`, meant for gpt-oss) to every chat template as the
   `reasoning_effort` kwarg, also with `chatTemplateEnableThinking: false`. A template that reads it

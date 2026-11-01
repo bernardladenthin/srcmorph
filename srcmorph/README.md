@@ -16,7 +16,10 @@ run needs, bound by Jackson or set in plain Java. The CLI and the Maven plugin r
 configuration file, JSON or YAML, through `SrcMorphConfigurationFileLoader`, into a
 `SrcMorphConfigurationFile` (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the
 CLI's `command` / `modelFilter`): the extension picks the parser, a `${name}` in a value is the
-caller's property, an unknown key fails, and relative directories resolve against the file's
+caller's property, an unknown key fails, and relative paths resolve against the file's directory:
+the directories and `runRecordFile` directly, a `modelPath`, `templateFile` or `factsFile` through
+`modelDirectory` / `profileDirectory`, which the loader sets to the file's directory when they are
+unset. A `SrcMorphConfiguration` built in code resolves its relative paths against the working
 directory.
 
 Major field groups:
@@ -24,7 +27,7 @@ Major field groups:
 | Group | Fields |
 |---|---|
 | Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `minFileSizeBytes`/`maxFileSizeBytes` |
-| Output | `outputDirectory`, `force`, `planOnly` |
+| Output | `outputDirectory`, `force`, `planOnly`, `runRecordFile` (the JSON record of a file phase, `engine.RunRecord`) |
 | Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` (`List<AiFactDefinition>`: a `key` and `facts` or a `factsFile`) |
 | AI backend | `generationProvider` (`"mock"`, `"llamacpp-jni"` or `"openai-compatible"`; a model definition's own `provider` overrides it); every model parameter is a field of an `aiDefinitions` entry |
 | Header metadata | `pluginVersion`, `aiVersion`, `projectName` |
@@ -38,13 +41,13 @@ placeholder), `AiFieldGenerationConfig` (one routing rule: a
 `AiCondition`/`AiConditionGroup`/`AiRangeCondition` (the composable and/or/not condition tree over
 extensions/size/lines/modified-time/path-glob), `AiFactCounter`/`AiFactDefinition` (deterministic
 regex-count "facts" prepended to a generated body), `AiOversizeStrategy` (`fail`/`sample`/
-`mapReduce`/`deterministic` — what a rule does when a file is larger than its model's context
-window), `AiCalibration` (per-machine measured throughput, pasted onto an `AiModelDefinition`).
+`mapReduce`/`sampleChunks`/`deterministic` — what a rule does when a file is larger than its model's
+context window), `AiCalibration` (per-machine measured throughput, pasted onto an `AiModelDefinition`).
 
-## The four engines
+## The five engines
 
 Each engine is constructed from one `SrcMorphConfiguration` and owns its own AI provider lifecycle
-(try-with-resources; one model resident in memory at a time). All four throw the checked
+(try-with-resources; one model resident in memory at a time). All five throw the checked
 `net.ladenthin.srcmorph.engine.SrcMorphException` on misconfiguration (an invalid rule set, an
 unmatched file with no fallback, an oversized file with `onOversize=fail`, a bad prompt/model
 reference) and, at the end of a run, when a file, package or overview got an incomplete answer (empty,
@@ -57,7 +60,7 @@ Maven plugin's mojos, the CLI's `Main`) translate these into whatever their own 
 | `GenerateEngine` | Phase 1: plans the whole run (which model + prompt each file gets, or skip/unmatched, and whether it fits its routed model's context window), fails fast on an unmatched file or a hard oversize failure, stops after the plan when `planOnly` is set, otherwise loads each distinct routed model once and indexes its files. | `GenerateResult` (`planOnly()`, `written()`, `unchanged()`, `skipped()`) |
 | `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory, with the one rule of `fieldGenerations` (exactly one: its prompt and model). | `int` — package index files written |
 | `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); with a rule in `fieldGenerations` (at most one), one extra AI call writes a short `#### Overview` paragraph. | `int` — `1` if written, `0` otherwise |
-| `CalibrateEngine` | Loads each distinct model a `GenerateEngine` run would load, measures its prefill/decode throughput via a couple of representative generations, and returns a paste-ready report. | `CalibrationReport` (`measurements()`, `renderXml()` — a paste-ready `<calibration>` XML block per model) |
+| `CalibrateEngine` | Loads each distinct model a `GenerateEngine` run would load, measures its prefill/decode throughput via a couple of representative generations, and returns a paste-ready report. | `CalibrationReport` (`measurements()`, a paste-ready YAML `calibration:` block per model for its `aiDefinitions` entry, and the JSON / YAML report files) |
 | `ListModelsEngine` | Asks each OpenAI-compatible server the `aiDefinitions` name for its models (`GET <baseUrl>/models`), optionally filtered by id. | `ModelListReport` (`listings()`, `render()` — a model table as YAML comments and an `aiDefinitions` block with one entry per model) |
 
 **One configuration, three meanings of `fieldGenerations`.** `GenerateEngine` *routes* each file to
@@ -119,6 +122,9 @@ try {
   [`net.ladenthin:llama`](https://central.sonatype.com/artifact/net.ladenthin/llama) (the llama.cpp
   JNI binding). This is the **only** package in this library that touches the JNI binding
   (`CoreArchitectureTest#jniConfinedToProvider`).
+- `"openai-compatible"` — `OpenAiCompatibleAiGenerationProvider`, HTTP to
+  `<baseUrl>/chat/completions` of any OpenAI-compatible API (OpenRouter by default, `llama-server`,
+  jllama's `NativeServer`), with the key from the environment variable a model's `apiKeyEnv` names.
 
 ## Package layout
 
@@ -136,7 +142,7 @@ net.ladenthin.srcmorph/
 ```
 
 See [`../CLAUDE.md`](../CLAUDE.md) for the full architecture rules (`CoreArchitectureTest`), the
-layered-package dependency direction, and the PIT mutation-testing scope (currently 47 classes at
+layered-package dependency direction, and the PIT mutation-testing scope (currently 77 classes at
 100%).
 
 ## Testing

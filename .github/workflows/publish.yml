@@ -438,10 +438,10 @@ jobs:
   # Plugin integration test -- the only job that runs srcmorph-maven-plugin AS A PLUGIN.
   #
   # Every other check on that module calls Java methods directly (PluginArchitectureTest,
-  # MojoPhaseSkipTest, MojoConfigurationMappingTest, PIT at 62/62), so nothing covers what only
-  # Maven does: plexus binding of the <configuration> XML onto the @Parameter fields, goal-prefix
-  # resolution, the srcmorph.* property strings, lifecycle-phase binding, and the descriptor
-  # maven-plugin-plugin generates. A renamed @Parameter property shipped green before this job.
+  # AbstractAiIndexMojoTest, MojoGoalTest, MojoPhaseSkipTest, PIT at 62/62), so nothing covers what
+  # only Maven does: injecting the srcmorph.* properties and ${project.*} values into the @Parameter
+  # fields, goal-prefix resolution, lifecycle-phase binding, and the descriptor maven-plugin-plugin
+  # generates. A renamed @Parameter property shipped green before this job.
   #
   # needs: startgate, not build -- it compiles what it needs itself and consumes no uploaded
   # artifact, so hanging it off build would only serialize it behind a compile it repeats anyway.
@@ -458,9 +458,8 @@ jobs:
           distribution: temurin
           cache: maven
       # -pl srcmorph-maven-plugin -am resolves to exactly parent + srcmorph + the plugin;
-      # srcmorph-cli is a leaf (CliArchitectureTest#cliIsLeaf), so its unconditionally
-      # package-bound ~80 MB assembly never runs here. install (not package) because the fixture
-      # resolves the plugin from the local repository. The skips drop work code-style and test
+      # srcmorph-cli is a leaf (CliArchitectureTest#cliIsLeaf), so it is not built here. install
+      # (not package) because the fixture resolves the plugin from the local repository. The skips drop work code-style and test
       # already do -- keeping them would roughly double the job for no extra signal.
       # Every assertion in this job is about Maven semantics (plexus binding, prefix resolution,
       # -D vs <configuration> precedence), so the log has to record which Maven produced the result.
@@ -505,7 +504,7 @@ jobs:
         with:
           persist-credentials: false
       # Only srcmorph's jacoco report is uploaded by the `test` job (see the comment there) —
-      # it carries the bulk of the test suite and the only PIT gate. Coveralls/Codecov are
+      # it carries the bulk of the test suite and the largest PIT gate. Coveralls/Codecov are
       # pointed at it directly rather than an aggregated multi-module report, matching the
       # single-primary-module precedent already used by the sibling java-llama.cpp reactor.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8

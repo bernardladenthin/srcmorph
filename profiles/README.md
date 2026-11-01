@@ -111,8 +111,8 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 ## Using a profile
 
-- Point `profileDirectory` at it: relative to the working directory (the CLI) or to the module's
-  `${basedir}` (the Maven plugin), or absolute.
+- Point `profileDirectory` at it: relative to the directory of the configuration file (CLI and
+  plugin alike), or absolute.
 - Name keys in the rules. A key that is neither defined in the configuration nor a file of the
   profile fails the run before any model loads, naming the file it looked for.
 - To change a prompt or a counter for your own project, copy the directory and point
@@ -123,13 +123,14 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 Who reads `v3/`:
 
-- the `srcmorph-selftest` profile of [`srcmorph-maven-plugin/pom.xml`](../srcmorph-maven-plugin/pom.xml)
-  (`<ai.profileDir>`, overridable with `-Dai.profileDir=`);
+- the `srcmorph-selftest` profile of [`srcmorph-maven-plugin/pom.xml`](../srcmorph-maven-plugin/pom.xml),
+  through [`srcmorph-selftest.yaml`](../srcmorph-maven-plugin/srcmorph-selftest.yaml)
+  (`${ai.profileDir}`, overridable with `-Dai.profileDir=`);
 - the model-card benchmark, [`docs/ai-index-benchmark/modelcard/run.py`](../docs/ai-index-benchmark/modelcard/run.py)
   (`--profile v3` by default);
 - the examples under [`examples/`](../examples/) (`profileDirectory: "../profiles/v3"`, or
   `"../../profiles/v3"` one level deeper), so the CI smoke of the user-built jar reads it too;
-- the plugin's integration-test fixture, [`.github/plugin-it/pom.xml`](../.github/plugin-it/pom.xml),
+- the plugin's integration-test fixture, [`.github/plugin-it/srcmorph.yaml`](../.github/plugin-it/srcmorph.yaml),
   which also checks that the `java-facts` counts reach the summaries.
 
 ## Shell, Perl and XML prompts
@@ -206,7 +207,8 @@ still lost there:
 - **Other files:** the program entry point `main`; for a command-line tool every command,
   subcommand and option by the name a user types, also where the function behind it is named
   differently; a script's arguments by the variable that holds them.
-- The Java, package and project prompts and both fact files are unchanged.
+- The Java, package and project prompts and the Java and SQL fact files were unchanged when v3
+  was measured; the counters changed afterwards (see "Fact files" above).
 
 The last two additions came from the drafts in between: with the command-line sentence alone,
 gpt-oss described a shell script's arguments as `$1` instead of naming `SOURCE_DIR`, and an

@@ -20,6 +20,9 @@ cd examples/build-your-own-jar
 java -jar target/srcmorph.jar <path-to-config.json-or-.yaml>
 ```
 
+The examples follow this repository and need srcmorph 1.4.0: until it is released, `mvn install` the
+reactor and build the jar with `-Dsrcmorph.version=1.4.0-SNAPSHOT`.
+
 Its `pom.xml` takes `srcmorph-cli` from Maven Central, swaps the CPU natives of every desktop
 platform (`llama-platform`) for the one natives jar of your OS/arch (picked by a Maven profile), and
 packs everything into `target/srcmorph.jar` together with `slf4j-simple` defaults (INFO, stdout,
@@ -81,8 +84,8 @@ public class CConfiguration {
   `factDefinitions`, `force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile` (below). A
   relative directory or `runRecordFile` resolves
   against the file's directory, a relative `modelPath` against `modelDirectory`, a relative
-  `templateFile` or `factsFile` against `profileDirectory`. With a `profileDirectory`, the rules'
-  `promptKey` and `factsKey` are files there (`<key>.md`, `<key>.tsv`) and need no definition; the
+  `templateFile` or `factsFile` against `profileDirectory`; unset, those two are the file's directory
+  too. With a `profileDirectory`, the rules' `promptKey` and `factsKey` are files there (`<key>.md`, `<key>.tsv`) and need no definition; the
   examples read the measured profile [`../profiles/v3/`](../profiles/README.md) that way. The plugin
   reads the same keys from the same file, so
   [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s "Configuration" section
@@ -109,7 +112,7 @@ tree does not change with every run.
 | `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the one rule of the top-level `packageFieldGenerations` (the plugin's `aggregate-packages` reads the same key); it fails without one. |
 | `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`), with the one rule of the top-level `projectFieldGenerations` for the overview paragraph; unset, the index is written without one. |
 | `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails; each aggregation phase with its own rule. [`examples/build-your-own-jar/srcmorph.yaml`](../examples/build-your-own-jar/srcmorph.yaml) is the plugin's self-test configuration in this form. |
-| `Calibrate` | Loads each distinct model your `fieldGenerations` would route to, measures its prefill/decode throughput, and prints a paste-ready `<calibration>` XML block per model to standard output (`CalibrateEngine`). |
+| `Calibrate` | Loads each distinct model your `fieldGenerations` would route to, measures its prefill/decode throughput, and prints a paste-ready YAML `calibration:` block per model, for its entry under `aiDefinitions`, to standard output (`CalibrateEngine`). |
 | `ListModels` | Asks every OpenAI-compatible server your `aiDefinitions` name (`GET <baseUrl>/models`, with the definition's key) which models it serves, and prints to standard output a table (id, token limit, price where the server states one, as OpenRouter does) and a paste-ready `aiDefinitions` YAML block with one entry per model, copied from that server's first definition (`ListModelsEngine`). The top-level `modelFilter` keeps the ids that contain it, ignoring case. Sends no prompt, writes nothing. |
 
 ### Each phase its own rules
@@ -137,8 +140,8 @@ plugin's aggregate goals read from the same keys:
   out of sync with `SrcMorphConfiguration`'s field set.
 - `CliEndToEndTest` — drives `Main#run()` directly (no forked process) against the `mock` provider for
   every command, asserting the expected `.ai.md` tree lands on disk (or, for `Plan` and `Check`, that
-  nothing is written and the original configuration object is never mutated), and that each phase
-  takes its own rule.
+  nothing is written, and for `Plan` that its forced `planOnly` does not change the original
+  configuration object), and that each phase takes its own rule.
 - `BuildYourOwnJarSelfTestParityTest` — `../examples/build-your-own-jar/srcmorph.yaml` and the plugin's
   `srcmorph-selftest.yaml` have the same models, profile, scope and rules.
 - `CliArchitectureTest` — ArchUnit rules: this module is the reactor's leaf-most consumer, no public

@@ -711,8 +711,8 @@ SPDX-License-Identifier: Apache-2.0
                           This paragraph used to justify the exclusion by pointing at a comment in the
                           sibling srcmorph-maven-plugin pom saying mojos are integration-tested rather
                           than mutation-tested. That comment is gone and its claim no longer holds: the
-                          plugin module gates all five mojo classes at threshold 100. The exclusion here
-                          stands on its own reasoning above, not on the sibling's.
+                          plugin module gates all six mojo classes and RuleSection at threshold 100. The
+                          exclusion here stands on its own reasoning above, not on the sibling's.
 
                           ListModelsEngine is gated although it is an engine: it has no multi-step
                           control flow, and its one provider call goes through an injectable lister, so
