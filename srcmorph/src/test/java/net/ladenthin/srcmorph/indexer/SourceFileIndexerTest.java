@@ -18,6 +18,7 @@ import java.util.List;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiCondition;
 import net.ladenthin.srcmorph.config.AiConditionGroup;
+import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiRangeCondition;
 import net.ladenthin.srcmorph.document.AiMdDocument;
@@ -214,10 +215,10 @@ public class SourceFileIndexerTest {
         final AiFieldGenerationSupport support = mockSupport();
 
         // first write
-        final boolean wrote = indexer.indexFile(foo, rule, support);
+        final AiIndexOutcome wrote = indexer.indexFile(foo, rule, support);
         final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
 
-        assertThat(wrote, is(true));
+        assertThat(wrote, is(AiIndexOutcome.WRITTEN));
         assertThat(Files.exists(aiFile), is(true));
         final AiMdDocument document = documentCodec.read(aiFile);
         assertThat(document, is(notNullValue()));
@@ -225,8 +226,8 @@ public class SourceFileIndexerTest {
         assertThat(document.body().trim().isEmpty(), is(false));
 
         // second write — unchanged source, so it is skipped
-        final boolean wroteAgain = indexer.indexFile(foo, rule, support);
-        assertThat(wroteAgain, is(false));
+        final AiIndexOutcome wroteAgain = indexer.indexFile(foo, rule, support);
+        assertThat(wroteAgain, is(AiIndexOutcome.UNCHANGED));
     }
     // </editor-fold>
 
@@ -350,5 +351,58 @@ public class SourceFileIndexerTest {
         throw new AssertionError("file was not routed: " + file);
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="incomplete answers">
+    private AiFieldGenerationSupport emptyAnswerSupport() {
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        return new AiFieldGenerationSupport(
+                request -> "",
+                new AiPromptPreparationSupport(promptSupport),
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+    }
+
+    private static AiFieldGenerationConfig ruleWithFacts() {
+        final AiFieldGenerationConfig rule =
+                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("classes");
+        counter.setPattern("\\bclass\\b");
+        rule.setFacts(Collections.singletonList(counter));
+        return rule;
+    }
+
+    @Test
+    public void indexFile_incompleteAnswer_writesNothing() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        writeJava(foo, "package com.example;\nclass Foo {}\n");
+
+        final AiIndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
+                .indexFile(foo, ruleWithFacts(), emptyAnswerSupport());
+
+        // the facts line alone is no summary: nothing is written, so the next run tries again
+        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Foo.java.ai.md")), is(false));
+    }
+
+    @Test
+    public void indexFile_incompleteAnswerForAChangedSource_keepsTheOlderSummary() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        writeJava(foo, "package com.example;\nclass Foo {}\n");
+        final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
+        final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
+        assertThat(indexer.indexFile(foo, ruleWithFacts(), mockSupport()), is(AiIndexOutcome.WRITTEN));
+        final byte[] older = Files.readAllBytes(aiFile);
+
+        writeJava(foo, "package com.example;\nclass Foo { int x; }\n");
+        final AiIndexOutcome outcome = indexer.indexFile(foo, ruleWithFacts(), emptyAnswerSupport());
+
+        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(Arrays.equals(Files.readAllBytes(aiFile), older), is(true));
+    }
     // </editor-fold>
 }

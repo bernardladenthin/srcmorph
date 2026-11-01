@@ -107,8 +107,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
         final ChatResponse response = chatResponse(request);
-        truncationSupport.warnOnTruncatedAnswer(request, response);
-        return completionParser.parseCompletion(response.getFirstContent());
+        final String text = completionParser.parseCompletion(response.getFirstContent());
+        truncationSupport.requireCompleteAnswer(request, response, text);
+        return text;
     }
 
     @Override
@@ -135,8 +136,17 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     }
 
     private ChatResponse chatResponse(final AiGenerationRequest request) throws IOException {
-        return chatResponseParser.parseResponse(
-                support.completionJson(exchange(support.endpoint(), support.accept(), support.requestBody(request))));
+        final String json =
+                support.completionJson(exchange(support.endpoint(), support.accept(), support.requestBody(request)));
+        final ChatResponse response = chatResponseParser.parseResponse(json);
+        if (response.getChoices().isEmpty()) {
+            // A 2xx answer without a choice: an HTML page of a proxy, an {"error": ...} object, or no
+            // completion at all. The body says which.
+            throw new AiIncompleteAnswerException(
+                    AiIncompleteAnswerException.Reason.NO_ANSWER,
+                    OpenAiCompatibleProviderSupport.noChoiceMessage(support.endpoint(), request.sourceFile(), json));
+        }
+        return response;
     }
 
     /**

@@ -34,6 +34,7 @@ import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
+import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -206,8 +207,10 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = support.processFieldGenerations(
                 CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
-        // assert
+        // assert -- an empty answer is no summary: nothing to write, and the result says why
         assertThat(result.body(), is(equalTo("")));
+        assertThat(result.complete(), is(false));
+        assertThat(result.incompleteReason(), containsString("answered nothing"));
     }
 
     @Test
@@ -250,7 +253,8 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void processFieldGenerations_providerReturnsEmpty_logsProcessingAndGenerationOnlyNoRetry() throws Exception {
+    public void processFieldGenerations_providerReturnsEmpty_logsProcessingAndGenerationButNoGeneratedLine()
+            throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -278,10 +282,10 @@ public class AiFieldGenerationSupportTest {
         support.processFieldGenerations(
                 CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
 
-        // assert — exactly three INFO lines: the per-file processing/ETA line, the generation line,
-        // and the measured actual-duration line. No retry lines (the retry mechanism was removed).
+        // assert — exactly two INFO lines: the per-file processing/ETA line and the generation line.
+        // An empty answer generated nothing, so there is no measured actual-duration line, and no retry.
         final List<String> infos = getCapturedInfos();
-        assertThat(infos.size(), is(equalTo(3)));
+        assertThat(infos.size(), is(equalTo(2)));
 
         // First message: the per-file processing line with size + token + duration estimate
         final String processingMsg = infos.get(0);
@@ -296,12 +300,6 @@ public class AiFieldGenerationSupportTest {
         assertThat(generatingMsg, containsString("maxInputChars="));
         assertThat(generatingMsg.contains("maxRetries"), is(false));
         assertThat(generatingMsg.contains("retryTemperatureIncrement"), is(false));
-
-        // Third message: the measured actual-duration line (real wall time vs the estimate)
-        final String generatedMsg = infos.get(2);
-        assertThat(generatedMsg, containsString("Generated file"));
-        assertThat(generatedMsg, containsString("in "));
-        assertThat(generatedMsg, containsString("(actual; estimated "));
 
         // No INFO line mentions a retry
         for (final String info : infos) {
@@ -580,6 +578,170 @@ public class AiFieldGenerationSupportTest {
                 "0.1.0",
                 "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="incomplete answers">
+    private static AiFieldGenerationConfig normalRule(final String modelKey, final String onIncomplete) {
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
+        rule.setAiDefinitionKey(modelKey);
+        rule.setOnIncomplete(onIncomplete);
+        return rule;
+    }
+
+    private static AiIncompleteAnswerException cutOff(final String partialText) {
+        return new AiIncompleteAnswerException(AiIncompleteAnswerException.Reason.TRUNCATED, "cut off", partialText);
+    }
+
+    @Test
+    public void incomplete_retryOnce_asksAgainAndTakesTheSecondAnswer() throws Exception {
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> calls.incrementAndGet() == 1 ? "" : "A summary.";
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .processFieldGenerations(
+                        Collections.singletonList(normalRule("m", "retryOnce")),
+                        Files.createTempFile("Test", ".java"),
+                        "file",
+                        "public class Test {}",
+                        anyHeader());
+
+        assertThat(calls.get(), is(equalTo(2)));
+        assertThat(result.complete(), is(true));
+        assertThat(result.body(), is(equalTo("A summary.")));
+        assertThat(getCapturedWarnings().size(), is(equalTo(1)));
+        assertThat(getCapturedWarnings().get(0), containsString("asking once more"));
+    }
+
+    @Test
+    public void incomplete_retryOnce_secondIncompleteAnswerFails() throws Exception {
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            return " ";
+        };
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .processFieldGenerations(
+                        Collections.singletonList(normalRule("m", "retryOnce")),
+                        Files.createTempFile("Test", ".java"),
+                        "file",
+                        "public class Test {}",
+                        anyHeader());
+
+        assertThat(calls.get(), is(equalTo(2)));
+        assertThat(result.complete(), is(false));
+    }
+
+    @Test
+    public void incomplete_failByDefault_cutOffAnswerIsNotTaken() throws Exception {
+        final AiGenerationProvider provider = request -> {
+            throw cutOff("half a sum");
+        };
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .processFieldGenerations(
+                        Collections.singletonList(normalRule("m", null)),
+                        Files.createTempFile("Test", ".java"),
+                        "file",
+                        "public class Test {}",
+                        anyHeader());
+
+        assertThat(result.complete(), is(false));
+        assertThat(result.incompleteReason(), is(equalTo("cut off")));
+        assertThat(
+                getCapturedWarnings().get(0),
+                containsString("(field '" + CommonTestFixtures.PROMPT_KEY_FILE_BODY + "', TRUNCATED)"));
+    }
+
+    @Test
+    public void incomplete_keep_takesTheTextOfACutOffAnswer() throws Exception {
+        final AiGenerationProvider provider = request -> {
+            throw cutOff("half a sum");
+        };
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .processFieldGenerations(
+                        Collections.singletonList(normalRule("m", "keep")),
+                        Files.createTempFile("Test", ".java"),
+                        "file",
+                        "public class Test {}",
+                        anyHeader());
+
+        assertThat(result.complete(), is(true));
+        assertThat(result.body(), is(equalTo("half a sum")));
+        assertThat(getCapturedWarnings().get(0), containsString("kept as it is"));
+    }
+
+    @Test
+    public void incomplete_keep_cutOffAnswerWithoutTextAndAnEmptyAnswerStillFail() throws Exception {
+        final AiGenerationProvider cutOffEmpty = request -> {
+            throw cutOff(" ");
+        };
+        final AiGenerationProvider empty = request -> "";
+        for (final AiGenerationProvider provider : Arrays.asList(cutOffEmpty, empty)) {
+            final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                    .processFieldGenerations(
+                            Collections.singletonList(normalRule("m", "keep")),
+                            Files.createTempFile("Test", ".java"),
+                            "file",
+                            "public class Test {}",
+                            anyHeader());
+            assertThat(result.complete(), is(false));
+        }
+    }
+
+    @Test
+    public void incomplete_responseWithoutAnswer_isIncompleteAndNotRetriedUnderFail() throws Exception {
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            throw new AiIncompleteAnswerException(AiIncompleteAnswerException.Reason.NO_ANSWER, "no choice");
+        };
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .processFieldGenerations(
+                        Collections.singletonList(normalRule("m", "fail")),
+                        Files.createTempFile("Test", ".java"),
+                        "file",
+                        "public class Test {}",
+                        anyHeader());
+
+        assertThat(calls.get(), is(equalTo(1)));
+        assertThat(result.complete(), is(false));
+        assertThat(result.incompleteReason(), is(equalTo("no choice")));
+    }
+
+    @Test
+    public void incomplete_mapReduceChunkWithAnEmptyAnswer_makesTheFileIncomplete() throws Exception {
+        final AtomicInteger calls = new AtomicInteger();
+        // the second chunk's answer is empty; the reduce must not run over it
+        final AiGenerationProvider provider = request -> calls.incrementAndGet() == 2 ? "" : "PARTIAL";
+        final AiGenerationResult result = supportWith(provider, "m")
+                .processFieldGenerations(
+                        Collections.singletonList(oversizeRule("m", "mapReduce", 2)),
+                        Files.createTempFile("Huge", ".java"),
+                        "file",
+                        largeSource(600),
+                        anyHeader());
+
+        assertThat(calls.get(), is(equalTo(2)));
+        assertThat(result.complete(), is(false));
+    }
+
+    @Test
+    public void incomplete_withFacts_theFactsLineDoesNotMaskAnEmptyAnswer() throws Exception {
+        final AiFieldGenerationConfig rule = normalRule("m", null);
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("classes");
+        counter.setPattern("\\bclass\\b");
+        rule.setFacts(Collections.singletonList(counter));
+        final AiGenerationResult result = supportWithModels(request -> "", normalWindowModel("m"))
+                .processFieldGenerations(
+                        Collections.singletonList(rule),
+                        Files.createTempFile("Test", ".java"),
+                        "file",
+                        "public class Test {}",
+                        anyHeader());
+
+        assertThat(result.complete(), is(false));
+        assertThat(result.body(), is(equalTo("")));
     }
     // </editor-fold>
 }

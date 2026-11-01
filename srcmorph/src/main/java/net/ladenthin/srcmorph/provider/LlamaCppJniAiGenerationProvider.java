@@ -174,9 +174,10 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
         final ChatResponse response = chatResponse(request);
-        support.warnOnTruncatedAnswer(request, response);
         support.logPromptCacheReuse(request, response);
-        return completionParser.parseCompletion(response.getFirstContent());
+        final String text = completionParser.parseCompletion(response.getFirstContent());
+        support.requireCompleteAnswer(request, response, text);
+        return text;
     }
 
     /**

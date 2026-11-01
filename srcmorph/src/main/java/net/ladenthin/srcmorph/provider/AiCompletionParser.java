@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.provider;
 
-import java.io.IOException;
 import lombok.ToString;
 
 /**
@@ -12,8 +11,9 @@ import lombok.ToString;
  *
  * <p>Gemma 4 (and compatible models) wrap their chain-of-thought reasoning in a
  * thinking block delimited by {@link #THINKING_BLOCK_START_MARKER} and
- * {@link #THINKING_BLOCK_END_MARKER}.  Only the text that follows the closing
- * marker is the actual model answer; everything inside the block is internal
+ * {@link #THINKING_BLOCK_END_MARKER}; DeepSeek-R1, Qwen3 and others in
+ * {@link #THINK_TAG_START_MARKER} and {@link #THINK_TAG_END_MARKER}. Only the text that follows the
+ * closing marker is the actual model answer; everything inside the block is internal
  * reasoning that must not be persisted.</p>
  *
  * <p>A thinking block is recognized only at the <b>start</b> of the response, where the model
@@ -47,48 +47,72 @@ public class AiCompletionParser {
      */
     public static final String THINKING_BLOCK_END_MARKER = "<channel|>";
 
+    /** Opens the thinking block of DeepSeek-R1, Qwen3 and the other models that write {@code <think>}. */
+    public static final String THINK_TAG_START_MARKER = "<think>";
+
+    /** Closes a {@link #THINK_TAG_START_MARKER} block. */
+    public static final String THINK_TAG_END_MARKER = "</think>";
+
+    /** The kinds of thinking block, in the order they are tried. */
+    private enum ThinkingBlock {
+        /** Gemma 4's channel markers. */
+        GEMMA(THINKING_BLOCK_START_MARKER, THINKING_BLOCK_END_MARKER),
+        /** The {@code <think>} tag. */
+        THINK_TAG(THINK_TAG_START_MARKER, THINK_TAG_END_MARKER);
+
+        private final String start;
+        private final String end;
+
+        ThinkingBlock(final String start, final String end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
     /**
-     * Strips a leading Gemma-4 thinking block from {@code response} and returns the
-     * clean answer text.
+     * Strips a leading thinking block from {@code response} and returns the clean answer text. A block is
+     * a Gemma-4 {@link #THINKING_BLOCK_START_MARKER} ... {@link #THINKING_BLOCK_END_MARKER} or a
+     * {@link #THINK_TAG_START_MARKER} ... {@link #THINK_TAG_END_MARKER}.
      *
      * <ul>
-     *   <li>If the trimmed response starts with {@link #THINKING_BLOCK_START_MARKER},
-     *       everything up to and including the first {@link #THINKING_BLOCK_END_MARKER}
-     *       is removed; only the trimmed text that follows is returned, markers it quotes
-     *       included.</li>
-     *   <li>If it starts with {@link #THINKING_BLOCK_START_MARKER} but
-     *       {@link #THINKING_BLOCK_END_MARKER} is absent, the token budget was
-     *       exhausted while the model was still reasoning.  An {@link IOException}
-     *       is thrown with an actionable message so the caller can surface the
-     *       problem rather than persist garbage.</li>
+     *   <li>If the trimmed response starts with a start marker, everything up to and including the first
+     *       matching end marker is removed; only the trimmed text that follows is returned, markers it
+     *       quotes included.</li>
+     *   <li>If it starts with a start marker whose end marker is absent, the token budget was exhausted
+     *       while the model was still reasoning, and an {@link AiIncompleteAnswerException} says so
+     *       rather than letting the reasoning be stored as the answer.</li>
      *   <li>Otherwise the response is returned trimmed, any marker in it kept as text.</li>
      *   <li>{@code null} input is treated as an empty response.</li>
      * </ul>
      *
      * @param response the raw completion text from the model, may be {@code null}
      * @return the cleaned answer text, never {@code null}
-     * @throws IOException if a leading thinking block was started but the token budget
-     *                     was exhausted before the closing marker was emitted
+     * @throws AiIncompleteAnswerException if a leading thinking block was started but the token budget
+     *                                     was exhausted before its closing marker was emitted
      */
-    public String parseCompletion(final String response) throws IOException {
+    public String parseCompletion(final String response) throws AiIncompleteAnswerException {
         if (response == null) {
             return "";
         }
         final String trimmed = response.trim();
-        if (!trimmed.startsWith(THINKING_BLOCK_START_MARKER)) {
-            return trimmed;
+        for (final ThinkingBlock block : ThinkingBlock.values()) {
+            final String start = block.start;
+            final String end = block.end;
+            if (!trimmed.startsWith(start)) {
+                continue;
+            }
+            // The first end marker after the start marker closes the block.
+            final String thinking = trimmed.substring(start.length());
+            final int thinkingEnd = thinking.indexOf(end);
+            if (thinkingEnd < 0) {
+                throw new AiIncompleteAnswerException(
+                        AiIncompleteAnswerException.Reason.TRUNCATED,
+                        "Model token budget exhausted inside thinking block: " + start + " was emitted but " + end
+                                + " was not. Increase maxOutputTokens for this model definition. (response length="
+                                + response.length() + " chars)");
+            }
+            return thinking.substring(thinkingEnd + end.length()).trim();
         }
-        // The first end marker after the start marker closes the block.
-        final String thinking = trimmed.substring(THINKING_BLOCK_START_MARKER.length());
-        final int thinkingEnd = thinking.indexOf(THINKING_BLOCK_END_MARKER);
-        if (thinkingEnd < 0) {
-            throw new IOException("Model token budget exhausted inside thinking block: "
-                    + THINKING_BLOCK_START_MARKER + " was emitted but "
-                    + THINKING_BLOCK_END_MARKER + " was not. "
-                    + "Increase maxOutputTokens for this model definition. "
-                    + "(response length=" + response.length() + " chars)");
-        }
-        return thinking.substring(thinkingEnd + THINKING_BLOCK_END_MARKER.length())
-                .trim();
+        return trimmed;
     }
 }

@@ -14,6 +14,7 @@ import net.ladenthin.srcmorph.config.AiCalibration;
 import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiIncompleteStrategy;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.document.AiGenerationRequest;
@@ -22,6 +23,7 @@ import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.AiPreparedPrompt;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
+import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
 import net.ladenthin.srcmorph.support.AiDeterministicSummary;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.support.AiSourceChunker;
@@ -57,14 +59,12 @@ public class AiFieldGenerationSupport {
     private static final String TRIM_WARN_FIELD_LABEL = " field '";
 
     /**
-     * Log message prefix for warnings emitted when the AI provider returns an empty body
-     * for a given field, ensuring a consistent sentence structure regardless of context type.
-     * An empty response typically indicates that the model produced an EOS token immediately,
-     * which can occur at low sampling temperatures for certain input patterns.
+     * Log message prefix of the warning for an answer that is no summary (empty, cut off or missing): the
+     * file is not written and is left for the next run.
      *
      * @see #processFieldGenerations
      */
-    private static final String EMPTY_OUTPUT_WARN_PREFIX = "AI provider returned empty body for ";
+    private static final String INCOMPLETE_WARN_PREFIX = "Incomplete answer for ";
 
     /**
      * Separator used to construct the cache key for the computed {@code maxInputChars}
@@ -253,103 +253,127 @@ public class AiFieldGenerationSupport {
 
             final AiGenerationConfig generationConfig =
                     modelDefinitionSupport.getConfig(fieldGeneration.getAiDefinitionKey());
-
-            final int effectiveMaxInputChars = resolveMaxInputChars(fieldGeneration, generationConfig, contextFile);
-
-            final AiGenerationRequest request =
-                    new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader);
-
-            final AiPreparedPrompt preparedPrompt =
-                    promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
-
-            // Deterministic, whole-file "facts" (exact regex counts) are prepended to the body of EVERY
-            // file that configures <facts> - not just oversize ones - so downstream agents get exact
-            // structural counts in the summary. Computed once here over the FULL source ("" when unset).
-            final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
-
-            // An oversized file (the source did not fit the window) is handled per the rule's onOversize
-            // strategy. DETERMINISTIC/MAP_REDUCE replace the single generation entirely; FAIL/SAMPLE fall
-            // through to the single-shot path below (the source was already trimmed to the window head).
-            if (preparedPrompt.trimmed()) {
-                final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
-                if (oversize == AiOversizeStrategy.DETERMINISTIC) {
-                    body = factsPrefix
-                            + AiDeterministicSummary.body(
-                                    sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
-                    LOGGER.info(
-                            "Oversize {} '{}' -> deterministic body (no model), {} chars",
-                            contextType,
-                            contextFile,
-                            sourceText.length());
-                    continue;
-                }
-                if (oversize == AiOversizeStrategy.MAP_REDUCE) {
-                    body = factsPrefix
-                            + mapReduceSummarize(
-                                    fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
-                    continue;
-                }
-            }
-
-            if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
+            try {
+                body = generateBody(
+                        fieldGeneration, generationConfig, contextFile, contextType, sourceText, baseHeader);
+            } catch (final AiIncompleteAnswerException e) {
                 LOGGER.warn(
-                        "Trimmed AI input for {}" + TRIM_WARN_FIELD_LABEL
-                                + "body': {} (source chars {} -> {}, available source chars {}, max input chars {})",
+                        INCOMPLETE_WARN_PREFIX + "{} '{}' (field '{}', {}): {}; not written, left for the next run",
                         contextType,
                         contextFile,
-                        preparedPrompt.originalSourceLength(),
-                        preparedPrompt.trimmedSourceLength(),
-                        preparedPrompt.availableSourceChars(),
-                        effectiveMaxInputChars);
-            }
-
-            final int processedSourceChars = preparedPrompt.sourceText().length();
-            final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
-                    ? SIZE_BELOW_ONE_KIB_LABEL
-                    : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
-            // Use the model's measured <calibration> when present, so the live per-file ETA matches the
-            // (already calibrated) plan ETA instead of the built-in reference-CPU model.
-            final long estimatedSeconds = estimateSeconds(processedSourceChars, generationConfig);
-            LOGGER.info(
-                    PROCESSING_LOG_PREFIX + "{} '{}'" + PROCESSING_LOG_SIZE_INFIX + "{}" + PROCESSING_LOG_TOKENS_INFIX
-                            + "{}" + PROCESSING_LOG_ETA_INFIX + "{}" + PROCESSING_LOG_DISCLAIMER,
-                    contextType,
-                    contextFile,
-                    sourceSizeKb,
-                    timeEstimator.estimatePromptTokens(processedSourceChars),
-                    timeEstimator.formatDuration(estimatedSeconds));
-
-            LOGGER.info(
-                    "Generating field '{}' with temperature={}, maxInputChars={}",
-                    fieldGeneration.getPromptKey(),
-                    generationConfig.getTemperature(),
-                    effectiveMaxInputChars);
-            final long generationStartNanos = System.nanoTime();
-            final String generated = generateWithOverflowRetry(
-                    fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader, effectiveMaxInputChars);
-            final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
-            body = factsPrefix + generated;
-
-            // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
-            // comparable across models/quants without a separate benchmark harness.
-            LOGGER.info(
-                    GENERATED_LOG_PREFIX + "{} '{}" + GENERATED_LOG_IN_INFIX + "{}" + GENERATED_LOG_ACTUAL_INFIX + "{}"
-                            + GENERATED_LOG_SUFFIX,
-                    contextType,
-                    contextFile,
-                    timeEstimator.formatDuration(actualSeconds),
-                    timeEstimator.formatDuration(estimatedSeconds));
-
-            if (compatibilityHelper.isBlank(generated)) {
-                LOGGER.warn(
-                        EMPTY_OUTPUT_WARN_PREFIX + "{}" + TRIM_WARN_FIELD_LABEL + "{}': {}",
-                        contextType,
                         fieldGeneration.getPromptKey(),
-                        contextFile);
+                        e.reason(),
+                        e.detail());
+                return AiGenerationResult.incomplete(e.detail());
             }
         }
 
         return new AiGenerationResult(body);
+    }
+
+    /**
+     * Generates the body of one rule for one context: the facts line, then the summary of the single-shot,
+     * map-reduce or deterministic path.
+     *
+     * @param fieldGeneration  the rule
+     * @param generationConfig the rule's model configuration
+     * @param contextFile      the file the body is for
+     * @param contextType      the context label for the log
+     * @param sourceText       the full source text
+     * @param baseHeader       the header passed through to each request
+     * @return the body
+     * @throws AiIncompleteAnswerException if the model's answer stays incomplete
+     * @throws IOException                 if the provider fails
+     */
+    private String generateBody(
+            final AiFieldGenerationConfig fieldGeneration,
+            final AiGenerationConfig generationConfig,
+            final Path contextFile,
+            final String contextType,
+            final String sourceText,
+            final AiMdHeader baseHeader)
+            throws IOException {
+        final int effectiveMaxInputChars = resolveMaxInputChars(fieldGeneration, generationConfig, contextFile);
+
+        final AiGenerationRequest request =
+                new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader);
+
+        final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
+
+        // Deterministic, whole-file "facts" (exact regex counts) are prepended to the body of EVERY
+        // file that configures <facts> - not just oversize ones - so downstream agents get exact
+        // structural counts in the summary. Computed once here over the FULL source ("" when unset).
+        final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
+
+        // An oversized file (the source did not fit the window) is handled per the rule's onOversize
+        // strategy. DETERMINISTIC/MAP_REDUCE replace the single generation entirely; FAIL/SAMPLE fall
+        // through to the single-shot path below (the source was already trimmed to the window head).
+        if (preparedPrompt.trimmed()) {
+            final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
+            if (oversize == AiOversizeStrategy.DETERMINISTIC) {
+                LOGGER.info(
+                        "Oversize {} '{}' -> deterministic body (no model), {} chars",
+                        contextType,
+                        contextFile,
+                        sourceText.length());
+                return factsPrefix
+                        + AiDeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
+            }
+            if (oversize == AiOversizeStrategy.MAP_REDUCE) {
+                return factsPrefix
+                        + mapReduceSummarize(
+                                fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
+            }
+        }
+
+        if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
+            LOGGER.warn(
+                    "Trimmed AI input for {}" + TRIM_WARN_FIELD_LABEL
+                            + "body': {} (source chars {} -> {}, available source chars {}, max input chars {})",
+                    contextType,
+                    contextFile,
+                    preparedPrompt.originalSourceLength(),
+                    preparedPrompt.trimmedSourceLength(),
+                    preparedPrompt.availableSourceChars(),
+                    effectiveMaxInputChars);
+        }
+
+        final int processedSourceChars = preparedPrompt.sourceText().length();
+        final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
+                ? SIZE_BELOW_ONE_KIB_LABEL
+                : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
+        // Use the model's measured <calibration> when present, so the live per-file ETA matches the
+        // (already calibrated) plan ETA instead of the built-in reference-CPU model.
+        final long estimatedSeconds = estimateSeconds(processedSourceChars, generationConfig);
+        LOGGER.info(
+                PROCESSING_LOG_PREFIX + "{} '{}'" + PROCESSING_LOG_SIZE_INFIX + "{}" + PROCESSING_LOG_TOKENS_INFIX
+                        + "{}" + PROCESSING_LOG_ETA_INFIX + "{}" + PROCESSING_LOG_DISCLAIMER,
+                contextType,
+                contextFile,
+                sourceSizeKb,
+                timeEstimator.estimatePromptTokens(processedSourceChars),
+                timeEstimator.formatDuration(estimatedSeconds));
+
+        LOGGER.info(
+                "Generating field '{}' with temperature={}, maxInputChars={}",
+                fieldGeneration.getPromptKey(),
+                generationConfig.getTemperature(),
+                effectiveMaxInputChars);
+        final long generationStartNanos = System.nanoTime();
+        final String generated =
+                generateComplete(fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
+        final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
+
+        // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
+        // comparable across models/quants without a separate benchmark harness.
+        LOGGER.info(
+                GENERATED_LOG_PREFIX + "{} '{}" + GENERATED_LOG_IN_INFIX + "{}" + GENERATED_LOG_ACTUAL_INFIX + "{}"
+                        + GENERATED_LOG_SUFFIX,
+                contextType,
+                contextFile,
+                timeEstimator.formatDuration(actualSeconds),
+                timeEstimator.formatDuration(estimatedSeconds));
+        return factsPrefix + generated;
     }
 
     /**
@@ -396,12 +420,11 @@ public class AiFieldGenerationSupport {
         int index = 0;
         for (final String chunk : chunks) {
             index++;
-            partials.add(summarizeChunk(fieldGeneration.getPromptKey(), contextFile, chunk, baseHeader, safeWindow)
+            partials.add(summarizeChunk(fieldGeneration, contextFile, chunk, baseHeader, safeWindow)
                     .trim());
             LOGGER.info("  mapReduce chunk {}/{} summarized ({} chars)", index, chunks.size(), chunk.length());
         }
-        return reducePartials(
-                fieldGeneration.getPromptKey(), contextFile, baseHeader, partials, sourceBudget, safeWindow);
+        return reducePartials(fieldGeneration, contextFile, baseHeader, partials, sourceBudget, safeWindow);
     }
 
     /**
@@ -412,7 +435,7 @@ public class AiFieldGenerationSupport {
      * and the file's tail is silently trimmed away, so {@code maxChunks <= 0} (whole-file) coverage
      * actually reaches the final summary.
      *
-     * @param promptKey   the prompt template key (shared by map and reduce)
+     * @param fieldGeneration the rule (its prompt is shared by map and reduce)
      * @param contextFile the source file path
      * @param baseHeader  the header passed through to each request
      * @param partials    the per-chunk partial summaries (already trimmed); may be empty
@@ -422,7 +445,7 @@ public class AiFieldGenerationSupport {
      * @throws IOException if the provider throws during generation
      */
     private String reducePartials(
-            final String promptKey,
+            final AiFieldGenerationConfig fieldGeneration,
             final Path contextFile,
             final AiMdHeader baseHeader,
             final List<String> partials,
@@ -454,7 +477,7 @@ public class AiFieldGenerationSupport {
                     inBatch++;
                     i++;
                 }
-                next.add(summarizeChunk(promptKey, contextFile, batch.toString(), baseHeader, safeWindow)
+                next.add(summarizeChunk(fieldGeneration, contextFile, batch.toString(), baseHeader, safeWindow)
                         .trim());
             }
             LOGGER.info("  mapReduce reduce round {}: {} -> {} partial(s)", round, level.size(), next.size());
@@ -470,7 +493,7 @@ public class AiFieldGenerationSupport {
                             .append(partial)
                             .append("\n\n");
                 }
-                return summarizeChunk(promptKey, contextFile, all.toString(), baseHeader, safeWindow)
+                return summarizeChunk(fieldGeneration, contextFile, all.toString(), baseHeader, safeWindow)
                         .trim();
             }
             level = next;
@@ -481,7 +504,7 @@ public class AiFieldGenerationSupport {
     /**
      * Prepares the prompt for one chunk (trimming to the window) and returns the provider's summary.
      *
-     * @param promptKey              the prompt template key
+     * @param fieldGeneration        the rule
      * @param contextFile            the source file path
      * @param chunk                  the chunk (or concatenated partials) to summarize
      * @param baseHeader             the header passed through to the request
@@ -490,13 +513,63 @@ public class AiFieldGenerationSupport {
      * @throws IOException if the provider throws during generation
      */
     private String summarizeChunk(
-            final String promptKey,
+            final AiFieldGenerationConfig fieldGeneration,
             final Path contextFile,
             final String chunk,
             final AiMdHeader baseHeader,
             final int effectiveMaxInputChars)
             throws IOException {
-        return generateWithOverflowRetry(promptKey, contextFile, chunk, baseHeader, effectiveMaxInputChars);
+        return generateComplete(fieldGeneration, contextFile, chunk, baseHeader, effectiveMaxInputChars);
+    }
+
+    /**
+     * Generates and insists on a complete answer: an empty text counts as incomplete as well, for a
+     * provider that returns one instead of refusing it. Under {@code onIncomplete: retryOnce} an
+     * incomplete answer is asked for once more; under {@code keep} a cut-off answer with text is taken.
+     *
+     * @param fieldGeneration the rule (prompt key and incomplete-answer strategy)
+     * @param contextFile     the source file path
+     * @param source          the source text to summarize
+     * @param baseHeader      the header passed through to the request
+     * @param window          the per-call window budget
+     * @return the complete answer
+     * @throws AiIncompleteAnswerException if the last attempt's answer is still incomplete
+     * @throws IOException                 if the provider fails
+     */
+    private String generateComplete(
+            final AiFieldGenerationConfig fieldGeneration,
+            final Path contextFile,
+            final String source,
+            final AiMdHeader baseHeader,
+            final int window)
+            throws IOException {
+        final int attempts = fieldGeneration.incompleteStrategy().attempts();
+        for (int attempt = 1; ; attempt++) {
+            try {
+                final String text = generateWithOverflowRetry(
+                        fieldGeneration.getPromptKey(), contextFile, source, baseHeader, window);
+                if (compatibilityHelper.isBlank(text)) {
+                    throw new AiIncompleteAnswerException(
+                            AiIncompleteAnswerException.Reason.EMPTY, "The model answered nothing for " + contextFile);
+                }
+                return text;
+            } catch (final AiIncompleteAnswerException e) {
+                if (fieldGeneration.incompleteStrategy() == AiIncompleteStrategy.KEEP
+                        && e.reason() == AiIncompleteAnswerException.Reason.TRUNCATED
+                        && !compatibilityHelper.isBlank(e.partialText())) {
+                    LOGGER.warn(
+                            INCOMPLETE_WARN_PREFIX + "{}: {}; kept as it is (onIncomplete: keep)",
+                            contextFile,
+                            e.detail());
+                    return e.partialText();
+                }
+                if (attempt >= attempts) {
+                    throw e;
+                }
+                LOGGER.warn(
+                        INCOMPLETE_WARN_PREFIX + "{} ({}): {}; asking once more", contextFile, e.reason(), e.detail());
+            }
+        }
     }
 
     /**

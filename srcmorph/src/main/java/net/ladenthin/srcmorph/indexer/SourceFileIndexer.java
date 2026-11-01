@@ -301,10 +301,12 @@ public class SourceFileIndexer {
      * @param sourceFile the source file
      * @param rule       the routing rule selected for it (supplies the prompt key)
      * @param support    the field-generation support holding the model group's provider
-     * @return {@code true} if the file was (re)written, {@code false} if it was already up to date
+     * @return {@link AiIndexOutcome#WRITTEN}, {@link AiIndexOutcome#UNCHANGED} when it was already up to
+     *         date, or {@link AiIndexOutcome#FAILED} when the model's answer was incomplete and nothing
+     *         was written
      * @throws IOException if the file cannot be read or written
      */
-    public boolean indexFile(
+    public AiIndexOutcome indexFile(
             final Path sourceFile, final AiFieldGenerationConfig rule, final AiFieldGenerationSupport support)
             throws IOException {
         final Path relativeToBase = pathSupport.relativizeFromSrc(baseDirectory, sourceFile);
@@ -336,19 +338,22 @@ public class SourceFileIndexer {
 
         if (!headerSupport.shouldWrite(force, targetFile, baseHeader)) {
             LOGGER.info("Unchanged AI index file: {}", targetFile);
-            return false;
+            return AiIndexOutcome.UNCHANGED;
         }
 
         final String sourceText = compatibilityHelper.readString(sourceFile);
 
         final AiGenerationResult result = support.processFieldGenerations(
                 Collections.singletonList(rule), sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
+        if (!result.complete()) {
+            return AiIndexOutcome.FAILED;
+        }
 
         final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(targetFile, document);
 
         LOGGER.info("Wrote AI index file: {}", targetFile);
-        return true;
+        return AiIndexOutcome.WRITTEN;
     }
 
     /**

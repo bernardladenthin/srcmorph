@@ -242,6 +242,38 @@ final class LlamaCppJniProviderSupport {
     }
 
     /**
+     * Refuses an answer that is no summary, so it is never stored as one: a response without a choice, an
+     * answer the model did not finish (stopped at the output budget) and an empty answer, such as the
+     * reasoning-only answer of a model that spent its budget thinking.
+     *
+     * @param request  the request whose source file is named in the message
+     * @param response the completed chat response
+     * @param text     the answer text after the thinking block was stripped
+     * @throws AiIncompleteAnswerException if the answer is one of those
+     */
+    void requireCompleteAnswer(final AiGenerationRequest request, final ChatResponse response, final String text)
+            throws AiIncompleteAnswerException {
+        if (response.getChoices().isEmpty()) {
+            throw new AiIncompleteAnswerException(
+                    AiIncompleteAnswerException.Reason.NO_ANSWER,
+                    "The response for " + request.sourceFile() + " has no answer (no choice)");
+        }
+        if (FINISH_REASON_LENGTH.equals(response.getChoices().get(0).getFinishReason())) {
+            throw new AiIncompleteAnswerException(
+                    AiIncompleteAnswerException.Reason.TRUNCATED,
+                    "The answer for " + request.sourceFile() + " was cut off at the " + config.maxOutputTokens()
+                            + "-token output budget, not finished by the model; raise maxOutputTokens for this"
+                            + " model, or shorten the prompt",
+                    text);
+        }
+        if (text.trim().isEmpty()) {
+            throw new AiIncompleteAnswerException(
+                    AiIncompleteAnswerException.Reason.EMPTY,
+                    "The model answered nothing for " + request.sourceFile() + " (an empty or reasoning-only answer)");
+        }
+    }
+
+    /**
      * Reports how much of the prompt was served from the KV cache, at debug level.
      *
      * @param request  the request whose source file is named in the line

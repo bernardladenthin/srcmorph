@@ -423,6 +423,27 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        IMPROPER_UNICODE on AiIncompleteStrategy.fromConfig: the same shape and rationale as
+        AiOversizeStrategy.fromConfig above, for the closed set of ASCII tokens fail/retryOnce/keep of
+        &lt;onIncomplete&gt;.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiIncompleteStrategy"/>
+        <Method name="fromConfig"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on AiIncompleteAnswerException. An exception has identity
+        semantics, like every Throwable: two refusals of two answers are two events even when their
+        reason and text agree, and nothing compares or hashes them.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.AiIncompleteAnswerException"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
         IMPROPER_UNICODE on LlamaCppJniProviderSupport.lazyMode. Identical shape and
         rationale to the AiOversizeStrategy.fromConfig suppression directly above: the method resolves a
         configured &lt;lazyMode&gt; value against a fixed, closed set of ASCII tokens (off/auto/on)

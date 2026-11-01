@@ -728,6 +728,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement</param>
                         <param>net.ladenthin.srcmorph.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexPlan</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiIndexTally</param>
                         <param>net.ladenthin.srcmorph.document.AiGenerationRequest</param>
                         <param>net.ladenthin.srcmorph.document.AiGenerationResult</param>
                         <param>net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter</param>
@@ -742,6 +743,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader</param>
                         <param>net.ladenthin.srcmorph.provider.AiCompletionParser</param>
+                        <param>net.ladenthin.srcmorph.provider.AiIncompleteAnswerException</param>
                         <param>net.ladenthin.srcmorph.provider.GgufModelInfo</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationTimings</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationProvider</param>
@@ -749,6 +751,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.srcmorph.provider.OpenAiCompatibleProviderSupport</param>
                         <param>net.ladenthin.srcmorph.config.AiOversizeStrategy</param>
+                        <param>net.ladenthin.srcmorph.config.AiIncompleteStrategy</param>
                         <param>net.ladenthin.srcmorph.config.AiFactCounter</param>
                         <param>net.ladenthin.srcmorph.config.AiFactDefinition</param>
                         <param>net.ladenthin.srcmorph.config.AiFactDefinitionLoader</param>

@@ -356,8 +356,13 @@ Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.
 `<lines>` works the same way; `<modifiedAfter>2026-01-01T00:00:00Z</modifiedAfter>` only (re)indexes
 recently changed files. `<onOversize>` (`fail` *(default)* / `sample` / `mapReduce` / `deterministic` —
 see the context-window note above) chooses what a rule does when a file is still larger than its routed
-model's window; `<maxChunks>` caps how many chunks `mapReduce` summarizes. Preview the mapping without
-running a model:
+model's window; `<maxChunks>` caps how many chunks `mapReduce` summarizes. `<onIncomplete>` chooses
+what a rule does when the model's answer is no summary -- empty (for example a reasoning-only answer),
+cut off at the output budget, or a response without an answer: `fail` *(default)* counts the file as
+failed, `retryOnce` asks once more first, `keep` writes a cut-off answer that has text. Such an answer
+is never written otherwise: the file keeps its older summary, or none, every other file is still
+indexed, the goal fails at its end naming the count, and the next run tries the file again. Preview
+the mapping without running a model:
 
 ```
 mvn srcmorph:generate -Dsrcmorph.planOnly=true

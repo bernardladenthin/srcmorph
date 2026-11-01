@@ -11,10 +11,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
@@ -36,7 +32,6 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 /**
  * Drives the provider against an in-process stub server ({@code com.sun.net.httpserver}) that
@@ -237,25 +232,50 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     }
 
     @Test
-    public void generate_truncatedAnswer_warnsLikeTheJniProvider() throws Exception {
+    public void generate_truncatedAnswer_isRefusedWithWhatWasWritten() {
         // arrange
         answer = completion("cut off", "length");
-        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        final Logger logger = (Logger) LoggerFactory.getLogger(LlamaCppJniProviderSupport.class);
-        logger.setLevel(Level.WARN);
-        logger.addAppender(appender);
-        try {
-            // act
-            provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST);
 
-            // assert
-            assertThat(appender.list.size(), is(1));
-            assertThat(appender.list.get(0).getFormattedMessage(), containsString("Test.java"));
-        } finally {
-            logger.detachAppender(appender);
-            appender.stop();
-        }
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(thrown.getMessage(), containsString("Test.java"));
+        assertThat(thrown.partialText(), is("cut off"));
+    }
+
+    @Test
+    public void generate_emptyAnswer_isRefused() {
+        // arrange
+        answer = completion("", "stop");
+
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.EMPTY));
+        assertThat(thrown.partialText(), is(""));
+    }
+
+    @Test
+    public void generate_successWithoutAChoice_isRefusedWithTheBody() {
+        // arrange: a 2xx answer carrying an error object instead of a completion
+        answer = "{\"error\":{\"message\":\"upstream overloaded\"}}";
+
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.NO_ANSWER));
+        assertThat(thrown.getMessage(), containsString("answered without a completion for "));
+        assertThat(thrown.getMessage(), containsString("upstream overloaded"));
     }
     // </editor-fold>
 
@@ -306,25 +326,19 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     }
 
     @Test
-    public void generate_streamCutOff_warnsLikeTheJniProvider() throws Exception {
+    public void generate_streamCutOff_isRefusedWithWhatWasWritten() {
         // arrange
         events = streamed("cut ", "off", "length");
-        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        final Logger logger = (Logger) LoggerFactory.getLogger(LlamaCppJniProviderSupport.class);
-        logger.setLevel(Level.WARN);
-        logger.addAppender(appender);
-        try {
-            // act
-            provider(LlamaCppJniConfig.builder("").stream(true), NO_ENVIRONMENT).generate(REQUEST);
 
-            // assert
-            assertThat(appender.list.size(), is(1));
-            assertThat(appender.list.get(0).getFormattedMessage(), containsString("Test.java"));
-        } finally {
-            logger.detachAppender(appender);
-            appender.stop();
-        }
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder("").stream(true), NO_ENVIRONMENT)
+                        .generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(thrown.partialText(), is("cut off"));
     }
 
     @Test

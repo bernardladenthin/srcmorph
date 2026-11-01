@@ -16,14 +16,6 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-2. **An incomplete answer is never a summary.** The provider fails on a 2xx answer without choices,
-   HTML, `{"error": ...}`, `content: null`, a reasoning-only answer and `finish_reason: length` with
-   nothing written; `<think>` blocks are stripped like Gemma's markers. `AiGenerationResult` carries
-   whether it is complete; an incomplete file, package or project summary is not written (an older
-   one stays), `GenerateResult` counts it, the summary line names it and the run fails at its end;
-   `onIncomplete: fail | retryOnce`. mapReduce drops empty partials with a warning; the package
-   `Contents` fallback is written only without a model; a project whose overview is missing is
-   regenerated. Replaces the "cut-off summary is kept" item below.
 3. **Provider robustness.** Retries for 408, 429, 5xx and timeouts (`Retry-After`, else exponential
    backoff with jitter, `maxRetries` per model, waiting on a `Condition`); none for 400/401/403/404/413.
    A remote context overflow (400/413 with the provider's overflow text) is a context-overflow error,
@@ -75,14 +67,9 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
   with its test. The stub-server tests in `OpenAiCompatibleAiGenerationProviderTest` stay and prove the
   switch.
 
-- **A cut-off summary is kept as if it were done.** When a generation hits `maxOutputTokens`, the
-  provider only logs a WARN and the truncated `.ai.md` counts as up to date, so an incremental run
-  regenerates it only after the source changes. The model-card benchmark hit this with reasoning
-  models, whose reasoning tokens count against the budget (`docs/ai-index-benchmark/MODEL-CARD.md`,
-  findings 1 and 3). Options: mark the header so the next run retries it, fail the file under an
-  `onTruncated` setting, or retry once with a larger budget. Same place: the OpenAI-compatible
-  provider reuses `LlamaCppJniProviderSupport.warnOnTruncatedAnswer`, so its warning is logged under
-  the llama.cpp class's logger name.
+- **The OpenAI-compatible provider's calibration warning is logged under the llama.cpp class.**
+  `generateWithTimings` reuses `LlamaCppJniProviderSupport.warnOnTruncatedAnswer`, so a cut-off
+  calibration answer of a remote model is logged under that logger name.
 
 - **No GPU module is launched in CI.** `smoke-jar` builds `examples/build-your-own-jar` with the CPU
   natives only and runs `Plan`; a GitHub-hosted runner has no CUDA/ROCm/SYCL/OpenVINO device, and

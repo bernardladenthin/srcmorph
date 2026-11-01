@@ -169,6 +169,13 @@ public class AiFieldGenerationSelectorTest {
     }
 
     @Test
+    public void validate_invalidOnIncomplete_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnIncomplete("retry");
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
     public void validate_validOnOversize_passes() {
         final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
         r.setOnOversize("mapReduce");

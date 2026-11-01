@@ -23,6 +23,7 @@ import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
 import org.junit.jupiter.api.Test;
 
@@ -49,10 +50,10 @@ public class ProjectIndexerTest {
         final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
 
         // act
-        final int written = indexer.aggregate(outputRoot);
+        final AiIndexOutcome written = indexer.aggregate(outputRoot);
 
         // pre-assert
-        assertThat(written, is(equalTo(1)));
+        assertThat(written, is(AiIndexOutcome.WRITTEN));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         assertThat(Files.exists(projectFile), is(true));
 
@@ -92,10 +93,10 @@ public class ProjectIndexerTest {
         final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
 
         // act
-        final int written = indexer.aggregate(outputRoot);
+        final AiIndexOutcome written = indexer.aggregate(outputRoot);
 
         // assert
-        assertThat(written, is(equalTo(0)));
+        assertThat(written, is(AiIndexOutcome.UNCHANGED));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
     // </editor-fold>
@@ -111,13 +112,15 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // first run writes the file
-        assertThat(new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot), is(equalTo(1)));
+        assertThat(
+                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot),
+                is(AiIndexOutcome.WRITTEN));
 
         // act: a second run over the same packages must detect no change
-        final int second = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+        final AiIndexOutcome second = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
 
         // assert
-        assertThat(second, is(equalTo(0)));
+        assertThat(second, is(AiIndexOutcome.UNCHANGED));
     }
 
     @Test
@@ -131,10 +134,10 @@ public class ProjectIndexerTest {
         new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
 
         // act: force=true rewrites despite no content change
-        final int forced = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", true).aggregate(outputRoot);
+        final AiIndexOutcome forced = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", true).aggregate(outputRoot);
 
         // assert
-        assertThat(forced, is(equalTo(1)));
+        assertThat(forced, is(AiIndexOutcome.WRITTEN));
     }
     // </editor-fold>
 
@@ -188,10 +191,10 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // act
-        final int written = overviewIndexer(false).aggregate(outputRoot);
+        final AiIndexOutcome written = overviewIndexer(false).aggregate(outputRoot);
 
         // assert: an #### Overview section with the generated text precedes the deterministic listing
-        assertThat(written, is(equalTo(1)));
+        assertThat(written, is(AiIndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         final String body = document.body();
         assertThat(body, containsString(OVERVIEW_HEADING));
@@ -228,14 +231,14 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // first run writes the overview
-        assertThat(overviewIndexer(false).aggregate(outputRoot), is(equalTo(1)));
+        assertThat(overviewIndexer(false).aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
 
         // act: a second run over the same packages and same overview config must detect no change
         // (the checksum folds in the generation signature but not the AI output)
-        final int second = overviewIndexer(false).aggregate(outputRoot);
+        final AiIndexOutcome second = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(second, is(equalTo(0)));
+        assertThat(second, is(AiIndexOutcome.UNCHANGED));
     }
 
     @Test
@@ -246,13 +249,15 @@ public class ProjectIndexerTest {
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
-        assertThat(new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot), is(equalTo(1)));
+        assertThat(
+                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot),
+                is(AiIndexOutcome.WRITTEN));
 
         // act: enabling the overview changes the generation signature in the checksum -> regenerate
-        final int rewritten = overviewIndexer(false).aggregate(outputRoot);
+        final AiIndexOutcome rewritten = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(rewritten, is(equalTo(1)));
+        assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString(OVERVIEW_HEADING));
     }
@@ -272,6 +277,10 @@ public class ProjectIndexerTest {
      * @return an overview-enabled indexer
      */
     private ProjectIndexer overviewIndexer(final boolean force) {
+        return overviewIndexer(force, new MockAiGenerationProvider());
+    }
+
+    private ProjectIndexer overviewIndexer(final boolean force, final AiGenerationProvider provider) {
         final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
         overview.setPromptKey("project-body");
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
@@ -286,7 +295,7 @@ public class ProjectIndexerTest {
                 "1.0.0",
                 "0.0.0",
                 force,
-                new MockAiGenerationProvider(),
+                provider,
                 overview,
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -305,4 +314,20 @@ public class ProjectIndexerTest {
                 AiMdHeaderCodec.NODE_TYPE_PACKAGE);
         documentCodec.write(file, new AiMdDocument(header, body));
     }
+
+    // <editor-fold defaultstate="collapsed" desc="incomplete answers">
+    @Test
+    public void aggregate_overviewWithAnIncompleteAnswer_writesNoProjectIndex() throws Exception {
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(
+                outputRoot.resolve("main/java/com/example/package.ai.md"),
+                "main/java/com/example",
+                "> Example package.\n");
+
+        final AiIndexOutcome outcome = overviewIndexer(false, request -> "").aggregate(outputRoot);
+
+        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
+    }
+    // </editor-fold>
 }

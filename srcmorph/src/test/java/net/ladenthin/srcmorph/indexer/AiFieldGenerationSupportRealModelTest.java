@@ -82,6 +82,8 @@ public class AiFieldGenerationSupportRealModelTest {
         rule.setAiDefinitionKey(MODEL_KEY);
         rule.setOnOversize("mapReduce");
         rule.setMaxChunks(2);
+        // the tiny test model is cut off at the test budget; keep what it wrote, as the path is under test
+        rule.setOnIncomplete("keep");
         final AiFactCounter counter = new AiFactCounter();
         counter.setLabel("lines");
         counter.setPattern("(?m)^line ");

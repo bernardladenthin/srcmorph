@@ -198,7 +198,9 @@ public class LlamaCppJniKnobSweepTest {
         final String body;
         try (LlamaCppJniAiGenerationProvider provider =
                 new LlamaCppJniAiGenerationProvider(builder.build(), promptSupport)) {
-            body = provider.generate(request());
+            // generateWithTimings runs the same chat completion but does not judge the answer: at the
+            // sweep's tiny output budget every answer is cut off, which generate rightly refuses.
+            body = provider.generateWithTimings(request()).text();
         }
 
         // assert -- the contract is that the binding accepted the value and inference ran, not that

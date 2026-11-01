@@ -16,6 +16,7 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
+import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
 import net.ladenthin.srcmorph.indexer.AiIndexPlan;
 import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
@@ -195,6 +196,7 @@ public final class GenerateEngine {
         int doneFiles = 0;
         int wrote = 0;
         int unchanged = 0;
+        int failed = 0;
         for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
                 plan.routesByModel().entrySet()) {
             final String aiDefinitionKey = group.getKey();
@@ -209,10 +211,13 @@ public final class GenerateEngine {
                 final AiFieldGenerationSupport support =
                         new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
                 for (final AiIndexPlan.Entry entry : group.getValue()) {
-                    if (fileIndexer.indexFile(entry.file(), entry.rule(), support)) {
+                    final AiIndexOutcome outcome = fileIndexer.indexFile(entry.file(), entry.rule(), support);
+                    if (outcome == AiIndexOutcome.WRITTEN) {
                         wrote++;
-                    } else {
+                    } else if (outcome == AiIndexOutcome.UNCHANGED) {
                         unchanged++;
+                    } else {
+                        failed++;
                     }
                     doneEstimatedSeconds += entry.estimatedSeconds();
                     doneFiles++;
@@ -232,7 +237,16 @@ public final class GenerateEngine {
         }
 
         final int skippedCount = plan.skipped().size();
-        LOGGER.info("Generated AI files: {} written, {} unchanged, {} skipped", wrote, unchanged, skippedCount);
+        LOGGER.info(
+                "Generated AI files: {} written, {} unchanged, {} skipped, {} failed",
+                wrote,
+                unchanged,
+                skippedCount,
+                failed);
+        if (failed > 0) {
+            throw new SrcMorphException(failed + " file(s) got an incomplete answer and were not written;"
+                    + " the WARN lines name them, and the next run tries them again");
+        }
         LOGGER.info("AI index generation finished.");
 
         return new GenerateResult(false, wrote, unchanged, skippedCount);

@@ -10,6 +10,7 @@ import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
 import net.ladenthin.srcmorph.indexer.ProjectIndexer;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
@@ -52,9 +53,10 @@ public final class AggregateProjectEngine {
     /**
      * Aggregates the project index beneath the configured output directory.
      *
-     * @return {@code 1} if the project index was written or refreshed, {@code 0} otherwise (no package
-     *         index files yet, the output directory does not exist, or the existing file is up to date)
-     * @throws SrcMorphException if the overview's prompt/model definitions are misconfigured
+     * @return {@code 1} if the project index was written, {@code 0} otherwise (no package index files
+     *         yet, the output directory does not exist, or the existing file is up to date)
+     * @throws SrcMorphException if the overview's prompt/model definitions are misconfigured, or the
+     *                           overview's answer was incomplete and the project index was not written
      * @throws IOException       if the output tree cannot be read or the project index cannot be written
      */
     public int execute() throws SrcMorphException, IOException {
@@ -74,16 +76,22 @@ public final class AggregateProjectEngine {
         final String title =
                 projectName == null || compatibilityHelper.isBlank(projectName) ? DEFAULT_PROJECT_TITLE : projectName;
 
-        final int written;
+        final AiIndexOutcome outcome;
         final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
         if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
-            written = aggregateWithOverview(outputPath, title, fieldGenerations.get(0));
+            outcome = aggregateWithOverview(outputPath, title, fieldGenerations.get(0));
         } else {
             LOGGER.info("Project overview generation: disabled (no fieldGenerations configured)");
             final ProjectIndexer indexer =
                     new ProjectIndexer(title, config.getPluginVersion(), config.getAiVersion(), config.isForce());
-            written = indexer.aggregate(outputPath);
+            outcome = indexer.aggregate(outputPath);
         }
+        if (outcome == AiIndexOutcome.FAILED) {
+            throw new SrcMorphException("The project overview for " + outputPath + " got an incomplete answer"
+                    + " and the project index was not written; the WARN line says why, and the next run tries it"
+                    + " again");
+        }
+        final int written = outcome == AiIndexOutcome.WRITTEN ? 1 : 0;
         LOGGER.info("Project index files written: {}", written);
 
         LOGGER.info("AI project index aggregation finished.");
@@ -98,11 +106,12 @@ public final class AggregateProjectEngine {
      * @param outputPath the resolved output directory holding the {@code .ai.md} tree
      * @param title      the resolved project title
      * @param overview   the overview field generation (prompt + model)
-     * @return {@code 1} if the project index was written or refreshed, {@code 0} otherwise
+     * @return what the project index pass did
      * @throws SrcMorphException if the provider or model definitions are misconfigured
      * @throws IOException       if the output tree cannot be read or written
      */
-    private int aggregateWithOverview(final Path outputPath, final String title, final AiFieldGenerationConfig overview)
+    private AiIndexOutcome aggregateWithOverview(
+            final Path outputPath, final String title, final AiFieldGenerationConfig overview)
             throws SrcMorphException, IOException {
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());

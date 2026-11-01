@@ -157,16 +157,17 @@ public class PackageIndexer {
      * Aggregates all package directories beneath {@code rootDirectory}.
      *
      * @param rootDirectory output root directory to walk
-     * @return number of package index files written or refreshed
+     * @return how many package index files were written, were up to date, or got an incomplete answer
+     *         and were not written
      * @throws IOException if the output tree cannot be read or written
      */
-    public int aggregate(final Path rootDirectory) throws IOException {
-        return aggregateRecursive(rootDirectory);
+    public AiIndexTally aggregate(final Path rootDirectory) throws IOException {
+        final AiIndexTally tally = new AiIndexTally();
+        aggregateRecursive(rootDirectory, tally);
+        return tally;
     }
 
-    private int aggregateRecursive(final Path directory) throws IOException {
-        int count = 0;
-
+    private void aggregateRecursive(final Path directory, final AiIndexTally tally) throws IOException {
         final List<Path> subDirectories;
         try (Stream<Path> stream = Files.list(directory)) {
             subDirectories =
@@ -174,19 +175,12 @@ public class PackageIndexer {
         }
 
         for (Path subDirectory : subDirectories) {
-            count += aggregateRecursive(subDirectory);
+            aggregateRecursive(subDirectory, tally);
         }
 
-        if (!matchesAggregationScope(directory)) {
-            return count;
+        if (matchesAggregationScope(directory) && shouldCreatePackageFile(directory)) {
+            tally.add(writePackageFile(directory));
         }
-
-        if (shouldCreatePackageFile(directory)) {
-            writePackageFile(directory);
-            count++;
-        }
-
-        return count;
     }
 
     private boolean matchesAggregationScope(final Path directory) {
@@ -234,7 +228,7 @@ public class PackageIndexer {
         return Files.exists(directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
     }
 
-    private void writePackageFile(final Path directory) throws IOException {
+    private AiIndexOutcome writePackageFile(final Path directory) throws IOException {
         if (fieldGenerations == null || fieldGenerations.isEmpty()) {
             throw new IllegalArgumentException("No field generations configured for package indexing of " + directory);
         }
@@ -262,7 +256,7 @@ public class PackageIndexer {
 
         if (!headerSupport.shouldWrite(force, packageFile, baseHeader)) {
             LOGGER.info("Unchanged package AI index file: {}", packageFile);
-            return;
+            return AiIndexOutcome.UNCHANGED;
         }
 
         final String sourceText = buildPackageSourceText(baseHeader, directory, contents);
@@ -270,15 +264,15 @@ public class PackageIndexer {
         final AiGenerationResult result = fieldGenerationSupport.processFieldGenerations(
                 fieldGenerations, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
 
-        // result.body() is non-null by AiGenerationResult's constructor contract;
-        // an empty/blank body falls back to the deterministic default.
-        final String body =
-                compatibilityHelper.isBlank(result.body()) ? buildDefaultPackageBody(contents) : result.body();
+        if (!result.complete()) {
+            return AiIndexOutcome.FAILED;
+        }
 
-        final AiMdDocument document = new AiMdDocument(baseHeader, body);
+        final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(packageFile, document);
 
         LOGGER.info("Wrote package AI index file: {}", packageFile);
+        return AiIndexOutcome.WRITTEN;
     }
 
     private List<String> collectContents(final Path directory) throws IOException {
@@ -397,7 +391,7 @@ public class PackageIndexer {
         } else {
             // No child bodies were available — fall back to the plain name listing so the
             // model still receives the package contents rather than an empty source.
-            appendContentsSection(builder, contents, true);
+            appendContentsSection(builder, contents);
         }
 
         return builder.toString();
@@ -511,28 +505,18 @@ public class PackageIndexer {
         return fileName;
     }
 
-    private String buildDefaultPackageBody(final Collection<String> contents) {
-        final StringBuilder builder = new StringBuilder();
-        appendContentsSection(builder, contents, false);
-        return builder.toString();
-    }
-
     /**
-     * Appends the {@link #CONTENTS_HEADING} and the content entry list to {@code builder}.
+     * Appends a blank line, the {@link #CONTENTS_HEADING} and the content entry list to {@code builder}.
      * Does nothing when {@code contents} is empty.
      *
-     * @param builder        target string builder
-     * @param contents       collection of content entry names
-     * @param prependNewline when {@code true}, a blank line is prepended before the heading
+     * @param builder  target string builder
+     * @param contents collection of content entry names
      */
-    private void appendContentsSection(
-            final StringBuilder builder, final Collection<String> contents, final boolean prependNewline) {
+    private void appendContentsSection(final StringBuilder builder, final Collection<String> contents) {
         if (contents.isEmpty()) {
             return;
         }
-        if (prependNewline) {
-            builder.append('\n');
-        }
+        builder.append('\n');
         builder.append(CONTENTS_HEADING).append('\n');
         for (String entry : contents) {
             builder.append("- ").append(entry).append('\n');

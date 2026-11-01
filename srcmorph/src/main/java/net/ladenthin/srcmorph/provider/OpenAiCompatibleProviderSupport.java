@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -489,6 +490,19 @@ final class OpenAiCompatibleProviderSupport {
      */
     static String errorMessage(final String endpoint, final int status, final String body) {
         return endpoint + " answered HTTP " + status + ": " + excerpt(body);
+    }
+
+    /**
+     * The message of the exception a 2xx answer without a choice fails with: endpoint, file and the start
+     * of the body, which shows whether it was a proxy's HTML page, an error object or something else.
+     *
+     * @param endpoint   the URL that was called
+     * @param sourceFile the file the answer was for
+     * @param body       the response body
+     * @return the message
+     */
+    static String noChoiceMessage(final String endpoint, final Path sourceFile, final String body) {
+        return endpoint + " answered without a completion for " + sourceFile + ": " + excerpt(body);
     }
 
     private static String excerpt(final String body) {

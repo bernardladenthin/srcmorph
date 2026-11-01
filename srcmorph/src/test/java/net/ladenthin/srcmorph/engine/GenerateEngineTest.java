@@ -12,7 +12,11 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -422,5 +426,46 @@ public class GenerateEngineTest {
         assertThat(thrown.getMessage(), containsString("mock.gguf"));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="incomplete answers">
+    @Test
+    public void execute_fileWithAnIncompleteAnswer_writesTheOthersAndFailsAtTheEnd() throws Exception {
+        // a loopback OpenAI-compatible stub: an empty answer for Bar.java, a summary for every other file
+        final HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/v1/chat/completions", exchange -> {
+            final String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            final String content = request.contains("Bar.java") ? "" : "A summary.";
+            final byte[] response = ("{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\","
+                            + "\"content\":\"" + content + "\"},\"finish_reason\":\"stop\"}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(response);
+            }
+        });
+        server.start();
+        try {
+            final SrcMorphConfiguration config = baseConfig();
+            Files.write(
+                    tempDir.resolve("src/main/java/com/example/Bar.java"),
+                    "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
+            final AiModelDefinition remote = mockModelDefinition();
+            remote.setProvider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+            remote.setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
+            remote.setRemoteModel("stub");
+            config.setAiDefinitions(Collections.singletonList(remote));
+
+            final SrcMorphException thrown =
+                    assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+
+            assertThat(thrown.getMessage(), containsString("1 file(s) got an incomplete answer"));
+            assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+            assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Bar.java.ai.md")), is(false));
+        } finally {
+            server.stop(0);
+        }
+    }
     // </editor-fold>
 }

@@ -70,13 +70,14 @@ public class PackageIndexerTest {
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        final int aggregated = indexer.aggregate(outputRoot);
+        final AiIndexTally aggregated = indexer.aggregate(outputRoot);
 
         // pre-assert
         assertThat(Files.exists(packageAiFile), is(true));
 
         // assert
-        assertThat(aggregated, is(equalTo(5)));
+        assertThat(aggregated.written(), is(equalTo(5)));
+        assertThat(aggregated.failed(), is(equalTo(0)));
 
         final AiMdDocument document = documentCodec.read(packageAiFile);
 
@@ -294,4 +295,34 @@ public class PackageIndexerTest {
             return sourceTextByFile.get(file);
         }
     }
+
+    // <editor-fold defaultstate="collapsed" desc="incomplete answers">
+    @Test
+    public void aggregate_incompleteAnswer_writesNoPackageFileAndCountsItAsFailed() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path packageDirectory = outputRoot.resolve("main/java/com/example");
+        Files.createDirectories(packageDirectory);
+        writeChildFile(packageDirectory.resolve("Foo.java.ai.md"), "Foo.java", "Summary of Foo.");
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                request -> "",
+                CommonTestFixtures.createPackageFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        final AiIndexTally tally = indexer.aggregate(outputRoot);
+
+        // no deterministic Contents body stands in for the missing summary any more
+        assertThat(tally.failed(), is(equalTo(1)));
+        assertThat(tally.written(), is(equalTo(0)));
+        assertThat(Files.exists(packageDirectory.resolve("package.ai.md")), is(false));
+    }
+    // </editor-fold>
 }

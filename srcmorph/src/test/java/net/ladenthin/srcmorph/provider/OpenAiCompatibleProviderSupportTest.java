@@ -536,6 +536,15 @@ public class OpenAiCompatibleProviderSupportTest {
                         + "..."));
     }
 
+    @Test
+    public void noChoiceMessage_namesEndpointFileAndTheStartOfTheBody() {
+        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT + 1);
+        assertThat(
+                OpenAiCompatibleProviderSupport.noChoiceMessage("http://h", java.nio.file.Paths.get("A.java"), body),
+                is("http://h answered without a completion for A.java: "
+                        + repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT) + "..."));
+    }
+
     private static String repeat(final char c, final int count) {
         final char[] chars = new char[count];
         Arrays.fill(chars, c);

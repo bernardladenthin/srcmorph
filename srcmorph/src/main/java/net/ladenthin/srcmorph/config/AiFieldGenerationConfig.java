@@ -85,6 +85,14 @@ public class AiFieldGenerationConfig {
     private @Nullable String onOversize;
 
     /**
+     * What to do when the model's answer is no summary (empty, cut off at the output budget, or no answer
+     * at all): {@code fail} (default; the file is counted as failed and the run fails at its end) or
+     * {@code retryOnce} (ask once more first). Such an answer is never written. Parsed by
+     * {@link AiIncompleteStrategy#fromConfig(String)}.
+     */
+    private @Nullable String onIncomplete;
+
+    /**
      * For {@link AiOversizeStrategy#MAP_REDUCE}: the maximum number of chunks to summarize. {@code 0}
      * (default) = unbounded (process every chunk). A positive value bounds the run time by sampling that
      * many representative chunks (head + evenly spaced + tail) across the file.
@@ -262,6 +270,35 @@ public class AiFieldGenerationConfig {
      */
     public AiOversizeStrategy getOversizeStrategy() {
         return AiOversizeStrategy.fromConfig(onOversize);
+    }
+
+    /**
+     * Returns the raw {@code onIncomplete} config token, or {@code null} when not set.
+     *
+     * @return the incomplete-answer strategy token, or {@code null}
+     */
+    public @Nullable String getOnIncomplete() {
+        return onIncomplete;
+    }
+
+    /**
+     * Sets the {@code onIncomplete} config token ({@code fail} or {@code retryOnce}).
+     *
+     * @param onIncomplete the incomplete-answer strategy token
+     */
+    public void setOnIncomplete(final @Nullable String onIncomplete) {
+        this.onIncomplete = onIncomplete;
+    }
+
+    /**
+     * Returns the parsed incomplete-answer strategy ({@link AiIncompleteStrategy#FAIL} when unset/blank).
+     * Not a bean getter, so a serialized configuration carries only the token.
+     *
+     * @return the incomplete-answer strategy
+     * @throws IllegalArgumentException if {@code onIncomplete} is non-blank and matches no strategy
+     */
+    public AiIncompleteStrategy incompleteStrategy() {
+        return AiIncompleteStrategy.fromConfig(onIncomplete);
     }
 
     /**

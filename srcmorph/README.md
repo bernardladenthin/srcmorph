@@ -46,14 +46,16 @@ Each engine is constructed from one `SrcMorphConfiguration` and owns its own AI 
 (try-with-resources; one model resident in memory at a time). All four throw the checked
 `net.ladenthin.srcmorph.engine.SrcMorphException` on misconfiguration (an invalid rule set, an
 unmatched file with no fallback, an oversized file with `onOversize=fail`, a bad prompt/model
-reference) and let a plain `java.io.IOException` propagate for genuine I/O failures — callers (the
+reference) and, at the end of a run, when a file, package or overview got an incomplete answer (empty,
+cut off or none; see `onIncomplete`), which is never written; a plain `java.io.IOException`
+propagates for genuine I/O failures — callers (the
 Maven plugin's mojos, the CLI's `Main`) translate these into whatever their own surface expects.
 
 | Engine | Purpose | Result |
 |---|---|---|
 | `GenerateEngine` | Phase 1: plans the whole run (which model + prompt each file gets, or skip/unmatched, and whether it fits its routed model's context window), fails fast on an unmatched file or a hard oversize failure, stops after the plan when `planOnly` is set, otherwise loads each distinct routed model once and indexes its files. | `GenerateResult` (`planOnly()`, `written()`, `unchanged()`, `skipped()`) |
-| `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory. | `int` — package index files written or refreshed |
-| `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); when `fieldGenerations` has at least one entry, its **first** entry is used for one extra AI call that writes a short `#### Overview` paragraph. | `int` — `1` if written/refreshed, `0` otherwise |
+| `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory. | `int` — package index files written |
+| `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); when `fieldGenerations` has at least one entry, its **first** entry is used for one extra AI call that writes a short `#### Overview` paragraph. | `int` — `1` if written, `0` otherwise |
 | `CalibrateEngine` | Loads each distinct model a `GenerateEngine` run would load, measures its prefill/decode throughput via a couple of representative generations, and returns a paste-ready report. | `CalibrationReport` (`measurements()`, `renderXml()` — a paste-ready `<calibration>` XML block per model) |
 | `ListModelsEngine` | Asks each OpenAI-compatible server the `aiDefinitions` name for its models (`GET <baseUrl>/models`), optionally filtered by id. | `ModelListReport` (`listings()`, `render()` — a model table as YAML comments and an `aiDefinitions` block with one entry per model) |
 

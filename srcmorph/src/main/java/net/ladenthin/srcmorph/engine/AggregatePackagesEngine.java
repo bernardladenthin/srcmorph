@@ -9,6 +9,7 @@ import java.util.List;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.indexer.AiIndexTally;
 import net.ladenthin.srcmorph.indexer.PackageIndexer;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
@@ -42,9 +43,10 @@ public final class AggregatePackagesEngine {
     /**
      * Aggregates every package beneath the configured output directory.
      *
-     * @return the number of package index files written or refreshed; {@code 0} when the output
-     *         directory does not yet exist
-     * @throws SrcMorphException if the prompt/model definitions are misconfigured
+     * @return the number of package index files written; {@code 0} when the output directory does not yet
+     *         exist
+     * @throws SrcMorphException if the prompt/model definitions are misconfigured, or, after every package
+     *                           was tried, when a package got an incomplete answer and was not written
      * @throws IOException       if the output tree cannot be read or written
      */
     public int execute() throws SrcMorphException, IOException {
@@ -74,7 +76,7 @@ public final class AggregatePackagesEngine {
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
-        final int aggregated;
+        final AiIndexTally aggregated;
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
                 EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport),
@@ -94,8 +96,16 @@ public final class AggregatePackagesEngine {
             aggregated = packageIndexer.aggregate(outputPath);
         }
 
-        LOGGER.info("Aggregated packages: {}", aggregated);
+        LOGGER.info(
+                "Aggregated packages: {} written, {} unchanged, {} failed",
+                aggregated.written(),
+                aggregated.unchanged(),
+                aggregated.failed());
+        if (aggregated.failed() > 0) {
+            throw new SrcMorphException(aggregated.failed() + " package(s) got an incomplete answer and were not"
+                    + " written; the WARN lines name them, and the next run tries them again");
+        }
         LOGGER.info("AI package aggregation finished.");
-        return aggregated;
+        return aggregated.written();
     }
 }

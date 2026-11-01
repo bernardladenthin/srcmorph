@@ -7,6 +7,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
@@ -139,4 +140,31 @@ public class AiCompletionParserTest {
         assertThat(result, is(equalTo(answer)));
     }
     // </editor-fold>
+
+    // <think> blocks, as DeepSeek-R1 and Qwen3 write them
+    @Test
+    public void parseCompletion_leadingThinkTag_isStripped() throws Exception {
+        final String result =
+                new AiCompletionParser().parseCompletion("  <think>\nweighing it up\n</think>\n\nactual answer  ");
+
+        assertThat(result, is(equalTo("actual answer")));
+    }
+
+    @Test
+    public void parseCompletion_unclosedThinkTag_isATruncatedAnswer() {
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> new AiCompletionParser().parseCompletion("<think>still weighing it up"));
+
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(thrown.getMessage(), containsString(AiCompletionParser.THINK_TAG_START_MARKER));
+        assertThat(thrown.getMessage(), containsString(AiCompletionParser.THINK_TAG_END_MARKER));
+    }
+
+    @Test
+    public void parseCompletion_thinkTagQuotedInTheAnswer_isKept() throws Exception {
+        final String response = "The parser strips a leading <think> ... </think> block.";
+
+        assertThat(new AiCompletionParser().parseCompletion(response), is(equalTo(response)));
+    }
 }

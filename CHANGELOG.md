@@ -12,6 +12,19 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **An incomplete answer is never a summary (`onIncomplete`).** A model answer that is empty (also a
+  reasoning-only one), cut off at the output budget, or a response without an answer (no choice, an
+  HTML page or an `{"error": ...}` object with status 200) is refused by the provider
+  (`AiIncompleteAnswerException`) instead of being written as the file's summary. Nothing is written
+  for that file, package or project overview, so an older summary stays and the next run tries again;
+  every other file is still indexed, and the run fails at its end naming the count. Per rule,
+  `onIncomplete` is `fail` (default), `retryOnce` (ask once more) or `keep` (write a cut-off answer
+  that has text, the behaviour before). Before, the facts line alone or the package's `Contents`
+  list was written in place of the missing summary and counted as up to date, so an incremental run
+  never tried it again. A leading `<think> ... </think>` block is stripped like Gemma's, and an
+  unclosed one is a cut-off answer. `AggregatePackagesEngine` returns the packages written (no longer
+  the unchanged ones too); `SourceFileIndexer.indexFile`, `PackageIndexer.aggregate` and
+  `ProjectIndexer.aggregate` return an `AiIndexOutcome` / `AiIndexTally`.
 - **Profiles: prompts and fact counters as files, named by key (`profileDirectory`).** A profile is
   one directory with a file per prompt (`<key>.md`, the system prompt verbatim) and per group of
   exact fact counters (`<key>.tsv`: `label<TAB>regex` per line, `#` comments). With

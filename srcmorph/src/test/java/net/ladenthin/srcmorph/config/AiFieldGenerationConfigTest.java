@@ -86,6 +86,22 @@ public class AiFieldGenerationConfigTest {
     }
 
     @Test
+    public void onIncomplete_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getOnIncomplete(), is(nullValue()));
+        c.setOnIncomplete("retryOnce");
+        assertThat(c.getOnIncomplete(), is(equalTo("retryOnce")));
+    }
+
+    @Test
+    public void incompleteStrategy_defaultsFailAndReflectsToken() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.incompleteStrategy(), is(AiIncompleteStrategy.FAIL));
+        c.setOnIncomplete("keep");
+        assertThat(c.incompleteStrategy(), is(AiIncompleteStrategy.KEEP));
+    }
+
+    @Test
     public void maxChunks_defaultsZeroAndRoundTrips() {
         final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
         assertThat(c.getMaxChunks(), is(equalTo(0)));
