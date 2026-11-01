@@ -186,4 +186,24 @@ public class AiMapReduceSupportTest {
                         .size()));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="chunkLabel">
+    @Test
+    public void chunkLabel_namesTheChunkAndTheChunks() {
+        assertThat(AiMapReduceSupport.chunkLabel(3, 44, 44), is(equalTo("Chunk 3 of 44:\n")));
+    }
+
+    @Test
+    public void chunkLabel_ofASample_namesTheChunksItWasSampledFrom() {
+        assertThat(AiMapReduceSupport.chunkLabel(3, 6, 44), is(equalTo("Chunk 3 of 6, sampled from 44 chunks:\n")));
+    }
+
+    @Test
+    public void chunkLabel_ofTheLongestNumbers_fitsItsReserve() {
+        assertThat(
+                AiMapReduceSupport.chunkLabel(99_999, 99_999, 100_000).length()
+                        <= AiMapReduceSupport.CHUNK_LABEL_RESERVE,
+                is(true));
+    }
+    // </editor-fold>
 }

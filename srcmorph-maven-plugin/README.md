@@ -178,6 +178,16 @@ The file has three building blocks:
      model with `maxChunks: 6` is ~7 calls (~1 h order on a reference CPU; less on GPU) — the right
      trade-off for repetitive data. `maxChunks` applies only here; with another strategy it fails the
      rule set.
+
+     Both chunked strategies tell the model what its input is: `mapPromptKey` names a prompt appended
+     to the rule's prompt in every map call (whose user message starts with `Chunk i of n:`), and
+     `reducePromptKey` one appended in every reduce call (whose input is the part summaries, `Part n:`).
+     The profile's `map-chunk` says to index only what the chunk shows, `reduce-parts` to merge the
+     parts into one summary and keep every name a part states. Without them every call takes the
+     rule's prompt alone, which describes a whole file: a model then indexed a chunk of INSERT rows as
+     a file and invented its schema, and answered a reduce with the prompt's own example repeated
+     under `Part 8:`, `Part 9:`, ... until its output budget ended. Both keys apply only to `mapReduce`
+     and `sampleChunks`.
    - **`deterministic`** — no model at all: emit a deterministic body (size, line count, head/tail
      sample). Instant; for pure data where no AI analysis is needed.
 
@@ -316,6 +326,8 @@ files, skip generated sources, and a fallback for everything else:
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       onOversize: sampleChunks
       maxChunks: 6                                   # ~7 cheap calls; bounds time to ~1 h/file
+      mapPromptKey: map-chunk                        # appended in a map call: the input is one chunk
+      reducePromptKey: reduce-parts                  # appended in a reduce call: merge the parts
       facts:                                         # exact whole-file counts, prepended to the body
         - {label: boolean fields, pattern: '\bboolean\b'}
         - {label: methods, pattern: '(?m)^\s+(public|private|protected).*\('}
@@ -334,9 +346,10 @@ Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.
 `lines` works the same way; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
 recently changed files. `onOversize` (`fail` *(default)* / `sample` / `mapReduce` / `sampleChunks` / `deterministic` —
 see the context-window note above) chooses what a rule does when a file is still larger than its routed
-model's window; `maxChunks` is how many chunks `sampleChunks` summarizes. The package and project rules
-default to `mapReduce`: their input is the summaries below them, and leaving a part out would drop a
-whole subtree. `onIncomplete` chooses
+model's window; `maxChunks` is how many chunks `sampleChunks` summarizes, `mapPromptKey` and
+`reducePromptKey` the prompts a map and a reduce call append to the rule's. The package and project
+rules default to `mapReduce`: their input is the summaries below them, and leaving a part out would
+drop a whole subtree. `onIncomplete` chooses
 what a rule does when the model's answer is no summary -- empty (for example a reasoning-only answer),
 cut off at the output budget, or a response without an answer: `fail` *(default)* counts the file as
 failed, `retryOnce` asks once more first, `keep` writes a cut-off answer that has text. Such an answer

@@ -101,6 +101,20 @@ public class AiFieldGenerationConfig {
     private int maxChunks;
 
     /**
+     * For {@link AiOversizeStrategy#MAP_REDUCE} and {@link AiOversizeStrategy#SAMPLE_CHUNKS} only: the key of
+     * the prompt appended to {@link #promptKey} in every map call, which says that the input is one chunk
+     * of the source ({@code Chunk i of n} in the user message). {@code null} = the rule's prompt alone.
+     */
+    private @Nullable String mapPromptKey;
+
+    /**
+     * For {@link AiOversizeStrategy#MAP_REDUCE} and {@link AiOversizeStrategy#SAMPLE_CHUNKS} only: the key of
+     * the prompt appended to {@link #promptKey} in every reduce call, which says that the input is the part
+     * summaries of one source, to be merged into one. {@code null} = the rule's prompt alone.
+     */
+    private @Nullable String reducePromptKey;
+
+    /**
      * Optional deterministic "fact" counters ({@code <facts>}). When set, each counter's
      * {@code label: <match count over the whole file>} is prepended to the generated body of <em>every</em>
      * file this rule matches (oversize or not) — exact, language-agnostic structural counts (e.g. SQL
@@ -340,6 +354,42 @@ public class AiFieldGenerationConfig {
     }
 
     /**
+     * Returns the key of the prompt appended to the rule's prompt in a map call, or {@code null}.
+     *
+     * @return the map prompt key, or {@code null}
+     */
+    public @Nullable String getMapPromptKey() {
+        return mapPromptKey;
+    }
+
+    /**
+     * Sets the key of the prompt appended to the rule's prompt in a map call.
+     *
+     * @param mapPromptKey the map prompt key
+     */
+    public void setMapPromptKey(final @Nullable String mapPromptKey) {
+        this.mapPromptKey = mapPromptKey;
+    }
+
+    /**
+     * Returns the key of the prompt appended to the rule's prompt in a reduce call, or {@code null}.
+     *
+     * @return the reduce prompt key, or {@code null}
+     */
+    public @Nullable String getReducePromptKey() {
+        return reducePromptKey;
+    }
+
+    /**
+     * Sets the key of the prompt appended to the rule's prompt in a reduce call.
+     *
+     * @param reducePromptKey the reduce prompt key
+     */
+    public void setReducePromptKey(final @Nullable String reducePromptKey) {
+        this.reducePromptKey = reducePromptKey;
+    }
+
+    /**
      * Returns the shared fact-definition reference key, or {@code null} when not set.
      *
      * @return the facts key, or {@code null}
@@ -376,6 +426,8 @@ public class AiFieldGenerationConfig {
         copy.onOversize = onOversize;
         copy.onIncomplete = onIncomplete;
         copy.maxChunks = maxChunks;
+        copy.mapPromptKey = mapPromptKey;
+        copy.reducePromptKey = reducePromptKey;
         final List<AiFactCounter> ownFacts = facts;
         copy.facts = ownFacts == null ? null : new ArrayList<>(ownFacts);
         copy.factsKey = factsKey;

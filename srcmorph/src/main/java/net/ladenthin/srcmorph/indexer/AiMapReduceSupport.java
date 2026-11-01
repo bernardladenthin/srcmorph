@@ -41,6 +41,12 @@ public final class AiMapReduceSupport {
     /** Label prefix of one partial summary inside a reduce prompt. */
     public static final String PART_LABEL = "Part ";
 
+    /**
+     * The characters reserved for a chunk's label ({@link #chunkLabel(int, int, int)}) in the budget of a
+     * map call: {@code Chunk 99999 of 99999, sampled from 99999 chunks:} and its line end, with room.
+     */
+    public static final int CHUNK_LABEL_RESERVE = 64;
+
     /** Approximate per-partial label and separator overhead when packing a reduce batch. */
     public static final int LABEL_OVERHEAD_CHARS = 16;
 
@@ -119,6 +125,19 @@ public final class AiMapReduceSupport {
             batches.add(batch.toString());
         }
         return batches;
+    }
+
+    /**
+     * Returns the line in front of a chunk in its map call, so the model sees which part of the source it
+     * reads: {@code Chunk 3 of 44:}, or for a sample {@code Chunk 3 of 6, sampled from 44 chunks:}.
+     *
+     * @param number the chunk's number among the chunks read, from 1
+     * @param read   the chunks read
+     * @param total  the chunks of the source
+     * @return the label and its line end
+     */
+    public static String chunkLabel(final int number, final int read, final int total) {
+        return "Chunk " + number + " of " + read + (read < total ? ", sampled from " + total + " chunks" : "") + ":\n";
     }
 
     /**

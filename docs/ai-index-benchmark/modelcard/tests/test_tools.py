@@ -73,9 +73,24 @@ class RulesTest(unittest.TestCase):
         packages = run.phase_config("AggregatePackages", Path("w"), Path("o"), run.PROFILES / "v3", definition)
         project = run.phase_config("AggregateProject", Path("w"), Path("o"), run.PROFILES / "v3", definition)
 
-        self.assertEqual(packages["packageFieldGenerations"], [{"promptKey": "package-body", "aiDefinitionKey": "m"}])
+        chunked = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts"}
+        self.assertEqual(packages["packageFieldGenerations"],
+                         [{"promptKey": "package-body", "aiDefinitionKey": "m", **chunked}])
         self.assertNotIn("projectFieldGenerations", packages)
-        self.assertEqual(project["projectFieldGenerations"], [{"promptKey": "project-body", "aiDefinitionKey": "m"}])
+        self.assertEqual(project["projectFieldGenerations"],
+                         [{"promptKey": "project-body", "aiDefinitionKey": "m", **chunked}])
+
+    def test_chunkedRules_nameTheMapAndReducePrompts_otherRulesNot(self):
+        profile = run.PROFILES / "v3"
+        chunked = run.file_rules(profile, "m", oversize="mapReduce")
+        sampled = run.file_rules(profile, "m", oversize="sample")
+
+        self.assertTrue(all(r["mapPromptKey"] == "map-chunk" and r["reducePromptKey"] == "reduce-parts"
+                            for r in chunked))
+        self.assertTrue(all("mapPromptKey" not in r and "reducePromptKey" not in r for r in sampled))
+
+    def test_chunkPrompts_onlyThoseTheProfileHas(self):
+        self.assertEqual(run.chunk_prompts(Path("no-such-profile")), {})
 
     def test_profileHashes_ofTheFilesTheRulesName(self):
         profile = run.PROFILES / "v3"
@@ -84,6 +99,8 @@ class RulesTest(unittest.TestCase):
         self.assertIn("file-body-java.md", hashes)
         self.assertIn("sql-facts.tsv", hashes)
         self.assertIn("package-body.md", hashes)
+        self.assertIn("map-chunk.md", hashes)
+        self.assertIn("reduce-parts.md", hashes)
         self.assertEqual(hashes["file-body-java.md"], run.sha256_of(profile / "file-body-java.md"))
 
 

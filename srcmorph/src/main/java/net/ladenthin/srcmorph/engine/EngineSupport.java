@@ -94,8 +94,8 @@ final class EngineSupport {
      * @param profileDirectory  directory relative template files and the prompts named by key are
      *                          resolved against, or {@code null} for the working directory and no lookup
      *                          by key
-     * @param fieldGenerations  the rules whose prompt keys are looked up in the profile directory when no
-     *                          definition has them, or {@code null} for none
+     * @param fieldGenerations  the rules whose prompt keys (and map and reduce prompt keys) are looked up in
+     *                          the profile directory when no definition has them, or {@code null} for none
      * @return prompt support instance backed by the configured definitions
      * @throws SrcMorphException if any prompt definition is misconfigured or its file cannot be read
      */
@@ -108,6 +108,12 @@ final class EngineSupport {
         if (fieldGenerations != null) {
             for (final AiFieldGenerationConfig rule : fieldGenerations) {
                 usedKeys.add(rule.getPromptKey());
+                if (rule.getMapPromptKey() != null) {
+                    usedKeys.add(rule.getMapPromptKey());
+                }
+                if (rule.getReducePromptKey() != null) {
+                    usedKeys.add(rule.getReducePromptKey());
+                }
             }
         }
         try {

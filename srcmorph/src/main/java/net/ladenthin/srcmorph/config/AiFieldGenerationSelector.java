@@ -65,8 +65,9 @@ public final class AiFieldGenerationSelector {
     /**
      * Validates what one rule says on its own, for a file rule and the package and project phases' rule
      * alike: its {@code onOversize} and {@code onIncomplete} tokens, a {@code maxChunks} that would be
-     * applied ({@code sampleChunks} needs one, every other strategy none), and its facts by the rules a
-     * facts file is held to.
+     * applied ({@code sampleChunks} needs one, every other strategy none), a map or reduce prompt only
+     * where chunks are read ({@code mapReduce}, {@code sampleChunks}), and its facts by the rules a facts
+     * file is held to.
      *
      * @param config the rule
      * @throws IllegalArgumentException if the rule is invalid, naming it
@@ -80,6 +81,11 @@ public final class AiFieldGenerationSelector {
                             ? "onOversize: sampleChunks needs a maxChunks above 0 (how many chunks to read): " + config
                             : "maxChunks applies only to onOversize: sampleChunks (mapReduce reads every chunk): "
                                     + config);
+        }
+        final boolean chunked = sampleChunks || config.oversizeStrategy() == AiOversizeStrategy.MAP_REDUCE;
+        if (!chunked && (config.getMapPromptKey() != null || config.getReducePromptKey() != null)) {
+            throw new IllegalArgumentException(
+                    "mapPromptKey and reducePromptKey apply only to onOversize: mapReduce and sampleChunks: " + config);
         }
         config.incompleteStrategy();
         final String rule = config.getId() != null ? config.getId() : String.valueOf(config.getPromptKey());

@@ -309,6 +309,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
+- **Map and reduce calls say what their input is: `mapPromptKey` and `reducePromptKey`.** Every map
+  and reduce call of `mapReduce` and `sampleChunks` took the rule's prompt, which describes a whole
+  file: gpt-oss-20b indexed a chunk of INSERT rows of the large corpus's dump as a file and invented
+  three tables, a procedure and a trigger, and Granite 4.0 H-Tiny answered the reduce of the catalog
+  with the prompt's own example, a `VatCalculator` class, repeated under `Part 8:` .. `Part 18:`
+  until its output budget ended. A rule's `mapPromptKey` and `reducePromptKey` name prompts appended
+  to its prompt in those calls (`AiPromptSupport.composedKey`, rendered as the two templates and a
+  blank line between); the profile's `map-chunk` and `reduce-parts` say to index only the chunk, and
+  to merge the parts keeping every name a part states. Every map call's input starts with
+  `Chunk i of n:` (`AiMapReduceSupport.chunkLabel`). The keys apply only to the two chunked
+  strategies; a prompt key may not contain `+`. The self-test, the CLI example and `run.py` name them
+  in every chunked rule and the package and project rules; the header's `- P:` covers them.
 - **The self-test's ~275 KB .. 1 MB tier map-reduces with Granite 4.0 H-Tiny over a 64K window**
   instead of one pass over 384K: in one pass over the large corpus's 870 KB catalog H-Tiny copied the
   XML into a code fence with invented values (every price 972.00, every stock 0) until its output

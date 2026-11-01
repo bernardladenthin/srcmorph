@@ -32,6 +32,7 @@ import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
+import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiContextOverflowException;
@@ -961,4 +962,67 @@ public class AiFieldGenerationSupportTest {
         // the empty answer was one call; a lambda provider reports no tokens
         assertThat(support.takeUsage().calls(), is(1));
     }
+
+    // <editor-fold defaultstate="collapsed" desc="map and reduce prompts">
+    private static AiPromptDefinition prompt(final String key, final String template) {
+        final AiPromptDefinition definition = new AiPromptDefinition();
+        definition.setKey(key);
+        definition.setTemplate(template);
+        return definition;
+    }
+
+    private static List<AiGenerationRequest> mapReduceRequests(final String mapKey, final String reduceKey)
+            throws Exception {
+        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            requests.add(request);
+            return "S";
+        };
+        final List<AiPromptDefinition> prompts = new ArrayList<>(CommonTestFixtures.createFilePromptDefinitions());
+        prompts.add(prompt("map", "MAP"));
+        prompts.add(prompt("reduce", "REDUCE"));
+        final AiFieldGenerationSupport support = new AiFieldGenerationSupport(
+                provider, new AiPromptPreparationSupport(new AiPromptSupport(prompts)), normalWindowModel("m"));
+        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
+        rule.setMapPromptKey(mapKey);
+        rule.setReducePromptKey(reduceKey);
+        support.generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+        return requests;
+    }
+
+    @Test
+    public void mapReduce_mapCallsTakeTheMapPromptAndAChunkLabel() throws Exception {
+        // act
+        final List<AiGenerationRequest> requests = mapReduceRequests("map", "reduce");
+
+        // assert: the first call maps chunk 1, every map call is labelled
+        final AiGenerationRequest first = requests.get(0);
+        assertThat(first.promptKey(), is(equalTo(CommonTestFixtures.PROMPT_KEY_FILE_BODY + "+map")));
+        assertThat(first.sourceText(), startsWith("Chunk 1 of "));
+        assertThat(first.sourceText(), containsString("\nline 0\n"));
+    }
+
+    @Test
+    public void mapReduce_reduceCallsTakeTheReducePromptAndThePartSummaries() throws Exception {
+        // act
+        final List<AiGenerationRequest> requests = mapReduceRequests("map", "reduce");
+
+        // assert: the last call reduces
+        final AiGenerationRequest last = requests.get(requests.size() - 1);
+        assertThat(last.promptKey(), is(equalTo(CommonTestFixtures.PROMPT_KEY_FILE_BODY + "+reduce")));
+        assertThat(last.sourceText(), startsWith(AiMapReduceSupport.PART_LABEL + "1:\nS\n"));
+    }
+
+    @Test
+    public void mapReduce_withoutMapAndReducePrompts_takesTheRulePromptForEveryCall() throws Exception {
+        // act
+        final List<AiGenerationRequest> requests = mapReduceRequests(null, null);
+
+        // assert
+        for (final AiGenerationRequest request : requests) {
+            assertThat(request.promptKey(), is(equalTo(CommonTestFixtures.PROMPT_KEY_FILE_BODY)));
+        }
+        assertThat(requests.get(0).sourceText(), startsWith("Chunk 1 of "));
+    }
+    // </editor-fold>
 }

@@ -21,6 +21,7 @@ import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.AiPreparedPrompt;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
+import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationUsage;
 import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
@@ -440,7 +441,8 @@ public class AiFieldGenerationSupport {
                 generationConfig.getTemperature(),
                 window);
         final long generationStartNanos = System.nanoTime();
-        final String generated = generateComplete(fieldGeneration, contextFile, sourceText, baseHeader, window, mayCut);
+        final String generated = generateComplete(
+                fieldGeneration, fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader, window, mayCut);
         final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
 
         // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
@@ -457,8 +459,9 @@ public class AiFieldGenerationSupport {
 
     /**
      * Summarizes an oversized source via map-reduce: split it into window-sized chunks at line boundaries
-     * (with overlap), summarize each chunk with the rule's prompt (the <em>map</em>), then combine the
-     * partial summaries via a {@link #reducePartials hierarchical reduce}. {@code mapReduce} summarizes every
+     * (with overlap), summarize each chunk, labelled {@code Chunk i of n}, with the rule's prompt and its map
+     * prompt (the <em>map</em>), then combine the partial summaries via a {@link #reducePartials hierarchical
+     * reduce} with the rule's prompt and its reduce prompt. {@code mapReduce} summarizes every
      * chunk (the whole file); {@code sampleChunks} the rule's {@code maxChunks} representative ones. The
      * summary starts with the coverage line ({@link AiMapReduceSupport#chunkCoverage}).
      *
@@ -480,8 +483,15 @@ public class AiFieldGenerationSupport {
             final AiMdHeader baseHeader,
             final int effectiveMaxInputChars)
             throws IOException {
-        final int basePromptLength =
-                promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
+        final String mapKey =
+                AiPromptSupport.composedKey(fieldGeneration.getPromptKey(), fieldGeneration.getMapPromptKey());
+        final String reduceKey =
+                AiPromptSupport.composedKey(fieldGeneration.getPromptKey(), fieldGeneration.getReducePromptKey());
+        // one budget sizes the chunks and the reduce batches: the longer prompt of the two, and a chunk's label
+        final int basePromptLength = Math.max(
+                        promptPreparationSupport.getBasePromptLength(mapKey, contextFile),
+                        promptPreparationSupport.getBasePromptLength(reduceKey, contextFile))
+                + AiMapReduceSupport.CHUNK_LABEL_RESERVE;
         // Reserve token-safety headroom: real chars/token can be below the configured charsPerToken for
         // dense content, so size chunks (and every map/reduce prompt) against a shrunken window.
         final int safeWindow = AiMapReduceSupport.safeWindow(effectiveMaxInputChars);
@@ -505,12 +515,13 @@ public class AiFieldGenerationSupport {
         int index = 0;
         for (final String chunk : chunks) {
             index++;
-            partials.add(summarizeChunk(fieldGeneration, contextFile, chunk, baseHeader, safeWindow, true)
+            final String labelled = AiMapReduceSupport.chunkLabel(index, chunks.size(), all.size()) + chunk;
+            partials.add(summarizeChunk(fieldGeneration, mapKey, contextFile, labelled, baseHeader, safeWindow, true)
                     .trim());
             LOGGER.info("  mapReduce chunk {}/{} summarized ({} chars)", index, chunks.size(), chunk.length());
         }
         final String reduced =
-                reducePartials(fieldGeneration, contextFile, baseHeader, partials, sourceBudget, safeWindow);
+                reducePartials(fieldGeneration, reduceKey, contextFile, baseHeader, partials, sourceBudget, safeWindow);
         return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size(), cutCalls, cutParts) + reduced;
     }
 
@@ -522,7 +533,8 @@ public class AiFieldGenerationSupport {
      * and the file's tail is silently trimmed away, so {@code maxChunks <= 0} (whole-file) coverage
      * actually reaches the final summary.
      *
-     * @param fieldGeneration the rule (its prompt is shared by map and reduce)
+     * @param fieldGeneration the rule
+     * @param reduceKey   the prompt of a reduce call: the rule's prompt with its reduce prompt
      * @param contextFile the source file path
      * @param baseHeader  the header passed through to each request
      * @param partials    the per-chunk partial summaries (already trimmed); may be empty
@@ -533,6 +545,7 @@ public class AiFieldGenerationSupport {
      */
     private String reducePartials(
             final AiFieldGenerationConfig fieldGeneration,
+            final String reduceKey,
             final Path contextFile,
             final AiMdHeader baseHeader,
             final List<String> partials,
@@ -552,6 +565,7 @@ public class AiFieldGenerationSupport {
                 // so the method always terminates rather than looping without shrinking.
                 return summarizeChunk(
                                 fieldGeneration,
+                                reduceKey,
                                 contextFile,
                                 AiMapReduceSupport.combineAll(level),
                                 baseHeader,
@@ -563,7 +577,7 @@ public class AiFieldGenerationSupport {
             final boolean part = batches.size() > 1;
             final List<String> next = new ArrayList<>(batches.size());
             for (final String batch : batches) {
-                next.add(summarizeChunk(fieldGeneration, contextFile, batch, baseHeader, safeWindow, part)
+                next.add(summarizeChunk(fieldGeneration, reduceKey, contextFile, batch, baseHeader, safeWindow, part)
                         .trim());
             }
             LOGGER.info("  mapReduce reduce round {}: {} -> {} partial(s)", round, level.size(), next.size());
@@ -576,6 +590,7 @@ public class AiFieldGenerationSupport {
      * Prepares the prompt for one chunk (trimming to the window) and returns the provider's summary.
      *
      * @param fieldGeneration        the rule
+     * @param promptKey              the prompt of the call: the rule's prompt with its map or reduce prompt
      * @param contextFile            the source file path
      * @param chunk                  the chunk (or concatenated partials) to summarize
      * @param baseHeader             the header passed through to the request
@@ -587,6 +602,7 @@ public class AiFieldGenerationSupport {
      */
     private String summarizeChunk(
             final AiFieldGenerationConfig fieldGeneration,
+            final String promptKey,
             final Path contextFile,
             final String chunk,
             final AiMdHeader baseHeader,
@@ -594,7 +610,8 @@ public class AiFieldGenerationSupport {
             final boolean part)
             throws IOException {
         try {
-            return generateComplete(fieldGeneration, contextFile, chunk, baseHeader, effectiveMaxInputChars, true);
+            return generateComplete(
+                    fieldGeneration, promptKey, contextFile, chunk, baseHeader, effectiveMaxInputChars, true);
         } catch (final AiIncompleteAnswerException e) {
             // a part summary cut at the output budget still holds what it got to, and the reduce summarizes
             // it: a model that lists a long run of entries one by one would otherwise fail the whole file
@@ -617,7 +634,8 @@ public class AiFieldGenerationSupport {
      * provider that returns one instead of refusing it. Under {@code onIncomplete: retryOnce} an
      * incomplete answer is asked for once more; under {@code keep} a cut-off answer with text is taken.
      *
-     * @param fieldGeneration the rule (prompt key and incomplete-answer strategy)
+     * @param fieldGeneration the rule (its incomplete-answer strategy)
+     * @param promptKey       the prompt of the call
      * @param contextFile     the source file path
      * @param source          the source text to summarize
      * @param baseHeader      the header passed through to the request
@@ -629,6 +647,7 @@ public class AiFieldGenerationSupport {
      */
     private String generateComplete(
             final AiFieldGenerationConfig fieldGeneration,
+            final String promptKey,
             final Path contextFile,
             final String source,
             final AiMdHeader baseHeader,
@@ -638,8 +657,8 @@ public class AiFieldGenerationSupport {
         final int attempts = fieldGeneration.incompleteStrategy().attempts();
         for (int attempt = 1; ; attempt++) {
             try {
-                final String text = generateWithOverflowRetry(
-                        fieldGeneration.getPromptKey(), contextFile, source, baseHeader, window, mayCut);
+                final String text =
+                        generateWithOverflowRetry(promptKey, contextFile, source, baseHeader, window, mayCut);
                 if (compatibilityHelper.isBlank(text)) {
                     throw new AiIncompleteAnswerException(
                             AiIncompleteAnswerException.Reason.EMPTY, "The model answered nothing for " + contextFile);

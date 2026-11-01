@@ -65,6 +65,8 @@ REPO = HERE.parents[2]
 CORPUS = HERE.parent / "corpus"
 PROFILES = REPO / "profiles"
 PROMPT_KEYS = ("file-body-java", "file-body-sql", "file-body-fallback", "package-body", "project-body")
+# The prompts appended to a rule's prompt in a map and a reduce call, when the profile has them.
+CHUNK_PROMPT_KEYS = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts"}
 
 JAVA_COMMIT = "1e056c23652992a07cca0056d2783cbf6520f5a1"
 JAVA_ROOT = "srcmorph/src/main/java/net/ladenthin/srcmorph/"
@@ -140,9 +142,15 @@ def ai_definition(models, model, model_dir, seed=None, chars_per_token=None):
     return definition
 
 
+def chunk_prompts(profile):
+    """The map and reduce prompt keys a chunked rule names: those whose file the profile has."""
+    return {field: key for field, key in CHUNK_PROMPT_KEYS.items() if (Path(profile) / f"{key}.md").is_file()}
+
+
 def file_rules(profile, key, facts=False, oversize=None, max_chunks=None):
     """The GenerateFileIndex rules: java, sql, a rule per language that has a prompt or (with facts)
-    counters of its own, and the fallback. With oversize every rule takes that strategy."""
+    counters of its own, and the fallback. With oversize every rule takes that strategy, and with
+    mapReduce or sampleChunks the profile's map and reduce prompts."""
     rules = [{"id": "java", "promptKey": "file-body-java", "condition": {"extensions": [".java"]}},
              {"id": "sql", "promptKey": "file-body-sql", "condition": {"extensions": [".sql"]}}]
     if facts:
@@ -164,6 +172,8 @@ def file_rules(profile, key, facts=False, oversize=None, max_chunks=None):
             rule["onOversize"] = oversize
             if max_chunks is not None:
                 rule["maxChunks"] = max_chunks
+            if oversize in ("mapReduce", "sampleChunks"):
+                rule.update(chunk_prompts(profile))
     return rules
 
 
@@ -190,9 +200,11 @@ def phase_config(phase, work, out_dir, profile, definition, facts=False, oversiz
         },
     }
     if phase == "AggregatePackages":
-        config["packageFieldGenerations"] = [{"promptKey": "package-body", "aiDefinitionKey": key}]
+        config["packageFieldGenerations"] = [
+            {"promptKey": "package-body", "aiDefinitionKey": key, **chunk_prompts(profile)}]
     elif phase == "AggregateProject":
-        config["projectFieldGenerations"] = [{"promptKey": "project-body", "aiDefinitionKey": key}]
+        config["projectFieldGenerations"] = [
+            {"promptKey": "project-body", "aiDefinitionKey": key, **chunk_prompts(profile)}]
     if run_record is not None and phase == "GenerateFileIndex":
         config["srcMorph"]["runRecordFile"] = str(run_record)
     return config
@@ -206,11 +218,16 @@ def profile_hashes(profile, rules):
     """The SHA-256 of every prompt and fact file a rule names (profile/<key>.md, profile/<key>.tsv)."""
     hashes = {}
     for rule in rules:
-        for name in (rule["promptKey"] + ".md", rule.get("factsKey", "") and rule["factsKey"] + ".tsv"):
+        named = [rule["promptKey"] + ".md", rule.get("factsKey", "") and rule["factsKey"] + ".tsv"]
+        named += [rule[field] + ".md" for field in CHUNK_PROMPT_KEYS if field in rule]
+        for name in named:
             if name and (Path(profile) / name).is_file():
                 hashes[name] = sha256_of(Path(profile) / name)
     for name in ("package-body.md", "project-body.md"):
         hashes[name] = sha256_of(Path(profile) / name)
+    # the phase rules name the map and reduce prompts whenever the profile has them
+    for key in chunk_prompts(profile).values():
+        hashes[key + ".md"] = sha256_of(Path(profile) / (key + ".md"))
     return dict(sorted(hashes.items()))
 
 

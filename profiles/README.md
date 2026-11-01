@@ -36,6 +36,11 @@ for Java; Schema, Reads, Writes, Relationships, Routine logic for SQL; Constants
 shell, Perl and other files; Definitions, Configuration and Dependencies for XML), with the rules against code fences, `###` headings and invented names, and the "index
 only what is literally present" guard for truncated sources.
 
+`map-chunk.md` and `reduce-parts.md` are not prompts of their own: a rule's `mapPromptKey` and
+`reducePromptKey` append them to its prompt (after a blank line) in the map and the reduce calls of
+`mapReduce` and `sampleChunks`, so a call knows that it reads one chunk (`Chunk i of n:`) or the part
+summaries to merge (`Part n:`), and the language's sections stay those of the rule's prompt.
+
 ## Fact files
 
 A `.tsv` file holds one counter per line, its label and a Java regular expression separated by a tab;

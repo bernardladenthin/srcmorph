@@ -402,14 +402,19 @@ public final class GenerateEngine {
     }
 
     /**
-     * Returns the CRC32 of the system prompt a rule's summaries are written with.
+     * Returns the CRC32 of the system prompt a rule's summaries are written with, and of its map and reduce
+     * prompts when it has them, so a change to either shows too.
      *
      * @param promptSupport the prompts
      * @param rule          the rule
      * @return the hash
      */
     private static String promptHash(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
-        return CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey()));
+        final String mapKey = rule.getMapPromptKey();
+        final String reduceKey = rule.getReducePromptKey();
+        return CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey())
+                + (mapKey != null ? promptSupport.systemPrompt(mapKey) : "")
+                + (reduceKey != null ? promptSupport.systemPrompt(reduceKey) : ""));
     }
 
     /**

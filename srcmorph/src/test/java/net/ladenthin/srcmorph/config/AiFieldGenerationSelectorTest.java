@@ -288,4 +288,54 @@ public class AiFieldGenerationSelectorTest {
         assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="map and reduce prompts">
+    @Test
+    public void validateRule_aMapOrReducePromptWithoutChunks_throws() {
+        for (final String strategy : new String[] {"sample", "fail", "deterministic", ""}) {
+            final AiFieldGenerationConfig map = route("java", extCond(".java"), 0);
+            map.setOnOversize(strategy);
+            map.setMapPromptKey("map-chunk");
+            final AiFieldGenerationConfig reduce = route("java", extCond(".java"), 0);
+            reduce.setOnOversize(strategy);
+            reduce.setReducePromptKey("reduce-parts");
+
+            for (final AiFieldGenerationConfig rule : Arrays.asList(map, reduce)) {
+                final IllegalArgumentException thrown =
+                        assertThrows(IllegalArgumentException.class, () -> selector.validateRule(rule));
+                assertThat(
+                        thrown.getMessage(),
+                        containsString("mapPromptKey and reducePromptKey apply only to onOversize: mapReduce"));
+            }
+        }
+    }
+
+    @Test
+    public void validateRule_mapAndReducePromptsWithChunks_pass() {
+        final AiFieldGenerationConfig mapReduce = route("java", extCond(".java"), 0);
+        mapReduce.setOnOversize("mapReduce");
+        mapReduce.setMapPromptKey("map-chunk");
+        mapReduce.setReducePromptKey("reduce-parts");
+        final AiFieldGenerationConfig sampled = route("java", extCond(".java"), 0);
+        sampled.setOnOversize("sampleChunks");
+        sampled.setMaxChunks(2);
+        sampled.setMapPromptKey("map-chunk");
+        sampled.setReducePromptKey("reduce-parts");
+
+        assertDoesNotThrow(() -> selector.validateRule(mapReduce));
+        assertDoesNotThrow(() -> selector.validateRule(sampled));
+    }
+
+    @Test
+    public void copy_keepsTheMapAndReducePrompts() {
+        final AiFieldGenerationConfig rule = route("java", extCond(".java"), 0);
+        rule.setMapPromptKey("map-chunk");
+        rule.setReducePromptKey("reduce-parts");
+
+        final AiFieldGenerationConfig copy = rule.copy();
+
+        assertThat(copy.getMapPromptKey(), is("map-chunk"));
+        assertThat(copy.getReducePromptKey(), is("reduce-parts"));
+    }
+    // </editor-fold>
 }
