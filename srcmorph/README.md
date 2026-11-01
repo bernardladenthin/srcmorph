@@ -12,11 +12,12 @@ Package root: `net.ladenthin.srcmorph`.
 ## The shared configuration object: `SrcMorphConfiguration`
 
 `net.ladenthin.srcmorph.config.SrcMorphConfiguration` is one mutable JavaBean holding everything a
-run needs. It is the single object every binding surface populates the same way — Maven plexus
-reflection (structural XML binding, no annotations needed), a Jackson `ObjectMapper`/`YAMLMapper`
-(the CLI), or plain Java setter calls. **Field names intentionally mirror the Maven plugin's
-`@Parameter` names**, so a JSON/YAML key reads identically to the matching `<configuration>` XML
-element.
+run needs, bound by Jackson or set in plain Java. The CLI and the Maven plugin read it from one
+configuration file, JSON or YAML, through `SrcMorphConfigurationFileLoader`, into a
+`SrcMorphConfigurationFile` (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the
+CLI's `command` / `modelFilter`): the extension picks the parser, a `${name}` in a value is the
+caller's property, an unknown key fails, and relative directories resolve against the file's
+directory.
 
 Major field groups:
 
@@ -63,8 +64,9 @@ Maven plugin's mojos, the CLI's `Main`) translate these into whatever their own 
 exactly one matching rule (by `condition` + `priority`, with the explicit `fallback` catching the
 rest). The aggregation engines route nothing: `AggregatePackagesEngine` takes exactly one rule and
 `AggregateProjectEngine` none or one, and both fail on more, so a routing table meant for the files
-never reaches a package or the project. Give each phase its own rules: a plugin execution's
-`<fieldGenerations>`, or the CLI's top-level `packageFieldGenerations` / `projectFieldGenerations`.
+never reaches a package or the project. Give each phase its own rules: the top-level
+`packageFieldGenerations` / `projectFieldGenerations` of the configuration file, which the CLI and
+the plugin's aggregate goals read.
 
 ## Use as a library
 

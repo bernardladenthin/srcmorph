@@ -34,7 +34,7 @@ public class CConfiguration {
 
     /**
      * The shared core configuration passed to whichever engine {@link #command} selects — the SAME
-     * {@link SrcMorphConfiguration} type the {@code llamacpp-ai-index-maven-plugin} module's mojos
+     * {@link SrcMorphConfiguration} type the {@code srcmorph-maven-plugin} module's mojos
      * build from their own {@code @Parameter} fields, so a JSON/YAML key here reads identically to
      * the matching Maven {@code <configuration>} XML element.
      */

@@ -12,6 +12,31 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **The Maven plugin is configured by the CLI's file; `check` goal and command.** The plugin reads
+  one JSON or YAML file, the same one the CLI reads (`<configurationFile>`,
+  `-Dsrcmorph.configurationFile`, default `${project.basedir}/srcmorph.yaml`), through one loader in
+  the core (`SrcMorphConfigurationFileLoader`, `SrcMorphConfigurationFile`). **Breaking:** the XML
+  parameters of the goals are gone (`aiDefinitions`, `fieldGenerations`, `promptDefinitions`,
+  `factDefinitions`, `subtrees`, `excludes`, `fileExtensions`, the size band, `outputDirectory`,
+  `generationProvider`, `modelDirectory`, `profileDirectory`, `aiVersion` and their `srcmorph.*`
+  properties); the POM names the goals, `configurationFile`, the skip switches and the run switches
+  `srcmorph.force` / `srcmorph.planOnly`, which override the file when `true`. What the file leaves
+  unset, Maven fills: `baseDirectory`, `subtrees` (the source directory and the resource directories
+  that exist), `projectName`, `pluginVersion`. A `${name}` in a value of the file is a Maven property
+  (the CLI: a system property), filled after parsing, so a Windows path needs no escaping. Each goal
+  takes its section: `generate` and `calibrate` the file rules, `aggregate-packages` the
+  `packageFieldGenerations`, `aggregate-project` the `projectFieldGenerations`. The self-test profile
+  is `srcmorph-maven-plugin/srcmorph-selftest.yaml` (its `-Dai.*` still work), with the repository
+  root as base, so its two subtrees lie inside it. Relative paths of the file, for the CLI too,
+  resolve against the file's directory instead of the working directory (the root README's quickstart
+  from `examples/build-your-own-jar` works now); an unset CLI `baseDirectory` is that directory.
+  `srcmorph:check` and the CLI's `Check` check the plan, the profile files and every model of the
+  three phases (file and GGUF header, `baseUrl`, `apiKeyEnv`) without loading one
+  (`GenerateEngine.check()`, `AggregatePackagesEngine.check()`, `AggregateProjectEngine.check()`). A
+  rule naming a model no `aiDefinition` defines fails as a configuration error naming the rule, not
+  as an `IllegalArgumentException`. The CLI prints its usage with `--help` / `-h` and fails with it
+  on a wrong argument count (it used to log and exit 0); an unknown `command` names the commands. The
+  plugin descriptor states Maven 3.6.3 and Java 1.8 (it said 3.10.0 and Java 11).
 - **A source is read once, with `\n` line endings.** The checksum, the plan's window check, the
   prompt, the facts and the map-reduce chunks see the same text, whether the working copy has
   `\r\n` (Windows with `core.autocrlf`), `\r` or `\n`: a CRLF checkout no longer has another

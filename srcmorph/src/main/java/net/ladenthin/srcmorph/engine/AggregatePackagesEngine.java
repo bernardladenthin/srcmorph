@@ -50,6 +50,29 @@ public final class AggregatePackagesEngine {
     }
 
     /**
+     * Checks the phase as a run would, without loading a model or writing anything: its one rule, the
+     * rule's profile files and its model (a local model's file and GGUF header, a remote model's
+     * {@code baseUrl} and {@code apiKeyEnv}). Unlike a run it does not need the output tree yet.
+     *
+     * @throws SrcMorphException naming the first problem found
+     */
+    public void check() throws SrcMorphException {
+        final AiFieldGenerationConfig rule =
+                EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+        EngineSupport.validateRoutedModelPaths(
+                config.getGenerationProvider(),
+                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),
+                Collections.singletonList(rule));
+        LOGGER.info(
+                "Check passed: the package rule (prompt '{}', model '{}'), its profile files and its model are in"
+                        + " order.",
+                rule.getPromptKey(),
+                rule.getAiDefinitionKey());
+    }
+
+    /**
      * Aggregates every package beneath the configured output directory.
      *
      * @return the number of package index files written; {@code 0} when the output directory does not yet

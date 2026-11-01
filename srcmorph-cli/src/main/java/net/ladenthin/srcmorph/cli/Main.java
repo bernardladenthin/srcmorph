@@ -7,19 +7,25 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import lombok.ToString;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.config.SrcMorphConfigurationFile;
+import net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader;
 import net.ladenthin.srcmorph.engine.AggregatePackagesEngine;
 import net.ladenthin.srcmorph.engine.AggregateProjectEngine;
 import net.ladenthin.srcmorph.engine.CalibrateEngine;
@@ -45,27 +51,11 @@ import org.slf4j.LoggerFactory;
 @ToString
 public class Main {
 
-    /**
-     * File extension for JavaScript configuration files; treated identically to {@link #FILE_EXTENSION_JSON}.
-     */
-    static final String FILE_EXTENSION_JS = ".js";
+    /** The argument that prints the usage. */
+    static final String HELP_ARGUMENT = "--help";
 
-    /**
-     * Standard file extension for JSON configuration files.
-     *
-     * @see #FILE_EXTENSION_JS
-     */
-    static final String FILE_EXTENSION_JSON = ".json";
-
-    /**
-     * Standard long-form file extension for YAML configuration files.
-     *
-     * @see #FILE_EXTENSION_YML
-     */
-    static final String FILE_EXTENSION_YAML = ".yaml";
-
-    /** Short-form file extension for YAML configuration files; treated identically to {@link #FILE_EXTENSION_YAML}. */
-    static final String FILE_EXTENSION_YML = ".yml";
+    /** The short form of {@link #HELP_ARGUMENT}. */
+    static final String HELP_ARGUMENT_SHORT = "-h";
 
     /** SLF4J logger for the CLI entry point. */
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
@@ -98,11 +88,10 @@ public class Main {
      * @param configurationString the JSON document
      * @return the parsed {@link CConfiguration}
      * @throws IOException if the JSON cannot be deserialised, including an unknown property (the
-     *                      mapper is strict — see {@link #newJsonMapper()})
+     *                      mapper is strict — see {@link SrcMorphConfigurationFileLoader#newJsonMapper()})
      */
     public static CConfiguration fromJson(final String configurationString) throws IOException {
-        final ObjectMapper mapper = newJsonMapper();
-        return mapper.readValue(configurationString, CConfiguration.class);
+        return fromFile(SrcMorphConfigurationFileLoader.parse(configurationString, false));
     }
 
     /**
@@ -111,11 +100,36 @@ public class Main {
      * @param configurationString the YAML document
      * @return the parsed {@link CConfiguration}
      * @throws IOException if the YAML cannot be deserialised, including an unknown property (the
-     *                      mapper is strict — see {@link #newYamlMapper()})
+     *                      mapper is strict — see {@link SrcMorphConfigurationFileLoader#newYamlMapper()})
      */
     public static CConfiguration fromYaml(final String configurationString) throws IOException {
-        final YAMLMapper mapper = newYamlMapper();
-        return mapper.readValue(configurationString, CConfiguration.class);
+        return fromFile(SrcMorphConfigurationFileLoader.parse(configurationString, true));
+    }
+
+    /**
+     * Converts the content of a configuration file into the CLI's configuration: its {@code command}
+     * (unset, {@link CCommand#Plan}), {@code modelFilter}, {@code srcMorph} and the two phase rules.
+     *
+     * @param file the content
+     * @return the CLI's configuration
+     * @throws IllegalArgumentException if the command is none of {@link CCommand}, naming them
+     */
+    static CConfiguration fromFile(final SrcMorphConfigurationFile file) {
+        final CConfiguration configuration = new CConfiguration();
+        final String command = file.getCommand();
+        if (command != null) {
+            try {
+                configuration.command = CCommand.valueOf(command);
+            } catch (final IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        "Unknown command '" + command + "'; one of " + Arrays.toString(CCommand.values()), e);
+            }
+        }
+        configuration.modelFilter = file.getModelFilter();
+        configuration.srcMorph = file.getSrcMorph();
+        configuration.packageFieldGenerations = file.getPackageFieldGenerations();
+        configuration.projectFieldGenerations = file.getProjectFieldGenerations();
+        return configuration;
     }
 
     /**
@@ -126,7 +140,7 @@ public class Main {
      * @throws IOException if the configuration cannot be serialised
      */
     public static String configurationToJson(final CConfiguration configuration) throws IOException {
-        final ObjectMapper mapper = newJsonMapper();
+        final ObjectMapper mapper = SrcMorphConfigurationFileLoader.newJsonMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         return mapper.writeValueAsString(configuration);
     }
@@ -139,18 +153,16 @@ public class Main {
      * @throws IOException if the configuration cannot be serialised
      */
     public static String configurationToYAML(final CConfiguration configuration) throws IOException {
-        final YAMLMapper mapper = newYamlMapper();
+        final YAMLMapper mapper = SrcMorphConfigurationFileLoader.newYamlMapper();
         return mapper.writeValueAsString(configuration);
     }
 
     /**
-     * Loads a configuration file from disk, picking the parser based on the file extension.
-     *
-     * <p>Supported extensions (case-insensitive):
-     * <ul>
-     *   <li>{@link #FILE_EXTENSION_JSON} / {@link #FILE_EXTENSION_JS} &#x2192; parsed as JSON via {@link #fromJson(String)}</li>
-     *   <li>{@link #FILE_EXTENSION_YAML} / {@link #FILE_EXTENSION_YML} &#x2192; parsed as YAML via {@link #fromYaml(String)}</li>
-     * </ul>
+     * Loads a configuration file the way the Maven plugin does ({@link SrcMorphConfigurationFileLoader}):
+     * {@code ${name}} filled from the Java system properties, the parser picked by the extension
+     * ({@code .json}, {@code .js}, {@code .yaml}, {@code .yml}), unknown keys refused, and relative
+     * directories resolved against the directory of the file, which is also the base directory when
+     * the file sets none.
      *
      * @param configurationPath the configuration file
      * @return the parsed configuration
@@ -158,28 +170,60 @@ public class Main {
      * @throws IllegalArgumentException if {@code configurationPath} does not end with a supported extension
      */
     public static CConfiguration loadConfiguration(final Path configurationPath) throws IOException {
-        final String configurationAsString = readString(configurationPath);
-        final String lowerPath = configurationPath.toString().toLowerCase(Locale.ROOT);
-        if (lowerPath.endsWith(FILE_EXTENSION_JS) || lowerPath.endsWith(FILE_EXTENSION_JSON)) {
-            return fromJson(configurationAsString);
-        } else if (lowerPath.endsWith(FILE_EXTENSION_YAML) || lowerPath.endsWith(FILE_EXTENSION_YML)) {
-            return fromYaml(configurationAsString);
-        } else {
-            throw new IllegalArgumentException("Unknown file ending for: " + configurationPath);
+        final Path parent = configurationPath.toAbsolutePath().normalize().getParent();
+        final File directory = parent != null ? parent.toFile() : new File(".");
+        return fromFile(SrcMorphConfigurationFileLoader.load(configurationPath, directory, systemProperties()));
+    }
+
+    private static Map<String, String> systemProperties() {
+        final Map<String, String> properties = new HashMap<>();
+        for (final String name : System.getProperties().stringPropertyNames()) {
+            final String value = System.getProperty(name);
+            if (value != null) {
+                properties.put(name, value);
+            }
         }
+        return properties;
+    }
+
+    /**
+     * Returns the usage {@code --help} prints and a wrong command line fails with: the two calls, and
+     * every {@link CCommand} with its summary.
+     *
+     * @return the usage text
+     */
+    static String usage() {
+        final StringBuilder usage = new StringBuilder()
+                .append("usage: java -jar srcmorph.jar <configuration.json|.js|.yaml|.yml>\n")
+                .append("       java -jar srcmorph.jar ")
+                .append(HELP_ARGUMENT)
+                .append("\n\nThe configuration's \"command\" selects what runs:\n");
+        for (final CCommand command : CCommand.values()) {
+            usage.append(String.format(Locale.ROOT, "  %-18s %s%n", command.name(), command.summary()));
+        }
+        return usage.append("Relative paths in the configuration resolve against the directory of its file.\n")
+                .toString();
     }
 
     /**
      * Java entry point. Loads the configuration file passed as the first argument, logs the parsed
      * configuration back for review, and runs the configured command.
      *
-     * @param args the program arguments; expects a single path to a JSON or YAML configuration file
-     * @throws IOException if the configuration file cannot be read or deserialised
+     * @param args the program arguments: a single path to a JSON or YAML configuration file, or
+     *             {@code --help} / {@code -h} for the usage
+     * @throws IOException              if the configuration file cannot be read or deserialised
+     * @throws IllegalArgumentException with the usage, unless there is exactly one argument
      */
     public static void main(final String[] args) throws IOException {
-        if (args.length != 1) {
-            LOGGER.error("Invalid arguments. Pass path to configuration as first argument.");
-            return;
+        final boolean help = args.length == 1 && (HELP_ARGUMENT.equals(args[0]) || HELP_ARGUMENT_SHORT.equals(args[0]));
+        if (help || args.length != 1) {
+            final String usage = usage();
+            if (help) {
+                // Deliberate System.out, as for Calibrate: the usage is for the reader, not a log line.
+                System.out.print(usage); // NOPMD - intentional stdout
+                return;
+            }
+            throw new IllegalArgumentException("Expected one argument, got " + args.length + ".\n" + usage);
         }
         final Path configurationPath = Paths.get(args[0]);
         final CConfiguration configuration = loadConfiguration(configurationPath);
@@ -223,6 +267,15 @@ public class Main {
             switch (configuration.command) {
                 case Plan: {
                     new GenerateEngine(copyWithPlanOnlyForced(configuration.srcMorph)).execute();
+                    break;
+                }
+                case Check: {
+                    new GenerateEngine(configuration.srcMorph).check();
+                    // the package phase only when configured: GenerateFileIndex alone needs no package rule
+                    if (configuration.packageFieldGenerations != null) {
+                        new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).check();
+                    }
+                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).check();
                     break;
                 }
                 case GenerateFileIndex: {
@@ -301,7 +354,7 @@ public class Main {
      *
      * <p>The copy is a round-trip through a JSON mapper, which keeps this in lockstep with every
      * field {@link SrcMorphConfiguration} gains in the future with no manual field-by-field copy to
-     * maintain. Deliberately uses a <em>lenient</em> mapper (unlike {@link #newJsonMapper()}, which
+     * maintain. Deliberately uses a <em>lenient</em> mapper (unlike {@link SrcMorphConfigurationFileLoader#newJsonMapper()}, which
      * loads user-authored config files and must fail fast on a typo): the source object also carries
      * derived, read-only, setter-less getters that a strict mapper's serialize-then-deserialize
      * round-trip would otherwise reject as "unknown properties" (e.g.
@@ -334,32 +387,5 @@ public class Main {
         } catch (final IOException e) {
             throw new IllegalStateException("Failed to copy the configuration.", e);
         }
-    }
-
-    /**
-     * Creates the JSON mapper used for both the CLI's own {@link CConfiguration} parsing and the
-     * internal {@link #copyWithPlanOnlyForced(SrcMorphConfiguration)} round-trip.
-     *
-     * @return a new {@link ObjectMapper} with {@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES}
-     *         explicitly enabled (already Jackson's own default; enabled explicitly here so the strict
-     *         intent — a typo in the config file fails fast rather than silently no-op'ing, mirroring
-     *         what plexus does for the Maven XML side — is documented in code, not left implicit)
-     */
-    private static ObjectMapper newJsonMapper() {
-        final ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        return mapper;
-    }
-
-    /**
-     * Creates the YAML mapper used for {@link CConfiguration} parsing.
-     *
-     * @return a new {@link YAMLMapper} with {@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES}
-     *         explicitly enabled (see {@link #newJsonMapper()} for the rationale)
-     */
-    private static YAMLMapper newYamlMapper() {
-        final YAMLMapper mapper = new YAMLMapper();
-        mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        return mapper;
     }
 }

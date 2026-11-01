@@ -16,14 +16,12 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-6. **CLI, plugin, docs.** The plugin descriptor states Maven 3.6.3 and Java 8 (asserted in
-   plugin-it); relative CLI paths resolve against the configuration file's directory; the example pom
-   and READMEs say which release the examples need; the CLI prints its usage and fails without
-   arguments, `--help`; the plugin and CLI READMEs, the CLAUDE.md version table and stale TODO
-   references match the code; plugin-it covers an incremental second run, the condition tree,
-   `templateFile`, inline `<facts>` with `<ignore>` and `srcmorph:help`; the smoke test asserts the
-   file count of the demo tree `examples/src/main/java`; a `check` goal and CLI command (plan, model
-   files, GGUF header, `baseUrl`, `apiKeyEnv`, profile files, no model load).
+6. **The rest of CLI, plugin, docs.** The smoke test asserts the file count of the demo tree
+   `examples/src/main/java`; the examples and their READMEs say which release they need (the
+   configuration file of the plugin and the CLI keys are 1.4.0); the plugin README's Java 8 note, the
+   CLI README's test list, the CLAUDE.md version table (`maven-plugin-api`, `checker-qual`, the layout
+   tree), `publish.yml` comments and stale TODO references match the code; the doubled
+   `sonar.organization` of the root pom goes; the Mojo javadocs say what the help goal prints.
 9. **Complete mapReduce and a run record.** mapReduce reduces every chunk in stages instead of a
    silent sample (`sample` only when chosen), and the facts line states the coverage; a JSON record
    per run with tokens, finish reason, model and prompt/facts hashes per file; the plan shows tokens

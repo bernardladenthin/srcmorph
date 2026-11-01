@@ -212,6 +212,46 @@ public class EngineSupportTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="requireDefinedModels">
+    @Test
+    public void requireDefinedModels_anUndefinedModel_namesTheRuleAndTheKey() {
+        final AiFieldGenerationConfig rule = phaseRule("file-body-java", "no-such-model");
+        rule.setId("java");
+        final AiFieldGenerationConfig unnamed = phaseRule("file-body-sql", "other-missing");
+
+        final SrcMorphException byId = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.requireDefinedModels(new AiModelDefinitionSupport(null), Arrays.asList(rule)));
+        final SrcMorphException byPrompt = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.requireDefinedModels(new AiModelDefinitionSupport(null), Arrays.asList(unnamed)));
+
+        assertThat(
+                byId.getMessage(),
+                containsString("The rule 'java' names the model 'no-such-model', which no aiDefinition defines"));
+        assertThat(byPrompt.getMessage(), containsString("The rule 'file-body-sql' names the model 'other-missing'"));
+    }
+
+    @Test
+    public void requireDefinedModels_skipRulesAndRulesWithoutAModel_needNone() throws SrcMorphException {
+        final AiFieldGenerationConfig skip = phaseRule("p", "no-such-model");
+        skip.setSkip(true);
+        final AiFieldGenerationConfig noModel = new AiFieldGenerationConfig();
+
+        EngineSupport.requireDefinedModels(new AiModelDefinitionSupport(null), Arrays.asList(skip, noModel, null));
+    }
+
+    @Test
+    public void requireDefinedModels_aDefinedModel_passes() throws SrcMorphException {
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("m");
+        definition.setModelPath("m.gguf");
+
+        EngineSupport.requireDefinedModels(
+                new AiModelDefinitionSupport(Arrays.asList(definition)), Arrays.asList(phaseRule("p", "m")));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="phaseRule">
     private static AiFieldGenerationConfig phaseRule(final String promptKey, final String aiDefinitionKey) {
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();

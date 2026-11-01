@@ -37,12 +37,21 @@ class): `jbang net.ladenthin:srcmorph-cli:<version> <config>`, with a GPU module
 Releases up to 1.3.0 attached pre-built fat jars to the
 [GitHub Release](https://github.com/bernardladenthin/srcmorph/releases); from 1.4.0 there are none.
 
-Both `.json`/`.js` (parsed via a
-Jackson `ObjectMapper`) and `.yaml`/`.yml` (parsed via `YAMLMapper`) are supported — pick whichever you
-prefer; both mappers are configured strictly (`FAIL_ON_UNKNOWN_PROPERTIES`), so a typo'd key fails the
-run immediately rather than being silently ignored. On startup the CLI logs the parsed configuration
-back to you (re-serialized as both JSON and YAML) so you can confirm exactly what will run before any
-model loads or file is written.
+Both `.json`/`.js` and `.yaml`/`.yml` are supported — pick whichever you prefer. The file is the
+same one the Maven plugin reads (since 1.4.0), through the same loader
+(`SrcMorphConfigurationFileLoader`): an unknown key fails the run immediately rather than being
+silently ignored, a `${name}` in a value is the Java system property `name` (`java -Dname=value -jar
+...`; an unknown one stays as it is), and **relative paths resolve against the directory of the file**,
+so a configuration names the same tree whatever directory you start the CLI in. On startup the CLI
+logs the parsed configuration back to you (re-serialized as both JSON and YAML, its paths resolved) so
+you can confirm exactly what will run before any model loads or file is written.
+
+```
+java -jar srcmorph.jar <configuration.json|.js|.yaml|.yml>
+java -jar srcmorph.jar --help        # the usage and every command; -h for short
+```
+
+A wrong number of arguments fails with the usage.
 
 See [`../examples/`](../examples/) for a complete, ready-to-run set of `config_*.json`/`.yaml` files
 (all using the `mock` provider, so they run with no GGUF model on disk) plus paired
@@ -50,42 +59,48 @@ See [`../examples/`](../examples/) for a complete, ready-to-run set of `config_*
 
 ## Config-file reference
 
-The root object is `net.ladenthin.srcmorph.cli.configuration.CConfiguration` — a plain, public-field
-JavaBean (Jackson binds it directly, no getters/setters needed):
+The file binds into `net.ladenthin.srcmorph.config.SrcMorphConfigurationFile` (the core), which the
+CLI turns into its `net.ladenthin.srcmorph.cli.configuration.CConfiguration`:
 
 ```java
 public class CConfiguration {
     public CCommand command = CCommand.Plan;
+    public String modelFilter = "";
     public SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
+    public List<AiFieldGenerationConfig> packageFieldGenerations;   // exactly one rule
+    public List<AiFieldGenerationConfig> projectFieldGenerations;   // none or one
 }
 ```
 
-- **`command`** — one of the six `CCommand` values below. Defaults to `Plan` — the safe default: no
-  command means no model load and nothing written.
-- **`srcMorph`** — the **same** `net.ladenthin.srcmorph.config.SrcMorphConfiguration` object the Maven
-  plugin's mojos build from their own `@Parameter` fields. **Every key under `srcMorph` in your JSON/YAML
-  file reads identically to the matching Maven `<configuration>` XML element** — `baseDirectory`,
-  `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, `generationProvider`,
-  `promptDefinitions`, `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations`,
-  `factDefinitions`, `force`, `planOnly`, `projectName`. A relative
-  `modelDirectory` or `profileDirectory` (like every relative path here) is relative to the working
-  directory the CLI is started in. With a `profileDirectory`, the rules' `promptKey` and `factsKey`
-  are files there (`<key>.md`, `<key>.tsv`) and need no definition; the examples read the measured
-  profile [`../profiles/v3/`](../profiles/README.md) that way. If you already know the plugin's XML shape, you
-  already know this shape — see
-  [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s
-  "Configuration" section for the full field-by-field reference (routing-rule conditions, oversize
-  strategies, per-model sampling parameters, etc.), which applies verbatim here.
+- **`command`** — one of the eight `CCommand` values below. Defaults to `Plan` — the safe default: no
+  command means no model load and nothing written. An unknown one fails, naming the eight.
+- **`srcMorph`** — the run: `baseDirectory` (unset: the directory of the file), `outputDirectory`
+  (unset: `src/site/ai` below the base directory), `subtrees`, `excludes`, `fileExtensions`,
+  `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
+  `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations` (the file rules),
+  `factDefinitions`, `force`, `planOnly`, `aiVersion`, `projectName`. A relative directory resolves
+  against the file's directory, a relative `modelPath` against `modelDirectory`, a relative
+  `templateFile` or `factsFile` against `profileDirectory`. With a `profileDirectory`, the rules'
+  `promptKey` and `factsKey` are files there (`<key>.md`, `<key>.tsv`) and need no definition; the
+  examples read the measured profile [`../profiles/v3/`](../profiles/README.md) that way. The plugin
+  reads the same keys from the same file, so
+  [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s "Configuration" section
+  (routing-rule conditions, oversize strategies, per-model sampling parameters, etc.) applies verbatim
+  here.
+- **`packageFieldGenerations`** / **`projectFieldGenerations`** — the rule of the package phase and of
+  the project overview (see "Each phase its own rules" below).
+- **`modelFilter`** — `ListModels` only: keeps the model ids that contain it, ignoring case.
 
-### The seven `CCommand` values
+### The eight `CCommand` values
 
 | Command | What it does |
 |---|---|
 | `Plan` | Runs `GenerateEngine` with `planOnly` **forced** to `true`, regardless of what the file says — builds and logs the routing plan (which model + prompt each file would get) and stops. No model is loaded, nothing is written. The default; always safe to run. |
+| `Check` | Checks the configuration as the three phases would run it, without loading a model or writing anything: the plan of the file rules (every file routed, none over a window with `onOversize: fail`, no two into one summary), the package rule when there is one, the project rule, the profile files of every rule, and every model a rule names (a local model's file and GGUF header, a remote model's `baseUrl` and `apiKeyEnv`). Fails naming the first problem. The plugin's `srcmorph:check` does the same. |
 | `GenerateFileIndex` | Phase 1, exactly as configured: indexes source files and fills in their AI-generated summaries (`GenerateEngine`). |
-| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the one rule of the top-level `packageFieldGenerations` (like the plugin's `aggregate-packages` execution); it fails without one. |
+| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the one rule of the top-level `packageFieldGenerations` (the plugin's `aggregate-packages` reads the same key); it fails without one. |
 | `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`), with the one rule of the top-level `projectFieldGenerations` for the overview paragraph; unset, the index is written without one. |
-| `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails; each aggregation phase with its own rule. [`examples/build-your-own-jar/srcmorph.yaml`](../examples/build-your-own-jar/srcmorph.yaml) is the plugin's self-test profile in this form. |
+| `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails; each aggregation phase with its own rule. [`examples/build-your-own-jar/srcmorph.yaml`](../examples/build-your-own-jar/srcmorph.yaml) is the plugin's self-test configuration in this form. |
 | `Calibrate` | Loads each distinct model your `fieldGenerations` would route to, measures its prefill/decode throughput, and prints a paste-ready `<calibration>` XML block per model to standard output (`CalibrateEngine`). |
 | `ListModels` | Asks every OpenAI-compatible server your `aiDefinitions` name (`GET <baseUrl>/models`, with the definition's key) which models it serves, and prints to standard output a table (id, token limit, price where the server states one, as OpenRouter does) and a paste-ready `aiDefinitions` YAML block with one entry per model, copied from that server's first definition (`ListModelsEngine`). The top-level `modelFilter` keeps the ids that contain it, ignoring case. Sends no prompt, writes nothing. |
 
@@ -93,8 +108,8 @@ public class CConfiguration {
 
 `srcMorph.fieldGenerations` are the file rules: `GenerateFileIndex` *routes* each file to exactly one
 of them by `condition` + `priority` (the explicit `fallback` catches anything unmatched), and
-`Calibrate` measures the models they route to. They never reach an aggregation phase, as each goal
-execution of the Maven plugin has its own `<fieldGenerations>`:
+`Calibrate` measures the models they route to. They never reach an aggregation phase, which the
+plugin's aggregate goals read from the same keys:
 
 - **`AggregatePackages`** takes exactly one rule, the top-level `packageFieldGenerations` (the
   package prompt and its model), and fails without it.

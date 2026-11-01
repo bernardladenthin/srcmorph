@@ -312,6 +312,43 @@ public class CliEndToEndTest {
     }
 
     @Test
+    public void run_checkCommand_checksAllThreePhasesAndWritesNothing() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.Check;
+
+        new Main(configuration).run();
+
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    @Test
+    public void run_checkCommand_aPackageRuleWithAnUnknownModel_fails() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.Check;
+        final AiFieldGenerationConfig rule = phaseRule("file-body");
+        rule.setAiDefinitionKey("no-such-model");
+        configuration.packageFieldGenerations = Collections.singletonList(rule);
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("no-such-model"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    @Test
+    public void run_checkCommand_aProjectRuleWithAnUnknownModel_fails() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.Check;
+        final AiFieldGenerationConfig rule = phaseRule("file-body");
+        rule.setAiDefinitionKey("no-overview-model");
+        configuration.projectFieldGenerations = Collections.singletonList(rule);
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("no-overview-model"));
+    }
+
+    @Test
     public void run_planCommand_forcesPlanOnlyAndWritesNothing() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
         // The file explicitly asks NOT to plan-only; Plan must force it anyway.

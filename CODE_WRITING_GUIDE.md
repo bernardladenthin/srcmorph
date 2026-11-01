@@ -311,22 +311,16 @@ public class AiModelDefinitionSupport {
 }
 ```
 
-**Plugin configuration (pom.xml):**
-```xml
-<aiDefinitions>
-    <aiDefinition>
-        <key>my-model</key>
-        <modelPath>/path/to/model.gguf</modelPath>
-        <contextSize>16384</contextSize>
-    </aiDefinition>
-</aiDefinitions>
-
-<fieldGenerations>
-    <fieldGeneration>
-        <promptKey>file-body</promptKey>
-        <aiDefinitionKey>my-model</aiDefinitionKey>   <!-- reference by key -->
-    </fieldGeneration>
-</fieldGenerations>
+**Configuration file (srcmorph.yaml, read by the CLI and the plugin):**
+```yaml
+srcMorph:
+  aiDefinitions:
+    - key: my-model
+      modelPath: /path/to/model.gguf
+      contextSize: 16384
+  fieldGenerations:
+    - promptKey: file-body
+      aiDefinitionKey: my-model      # reference by key
 ```
 
 ### Existing examples in this codebase

@@ -71,6 +71,8 @@ module net.ladenthin.srcmorph {
     // OpenAiCompatibleAiGenerationProvider writes its request body with Jackson (the version the
     // parent pins; net.ladenthin:llama depends on it too, so nothing new reaches a consumer).
     requires com.fasterxml.jackson.databind;
+    // SrcMorphConfigurationFileLoader reads the YAML configuration file of the CLI and the plugin.
+    requires com.fasterxml.jackson.dataformat.yaml;
 
     exports net.ladenthin.srcmorph.config;
     exports net.ladenthin.srcmorph.document;

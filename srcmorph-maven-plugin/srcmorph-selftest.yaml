@@ -1,0 +1,252 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# The configuration of this module's srcmorph-selftest profile (mvn -P srcmorph-selftest): the plugin
+# summarizes two packages of the core library with the measured profile, the same models and rules as
+# examples/build-your-own-jar/srcmorph.yaml (BuildYourOwnJarSelfTestParityTest compares the two).
+# Each goal takes its section: generate the fieldGenerations, aggregate-packages the
+# packageFieldGenerations, aggregate-project the projectFieldGenerations.
+#
+# ${name} is a Maven property, set in the pom and overridable on the command line:
+#   ai.model                  the model of every ordinary file, package and the overview
+#   ai.gpuLayers, ai.mainGpu, ai.devices   GPU placement of all three models (pom.xml says how)
+#   ai.modelDir               the directory of the GGUF files
+#   ai.profileDir             the profile (prompts and fact counters)
+#   ai.index.output.directory where the .ai.md tree goes
+# e.g. mvn -P srcmorph-selftest -Dai.modelDir=/path/to/models -Dai.gpuLayers=12 process-resources
+
+# The rules of the package phase (aggregate-packages) and of the project overview (aggregate-project).
+packageFieldGenerations:
+  - promptKey: package-body
+    aiDefinitionKey: "${ai.model}"
+projectFieldGenerations:
+  - promptKey: project-body
+    aiDefinitionKey: "${ai.model}"
+
+srcMorph:
+  # The repository root: the two packages below live in the core module next to this one, and a subtree
+  # has to lie inside the base directory. Relative paths here resolve against this file's directory.
+  baseDirectory: ".."
+  outputDirectory: "${ai.index.output.directory}"
+  subtrees:
+    - "srcmorph/src/main/java/net/ladenthin/srcmorph/config"
+    - "srcmorph/src/main/java/net/ladenthin/srcmorph/provider"
+  fileExtensions:
+    - ".java"
+    - ".sql"
+    - ".sh"
+    - ".bash"
+    - ".ksh"
+    - ".zsh"
+    - ".bats"
+    - ".pl"
+    - ".pm"
+    - ".t"
+    - ".cgi"
+    - ".psgi"
+    - ".xml"
+    - ".xsd"
+    - ".xsl"
+    - ".xslt"
+    - ".wsdl"
+    - ".xhtml"
+  excludes:
+    - "**/package-info.java"
+    - "**/module-info.java"
+
+  generationProvider: llamacpp-jni
+  modelDirectory: "${ai.modelDir}"      # a relative modelPath below is relative to this directory
+  # The measured profile (profiles/README.md): a rule's promptKey names <profileDirectory>/<key>.md, its
+  # factsKey <profileDirectory>/<key>.tsv.
+  profileDirectory: "${ai.profileDir}"
+
+  aiDefinitions:
+    # gpt-oss-20b in its native MXFP4: reasoningEffort low (best for dense summaries), a 96K window
+    # (costs RAM, not time: ~12 GB model + ~11 GB KV when full), temp 0.7 with min-p 0.05.
+    - key: gpt-oss-20B-mxfp4
+      modelPath: gpt-oss-20b-mxfp4.gguf
+      contextSize: 98304
+      gpuLayers: ${ai.gpuLayers}
+      mainGpu: ${ai.mainGpu}
+      devices: "${ai.devices}"
+      maxOutputTokens: 6144
+      temperature: 0.7
+      threads: 8                        # more only after measuring, never more than cores
+      charsPerToken: 3
+      warnOnTrim: true
+      topP: 1.0
+      topK: 0
+      minP: 0.05
+      repeatPenalty: 1.0
+      reasoningEffort: low
+    # ~275 KB .. ~1 MB in one pass: Granite 4.0 H-Tiny's KV grows only linearly, so 384K fits 8 GB.
+    - key: granite-4.0-h-tiny-bigwindow
+      modelPath: granite-4.0-h-tiny-Q4_K_M.gguf
+      contextSize: 393216
+      gpuLayers: ${ai.gpuLayers}
+      mainGpu: ${ai.mainGpu}
+      devices: "${ai.devices}"
+      maxOutputTokens: 4096
+      temperature: 0.2
+      threads: 8
+      charsPerToken: 3
+      warnOnTrim: true
+      topP: 1.0
+      topK: 0
+      minP: 0.05
+      repeatPenalty: 1.0
+      reasoningEffort: ""               # Granite has no gpt-oss reasoning channels
+    # Larger than ~1 MB: map-reduce over a SMALL 16K window (cheap prefill per chunk), maxChunks
+    # sampled chunks (head, tail, spread) per file, next to the exact facts.
+    - key: granite-4.0-h-1b-fastchunk
+      modelPath: granite-4.0-h-1b-Q4_K_M.gguf
+      contextSize: 16384
+      gpuLayers: ${ai.gpuLayers}
+      mainGpu: ${ai.mainGpu}
+      devices: "${ai.devices}"
+      maxOutputTokens: 1536
+      temperature: 0.2
+      threads: 8
+      charsPerToken: 3
+      warnOnTrim: true
+      topP: 1.0
+      topK: 0
+      minP: 0.05
+      repeatPenalty: 1.0
+      reasoningEffort: ""
+
+  # By priority, the most specific wins: huge (>1 MB) -> fastchunk map-reduce, big-window
+  # (~275 KB .. 1 MB) -> one Granite pass, then gpt-oss for Java, SQL and every other file.
+  fieldGenerations:
+    - id: huge-java
+      promptKey: file-body-java
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 200
+      onOversize: mapReduce             # or sample (head only, one call) / deterministic (no model)
+      maxChunks: 6
+      factsKey: java-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {min: 1000000}
+    - id: huge-sql
+      promptKey: file-body-sql
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 200
+      onOversize: mapReduce
+      maxChunks: 6
+      factsKey: sql-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".sql"]
+            - size: {min: 1000000}
+    - id: big-window-java
+      promptKey: file-body-java
+      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      priority: 100
+      factsKey: java-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {min: 275000}
+    - id: big-window-sql
+      promptKey: file-body-sql
+      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      priority: 100
+      factsKey: sql-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".sql"]
+            - size: {min: 275000}
+    - id: java
+      promptKey: file-body-java
+      aiDefinitionKey: "${ai.model}"
+      factsKey: java-facts
+      condition:
+        extensions: [".java"]
+    - id: sql
+      promptKey: file-body-sql
+      aiDefinitionKey: "${ai.model}"
+      factsKey: sql-facts
+      condition:
+        extensions: [".sql"]
+    - id: huge-xml                      # big XML data takes the Java/SQL size tiers too, with the generic
+                                        # prompt for now: with file-body-xml the Granite models named
+                                        # less, in one run each (MODEL-CARD finding 7)
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 200
+      onOversize: mapReduce
+      maxChunks: 6
+      factsKey: xml-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - size: {min: 1000000}
+    - id: big-window-xml
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      priority: 100
+      factsKey: xml-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - size: {min: 275000}
+    - id: huge-pom                      # a big POM takes the XML tiers one step higher, with the Maven counters
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 210
+      onOversize: mapReduce
+      maxChunks: 6
+      factsKey: pom-facts
+      condition:
+        and:
+          conditions:
+            - pathGlob: "**/*pom.xml"
+            - size: {min: 1000000}
+    - id: big-window-pom
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      priority: 110
+      factsKey: pom-facts
+      condition:
+        and:
+          conditions:
+            - pathGlob: "**/*pom.xml"
+            - size: {min: 275000}
+    - id: shell                         # shell, Perl, XML: a prompt and counts of their own
+      promptKey: file-body-shell
+      aiDefinitionKey: "${ai.model}"
+      factsKey: shell-facts
+      condition:
+        extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
+    - id: perl
+      promptKey: file-body-perl
+      aiDefinitionKey: "${ai.model}"
+      factsKey: perl-facts
+      condition:
+        extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
+    - id: pom                           # matches xml too; the priority gives a POM the Maven counters
+      promptKey: file-body-xml
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: pom-facts
+      condition:
+        pathGlob: "**/*pom.xml"
+    - id: xml
+      promptKey: file-body-xml
+      aiDefinitionKey: "${ai.model}"
+      factsKey: xml-facts
+      condition:
+        extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+    - id: fallback                      # the rule for every file no other rule matches
+      promptKey: file-body-fallback
+      aiDefinitionKey: "${ai.model}"
+      fallback: true

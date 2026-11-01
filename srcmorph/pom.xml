@@ -127,6 +127,11 @@ SPDX-License-Identifier: Apache-2.0
             <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
+            <!-- SrcMorphConfigurationFileLoader: the CLI and the plugin read one YAML configuration file. -->
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+        <dependency>
             <groupId>net.ladenthin</groupId>
             <artifactId>llama</artifactId>
             <version>${llama.version}</version>
@@ -773,6 +778,8 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.support.AiTimeSupport</param>
                         <param>net.ladenthin.srcmorph.support.Java8CompatibilityHelper</param>
                         <param>net.ladenthin.srcmorph.config.SrcMorphConfiguration</param>
+                        <param>net.ladenthin.srcmorph.config.SrcMorphConfigurationFile</param>
+                        <param>net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader</param>
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfig</param>
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfig$Builder</param>
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory</param>

@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# The srcmorph-selftest profile of srcmorph-maven-plugin/pom.xml as one CLI configuration, nearly 1:1
-# (ExamplesConfigBindingTest checks the rules, facts and models against the pom). What run.sh /
+# The srcmorph-selftest configuration of srcmorph-maven-plugin (srcmorph-selftest.yaml) for the CLI,
+# nearly 1:1 (BuildYourOwnJarSelfTestParityTest checks the models and rules against it). What run.sh /
 # run.bat do with it: every file under baseDirectory/subtrees with one of the fileExtensions is
 # matched to a rule in fieldGenerations; the rule names a prompt (promptKey) and a model
 # (aiDefinitionKey). srcmorph sends the prompt as the system message and the file's name and source as
@@ -23,8 +23,8 @@
 # Start with Plan, then switch to GenerateFileIndex or All. A second run only redoes changed files.
 command: Plan
 
-# The package and the project phase have rules of their own, as the plugin's aggregate-packages and
-# aggregate-project executions do.
+# The package and the project phase have rules of their own (the plugin's aggregate-packages and
+# aggregate-project goals read them from the same file).
 packageFieldGenerations:
   - promptKey: package-body
     aiDefinitionKey: gpt-oss-20B-mxfp4
@@ -67,8 +67,8 @@ srcMorph:
 
   # The profile: the measured prompts and fact counters of this repository (profiles/README.md), one
   # file per key. A rule's promptKey names <profileDirectory>/<key>.md, its factsKey
-  # <profileDirectory>/<key>.tsv (label TAB regex per line). Relative to the working directory (run.sh
-  # and run.bat start here); copy the directory and point profileDirectory at the copy to change it.
+  # <profileDirectory>/<key>.tsv (label TAB regex per line). Relative to this file's directory, as
+  # every relative path here; copy the directory and point profileDirectory at the copy to change it.
   profileDirectory: "../../profiles/v3"
 
   aiDefinitions:

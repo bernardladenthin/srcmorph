@@ -20,9 +20,9 @@ import org.apache.maven.plugins.annotations.Mojo;
  * so the plan's time estimate reflects <em>this</em> machine instead of the built-in reference-CPU
  * coefficients. The numbers are per machine (GPU/CPU, quant, context), so re-run on each host.</p>
  *
- * <p>Thin wrapper: builds a {@link net.ladenthin.srcmorph.config.SrcMorphConfiguration} from the shared
- * {@code @Parameter} fields and delegates the whole run to {@link CalibrateEngine}; only the final
- * paste-ready banner and {@link CalibrationReport#renderXml()} output stay in this mojo.</p>
+ * <p>Thin wrapper: builds the configuration of the file rules from the configuration file and delegates
+ * the whole run to {@link CalibrateEngine}; only the final paste-ready banner and
+ * {@link CalibrationReport#renderXml()} output stay in this mojo.</p>
  */
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "calibrate", threadSafe = true)
@@ -48,7 +48,7 @@ public class CalibrateMojo extends AbstractAiIndexMojo {
         }
 
         try {
-            final CalibrationReport report = new CalibrateEngine(buildConfiguration()).execute();
+            final CalibrationReport report = new CalibrateEngine(buildConfiguration(RuleSection.FILES)).execute();
 
             getLog().info("");
             getLog().info("Paste each <calibration> onto its matching <aiDefinition> (numbers are per machine).");

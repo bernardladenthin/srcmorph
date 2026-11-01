@@ -172,4 +172,18 @@ SPDX-License-Identifier: Apache-2.0
         SrcMorphException/IOException) trigger none of these detectors.
     -->
 
+    <!--
+        PATH_TRAVERSAL_IN on AbstractAiIndexMojo.projectSubtrees: it turns the directories of the
+        project's resources (Resource.getDirectory(), injected by Maven from the project model) into
+        File objects to test whether they exist and lie below the base directory. The paths come from
+        the operator's own POM, the same trust boundary as every other configured path (see the
+        srcmorph module's filter on AiPathSupport.resolveAgainst); nothing is opened or read here.
+        Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.srcmorph.mojo.AbstractAiIndexMojo"/>
+        <Method name="projectSubtrees"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+
 </FindBugsFilter>

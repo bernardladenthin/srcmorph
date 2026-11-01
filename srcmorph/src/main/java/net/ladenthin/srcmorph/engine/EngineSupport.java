@@ -246,7 +246,7 @@ final class EngineSupport {
             if (aiDefinitionKey == null) {
                 continue;
             }
-            final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(aiDefinitionKey);
+            final AiGenerationConfig modelConfig = definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
             final String provider =
                     AiGenerationProviderFactory.effectiveProvider(generationProvider, modelConfig.getProvider());
             if (AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)) {
@@ -254,6 +254,45 @@ final class EngineSupport {
             } else if (AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
                 validateLocalModel(aiDefinitionKey, modelConfig);
             }
+        }
+    }
+
+    /**
+     * Fails when a rule names a model no {@code <aiDefinition>} defines, naming the rule and the key; the
+     * lookup itself would end the run with an {@link IllegalArgumentException} the surfaces do not
+     * report as a configuration error.
+     *
+     * @param modelDefinitionSupport model lookup built from the configured {@code <aiDefinitions>}
+     * @param fieldGenerations       the rules
+     * @throws SrcMorphException if a rule (other than a skip rule) names an undefined model
+     */
+    static void requireDefinedModels(
+            final AiModelDefinitionSupport modelDefinitionSupport, final List<AiFieldGenerationConfig> fieldGenerations)
+            throws SrcMorphException {
+        for (final AiFieldGenerationConfig rule : fieldGenerations) {
+            if (rule == null || rule.isSkip()) {
+                continue;
+            }
+            final String aiDefinitionKey = rule.getAiDefinitionKey();
+            if (aiDefinitionKey != null) {
+                definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
+            }
+        }
+    }
+
+    private static AiGenerationConfig definedModel(
+            final AiModelDefinitionSupport modelDefinitionSupport,
+            final AiFieldGenerationConfig rule,
+            final String aiDefinitionKey)
+            throws SrcMorphException {
+        try {
+            return modelDefinitionSupport.getConfig(aiDefinitionKey);
+        } catch (final IllegalArgumentException e) {
+            final String id = rule.getId();
+            throw new SrcMorphException(
+                    "The rule '" + (id != null ? id : rule.getPromptKey()) + "' names the model '" + aiDefinitionKey
+                            + "', which no aiDefinition defines",
+                    e);
         }
     }
 

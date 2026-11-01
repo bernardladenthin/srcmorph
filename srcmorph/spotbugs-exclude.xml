@@ -261,6 +261,10 @@ SPDX-License-Identifier: Apache-2.0
         aiDefinitions/fieldGenerations/factDefinitions) the same way the mojo's own @Parameter fields used
         to. One instance is built once per goal invocation and handed to exactly one engine, which reads
         it and discards it - the same single-threaded, no-shared-state lifecycle as the beans above.
+
+        SrcMorphConfigurationFile is the content of the configuration file around it (the run
+        configuration and the two phase rules), bound by Jackson through these setters and read once
+        by the CLI or the mojo that loaded it: the same lifecycle again.
     -->
     <Match>
         <Or>
@@ -269,6 +273,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationConfig"/>
             <Class name="net.ladenthin.srcmorph.config.AiFactDefinition"/>
             <Class name="net.ladenthin.srcmorph.config.SrcMorphConfiguration"/>
+            <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFile"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry"/>
         </Or>
@@ -362,6 +367,12 @@ SPDX-License-Identifier: Apache-2.0
             @NullMarked validation style (see the DCN rationale in the plugin module's filter file);
             the explicit guards are the deliberate fail-fast contract, not dead checks.
 
+        SrcMorphConfigurationFileLoader: newJsonMapper / newYamlMapper are public because the CLI module
+        reads and echoes its configuration with the same strict mappers, which this module's analysis
+        cannot see (OPM); resolve() checks the bound base and output directory for null although the
+        getters are non-null, because a key set to nothing in the file binds null through Jackson,
+        past the annotation (RCN).
+
         Migration step 5 (engine extraction) additions, same rationale class:
           - LlamaCppJniConfigFactory.fromGenerationConfig: the pure field-by-field translation from
             AiGenerationConfig to LlamaCppJniConfig (moved verbatim out of the old
@@ -392,6 +403,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
             <Class name="net.ladenthin.srcmorph.engine.CalibrationReport"/>
             <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+            <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader"/>
         </Or>
         <Or>
             <Bug pattern="CE_CLASS_ENVY"/>

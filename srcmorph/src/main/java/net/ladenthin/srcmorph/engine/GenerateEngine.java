@@ -79,6 +79,25 @@ public final class GenerateEngine {
      * @throws IOException       if the source tree cannot be walked or a target file cannot be written
      */
     public GenerateResult execute() throws SrcMorphException, IOException {
+        return run(false);
+    }
+
+    /**
+     * Checks the configuration as a run would, without loading a model or writing anything: the plan
+     * (every file routed, none over a window with {@code onOversize: fail}, no two into one summary), the
+     * profile files of every rule, and every routed model (a local model's file and its GGUF header, a
+     * remote model's {@code baseUrl} and {@code apiKeyEnv}). {@link SrcMorphConfiguration#isPlanOnly()}
+     * does not apply.
+     *
+     * @return a plan-only result
+     * @throws SrcMorphException naming the first problem found
+     * @throws IOException       if the source tree cannot be walked
+     */
+    public GenerateResult check() throws SrcMorphException, IOException {
+        return run(true);
+    }
+
+    private GenerateResult run(final boolean checkOnly) throws SrcMorphException, IOException {
         final Path basePath =
                 config.getBaseDirectory().toPath().toAbsolutePath().normalize();
         final Path outputPath =
@@ -113,6 +132,7 @@ public final class GenerateEngine {
         final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model).
         selector.validate(fieldGenerations);
+        EngineSupport.requireDefinedModels(modelDefinitionSupport, fieldGenerations);
 
         final SourceFileIndexer fileIndexer = new SourceFileIndexer(
                 basePath,
@@ -171,21 +191,26 @@ public final class GenerateEngine {
         //     leaves no room for any source. Both are configuration errors, found before the run.
         checkTargetsAndWindows(plan, fileIndexer);
 
-        if (config.isPlanOnly()) {
-            LOGGER.info("planOnly=true: stopping after the plan; no model loaded, nothing generated.");
-            return GenerateResult.planned();
-        }
-
         // Fail fast on a typo'd modelPath before the model-group loop below, not an hour into it.
         //
-        // Deliberately AFTER the planOnly return: planOnly is documented to "stop before loading any
-        // model", and the workflow it exists for is configuring routing on a machine where the GGUFs
-        // are not present and running for real elsewhere. Stat'ing the file is not loading it, but
-        // failing the plan on a missing model would break that workflow all the same -- and Plan is
-        // the CLI's default command. Nothing between here and the loop loads a model, so the check
-        // loses nothing by moving down.
-        EngineSupport.validateRoutedModelPaths(
-                config.getGenerationProvider(), modelDefinitionSupport, fieldGenerations);
+        // Deliberately skipped by planOnly: planOnly is documented to "stop before loading any model",
+        // and the workflow it exists for is configuring routing on a machine where the GGUFs are not
+        // present and running for real elsewhere. Stat'ing the file is not loading it, but failing the
+        // plan on a missing model would break that workflow all the same -- and Plan is the CLI's
+        // default command. check() is the plan with this check, for the machine that runs.
+        final boolean planOnly = !checkOnly && config.isPlanOnly();
+        if (!planOnly) {
+            EngineSupport.validateRoutedModelPaths(
+                    config.getGenerationProvider(), modelDefinitionSupport, fieldGenerations);
+        }
+        if (planOnly || checkOnly) {
+            LOGGER.info(
+                    checkOnly
+                            ? "Check passed: the plan, the profile files and the routed models are in order; no"
+                                    + " model loaded, nothing written."
+                            : "planOnly=true: stopping after the plan; no model loaded, nothing generated.");
+            return GenerateResult.planned();
+        }
 
         // 4. Execute model group by model group: load each model once, index its files, close.
         //    Progress is the running sum of each finished file's PLAN estimate over the grand total

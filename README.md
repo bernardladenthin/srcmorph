@@ -112,36 +112,43 @@ Maven Central regardless; see `CLAUDE.md`.)
 
 ### 1. Maven plugin
 
+The plugin and the CLI read the same configuration file. In the POM, the goals:
+
 ```xml
 <plugin>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph-maven-plugin</artifactId>
-    <version>1.3.0</version>
-    <configuration>
-        <generationProvider>mock</generationProvider>
-        <!-- the profile: srcmorph's profiles/v3/ copied into the project. A promptKey names
-             <key>.md there, the system prompt; srcmorph sends the file name and source
-             separately. -->
-        <profileDirectory>${project.basedir}/src/srcmorph/profile</profileDirectory>
-        <fieldGenerations>
-            <fieldGeneration>
-                <promptKey>file-body-fallback</promptKey>
-                <aiDefinitionKey>coder</aiDefinitionKey>
-                <fallback>true</fallback>
-            </fieldGeneration>
-        </fieldGenerations>
-        <aiDefinitions>
-            <aiDefinition>
-                <key>coder</key>
-                <modelPath>/path/to/model.gguf</modelPath>
-            </aiDefinition>
-        </aiDefinitions>
-    </configuration>
+    <version>1.4.0</version>
+    <executions>
+        <execution>
+            <goals><goal>generate</goal></goals>
+        </execution>
+    </executions>
 </plugin>
 ```
 
-Run with `mvn srcmorph:generate`. Full goal/parameter reference, routing rules, GPU acceleration, and
-model recommendations: [`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin/README.md).
+and next to it `srcmorph.yaml`; Maven fills the base directory, the source and resource directories,
+the project name and version:
+
+```yaml
+srcMorph:
+  generationProvider: mock
+  # the profile: srcmorph's profiles/v3/ copied into the project. A promptKey names <key>.md there,
+  # the system prompt; srcmorph sends the file name and source separately.
+  profileDirectory: src/srcmorph/profile
+  aiDefinitions:
+    - key: coder
+      modelPath: /path/to/model.gguf
+  fieldGenerations:
+    - promptKey: file-body-fallback
+      aiDefinitionKey: coder
+      fallback: true
+```
+
+Run with `mvn srcmorph:generate`, check the configuration first with `mvn srcmorph:check`. Full goal
+reference, routing rules, GPU acceleration, and model recommendations:
+[`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin/README.md). Up to 1.3.0 the plugin was
+configured in the POM's XML instead.
 
 <details>
 <summary>Deprecated: old <code>net.ladenthin:llamacpp-ai-index-maven-plugin</code> coordinates (auto-relocates)</summary>
