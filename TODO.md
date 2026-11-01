@@ -16,19 +16,20 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-8. **Benchmark and measurement.** `score.py` is done (copied fences, everyday words, Java
-   signatures, invented names, a `failed` and a `cutOff` column, tests in `modelcard/tests/`), and
-   `scores/` is re-scored with it. Open: rendering the model card from the new scores (`report.py`,
-   `plot.py`) and the text that cites them -- deliberately not done yet, the card keeps its
-   October numbers until that is decided; the large corpus's Granite H-Tiny catalog falls from
-   86 to 0 % once a copied fence no longer counts, which is what the XML-prompt decision for the
-   self-test's Granite tiers rested on. Then three runs each of gpt-oss-20b and GPT-6 Luna on the
-   language, benchmark and large corpora (the tools for it are done: `run.py` validates its options
-   and records hashes, versions, tokens and their cost, `search.py` keys its cache by prompt and
-   backs off, `large.py` writes its facts beside the corpus and plants names in the middle).
-   The runs are under way (2026-11-01: hosted, three rounds; local, the two Granite presets on the
-   large corpus with the XML and the generic prompt, and gpt-oss-20b on the GPU); their outputs and
-   the finding-7 text follow.
+8. **Benchmark and measurement.** `score.py` and the tools are done and `scores/` is re-scored; the
+   runs are done: [`remeasure-2026-11-01/`](docs/ai-index-benchmark/remeasure-2026-11-01/README.md)
+   (hosted: gpt-oss-20b 99.4 / 99.8 / 78.1 %, GPT-6 Luna 99.8 / 100 / 97.9 % on the language, card and
+   large corpora; locally every large-file run fails at least one file). Open: the model card and its
+   finding 7 from these numbers (with D2 below); what the runs found:
+   - **On large files the final answer outgrows the output budget.** Since an incomplete answer is
+     never written, a reduce answer cut off at `maxOutputTokens` fails its file: every local preset
+     (H-1B at 1536, H-Tiny and gpt-oss-20b at 4096) lost at least one of the three large files, and
+     hosted gpt-oss-20b the enum once. Options: a larger budget for the presets, a reduce prompt that
+     asks for a bounded answer, or `onIncomplete: retryOnce` in the presets.
+   - **gpt-oss-20b's map-reduce loses the middle of a file.** It never names the catalog's or the
+     enum's planted middle names (Luna does in every run); the partial summaries are not kept, so
+     where they are lost is not known. Keeping the partials (beside the run record, on request) would
+     show it.
 
 ### Verification of 2026-11-01 (eleven reviews of b74aa6b), open items
 
@@ -135,8 +136,6 @@ the resent POST after a read timeout, the checksum of non-UTF-8 files.
   is the file's directory, so it cannot catch a base-directory regression; run it from the root.
 - SonarCloud reports 98 new issues that are not readable without a token.
 
-**Documentation:** the `languages-2026-11` README's `--max-chunks 6` command is refused by today's
-`run.py` (with the finding-7 update).
 
 ### Other open items
 

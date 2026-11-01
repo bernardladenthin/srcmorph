@@ -9,7 +9,7 @@ The outputs behind the model card's finding 7 and the language prompts in
 | `languages-generic/run1..3` | [`corpus-languages/`](../corpus-languages/) | `profiles/v3` before the language prompts: every shell, Perl and XML file through `file-body-fallback` | gpt-oss-20b, GPT-6 Luna on OpenRouter; the "before" column of finding 7 |
 | `languages/run1..6` | the same | `profiles/v3` with `file-body-shell`, `-perl`, `-xml`; runs 4 to 6 after the wording change in `file-body-perl` | gpt-oss-20b, GPT-6 Luna on OpenRouter; in run 6 gpt-oss's summary of `nightly_extract.ksh` has no body (the provider answered empty) |
 | `benchmark/run1..3` | the model-card corpus | the same | gpt-oss-20b, GPT-6 Luna on OpenRouter, with the search measurement (`search.json`, `search.tsv`) |
-| `large/run1..3` | the files of [`modelcard/large.py`](../modelcard/large.py) | the same, `--facts --oversize mapReduce --max-chunks 6` | gpt-oss-20b (`--chars-per-token 2`) and GPT-6 Luna on OpenRouter; in `run1` also the two Granite presets, local |
+| `large/run1..3` | the files of [`modelcard/large.py`](../modelcard/large.py) | the same, `--facts --oversize mapReduce --max-chunks 6` (then a sample of 6 chunks; today `--oversize sampleChunks --max-chunks 6`, and `mapReduce` reads every chunk, see [`remeasure-2026-11-01/`](../remeasure-2026-11-01/README.md)) | gpt-oss-20b (`--chars-per-token 2`) and GPT-6 Luna on OpenRouter; in `run1` also the two Granite presets, local |
 | `large/granite-fallback/run1` | the same | `profiles/v3` without the language prompts (XML through `file-body-fallback`) | the two Granite presets, local |
 
 The large corpus is not in the repository: `python large.py --out <dir>` writes it (seed 20261031,
