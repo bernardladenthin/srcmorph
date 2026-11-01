@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Maven POM fact counters, for a rule matching pom.xml files next to xml-facts: one per line, label TAB
+# pattern (Java regex). The [ignore] line blanks comments first, so a commented-out dependency does not
+# count. "dependencies" counts every <dependency> element, also those of dependencyManagement and of
+# profiles; "managed dependency sections" says whether there are any. XmlFactPatternsTest pins every
+# case.
+[ignore] comments	(?s)<!--.*?-->
+dependencies	<dependency[ \t\r\n/>]
+managed dependency sections	<dependencyManagement[ \t\r\n/>]
+plugins	<plugin[ \t\r\n/>]
+modules	<module[ \t\r\n/>]
+profiles	<profile[ \t\r\n/>]
+test-scoped dependencies	<scope>[ \t\r\n]*test[ \t\r\n]*</scope>

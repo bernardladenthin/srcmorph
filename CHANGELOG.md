@@ -24,6 +24,45 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `templateFile`, a fact group `facts` or the new `factsFile` (both files relative to
   `profileDirectory`). Every file is read as UTF-8, a leading byte order mark dropped; an empty file is
   an error. In the library: `AiPromptTemplateLoader`, `AiFactDefinitionLoader`, `AiProfileFileSupport`.
+- **Fact counters can leave regions out (`[ignore]`).** A counter whose label starts with `[ignore]`
+  in a facts file (in a configuration: `ignore: true`) is not reported: its matches are blanked out
+  of the source, every character except the line breaks, before the other counters count. A sub
+  named in Perl's POD, a function or a `set -e` inside a shell heredoc, a commented-out POM dependency
+  or an `INSERT` in a SQL block comment then no longer counts, while `^` anchors see the same lines.
+  `AiFactExtractor.counts` returns the counts by label; a facts file of ignore lines only is refused.
+- **Fact files for shell, Perl and XML: `shell-facts`, `perl-facts`, `xml-facts`, `pom-facts`.** Bash,
+  POSIX sh and ksh93 (functions, getopts loops and option arms, named positional parameters,
+  exported, readonly and defaulted variables, script-level assignments, sourced files, traps,
+  `set -e`, exit statuses, ksh `typeset` and discipline functions), Perl (packages, subs, modules
+  used and required, `use constant`, `our` and file-scope `my`, `%ENV` keys, `GetOptions`, `die` /
+  `croak` / `confess`), XML (elements, namespaces, `id` / `name` attributes, XSD types, XSLT
+  templates, Spring beans) and Maven POMs (dependencies, managed sections, plugins, modules,
+  profiles, test scope), each with its comments, heredocs, POD or CDATA ignored.
+  `ShellFactPatternsTest`, `PerlFactPatternsTest` and `XmlFactPatternsTest` pin every counter. The
+  self-test profile and `examples/build-your-own-jar/srcmorph.yaml` route `.sh` / `.bash` / `.ksh`,
+  `.pl` / `.pm`, `**/*pom.xml` and `.xml` / `.xsd` / `.xsl` / `.xslt` to them, and big XML files take
+  the Granite size tiers Java and SQL have.
+- **Prompts for shell, Perl and XML: `file-body-shell`, `file-body-perl`, `file-body-xml`.** Up to
+  now these files took `file-body-fallback`. The shell prompt asks for every argument by its
+  variable, every option as typed with its parser, every top-level variable as `name=value` (the
+  lower-case and derived ones too), every function and the tables or hosts of its heredocs; the
+  Perl prompt for subs, `Getopt::Long` options, `%ENV` keys, constants and imports; the XML prompt
+  for what the file defines by kind (POM, Spring context, XSD, XSLT, other data). On the
+  benchmark's language corpus gpt-oss-20b went from 95.7 to 99.3 % over three runs, GPT-6 Luna
+  from 99.6 to 100 %; the other two corpora stayed within their run-to-run variation
+  (`profiles/README.md`, model card finding 7). The self-test's `shell`, `perl`, `pom` and `xml`
+  rules and the example configuration use them; the Granite tiers for big XML stay on
+  `file-body-fallback`, since both Granite models named fewer of a catalog's elements with the XML
+  prompt.
+- **Benchmark: a language corpus, a large-file corpus and the fact counters in `run.py`.**
+  `docs/ai-index-benchmark/corpus-languages/` holds nine files written for it (Perl, Bash, ksh93,
+  POSIX sh, a POM, a Spring context, an XSD, an XSLT), with their expected names in
+  `modelcard/facts-languages.json`; `modelcard/large.py` writes a reproducible SQL dump, XML catalog
+  and Java enum far beyond a small window, with their facts. `run.py` takes `--facts` (every rule
+  names its counters), `--oversize` / `--max-chunks`, a corpus without one of its kinds, and gives a
+  language with a prompt of its own in the profile (`file-body-shell`, `-perl`, `-xml`) a rule;
+  `models.json` has the two Granite presets of the self-test for the large corpus;
+  `--chars-per-token` replaces every model's estimate, for data that tokenizes denser than code.
 - **CLI: rules per aggregation phase, `packageFieldGenerations` and `projectFieldGenerations`.**
   Top-level keys beside `srcMorph`: the package phase (`AggregatePackages`, and the package step of
   `All`) and the project phase run with these rules when set, as the Maven plugin's
@@ -133,7 +172,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   new `VALUES rows (approx)` counts the row tuples of `VALUES` lists. `views` also counts
   `MATERIALIZED` and `OR ALTER` views, `tables` `TEMP`/`UNLOGGED` tables, `indexes` T-SQL's
   `CLUSTERED`/`NONCLUSTERED`, `functions/procedures` `CREATE PROC`, `OR ALTER` and MySQL's
-  `DEFINER=`; `triggers`, `types` and `ALTER TABLE` are new.
+  `DEFINER=`; `triggers`, `types` and `ALTER TABLE` are new. Then, after the forms a research pass
+  found missing: `INSERT statements` counts MySQL's `INSERT IGNORE` / `LOW_PRIORITY` and
+  `REPLACE INTO`, views, routines and triggers Oracle's `EDITIONABLE` / `FORCE`, `indexes`
+  `FULLTEXT` / `SPATIAL` / `BITMAP`; `sequences`, `extensions`, `schemas and databases` and
+  `packages and package bodies` are new, and `/* ... */` block comments are ignored (MySQL's `/*! */`
+  and Oracle's `/*+ */` are not, they hold SQL).
 - **Dependencies and build plugins:** logback-classic 1.6.6 (test scope), NullAway 0.14.3,
   maven-surefire-plugin 3.6.1, jacoco-maven-plugin 0.8.16, palantir-java-format 2.103.0 (no formatting
   change) and `anthropics/claude-code-action` v1.0.264.
@@ -158,6 +202,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   The example pom is therefore under test on every pull request.
 
 ### Fixed
+- **The benchmark's `score.py` took the facts line for the model's text.** With `--facts` a summary
+  starts with srcmorph's exact counts, so the lead line was reported missing and the counts were
+  scored as the model's. Every measure is now taken on the body without that line; the model
+  card's runs had no facts lines, their scores do not change.
+- **The self-test's `big-window-java` and `big-window-sql` rules (~275 KB .. 1 MB) wrote no facts
+  line**, although the smaller and the larger files had one; they name `java-facts` / `sql-facts` now,
+  in the plugin pom and in `examples/build-your-own-jar/srcmorph.yaml`.
 - **A local model reasoned with thinking switched off.** The llama.cpp provider sent
   `reasoningEffort` (default `low`, meant for gpt-oss) to every chat template as the
   `reasoning_effort` kwarg, also with `chatTemplateEnableThinking: false`. A template that reads it

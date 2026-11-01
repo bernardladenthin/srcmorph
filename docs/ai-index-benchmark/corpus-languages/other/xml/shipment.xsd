@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<!-- Schema of the shipment notice a warehouse sends when parcels leave the building. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:shp="urn:example:shipment:1"
+           targetNamespace="urn:example:shipment:1"
+           elementFormDefault="qualified">
+
+    <xs:element name="shipmentNotice" type="shp:ShipmentNoticeType"/>
+
+    <xs:simpleType name="CarrierCode">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="DHL"/>
+            <xs:enumeration value="UPS"/>
+            <xs:enumeration value="GLS"/>
+            <xs:enumeration value="POST"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="WeightGrams">
+        <xs:restriction base="xs:positiveInteger">
+            <xs:maxInclusive value="31500"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="ParcelType">
+        <xs:sequence>
+            <xs:element name="trackingNumber" type="xs:string"/>
+            <xs:element name="weight" type="shp:WeightGrams"/>
+        </xs:sequence>
+        <xs:attribute name="sequence" type="xs:positiveInteger" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="AddressType">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string"/>
+            <xs:element name="street" type="xs:string"/>
+            <xs:element name="postalCode" type="xs:string"/>
+            <xs:element name="city" type="xs:string"/>
+            <xs:element name="country" type="xs:string" minOccurs="0" default="DE"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ShipmentNoticeType">
+        <xs:sequence>
+            <xs:element name="orderReference" type="xs:string"/>
+            <xs:element name="shippedAt" type="xs:dateTime"/>
+            <xs:element name="carrier" type="shp:CarrierCode"/>
+            <xs:element name="recipient" type="shp:AddressType"/>
+            <xs:element name="parcel" type="shp:ParcelType" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="noticeId" type="xs:ID" use="required"/>
+    </xs:complexType>
+</xs:schema>

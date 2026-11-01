@@ -276,6 +276,9 @@ public class BuildYourOwnJarSelfTestParityTest {
         for (final Element size : children(condition, "size")) {
             parts.add("size(min=" + text(size, "min") + ", max=" + text(size, "max") + ")");
         }
+        for (final Element glob : children(condition, "pathGlob")) {
+            parts.add("pathGlob(" + glob.getTextContent().trim() + ")");
+        }
         return String.join(" ", parts);
     }
 
@@ -297,6 +300,10 @@ public class BuildYourOwnJarSelfTestParityTest {
         if (size != null) {
             parts.add("size(min=" + (size.getMin() > 0 ? String.valueOf(size.getMin()) : "null") + ", max="
                     + (size.getMax() > 0 ? String.valueOf(size.getMax()) : "null") + ")");
+        }
+        final String glob = condition.getPathGlob();
+        if (glob != null) {
+            parts.add("pathGlob(" + glob + ")");
         }
         return String.join(" ", parts);
     }

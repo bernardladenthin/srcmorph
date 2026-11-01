@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Perl fact counters: one per line, label TAB pattern (Java regex), counted over the whole file. The
+# [ignore] lines run first: they blank POD, everything after __END__ / __DATA__, heredoc bodies and
+# comment lines (keeping the line breaks), so a sub named in the documentation or in a usage text does
+# not count. Counts are regex heuristics: a sub generated with eval or a glob assignment is not seen.
+# PerlFactPatternsTest pins every case.
+[ignore] POD	(?ms)^=[a-zA-Z]\w*\b.*?(?:^=cut\b[^\n]*|\z)
+[ignore] __END__ and __DATA__	(?ms)^__(?:END|DATA)__\b.*\z
+[ignore] heredoc bodies	(?ms)<<~?[ \t]*(["']?)([A-Za-z_]\w*)\1[^\n]*\n.*?^[ \t]*\2[ \t]*$
+[ignore] comment lines	(?m)^[ \t]*#[^\n]*
+packages	(?m)^[ \t]*package[ \t]+[A-Za-z_]\w*(?:::\w+)*
+subs	(?m)^[ \t]*(?:(?:my|our|state)[ \t]+)?sub[ \t]+[A-Za-z_]\w*(?:::\w+)*[ \t]*(?:\([^)]*\)[ \t]*)?(?::[ \t]*\w+(?:\([^)]*\))?[ \t]*)*(?:\{|$)
+modules used	(?m)^[ \t]*use[ \t]+[A-Z]\w*(?:::\w+)*
+modules required	(?m)^[ \t]*require[ \t]+(?:[A-Za-z_]\w*(?:::\w+)*|["'][^"'\n]+["'])
+use constant statements	(?m)^[ \t]*use[ \t]+constant\b
+package variables (our)	(?m)^[ \t]*our[ \t]+(?:\([^)]*\)|[$@%]\w+)
+file-scope lexicals (my at column 0)	(?m)^my[ \t]+(?:\([^)]*\)|[$@%]\w+)
+environment variables read	\$ENV\{[ \t]*['"]?\w+['"]?[ \t]*\}
+GetOptions calls	\bGetOptions(?:FromArray|FromString)?[ \t]*\(
+die, croak and confess	\b(?:die|croak|confess)\b

@@ -1,0 +1,44 @@
+{
+ "key": "granite-4.0-h-1b-fastchunk",
+ "name": "Granite 4.0 H-1B (Q4_K_M, 16K window)",
+ "backend": "local",
+ "definition": {
+  "key": "granite-4.0-h-1b-fastchunk",
+  "maxOutputTokens": 1536,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 16384,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "granite-4.0-h-1b-Q4_K_M.gguf",
+  "charsPerToken": 3
+ },
+ "javaCommit": null,
+ "corpus": "large-corpus",
+ "profile": "v3",
+ "facts": true,
+ "oversize": "mapReduce",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 122.2,
+   "cutOff": [
+    "java/errors/PlatformErrorCode.java",
+    "java/errors/PlatformErrorCode.java",
+    "java/errors/PlatformErrorCode.java",
+    "java/errors/PlatformErrorCode.java"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 16.9,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 7.3,
+   "cutOff": []
+  }
+ },
+ "files": 11
+}

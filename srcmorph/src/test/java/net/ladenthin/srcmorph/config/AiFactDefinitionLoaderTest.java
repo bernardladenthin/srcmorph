@@ -151,6 +151,42 @@ public class AiFactDefinitionLoaderTest {
 
         assertThat(thrown.getMessage(), is("f: no counter, only comments"));
     }
+
+    @Test
+    public void parse_ignorePrefix_marksAnIgnoreCounterUnderTheRestOfTheLabel() {
+        final List<AiFactCounter> counters =
+                AiFactDefinitionLoader.parse("f", "[ignore] POD\t(?ms)^=pod.*?^=cut\nsubs\tx\n");
+
+        assertThat(counters.get(0).isIgnore(), is(true));
+        assertThat(counters.get(0).getLabel(), is("POD"));
+        assertThat(counters.get(0).getPattern(), is("(?ms)^=pod.*?^=cut"));
+        assertThat(counters.get(1).isIgnore(), is(false));
+        assertThat(counters.get(1).getLabel(), is("subs"));
+    }
+
+    @Test
+    public void parse_ignorePrefixWithoutAName_isRefused() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[ignore] \tx\n"));
+
+        assertThat(thrown.getMessage(), is("f line 1: the label and the pattern must not be empty"));
+    }
+
+    @Test
+    public void parse_labelContainingThePrefixLater_isAnOrdinaryCounter() {
+        final List<AiFactCounter> counters = AiFactDefinitionLoader.parse("f", "rows [ignore] x\ty\n");
+
+        assertThat(counters.get(0).isIgnore(), is(false));
+        assertThat(counters.get(0).getLabel(), is("rows [ignore] x"));
+    }
+
+    @Test
+    public void parse_onlyIgnoreCounters_isRefused() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[ignore] a\tx\n"));
+
+        assertThat(thrown.getMessage(), is("f: no counter, only ignore patterns"));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="load: factsFile">

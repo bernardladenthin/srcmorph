@@ -288,6 +288,52 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    on the second corpus went from 100 % in three runs to 91 to 97 %. Three runs tell a miss that
    recurs from one that does not, not a one-point difference. The other models have not been run
    with v3.
+7. **Shell, Perl and XML: prompts of their own, and files of 0.3 to 1.6 MB.** These files went
+   through the generic prompt. A third corpus written for it,
+   [`corpus-languages/`](corpus-languages/) (Perl, Bash, ksh93, POSIX sh, a POM, a Spring context,
+   an XSD, an XSLT), showed what gpt-oss-20b lost with it: a deploy script's options and globals
+   (70 % of its names), a POM's plugins, lower-case ksh variables. `profiles/v3/` now has
+   `file-body-shell`, `file-body-perl` and `file-body-xml` (what they ask for:
+   [`profiles/README.md`](../../profiles/README.md)). Three runs each on OpenRouter, outputs
+   under [`languages-2026-11/`](languages-2026-11/):
+
+   | | Language corpus: generic / own prompts | This corpus | Second corpus | Reader hit@1 |
+   |---|---|---|---|---|
+   | GPT-6 Luna | 99.6 / **100 %** | 100 % | 100 % | 93 / 88 / 93 % (91 %) |
+   | gpt-oss-20b | 95.7 / **99.3 %** | 99.6 % | 99.5 % | 93 / 95 / 98 % (95 %) |
+
+   On this corpus and the second one, every miss with the new prompts is in a Java or SQL file,
+   whose prompts are unchanged; v3 before them scored 100 and 99.8 % for gpt-oss there, within its
+   run-to-run variation. One shell draft showed what a prompt can cost: asked for every
+   assignment as `name=value`, gpt-oss copied them into a code fence in two of three runs, and
+   "one bullet each" kept the values without the fence.
+
+   [`modelcard/large.py`](modelcard/large.py) writes three files no window of this card holds: a
+   1.6 MB SQL dump (3 tables, 30 000 rows), an 850 KB XML catalog and a 276 KB Java enum of 6 000
+   constants. Run with the fact counters and `onOversize` `mapReduce` over at most 6 chunks:
+
+   | | Quality: run 1 / 2 / 3 | USD per run |
+   |---|---|---|
+   | GPT-6 Luna | 100 / 100 / 96.4 % | 0.02 to 0.16 |
+   | gpt-oss-20b, `charsPerToken` 2 | 96.4 / 97.7 / 100 % | 0.024 to 0.026 |
+   | Granite 4.0 H-Tiny, 384K window, local: generic / XML prompt | 52.6 / 45.5 % (one run) | – |
+   | Granite 4.0 H-1B, 16K chunks, local: generic / XML prompt | 27.3 / 9.4 % (one run) | – |
+
+   - **The facts line is right for every model**: 60 `INSERT`s, 30 000 rows, 3 tables, 1 view,
+     2 indexes; 20 041 XML elements. The prose is not: both Granite models invent SQL tables
+     (`accounts`, `transactions`, `ledger_entries`) and name none of the three real ones, and they
+     copy a prompt's example sentence as the lead: H-1B the XML prompt's ("Builds the reporting
+     module and its PDF export") for the catalog, H-Tiny the Java prompt's for the enum. With the
+     XML prompt both scored lower on the catalog (86 to 14 % and 86 to 57 % of its names), so the
+     self-test's Granite tiers for big XML keep the generic prompt. gpt-oss and Luna name every
+     table, index and view of the dump.
+   - **A data file has fewer characters per token than code.** At srcmorph's default of 4,
+     gpt-oss's first chunk of the SQL dump was refused by the provider (about 135 000 tokens for a
+     131 072 window); at 3 the second chunk was (149 394 tokens); the dump's numbers and IBANs run
+     at about 2 characters per token. `charsPerToken` is the setting for it (the self-test's
+     Granite presets have 3); `run.py --chars-per-token` sets it for a run.
+   - The scorer took the facts line for the model's text before (no lead line, the counts as the
+     model's); it now scores the body without it. No run of the card above had a facts line.
 
 ### Repeatability
 
@@ -441,9 +487,9 @@ Ordered by what would change a decision:
    every method and still describe one wrongly. A hand check of about five files per top model,
    each statement marked right or wrong against the source, or a judge model with that check
    sampled by hand.
-2. **Large files.** The largest file here is 51 KB. srcmorph's oversize path (map-reduce over
-   chunks) has been timed but not judged for quality. One 300 KB to 1 MB file per kind through the
-   top models would show where quality drops and what it costs.
+2. **Large files on more models.** Finding 7 ran three files of 0.3 to 1.6 MB through two hosted
+   models and the two Granite presets. The local models between them (gpt-oss-20b and Gemma 4 on
+   the GPU, with their windows) and the `sample` strategy against `mapReduce` are open.
 3. **Token usage per call.** srcmorph does not log the usage the API returns. With it, cost and
    speed could be explained per file (input against output against reasoning), and the Hugging
    Face runs could be priced exactly.

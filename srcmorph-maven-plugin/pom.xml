@@ -1020,15 +1020,25 @@ SPDX-License-Identifier: Apache-2.0
                                 </goals>
                                 <configuration>
                                     <!--
-                                        Walk both .java and .sql sources. The per-file prompt is then
-                                        chosen by extension in fieldGenerations below: .java -> the
-                                        Java-focused prompt, .sql -> the SQL-schema prompt, everything
-                                        else -> the generic fallback. (This repo is Java-only, so the
-                                        .sql/fallback entries document the capability without firing.)
+                                        Walk Java, SQL, shell, Perl and XML sources. The per-file prompt
+                                        and fact counters are then chosen by extension in fieldGenerations
+                                        below: .java -> the Java-focused prompt, .sql -> the SQL-schema
+                                        prompt, everything else -> the generic fallback, each with the
+                                        counters of its language. (The subtrees here are Java-only, so the
+                                        other entries document the capability without firing.)
                                     -->
                                     <fileExtensions>
                                         <fileExtension>.java</fileExtension>
                                         <fileExtension>.sql</fileExtension>
+                                        <fileExtension>.sh</fileExtension>
+                                        <fileExtension>.bash</fileExtension>
+                                        <fileExtension>.ksh</fileExtension>
+                                        <fileExtension>.pl</fileExtension>
+                                        <fileExtension>.pm</fileExtension>
+                                        <fileExtension>.xml</fileExtension>
+                                        <fileExtension>.xsd</fileExtension>
+                                        <fileExtension>.xsl</fileExtension>
+                                        <fileExtension>.xslt</fileExtension>
                                     </fileExtensions>
                                     <fieldGenerations>
                                         <!-- Size-tiered routing for large files. THREE bands per source kind, by
@@ -1109,6 +1119,7 @@ SPDX-License-Identifier: Apache-2.0
                                             <promptKey>file-body-java</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
+                                            <factsKey>java-facts</factsKey>
                                             <!-- ~275 KB .. ~1 MB: fits Granite's 384K window, summarized in ONE pass
                                                  (fast on GPU). Files > ~1 MB are caught by huge-java above (priority 200),
                                                  so this rule never needs to handle the oversize case; default
@@ -1131,6 +1142,7 @@ SPDX-License-Identifier: Apache-2.0
                                             <promptKey>file-body-sql</promptKey>
                                             <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
                                             <priority>100</priority>
+                                            <factsKey>sql-facts</factsKey>
                                             <condition>
                                                 <and>
                                                     <conditions>
@@ -1164,6 +1176,88 @@ SPDX-License-Identifier: Apache-2.0
                                             <factsKey>sql-facts</factsKey>
                                             <condition>
                                                 <extensions><extension>.sql</extension></extensions>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <!-- Big XML data (catalogs, exports) takes the same size tiers as Java and SQL, with its counts, and the
+                                             generic prompt: with file-body-xml both Granite models named fewer of a catalog's elements. -->
+                                        <fieldGeneration>
+                                            <id>huge-xml</id>
+                                            <promptKey>file-body-fallback</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
+                                            <priority>200</priority>
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
+                                            <factsKey>xml-facts</factsKey>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>1000000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>big-window-xml</id>
+                                            <promptKey>file-body-fallback</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
+                                            <priority>100</priority>
+                                            <factsKey>xml-facts</factsKey>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>275000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <!-- Shell, Perl and XML files: a prompt of their own, with the exact counts of their own fact file
+                                             (profiles/v3/shell-facts.tsv, perl-facts.tsv, xml-facts.tsv). A Maven POM matches both pom and
+                                             xml; its priority gives it the Maven counters (pom-facts.tsv). -->
+                                        <fieldGeneration>
+                                            <id>shell</id>
+                                            <promptKey>file-body-shell</promptKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <factsKey>shell-facts</factsKey>
+                                            <condition>
+                                                <extensions><extension>.sh</extension><extension>.bash</extension><extension>.ksh</extension></extensions>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>perl</id>
+                                            <promptKey>file-body-perl</promptKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <factsKey>perl-facts</factsKey>
+                                            <condition>
+                                                <extensions><extension>.pl</extension><extension>.pm</extension></extensions>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>pom</id>
+                                            <promptKey>file-body-xml</promptKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <priority>10</priority>
+                                            <factsKey>pom-facts</factsKey>
+                                            <condition>
+                                                <pathGlob>**/*pom.xml</pathGlob>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>xml</id>
+                                            <promptKey>file-body-xml</promptKey>
+                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
+                                            <factsKey>xml-facts</factsKey>
+                                            <condition>
+                                                <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension></extensions>
                                             </condition>
                                         </fieldGeneration>
                                         <!-- Explicit fallback: applies to any file no rule above matched.

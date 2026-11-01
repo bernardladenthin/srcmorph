@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Shell fact counters (Bash, POSIX sh, ksh93): one per line, label TAB pattern (Java regex), counted
+# over the whole file. The [ignore] lines run first: they blank comment lines and heredoc bodies (keeping
+# the line breaks), so a function or a "set -e" quoted for a remote shell does not count as this
+# script's. Counts are regex heuristics: a function defined inside a string, or an option arm written
+# on one line with others, is not seen. ShellFactPatternsTest pins every case.
+[ignore] comment lines	(?m)^[ \t]*#[^\n]*
+[ignore] heredoc bodies	(?ms)(?<!<)<<-?[ \t]*(["']?)\\?([A-Za-z_]\w*)\1[^\n]*\n.*?^[ \t]*\2[ \t]*$
+functions	(?m)^[ \t]*(?:function[ \t]+[A-Za-z_][\w.:-]*[ \t]*(?:\([ \t]*\))?|[A-Za-z_][\w.:-]*[ \t]*\([ \t]*\))[ \t]*(?:\{|\(|$)
+getopts loops	\bgetopts[ \t]+
+option case arms	(?m)^[ \t]*\(?[ \t]*(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?(?:[ \t]*\|[ \t]*(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?)*[ \t]*\)
+named positional parameters	(?m)^[ \t]*(?:(?:local|readonly|declare|typeset|export)(?:[ \t]+-\w+)*[ \t]+)?[A-Za-z_]\w*=["']?\$(?:\{[1-9][0-9]*(?:[:?=+#%-][^}]*)?\}|[1-9])
+exported variables	(?m)^[ \t]*(?:export|declare[ \t]+-[a-zA-Z]*x[a-zA-Z]*|typeset[ \t]+-[a-zA-Z]*x[a-zA-Z]*)[ \t]+(?:-\w+[ \t]+)*[A-Za-z_]\w*
+readonly variables	(?m)^[ \t]*(?:readonly|declare[ \t]+-[a-zA-Z]*r[a-zA-Z]*|typeset[ \t]+-[a-zA-Z]*r[a-zA-Z]*)[ \t]+(?:-\w+[ \t]+)*[A-Za-z_]\w*
+defaulted variables	\$\{[A-Za-z_]\w*:?[-=]
+script-level assignments	(?m)^[A-Za-z_]\w*=
+sourced files	(?m)^[ \t]*(?:source|\.)[ \t]+[^\s;&|]+
+traps	(?m)^[ \t]*trap[ \t]+(?!-[lp]\b)
+set -e	(?m)^[ \t]*set[ \t]+(?:-[a-zA-Z]*e[a-zA-Z]*\b|(?:-[a-zA-Z]+[ \t]+)*-o[ \t]+errexit\b)
+exit statements with a status	\bexit[ \t]+[0-9]+
+typeset declarations	(?m)^[ \t]*typeset\b
+ksh discipline functions	(?m)^[ \t]*function[ \t]+[A-Za-z_.][\w.]*\.(?:get|set|unset|append)\b

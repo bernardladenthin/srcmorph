@@ -1,0 +1,41 @@
+{
+ "key": "granite-4.0-h-tiny-bigwindow",
+ "name": "Granite 4.0 H-Tiny (Q4_K_M, 384K window)",
+ "backend": "local",
+ "definition": {
+  "key": "granite-4.0-h-tiny-bigwindow",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 393216,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "granite-4.0-h-tiny-Q4_K_M.gguf",
+  "charsPerToken": 3
+ },
+ "javaCommit": null,
+ "corpus": "large-corpus",
+ "profile": "v3",
+ "facts": true,
+ "oversize": "mapReduce",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 961.2,
+   "cutOff": [
+    "other/catalog/catalog.xml"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 40.5,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 12.2,
+   "cutOff": []
+  }
+ },
+ "files": 11
+}

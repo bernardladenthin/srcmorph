@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# XML fact counters (any XML, XSD, XSLT, Spring, Maven): one per line, label TAB pattern (Java regex),
+# counted over the whole file. The [ignore] lines run first: they blank comments and CDATA sections
+# (keeping the line breaks), so a commented-out element does not count. Element and attribute counts
+# are regex heuristics over the text, not a parse: a ">" inside an attribute value or an entity is not
+# seen. XmlFactPatternsTest pins every case; pom-facts adds the Maven counters.
+[ignore] comments	(?s)<!--.*?-->
+[ignore] CDATA sections	(?s)<!\[CDATA\[.*?\]\]>
+elements	<(?![!?/])[A-Za-z_][\w.:-]*
+namespace declarations	\bxmlns(?::[\w.-]+)?[ \t\r\n]*=[ \t\r\n]*["']
+id and name attributes	[ \t\r\n](?:id|name)[ \t\r\n]*=[ \t\r\n]*["']
+XSD type definitions	<(?:\w+:)?(?:complexType|simpleType)\b[^>]*\bname[ \t\r\n]*=
+XSLT templates	<(?:\w+:)?template\b
+Spring beans	<(?:\w+:)?bean\b

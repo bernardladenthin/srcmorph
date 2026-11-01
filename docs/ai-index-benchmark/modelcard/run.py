@@ -22,7 +22,14 @@ Options: --profile <profile under profiles/> (default v3; it needs the five prom
          earlier prompt set is restored from the history into a directory of its own, see
          profiles/README.md),
          --corpus <directory with java/, sql/, other/> (default: the srcmorph Java snapshot plus
-         ../corpus; another corpus of the same layout is scored with score.py --facts),
+         ../corpus; another corpus of the same layout is scored with score.py --facts; a missing
+         kind stays empty),
+         --facts (every file rule names its counters: java-facts, sql-facts, shell-facts,
+         perl-facts, xml-facts; the card ran without them, so such a run is not comparable to it),
+         --oversize <fail|sample|mapReduce|deterministic> and --max-chunks <n> (the strategy for a
+         file larger than the model's window, on every file rule; the default fails such a file),
+         --chars-per-token <n> (replaces every model's estimate: a data file such as a SQL dump has
+         fewer characters per token than code, and a window filled at 4 is refused by the provider),
          --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
          --commit <git rev of the Java snapshot>, --seed <n> (replaces the local backend's seed,
          for repeat runs), --out, --meta, --work.
@@ -62,7 +69,15 @@ JAVA_FILES = [
     "provider/LlamaCppJniConfig.java",
     "provider/OpenAiCompatibleProviderSupport.java",
 ]
-EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh"]
+EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh", ".pl", ".pm", ".xml", ".xsd", ".xsl", ".xslt"]
+# A language gets a rule of its own when the profile has its prompt (file-body-<prompt>.md) or when
+# --facts asks for its counters (<name>-facts.tsv); otherwise the fallback rule summarizes it. A POM
+# matches pom and xml; its priority gives it the Maven counters, with the XML prompt.
+XML_EXTENSIONS = [".xml", ".xsd", ".xsl", ".xslt"]
+LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
+             ("perl", {"extensions": [".pl", ".pm"]}, "perl", 0),
+             ("pom", {"pathGlob": "**/*pom.xml"}, "xml", 10),
+             ("xml", {"extensions": XML_EXTENSIONS}, "xml", 0))
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 
 
@@ -73,7 +88,10 @@ def prepare_work(work, commit, corpus=None):
         shutil.rmtree(work)
     if corpus is not None:
         for kind in ("java", "sql", "other"):
-            shutil.copytree(Path(corpus) / kind, work / kind)
+            if (Path(corpus) / kind).is_dir():
+                shutil.copytree(Path(corpus) / kind, work / kind)
+            else:
+                (work / kind).mkdir(parents=True)
         return
     paths = [JAVA_ROOT + f for f in JAVA_FILES]
     archive = subprocess.run(["git", "-C", str(REPO), "archive", "--format=tar", commit] + paths,
@@ -88,7 +106,7 @@ def prepare_work(work, commit, corpus=None):
         shutil.copytree(CORPUS / kind, work / kind)
 
 
-def ai_definition(models, model, model_dir, seed=None):
+def ai_definition(models, model, model_dir, seed=None, chars_per_token=None):
     backend = models["backends"][model["backend"]]
     definition = {"key": model["key"]}
     definition.update(models["common"])
@@ -96,21 +114,44 @@ def ai_definition(models, model, model_dir, seed=None):
     definition.update(model["settings"])
     if seed is not None and "seed" in definition:
         definition["seed"] = seed
+    if chars_per_token is not None:
+        definition["charsPerToken"] = chars_per_token
     if model["backend"] == "local":
         definition["modelPath"] = str(Path(model_dir) / definition["modelPath"])
     return definition
 
 
-def phase_config(phase, work, out_dir, profile, definition):
+def file_rules(profile, key, facts=False, oversize=None, max_chunks=None):
+    """The GenerateFileIndex rules: java, sql, a rule per language that has a prompt or (with facts)
+    counters of its own, and the fallback. With oversize every rule takes that strategy."""
+    rules = [{"id": "java", "promptKey": "file-body-java", "condition": {"extensions": [".java"]}},
+             {"id": "sql", "promptKey": "file-body-sql", "condition": {"extensions": [".sql"]}}]
+    if facts:
+        rules[0]["factsKey"], rules[1]["factsKey"] = "java-facts", "sql-facts"
+    for name, condition, prompt, priority in LANGUAGES:
+        own_prompt = (Path(profile) / f"file-body-{prompt}.md").is_file()
+        if own_prompt or facts:
+            rule = {"id": name, "promptKey": f"file-body-{prompt}" if own_prompt else "file-body-fallback",
+                    "condition": dict(condition)}
+            if priority:
+                rule["priority"] = priority
+            if facts:
+                rule["factsKey"] = f"{name}-facts"
+            rules.append(rule)
+    rules.append({"id": "fallback", "promptKey": "file-body-fallback", "fallback": True})
+    for rule in rules:
+        rule["aiDefinitionKey"] = key
+        if oversize:
+            rule["onOversize"] = oversize
+            if max_chunks:
+                rule["maxChunks"] = max_chunks
+    return rules
+
+
+def phase_config(phase, work, out_dir, profile, definition, facts=False, oversize=None, max_chunks=None):
     key = definition["key"]
     if phase == "GenerateFileIndex":
-        rules = [
-            {"id": "java", "promptKey": "file-body-java", "aiDefinitionKey": key,
-             "condition": {"extensions": [".java"]}},
-            {"id": "sql", "promptKey": "file-body-sql", "aiDefinitionKey": key,
-             "condition": {"extensions": [".sql"]}},
-            {"id": "fallback", "promptKey": "file-body-fallback", "aiDefinitionKey": key, "fallback": True},
-        ]
+        rules = file_rules(profile, key, facts, oversize, max_chunks)
     else:
         prompt = "package-body" if phase == "AggregatePackages" else "project-body"
         rules = [{"promptKey": prompt, "aiDefinitionKey": key}]
@@ -158,7 +199,7 @@ def cut_off_files(log_path, work, out_dir):
 
 def run_model(args, models, profile, model):
     key = model["key"]
-    definition = ai_definition(models, model, args.model_dir, args.seed)
+    definition = ai_definition(models, model, args.model_dir, args.seed, args.chars_per_token)
     out_dir = Path(args.out) / key
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -177,11 +218,13 @@ def run_model(args, models, profile, model):
                            for k, v in definition.items() if k != "apiKeyEnv"},
             "javaCommit": None if args.corpus else args.commit,
             "corpus": Path(args.corpus).name if args.corpus else "srcmorph",
-            "profile": args.profile, "phases": {}}
+            "profile": args.profile, "facts": args.facts, "oversize": args.oversize or None,
+            "phases": {}}
     usage_before = openrouter_usage() if model["backend"] == "openrouter" else None
     for phase in PHASES:
         config_path = log_dir / f"config_{phase}.json"
-        config_path.write_text(json.dumps(phase_config(phase, Path(args.work), out_dir, profile, definition),
+        config_path.write_text(json.dumps(phase_config(phase, Path(args.work), out_dir, profile, definition,
+                                                       args.facts, args.oversize or None, args.max_chunks),
                                           indent=1), encoding="utf-8")
         start = time.time()
         with open(log_dir / f"{phase}.log", "w", encoding="utf-8") as log:
@@ -216,6 +259,10 @@ def main():
     parser.add_argument("--profile", default="v3")
     parser.add_argument("--profile-dir", default=str(PROFILES))
     parser.add_argument("--corpus", default="")
+    parser.add_argument("--facts", action="store_true")
+    parser.add_argument("--oversize", default="", choices=["", "fail", "sample", "mapReduce", "deterministic"])
+    parser.add_argument("--max-chunks", type=int, default=None)
+    parser.add_argument("--chars-per-token", type=int, default=None)
     args = parser.parse_args()
 
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))

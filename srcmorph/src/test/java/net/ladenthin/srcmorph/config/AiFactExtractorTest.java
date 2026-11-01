@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 public class AiFactExtractorTest {
@@ -22,6 +24,19 @@ public class AiFactExtractorTest {
         c.setPattern(pattern);
         return c;
     }
+
+    private static AiFactCounter ignore(final String label, final String pattern) {
+        final AiFactCounter c = counter(label, pattern);
+        c.setIgnore(true);
+        return c;
+    }
+
+    /** A Perl module with a sub inside its POD block, which documents and does not define it. */
+    private static final String PERL_WITH_POD = "sub one {}\n=head1 NAME\n\nsub not_a_sub\n\n=cut\nsub two {}\n";
+
+    private static final String POD = "(?ms)^=[a-z]\\w*.*?^=cut\\b[^\\n]*";
+
+    private static final String SUBS = "(?m)^sub\\s+\\w+";
 
     @Test
     public void factsBlock_nullCounters_returnsEmpty() {
@@ -87,6 +102,80 @@ public class AiFactExtractorTest {
         assertThat(block, startsWith(AiFactExtractor.FACTS_HEADER));
         assertThat(block, containsString("rows: 1"));
     }
+
+    // <editor-fold defaultstate="collapsed" desc="ignore counters">
+    @Test
+    public void counts_withoutIgnoreCounters_countsTheWholeSource() {
+        assertThat(
+                AiFactExtractor.counts(Collections.singletonList(counter("subs", SUBS)), PERL_WITH_POD)
+                        .get("subs"),
+                is(3));
+    }
+
+    @Test
+    public void counts_ignoreCounter_blanksItsMatchesBeforeTheOthersCount() {
+        final Map<String, Integer> counts =
+                AiFactExtractor.counts(Arrays.asList(counter("subs", SUBS), ignore("POD", POD)), PERL_WITH_POD);
+        assertThat(counts.get("subs"), is(2));
+    }
+
+    @Test
+    public void counts_ignoreCounter_isNotReported() {
+        final Map<String, Integer> expected = new LinkedHashMap<>();
+        expected.put("subs", 2);
+        assertThat(
+                AiFactExtractor.counts(Arrays.asList(ignore("POD", POD), counter("subs", SUBS)), PERL_WITH_POD),
+                is(expected));
+    }
+
+    @Test
+    public void counts_ignoredRegion_keepsItsLineBreaks() {
+        // Five lines before and after: line-anchored counters and line counts see the same lines.
+        final String source = "a\r\n/* x\r\ny\r\n*/\r\nb\r\n";
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(
+                        ignore("comments", "(?s)/\\*.*?\\*/"),
+                        counter("line feeds", "\n"),
+                        counter("carriage returns", "\r"),
+                        counter("b at a line start", "(?m)^b")),
+                source);
+        assertThat(counts.get("line feeds"), is(5));
+        assertThat(counts.get("carriage returns"), is(5));
+        assertThat(counts.get("b at a line start"), is(1));
+    }
+
+    @Test
+    public void counts_twoIgnoreCounters_bothBlank() {
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(ignore("a", "x1"), ignore("b", "x2"), counter("x", "x\\d")), "x1 x2 x3");
+        assertThat(counts.get("x"), is(1));
+    }
+
+    @Test
+    public void counts_ignoreCounterWithoutPattern_isSkipped() {
+        assertThat(
+                AiFactExtractor.counts(Arrays.asList(ignore("a", null), counter("x", "x")), "xx")
+                        .get("x"),
+                is(2));
+    }
+
+    @Test
+    public void counts_nullCounters_isEmpty() {
+        assertThat(AiFactExtractor.counts(null, "x").isEmpty(), is(true));
+    }
+
+    @Test
+    public void factsBlock_onlyIgnoreCounters_returnsEmpty() {
+        assertThat(AiFactExtractor.factsBlock(Collections.singletonList(ignore("POD", POD)), PERL_WITH_POD), is(""));
+    }
+
+    @Test
+    public void factsBlock_ignoreCounter_leavesItsLabelOut() {
+        final String block =
+                AiFactExtractor.factsBlock(Arrays.asList(ignore("POD", POD), counter("subs", SUBS)), PERL_WITH_POD);
+        assertThat(block, is(AiFactExtractor.FACTS_HEADER + "subs: 2" + AiFactExtractor.FACTS_SUFFIX));
+    }
+    // </editor-fold>
 
     @Test
     public void validate_null_isAllowed() {

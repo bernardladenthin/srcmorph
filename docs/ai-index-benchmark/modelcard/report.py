@@ -34,6 +34,8 @@ def main():
     fmt_rows = ["| Model | No lead | `###` headings | Code fences | Reasoning leaks | Empty |",
                 "|---|---|---|---|---|---|"]
     for model in models:
+        if model.get("corpus"):
+            continue  # measured on its own corpus (large.py), not on the card's
         key = model["key"]
         run, kinds_of = runs.get(key), summary.get(key)
         name = model["name"] + (" ¹" if model.get("origin") else "")

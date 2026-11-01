@@ -8,6 +8,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -20,16 +21,21 @@ import org.junit.jupiter.api.Test;
  */
 public class SqlFactPatternsTest {
 
-    private static final Map<String, String> PATTERNS = ProfileFactPatterns.load("sql-facts");
+    private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("sql-facts");
 
     private static int count(final String label, final String sql) {
-        return ProfileFactPatterns.count(ProfileFactPatterns.pattern(PATTERNS, label), sql);
+        final Map<String, Integer> counts = ProfileFactPatterns.counts(COUNTERS, sql);
+        final Integer count = counts.get(label);
+        if (count == null) {
+            throw new IllegalStateException("no counter '" + label + "' in " + counts.keySet());
+        }
+        return count;
     }
 
     @Test
     public void profile_hasTheseCountersInThisOrder() {
         assertThat(
-                new ArrayList<>(PATTERNS.keySet()),
+                new ArrayList<>(ProfileFactPatterns.counts(COUNTERS, "").keySet()),
                 is(Arrays.asList(
                         "INSERT statements",
                         "VALUES rows (approx)",
@@ -39,7 +45,11 @@ public class SqlFactPatternsTest {
                         "functions/procedures",
                         "triggers",
                         "types",
-                        "ALTER TABLE")));
+                        "ALTER TABLE",
+                        "sequences",
+                        "extensions",
+                        "schemas and databases",
+                        "packages and package bodies")));
     }
 
     // <editor-fold defaultstate="collapsed" desc="INSERT statements">
@@ -64,6 +74,27 @@ public class SqlFactPatternsTest {
                                 + "WHEN NOT MATCHED THEN INSERT (id) VALUES (s.id);\n"
                                 + "SELECT 'INSERT INTO x' AS text;\n"),
                 is(0));
+    }
+
+    @Test
+    public void insertStatements_mySqlIgnoreAndReplaceForms_count() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT IGNORE INTO t VALUES (1);\nREPLACE INTO t VALUES (1);\n"
+                                + "INSERT LOW_PRIORITY INTO t VALUES (1);\n"),
+                is(3));
+    }
+
+    @Test
+    public void insertStatements_insideABlockComment_doNotCount() {
+        assertThat(
+                count("INSERT statements", "/*\nINSERT INTO old VALUES (1);\n*/\nINSERT INTO t VALUES (1);\n"), is(1));
+    }
+
+    @Test
+    public void insertStatements_afterAnInlineBlockComment_count() {
+        assertThat(count("INSERT statements", "/* seed */ INSERT INTO t VALUES (1);\n"), is(1));
     }
     // </editor-fold>
 
@@ -175,6 +206,12 @@ public class SqlFactPatternsTest {
     }
 
     @Test
+    public void views_oracleForceEditionable_counts() {
+        assertThat(
+                count("views", "CREATE OR REPLACE FORCE EDITIONABLE VIEW \"S\".\"V\" AS SELECT 1 FROM dual;\n"), is(1));
+    }
+
+    @Test
     public void views_refreshAndDrop_doNotCount() {
         assertThat(count("views", "REFRESH MATERIALIZED VIEW d;\nDROP VIEW a;\n"), is(0));
     }
@@ -204,6 +241,16 @@ public class SqlFactPatternsTest {
     }
 
     @Test
+    public void indexes_fulltextSpatialAndBitmap_count() {
+        assertThat(
+                count(
+                        "indexes",
+                        "CREATE FULLTEXT INDEX a ON t (x);\nCREATE SPATIAL INDEX b ON t (g);\n"
+                                + "CREATE BITMAP INDEX c ON t (y);\n"),
+                is(3));
+    }
+
+    @Test
     public void indexes_inlineKeyOfAMySqlTable_isNotAStatement() {
         assertThat(
                 count("indexes", "CREATE TABLE t (\n  id INT,\n  KEY idx_t_id (id),\n  INDEX idx_t_x (id)\n);\n"),
@@ -224,6 +271,16 @@ public class SqlFactPatternsTest {
                                 + "CREATE PROC dbo.e AS SELECT 1;\n"
                                 + "CREATE OR ALTER PROCEDURE dbo.f AS SELECT 1;\n"),
                 is(6));
+    }
+
+    @Test
+    public void functionsProcedures_oracleEditionableForms_count() {
+        assertThat(
+                count(
+                        "functions/procedures",
+                        "CREATE OR REPLACE EDITIONABLE PROCEDURE p AS BEGIN NULL; END;\n/\n"
+                                + "CREATE OR REPLACE NONEDITIONABLE FUNCTION f RETURN NUMBER AS BEGIN RETURN 1; END;\n/\n"),
+                is(2));
     }
 
     @Test
@@ -286,6 +343,35 @@ public class SqlFactPatternsTest {
     @Test
     public void alterTable_alterOfOtherObjects_doesNotCount() {
         assertThat(count("ALTER TABLE", "ALTER INDEX a RENAME TO b;\nALTER VIEW v RENAME TO w;\n"), is(0));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="sequences, extensions, schemas and packages">
+    @Test
+    public void sequences_plainAndTemporary_countAndNextvalDoesNot() {
+        assertThat(
+                count("sequences", "CREATE SEQUENCE s START 1;\nCREATE TEMP SEQUENCE t;\nSELECT nextval('s');\n"),
+                is(2));
+    }
+
+    @Test
+    public void extensions_createExtensionCountsAndDropDoesNot() {
+        assertThat(count("extensions", "CREATE EXTENSION IF NOT EXISTS pgcrypto;\nDROP EXTENSION hstore;\n"), is(1));
+    }
+
+    @Test
+    public void schemasAndDatabases_both_count() {
+        assertThat(count("schemas and databases", "CREATE SCHEMA app;\nCREATE DATABASE x;\n"), is(2));
+    }
+
+    @Test
+    public void packagesAndPackageBodies_oracleSpecAndBody_count() {
+        assertThat(
+                count(
+                        "packages and package bodies",
+                        "CREATE OR REPLACE PACKAGE emp_pkg AS\nEND;\n/\n"
+                                + "CREATE OR REPLACE EDITIONABLE PACKAGE BODY emp_pkg AS\nEND;\n/\n"),
+                is(2));
     }
     // </editor-fold>
 }

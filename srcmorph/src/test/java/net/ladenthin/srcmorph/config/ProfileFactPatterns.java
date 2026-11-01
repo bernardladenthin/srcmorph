@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,6 +62,51 @@ final class ProfileFactPatterns {
             throw new IllegalStateException("no counter '" + label + "' in " + patterns.keySet());
         }
         return pattern;
+    }
+
+    /**
+     * Reads one facts file of the profile as the production loader does, ignore counters included.
+     *
+     * @param key the facts key, the file name without {@code .tsv}
+     * @return the counters in file order
+     */
+    static List<AiFactCounter> counters(final String key) {
+        final Path file = PROFILE_DIRECTORY.resolve(key + ".tsv");
+        try {
+            return AiFactDefinitionLoader.parse(
+                    file.toString(), new String(Files.readAllBytes(file), StandardCharsets.UTF_8));
+        } catch (final IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Counts a whole facts file over a source, as the facts line before a summary reports it: the ignore
+     * counters blank their regions first.
+     *
+     * @param counters the counters of one facts file
+     * @param source   the text
+     * @return the count per reported label
+     */
+    static Map<String, Integer> counts(final List<AiFactCounter> counters, final String source) {
+        return AiFactExtractor.counts(counters, source);
+    }
+
+    /**
+     * Reads a file of the benchmark's language corpus ({@code docs/ai-index-benchmark/corpus-languages}).
+     *
+     * @param relative the path below the corpus directory
+     * @return its text
+     */
+    static String languageCorpusFile(final String relative) {
+        try {
+            return new String(
+                    Files.readAllBytes(Paths.get("../docs/ai-index-benchmark/corpus-languages")
+                            .resolve(relative)),
+                    StandardCharsets.UTF_8);
+        } catch (final IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /**

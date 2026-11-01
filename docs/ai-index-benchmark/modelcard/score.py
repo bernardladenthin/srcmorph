@@ -13,6 +13,8 @@ For every model under <out> (one directory per model key) and every source file 
   backticked identifiers (a proxy for hallucinated names, not a full fact check);
 - numbers = the exact counts of facts.json the body states (the seed-data row counts);
 - format: missing lead line, '###' or higher headings, code fences, leaked reasoning markers.
+The exact facts line a --facts run puts in front of a body is srcmorph's, not the model's: every
+measure is taken on the body without it.
 
 Writes <scores>/files.tsv (one row per model and file) and <scores>/summary.json (per model and kind),
 which MODEL-CARD.md is built from.
@@ -28,6 +30,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 KINDS = {".java": "java", ".sql": "sql"}
 IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+FACTS_HEADER = "**Facts (exact, whole file):** "
 BACKTICK = re.compile(r"`([^`\n]+)`")
 JAVA_METHOD = re.compile(
     r"^\s*(?:public|protected)\s+(?:static\s+|final\s+|abstract\s+|synchronized\s+|default\s+|native\s+)*"
@@ -61,6 +64,8 @@ def expected_ids(rel, source, facts):
 
 
 def score_file(source, body, ids, numbers, case_insensitive=False):
+    if body.lstrip().startswith(FACTS_HEADER):
+        body = body.lstrip().split("\n", 1)[1] if "\n" in body.lstrip() else ""
     words = set(IDENT.findall(body))
     found = [i for i in ids if (i in words if IDENT.fullmatch(i) else i in body)]
     ticked = [t for span in BACKTICK.findall(body) for t in IDENT.findall(span)

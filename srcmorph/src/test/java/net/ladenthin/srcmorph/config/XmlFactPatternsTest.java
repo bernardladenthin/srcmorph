@@ -1,0 +1,191 @@
+// SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+//
+// SPDX-License-Identifier: Apache-2.0
+package net.ladenthin.srcmorph.config;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Validates the XML fact counters of the current profile ({@code profiles/v3/xml-facts.tsv} for any XML,
+ * XSD and XSLT file, {@code profiles/v3/pom-facts.tsv} for Maven POMs), counted the way the facts line
+ * counts them: the {@code [ignore]} counters blank comments and CDATA sections first. The last tests pin
+ * the counts of the benchmark's language corpus.
+ */
+public class XmlFactPatternsTest {
+
+    private static final List<AiFactCounter> XML = ProfileFactPatterns.counters("xml-facts");
+
+    private static final List<AiFactCounter> POM = ProfileFactPatterns.counters("pom-facts");
+
+    private static int count(final List<AiFactCounter> counters, final String label, final String source) {
+        final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
+        final Integer count = counts.get(label);
+        if (count == null) {
+            throw new IllegalStateException("no counter '" + label + "' in " + counts.keySet());
+        }
+        return count;
+    }
+
+    @Test
+    public void xmlProfile_hasTheseCountersInThisOrder() {
+        assertThat(
+                new ArrayList<>(ProfileFactPatterns.counts(XML, "").keySet()),
+                is(Arrays.asList(
+                        "elements",
+                        "namespace declarations",
+                        "id and name attributes",
+                        "XSD type definitions",
+                        "XSLT templates",
+                        "Spring beans")));
+    }
+
+    @Test
+    public void pomProfile_hasTheseCountersInThisOrder() {
+        assertThat(
+                new ArrayList<>(ProfileFactPatterns.counts(POM, "").keySet()),
+                is(Arrays.asList(
+                        "dependencies",
+                        "managed dependency sections",
+                        "plugins",
+                        "modules",
+                        "profiles",
+                        "test-scoped dependencies")));
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="xml-facts">
+    @Test
+    public void elements_startTagsCountAndTheDeclarationACommentAndCdataDoNot() {
+        assertThat(
+                count(XML, "elements", "<?xml version=\"1.0\"?>\n<!-- <fake/> -->\n<a><b/><![CDATA[<c>]]></a>\n"),
+                is(2));
+    }
+
+    @Test
+    public void namespaceDeclarations_defaultAndPrefixed_count() {
+        assertThat(
+                count(
+                        XML,
+                        "namespace declarations",
+                        "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n"
+                                + "    xmlns:xsi = 'http://www.w3.org/2001/XMLSchema-instance'>\n"),
+                is(2));
+    }
+
+    @Test
+    public void idAndNameAttributes_onlyThoseExactAttributeNames() {
+        assertThat(
+                count(XML, "id and name attributes", "<bean id=\"a\" name=\"b\"/>\n<x pid=\"c\" names=\"d\"/>\n"),
+                is(2));
+    }
+
+    @Test
+    public void xsdTypeDefinitions_namedTypesCountAnonymousOnesDoNot() {
+        assertThat(
+                count(
+                        XML,
+                        "XSD type definitions",
+                        "<xs:complexType name=\"A\">\n</xs:complexType>\n<xs:simpleType name=\"B\"/>\n"
+                                + "<xs:element name=\"c\"><xs:complexType>\n</xs:complexType></xs:element>\n"),
+                is(2));
+    }
+
+    @Test
+    public void xsltTemplates_matchAndNamedCountCallsAndApplyDoNot() {
+        assertThat(
+                count(
+                        XML,
+                        "XSLT templates",
+                        "<xsl:template match=\"/\">\n<xsl:call-template name=\"x\"/>\n"
+                                + "<xsl:apply-templates/>\n</xsl:template>\n<xsl:template name=\"x\"/>\n"),
+                is(2));
+    }
+
+    @Test
+    public void springBeans_beanElementsCountTheBeansRootDoesNot() {
+        assertThat(
+                count(XML, "Spring beans", "<beans>\n<bean id=\"a\"/>\n<!-- <bean id=\"old\"/> -->\n</beans>\n"),
+                is(1));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="pom-facts">
+    @Test
+    public void dependencies_everyDependencyElementCountsTheListAndManagementTagsDoNot() {
+        assertThat(
+                count(
+                        POM,
+                        "dependencies",
+                        "<dependencies><dependency/>\n<dependency>\n</dependency></dependencies>\n"
+                                + "<dependencyManagement><dependencies><dependency/></dependencies></dependencyManagement>\n"
+                                + "<!-- <dependency/> -->\n"),
+                is(3));
+    }
+
+    @Test
+    public void managedDependencySections_counted() {
+        assertThat(
+                count(POM, "managed dependency sections", "<dependencyManagement>\n</dependencyManagement>\n"), is(1));
+    }
+
+    @Test
+    public void pluginsModulesAndProfiles_elementsCountTheirListsDoNot() {
+        final String pom = "<plugins><plugin/><plugin>\n</plugin></plugins>\n<modules><module>a</module></modules>\n"
+                + "<profiles><profile><id>x</id></profile></profiles>\n";
+        assertThat(count(POM, "plugins", pom), is(2));
+        assertThat(count(POM, "modules", pom), is(1));
+        assertThat(count(POM, "profiles", pom), is(1));
+    }
+
+    @Test
+    public void testScopedDependencies_scopeTestWithOrWithoutBlanks() {
+        assertThat(
+                count(
+                        POM,
+                        "test-scoped dependencies",
+                        "<scope>test</scope>\n<scope> test </scope>\n<scope>runtime</scope>\n"),
+                is(2));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="the benchmark's language corpus">
+    @Test
+    public void corpus_schedulerContextXml() {
+        final String source = ProfileFactPatterns.languageCorpusFile("other/xml/scheduler-context.xml");
+        assertThat(count(XML, "elements", source), is(19));
+        assertThat(count(XML, "namespace declarations", source), is(4));
+        assertThat(count(XML, "id and name attributes", source), is(11));
+        assertThat(count(XML, "Spring beans", source), is(4));
+    }
+
+    @Test
+    public void corpus_shipmentXsd() {
+        final String source = ProfileFactPatterns.languageCorpusFile("other/xml/shipment.xsd");
+        assertThat(count(XML, "XSD type definitions", source), is(5));
+        assertThat(count(XML, "namespace declarations", source), is(2));
+    }
+
+    @Test
+    public void corpus_statementToHtmlXsl() {
+        final String source = ProfileFactPatterns.languageCorpusFile("other/xml/statement-to-html.xsl");
+        assertThat(count(XML, "XSLT templates", source), is(4));
+    }
+
+    @Test
+    public void corpus_invoiceServicePom() {
+        final String source = ProfileFactPatterns.languageCorpusFile("other/xml/invoice-service-pom.xml");
+        assertThat(count(POM, "dependencies", source), is(6));
+        assertThat(count(POM, "managed dependency sections", source), is(0));
+        assertThat(count(POM, "plugins", source), is(2));
+        assertThat(count(POM, "modules", source), is(0));
+        assertThat(count(POM, "profiles", source), is(1));
+        assertThat(count(POM, "test-scoped dependencies", source), is(2));
+    }
+    // </editor-fold>
+}

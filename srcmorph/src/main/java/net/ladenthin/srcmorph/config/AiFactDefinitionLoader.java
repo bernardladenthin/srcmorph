@@ -40,6 +40,9 @@ public final class AiFactDefinitionLoader {
     /** Comment marker at the start of a line of a facts file. */
     private static final String COMMENT = "#";
 
+    /** Label prefix of an ignore counter: its matches are blanked before the other counters count. */
+    static final String IGNORE_PREFIX = "[ignore]";
+
     /** Separator between a counter's label and its pattern. */
     private static final char SEPARATOR = '\t';
 
@@ -120,9 +123,10 @@ public final class AiFactDefinitionLoader {
      *
      * @param where the file, for the messages
      * @param text  the file's text
-     * @return one counter per non-comment line, in file order
+     * @return one counter per non-comment line, in file order; a label starting with
+     *     {@value #IGNORE_PREFIX} makes an {@link AiFactCounter#isIgnore() ignore} counter of the rest of it
      * @throws IllegalArgumentException if a line has no tab, an empty label or pattern, or a pattern
-     *                                  that does not compile
+     *                                  that does not compile, or if every counter is an ignore counter
      */
     static List<AiFactCounter> parse(final String where, final String text) {
         final List<AiFactCounter> counters = new ArrayList<>();
@@ -137,7 +141,10 @@ public final class AiFactDefinitionLoader {
             if (tab < 0) {
                 throw new IllegalArgumentException(lineLabel + ": expected label<TAB>pattern, found no tab");
             }
-            final String label = line.substring(0, tab).trim();
+            final String column = line.substring(0, tab).trim();
+            final boolean ignore = column.startsWith(IGNORE_PREFIX);
+            final String label =
+                    ignore ? column.substring(IGNORE_PREFIX.length()).trim() : column;
             final String pattern = line.substring(tab + 1);
             if (label.isEmpty() || pattern.trim().isEmpty()) {
                 throw new IllegalArgumentException(lineLabel + ": the label and the pattern must not be empty");
@@ -151,10 +158,14 @@ public final class AiFactDefinitionLoader {
             final AiFactCounter counter = new AiFactCounter();
             counter.setLabel(label);
             counter.setPattern(pattern);
+            counter.setIgnore(ignore);
             counters.add(counter);
         }
         if (counters.isEmpty()) {
             throw new IllegalArgumentException(where + ": no counter, only comments");
+        }
+        if (counters.stream().allMatch(AiFactCounter::isIgnore)) {
+            throw new IllegalArgumentException(where + ": no counter, only ignore patterns");
         }
         return counters;
     }

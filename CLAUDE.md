@@ -121,8 +121,10 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   The measured profile (prompts + fact counters) lives once in the repo-root `profiles/v3/`
   (`profiles/README.md`); the plugin's self-test profile, the model-card benchmark, the examples and
   the plugin-it fixture all name only keys and read it from there, so do not paste a prompt text or
-  a regex into a configuration again. `SqlFactPatternsTest` / `JavaStructureFactPatternsTest` read
-  the shipped `.tsv` files, never copies.
+  a regex into a configuration again. `SqlFactPatternsTest`, `JavaStructureFactPatternsTest`,
+  `ShellFactPatternsTest`, `PerlFactPatternsTest` and `XmlFactPatternsTest` read the shipped `.tsv`
+  files, never copies, and count through `AiFactExtractor.counts`, so the `[ignore]` lines (regions
+  blanked before counting: POD, heredocs, comments) apply as in production.
 - **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
   `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,
@@ -578,7 +580,7 @@ See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-te
 See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-mutation-testing.md).
 Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `mvn test-compile org.pitest:pitest-maven:mutationCoverage`; or scoped to one module with
-`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (1107 mutations),
+`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (1128 mutations),
 `srcmorph-maven-plugin` (62, the five mojo classes) and `srcmorph-cli` (22). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
 `smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts

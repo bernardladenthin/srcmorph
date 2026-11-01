@@ -17,6 +17,11 @@ import lombok.ToString;
  * or {@code (?m)^\s*def\b} functions in Python. Multi-line matching is opt-in via the inline flag
  * {@code (?m)} in the pattern; no flags are applied implicitly.</p>
  *
+ * <p>A counter with {@link #ignore} set is not reported: its matches are blanked out of the source
+ * (every character except the line breaks) before the other counters count, so a region such as
+ * Perl POD, a shell heredoc or an XML comment does not count as code while the line structure, and with
+ * it every {@code ^} anchor, stays as it was.</p>
+ *
  * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters because the Maven
  * plugin framework populates it via reflection from the {@code <facts>} configuration list.</p>
  *
@@ -40,6 +45,9 @@ public class AiFactCounter {
 
     /** Java regular expression whose non-overlapping match count over the whole source is reported. */
     private String pattern;
+
+    /** Whether the matches are blanked out before counting instead of being counted and reported. */
+    private boolean ignore;
 
     /**
      * Returns the human-readable label.
@@ -75,5 +83,23 @@ public class AiFactCounter {
      */
     public void setPattern(final String pattern) {
         this.pattern = pattern;
+    }
+
+    /**
+     * Returns whether this counter marks regions to leave out instead of counting.
+     *
+     * @return {@code true} for an ignore counter
+     */
+    public boolean isIgnore() {
+        return ignore;
+    }
+
+    /**
+     * Sets whether this counter marks regions to leave out instead of counting.
+     *
+     * @param ignore {@code true} for an ignore counter
+     */
+    public void setIgnore(final boolean ignore) {
+        this.ignore = ignore;
     }
 }
