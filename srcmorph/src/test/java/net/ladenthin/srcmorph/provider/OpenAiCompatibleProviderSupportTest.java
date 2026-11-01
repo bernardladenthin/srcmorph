@@ -618,7 +618,7 @@ public class OpenAiCompatibleProviderSupportTest {
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS - 1_000L));
         // a number of seconds of any length is a long wait, not the short backoff
         assertThat(
-                OpenAiCompatibleProviderSupport.retryDelayMillis("12345678901234567890", 1, 0.0d),
+                OpenAiCompatibleProviderSupport.retryDelayMillis("99999999999999999999", 1, 0.0d),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
     }
 
