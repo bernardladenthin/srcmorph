@@ -89,8 +89,8 @@ Framework-free: **no dependency on `org.apache.maven..`** anywhere (enforced by
   a Jackson `ObjectMapper`/`YAMLMapper`, or plain Java code. The root object is
   **`SrcMorphConfiguration`**: one bean holding everything a run needs (`baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, the size band, `force`, `planOnly`,
-  `generationProvider`, `profileDirectory`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`, the
-  `llama*` fallback params, `pluginVersion`/`aiVersion`/`projectName`). **Field names intentionally
+  `generationProvider`, `profileDirectory`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`,
+  `pluginVersion`/`aiVersion`/`projectName`). **Field names intentionally
   mirror the Maven plugin's current `@Parameter` names** so a JSON/YAML key reads identically to the
   matching `<configuration>` XML element — see `SrcMorphConfiguration`'s own Javadoc.
 - **`engine/`** — one class per phase, each constructed from a `SrcMorphConfiguration` and owning its
@@ -163,7 +163,7 @@ is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later 
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
 100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 62 entries (nested classes counted) across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
-PIT-gated now**: `srcmorph-cli` (22/22) and `srcmorph-maven-plugin` (62/62) carry their own
+PIT-gated now**: `srcmorph-cli` (21/21) and `srcmorph-maven-plugin` (51/51) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
 naming the CPU natives jar of every desktop platform — since llama 6.0.0 `net.ladenthin:llama` is the
 classes only); the `gpu-cuda`/`gpu-vulkan` profiles and `-Dllama.classifier=<natives jar>` (profile
@@ -190,9 +190,10 @@ CLI driven by a single JSON or YAML configuration file:
   `@Parameter` fields — a JSON/YAML key under `srcMorph` reads identically to the matching plugin XML
   element. `CCommand` is `Plan | GenerateFileIndex | AggregatePackages | AggregateProject | All |
   Calibrate | ListModels`; `ListModels` reads the top-level `modelFilter` too, and the package and
-  project phases take the top-level `packageFieldGenerations` / `projectFieldGenerations` when set
+  project phases take only the top-level `packageFieldGenerations` / `projectFieldGenerations`
   (a copy of `srcMorph` with those rules, as the plugin's aggregate executions override
-  `<fieldGenerations>`), otherwise `srcMorph.fieldGenerations`. `examples/build-your-own-jar/srcmorph.yaml`
+  `<fieldGenerations>`): the package phase exactly one rule, the project phase none or one
+  (`EngineSupport.requiredPhaseRule` / `optionalPhaseRule`). `examples/build-your-own-jar/srcmorph.yaml`
   is the plugin's `srcmorph-selftest` profile as one CLI configuration (gpt-oss-20b + the two
   Granite presets only, like the profile); `BuildYourOwnJarSelfTestParityTest` reads both and fails
   when they drift. The default is `Plan` (safe: no model load, nothing written).
@@ -229,7 +230,7 @@ CLI driven by a single JSON or YAML configuration file:
 `net.ladenthin:llamacpp-ai-index-maven-plugin`), package `net.ladenthin.maven.srcmorph.mojo` (was
 `net.ladenthin.maven.llamacpp.aiindex.mojo`), goal prefix `srcmorph` (was `ai-index`), every
 `@Parameter` property now spelled `srcmorph.*` (e.g. `srcmorph.skip`, `srcmorph.file.skip`,
-`srcmorph.planOnly`, `srcmorph.generationProvider`, `srcmorph.llama.modelPath` — was `aiIndex.*`).
+`srcmorph.planOnly`, `srcmorph.generationProvider` — was `aiIndex.*`).
 The old coordinates were kept alive on Maven Central via a one-time relocation-stub publish (see
 "Project Overview" above and its own paragraph below) — never describe the plugin using the old
 coordinates/package/properties in new documentation or code. The plugin's *contents* stay thin: it
@@ -251,7 +252,7 @@ themselves.
   when asked. See `MojoPhaseSkipTest`.
 - **Two property namespaces — do NOT confuse them (this has tripped audits).** The **published mojo
   `@Parameter`s** are the `srcmorph.*` set (`srcmorph.skip`, `srcmorph.force`, `srcmorph.planOnly`,
-  `srcmorph.generationProvider`, `srcmorph.llama.*`, …). The `ai.*` names in the plugin `pom.xml` +
+  `srcmorph.generationProvider`, `srcmorph.modelDirectory`, …). The `ai.*` names in the plugin `pom.xml` +
   README (`ai.model`, `ai.gpuLayers`, `ai.mainGpu`, `ai.devices`, `ai.index.output.directory`) are
   **repo-local Maven build properties** wired into this module's own gpt-oss self-test/benchmark
   executions (`<gpuLayers>${ai.gpuLayers}</gpuLayers>`, `<aiDefinitionKey>${ai.model}</aiDefinitionKey>`)
@@ -581,7 +582,7 @@ See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-
 Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `mvn test-compile org.pitest:pitest-maven:mutationCoverage`; or scoped to one module with
 `-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (1128 mutations),
-`srcmorph-maven-plugin` (62, the five mojo classes) and `srcmorph-cli` (22). The CLI's
+`srcmorph-maven-plugin` (51, the five mojo classes) and `srcmorph-cli` (21). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
 `smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts
 `Main#run end.` in its output, which is an end-to-end check a unit mutant cannot reach.

@@ -3,13 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.maven.srcmorph.mojo;
 
-import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.CalibrateEngine;
 import net.ladenthin.srcmorph.engine.CalibrationReport;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Maven goal {@code srcmorph:calibrate}: a preflight + timing pass that sits between {@code planOnly} (no
@@ -33,24 +31,6 @@ public class CalibrateMojo extends AbstractAiIndexMojo {
     /** Creates a new {@link CalibrateMojo}. */
     public CalibrateMojo() {
         // no-op
-    }
-
-    /** llama.cpp context window size (unused by calibrate, which uses each model's own config). */
-    @Parameter(property = "srcmorph.llama.contextSize", defaultValue = "2048")
-    private int llamaContextSize;
-
-    /** CPU threads (unused by calibrate, which uses each model's own config). */
-    @Parameter(property = "srcmorph.llama.threads")
-    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
-
-    @Override
-    protected int getLlamaContextSize() {
-        return llamaContextSize;
-    }
-
-    @Override
-    protected int getLlamaThreads() {
-        return llamaThreads;
     }
 
     @Override

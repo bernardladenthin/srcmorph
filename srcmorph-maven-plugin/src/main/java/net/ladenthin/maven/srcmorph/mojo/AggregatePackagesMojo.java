@@ -46,24 +46,6 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
     @Parameter(property = "srcmorph.aiVersion", defaultValue = "0.0.0")
     private String aiVersion;
 
-    /** llama.cpp context window size; smaller default suits the fast aggregate pass. */
-    @Parameter(property = "srcmorph.llama.contextSize", defaultValue = "2048")
-    private int llamaContextSize;
-
-    /** CPU threads for llama.cpp inference during package aggregation. */
-    @Parameter(property = "srcmorph.llama.threads")
-    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
-
-    @Override
-    protected int getLlamaContextSize() {
-        return llamaContextSize;
-    }
-
-    @Override
-    protected int getLlamaThreads() {
-        return llamaThreads;
-    }
-
     @Override
     protected boolean isPhaseSkipped() {
         return skipPackage;

@@ -47,20 +47,18 @@ public class CConfiguration {
     public String modelFilter = "";
 
     /**
-     * The routing rules of the package phase ({@link CCommand#AggregatePackages}, and the package
-     * step of {@link CCommand#All}), as the Maven plugin's {@code aggregate-packages} execution has
-     * its own {@code <fieldGenerations>}: typically one rule with the package prompt. Unset (the
-     * default), the phase uses {@code srcMorph.fieldGenerations}, whose first rule then picks the
-     * prompt and the model.
+     * The rule of the package phase ({@link CCommand#AggregatePackages}, and the package step of
+     * {@link CCommand#All}), as the Maven plugin's {@code aggregate-packages} execution has its own
+     * {@code <fieldGenerations>}: exactly one rule, with the package prompt and its model. The phase
+     * fails without it; the file rules of {@code srcMorph.fieldGenerations} never reach it.
      */
     public @Nullable List<AiFieldGenerationConfig> packageFieldGenerations;
 
     /**
-     * The routing rules of the project phase ({@link CCommand#AggregateProject}, and the project step
-     * of {@link CCommand#All}), as the Maven plugin's {@code aggregate-project} execution has its own
-     * {@code <fieldGenerations>}: one rule with the project-overview prompt. Unset (the default), the
-     * phase uses {@code srcMorph.fieldGenerations}, whose first rule then picks the prompt and the
-     * model.
+     * The rule of the project phase ({@link CCommand#AggregateProject}, and the project step of
+     * {@link CCommand#All}), as the Maven plugin's {@code aggregate-project} execution has its own
+     * {@code <fieldGenerations>}: at most one rule, with the project-overview prompt and its model.
+     * Unset (the default), the project index is written without an overview.
      */
     public @Nullable List<AiFieldGenerationConfig> projectFieldGenerations;
 }

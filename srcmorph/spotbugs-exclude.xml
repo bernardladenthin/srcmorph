@@ -379,10 +379,6 @@ SPDX-License-Identifier: Apache-2.0
           - CalibrationReport's constructor parameter is typed List (not Collection) because callers
             always have an ordered List of measurements and the class explicitly preserves that order
             (OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER).
-          - EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport)'s fallback branch
-            throws NullPointerException("llamaModelPath") with a static message when
-            SrcMorphConfiguration#getLlamaModelPath() is unset - the same user-facing "which field is
-            missing" diagnostic style as everywhere else in this list (WEM).
     -->
     <Match>
         <Or>
@@ -514,8 +510,8 @@ SPDX-License-Identifier: Apache-2.0
 
     <!--
         PATH_TRAVERSAL_IN on AiPathSupport.resolveAgainst and its helper hasRoot, the one rule for
-        every configured path that may be relative to a directory: a model's modelPath and the
-        fallback llamaModelPath against modelDirectory, a prompt's templateFile against
+        every configured path that may be relative to a directory: a model's modelPath against
+        modelDirectory, a prompt's templateFile against
         profileDirectory. They join the directory and a relative path into one, and ask
         Paths.get(path).getRoot() whether the path stands on its own; both values come from the
         operator's own POM XML or CLI configuration, the same trust boundary as validateLocalModel

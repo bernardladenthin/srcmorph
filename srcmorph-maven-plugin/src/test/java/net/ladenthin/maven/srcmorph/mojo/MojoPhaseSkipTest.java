@@ -36,16 +36,6 @@ public class MojoPhaseSkipTest {
     private static AbstractAiIndexMojo mojo(final boolean globalSkip, final boolean phaseSkip) {
         final AbstractAiIndexMojo mojo = new AbstractAiIndexMojo() {
             @Override
-            protected int getLlamaContextSize() {
-                return 0;
-            }
-
-            @Override
-            protected int getLlamaThreads() {
-                return 0;
-            }
-
-            @Override
             protected boolean isPhaseSkipped() {
                 return phaseSkip;
             }

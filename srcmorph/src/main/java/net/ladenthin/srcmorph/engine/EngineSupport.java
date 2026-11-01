@@ -134,43 +134,66 @@ final class EngineSupport {
     }
 
     /**
-     * Resolves the {@link LlamaCppJniConfig} for a run with no specific routed model in mind: when
-     * {@link SrcMorphConfiguration#getFieldGenerations()} is non-empty, all model parameters come from the
-     * {@link AiModelDefinition} referenced by the <em>first</em> entry's
-     * {@link AiFieldGenerationConfig#getAiDefinitionKey()}; otherwise the configuration's individual
-     * {@code llama*} fallback fields are used. Used by {@link AggregatePackagesEngine} and
-     * {@link AggregateProjectEngine}, which drive a single provider for the whole run.
+     * Returns the one rule of the package phase: its prompt and model. A condition, priority or fallback
+     * flag means nothing here, with no files to route.
      *
-     * @param config                 the run configuration
-     * @param modelDefinitionSupport model lookup built from {@link SrcMorphConfiguration#getAiDefinitions()}
-     * @return the fully populated llama.cpp configuration
-     * @throws IllegalArgumentException if the first field generation's {@code aiDefinitionKey} matches no
-     *                                   registered definition
+     * @param phase            the goal, named in the error
+     * @param cliKey           the CLI's key for the phase's rules, named in the error
+     * @param fieldGenerations the phase's rules
+     * @return the rule
+     * @throws SrcMorphException if not exactly one rule is given, or it names no prompt or no model
      */
-    static LlamaCppJniConfig resolveLlamaCppJniConfig(
-            final SrcMorphConfiguration config, final AiModelDefinitionSupport modelDefinitionSupport) {
-        final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
-        if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
-            return resolveLlamaCppJniConfig(
-                    modelDefinitionSupport, fieldGenerations.get(0).getAiDefinitionKey());
+    static AiFieldGenerationConfig requiredPhaseRule(
+            final String phase, final String cliKey, final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
+            throws SrcMorphException {
+        return checkedPhaseRule(phase, cliKey, fieldGenerations, "exactly one rule");
+    }
+
+    /**
+     * Returns the rule of the project phase, which runs without one (a deterministic index, no
+     * overview) or with one.
+     *
+     * @param phase            the goal, named in the error
+     * @param cliKey           the CLI's key for the phase's rules, named in the error
+     * @param fieldGenerations the phase's rules
+     * @return the rule, or {@code null} when none is given
+     * @throws SrcMorphException if more than one rule is given, or it names no prompt or no model
+     */
+    static @Nullable AiFieldGenerationConfig optionalPhaseRule(
+            final String phase, final String cliKey, final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
+            throws SrcMorphException {
+        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
+            return null;
         }
-        final String modelPath =
-                AiModelDefinitionSupport.resolveModelPath(config.getModelDirectory(), config.getLlamaModelPath());
-        if (modelPath == null) {
-            throw new NullPointerException("llamaModelPath");
+        return checkedPhaseRule(phase, cliKey, fieldGenerations, "at most one rule");
+    }
+
+    private static AiFieldGenerationConfig checkedPhaseRule(
+            final String phase,
+            final String cliKey,
+            final @Nullable List<AiFieldGenerationConfig> fieldGenerations,
+            final String takes)
+            throws SrcMorphException {
+        if (fieldGenerations == null || fieldGenerations.size() != 1) {
+            throw new SrcMorphException(phase + " takes " + takes + " (its prompt and model), "
+                    + (fieldGenerations == null ? 0 : fieldGenerations.size()) + " given; give the phase its own: the"
+                    + " fieldGenerations of its plugin execution, " + cliKey + " in the CLI");
         }
-        return LlamaCppJniConfigFactory.fromFallbackParameters(
-                modelPath,
-                config.getLlamaContextSize(),
-                config.getLlamaMaxOutputTokens(),
-                config.getLlamaTemperature(),
-                config.getLlamaThreads());
+        final AiFieldGenerationConfig rule = fieldGenerations.get(0);
+        if (rule == null || isBlank(rule.getPromptKey()) || isBlank(rule.getAiDefinitionKey())) {
+            throw new SrcMorphException("The rule of " + phase + " needs a promptKey and an aiDefinitionKey");
+        }
+        return rule;
+    }
+
+    private static boolean isBlank(final @Nullable String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     /**
      * Resolves the {@link LlamaCppJniConfig} for one specific {@link AiModelDefinition}, identified by its
-     * key. Used by {@link GenerateEngine} (one provider per routing group) and {@link CalibrateEngine}
-     * (one provider per calibrated model).
+     * key. Used by {@link GenerateEngine} (one provider per routing group), {@link CalibrateEngine}
+     * (one provider per calibrated model) and the aggregation engines (the model of their one rule).
      *
      * <p>Takes no {@link SrcMorphConfiguration}: everything this needs comes from the named model
      * definition. The run configuration used to contribute the (never-read) native library path; with

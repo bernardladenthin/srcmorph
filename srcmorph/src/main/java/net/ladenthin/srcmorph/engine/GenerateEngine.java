@@ -95,8 +95,6 @@ public final class GenerateEngine {
         }
         LOGGER.info("Force           : {}", config.isForce());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
-        LOGGER.info("LlamaCpp Temperature: {}", config.getLlamaTemperature());
-        LOGGER.info("LlamaCpp Max Output Tokens: {}", config.getLlamaMaxOutputTokens());
 
         final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
         if (fieldGenerations == null || fieldGenerations.isEmpty()) {

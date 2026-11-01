@@ -156,37 +156,6 @@ public class MojoConfigurationMappingTest {
 
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="llama accessors">
-
-    /**
-     * Every goal supplies the two llama parameters to the shared base through these accessors, and
-     * none was covered. The two values differ so returning the wrong field is caught, and neither is
-     * {@code 0} so PIT's "replaced int return with 0" cannot pass by coincidence.
-     */
-    @Test
-    public void everyGoal_reportsItsOwnLlamaContextSizeAndThreads() {
-        assertThat(llamaContextSizeOf(new GenerateMojo()), is(4096));
-        assertThat(llamaThreadsOf(new GenerateMojo()), is(7));
-        assertThat(llamaContextSizeOf(new AggregatePackagesMojo()), is(4096));
-        assertThat(llamaThreadsOf(new AggregatePackagesMojo()), is(7));
-        assertThat(llamaContextSizeOf(new AggregateProjectMojo()), is(4096));
-        assertThat(llamaThreadsOf(new AggregateProjectMojo()), is(7));
-        assertThat(llamaContextSizeOf(new CalibrateMojo()), is(4096));
-        assertThat(llamaThreadsOf(new CalibrateMojo()), is(7));
-    }
-
-    private static int llamaContextSizeOf(final AbstractAiIndexMojo mojo) {
-        setField(mojo, "llamaContextSize", 4096);
-        return mojo.getLlamaContextSize();
-    }
-
-    private static int llamaThreadsOf(final AbstractAiIndexMojo mojo) {
-        setField(mojo, "llamaThreads", 7);
-        return mojo.getLlamaThreads();
-    }
-
-    // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="calibrate output">
 
     /**

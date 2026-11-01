@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
@@ -353,8 +352,7 @@ public class SourceFileIndexer {
 
         final String sourceText = compatibilityHelper.readString(sourceFile);
 
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(rule), sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
+        final AiGenerationResult result = support.generate(rule, sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
         if (!result.complete()) {
             return AiIndexOutcome.FAILED;
         }

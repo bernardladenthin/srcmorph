@@ -12,6 +12,23 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **One rule per aggregation phase; the `llama*` fallback parameters are gone.** `aggregate-packages`
+  takes exactly one rule (its prompt and model) and `aggregate-project` none or one; more fail the
+  goal before anything is written, as does a missing package rule. Before, the package phase
+  generated every package once per rule and kept the last answer, loaded the provider of the first
+  rule's model whatever the others named, and the project overview took the first rule, so the file
+  rules of a CLI run reached both phases unnoticed. The CLI's `packageFieldGenerations` /
+  `projectFieldGenerations` no longer fall back to `srcMorph.fieldGenerations`: without them the
+  package phase fails and the project index has no overview (`examples/config_All.json` sets both).
+  The aggregation phases check their model before the run like `generate` does (model file, key,
+  `baseUrl`). With a rule required, the run-level model parameters were dead: `llamaModelPath`,
+  `llamaContextSize`, `llamaMaxOutputTokens`, `llamaTemperature`, `llamaThreads` (`srcmorph.llama.*`)
+  are removed from the plugin and from `SrcMorphConfiguration`, a CLI configuration naming one fails
+  to bind, and `LlamaCppJniConfigFactory.fromFallbackParameters` is gone; every model parameter is a
+  field of an `aiDefinition`. `AiFieldGenerationSupport.processFieldGenerations(List, …)` is
+  `generate(rule, …)`. The indexers keep their rule as a full copy (`AiFieldGenerationConfig.copy()`);
+  the project overview used to copy only the prompt, the model and `onIncomplete`, so it ignored its
+  rule's `onOversize` and facts.
 - **The engine plans and runs alike, and checks its configuration before the run.** The source budget
   is computed for every file from the prompt with that file's name, as the plan computes it; before, it
   was cached from the first file of a model group, so a later file with a shorter name could be

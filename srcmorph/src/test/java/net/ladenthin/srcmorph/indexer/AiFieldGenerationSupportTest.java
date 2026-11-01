@@ -93,9 +93,9 @@ public class AiFieldGenerationSupportTest {
         return capturedMessages(Level.INFO);
     }
 
-    // <editor-fold defaultstate="collapsed" desc="processFieldGenerations">
+    // <editor-fold defaultstate="collapsed" desc="generate">
     @Test
-    public void processFieldGenerations_providerReturnsNonEmpty_noWarningLogged() throws Exception {
+    public void generate_providerReturnsNonEmpty_noWarningLogged() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -115,15 +115,15 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
+        support.generate(
+                CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class Test {}", header);
 
         // assert
         assertThat(getCapturedWarnings().isEmpty(), is(true));
     }
 
     @Test
-    public void processFieldGenerations_providerReturnsEmpty_warningContainsContextFile() throws Exception {
+    public void generate_providerReturnsEmpty_warningContainsContextFile() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("AiGenerationConfig", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -143,8 +143,8 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(),
+        support.generate(
+                CommonTestFixtures.createFileFieldGeneration(),
                 contextFile,
                 "file",
                 "public class AiGenerationConfig {}",
@@ -156,7 +156,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void processFieldGenerations_providerReturnsEmpty_warningContainsPromptKey() throws Exception {
+    public void generate_providerReturnsEmpty_warningContainsPromptKey() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -176,8 +176,8 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
+        support.generate(
+                CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class Test {}", header);
 
         // assert
         assertThat(getCapturedWarnings().size(), is(equalTo(1)));
@@ -185,7 +185,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void processFieldGenerations_providerReturnsEmpty_resultBodyIsEmpty() throws Exception {
+    public void generate_providerReturnsEmpty_resultBodyIsEmpty() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -205,8 +205,8 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        final AiGenerationResult result = support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
+        final AiGenerationResult result = support.generate(
+                CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class Test {}", header);
 
         // assert -- an empty answer is no summary: nothing to write, and the result says why
         assertThat(result.body(), is(equalTo("")));
@@ -215,7 +215,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void processFieldGenerations_providerReturnsEmpty_callsProviderOnceWarnsOnceAndBodyEmpty() throws Exception {
+    public void generate_providerReturnsEmpty_callsProviderOnceWarnsOnceAndBodyEmpty() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -244,8 +244,8 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        final AiGenerationResult result = support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
+        final AiGenerationResult result = support.generate(
+                CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class Test {}", header);
 
         // assert — provider invoked exactly once (no retries), one warning, empty body
         assertThat(callCount.get(), is(equalTo(1)));
@@ -254,8 +254,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void processFieldGenerations_providerReturnsEmpty_logsProcessingAndGenerationButNoGeneratedLine()
-            throws Exception {
+    public void generate_providerReturnsEmpty_logsProcessingAndGenerationButNoGeneratedLine() throws Exception {
         // arrange
         final Path contextFile = Files.createTempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
@@ -280,8 +279,8 @@ public class AiFieldGenerationSupportTest {
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        support.processFieldGenerations(
-                CommonTestFixtures.createFileFieldGenerations(), contextFile, "file", "public class Test {}", header);
+        support.generate(
+                CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class Test {}", header);
 
         // assert — exactly two INFO lines: the per-file processing/ETA line and the generation line.
         // An empty answer generated nothing, so there is no measured actual-duration line, and no retry.
@@ -372,12 +371,8 @@ public class AiFieldGenerationSupportTest {
         };
         final AiFieldGenerationSupport support = supportWith(provider, "m");
 
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(oversizeRule("m", "deterministic", 0)),
-                contextFile,
-                "file",
-                largeSource(500),
-                anyHeader());
+        final AiGenerationResult result = support.generate(
+                (oversizeRule("m", "deterministic", 0)), contextFile, "file", largeSource(500), anyHeader());
 
         assertThat(calls.get(), is(equalTo(0)));
         assertThat(result.body(), containsString("deterministically (no AI)"));
@@ -394,12 +389,8 @@ public class AiFieldGenerationSupportTest {
         final AiFieldGenerationSupport support = supportWith(provider, "m");
 
         // ~3600 chars > 1000-char chunk budget -> several chunks; maxChunks=2 caps to 2 mapped + 1 reduce.
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(oversizeRule("m", "mapReduce", 2)),
-                contextFile,
-                "file",
-                largeSource(600),
-                anyHeader());
+        final AiGenerationResult result = support.generate(
+                (oversizeRule("m", "mapReduce", 2)), contextFile, "file", largeSource(600), anyHeader());
 
         assertThat(calls.get(), is(equalTo(3)));
         assertThat(result.body(), is(equalTo("PARTIAL")));
@@ -419,8 +410,7 @@ public class AiFieldGenerationSupportTest {
 
         // largeSource(600) has exactly 600 lines beginning with "line "; the AI (mock) never sees them all,
         // but the deterministic facts block counts every one over the FULL source and is prepended.
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(rule), contextFile, "file", largeSource(600), anyHeader());
+        final AiGenerationResult result = support.generate((rule), contextFile, "file", largeSource(600), anyHeader());
 
         assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("lines: 600"));
@@ -443,8 +433,8 @@ public class AiFieldGenerationSupportTest {
         counter.setPattern("\\bboolean\\b");
         rule.setFacts(Collections.singletonList(counter));
 
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(rule), contextFile, "file", "boolean a; boolean b; int c;", anyHeader());
+        final AiGenerationResult result =
+                support.generate((rule), contextFile, "file", "boolean a; boolean b; int c;", anyHeader());
 
         assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("boolean fields: 2"));
@@ -472,8 +462,8 @@ public class AiFieldGenerationSupportTest {
         };
         final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(plainRoute("m")), contextFile, "file", "small source", anyHeader());
+        final AiGenerationResult result =
+                support.generate((plainRoute("m")), contextFile, "file", "small source", anyHeader());
 
         assertThat(result.body(), is(equalTo("OK")));
         assertThat(calls.get(), is(equalTo(2)));
@@ -489,8 +479,8 @@ public class AiFieldGenerationSupportTest {
             return "OK";
         };
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .processFieldGenerations(
-                        Collections.singletonList(normalRule("m", null)),
+                .generate(
+                        (normalRule("m", null)),
                         Files.createTempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
@@ -512,8 +502,7 @@ public class AiFieldGenerationSupportTest {
 
         assertThrows(
                 RuntimeException.class,
-                () -> support.processFieldGenerations(
-                        Collections.singletonList(plainRoute("m")), contextFile, "file", "small source", anyHeader()));
+                () -> support.generate((plainRoute("m")), contextFile, "file", "small source", anyHeader()));
         // Retried before giving up (more than the single initial attempt).
         assertThat(calls.get() > 1, is(true));
     }
@@ -530,8 +519,7 @@ public class AiFieldGenerationSupportTest {
 
         assertThrows(
                 RuntimeException.class,
-                () -> support.processFieldGenerations(
-                        Collections.singletonList(plainRoute("m")), contextFile, "file", "small source", anyHeader()));
+                () -> support.generate((plainRoute("m")), contextFile, "file", "small source", anyHeader()));
         assertThat(calls.get(), is(equalTo(1)));
     }
 
@@ -547,12 +535,8 @@ public class AiFieldGenerationSupportTest {
 
         // maxChunks=0 (unbounded) over a large source -> far more than MAX_REDUCE_FANIN chunks, so the
         // reduce cannot combine every partial in one call and must recurse: a second reduce round appears.
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(oversizeRule("m", "mapReduce", 0)),
-                contextFile,
-                "file",
-                largeSource(3000),
-                anyHeader());
+        final AiGenerationResult result = support.generate(
+                (oversizeRule("m", "mapReduce", 0)), contextFile, "file", largeSource(3000), anyHeader());
 
         final List<String> infos = getCapturedInfos();
         final long mapChunks =
@@ -579,12 +563,8 @@ public class AiFieldGenerationSupportTest {
         };
         final AiFieldGenerationSupport support = supportWith(provider, "m");
 
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(oversizeRule("m", "sample", 0)),
-                contextFile,
-                "file",
-                largeSource(500),
-                anyHeader());
+        final AiGenerationResult result =
+                support.generate((oversizeRule("m", "sample", 0)), contextFile, "file", largeSource(500), anyHeader());
 
         assertThat(calls.get(), is(equalTo(1)));
         assertThat(result.body(), is(equalTo("SAMPLED")));
@@ -621,8 +601,8 @@ public class AiFieldGenerationSupportTest {
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> calls.incrementAndGet() == 1 ? "" : "A summary.";
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .processFieldGenerations(
-                        Collections.singletonList(normalRule("m", "retryOnce")),
+                .generate(
+                        (normalRule("m", "retryOnce")),
                         Files.createTempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
@@ -643,8 +623,8 @@ public class AiFieldGenerationSupportTest {
             return " ";
         };
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .processFieldGenerations(
-                        Collections.singletonList(normalRule("m", "retryOnce")),
+                .generate(
+                        (normalRule("m", "retryOnce")),
                         Files.createTempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
@@ -660,8 +640,8 @@ public class AiFieldGenerationSupportTest {
             throw cutOff("half a sum");
         };
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .processFieldGenerations(
-                        Collections.singletonList(normalRule("m", null)),
+                .generate(
+                        (normalRule("m", null)),
                         Files.createTempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
@@ -680,8 +660,8 @@ public class AiFieldGenerationSupportTest {
             throw cutOff("half a sum");
         };
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .processFieldGenerations(
-                        Collections.singletonList(normalRule("m", "keep")),
+                .generate(
+                        (normalRule("m", "keep")),
                         Files.createTempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
@@ -700,8 +680,8 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationProvider empty = request -> "";
         for (final AiGenerationProvider provider : Arrays.asList(cutOffEmpty, empty)) {
             final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                    .processFieldGenerations(
-                            Collections.singletonList(normalRule("m", "keep")),
+                    .generate(
+                            (normalRule("m", "keep")),
                             Files.createTempFile("Test", ".java"),
                             "file",
                             "public class Test {}",
@@ -718,8 +698,8 @@ public class AiFieldGenerationSupportTest {
             throw new AiIncompleteAnswerException(AiIncompleteAnswerException.Reason.NO_ANSWER, "no choice");
         };
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .processFieldGenerations(
-                        Collections.singletonList(normalRule("m", "fail")),
+                .generate(
+                        (normalRule("m", "fail")),
                         Files.createTempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
@@ -736,8 +716,8 @@ public class AiFieldGenerationSupportTest {
         // the second chunk's answer is empty; the reduce must not run over it
         final AiGenerationProvider provider = request -> calls.incrementAndGet() == 2 ? "" : "PARTIAL";
         final AiGenerationResult result = supportWith(provider, "m")
-                .processFieldGenerations(
-                        Collections.singletonList(oversizeRule("m", "mapReduce", 2)),
+                .generate(
+                        (oversizeRule("m", "mapReduce", 2)),
                         Files.createTempFile("Huge", ".java"),
                         "file",
                         largeSource(600),
@@ -755,12 +735,7 @@ public class AiFieldGenerationSupportTest {
         counter.setPattern("\\bclass\\b");
         rule.setFacts(Collections.singletonList(counter));
         final AiGenerationResult result = supportWithModels(request -> "", normalWindowModel("m"))
-                .processFieldGenerations(
-                        Collections.singletonList(rule),
-                        Files.createTempFile("Test", ".java"),
-                        "file",
-                        "public class Test {}",
-                        anyHeader());
+                .generate((rule), Files.createTempFile("Test", ".java"), "file", "public class Test {}", anyHeader());
 
         assertThat(result.complete(), is(false));
         assertThat(result.body(), is(equalTo("")));
@@ -777,8 +752,8 @@ public class AiFieldGenerationSupportTest {
         final java.io.IOException thrown = assertThrows(
                 java.io.IOException.class,
                 () -> supportWith(provider, "m")
-                        .processFieldGenerations(
-                                Collections.singletonList(oversizeRule("m", "fail", 0)),
+                        .generate(
+                                (oversizeRule("m", "fail", 0)),
                                 Files.createTempFile("Huge", ".java"),
                                 "file",
                                 largeSource(500),
@@ -803,10 +778,9 @@ public class AiFieldGenerationSupportTest {
         final AiFieldGenerationSupport support = supportWithModels(request -> "OK", models);
         final AiFieldGenerationConfig rule = normalRule("m", null);
 
-        support.processFieldGenerations(Collections.singletonList(rule), longName, "file", "x", anyHeader());
+        support.generate((rule), longName, "file", "x", anyHeader());
         final String fits = largeSource(budget).substring(0, budget);
-        final AiGenerationResult result =
-                support.processFieldGenerations(Collections.singletonList(rule), shortName, "file", fits, anyHeader());
+        final AiGenerationResult result = support.generate((rule), shortName, "file", fits, anyHeader());
 
         assertThat(result.body(), is(equalTo("OK")));
         for (final String warning : getCapturedWarnings()) {

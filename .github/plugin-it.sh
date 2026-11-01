@@ -185,11 +185,6 @@ EXPECTED_PROPS="$(printf '%s\n' \
     srcmorph.fileExtensions \
     srcmorph.force \
     srcmorph.generationProvider \
-    srcmorph.llama.contextSize \
-    srcmorph.llama.maxOutputTokens \
-    srcmorph.llama.modelPath \
-    srcmorph.llama.temperature \
-    srcmorph.llama.threads \
     srcmorph.modelDirectory \
     srcmorph.outputDirectory \
     srcmorph.package.skip \

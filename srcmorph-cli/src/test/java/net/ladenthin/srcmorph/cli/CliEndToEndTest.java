@@ -73,6 +73,8 @@ public class CliEndToEndTest {
         rule.setAiDefinitionKey("mock-model");
         rule.setFallback(true);
         configuration.srcMorph.setFieldGenerations(Collections.singletonList(rule));
+        // the package phase takes exactly one rule of its own; the project phase runs without one
+        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("file-body"));
 
         return configuration;
     }
@@ -271,6 +273,42 @@ public class CliEndToEndTest {
         final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
 
         assertThat(causeChain(thrown), containsString("no-such-prompt"));
+    }
+
+    /**
+     * The file rules never reach the package phase: without {@code packageFieldGenerations} it fails,
+     * naming the key, after the file phase completed.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void run_allCommand_withoutAPackageRule_failsInThePackagePhase() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.packageFieldGenerations = null;
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("aggregate-packages takes exactly one rule"));
+        assertThat(causeChain(thrown), containsString("packageFieldGenerations"));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+    }
+
+    /**
+     * Without {@code projectFieldGenerations} the project index is written without an overview; the
+     * file rule no longer becomes the overview's prompt.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    public void run_allCommand_withoutAProjectRule_writesTheProjectIndexWithoutAnOverview() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+
+        new Main(configuration).run();
+
+        final String project = new String(
+                Files.readAllBytes(tempDir.resolve("out").resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)),
+                StandardCharsets.UTF_8);
+        assertThat(project.contains("#### Overview"), is(false));
     }
 
     @Test

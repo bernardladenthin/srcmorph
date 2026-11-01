@@ -10,7 +10,7 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Immutable result produced by {@link net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport#processFieldGenerations}.
+ * Immutable result produced by {@link net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport#generate}.
  *
  * <p>Carries the document body text produced by a single processing pass, and whether it is complete.
  * An incomplete result (the model's answer was empty, cut off or missing, see

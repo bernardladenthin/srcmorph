@@ -55,7 +55,7 @@ public class AiFieldGenerationSupport {
      * trim-warning message, ensuring a consistent sentence structure regardless of whether
      * the context is a file or a package.
      *
-     * @see #processFieldGenerations
+     * @see #generate
      */
     private static final String TRIM_WARN_FIELD_LABEL = " field '";
 
@@ -63,7 +63,7 @@ public class AiFieldGenerationSupport {
      * Log message prefix of the warning for an answer that is no summary (empty, cut off or missing): the
      * file is not written and is left for the next run.
      *
-     * @see #processFieldGenerations
+     * @see #generate
      */
     private static final String INCOMPLETE_WARN_PREFIX = "Incomplete answer for ";
 
@@ -207,69 +207,52 @@ public class AiFieldGenerationSupport {
     }
 
     /**
-     * Processes each entry in {@code fieldGenerations}, generates the requested AI text,
-     * and accumulates the results into an {@link net.ladenthin.srcmorph.document.AiGenerationResult}.
+     * Generates the body of one context with one rule.
      *
-     * <p>For each non-null {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig}:</p>
      * <ol>
      *   <li>The prompt is prepared via {@link net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport#preparePrompt}.</li>
      *   <li>A trim warning is logged if the source was truncated and
      *       {@link net.ladenthin.srcmorph.config.AiGenerationConfig#isWarnOnTrim()} is {@code true}.</li>
      *   <li>The AI provider generates a value for the trimmed source.</li>
-     *   <li>If the provider returns a blank body, a single warning is emitted (fail-fast).
-     *       Blank output no longer occurs in normal operation with a non-greedy temperature
-     *       and an adequate output budget; the previous escalating-temperature retry loop was
-     *       removed after it was shown to waste full generations re-inferring to the same empty
-     *       result (see {@code docs/ai-index-benchmark/gpt-oss-tuning.md}, E2).</li>
-     *   <li>The generated value is stored as the document body.</li>
+     *   <li>An incomplete answer (empty, cut off by the output limit, or no answer at all) is logged and
+     *       returned as {@link AiGenerationResult#incomplete(String)}, so nothing is written.</li>
      * </ol>
      *
-     * @param fieldGenerations per-field generation configuration list; {@code null} entries
-     *                         are silently skipped
-     * @param contextFile      path to the source or package file being processed; used in
-     *                         prompt requests and log messages
-     * @param contextType      human-readable label for the context (e.g. {@code "file"} or
-     *                         {@code "package"}); embedded in trim-warning log messages
-     * @param sourceText       full source text passed as input to the prompt preparation step
-     * @param baseHeader       current header; passed through to each
-     *                         {@link net.ladenthin.srcmorph.document.AiGenerationRequest}
-     * @return an {@link net.ladenthin.srcmorph.document.AiGenerationResult} with the generated body; defaults to empty string
-     * @throws IOException              if the AI provider throws during generation
-     * @throws IllegalArgumentException if a field's {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig#getAiDefinitionKey()}
+     * @param rule        the rule: its prompt, model, facts and oversize strategy
+     * @param contextFile path to the source or package file being processed; used in prompt requests and
+     *                    log messages
+     * @param contextType human-readable label for the context (e.g. {@code "file"} or {@code "package"});
+     *                    embedded in trim-warning log messages
+     * @param sourceText  full source text passed as input to the prompt preparation step
+     * @param baseHeader  current header; passed through to each
+     *                    {@link net.ladenthin.srcmorph.document.AiGenerationRequest}
+     * @return the generated body, or an incomplete result
+     * @throws IOException              if the AI provider throws during generation, or the rule has
+     *                                  {@code onOversize: fail} and the source does not fit
+     * @throws IllegalArgumentException if the rule's {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig#getAiDefinitionKey()}
      *                                  does not match any registered {@link net.ladenthin.srcmorph.config.AiModelDefinition}
      */
-    public AiGenerationResult processFieldGenerations(
-            final List<AiFieldGenerationConfig> fieldGenerations,
+    public AiGenerationResult generate(
+            final AiFieldGenerationConfig rule,
             final Path contextFile,
             final String contextType,
             final String sourceText,
             final AiMdHeader baseHeader)
             throws IOException {
-        String body = "";
-
-        for (AiFieldGenerationConfig fieldGeneration : fieldGenerations) {
-            if (fieldGeneration == null) {
-                continue;
-            }
-
-            final AiGenerationConfig generationConfig =
-                    modelDefinitionSupport.getConfig(fieldGeneration.getAiDefinitionKey());
-            try {
-                body = generateBody(
-                        fieldGeneration, generationConfig, contextFile, contextType, sourceText, baseHeader);
-            } catch (final AiIncompleteAnswerException e) {
-                LOGGER.warn(
-                        INCOMPLETE_WARN_PREFIX + "{} '{}' (field '{}', {}): {}; not written, left for the next run",
-                        contextType,
-                        contextFile,
-                        fieldGeneration.getPromptKey(),
-                        e.reason(),
-                        e.detail());
-                return AiGenerationResult.incomplete(e.detail());
-            }
+        final AiGenerationConfig generationConfig = modelDefinitionSupport.getConfig(rule.getAiDefinitionKey());
+        try {
+            return new AiGenerationResult(
+                    generateBody(rule, generationConfig, contextFile, contextType, sourceText, baseHeader));
+        } catch (final AiIncompleteAnswerException e) {
+            LOGGER.warn(
+                    INCOMPLETE_WARN_PREFIX + "{} '{}' (field '{}', {}): {}; not written, left for the next run",
+                    contextType,
+                    contextFile,
+                    rule.getPromptKey(),
+                    e.reason(),
+                    e.detail());
+            return AiGenerationResult.incomplete(e.detail());
         }
-
-        return new AiGenerationResult(body);
     }
 
     /**

@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import lombok.ToString;
@@ -271,21 +272,23 @@ public class Main {
     }
 
     /**
-     * The configuration one aggregation phase runs with: {@link CConfiguration#srcMorph} itself when
-     * the phase has no rules of its own, otherwise a copy of it whose {@code fieldGenerations} are
-     * the phase's, as a Maven plugin execution overrides them. The shared configuration is never
-     * modified, so the file phase of {@link CCommand#All} keeps its own rules.
+     * The configuration one aggregation phase runs with: a copy of {@link CConfiguration#srcMorph} whose
+     * {@code fieldGenerations} are the phase's own rule, as a Maven plugin execution overrides them. The
+     * file rules of {@code srcMorph} never reach a phase: the package phase takes exactly one rule and
+     * fails without {@link CConfiguration#packageFieldGenerations}, the project phase writes its index
+     * without an overview when {@link CConfiguration#projectFieldGenerations} is unset. The shared
+     * configuration is never modified, so the file phase of {@link CCommand#All} keeps its own rules.
      *
      * @param phaseFieldGenerations the phase's rules ({@link CConfiguration#packageFieldGenerations}
      *                              or {@link CConfiguration#projectFieldGenerations}), or {@code null}
      * @return the configuration to hand the phase's engine
      */
     private SrcMorphConfiguration forPhase(final @Nullable List<AiFieldGenerationConfig> phaseFieldGenerations) {
-        if (phaseFieldGenerations == null) {
-            return configuration.srcMorph;
-        }
         final SrcMorphConfiguration copy = deepCopy(configuration.srcMorph);
-        copy.setFieldGenerations(phaseFieldGenerations);
+        copy.setFieldGenerations(
+                phaseFieldGenerations == null
+                        ? Collections.<AiFieldGenerationConfig>emptyList()
+                        : phaseFieldGenerations);
         return copy;
     }
 

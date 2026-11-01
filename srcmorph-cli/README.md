@@ -67,7 +67,7 @@ public class CConfiguration {
   file reads identically to the matching Maven `<configuration>` XML element** — `baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, `generationProvider`,
   `promptDefinitions`, `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations`,
-  `factDefinitions`, the `llama*` fallback parameters, `force`, `planOnly`, `projectName`. A relative
+  `factDefinitions`, `force`, `planOnly`, `projectName`. A relative
   `modelDirectory` or `profileDirectory` (like every relative path here) is relative to the working
   directory the CLI is started in. With a `profileDirectory`, the rules' `promptKey` and `factsKey`
   are files there (`<key>.md`, `<key>.tsv`) and need no definition; the examples read the measured
@@ -83,32 +83,25 @@ public class CConfiguration {
 |---|---|
 | `Plan` | Runs `GenerateEngine` with `planOnly` **forced** to `true`, regardless of what the file says — builds and logs the routing plan (which model + prompt each file would get) and stops. No model is loaded, nothing is written. The default; always safe to run. |
 | `GenerateFileIndex` | Phase 1, exactly as configured: indexes source files and fills in their AI-generated summaries (`GenerateEngine`). |
-| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the top-level `packageFieldGenerations` as its rules when set (like the plugin's `aggregate-packages` execution), otherwise `srcMorph.fieldGenerations`. |
-| `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`), with the top-level `projectFieldGenerations` when set, otherwise `srcMorph.fieldGenerations`. |
-| `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails; each aggregation phase with its own rules when set. [`examples/build-your-own-jar/srcmorph.yaml`](../examples/build-your-own-jar/srcmorph.yaml) is the plugin's self-test profile in this form. |
+| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the one rule of the top-level `packageFieldGenerations` (like the plugin's `aggregate-packages` execution); it fails without one. |
+| `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`), with the one rule of the top-level `projectFieldGenerations` for the overview paragraph; unset, the index is written without one. |
+| `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails; each aggregation phase with its own rule. [`examples/build-your-own-jar/srcmorph.yaml`](../examples/build-your-own-jar/srcmorph.yaml) is the plugin's self-test profile in this form. |
 | `Calibrate` | Loads each distinct model your `fieldGenerations` would route to, measures its prefill/decode throughput, and prints a paste-ready `<calibration>` XML block per model to standard output (`CalibrateEngine`). |
 | `ListModels` | Asks every OpenAI-compatible server your `aiDefinitions` name (`GET <baseUrl>/models`, with the definition's key) which models it serves, and prints to standard output a table (id, token limit, price where the server states one, as OpenRouter does) and a paste-ready `aiDefinitions` YAML block with one entry per model, copied from that server's first definition (`ListModelsEngine`). The top-level `modelFilter` keeps the ids that contain it, ignoring case. Sends no prompt, writes nothing. |
 
-### One shared `srcMorph` object across commands — a nuance to know
+### Each phase its own rules
 
-Unlike the Maven plugin, where each goal execution gets its **own** `<fieldGenerations>` block in the
-POM, the CLI's `All` and `Calibrate` commands reuse the **one** `srcMorph.fieldGenerations` list across
-every engine they run. That list means different things to different engines:
+`srcMorph.fieldGenerations` are the file rules: `GenerateFileIndex` *routes* each file to exactly one
+of them by `condition` + `priority` (the explicit `fallback` catches anything unmatched), and
+`Calibrate` measures the models they route to. They never reach an aggregation phase, as each goal
+execution of the Maven plugin has its own `<fieldGenerations>`:
 
-- **`GenerateFileIndex`** *routes*: each file is matched to exactly one rule by `condition` + `priority`
-  (the explicit `fallback` catches anything unmatched).
-- **`AggregatePackages`** does **not** route by condition — it applies **every** entry in
-  `fieldGenerations` to every package, in list order, and the **last** entry's output is kept.
-- **`AggregateProject`**'s optional AI overview paragraph uses only `fieldGenerations[0]`.
+- **`AggregatePackages`** takes exactly one rule, the top-level `packageFieldGenerations` (the
+  package prompt and its model), and fails without it.
+- **`AggregateProject`** takes none or one, the top-level `projectFieldGenerations`: with one it
+  writes the `#### Overview` paragraph, without one the index is fully deterministic.
 
-If your `fieldGenerations` list has more than one entry (e.g. a conditioned Java-file rule plus a
-fallback, as in [`../examples/config_All.json`](../examples/config_All.json)), running `All` will
-still aggregate every package using the *entire* list's rules layered on top of each other (last one
-wins) — which is usually fine (the rules typically write similar structured Markdown), but is worth
-knowing if you see a package's body reflecting your fallback rule's prompt rather than the
-file-specific one. A single fallback-only rule sidesteps the question entirely and behaves identically
-across all three phases. See [`../srcmorph/README.md`](../srcmorph/README.md) for the engine-level
-detail.
+[`../examples/config_All.json`](../examples/config_All.json) sets all three.
 
 ## Testing
 

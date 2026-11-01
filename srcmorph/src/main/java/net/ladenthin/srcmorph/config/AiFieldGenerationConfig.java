@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.config;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.ToString;
 import org.jspecify.annotations.Nullable;
@@ -353,5 +354,30 @@ public class AiFieldGenerationConfig {
      */
     public void setFactsKey(final @Nullable String factsKey) {
         this.factsKey = factsKey;
+    }
+
+    /**
+     * Returns an independent copy of this rule with every field; the {@link #facts} list is copied, its
+     * counters and the {@link #condition} tree are shared. An indexer keeps its rule as a copy, so the
+     * caller's bean can change after construction without changing a run.
+     *
+     * @return the copy
+     */
+    public AiFieldGenerationConfig copy() {
+        final AiFieldGenerationConfig copy = new AiFieldGenerationConfig();
+        copy.id = id;
+        copy.promptKey = promptKey;
+        copy.aiDefinitionKey = aiDefinitionKey;
+        copy.condition = condition;
+        copy.priority = priority;
+        copy.fallback = fallback;
+        copy.skip = skip;
+        copy.onOversize = onOversize;
+        copy.onIncomplete = onIncomplete;
+        copy.maxChunks = maxChunks;
+        final List<AiFactCounter> ownFacts = facts;
+        copy.facts = ownFacts == null ? null : new ArrayList<>(ownFacts);
+        copy.factsKey = factsKey;
+        return copy;
     }
 }

@@ -42,11 +42,12 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - Traverses generated `.ai.md` files
 - Builds hierarchical package summaries
 - Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
+- Takes exactly one `<fieldGeneration>` (the package prompt and its model) in its execution; more fail the goal
 ### 3. Project Index (aggregate-project)
 - Harvests the one-line lead from every `package.ai.md` — the per-package listing is deterministic, no AI call
 - Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
 - A compact, always-loadable table of contents an agent reads first to navigate down
-- **Optional** (opt-in): configure a `<fieldGeneration>` on this goal and it makes *one* extra AI call to
+- **Optional** (opt-in): configure one `<fieldGeneration>` on this goal (more fail it) and it makes *one* extra AI call to
   write a short `#### Overview` paragraph from the package leads. The deterministic per-package listing is
   unchanged; with no field generation the goal stays purely deterministic and calls no model.
 ## Example Output

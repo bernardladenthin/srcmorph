@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.engine;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
@@ -87,5 +90,26 @@ public class AggregatePackagesEngineTest {
         // (root "ai/", "com/", and "com/example/"), matching PackageIndexer's recursive aggregation.
         assertThat(aggregated, is(equalTo(3)));
         assertThat(Files.exists(packageDirectory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(true));
+    }
+
+    @Test
+    public void execute_twoRules_areRefusedBeforeAnyPackageIsWritten() throws Exception {
+        final Path outputRoot = tempDir.resolve("ai");
+        final Path packageDirectory = Files.createDirectories(outputRoot.resolve("com/example"));
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(tempDir.toFile());
+        config.setOutputDirectory(outputRoot.toFile());
+        config.setGenerationProvider("mock");
+        config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
+        config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
+        // the file rules of a run used to reach this phase too: every package was generated once per rule
+        config.setFieldGenerations(Arrays.asList(
+                CommonTestFixtures.createPackageFieldGeneration(), CommonTestFixtures.createPackageFieldGeneration()));
+
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new AggregatePackagesEngine(config).execute());
+
+        assertThat(thrown.getMessage(), containsString("aggregate-packages takes exactly one rule"));
+        assertThat(Files.exists(packageDirectory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(false));
     }
 }

@@ -8,6 +8,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -211,57 +212,70 @@ public class EngineSupportTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="resolveLlamaCppJniConfig">
-    @Test
-    public void resolveLlamaCppJniConfig_noKey_usesFallbackWhenNoFieldGenerations() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
-        config.setLlamaModelPath("fallback.gguf");
-        config.setLlamaContextSize(2048);
-        config.setLlamaMaxOutputTokens(64);
-        config.setLlamaTemperature(0.2f);
-        config.setLlamaThreads(3);
-
-        final AiModelDefinitionSupport modelDefinitionSupport = new AiModelDefinitionSupport(null);
-        final LlamaCppJniConfig result = EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport);
-
-        assertThat(result.modelPath(), is("fallback.gguf"));
-        assertThat(result.contextSize(), is(2048));
-        assertThat(result.maxOutputTokens(), is(64));
-        assertThat(result.temperature(), is(0.2f));
-        assertThat(result.threads(), is(3));
-    }
-
-    @Test
-    public void resolveLlamaCppJniConfig_noKey_fallbackModelPathIsResolvedAgainstTheModelDirectory() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
-        final File modelDirectory = new File("models");
-        config.setModelDirectory(modelDirectory);
-        config.setLlamaModelPath("fallback.gguf");
-
-        final LlamaCppJniConfig result =
-                EngineSupport.resolveLlamaCppJniConfig(config, new AiModelDefinitionSupport(null));
-
-        assertThat(result.modelPath(), is(new File(modelDirectory, "fallback.gguf").getPath()));
-    }
-
-    @Test
-    public void resolveLlamaCppJniConfig_noKey_usesFirstFieldGenerationsEntryWhenPresent() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+    // <editor-fold defaultstate="collapsed" desc="phaseRule">
+    private static AiFieldGenerationConfig phaseRule(final String promptKey, final String aiDefinitionKey) {
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
-        rule.setPromptKey("prompt");
-        rule.setAiDefinitionKey("routed-model");
-        config.setFieldGenerations(Arrays.asList(rule));
-
-        final AiModelDefinition definition = new AiModelDefinition();
-        definition.setKey("routed-model");
-        definition.setModelPath("routed.gguf");
-        final AiModelDefinitionSupport modelDefinitionSupport = new AiModelDefinitionSupport(Arrays.asList(definition));
-
-        final LlamaCppJniConfig result = EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport);
-
-        assertThat(result.modelPath(), is("routed.gguf"));
+        rule.setPromptKey(promptKey);
+        rule.setAiDefinitionKey(aiDefinitionKey);
+        return rule;
     }
 
+    @Test
+    public void requiredPhaseRule_exactlyOne_isReturned() throws SrcMorphException {
+        final AiFieldGenerationConfig rule = phaseRule("package-body", "m");
+
+        assertThat(EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule)), is(rule));
+    }
+
+    @Test
+    public void requiredPhaseRule_noneOrTwo_isRefusedNamingThePhaseAndTheCliKey() {
+        for (final List<AiFieldGenerationConfig> rules : Arrays.asList(
+                null,
+                Collections.<AiFieldGenerationConfig>emptyList(),
+                Arrays.asList(phaseRule("a", "m"), phaseRule("b", "m")))) {
+            final SrcMorphException thrown = assertThrows(
+                    SrcMorphException.class,
+                    () -> EngineSupport.requiredPhaseRule("aggregate-packages", "packageFieldGenerations", rules));
+
+            assertThat(thrown.getMessage(), containsString("aggregate-packages takes exactly one rule"));
+            assertThat(thrown.getMessage(), containsString("packageFieldGenerations in the CLI"));
+            assertThat(thrown.getMessage(), containsString((rules == null ? 0 : rules.size()) + " given"));
+        }
+    }
+
+    @Test
+    public void requiredPhaseRule_withoutPromptOrModel_isRefused() {
+        for (final AiFieldGenerationConfig rule :
+                Arrays.asList(phaseRule("", "m"), phaseRule("p", " "), new AiFieldGenerationConfig())) {
+            final SrcMorphException thrown = assertThrows(
+                    SrcMorphException.class, () -> EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule)));
+
+            assertThat(thrown.getMessage(), containsString("needs a promptKey and an aiDefinitionKey"));
+        }
+    }
+
+    @Test
+    public void optionalPhaseRule_none_isNull() throws SrcMorphException {
+        assertThat(EngineSupport.optionalPhaseRule("p", "k", null), is(nullValue()));
+        assertThat(
+                EngineSupport.optionalPhaseRule("p", "k", Collections.<AiFieldGenerationConfig>emptyList()),
+                is(nullValue()));
+    }
+
+    @Test
+    public void optionalPhaseRule_one_isReturned_two_areRefused() throws SrcMorphException {
+        final AiFieldGenerationConfig rule = phaseRule("project-body", "m");
+        assertThat(EngineSupport.optionalPhaseRule("p", "k", Arrays.asList(rule)), is(rule));
+
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.optionalPhaseRule(
+                        "aggregate-project", "projectFieldGenerations", Arrays.asList(rule, rule)));
+        assertThat(thrown.getMessage(), containsString("aggregate-project takes at most one rule"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="resolveLlamaCppJniConfig">
     @Test
     public void resolveLlamaCppJniConfig_byKey_looksUpNamedDefinition() {
         final SrcMorphConfiguration config = new SrcMorphConfiguration();

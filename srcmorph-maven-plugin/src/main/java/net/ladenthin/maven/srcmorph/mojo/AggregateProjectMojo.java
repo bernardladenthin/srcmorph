@@ -71,27 +71,6 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
     @Parameter(defaultValue = "${project.name}", readonly = true)
     private String projectName;
 
-    /**
-     * llama.cpp context window size used only as the fallback when no {@code <fieldGeneration>} is
-     * configured; with an overview field generation present, the size comes from its AI definition.
-     */
-    @Parameter(property = "srcmorph.llama.contextSize", defaultValue = "4096")
-    private int llamaContextSize;
-
-    /** CPU threads for llama.cpp inference, used only on the no-field-generation fallback path. */
-    @Parameter(property = "srcmorph.llama.threads")
-    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
-
-    @Override
-    protected int getLlamaContextSize() {
-        return llamaContextSize;
-    }
-
-    @Override
-    protected int getLlamaThreads() {
-        return llamaThreads;
-    }
-
     @Override
     protected boolean isPhaseSkipped() {
         return skipProject;

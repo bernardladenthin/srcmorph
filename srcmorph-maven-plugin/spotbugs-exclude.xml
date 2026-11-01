@@ -54,8 +54,8 @@ SPDX-License-Identifier: Apache-2.0
         project's own Mojos (GenerateMojo, AggregatePackagesMojo, AggregateProjectMojo).
 
         fb-contrib flags @Parameter fields on each Mojo (e.g. pluginVersion,
-        aiVersion, llamaContextSize, llamaThreads on the generate/aggregate-packages
-        goals; pluginVersion, aiVersion, projectName on aggregate-project) as
+        aiVersion on the generate/aggregate-packages goals; pluginVersion, aiVersion, projectName
+        on aggregate-project) as
         "assigned at most once, could be static" purely from bytecode shape. The rule is wrong for
         Maven @Parameter fields by contract:
 

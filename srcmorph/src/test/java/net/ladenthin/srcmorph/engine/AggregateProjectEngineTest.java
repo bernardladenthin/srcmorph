@@ -7,9 +7,11 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
@@ -126,5 +128,26 @@ public class AggregateProjectEngineTest {
 
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString("#### Overview"));
+    }
+
+    @Test
+    public void execute_twoRules_areRefused() throws Exception {
+        final Path outputRoot = tempDir.resolve("ai");
+        writePackageFile(outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Handles billing.\n");
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setOutputDirectory(outputRoot.toFile());
+        config.setGenerationProvider("mock");
+        config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
+        config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
+        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+        overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
+        overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        config.setFieldGenerations(Arrays.asList(overview, overview));
+
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new AggregateProjectEngine(config).execute());
+
+        assertThat(thrown.getMessage(), containsString("aggregate-project takes at most one rule"));
+        assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
 }

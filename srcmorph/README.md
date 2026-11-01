@@ -25,7 +25,7 @@ Major field groups:
 | Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `minFileSizeBytes`/`maxFileSizeBytes` |
 | Output | `outputDirectory`, `force`, `planOnly` |
 | Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` (`List<AiFactDefinition>`: a `key` and `facts` or a `factsFile`) |
-| AI backend | `generationProvider` (`"mock"` or `"llamacpp-jni"`), plus the `llama*` fallback params (`llamaModelPath`/`llamaContextSize`/`llamaMaxOutputTokens`/`llamaTemperature`/`llamaThreads`), used only when `fieldGenerations` is empty |
+| AI backend | `generationProvider` (`"mock"`, `"llamacpp-jni"` or `"openai-compatible"`; a model definition's own `provider` overrides it); every model parameter is a field of an `aiDefinitions` entry |
 | Header metadata | `pluginVersion`, `aiVersion`, `projectName` |
 
 Every other `config/` class is a plain, Maven-annotation-free JavaBean too: `AiModelDefinition` (a
@@ -54,21 +54,17 @@ Maven plugin's mojos, the CLI's `Main`) translate these into whatever their own 
 | Engine | Purpose | Result |
 |---|---|---|
 | `GenerateEngine` | Phase 1: plans the whole run (which model + prompt each file gets, or skip/unmatched, and whether it fits its routed model's context window), fails fast on an unmatched file or a hard oversize failure, stops after the plan when `planOnly` is set, otherwise loads each distinct routed model once and indexes its files. | `GenerateResult` (`planOnly()`, `written()`, `unchanged()`, `skipped()`) |
-| `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory. | `int` — package index files written |
-| `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); when `fieldGenerations` has at least one entry, its **first** entry is used for one extra AI call that writes a short `#### Overview` paragraph. | `int` — `1` if written, `0` otherwise |
+| `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory, with the one rule of `fieldGenerations` (exactly one: its prompt and model). | `int` — package index files written |
+| `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); with a rule in `fieldGenerations` (at most one), one extra AI call writes a short `#### Overview` paragraph. | `int` — `1` if written, `0` otherwise |
 | `CalibrateEngine` | Loads each distinct model a `GenerateEngine` run would load, measures its prefill/decode throughput via a couple of representative generations, and returns a paste-ready report. | `CalibrationReport` (`measurements()`, `renderXml()` — a paste-ready `<calibration>` XML block per model) |
 | `ListModelsEngine` | Asks each OpenAI-compatible server the `aiDefinitions` name for its models (`GET <baseUrl>/models`), optionally filtered by id. | `ModelListReport` (`listings()`, `render()` — a model table as YAML comments and an `aiDefinitions` block with one entry per model) |
 
-**A design nuance worth knowing if you drive more than one engine off the same
-`SrcMorphConfiguration`** (as the CLI's `All`/`Calibrate` commands do): `GenerateEngine` *routes* each
-file to exactly one matching `fieldGenerations` rule (by `condition` + `priority`, with the explicit
-`fallback` catching the rest). `AggregatePackagesEngine` and the optional project overview do **not**
-route by condition — `AggregatePackagesEngine` applies **every** entry in `fieldGenerations` to every
-package in list order (the last entry's output wins), and `AggregateProjectEngine`'s optional overview
-uses only `fieldGenerations.get(0)`. A single fallback-only rule (no condition needed) behaves
-identically across all three phases; a multi-rule routing table is meaningful for `GenerateEngine`
-but you should reason explicitly about what happens when the same list feeds package/project
-aggregation. See `srcmorph-cli/README.md`'s config-file reference for the CLI's own take on this.
+**One configuration, three meanings of `fieldGenerations`.** `GenerateEngine` *routes* each file to
+exactly one matching rule (by `condition` + `priority`, with the explicit `fallback` catching the
+rest). The aggregation engines route nothing: `AggregatePackagesEngine` takes exactly one rule and
+`AggregateProjectEngine` none or one, and both fail on more, so a routing table meant for the files
+never reaches a package or the project. Give each phase its own rules: a plugin execution's
+`<fieldGenerations>`, or the CLI's top-level `packageFieldGenerations` / `projectFieldGenerations`.
 
 ## Use as a library
 

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -174,9 +173,11 @@ public class ProjectIndexer {
     }
 
     /**
-     * Returns a defensive copy of {@code source}, or {@code null} when {@code source} is {@code null}.
-     * The overview field generation is a mutable Maven {@link AiFieldGenerationConfig} JavaBean owned
-     * by the caller; copying it prevents external mutation after construction.
+     * Returns a copy of {@code source} with every field ({@link AiFieldGenerationConfig#copy()}), or
+     * {@code null} when {@code source} is {@code null}. The overview rule is a mutable JavaBean owned by
+     * the caller; copying it prevents external mutation after construction. It used to copy only the
+     * prompt, the model and {@code onIncomplete}, so the overview ignored its rule's {@code onOversize}
+     * and facts.
      *
      * @param source the caller-supplied field generation, or {@code null}
      * @return an independent copy, or {@code null}
@@ -186,14 +187,7 @@ public class ProjectIndexer {
         if (source == null) {
             return null;
         }
-        final AiFieldGenerationConfig copy = new AiFieldGenerationConfig();
-        copy.setPromptKey(source.getPromptKey());
-        copy.setAiDefinitionKey(source.getAiDefinitionKey());
-        copy.setOnIncomplete(source.getOnIncomplete());
-        // The project-overview generation uses a single field generation; per-file routing fields
-        // (condition/priority/skip/fallback) do not apply, so only prompt, model and what to do with an
-        // incomplete answer are copied.
-        return copy;
+        return source.copy();
     }
 
     /**
@@ -354,8 +348,7 @@ public class ProjectIndexer {
             final AiMdHeader baseHeader)
             throws IOException {
         final String overviewSource = buildOverviewSource(entries);
-        return support.processFieldGenerations(
-                Collections.singletonList(overview), projectFile, CONTEXT_TYPE_PROJECT, overviewSource, baseHeader);
+        return support.generate(overview, projectFile, CONTEXT_TYPE_PROJECT, overviewSource, baseHeader);
     }
 
     /**

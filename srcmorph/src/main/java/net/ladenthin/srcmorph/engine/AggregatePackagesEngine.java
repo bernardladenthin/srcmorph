@@ -5,8 +5,10 @@ package net.ladenthin.srcmorph.engine;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import lombok.ToString;
+import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.indexer.AiIndexTally;
@@ -19,7 +21,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Phase 2 orchestration: aggregates per-package {@code .ai.md} index files and fills in their
- * AI-generated summary fields.
+ * AI-generated summary fields, with the phase's one rule: its prompt and model
+ * ({@link SrcMorphConfiguration#getFieldGenerations()} holds exactly that rule).
  *
  * <p>Extracted from what was {@code AggregatePackagesMojo.execute()} in the
  * {@code llamacpp-ai-index-maven-plugin} module.</p>
@@ -28,6 +31,12 @@ import org.slf4j.LoggerFactory;
 public final class AggregatePackagesEngine {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AggregatePackagesEngine.class);
+
+    /** The goal, named in a configuration error. */
+    private static final String PHASE = "aggregate-packages";
+
+    /** The CLI's key for the phase's rule, named in a configuration error. */
+    private static final String CLI_KEY = "packageFieldGenerations";
 
     private final SrcMorphConfiguration config;
 
@@ -45,7 +54,8 @@ public final class AggregatePackagesEngine {
      *
      * @return the number of package index files written; {@code 0} when the output directory does not yet
      *         exist
-     * @throws SrcMorphException if the prompt/model definitions are misconfigured, or, after every package
+     * @throws SrcMorphException if the phase has not exactly one rule, the prompt/model definitions are
+     *                           misconfigured, or, after every package
      *                           was tried, when a package got an incomplete answer and was not written
      * @throws IOException       if the output tree cannot be read or written
      */
@@ -62,24 +72,27 @@ public final class AggregatePackagesEngine {
         LOGGER.info("Subtrees        : {}", resolvedSubtrees);
         LOGGER.info("Force           : {}", config.isForce());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
-        LOGGER.info("LlamaCpp Temperature: {}", config.getLlamaTemperature());
-        LOGGER.info("LlamaCpp Max Output Tokens: {}", config.getLlamaMaxOutputTokens());
 
         if (!outputPath.toFile().exists()) {
             LOGGER.info("AI output directory does not exist, skipping package aggregation: {}", outputPath);
             return 0;
         }
 
+        final AiFieldGenerationConfig rule =
+                EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
         final AiModelDefinitionSupport modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
+        EngineSupport.validateRoutedModelPaths(
+                config.getGenerationProvider(), modelDefinitionSupport, Collections.singletonList(rule));
+        LOGGER.info("Package rule    : prompt '{}', model '{}'", rule.getPromptKey(), rule.getAiDefinitionKey());
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
         final AiIndexTally aggregated;
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport),
+                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, rule.getAiDefinitionKey()),
                 promptSupport)) {
             final PackageIndexer packageIndexer = new PackageIndexer(
                     basePath,
@@ -89,7 +102,7 @@ public final class AggregatePackagesEngine {
                     resolvedSubtrees,
                     config.isForce(),
                     provider,
-                    config.getFieldGenerations(),
+                    rule,
                     promptSupport,
                     modelDefinitionSupport);
 

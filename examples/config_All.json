@@ -1,5 +1,17 @@
 {
   "command": "All",
+  "packageFieldGenerations": [
+    {
+      "promptKey": "package-body",
+      "aiDefinitionKey": "mock-model"
+    }
+  ],
+  "projectFieldGenerations": [
+    {
+      "promptKey": "project-body",
+      "aiDefinitionKey": "mock-model"
+    }
+  ],
   "srcMorph": {
     "baseDirectory": ".",
     "outputDirectory": "target/srcmorph-ai",

@@ -95,8 +95,7 @@ public class AiFieldGenerationSupportRealModelTest {
 
         try (LlamaCppJniAiGenerationProvider provider = new LlamaCppJniAiGenerationProvider(jniConfig, promptSupport)) {
             final AiFieldGenerationSupport support = new AiFieldGenerationSupport(provider, prep, models);
-            final AiGenerationResult result = support.processFieldGenerations(
-                    Collections.singletonList(rule), contextFile, "file", source, header());
+            final AiGenerationResult result = support.generate((rule), contextFile, "file", source, header());
 
             // The exact facts (counted over the whole source) lead the body; the map-reduced AI summary
             // follows. This proves the real-model chunk -> hierarchical-reduce path completes end-to-end.

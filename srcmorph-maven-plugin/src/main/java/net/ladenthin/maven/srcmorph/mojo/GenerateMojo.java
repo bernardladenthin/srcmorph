@@ -91,14 +91,6 @@ public class GenerateMojo extends AbstractAiIndexMojo {
     @Parameter(property = "srcmorph.file.maxSizeBytes", defaultValue = "0")
     private long maxFileSizeBytes;
 
-    /** llama.cpp context window size; smaller default suits the fast generate pass. */
-    @Parameter(property = "srcmorph.llama.contextSize", defaultValue = "2048")
-    private int llamaContextSize;
-
-    /** CPU threads for llama.cpp inference during the generate pass. */
-    @Parameter(property = "srcmorph.llama.threads")
-    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
-
     /**
      * When {@code true}, only build and log the routing plan (which model indexes which files with which
      * prompt) and then stop — no model is loaded and nothing is generated. Useful to verify routing
@@ -106,16 +98,6 @@ public class GenerateMojo extends AbstractAiIndexMojo {
      */
     @Parameter(property = "srcmorph.planOnly", defaultValue = "false")
     private boolean planOnly;
-
-    @Override
-    protected int getLlamaContextSize() {
-        return llamaContextSize;
-    }
-
-    @Override
-    protected int getLlamaThreads() {
-        return llamaThreads;
-    }
 
     @Override
     protected boolean isPhaseSkipped() {

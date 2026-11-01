@@ -28,7 +28,6 @@ import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiTimeSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +96,7 @@ public class PackageIndexer {
     private final List<Path> aiSubtrees;
     private final boolean force;
 
-    private final @Nullable List<AiFieldGenerationConfig> fieldGenerations;
+    private final AiFieldGenerationConfig rule;
 
     private final AiPathSupport pathSupport = new AiPathSupport();
     private final AiTimeSupport timeSupport = new AiTimeSupport();
@@ -120,7 +119,7 @@ public class PackageIndexer {
      * @param sourceSubtrees         source subtrees in scope; may be empty
      * @param force                  when {@code true}, regenerate even when fields are populated
      * @param generationProvider     AI provider used to generate fields
-     * @param fieldGenerations       field generation configurations; may be {@code null}
+     * @param rule                   the package phase's rule: its prompt and model
      * @param promptSupport          prompt lookup
      * @param modelDefinitionSupport AI model definition lookup
      */
@@ -132,7 +131,7 @@ public class PackageIndexer {
             final Collection<Path> sourceSubtrees,
             final boolean force,
             final AiGenerationProvider generationProvider,
-            final @Nullable Collection<AiFieldGenerationConfig> fieldGenerations,
+            final AiFieldGenerationConfig rule,
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport) {
         this.outputRoot = outputRoot;
@@ -148,7 +147,7 @@ public class PackageIndexer {
         }
         this.aiSubtrees = ai;
         this.force = force;
-        this.fieldGenerations = fieldGenerations != null ? new ArrayList<>(fieldGenerations) : null;
+        this.rule = rule.copy();
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
                 generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
     }
@@ -237,10 +236,6 @@ public class PackageIndexer {
     }
 
     private AiIndexOutcome writePackageFile(final Path directory) throws IOException {
-        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
-            throw new IllegalArgumentException("No field generations configured for package indexing of " + directory);
-        }
-
         final List<String> contents = collectContents(directory);
         final List<String> childLinks = collectChildLinks(directory);
         final Path packageFile = directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME);
@@ -269,8 +264,8 @@ public class PackageIndexer {
 
         final String sourceText = buildPackageSourceText(baseHeader, directory, contents);
 
-        final AiGenerationResult result = fieldGenerationSupport.processFieldGenerations(
-                fieldGenerations, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
+        final AiGenerationResult result =
+                fieldGenerationSupport.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
 
         if (!result.complete()) {
             return AiIndexOutcome.FAILED;

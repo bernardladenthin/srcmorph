@@ -128,8 +128,7 @@ public final class AiModelDefinitionSupport {
      * @param modelPath      the configured path, or {@code null}
      * @return the path to load, or {@code null} when {@code modelPath} is {@code null}
      */
-    public static @Nullable String resolveModelPath(
-            final @Nullable File modelDirectory, final @Nullable String modelPath) {
+    static @Nullable String resolveModelPath(final @Nullable File modelDirectory, final @Nullable String modelPath) {
         return AiPathSupport.resolveAgainst(modelDirectory, modelPath);
     }
 

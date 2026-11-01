@@ -36,24 +36,6 @@ public class AbstractAiIndexMojoTest {
     /** Concrete subclass supplying the abstract members; {@code execute()} is never called here. */
     private static final class TestMojo extends AbstractAiIndexMojo {
 
-        private final int contextSize;
-        private final int threads;
-
-        TestMojo(final int contextSize, final int threads) {
-            this.contextSize = contextSize;
-            this.threads = threads;
-        }
-
-        @Override
-        protected int getLlamaContextSize() {
-            return contextSize;
-        }
-
-        @Override
-        protected int getLlamaThreads() {
-            return threads;
-        }
-
         @Override
         protected boolean isPhaseSkipped() {
             return false;
@@ -77,7 +59,7 @@ public class AbstractAiIndexMojoTest {
     @Test
     public void buildConfiguration_everyParameterField_threadsThroughToTheConfiguration() {
         // arrange
-        final TestMojo mojo = new TestMojo(4096, 7);
+        final TestMojo mojo = new TestMojo();
         final File base = new File("base-dir");
         final File out = new File("out-dir");
         final List<String> subtrees = Arrays.asList("src/main/java", "src/test/java");
@@ -95,13 +77,10 @@ public class AbstractAiIndexMojoTest {
         mojo.promptDefinitions = prompts;
         mojo.aiDefinitions = models;
         mojo.fieldGenerations = rules;
-        mojo.llamaModelPath = "model.gguf";
         final File modelDirectory = new File("models");
         mojo.modelDirectory = modelDirectory;
         final File profileDirectory = new File("prompts");
         mojo.profileDirectory = profileDirectory;
-        mojo.llamaMaxOutputTokens = 222;
-        mojo.llamaTemperature = 0.33f;
 
         // act
         final SrcMorphConfiguration config = mojo.buildConfiguration();
@@ -115,22 +94,15 @@ public class AbstractAiIndexMojoTest {
         assertThat(config.getPromptDefinitions(), is(sameInstance(prompts)));
         assertThat(config.getAiDefinitions(), is(sameInstance(models)));
         assertThat(config.getFieldGenerations(), is(sameInstance(rules)));
-        assertThat(config.getLlamaModelPath(), is(equalTo("model.gguf")));
         assertThat(config.getModelDirectory(), is(sameInstance(modelDirectory)));
         assertThat(config.getProfileDirectory(), is(sameInstance(profileDirectory)));
-        assertThat(config.getLlamaMaxOutputTokens(), is(equalTo(222)));
-        assertThat(config.getLlamaTemperature(), is(equalTo(0.33f)));
-        // These two come from the abstract getters, not fields -- a subclass declares its own
-        // @Parameter and returns it, so the mapping must read the getter and not some field.
-        assertThat(config.getLlamaContextSize(), is(equalTo(4096)));
-        assertThat(config.getLlamaThreads(), is(equalTo(7)));
     }
 
     /** {@code force} defaults to false and must not be inverted on the way through. */
     @Test
     public void buildConfiguration_forceLeftUnset_staysFalse() {
         // arrange
-        final TestMojo mojo = new TestMojo(1024, 1);
+        final TestMojo mojo = new TestMojo();
 
         // act
         final SrcMorphConfiguration config = mojo.buildConfiguration();
@@ -143,7 +115,7 @@ public class AbstractAiIndexMojoTest {
     @Test
     public void buildConfiguration_calledTwice_returnsDistinctInstances() {
         // arrange
-        final TestMojo mojo = new TestMojo(1024, 1);
+        final TestMojo mojo = new TestMojo();
 
         // act
         final SrcMorphConfiguration first = mojo.buildConfiguration();

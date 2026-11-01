@@ -65,7 +65,7 @@ public class PackageIndexerTest {
                 Collections.<Path>emptyList(),
                 false,
                 new MockAiGenerationProvider(),
-                CommonTestFixtures.createPackageFieldGenerations(),
+                CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
@@ -119,7 +119,7 @@ public class PackageIndexerTest {
                 Collections.<Path>emptyList(),
                 false,
                 provider,
-                CommonTestFixtures.createPackageFieldGenerations(),
+                CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
@@ -158,7 +158,7 @@ public class PackageIndexerTest {
                 Collections.<Path>emptyList(),
                 false,
                 provider,
-                CommonTestFixtures.createPackageFieldGenerations(),
+                CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
@@ -209,7 +209,7 @@ public class PackageIndexerTest {
                 Collections.<Path>emptyList(),
                 false,
                 provider,
-                CommonTestFixtures.createPackageFieldGenerations(),
+                CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
@@ -246,7 +246,7 @@ public class PackageIndexerTest {
                 Collections.<Path>emptyList(),
                 false,
                 new MockAiGenerationProvider(),
-                CommonTestFixtures.createPackageFieldGenerations(),
+                CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
@@ -313,7 +313,7 @@ public class PackageIndexerTest {
                 Collections.<Path>emptyList(),
                 false,
                 request -> "",
-                CommonTestFixtures.createPackageFieldGenerations(),
+                CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
@@ -350,7 +350,7 @@ public class PackageIndexerTest {
                     }
                     return "A package summary.";
                 },
-                CommonTestFixtures.createPackageFieldGenerations(),
+                CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 

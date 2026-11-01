@@ -16,11 +16,6 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-4. **One rule for the package and project phases; the `llama*` fallback goes.** The package phase
-   takes exactly one rule and the project phase none or one (`examples/config_All.json` and the other
-   examples set `packageFieldGenerations` / `projectFieldGenerations`); with that, the `llama*`
-   fallback parameters of the configuration, the mojos and the CLI are dead and are removed, with
-   their log lines.
 7. **Tests and the PIT gate.** `LlamaCppJniConfig$Builder` and `AiIndexPlan$Entry` on the gate; the
    pure logic of `AiFieldGenerationSupport` (overflow backoff, reduce batching) and `SourceFileIndexer`
    (time estimate, line count) moved to gated support classes; mock-provider tests of `sample`,
