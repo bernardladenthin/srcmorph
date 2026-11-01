@@ -136,5 +136,40 @@ public class AiSourceChunkerTest {
         assertThat(chunks, is(equalTo(Arrays.asList("abcd", "\nefg", "hij"))));
     }
 
+    @Test
+    public void chunk_aLineLongerThanTheBudget_isCutHardInsteadOfRepeatingTheOverlap() {
+        // arrange: a short header, then one line of 80 000 characters, as a dump with one INSERT per line
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 50; i++) {
+            sb.append("-- header line ").append(i).append('\n');
+        }
+        final String header = sb.toString();
+        for (int i = 0; i < 80_000; i++) {
+            sb.append('x');
+        }
+        sb.append('\n');
+
+        // act
+        final List<String> chunks = AiSourceChunker.chunk(sb.toString(), 20_000, 1_000, 0);
+
+        // assert: the header, then the long line in hard cuts of 20 000 overlapping by 1 000
+        assertThat(chunks.size(), is(6));
+        assertThat(chunks.get(0), is(header));
+        assertThat(chunks.get(1).length(), is(20_000));
+        assertThat(chunks.get(5).endsWith("x\n"), is(true));
+    }
+
+    @Test
+    public void chunk_shortLines_stillCutAtTheLastLineEnd() {
+        // arrange: lines of 9 characters; a budget of 20 holds two of them
+        final String source = "aaaaaaaa\nbbbbbbbb\ncccccccc\ndddddddd\n";
+
+        // act
+        final List<String> chunks = AiSourceChunker.chunk(source, 20, 0, 0);
+
+        // assert
+        assertThat(chunks, is(equalTo(Arrays.asList("aaaaaaaa\nbbbbbbbb\n", "cccccccc\ndddddddd\n"))));
+    }
+
     // </editor-fold>
 }

@@ -51,11 +51,15 @@ public final class AiSourceChunker {
         final int overlap = Math.max(0, Math.min(overlapChars, maxChars - 1));
 
         int pos = 0;
+        int previousEnd = 0;
         while (pos < length) {
             int end = Math.min(pos + maxChars, length);
             if (end < length) {
                 final int lastNewline = source.lastIndexOf('\n', end - 1);
-                if (lastNewline > pos) {
+                // cut at a line end only when it gets past the previous chunk: behind a line longer than
+                // the budget, the last line end is the previous cut, and cutting there again would repeat
+                // the overlap one character further on, once per character
+                if (lastNewline > pos && lastNewline + 1 > previousEnd) {
                     end = lastNewline + 1;
                 }
             }
@@ -63,6 +67,7 @@ public final class AiSourceChunker {
             if (end >= length) {
                 break;
             }
+            previousEnd = end;
             pos = Math.max(pos + 1, end - overlap);
         }
         return select(chunks, maxChunks);

@@ -138,6 +138,42 @@ public class AiFieldGenerationSupport {
     /** The usage of the calls since the last {@link #takeUsage()}. */
     private AiGenerationUsage usage = AiGenerationUsage.NONE;
 
+    /** The source characters the last call read (all of them unless its window cut the source). */
+    private int lastReadChars;
+
+    /** The calls of the current map-reduce whose input a context overflow cut to a smaller window. */
+    private int cutCalls;
+
+    /**
+     * Raised inside when a context overflow's smaller window would cut a source its caller does not allow
+     * to be cut; the caller's rule decides with {@link #window()}.
+     */
+    static final class AiSourceCutException extends IOException {
+
+        private static final long serialVersionUID = 1L;
+
+        private final int window;
+
+        /**
+         * Creates the exception.
+         *
+         * @param window the window that would cut the source
+         */
+        AiSourceCutException(final int window) {
+            super("the source does not fit a window of " + window + " characters");
+            this.window = window;
+        }
+
+        /**
+         * Returns the window that would cut the source.
+         *
+         * @return the window in characters
+         */
+        int window() {
+            return window;
+        }
+    }
+
     /**
      * Creates a new {@code AiFieldGenerationSupport}.
      *
@@ -250,32 +286,123 @@ public class AiFieldGenerationSupport {
         final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
 
         // An oversized file (the source did not fit the window) is handled per the rule's onOversize
-        // strategy. DETERMINISTIC/MAP_REDUCE replace the single generation entirely; FAIL/SAMPLE fall
-        // through to the single-shot path below (the source was already trimmed to the window head).
+        // strategy; a file that fits goes to the model whole.
         if (preparedPrompt.trimmed()) {
-            final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
-            if (oversize == AiOversizeStrategy.FAIL) {
-                throw new IOException(contextType + " '" + contextFile + "' (" + sourceText.length()
-                        + " chars) exceeds the window of model '" + fieldGeneration.getAiDefinitionKey()
-                        + "' (" + preparedPrompt.availableSourceChars() + " chars of source) and its rule has"
-                        + " onOversize: fail");
-            }
-            if (oversize == AiOversizeStrategy.DETERMINISTIC) {
-                LOGGER.info(
-                        "Oversize {} '{}' -> deterministic body (no model), {} chars",
-                        contextType,
-                        contextFile,
-                        sourceText.length());
-                return factsPrefix
-                        + AiDeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
-            }
-            if (oversize == AiOversizeStrategy.MAP_REDUCE || oversize == AiOversizeStrategy.SAMPLE_CHUNKS) {
-                return factsPrefix
-                        + mapReduceSummarize(
-                                fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
-            }
+            return factsPrefix
+                    + oversized(
+                            fieldGeneration,
+                            generationConfig,
+                            contextFile,
+                            contextType,
+                            sourceText,
+                            baseHeader,
+                            effectiveMaxInputChars);
         }
+        try {
+            return factsPrefix
+                    + generateLogged(
+                            fieldGeneration,
+                            generationConfig,
+                            contextFile,
+                            contextType,
+                            sourceText,
+                            baseHeader,
+                            effectiveMaxInputChars,
+                            false);
+        } catch (final AiSourceCutException e) {
+            // the source fits by the character estimate but not in tokens: the context overflow's smaller
+            // window would cut it, so the rule's onOversize decides, as for any oversized file
+            return factsPrefix
+                    + oversized(
+                            fieldGeneration,
+                            generationConfig,
+                            contextFile,
+                            contextType,
+                            sourceText,
+                            baseHeader,
+                            e.window());
+        }
+    }
 
+    /**
+     * Summarizes a source that does not fit {@code window}, per the rule's {@code onOversize} strategy:
+     * {@code fail} refuses it, {@code deterministic} writes the model-free body, {@code mapReduce} and
+     * {@code sampleChunks} summarize chunks, and {@code sample} reads the head and says how much of it.
+     *
+     * @param fieldGeneration  the rule
+     * @param generationConfig the rule's model configuration
+     * @param contextFile      the file the body is for
+     * @param contextType      the context label for the log
+     * @param sourceText       the full source text
+     * @param baseHeader       the header passed through to each request
+     * @param window           the window the source does not fit
+     * @return the body, without the facts line
+     * @throws IOException if the strategy is {@code fail} or the provider fails
+     */
+    private String oversized(
+            final AiFieldGenerationConfig fieldGeneration,
+            final AiGenerationConfig generationConfig,
+            final Path contextFile,
+            final String contextType,
+            final String sourceText,
+            final AiMdHeader baseHeader,
+            final int window)
+            throws IOException {
+        final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
+        if (oversize == AiOversizeStrategy.FAIL) {
+            final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
+                    new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader),
+                    window);
+            throw new IOException(contextType + " '" + contextFile + "' (" + sourceText.length()
+                    + " chars) exceeds the window of model '" + fieldGeneration.getAiDefinitionKey()
+                    + "' (" + prepared.availableSourceChars() + " chars of source) and its rule has"
+                    + " onOversize: fail");
+        }
+        if (oversize == AiOversizeStrategy.DETERMINISTIC) {
+            LOGGER.info(
+                    "Oversize {} '{}' -> deterministic body (no model), {} chars",
+                    contextType,
+                    contextFile,
+                    sourceText.length());
+            return AiDeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
+        }
+        if (oversize == AiOversizeStrategy.MAP_REDUCE || oversize == AiOversizeStrategy.SAMPLE_CHUNKS) {
+            return mapReduceSummarize(fieldGeneration, contextFile, sourceText, baseHeader, window);
+        }
+        final String generated = generateLogged(
+                fieldGeneration, generationConfig, contextFile, contextType, sourceText, baseHeader, window, true);
+        // the head was read, as much of it as the last call's window held, and the summary says so
+        return AiMapReduceSupport.headCoverage(lastReadChars, sourceText.length()) + generated;
+    }
+
+    /**
+     * Generates one summary of {@code sourceText} in one call (and its retries), logging the estimate
+     * before and the measured time after.
+     *
+     * @param fieldGeneration  the rule
+     * @param generationConfig the rule's model configuration
+     * @param contextFile      the file the body is for
+     * @param contextType      the context label for the log
+     * @param sourceText       the source text
+     * @param baseHeader       the header passed through to the request
+     * @param window           the window the call's prompt is prepared for
+     * @param mayCut           whether the source may be cut to the window ({@code sample}); otherwise a cut
+     *                         raises {@link AiSourceCutException}
+     * @return the answer
+     * @throws IOException if the provider fails, or the source would be cut and may not be
+     */
+    private String generateLogged(
+            final AiFieldGenerationConfig fieldGeneration,
+            final AiGenerationConfig generationConfig,
+            final Path contextFile,
+            final String contextType,
+            final String sourceText,
+            final AiMdHeader baseHeader,
+            final int window,
+            final boolean mayCut)
+            throws IOException {
+        final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(
+                new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader), window);
         if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
             LOGGER.warn(
                     "Trimmed AI input for {}" + TRIM_WARN_FIELD_LABEL
@@ -285,7 +412,7 @@ public class AiFieldGenerationSupport {
                     preparedPrompt.originalSourceLength(),
                     preparedPrompt.trimmedSourceLength(),
                     preparedPrompt.availableSourceChars(),
-                    effectiveMaxInputChars);
+                    window);
         }
 
         final int processedSourceChars = preparedPrompt.sourceText().length();
@@ -308,10 +435,9 @@ public class AiFieldGenerationSupport {
                 "Generating field '{}' with temperature={}, maxInputChars={}",
                 fieldGeneration.getPromptKey(),
                 generationConfig.getTemperature(),
-                effectiveMaxInputChars);
+                window);
         final long generationStartNanos = System.nanoTime();
-        final String generated =
-                generateComplete(fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
+        final String generated = generateComplete(fieldGeneration, contextFile, sourceText, baseHeader, window, mayCut);
         final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
 
         // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
@@ -323,12 +449,7 @@ public class AiFieldGenerationSupport {
                 contextFile,
                 timeEstimator.formatDuration(actualSeconds),
                 timeEstimator.formatDuration(estimatedSeconds));
-        // a trimmed source was read from its head only, and the summary says so
-        final String coverage = preparedPrompt.trimmed()
-                ? AiMapReduceSupport.headCoverage(
-                        preparedPrompt.trimmedSourceLength(), preparedPrompt.originalSourceLength())
-                : "";
-        return factsPrefix + coverage + generated;
+        return generated;
     }
 
     /**
@@ -375,6 +496,7 @@ public class AiFieldGenerationSupport {
                 sourceText.length(),
                 chunks.size(),
                 all.size());
+        cutCalls = 0;
         final List<String> partials = new ArrayList<>(chunks.size());
         int index = 0;
         for (final String chunk : chunks) {
@@ -383,8 +505,9 @@ public class AiFieldGenerationSupport {
                     .trim());
             LOGGER.info("  mapReduce chunk {}/{} summarized ({} chars)", index, chunks.size(), chunk.length());
         }
-        return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size())
-                + reducePartials(fieldGeneration, contextFile, baseHeader, partials, sourceBudget, safeWindow);
+        final String reduced =
+                reducePartials(fieldGeneration, contextFile, baseHeader, partials, sourceBudget, safeWindow);
+        return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size(), cutCalls) + reduced;
     }
 
     /**
@@ -460,7 +583,7 @@ public class AiFieldGenerationSupport {
             final AiMdHeader baseHeader,
             final int effectiveMaxInputChars)
             throws IOException {
-        return generateComplete(fieldGeneration, contextFile, chunk, baseHeader, effectiveMaxInputChars);
+        return generateComplete(fieldGeneration, contextFile, chunk, baseHeader, effectiveMaxInputChars, true);
     }
 
     /**
@@ -473,22 +596,24 @@ public class AiFieldGenerationSupport {
      * @param source          the source text to summarize
      * @param baseHeader      the header passed through to the request
      * @param window          the per-call window budget
+     * @param mayCut          whether the source may be cut to fit the window
      * @return the complete answer
      * @throws AiIncompleteAnswerException if the last attempt's answer is still incomplete
-     * @throws IOException                 if the provider fails
+     * @throws IOException                 if the provider fails, or the source would be cut and may not be
      */
     private String generateComplete(
             final AiFieldGenerationConfig fieldGeneration,
             final Path contextFile,
             final String source,
             final AiMdHeader baseHeader,
-            final int window)
+            final int window,
+            final boolean mayCut)
             throws IOException {
         final int attempts = fieldGeneration.incompleteStrategy().attempts();
         for (int attempt = 1; ; attempt++) {
             try {
                 final String text = generateWithOverflowRetry(
-                        fieldGeneration.getPromptKey(), contextFile, source, baseHeader, window);
+                        fieldGeneration.getPromptKey(), contextFile, source, baseHeader, window, mayCut);
                 if (compatibilityHelper.isBlank(text)) {
                     throw new AiIncompleteAnswerException(
                             AiIncompleteAnswerException.Reason.EMPTY, "The model answered nothing for " + contextFile);
@@ -518,27 +643,44 @@ public class AiFieldGenerationSupport {
      * (up to {@link AiOverflowBackoff#MAX_RETRIES}) when the provider rejects the prompt for exceeding the model's
      * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
      * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
-     * exception propagates immediately.
+     * exception propagates immediately. A source that the smaller window would cut is cut only when
+     * {@code mayCut} allows it (and counted in {@link #cutCalls}); otherwise {@link AiSourceCutException}
+     * hands the window back to the caller, whose rule decides.
      *
      * @param promptKey   the prompt template key
      * @param contextFile the source file path
      * @param source      the source text to trim and summarize
      * @param baseHeader  the header passed through to the request
      * @param window      the initial per-call window budget (characters)
+     * @param mayCut      whether the source may be cut to fit the window
      * @return the provider's generated text
-     * @throws IOException if the provider throws an {@link IOException} during generation
+     * @throws IOException if the provider throws an {@link IOException} during generation, or the source
+     *                     would be cut and may not be
      */
     private String generateWithOverflowRetry(
             final String promptKey,
             final Path contextFile,
             final String source,
             final AiMdHeader baseHeader,
-            final int window)
+            final int window,
+            final boolean mayCut)
             throws IOException {
         int budget = window;
+        boolean cut = false;
         for (int attempt = 0; ; attempt++) {
             final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
                     new AiGenerationRequest(promptKey, contextFile, source, baseHeader), budget);
+            if (prepared.trimmed()) {
+                if (!mayCut) {
+                    throw new AiSourceCutException(budget);
+                }
+                // one call counts once, however many smaller windows it took
+                if (!cut) {
+                    cut = true;
+                    cutCalls++;
+                }
+            }
+            lastReadChars = prepared.trimmedSourceLength();
             try {
                 final String text = generationProvider.generate(
                         new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));

@@ -138,16 +138,25 @@ public final class AiMapReduceSupport {
     }
 
     /**
-     * Returns the coverage line of a map-reduce: how many of the source's chunks the summary read.
+     * Returns the coverage line of a map-reduce: how many of the source's chunks the summary read, and
+     * how many of its calls a context overflow made cut to a smaller window.
      *
      * @param summarized the chunks summarized
      * @param total      the chunks of the source
-     * @return {@code **Coverage:** 6 of 9 chunks summarized (sampled)}, without {@code (sampled)} when
-     *         every chunk was read
+     * @param cutCalls   the map and reduce calls whose input was cut to fit the window
+     * @return {@code **Coverage:** 6 of 9 chunks summarized (sampled; 2 calls cut to fit the window)},
+     *         without {@code sampled} when every chunk was read and without the cut calls when none was
      */
-    public static String chunkCoverage(final int summarized, final int total) {
+    public static String chunkCoverage(final int summarized, final int total, final int cutCalls) {
+        final List<String> notes = new ArrayList<>(2);
+        if (summarized < total) {
+            notes.add("sampled");
+        }
+        if (cutCalls > 0) {
+            notes.add(cutCalls + (cutCalls == 1 ? " call" : " calls") + " cut to fit the window");
+        }
         return COVERAGE_HEADER + summarized + " of " + total + " chunks summarized"
-                + (summarized < total ? " (sampled)" : "") + COVERAGE_SUFFIX;
+                + (notes.isEmpty() ? "" : " (" + String.join("; ", notes) + ")") + COVERAGE_SUFFIX;
     }
 
     /**

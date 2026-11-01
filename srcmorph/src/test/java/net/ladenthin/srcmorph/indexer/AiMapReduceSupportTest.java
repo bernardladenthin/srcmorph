@@ -117,10 +117,21 @@ public class AiMapReduceSupportTest {
     // <editor-fold defaultstate="collapsed" desc="coverage and chunk arithmetic">
     @Test
     public void chunkCoverage_allOrSampled() {
-        assertThat(AiMapReduceSupport.chunkCoverage(9, 9), is(equalTo("**Coverage:** 9 of 9 chunks summarized\n\n")));
         assertThat(
-                AiMapReduceSupport.chunkCoverage(6, 9),
+                AiMapReduceSupport.chunkCoverage(9, 9, 0), is(equalTo("**Coverage:** 9 of 9 chunks summarized\n\n")));
+        assertThat(
+                AiMapReduceSupport.chunkCoverage(6, 9, 0),
                 is(equalTo("**Coverage:** 6 of 9 chunks summarized (sampled)\n\n")));
+    }
+
+    @Test
+    public void chunkCoverage_namesTheCallsCutToFit() {
+        assertThat(
+                AiMapReduceSupport.chunkCoverage(9, 9, 1),
+                is(equalTo("**Coverage:** 9 of 9 chunks summarized (1 call cut to fit the window)\n\n")));
+        assertThat(
+                AiMapReduceSupport.chunkCoverage(6, 9, 2),
+                is(equalTo("**Coverage:** 6 of 9 chunks summarized (sampled; 2 calls cut to fit the window)\n\n")));
     }
 
     @Test

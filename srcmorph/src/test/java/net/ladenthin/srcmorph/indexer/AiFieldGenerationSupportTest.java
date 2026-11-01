@@ -387,11 +387,11 @@ public class AiFieldGenerationSupportTest {
             calls.incrementAndGet();
             return "PARTIAL";
         };
-        final AiFieldGenerationSupport support = supportWith(provider, "m");
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
-        // ~3600 chars > 1000-char chunk budget -> several chunks; sampleChunks 2 maps 2 of them + 1 reduce.
+        // ~70 KB over a window of about 7 KB -> several chunks that fit; sampleChunks 2 maps 2 of them + 1 reduce.
         final AiGenerationResult result = support.generate(
-                (oversizeRule("m", "sampleChunks", 2)), contextFile, "file", largeSource(600), anyHeader());
+                (oversizeRule("m", "sampleChunks", 2)), contextFile, "file", largeSource(7000), anyHeader());
 
         assertThat(calls.get(), is(equalTo(3)));
         assertThat(result.body(), startsWith("**Coverage:** 2 of "));
@@ -406,12 +406,12 @@ public class AiFieldGenerationSupportTest {
             return "PARTIAL";
         };
         // a maxChunks of the rule does not sample under mapReduce
-        final AiGenerationResult result = supportWith(provider, "m")
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (oversizeRule("m", "mapReduce", 2)),
                         Files.createTempFile("Huge", ".java"),
                         "file",
-                        largeSource(600),
+                        largeSource(7000),
                         anyHeader());
 
         final long mapped = getCapturedInfos().stream()
@@ -559,12 +559,12 @@ public class AiFieldGenerationSupportTest {
             calls.incrementAndGet();
             return "PARTIAL";
         };
-        final AiFieldGenerationSupport support = supportWith(provider, "m");
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
         // maxChunks=0 (unbounded) over a large source -> far more than MAX_REDUCE_FANIN chunks, so the
         // reduce cannot combine every partial in one call and must recurse: a second reduce round appears.
         final AiGenerationResult result = support.generate(
-                (oversizeRule("m", "mapReduce", 0)), contextFile, "file", largeSource(3000), anyHeader());
+                (oversizeRule("m", "mapReduce", 0)), contextFile, "file", largeSource(30000), anyHeader());
 
         final List<String> infos = getCapturedInfos();
         final long mapChunks =
@@ -579,6 +579,61 @@ public class AiFieldGenerationSupportTest {
         // More provider calls than a single-level reduce (chunks + 1) would make.
         assertThat(calls.get() > mapChunks + 1, is(true));
         assertThat(result.body(), endsWith(" chunks summarized\n\nPARTIAL"));
+    }
+
+    @Test
+    public void onOversize_mapReduce_inAWindowNoChunkFits_namesTheCutCalls() throws Exception {
+        // arrange: the tiny window holds less than the minimum chunk, so every chunk call is cut
+        final AiFieldGenerationSupport support = supportWith(request -> "PARTIAL", "m");
+
+        // act
+        final AiGenerationResult result = support.generate(
+                (oversizeRule("m", "mapReduce", 0)),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(600),
+                anyHeader());
+
+        // assert
+        assertThat(result.body(), startsWith("**Coverage:** "));
+        assertThat(result.body(), containsString(" calls cut to fit the window)\n\nPARTIAL"));
+    }
+
+    @Test
+    public void contextOverflow_ofASourceThatFits_isDecidedByOnOversize() throws Exception {
+        // arrange: the source fits the window by characters, but the provider refuses it as a context
+        // overflow until a smaller window has cut a thousand characters off
+        final String source = largeSource(600);
+        final AiGenerationProvider provider = request -> {
+            if (request.sourceText().length() > source.length() - 1000) {
+                throw new java.io.IOException("the request exceeds the available context size");
+            }
+            return "BODY";
+        };
+
+        // act
+        final java.io.IOException failed = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.IOException.class,
+                () -> supportWithModels(provider, normalWindowModel("m"))
+                        .generate(
+                                oversizeRule("m", "fail", 0),
+                                Files.createTempFile("A", ".java"),
+                                "file",
+                                source,
+                                anyHeader()));
+        final AiGenerationResult sampled = supportWithModels(provider, normalWindowModel("m"))
+                .generate(
+                        oversizeRule("m", "sample", 0),
+                        Files.createTempFile("B", ".java"),
+                        "file",
+                        source,
+                        anyHeader());
+
+        // assert: fail refuses instead of writing a cut summary; sample says how much of the head it read
+        assertThat(failed.getMessage(), containsString("onOversize: fail"));
+        assertThat(sampled.body(), startsWith("**Coverage:** the first "));
+        assertThat(sampled.body(), containsString(" of " + source.length() + " characters (sampled head)"));
+        assertThat(sampled.body(), endsWith("BODY"));
     }
 
     @Test

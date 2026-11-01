@@ -341,6 +341,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   The example pom is therefore under test on every pull request.
 
 ### Fixed
+
+- **A line longer than the chunk budget no longer multiplies the chunks.** Behind such a line (a dump
+  with one `INSERT` per line, minified code) the chunker cut at the previous line end again and moved
+  on by one character, so a 50-line header before an 80 000-character line made 504 chunks, 499 of
+  them the same overlap, each one a model call; it now cuts such a line hard (6 chunks).
+- **A context overflow no longer cuts a source behind the rule's back.** A source that fits by the
+  character estimate but not in tokens was cut by the overflow retry and written as a complete
+  summary, also under `onOversize: fail`. Now the rule's `onOversize` decides, as for an oversized
+  file: `fail` refuses it, `sample` says in its coverage line how much of the head the last call read,
+  `mapReduce` / `sampleChunks` / `deterministic` take their path. A map-reduce whose calls had to be
+  cut says so too: `**Coverage:** 9 of 9 chunks summarized (2 calls cut to fit the window)`
+  (`AiMapReduceSupport.chunkCoverage(summarized, total, cutCalls)`).
 - **The benchmark's `score.py` took the facts line for the model's text.** With `--facts` a summary
   starts with srcmorph's exact counts, so the lead line was reported missing and the counts were
   scored as the model's. Every measure is now taken on the body without that line; the model
