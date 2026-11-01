@@ -26,6 +26,147 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
    language, benchmark and large corpora (the tools for it are done: `run.py` validates its options
    and records hashes, versions, tokens and their cost, `search.py` keys its cache by prompt and
    backs off, `large.py` writes its facts beside the corpus and plants names in the middle).
+   The runs are under way (2026-11-01: hosted, three rounds; local, the two Granite presets on the
+   large corpus with the XML and the generic prompt, and gpt-oss-20b on the GPU); their outputs and
+   the finding-7 text follow.
+
+### Verification of 2026-11-01 (eleven reviews of b74aa6b), open items
+
+Eleven parallel reviews (the whole PR, then config, fact counters, indexer, provider, engine, plugin,
+CLI and examples, docs, benchmark tooling, tests and gates) checked the PR at b74aa6b; every item
+below was verified against the code. Fixed and deleted from here: the chunker's repeated chunks
+behind a long line, and the overflow retry that cut a fitting source behind the rule's back.
+
+**Decisions first** (they change what the fixes below look like):
+
+- **D1. Default `onOversize` of the package and project rules.** The default `fail` now throws at
+  run time (main trimmed with a warning), and a package's source is all its child summaries, so a
+  large package fails on every run and its parent loses the subtree; an over-window overview fails
+  the aggregate-project goal. Options: `sample` (the head, with its coverage line) or `mapReduce` as
+  the aggregation phases' default, or keep `fail` and let `check` / the plan warn.
+- **D2. The model card.** Render it from the re-scored `scores/` (tables, charts, the text that cites
+  them) or keep the October numbers and mark the scorer change; the re-scored values are known (no
+  model has to run again).
+- **D3. The self-test's Granite tiers for big XML.** They keep the generic prompt because both
+  Granite presets scored lower on the catalog with the XML prompt; with copied fences no longer
+  counted, H-Tiny's generic 86 % becomes 0 % and its XML-prompt 57 % is better. The new local runs
+  (above) are the basis to decide on.
+- **D4. Everyday words in the Java expectations.** `provider`, `temperature`, `build`, `builder` count
+  from plain prose, as the SQL and other files' everyday words no longer do; a Java words list would
+  make the kinds consistent and lower Java recall a little.
+- **D5. Unchanged files in the run record.** Their rule, model and prompt hash describe the current
+  configuration, not the one that wrote the summary (the incremental check compares content only).
+  Record the hashes in the `.ai.md` header to make them historical, or document it.
+
+**Core (engine, indexer, provider, config):**
+
+- An unchecked provider exception (the local JNI provider throws only those; a model that fails to
+  load) ends the whole run; the per-file catch takes `IOException` only. Catch it per file too.
+- The run record is written only after the loop: an abort (the case above, a provider that cannot be
+  created in a later model group, a failing `close()`) loses it. Write it in `finally`; a failed
+  record write must not hide the run's own failure.
+- The per-file catch swallows `InterruptedIOException` and local write errors (paid for, then lost)
+  and logs `getMessage()` only (an `AccessDeniedException` is just a path): rethrow interrupts, log
+  the exception class.
+- The checksum is taken over decoded text, so an edit in a non-UTF-8 file (an umlaut in Latin-1)
+  counts as unchanged; take it over the bytes with only the line endings normalized.
+- `check()` accepts an unknown provider name; the run then fails later with a raw
+  `IllegalArgumentException`, after earlier model groups have generated.
+- The package and project rules are never validated (`onOversize`, `onIncomplete`, `maxChunks` with
+  `mapReduce`, `sampleChunks` without it) and their `factsKey` is never resolved, although the
+  CHANGELOG says the overview honours its rule's facts; `check` passes all of it.
+- A relative `modelPath`, `templateFile` or `factsFile` resolves against the working directory when
+  `modelDirectory` / `profileDirectory` are unset; default both to the configuration file's directory.
+- An empty `srcMorph:` (or a key set to nothing) puts `null` into non-null fields: a bare
+  `NullPointerException` in the loader, an NPE in the plugin for `pluginVersion`. Skip nulls in both
+  mappers.
+- The OpenAI-compatible provider resends a POST after a read timeout (600 s) up to `maxRetries`
+  times, each possibly billed; retry connect timeouts only. Also: `Retry-After` of ten or more digits
+  or an HTTP date falls back to the short backoff; 501, 505 and a 429 with `insufficient_quota` are
+  retried although permanent; the overflow regex misses Gemini's "input token count exceeds".
+- CodeQL #271 (`NumberFormatException` in the `Retry-After` parse) cannot happen behind the
+  `[0-9]{1,9}` match; parse the digits without `parseLong` and the alert has nothing to point at.
+  CodeQL #272: drop `@EqualsAndHashCode` from the mutable `RunRecord` (keep it on `Entry`).
+- The aggregation engines return early when the output directory is missing, before they check
+  their rule, so a wrong rule count passes silently on a fresh tree.
+- `All` with `planOnly: true` plans the file phase and still runs the package and project phases.
+- Overlapping or nested subtrees (the plugin adds every existing resource directory, e.g.
+  `<directory>${project.basedir}</directory>`) collect files twice, and the run fails with "X and X
+  would both be summarized"; deduplicate subtrees and candidates by their real path.
+- The plugin's property map has no `${project.*}` (`project.basedir`, `project.build.directory`,
+  `project.version`); an unknown `${x}` stays literal and becomes a directory name.
+- Calibrate still prints a paste-ready XML `<calibration>` block; print a YAML `calibration:` block
+  (the plugin-it asserts the XML block today).
+- `[ignore]` blanking deletes the region instead of replacing it with spaces, so `FROM t/* x */JOIN u`
+  counts no `JOIN`.
+- `getOversizeStrategy()` is a bean getter: the echoed configuration carries `oversizeStrategy`, which
+  the strict reader refuses on read-back.
+- A rule with both `facts` and `factsKey` silently loses the inline facts.
+- A summary written by 1.3.0 from an incomplete answer (facts line only, a project without its
+  Overview) is never repaired: audit item 2 promised it, the header check rewrites only a missing
+  file or a blank body.
+- Javadoc and messages that still describe the removed XML (`EngineSupport`, `GenerateEngine`,
+  `CConfiguration`, `AiModelDefinition`, `AiFieldGenerationConfig`), `maxChunks` "0 = unbounded",
+  strategy lists without `sampleChunks` / `keep`, `RequestRateLimiter` "does not retry",
+  `SrcMorphException` "misconfiguration, not I/O".
+- Smaller: `AiGenerationUsage.add` counts one call whatever it adds; the deterministic body's "last N
+  lines" drops a line when the source ends with `\n`; the plan's token figures ignore the oversize
+  strategy; the reduce estimate assumes a fan-in of 16; `onIncomplete: keep` writes a cut answer
+  without a marker; the per-file time of a local group's first file includes the model load; the
+  record's totals have no skipped count and no run wall time; `requiredPhaseRule` accepts a `skip`
+  rule; credentials in a `baseUrl` would be echoed in messages; `AiCompletionParser` keeps reasoning
+  when the template injected the opening `<think>`.
+
+**Fact counters (`profiles/v3/`, after the benchmark runs, which read the profile):**
+
+- `java-facts.tsv` `constructors` / `methods`: `\([^;{]*\)` is quadratic on a long enum (13 s on the
+  large corpus's 6 000 constants); a possessive one-level parameter list fixes it. `type
+  declarations` misses private/protected nested types and `@interface`, uses the forbidden `^\s*`, and
+  has no test.
+- Shell and Perl `[ignore]`: a `<<` that is a left shift or in a string opens a heredoc that scans to
+  the end of the file (20 000 lines: 35 s shell, 217 s Perl).
+- `sql-facts.tsv` `[ignore]`: no PostgreSQL `$$`, Oracle `q'[…]'`, MySQL `"…"` strings or `#`
+  comments; an apostrophe inside one blanks real statements.
+- `pom-facts.tsv`: an unclosed `<plugin>` in a comment runs the plugin-body region to the end.
+- Smaller: `yield f(x);` and `record X(` count as methods, nested generic bounds and same-line
+  annotations are missed, an enum constant with a body counts as a constructor; Javadoc "public"
+  counts (Java has no `[ignore]`); a heredoc marker in a Perl trailing comment, `<<EOF` in a shell
+  string; `${MSG:-…}` assignments; `VALUES(col)` of `ON DUPLICATE KEY UPDATE` counted as rows;
+  MariaDB `CREATE OR REPLACE TABLE`, T-SQL columnstore indexes, `CREATE FOREIGN TABLE`; the README's
+  table lacks PostgreSQL's `'C:\'` and nested comments; removing `(?![!+])` from the SQL ignore keeps
+  two tests green; XML `name = 'a'` in element text; `lineBreaks` keeps only `\r` and `\n`; the
+  fallback prompt's example `MAX_RETRIES` is a scored id of the language corpus.
+
+**Benchmark tooling (after the runs, which read `run.py` and `search.py`):**
+
+- `score.py`: lower-case SQL types (`integer`) count as invented names (Qwen3-Coder's 18.6 per 100 on
+  SQL is all `integer`), and `report.py` averages the kinds unweighted; `LEAK` matches inside
+  backticks (Mistral's `` `<|channel|>` ``), and a complete summary after a `<think>` block counts as
+  leak-only; an everyday word in a column or field listing (`email VARCHAR(254)`, 53 misses) does
+  not count; `facts.json` words lack `histogram`, `CHECKOUT`, `Since`; a backtick span check can match
+  across two spans; thousands separators defeat the numbers check.
+- `languages-2026-11/README.md`: its score command omits `--meta` (the card's cut-offs are used),
+  and the language-corpus scores are two-part means no committed command produces.
+- Card text (with D2): the correlation −0.46 is from an older population (today −0.18), the BM25 range
+  "67 to 86 %" ends at 91 %, the Fisher test with 3 against 3 runs can never reach p < 0.1.
+
+**Tests and gates:**
+
+- No core test calls an engine's `check()` (where it differs from the plan: `planOnly`, model files);
+  the provider's timeout retry and its interrupt branch have no test; the run record's per-file
+  usage, `rule` and `factsHash` and a changed prompt hash are not asserted; the overflow test does not
+  assert the smaller window; the plugin's base-directory default cannot be told from the file's
+  directory (every fixture puts the file in the project directory).
+- SpotBugs: `SrcMorphConfigurationFileLoader` sits in a Match that suppresses seven patterns for a
+  reason that covers two; a stale `NP_NULL_ON_SOME_PATH` suppression; the plugin's excludes name
+  removed `@Parameter` fields.
+- CI: the smoke step that counts the planned files runs from `examples/`, where the working directory
+  is the file's directory, so it cannot catch a base-directory regression; run it from the root.
+- SonarCloud reports 98 new issues that are not readable without a token.
+
+**Documentation:** the drift the docs review found (the plugin README's
+`-Dsrcmorph.generationProvider`, stale CHANGELOG statements, counts, Calibrate's XML block, the
+working-directory rule in three places, …) is being fixed in one docs commit.
 
 ### Other open items
 
