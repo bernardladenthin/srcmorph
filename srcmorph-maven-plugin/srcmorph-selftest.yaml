@@ -123,7 +123,8 @@ srcMorph:
       promptKey: file-body-java
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
-      onOversize: mapReduce             # or sample (head only, one call) / deterministic (no model)
+      onOversize: sampleChunks          # maxChunks of the chunks; mapReduce would read every one,
+                                        # sample only the head, deterministic call no model
       maxChunks: 6
       factsKey: java-facts
       condition:
@@ -135,7 +136,7 @@ srcMorph:
       promptKey: file-body-sql
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
-      onOversize: mapReduce
+      onOversize: sampleChunks
       maxChunks: 6
       factsKey: sql-facts
       condition:
@@ -181,7 +182,7 @@ srcMorph:
       promptKey: file-body-fallback
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
-      onOversize: mapReduce
+      onOversize: sampleChunks
       maxChunks: 6
       factsKey: xml-facts
       condition:
@@ -203,7 +204,7 @@ srcMorph:
       promptKey: file-body-fallback
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 210
-      onOversize: mapReduce
+      onOversize: sampleChunks
       maxChunks: 6
       factsKey: pom-facts
       condition:

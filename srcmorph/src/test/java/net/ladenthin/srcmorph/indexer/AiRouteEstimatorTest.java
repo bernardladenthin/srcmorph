@@ -67,53 +67,76 @@ public class AiRouteEstimatorTest {
     public void estimateRouteSeconds_aFileThatFits_costsOneGenerationOfItsSize() {
         // exactly the window still fits; the estimate is of the file size, not the window
         assertThat(
-                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 777L, 5_000L, 5_000L),
+                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 777L, 5_000L, 5_000L, 0),
                 is(equalTo(window(777L))));
     }
 
     @Test
     public void estimateRouteSeconds_overTheWindow_deterministicIsFree() {
         assertThat(
-                estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 9_000L, 5_001L, 5_000L), is(0L));
+                estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 9_000L, 5_001L, 5_000L, 0),
+                is(0L));
     }
 
     @Test
     public void estimateRouteSeconds_overTheWindow_sampleAndFailCostOneWindow() {
         assertThat(
-                estimator.estimateRouteSeconds(rule("sample", 0), uncalibrated, 9_000L, 5_001L, 5_000L),
+                estimator.estimateRouteSeconds(rule("sample", 0), uncalibrated, 9_000L, 5_001L, 5_000L, 0),
                 is(equalTo(window(5_000L))));
         assertThat(
-                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 9_000L, 5_001L, 5_000L),
+                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 9_000L, 5_001L, 5_000L, 0),
                 is(equalTo(window(5_000L))));
     }
 
+    /*
+     * A window of 10 000 characters and no prompt: the run's chunk budget is 8 000 (20 % headroom), the
+     * overlap 400, so a chunk advances 7 600 characters. 15 600 characters are exactly 2 chunks, 15 601
+     * are 3; 2 or 3 partials take one reduce.
+     */
     @Test
-    public void estimateRouteSeconds_mapReduce_costsTheChunksPlusOneReduce() {
-        // 2000 chars in windows of 1000 are exactly 2 chunks (a ceiling, not 3), 2001 are 3
+    public void estimateRouteSeconds_mapReduce_everyChunkPlusTheReduce() {
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 2_000L, 1_000L),
-                is(equalTo(3 * window(1_000L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_600L, 10_000L, 0),
+                is(equalTo(3 * window(10_000L))));
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 2_001L, 1_000L),
-                is(equalTo(4 * window(1_000L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_601L, 10_000L, 0),
+                is(equalTo(4 * window(10_000L))));
     }
 
     @Test
-    public void estimateRouteSeconds_mapReduce_maxChunksCapsTheChunks() {
+    public void estimateRouteSeconds_mapReduce_manyChunks_reduceInRounds() {
+        // 304 400 characters are 40 chunks: 3 reduce calls of 16 and one of the 3 results
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 2), uncalibrated, 1L, 5_000L, 1_000L),
-                is(equalTo(3 * window(1_000L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 304_400L, 10_000L, 0),
+                is(equalTo(44 * window(10_000L))));
+    }
+
+    @Test
+    public void estimateRouteSeconds_thePromptShrinksTheChunks() {
+        // a prompt of 2 000: window 12 000, budget 7 600, overlap 380, so 15 600 characters are 3 chunks
+        assertThat(
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_600L, 10_000L, 2_000),
+                is(equalTo(4 * window(10_000L))));
+    }
+
+    @Test
+    public void estimateRouteSeconds_sampleChunks_readsMaxChunksOfThem() {
+        // 20 000 characters are 3 chunks
+        assertThat(
+                estimator.estimateRouteSeconds(rule("sampleChunks", 2), uncalibrated, 1L, 20_000L, 10_000L, 0),
+                is(equalTo(3 * window(10_000L))));
         // a cap above the natural count changes nothing
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 9), uncalibrated, 1L, 5_000L, 1_000L),
-                is(equalTo(6 * window(1_000L))));
+                estimator.estimateRouteSeconds(rule("sampleChunks", 9), uncalibrated, 1L, 20_000L, 10_000L, 0),
+                is(equalTo(4 * window(10_000L))));
     }
 
     @Test
-    public void estimateRouteSeconds_mapReduce_aWindowOfZero_countsOneCharChunks() {
+    public void estimateRouteSeconds_aWindowOfZero_isTheMinimumChunk() {
+        // no room at all: the run still chunks at the 1 000-character minimum
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 3L, 0L),
-                is(equalTo(4 * window(0L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 1_000L, 0L, 0),
+                is(equalTo(window(0L))));
     }
     // </editor-fold>
 }

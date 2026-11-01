@@ -253,7 +253,7 @@ public class AiFieldGenerationSupport {
                 return factsPrefix
                         + AiDeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
             }
-            if (oversize == AiOversizeStrategy.MAP_REDUCE) {
+            if (oversize == AiOversizeStrategy.MAP_REDUCE || oversize == AiOversizeStrategy.SAMPLE_CHUNKS) {
                 return factsPrefix
                         + mapReduceSummarize(
                                 fieldGeneration, contextFile, sourceText, baseHeader, effectiveMaxInputChars);
@@ -307,15 +307,20 @@ public class AiFieldGenerationSupport {
                 contextFile,
                 timeEstimator.formatDuration(actualSeconds),
                 timeEstimator.formatDuration(estimatedSeconds));
-        return factsPrefix + generated;
+        // a trimmed source was read from its head only, and the summary says so
+        final String coverage = preparedPrompt.trimmed()
+                ? AiMapReduceSupport.headCoverage(
+                        preparedPrompt.trimmedSourceLength(), preparedPrompt.originalSourceLength())
+                : "";
+        return factsPrefix + coverage + generated;
     }
 
     /**
      * Summarizes an oversized source via map-reduce: split it into window-sized chunks at line boundaries
      * (with overlap), summarize each chunk with the rule's prompt (the <em>map</em>), then combine the
-     * partial summaries via a {@link #reducePartials hierarchical reduce}. The {@code maxChunks} cap (when
-     * set) bounds the run time by sampling representative chunks across the file; {@code maxChunks <= 0}
-     * processes every chunk (the whole file).
+     * partial summaries via a {@link #reducePartials hierarchical reduce}. {@code mapReduce} summarizes every
+     * chunk (the whole file); {@code sampleChunks} the rule's {@code maxChunks} representative ones. The
+     * summary starts with the coverage line ({@link AiMapReduceSupport#chunkCoverage}).
      *
      * <p>The chunk window is shrunk by {@link AiMapReduceSupport#TOKEN_HEADROOM_PERCENT} so a token-dense chunk
      * cannot overflow the model's context (see that constant's Javadoc).</p>
@@ -342,13 +347,18 @@ public class AiFieldGenerationSupport {
         final int safeWindow = AiMapReduceSupport.safeWindow(effectiveMaxInputChars);
         final int sourceBudget = AiMapReduceSupport.sourceBudget(safeWindow, basePromptLength);
         final int overlap = AiMapReduceSupport.overlap(sourceBudget);
-        final List<String> chunks =
-                AiSourceChunker.chunk(sourceText, sourceBudget, overlap, fieldGeneration.getMaxChunks());
+        final List<String> all = AiSourceChunker.chunk(sourceText, sourceBudget, overlap, 0);
+        // mapReduce reads every chunk; sampleChunks reads maxChunks of them, and the summary says which
+        final List<String> chunks = fieldGeneration.getOversizeStrategy() == AiOversizeStrategy.SAMPLE_CHUNKS
+                ? AiSourceChunker.select(all, fieldGeneration.getMaxChunks())
+                : all;
         LOGGER.info(
-                "Oversize file '{}' -> mapReduce: {} chars in {} chunk(s)",
+                "Oversize file '{}' -> {}: {} chars, {} of {} chunk(s)",
                 contextFile,
+                fieldGeneration.getOversizeStrategy().configValue(),
                 sourceText.length(),
-                chunks.size());
+                chunks.size(),
+                all.size());
         final List<String> partials = new ArrayList<>(chunks.size());
         int index = 0;
         for (final String chunk : chunks) {
@@ -357,7 +367,8 @@ public class AiFieldGenerationSupport {
                     .trim());
             LOGGER.info("  mapReduce chunk {}/{} summarized ({} chars)", index, chunks.size(), chunk.length());
         }
-        return reducePartials(fieldGeneration, contextFile, baseHeader, partials, sourceBudget, safeWindow);
+        return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size())
+                + reducePartials(fieldGeneration, contextFile, baseHeader, partials, sourceBudget, safeWindow);
     }
 
     /**

@@ -443,7 +443,7 @@ public class SourceFileIndexerTest {
                 new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions())),
                 new AiModelDefinitionSupport(Collections.singletonList(small)));
         final AiFieldGenerationConfig rule = CommonTestFixtures.createFileFieldGeneration();
-        rule.setOnOversize("mapReduce");
+        rule.setOnOversize("sampleChunks");
         rule.setMaxChunks(3);
 
         final AiIndexOutcome outcome = indexer(

@@ -26,7 +26,8 @@ Options: --profile <profile under profiles/> (default v3; it needs the five prom
          kind stays empty),
          --facts (every file rule names its counters: java-facts, sql-facts, shell-facts,
          perl-facts, xml-facts; the card ran without them, so such a run is not comparable to it),
-         --oversize <fail|sample|mapReduce|deterministic> and --max-chunks <n> (the strategy for a
+         --oversize <fail|sample|mapReduce|sampleChunks|deterministic> and --max-chunks <n> (the
+         strategy for a
          file larger than the model's window, on every file rule; the default fails such a file),
          --chars-per-token <n> (replaces every model's estimate: a data file such as a SQL dump has
          fewer characters per token than code, and a window filled at 4 is refused by the provider),
@@ -260,10 +261,13 @@ def main():
     parser.add_argument("--profile-dir", default=str(PROFILES))
     parser.add_argument("--corpus", default="")
     parser.add_argument("--facts", action="store_true")
-    parser.add_argument("--oversize", default="", choices=["", "fail", "sample", "mapReduce", "deterministic"])
+    parser.add_argument("--oversize", default="", choices=["", "fail", "sample", "mapReduce", "sampleChunks",
+                                                         "deterministic"])
     parser.add_argument("--max-chunks", type=int, default=None)
     parser.add_argument("--chars-per-token", type=int, default=None)
     args = parser.parse_args()
+    if args.max_chunks and args.oversize != "sampleChunks":
+        parser.error("--max-chunks applies only to --oversize sampleChunks (mapReduce reads every chunk)")
 
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
     profile = Path(args.profile_dir).resolve() / args.profile

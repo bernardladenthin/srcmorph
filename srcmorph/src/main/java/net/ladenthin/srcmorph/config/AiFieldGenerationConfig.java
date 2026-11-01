@@ -80,8 +80,8 @@ public class AiFieldGenerationConfig {
     /**
      * What to do when a matched file is larger than its routed model's context window. One of
      * {@code fail} (default — abort the build), {@code sample} (trim to the window, summarize the head),
-     * {@code mapReduce} (chunk + summarize each + combine), {@code deterministic} (model-free metadata
-     * body). Parsed by {@link AiOversizeStrategy#fromConfig(String)}; {@code null}/blank = {@code fail}.
+     * {@code mapReduce} (chunk + summarize every chunk + combine), {@code sampleChunks} (the same over
+     * {@link #maxChunks} representative chunks), {@code deterministic} (model-free metadata body). Parsed by {@link AiOversizeStrategy#fromConfig(String)}; {@code null}/blank = {@code fail}.
      */
     private @Nullable String onOversize;
 
@@ -94,9 +94,9 @@ public class AiFieldGenerationConfig {
     private @Nullable String onIncomplete;
 
     /**
-     * For {@link AiOversizeStrategy#MAP_REDUCE}: the maximum number of chunks to summarize. {@code 0}
-     * (default) = unbounded (process every chunk). A positive value bounds the run time by sampling that
-     * many representative chunks (head + evenly spaced + tail) across the file.
+     * For {@link AiOversizeStrategy#SAMPLE_CHUNKS} only, and required there: how many representative
+     * chunks (the first, the last, evenly spaced between) are summarized. {@code 0} (default) for every
+     * other strategy; a positive value with another one fails the rule set.
      */
     private int maxChunks;
 

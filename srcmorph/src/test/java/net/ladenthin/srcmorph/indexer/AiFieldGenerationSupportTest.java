@@ -8,6 +8,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Level;
@@ -388,12 +389,39 @@ public class AiFieldGenerationSupportTest {
         };
         final AiFieldGenerationSupport support = supportWith(provider, "m");
 
-        // ~3600 chars > 1000-char chunk budget -> several chunks; maxChunks=2 caps to 2 mapped + 1 reduce.
+        // ~3600 chars > 1000-char chunk budget -> several chunks; sampleChunks 2 maps 2 of them + 1 reduce.
         final AiGenerationResult result = support.generate(
-                (oversizeRule("m", "mapReduce", 2)), contextFile, "file", largeSource(600), anyHeader());
+                (oversizeRule("m", "sampleChunks", 2)), contextFile, "file", largeSource(600), anyHeader());
 
         assertThat(calls.get(), is(equalTo(3)));
-        assertThat(result.body(), is(equalTo("PARTIAL")));
+        assertThat(result.body(), startsWith("**Coverage:** 2 of "));
+        assertThat(result.body(), containsString(" chunks summarized (sampled)\n\nPARTIAL"));
+    }
+
+    @Test
+    public void onOversize_mapReduce_readsEveryChunk_andSaysSo() throws Exception {
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            return "PARTIAL";
+        };
+        // a maxChunks of the rule does not sample under mapReduce
+        final AiGenerationResult result = supportWith(provider, "m")
+                .generate(
+                        (oversizeRule("m", "mapReduce", 2)),
+                        Files.createTempFile("Huge", ".java"),
+                        "file",
+                        largeSource(600),
+                        anyHeader());
+
+        final long mapped = getCapturedInfos().stream()
+                .filter(m -> m.contains("summarized ("))
+                .count();
+        assertThat(mapped > 2, is(true));
+        assertThat(
+                result.body(),
+                is(equalTo("**Coverage:** " + mapped + " of " + mapped + " chunks summarized\n\nPARTIAL")));
+        assertThat(calls.get(), is(equalTo((int) mapped + 1)));
     }
 
     @Test
@@ -550,7 +578,7 @@ public class AiFieldGenerationSupportTest {
         assertThat(hasRound2, is(true));
         // More provider calls than a single-level reduce (chunks + 1) would make.
         assertThat(calls.get() > mapChunks + 1, is(true));
-        assertThat(result.body(), is(equalTo("PARTIAL")));
+        assertThat(result.body(), endsWith(" chunks summarized\n\nPARTIAL"));
     }
 
     @Test
@@ -567,7 +595,8 @@ public class AiFieldGenerationSupportTest {
                 support.generate((oversizeRule("m", "sample", 0)), contextFile, "file", largeSource(500), anyHeader());
 
         assertThat(calls.get(), is(equalTo(1)));
-        assertThat(result.body(), is(equalTo("SAMPLED")));
+        assertThat(result.body(), startsWith("**Coverage:** the first "));
+        assertThat(result.body(), endsWith(" of 4390 characters (sampled head)\n\nSAMPLED"));
     }
 
     private static AiMdHeader anyHeader() {
@@ -717,7 +746,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationProvider provider = request -> calls.incrementAndGet() == 2 ? "" : "PARTIAL";
         final AiGenerationResult result = supportWith(provider, "m")
                 .generate(
-                        (oversizeRule("m", "mapReduce", 2)),
+                        (oversizeRule("m", "sampleChunks", 2)),
                         Files.createTempFile("Huge", ".java"),
                         "file",
                         largeSource(600),

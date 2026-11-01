@@ -12,6 +12,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **`mapReduce` reads every chunk; sampling is `sampleChunks`, and every summary says what it read.**
+  `onOversize: mapReduce` summarizes every chunk and reduces in batches until one summary is left; a
+  `maxChunks` cap used to sample a subset silently, so a 1.6 MB dump was summarized from a third of it
+  while the configuration read as mapReduce. Sampling is the new strategy `sampleChunks` with
+  `maxChunks` (required there, and refused with any other strategy). An over-window summary begins
+  with a coverage line: `**Coverage:** 9 of 9 chunks summarized`, `... 6 of 9 chunks summarized
+  (sampled)`, or under `sample` `**Coverage:** the first N of M characters (sampled head)`. The
+  plan's time estimate of `mapReduce` / `sampleChunks` counts the chunks with the run's budget and
+  overlap and the reduce calls by the fan-in. The self-test and example configurations keep their
+  six-chunk huge-file rules as `sampleChunks`. A rule-set error of `generate` (two fallbacks, a
+  maxChunks without sampleChunks, ...) is a `SrcMorphException`, so the plugin reports it as a
+  configuration error.
 - **The jar smoke test counts what it planned.** `smoke-jar` runs `config_Plan.json` a second time
   and asserts the plan's one file of the demo tree, so a launch that finds no sources fails. The
   examples say they need 1.4.0 (`examples/build-your-own-jar/pom.xml`, the root README); stale

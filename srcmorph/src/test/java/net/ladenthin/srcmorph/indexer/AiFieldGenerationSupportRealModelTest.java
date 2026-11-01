@@ -80,7 +80,7 @@ public class AiFieldGenerationSupportRealModelTest {
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(MODEL_KEY);
-        rule.setOnOversize("mapReduce");
+        rule.setOnOversize("sampleChunks");
         rule.setMaxChunks(2);
         // the tiny test model is cut off at the test budget; keep what it wrote, as the path is under test
         rule.setOnIncomplete("keep");

@@ -16,11 +16,10 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-9. **Complete mapReduce and a run record.** mapReduce reduces every chunk in stages instead of a
-   silent sample (`sample` only when chosen), and the facts line states the coverage; a JSON record
-   per run with tokens, finish reason, model and prompt/facts hashes per file; the plan shows tokens
-   per file and directory.
-8. **Benchmark and measurement.** `score.py`: code fences out of the name recall, common words only in
+9. **A run record and tokens in the plan.** A JSON record per run with tokens, finish reason, model
+   and prompt/facts hashes per file; the plan shows tokens per file and directory.
+8. **Benchmark and measurement.** `score.py`: the coverage line out of the scored text like the facts
+   line, code fences out of the name recall, common words only in
    backticks, annotated getters, fewer false "invented" names, a `failed` column; the model card
    re-scored. `run.py` validates its options and records `maxChunks`, hashes, version, tokens and the
    per-request cost; `search.py` keys its cache by prompt and backs off; `large.py` writes its facts

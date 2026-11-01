@@ -225,7 +225,7 @@ public class SourceFileIndexer {
                         AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = source.length();
                 final long routeSeconds = routeEstimator.estimateRouteSeconds(
-                        rule, modelConfig, fileSizeBytes, sourceChars, availableSourceChars);
+                        rule, modelConfig, fileSizeBytes, sourceChars, availableSourceChars, basePromptLength);
                 plan.addRoute(rule.getAiDefinitionKey(), file, rule, routeSeconds, sourceChars, availableSourceChars);
             } else {
                 final long estimatedSeconds =

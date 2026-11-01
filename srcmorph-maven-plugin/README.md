@@ -157,20 +157,25 @@ The file has three building blocks:
    - **`sample`** — feed only the head of the file (trimmed to the window) in a single call. Fast and
      bounded; good for repetitive data where the head represents the whole.
    - **`mapReduce`** — split the file into window-sized chunks at line boundaries (with overlap so
-     records are never torn mid-syntax), summarize each chunk, then combine the partial summaries in
-     batches until one is left. A `maxChunks` cap bounds the time (a representative subset — always head
-     + tail, evenly spaced — is summarized when the file would exceed the cap), so an arbitrarily large
-     file (e.g. 7 MB) stays within a chosen per-file budget. **Route oversized files to a *small*, fast
-     model for this — not the big-window one.** Prefill is `O(n²)` in prompt length, so chunks should
-     be small: many cheap small-window passes are far faster than a few giant ones (one 384K-token pass
-     alone can dwarf a whole run). E.g. a 16K-window model with `maxChunks: 6` is ~7 calls (~1 h order on
-     a reference CPU; less on GPU) and samples a representative slice — the right trade-off for
-     repetitive data. mapReduce *on* a big window is the slowest possible combination; avoid it.
+     records are never torn mid-syntax), summarize **every** chunk, then combine the partial summaries
+     in batches until one is left. No part of the file goes unread; the calls grow linearly with its
+     size. **Route oversized files to a *small*, fast model for this — not the big-window one.** Prefill
+     is `O(n²)` in prompt length, so chunks should be small: many cheap small-window passes are far
+     faster than a few giant ones (one 384K-token pass alone can dwarf a whole run). mapReduce *on* a big
+     window is the slowest possible combination; avoid it.
+   - **`sampleChunks`** — the same over `maxChunks` representative chunks (always the first and the last,
+     evenly spaced between), to bound the time of an arbitrarily large file (e.g. 7 MB): a 16K-window
+     model with `maxChunks: 6` is ~7 calls (~1 h order on a reference CPU; less on GPU) — the right
+     trade-off for repetitive data. `maxChunks` applies only here; with another strategy it fails the
+     rule set.
    - **`deterministic`** — no model at all: emit a deterministic body (size, line count, head/tail
      sample). Instant; for pure data where no AI analysis is needed.
 
    Quality from a real model is best within Granite's validated 128K (~500 KB) and degrades gradually
-   beyond it — a whole-file (or chunked) summary still beats a trimmed one.
+   beyond it — a whole-file (or chunked) summary still beats a trimmed one. Every summary of an
+   over-window file begins with what it read: `**Coverage:** 9 of 9 chunks summarized`,
+   `**Coverage:** 6 of 9 chunks summarized (sampled)`, or for `sample`
+   `**Coverage:** the first 12000 of 90000 characters (sampled head)`.
 
    **Exact counts with `factsKey` (optional, every file — not just oversize).** A sampled/chunked AI
    summary can't reliably *count* things (no single call sees the whole file — it will guess "25 rows").
@@ -299,7 +304,7 @@ files, skip generated sources, and a fallback for everything else:
     - id: java-huge                                  # huge files: chunk over a SMALL fast window + combine
       promptKey: file-body-java
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
-      onOversize: mapReduce
+      onOversize: sampleChunks
       maxChunks: 6                                   # ~7 cheap calls; bounds time to ~1 h/file
       facts:                                         # exact whole-file counts, prepended to the body
         - {label: boolean fields, pattern: '\bboolean\b'}
@@ -317,9 +322,9 @@ files, skip generated sources, and a fallback for everything else:
 
 Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
 `lines` works the same way; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
-recently changed files. `onOversize` (`fail` *(default)* / `sample` / `mapReduce` / `deterministic` —
+recently changed files. `onOversize` (`fail` *(default)* / `sample` / `mapReduce` / `sampleChunks` / `deterministic` —
 see the context-window note above) chooses what a rule does when a file is still larger than its routed
-model's window; `maxChunks` caps how many chunks `mapReduce` summarizes. `onIncomplete` chooses
+model's window; `maxChunks` is how many chunks `sampleChunks` summarizes. `onIncomplete` chooses
 what a rule does when the model's answer is no summary -- empty (for example a reasoning-only answer),
 cut off at the output budget, or a response without an answer: `fail` *(default)* counts the file as
 failed, `retryOnce` asks once more first, `keep` writes a cut-off answer that has text. Such an answer

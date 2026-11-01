@@ -76,7 +76,7 @@ public final class AiSourceChunker {
      * @param maxChunks the cap ({@code <= 0} = unbounded)
      * @return the (possibly reduced) chunk list
      */
-    private static List<String> select(final List<String> chunks, final int maxChunks) {
+    public static List<String> select(final List<String> chunks, final int maxChunks) {
         final int total = chunks.size();
         if (maxChunks <= 0 || total <= maxChunks) {
             return chunks;

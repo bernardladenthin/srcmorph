@@ -130,8 +130,13 @@ public final class GenerateEngine {
         resolveSharedFacts(fieldGenerations);
 
         final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
-        // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model).
-        selector.validate(fieldGenerations);
+        // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model), as a
+        // configuration error the surfaces report as such.
+        try {
+            selector.validate(fieldGenerations);
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
+        }
         EngineSupport.requireDefinedModels(modelDefinitionSupport, fieldGenerations);
 
         final SourceFileIndexer fileIndexer = new SourceFileIndexer(

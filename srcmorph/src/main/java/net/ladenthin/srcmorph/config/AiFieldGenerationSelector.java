@@ -79,8 +79,17 @@ public final class AiFieldGenerationSelector {
             if (config == null) {
                 continue;
             }
-            // Fail fast on an unknown onOversize token (throws IllegalArgumentException naming the value).
-            config.getOversizeStrategy();
+            // Fail fast on an unknown onOversize token (throws IllegalArgumentException naming the value),
+            // and on a maxChunks that would not be applied (it samples only under sampleChunks).
+            final boolean sampleChunks = config.getOversizeStrategy() == AiOversizeStrategy.SAMPLE_CHUNKS;
+            if (sampleChunks != config.getMaxChunks() > 0) {
+                throw new IllegalArgumentException(
+                        sampleChunks
+                                ? "onOversize: sampleChunks needs a maxChunks above 0 (how many chunks to read): "
+                                        + config
+                                : "maxChunks applies only to onOversize: sampleChunks (mapReduce reads every chunk): "
+                                        + config);
+            }
             config.incompleteStrategy();
             // Fail fast on a malformed <facts> group, by the rules a facts file is held to.
             final String rule = config.getId() != null ? config.getId() : String.valueOf(config.getPromptKey());

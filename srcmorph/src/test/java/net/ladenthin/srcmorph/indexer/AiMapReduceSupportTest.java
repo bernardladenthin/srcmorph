@@ -113,4 +113,54 @@ public class AiMapReduceSupportTest {
         assertThat(AiMapReduceSupport.combineAll(Collections.<String>emptyList()), is(""));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="coverage and chunk arithmetic">
+    @Test
+    public void chunkCoverage_allOrSampled() {
+        assertThat(AiMapReduceSupport.chunkCoverage(9, 9), is(equalTo("**Coverage:** 9 of 9 chunks summarized\n\n")));
+        assertThat(
+                AiMapReduceSupport.chunkCoverage(6, 9),
+                is(equalTo("**Coverage:** 6 of 9 chunks summarized (sampled)\n\n")));
+    }
+
+    @Test
+    public void headCoverage_namesTheCharactersRead() {
+        assertThat(
+                AiMapReduceSupport.headCoverage(12_000, 90_000),
+                is(equalTo("**Coverage:** the first 12000 of 90000 characters (sampled head)\n\n")));
+    }
+
+    @Test
+    public void reduceCalls_oneRoundUpTo16_moreRoundsAbove() {
+        assertThat(AiMapReduceSupport.reduceCalls(0), is(0L));
+        assertThat(AiMapReduceSupport.reduceCalls(1), is(0L));
+        assertThat(AiMapReduceSupport.reduceCalls(2), is(1L));
+        assertThat(AiMapReduceSupport.reduceCalls(16), is(1L));
+        assertThat(AiMapReduceSupport.reduceCalls(17), is(3L));
+        assertThat(AiMapReduceSupport.reduceCalls(256), is(17L));
+        assertThat(AiMapReduceSupport.reduceCalls(257), is(20L));
+    }
+
+    @Test
+    public void chunkCount_advancesTheBudgetLessTheOverlap() {
+        assertThat(AiMapReduceSupport.chunkCount(0, 8_000, 400), is(1L));
+        assertThat(AiMapReduceSupport.chunkCount(8_000, 8_000, 400), is(1L));
+        assertThat(AiMapReduceSupport.chunkCount(8_001, 8_000, 400), is(2L));
+        assertThat(AiMapReduceSupport.chunkCount(15_600, 8_000, 400), is(2L));
+        assertThat(AiMapReduceSupport.chunkCount(15_601, 8_000, 400), is(3L));
+        // an overlap as large as the budget still advances one character
+        assertThat(AiMapReduceSupport.chunkCount(10, 5, 5), is(6L));
+    }
+
+    @Test
+    public void chunkCount_matchesTheChunkerOnTextWithoutLineBreaks() {
+        final String source = chars(30_000);
+        final int budget = 8_000;
+        final int overlap = AiMapReduceSupport.overlap(budget);
+
+        assertThat(AiMapReduceSupport.chunkCount(source.length(), budget, overlap), is((long)
+                net.ladenthin.srcmorph.support.AiSourceChunker.chunk(source, budget, overlap, 0)
+                        .size()));
+    }
+    // </editor-fold>
 }

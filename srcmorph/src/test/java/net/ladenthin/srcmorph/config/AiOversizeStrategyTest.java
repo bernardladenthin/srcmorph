@@ -22,6 +22,7 @@ public class AiOversizeStrategyTest {
         assertThat(AiOversizeStrategy.FAIL.configValue(), is("fail"));
         assertThat(AiOversizeStrategy.SAMPLE.configValue(), is("sample"));
         assertThat(AiOversizeStrategy.MAP_REDUCE.configValue(), is("mapReduce"));
+        assertThat(AiOversizeStrategy.SAMPLE_CHUNKS.configValue(), is("sampleChunks"));
         assertThat(AiOversizeStrategy.DETERMINISTIC.configValue(), is("deterministic"));
     }
 
@@ -37,6 +38,7 @@ public class AiOversizeStrategyTest {
         assertThat(AiOversizeStrategy.fromConfig("fail"), is(AiOversizeStrategy.FAIL));
         assertThat(AiOversizeStrategy.fromConfig("sample"), is(AiOversizeStrategy.SAMPLE));
         assertThat(AiOversizeStrategy.fromConfig("mapReduce"), is(AiOversizeStrategy.MAP_REDUCE));
+        assertThat(AiOversizeStrategy.fromConfig("sampleChunks"), is(AiOversizeStrategy.SAMPLE_CHUNKS));
         assertThat(AiOversizeStrategy.fromConfig("deterministic"), is(AiOversizeStrategy.DETERMINISTIC));
     }
 

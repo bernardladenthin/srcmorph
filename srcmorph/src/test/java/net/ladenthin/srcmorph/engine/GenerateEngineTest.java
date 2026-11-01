@@ -528,7 +528,8 @@ public class GenerateEngineTest {
 
     /**
      * {@link #baseConfig()} plus {@code Big.java}, about 8 800 characters, on a model with a window of
-     * about 3 200, routed by one rule with the given {@code onOversize} and {@code maxChunks} 3.
+     * about 3 200, routed by one rule with the given {@code onOversize} ({@code maxChunks} 2 under
+     * {@code sampleChunks}).
      */
     private SrcMorphConfiguration oversizeConfig(final String onOversize) throws IOException {
         final SrcMorphConfiguration config = baseConfig();
@@ -539,7 +540,9 @@ public class GenerateEngineTest {
         config.setAiDefinitions(Collections.singletonList(small));
         final AiFieldGenerationConfig rule = javaFileRule();
         rule.setOnOversize(onOversize);
-        rule.setMaxChunks(3);
+        if ("sampleChunks".equals(onOversize)) {
+            rule.setMaxChunks(2);
+        }
         config.setFieldGenerations(Collections.singletonList(rule));
         final StringBuilder big = new StringBuilder();
         for (int i = 0; i < 400; i++) {
@@ -591,8 +594,29 @@ public class GenerateEngineTest {
 
         assertThat(result.written(), is(2));
         assertThat(writtenBody("Big.java"), containsString("Mock summary for Big.java"));
-        assertThat(logged(Level.INFO, "in 3 chunk(s)"), is(true));
-        assertThat(logged(Level.INFO, "mapReduce reduce round 1: 3 -> 1 partial(s)"), is(true));
+        // every chunk of the file, so as many summarized as there are
+        assertThat(writtenBody("Big.java"), containsString("**Coverage:** 4 of 4 chunks summarized\n\n"));
+        assertThat(logged(Level.INFO, "-> mapReduce: 7780 chars, 4 of 4 chunk(s)"), is(true));
+        assertThat(logged(Level.INFO, "mapReduce reduce round 1: 4 -> 1 partial(s)"), is(true));
+    }
+
+    @Test
+    public void execute_sampleChunks_readsMaxChunksAndSaysSo() throws Exception {
+        final GenerateResult result = new GenerateEngine(oversizeConfig("sampleChunks")).execute();
+
+        assertThat(result.written(), is(2));
+        assertThat(writtenBody("Big.java"), containsString("**Coverage:** 2 of 4 chunks summarized (sampled)\n\n"));
+    }
+
+    @Test
+    public void execute_maxChunksWithoutSampleChunks_isAConfigurationError() throws Exception {
+        final SrcMorphConfiguration config = oversizeConfig("mapReduce");
+        config.getFieldGenerations().get(0).setMaxChunks(6);
+
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+
+        assertThat(thrown.getMessage(), containsString("Invalid fieldGenerations: maxChunks applies only to"));
     }
 
     @Test

@@ -47,6 +47,12 @@ public final class AiMapReduceSupport {
     /** Percent divisor. */
     private static final int PERCENT = 100;
 
+    /** The start of the coverage line in front of the summary of an over-window source. */
+    public static final String COVERAGE_HEADER = "**Coverage:** ";
+
+    /** The end of the coverage line: a blank line before what follows. */
+    public static final String COVERAGE_SUFFIX = "\n\n";
+
     /** Utility class; not instantiable. */
     private AiMapReduceSupport() {
         // no-op
@@ -129,6 +135,62 @@ public final class AiMapReduceSupport {
             appendPart(all, ++number, partial);
         }
         return all.toString();
+    }
+
+    /**
+     * Returns the coverage line of a map-reduce: how many of the source's chunks the summary read.
+     *
+     * @param summarized the chunks summarized
+     * @param total      the chunks of the source
+     * @return {@code **Coverage:** 6 of 9 chunks summarized (sampled)}, without {@code (sampled)} when
+     *         every chunk was read
+     */
+    public static String chunkCoverage(final int summarized, final int total) {
+        return COVERAGE_HEADER + summarized + " of " + total + " chunks summarized"
+                + (summarized < total ? " (sampled)" : "") + COVERAGE_SUFFIX;
+    }
+
+    /**
+     * Returns the coverage line of a sampled head: how much of the source the one call read.
+     *
+     * @param read  the characters read
+     * @param total the characters of the source
+     * @return {@code **Coverage:** the first 12000 of 90000 characters (sampled head)}
+     */
+    public static String headCoverage(final int read, final int total) {
+        return COVERAGE_HEADER + "the first " + read + " of " + total + " characters (sampled head)" + COVERAGE_SUFFIX;
+    }
+
+    /**
+     * Returns how many reduce calls a map-reduce of {@code chunks} partials makes, when every batch holds
+     * {@link #MAX_REDUCE_FANIN} partials (fewer when they are long): one per batch of every round, until
+     * one summary is left; none for a single chunk.
+     *
+     * @param chunks the partials of the first round
+     * @return the reduce calls
+     */
+    public static long reduceCalls(final long chunks) {
+        long calls = 0;
+        for (long level = chunks; level > 1; level = (level + MAX_REDUCE_FANIN - 1) / MAX_REDUCE_FANIN) {
+            calls += (level + MAX_REDUCE_FANIN - 1) / MAX_REDUCE_FANIN;
+        }
+        return calls;
+    }
+
+    /**
+     * Returns how many chunks {@link net.ladenthin.srcmorph.support.AiSourceChunker} cuts a source of
+     * {@code sourceChars} into with the given budget and overlap, ignoring the line-boundary rounding
+     * (which can add a chunk): a chunk advances {@code budget - overlap} characters.
+     *
+     * @param sourceChars  the source length
+     * @param sourceBudget the characters of one chunk
+     * @param overlap      the overlap of consecutive chunks
+     * @return the chunks, at least one
+     */
+    public static long chunkCount(final long sourceChars, final int sourceBudget, final int overlap) {
+        // the first chunk takes the budget, every further one advances by a step
+        final long step = Math.max(1, sourceBudget - overlap);
+        return 1 + (Math.max(0, sourceChars - sourceBudget) + step - 1) / step;
     }
 
     private static void appendPart(final StringBuilder target, final int number, final String partial) {

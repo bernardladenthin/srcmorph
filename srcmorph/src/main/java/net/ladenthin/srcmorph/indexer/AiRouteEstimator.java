@@ -52,14 +52,17 @@ public final class AiRouteEstimator {
      * Estimates the generation time of one routed file, by the rule's oversize strategy, so the plan's
      * time stays realistic for huge files (a call costs at most one window, not the whole file). A file
      * that fits the window costs one generation of its size; an over-window file costs nothing under
-     * {@code deterministic}, one window under {@code sample} and {@code fail}, and (chunks + 1 reduce)
-     * windows under {@code mapReduce}, the chunks capped by {@code maxChunks}.
+     * {@code deterministic}, one window under {@code sample} and {@code fail}, and its map calls plus its
+     * reduce calls under {@code mapReduce} (every chunk) and {@code sampleChunks} ({@code maxChunks} of
+     * them). The chunks are counted with the budget and overlap of the run
+     * ({@link AiMapReduceSupport}), the reduce calls by its fan-in.
      *
      * @param rule                 the routing rule
      * @param modelConfig          the routed model's config
      * @param fileSizeBytes        the file size in bytes, the estimate of a file that fits
      * @param sourceChars          the source length in characters
      * @param availableSourceChars the per-call source-character budget of the routed model and prompt
+     * @param basePromptLength     the length of the prompt template with an empty source
      * @return the estimated seconds
      */
     public long estimateRouteSeconds(
@@ -67,7 +70,8 @@ public final class AiRouteEstimator {
             final AiGenerationConfig modelConfig,
             final long fileSizeBytes,
             final long sourceChars,
-            final long availableSourceChars) {
+            final long availableSourceChars,
+            final int basePromptLength) {
         if (sourceChars <= availableSourceChars) {
             return estimateSeconds(fileSizeBytes, modelConfig);
         }
@@ -76,13 +80,17 @@ public final class AiRouteEstimator {
             return 0L;
         }
         final long windowSeconds = estimateSeconds(availableSourceChars, modelConfig);
-        if (strategy != AiOversizeStrategy.MAP_REDUCE) {
+        if (strategy != AiOversizeStrategy.MAP_REDUCE && strategy != AiOversizeStrategy.SAMPLE_CHUNKS) {
             return windowSeconds;
         }
-        // over the window, so at least two chunks; a window of 0 counts as 1 (no division by zero)
-        final long window = Math.max(1L, availableSourceChars);
-        final long naturalChunks = (sourceChars + window - 1) / window;
-        final long chunks = rule.getMaxChunks() > 0 ? Math.min(rule.getMaxChunks(), naturalChunks) : naturalChunks;
-        return (chunks + 1) * windowSeconds;
+        final int sourceBudget = AiMapReduceSupport.sourceBudget(
+                AiMapReduceSupport.safeWindow(
+                        (int) Math.min(Integer.MAX_VALUE, availableSourceChars + basePromptLength)),
+                basePromptLength);
+        final long allChunks =
+                AiMapReduceSupport.chunkCount(sourceChars, sourceBudget, AiMapReduceSupport.overlap(sourceBudget));
+        final long chunks =
+                strategy == AiOversizeStrategy.SAMPLE_CHUNKS ? Math.min(rule.getMaxChunks(), allChunks) : allChunks;
+        return (chunks + AiMapReduceSupport.reduceCalls(chunks)) * windowSeconds;
     }
 }

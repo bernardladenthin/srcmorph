@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.config;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -180,6 +181,39 @@ public class AiFieldGenerationSelectorTest {
         final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
         r.setOnOversize("mapReduce");
         assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_sampleChunksWithMaxChunks_passes() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("sampleChunks");
+        r.setMaxChunks(6);
+        assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_sampleChunksWithoutMaxChunks_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("sampleChunks");
+
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+
+        assertThat(thrown.getMessage(), containsString("onOversize: sampleChunks needs a maxChunks above 0"));
+    }
+
+    @Test
+    public void validate_maxChunksWithAnotherStrategy_throws() {
+        for (final String strategy : new String[] {"mapReduce", "sample", "fail", "deterministic", ""}) {
+            final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+            r.setOnOversize(strategy);
+            r.setMaxChunks(1);
+
+            final IllegalArgumentException thrown =
+                    assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+
+            assertThat(thrown.getMessage(), containsString("maxChunks applies only to onOversize: sampleChunks"));
+        }
     }
 
     @Test
