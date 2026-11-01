@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
+import java.net.HttpRetryException;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
@@ -74,6 +75,10 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
 
     /** Size of the buffer a response is read with. */
     private static final int READ_BUFFER_SIZE = 8192;
+
+    /** What a 401 without a readable body means: the key went with the request. */
+    private static final String UNAUTHORIZED_HINT =
+            "the key was refused, or none was sent (apiKeyEnv names the variable that holds it)";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenAiCompatibleAiGenerationProvider.class);
 
@@ -262,10 +267,14 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
                 failure = e;
             }
             if (retry > maxRetries) {
-                throw failure;
+                // a timeout that ends the retries is this request's failure, not an interrupt of the run: the
+                // caller treats an InterruptedIOException (a SocketTimeoutException is one) as an interrupt
+                throw failure instanceof SocketTimeoutException
+                        ? new IOException(endpoint + " timed out " + retry + " times: " + failure.getMessage(), failure)
+                        : failure;
             }
             final long delay = OpenAiCompatibleProviderSupport.retryDelayMillis(
-                    retryAfter, retry, ThreadLocalRandom.current().nextDouble());
+                    retryAfter, retry, ThreadLocalRandom.current().nextDouble(), System.currentTimeMillis());
             LOGGER.warn(
                     "{} failed ({}); retry {}/{} in {} ms",
                     endpoint,
@@ -320,16 +329,24 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             if (body != null) {
                 connection.setDoOutput(true);
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-                // No setFixedLengthStreamingMode: in streaming mode HttpURLConnection treats a 401 as an
-                // authentication challenge it cannot retry and drops the error body, which is exactly the
-                // body that says why (a missing or wrong key). Buffered, it still sends a Content-Length.
+                // Streaming with a fixed length: a buffered POST is sent again by the JDK itself after a
+                // connection reset before the answer (sun.net.http.retryPost, true by default and read once per
+                // JVM), and a request the server may already be generating and billing must never go twice. The
+                // price: a 401 then cannot be read, only named (below).
+                final byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+                connection.setFixedLengthStreamingMode(bytes.length);
                 try (OutputStream out = connection.getOutputStream()) {
-                    out.write(body.getBytes(StandardCharsets.UTF_8));
+                    out.write(bytes);
                 }
             }
             final int status;
             try {
                 status = connection.getResponseCode();
+            } catch (final HttpRetryException e) {
+                // in streaming mode a 401 is an authentication the connection cannot retry, and its body is gone;
+                // the key went with the request, so the server refused it or none was configured
+                throw new IOException(
+                        OpenAiCompatibleProviderSupport.errorMessage(endpoint, e.responseCode(), UNAUTHORIZED_HINT), e);
             } catch (final SocketTimeoutException e) {
                 if (body == null) {
                     throw e;
@@ -344,7 +361,10 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             if (!OpenAiCompatibleProviderSupport.isSuccess(status)) {
                 final InputStream error = connection.getErrorStream();
                 final String text = error == null ? "" : read(error);
-                final String message = OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, text);
+                final String message = status == HttpURLConnection.HTTP_UNAUTHORIZED && text.isEmpty()
+                        // a POST goes in streaming mode, where a 401's body cannot be read
+                        ? OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, UNAUTHORIZED_HINT)
+                        : OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, text);
                 if (OpenAiCompatibleProviderSupport.isContextOverflow(status, text)) {
                     throw new AiContextOverflowException(message);
                 }
@@ -353,7 +373,19 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
                 }
                 throw new IOException(message);
             }
-            return read(connection.getInputStream());
+            try {
+                return read(connection.getInputStream());
+            } catch (final SocketTimeoutException e) {
+                if (body == null) {
+                    throw e;
+                }
+                // the answer stopped while it was read: the request was generated (and billed), it is not sent
+                // again
+                throw new IOException(
+                        endpoint + " stopped answering for " + READ_TIMEOUT_MILLIS / MILLIS_PER_SECOND
+                                + " s; the request is not sent again",
+                        e);
+            }
         } finally {
             connection.disconnect();
         }

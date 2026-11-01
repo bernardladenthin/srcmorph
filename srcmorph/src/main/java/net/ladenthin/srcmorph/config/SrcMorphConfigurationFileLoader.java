@@ -104,7 +104,9 @@ public final class SrcMorphConfigurationFileLoader {
      */
     private static <M extends ObjectMapper> M strict(final M mapper) {
         mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        mapper.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
+        // a key set to nothing keeps its default; an empty list item ("- " in YAML) is refused with the list's
+        // name instead of reaching the run as a null rule or path
+        mapper.setDefaultSetterInfo(JsonSetter.Value.construct(Nulls.SKIP, Nulls.FAIL));
         return mapper;
     }
 

@@ -181,4 +181,14 @@ public class AiFieldGenerationConfigTest {
         assertThat(copy.isFallback(), is(false));
         assertThat(copy.isSkip(), is(false));
     }
+
+    @Test
+    public void mapAndReducePromptKeys_blank_areUnset() {
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setMapPromptKey(" ");
+        rule.setReducePromptKey("");
+
+        assertThat(rule.getMapPromptKey(), is(nullValue()));
+        assertThat(rule.getReducePromptKey(), is(nullValue()));
+    }
 }

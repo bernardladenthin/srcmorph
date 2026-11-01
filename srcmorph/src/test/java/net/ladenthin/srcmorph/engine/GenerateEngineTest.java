@@ -710,6 +710,8 @@ public class GenerateEngineTest {
                     final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
+                        // what an interrupted blocking call does: the thread's flag is set, then it throws
+                        Thread.currentThread().interrupt();
                         throw new java.io.InterruptedIOException("interrupted");
                     }
                     return "A summary.";
@@ -718,10 +720,49 @@ public class GenerateEngineTest {
         };
 
         // act
-        assertThrows(java.io.InterruptedIOException.class, () -> new GenerateEngine(config, aborting).execute());
+        try {
+            assertThrows(java.io.InterruptedIOException.class, () -> new GenerateEngine(config, aborting).execute());
+        } finally {
+            // the test thread goes on, without the flag
+            Thread.interrupted();
+        }
 
         // assert: the record exists and holds what was done before the interrupt
         assertThat(Files.exists(recordFile), is(true));
+    }
+
+    @Test
+    public void execute_aTimeoutOfOneFile_failsThatFileNotTheRun() throws Exception {
+        // arrange: a socket timeout is an InterruptedIOException too, but no interrupt
+        final SrcMorphConfiguration config = baseConfig();
+        Files.write(
+                tempDir.resolve("src/main/java/com/example/Bar.java"),
+                "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
+        final Path recordFile = tempDir.resolve("run.json");
+        config.setRunRecordFile(recordFile.toFile());
+        final AiGenerationProviderFactory timingOut = new AiGenerationProviderFactory() {
+            @Override
+            public AiGenerationProvider create(
+                    final String providerName,
+                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
+                return request -> {
+                    if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
+                        throw new java.net.SocketTimeoutException("Read timed out");
+                    }
+                    return "A summary.";
+                };
+            }
+        };
+
+        // act
+        final SrcMorphException failed =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config, timingOut).execute());
+
+        // assert: the run went on to the other file, and failed at its end naming the one
+        assertThat(failed.getMessage(), containsString("1 file(s) were not written"));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Bar.java.ai.md")), is(true));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(false));
     }
 
     @Test

@@ -68,7 +68,16 @@ public final class AiSourceChunker {
                 break;
             }
             previousEnd = end;
-            pos = Math.max(pos + 1, end - overlap);
+            // the overlap starts at a line start, after the first line end inside it, so no chunk begins in
+            // the middle of a line; an overlap within one line starts where the characters say
+            int next = end - overlap;
+            if (next > 0 && source.charAt(next - 1) != '\n') {
+                final int lineEnd = source.indexOf('\n', next);
+                if (lineEnd >= 0 && lineEnd + 1 < end) {
+                    next = lineEnd + 1;
+                }
+            }
+            pos = Math.max(pos + 1, next);
         }
         return select(chunks, maxChunks);
     }

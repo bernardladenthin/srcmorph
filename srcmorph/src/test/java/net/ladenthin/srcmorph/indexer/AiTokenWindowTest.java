@@ -13,7 +13,8 @@ public class AiTokenWindowTest {
     // <editor-fold defaultstate="collapsed" desc="promptTokenLimit">
     @Test
     public void promptTokenLimit_isTheWindowLessTheAnswer() {
-        assertThat(AiTokenWindow.promptTokenLimit(16_384, 1_536), is(14_848));
+        // the window less the answer and the tokens a count leaves out
+        assertThat(AiTokenWindow.promptTokenLimit(16_384, 1_536), is(16_384 - 1_536 - AiTokenWindow.UNCOUNTED_TOKENS));
     }
 
     @Test
@@ -31,7 +32,7 @@ public class AiTokenWindowTest {
 
     @Test
     public void promptTokenLimit_aNegativeAnswerBudget_takesNothingFromTheWindow() {
-        assertThat(AiTokenWindow.promptTokenLimit(100, -5), is(100));
+        assertThat(AiTokenWindow.promptTokenLimit(100, -5), is(100 - AiTokenWindow.UNCOUNTED_TOKENS));
     }
     // </editor-fold>
 
@@ -61,14 +62,15 @@ public class AiTokenWindowTest {
 
     // <editor-fold defaultstate="collapsed" desc="smallerWindow">
     @Test
-    public void smallerWindow_isTheMeasuredWindow() {
-        assertThat(AiTokenWindow.smallerWindow(30_000, 8_000, 30_000, 12_000), is(20_000));
+    public void smallerWindow_isTheMeasuredWindowLessTheMargin() {
+        // the measured window of 20 000 chars, 2 % below it
+        assertThat(AiTokenWindow.smallerWindow(30_000, 8_000, 30_000, 12_000), is(19_600));
     }
 
     @Test
     public void smallerWindow_isAlwaysBelowTheWindow() {
-        // a measured window as large as the window still shrinks it by one
-        assertThat(AiTokenWindow.smallerWindow(100, 10, 100, 10), is(99));
+        // a measured window far above the window still shrinks it by one
+        assertThat(AiTokenWindow.smallerWindow(100, 1_000, 100, 10), is(99));
     }
     // </editor-fold>
 }

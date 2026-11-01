@@ -234,6 +234,22 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void generate_errorStatus_throwsWithStatusAndBody() {
         // arrange
+        status = 403;
+        answer = "{\"error\":{\"message\":\"No auth credentials found\",\"code\":403}}";
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 403"));
+        assertThat(thrown.getMessage(), containsString("No auth credentials found"));
+    }
+
+    @Test
+    public void generate_unauthorized_namesTheKey() {
+        // arrange: a POST goes in streaming mode, where a 401's body cannot be read
         status = 401;
         answer = "{\"error\":{\"message\":\"No auth credentials found\",\"code\":401}}";
 
@@ -244,7 +260,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
         // assert
         assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 401"));
-        assertThat(thrown.getMessage(), containsString("No auth credentials found"));
+        assertThat(thrown.getMessage(), containsString("the key was refused, or none was sent"));
+        assertThat(requests, is(1));
     }
 
     @Test

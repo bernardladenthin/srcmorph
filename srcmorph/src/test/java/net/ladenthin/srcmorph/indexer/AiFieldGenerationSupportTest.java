@@ -431,20 +431,20 @@ public class AiFieldGenerationSupportTest {
     public void onOversize_mapReduce_withFacts_prependsExactWholeFileCountsToBody() throws Exception {
         final Path contextFile = Files.createTempFile("Huge", ".java");
         final AiGenerationProvider provider = request -> "PARTIAL";
-        final AiFieldGenerationSupport support = supportWith(provider, "m");
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
-        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 2);
+        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
         final AiFactCounter counter = new AiFactCounter();
         counter.setLabel("lines");
         counter.setPattern("(?m)^line ");
         rule.setFacts(Collections.singletonList(counter));
 
-        // largeSource(600) has exactly 600 lines beginning with "line "; the AI (mock) never sees them all,
+        // largeSource(7000) has exactly 7000 lines beginning with "line "; no call of the mock sees them all,
         // but the deterministic facts block counts every one over the FULL source and is prepended.
-        final AiGenerationResult result = support.generate((rule), contextFile, "file", largeSource(600), anyHeader());
+        final AiGenerationResult result = support.generate((rule), contextFile, "file", largeSource(7000), anyHeader());
 
         assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
-        assertThat(result.body(), containsString("lines: 600"));
+        assertThat(result.body(), containsString("lines: 7000"));
         assertThat(result.body(), containsString("PARTIAL"));
     }
 
@@ -585,21 +585,30 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void onOversize_mapReduce_inAWindowNoChunkFits_namesTheCutCalls() throws Exception {
-        // arrange: the tiny window holds less than the minimum chunk, so every chunk call is cut
-        final AiFieldGenerationSupport support = supportWith(request -> "PARTIAL", "m");
+    public void onOversize_mapReduce_aWindowWithoutRoomForAChunk_failsTheFileNamingTheRoom() throws Exception {
+        // arrange: the tiny window holds less than the minimum chunk next to the prompts, so every chunk call
+        // would be cut and most of the source never read
+        final AtomicInteger calls = new AtomicInteger();
+        final AiFieldGenerationSupport support = supportWith(
+                request -> {
+                    calls.incrementAndGet();
+                    return "PARTIAL";
+                },
+                "m");
 
         // act
-        final AiGenerationResult result = support.generate(
-                (oversizeRule("m", "mapReduce", 0)),
-                Files.createTempFile("Huge", ".java"),
-                "file",
-                largeSource(600),
-                anyHeader());
+        final java.io.IOException failed = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.IOException.class,
+                () -> support.generate(
+                        (oversizeRule("m", "mapReduce", 0)),
+                        Files.createTempFile("Huge", ".java"),
+                        "file",
+                        largeSource(600),
+                        anyHeader()));
 
         // assert
-        assertThat(result.body(), startsWith("**Coverage:** "));
-        assertThat(result.body(), containsString(" calls cut to fit the window)\n\nPARTIAL"));
+        assertThat(failed.getMessage(), containsString("next to its map and reduce prompts, fewer than 1000"));
+        assertThat(calls.get(), is(0));
     }
 
     @Test
@@ -851,12 +860,12 @@ public class AiFieldGenerationSupportTest {
         final AtomicInteger calls = new AtomicInteger();
         // the second chunk's answer is empty; the reduce must not run over it
         final AiGenerationProvider provider = request -> calls.incrementAndGet() == 2 ? "" : "PARTIAL";
-        final AiGenerationResult result = supportWith(provider, "m")
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (oversizeRule("m", "sampleChunks", 2)),
                         Files.createTempFile("Huge", ".java"),
                         "file",
-                        largeSource(600),
+                        largeSource(7000),
                         anyHeader());
 
         assertThat(calls.get(), is(equalTo(2)));
@@ -937,13 +946,13 @@ public class AiFieldGenerationSupportTest {
                 return new net.ladenthin.srcmorph.provider.AiGenerationUsage(1, 100, 10, 0, "stop");
             }
         };
-        final AiFieldGenerationSupport support = supportWith(provider, "m");
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
         support.generate(
                 oversizeRule("m", "sampleChunks", 2),
                 Files.createTempFile("Huge", ".java"),
                 "file",
-                largeSource(600),
+                largeSource(7000),
                 anyHeader());
         final net.ladenthin.srcmorph.provider.AiGenerationUsage usage = support.takeUsage();
 
@@ -1052,7 +1061,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     /** The prompt tokens a call of {@link #normalWindowModel} may take: its 2048 less its 64 of answer. */
-    private static final int NORMAL_WINDOW_TOKEN_LIMIT = 2048 - 64;
+    private static final int NORMAL_WINDOW_TOKEN_LIMIT = 2048 - 64 - AiTokenWindow.UNCOUNTED_TOKENS;
 
     @Test
     public void countedTokens_aSourceOverTheEstimateThatFitsInTokens_takesOneCall() throws Exception {
@@ -1167,6 +1176,156 @@ public class AiFieldGenerationSupportTest {
         for (final AiGenerationRequest map : requests.subList(0, requests.size() - 1)) {
             assertThat(map.sourceText(), startsWith("Chunk "));
         }
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="review round 2">
+    private static String linesOf(final int chars) {
+        final StringBuilder sb = new StringBuilder(chars + 16);
+        while (sb.length() < chars) {
+            sb.append("- `name_").append(sb.length()).append("` -> a long part summary line\n");
+        }
+        return sb.toString();
+    }
+
+    @Test
+    public void reduce_partsTooLongToPair_areShortenedAndAllRead() throws Exception {
+        // arrange: every map answer is longer than half a reduce batch, so no two fit one; the reduce answers
+        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            requests.add(request);
+            return request.sourceText().startsWith("Chunk ") ? linesOf(4_000) : "S";
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "mapReduce", 0),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+
+        // assert: the first reduce reads two shortened parts, and the coverage line counts them
+        final AiGenerationRequest firstReduce = requests.stream()
+                .filter(r -> r.sourceText().startsWith(AiMapReduceSupport.PART_LABEL))
+                .findFirst()
+                .orElseThrow(AssertionError::new);
+        assertThat(firstReduce.sourceText(), containsString(AiMapReduceSupport.PART_LABEL + "2:"));
+        assertThat(firstReduce.sourceText(), containsString(AiMapReduceSupport.SHORTENED_MARKER));
+        assertThat(result.complete(), is(true));
+        assertThat(result.body(), containsString(" part summaries shortened to fit the reduce)"));
+    }
+
+    @Test
+    public void mapReduce_aSingleChunkCutAtTheOutputBudget_isTheFinalAnswerAndFailsTheFile() throws Exception {
+        // arrange: one chunk is read, so its answer is the final one; it is cut off
+        final AiGenerationProvider provider = request -> {
+            throw cutOff("half a summ");
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "sampleChunks", 1),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+
+        // assert
+        assertThat(result.complete(), is(false));
+    }
+
+    @Test
+    public void countedTokens_aPromptThatStaysOverTheLimit_isNeverSent() throws Exception {
+        // arrange: every prompt counts far over the limit, however small its window; sample may cut the source
+        final CountingProvider provider = new CountingProvider(r -> 1_000_000);
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final java.io.IOException failed = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.IOException.class,
+                () -> support.generate(
+                        oversizeRule("m", "sample", 0),
+                        Files.createTempFile("Dense", ".java"),
+                        "file",
+                        largeSource(300),
+                        anyHeader()));
+
+        // assert
+        assertThat(failed.getMessage(), containsString("; not sent"));
+        assertThat(provider.generated.isEmpty(), is(true));
+    }
+
+    @Test
+    public void countedTokens_aChunkDenserThanTheFile_isReadInTwoHalves() throws Exception {
+        // arrange: two chars per token, but every '#' takes three tokens more; one line of them in the middle
+        // makes its chunk too dense for the window it was sized for
+        final CountingProvider provider =
+                new CountingProvider(r -> r.sourceText().length() / 2
+                        + 3 * (int) r.sourceText().chars().filter(c -> c == '#').count());
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+        final StringBuilder dense = new StringBuilder();
+        for (int i = 0; i < 300; i++) {
+            dense.append('#');
+        }
+        final String source = largeSource(3000) + dense + "\n" + largeSource(3000);
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "mapReduce", 0), Files.createTempFile("Dense", ".java"), "file", source, anyHeader());
+
+        // assert: the dense chunk went in two halves, nothing was cut
+        assertThat(provider.generated.stream().anyMatch(r -> r.sourceText().contains(", half 1:\n")), is(true));
+        assertThat(provider.generated.stream().anyMatch(r -> r.sourceText().contains(", half 2:\n")), is(true));
+        for (final AiGenerationRequest request : provider.generated) {
+            assertThat(request.sourceText().contains("[EOF - source was truncated]"), is(false));
+        }
+        assertThat(result.body().contains("cut to fit the window"), is(false));
+    }
+
+    @Test
+    public void incomplete_keep_countsThePartSummariesCutAtTheOutputBudget() throws Exception {
+        // arrange: under keep every map answer is cut, the reduce answers
+        final AiGenerationProvider provider = request -> {
+            if (request.sourceText().startsWith("Chunk ")) {
+                throw cutOff("- a part");
+            }
+            return "FINAL";
+        };
+        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
+        rule.setOnIncomplete("keep");
+
+        // act
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+
+        // assert
+        assertThat(result.body(), containsString(" part summaries cut at the output budget)\n\nFINAL"));
+    }
+
+    @Test
+    public void incomplete_retryOnce_keepsACutPartWithoutAskingAgain() throws Exception {
+        // arrange
+        final AtomicInteger maps = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            if (request.sourceText().startsWith("Chunk ")) {
+                maps.incrementAndGet();
+                throw cutOff("- a part");
+            }
+            return "FINAL";
+        };
+        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
+        rule.setOnIncomplete("retryOnce");
+
+        // act
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+
+        // assert: one call per chunk, as many as the coverage line names
+        final String chunks = result.body().replaceAll("(?s).*?of (\\d+) chunks summarized.*", "$1");
+        assertThat(maps.get(), is(Integer.parseInt(chunks)));
     }
     // </editor-fold>
 }

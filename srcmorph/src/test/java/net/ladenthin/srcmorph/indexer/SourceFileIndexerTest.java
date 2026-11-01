@@ -218,7 +218,7 @@ public class SourceFileIndexerTest {
         final AiFieldGenerationSupport support = mockSupport();
 
         // first write
-        final AiIndexOutcome wrote = indexer.indexFile(foo, rule, support);
+        final AiIndexOutcome wrote = indexer.indexFile(foo, rule, support, "", "");
         final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
 
         assertThat(wrote, is(AiIndexOutcome.WRITTEN));
@@ -229,7 +229,7 @@ public class SourceFileIndexerTest {
         assertThat(document.body().trim().isEmpty(), is(false));
 
         // second write — unchanged source, so it is skipped
-        final AiIndexOutcome wroteAgain = indexer.indexFile(foo, rule, support);
+        final AiIndexOutcome wroteAgain = indexer.indexFile(foo, rule, support, "", "");
         assertThat(wroteAgain, is(AiIndexOutcome.UNCHANGED));
     }
     // </editor-fold>
@@ -383,7 +383,7 @@ public class SourceFileIndexerTest {
         writeJava(foo, "package com.example;\nclass Foo {}\n");
 
         final AiIndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
-                .indexFile(foo, ruleWithFacts(), emptyAnswerSupport());
+                .indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "");
 
         // the facts line alone is no summary: nothing is written, so the next run tries again
         assertThat(outcome, is(AiIndexOutcome.FAILED));
@@ -398,11 +398,11 @@ public class SourceFileIndexerTest {
         writeJava(foo, "package com.example;\nclass Foo {}\n");
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
         final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
-        assertThat(indexer.indexFile(foo, ruleWithFacts(), mockSupport()), is(AiIndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, ruleWithFacts(), mockSupport(), "", ""), is(AiIndexOutcome.WRITTEN));
         final byte[] older = Files.readAllBytes(aiFile);
 
         writeJava(foo, "package com.example;\nclass Foo { int x; }\n");
-        final AiIndexOutcome outcome = indexer.indexFile(foo, ruleWithFacts(), emptyAnswerSupport());
+        final AiIndexOutcome outcome = indexer.indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "");
 
         assertThat(outcome, is(AiIndexOutcome.FAILED));
         assertThat(Arrays.equals(Files.readAllBytes(aiFile), older), is(true));
@@ -448,7 +448,7 @@ public class SourceFileIndexerTest {
 
         final AiIndexOutcome outcome = indexer(
                         temp, temp.resolve("src/site/ai"), Collections.<String>emptyList(), 0L, 0L)
-                .indexFile(big, rule, recording);
+                .indexFile(big, rule, recording, "", "");
 
         assertThat(outcome, is(AiIndexOutcome.WRITTEN));
         // three chunks and one reduce

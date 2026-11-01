@@ -120,6 +120,15 @@ public class AiFieldGenerationSupport {
     /** Nanoseconds per second, used to convert the measured generation duration to whole seconds. */
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
+    /**
+     * How many estimated windows of a source's head are counted to measure its density: enough to stand for a
+     * file of mixed content, bounded so a huge file is not tokenized whole.
+     */
+    private static final int COUNTED_WINDOWS = 4;
+
+    /** The share (1/n) of a reduce batch the facts line may take; a longer one is cut for the reduce. */
+    private static final int REDUCE_FACTS_SHARE = 4;
+
     /** Leading/trailing lines shown in a {@link AiOversizeStrategy#DETERMINISTIC} body. */
     private static final int DETERMINISTIC_SAMPLE_LINES = 20;
 
@@ -148,6 +157,12 @@ public class AiFieldGenerationSupport {
 
     /** The part summaries of the current map-reduce that were cut off at the output budget and kept. */
     private int cutParts;
+
+    /** The part summaries of the current map-reduce the reduce shortened because no two fitted one batch. */
+    private int shortenedParts;
+
+    /** Whether the current call's input was cut to fit a smaller window: one call counts once in {@link #cutCalls}. */
+    private boolean callCut;
 
     /**
      * Raised inside when a context overflow's smaller window would cut a source its caller does not allow
@@ -366,12 +381,21 @@ public class AiFieldGenerationSupport {
         if (tokenLimit == AiTokenWindow.NO_LIMIT) {
             return estimate;
         }
-        final OptionalInt tokens = generationProvider.promptTokens(request);
+        // the density of a head a few windows long stands for the file: a 50 MB dump is not rendered and
+        // tokenized whole to size its chunks, and every call is counted again before it is sent
+        final String source = request.sourceText();
+        final int length = source.length();
+        final int sampleChars = (int) Math.min(length, (long) Math.max(estimate, 1) * COUNTED_WINDOWS);
+        final AiGenerationRequest sample = sampleChars == length
+                ? request
+                : new AiGenerationRequest(
+                        request.promptKey(), contextFile, source.substring(0, sampleChars), request.currentHeader());
+        final OptionalInt tokens = generationProvider.promptTokens(sample);
         if (!tokens.isPresent() || tokens.getAsInt() <= 0) {
             return estimate;
         }
-        final int promptChars = promptPreparationSupport.getBasePromptLength(request.promptKey(), contextFile)
-                + request.sourceText().length();
+        final int promptChars =
+                promptPreparationSupport.getBasePromptLength(request.promptKey(), contextFile) + sampleChars;
         final int counted = tokens.getAsInt();
         final int window = AiTokenWindow.measuredWindow(tokenLimit, promptChars, counted);
         LOGGER.info(
@@ -504,7 +528,14 @@ public class AiFieldGenerationSupport {
                 window);
         final long generationStartNanos = System.nanoTime();
         final String generated = generateComplete(
-                fieldGeneration, fieldGeneration.getPromptKey(), contextFile, sourceText, baseHeader, window, mayCut);
+                fieldGeneration,
+                fieldGeneration.getPromptKey(),
+                contextFile,
+                sourceText,
+                baseHeader,
+                window,
+                mayCut,
+                false);
         final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
 
         // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
@@ -559,6 +590,14 @@ public class AiFieldGenerationSupport {
         // Reserve token-safety headroom: real chars/token can be below the configured charsPerToken for
         // dense content, so size chunks (and every map/reduce prompt) against a shrunken window.
         final int safeWindow = AiMapReduceSupport.safeWindow(effectiveMaxInputChars);
+        final int room = safeWindow - basePromptLength;
+        if (room < AiMapReduceSupport.MIN_CHUNK_CHARS) {
+            // a chunk of the minimum would be cut in every call, and most of the source never read
+            throw new IOException("The window of model '" + fieldGeneration.getAiDefinitionKey() + "' leaves " + room
+                    + " characters for a chunk of '" + contextFile + "' next to its map and reduce prompts, fewer than "
+                    + AiMapReduceSupport.MIN_CHUNK_CHARS + ": give the model a larger contextSize or a smaller"
+                    + " maxOutputTokens");
+        }
         final int sourceBudget = AiMapReduceSupport.sourceBudget(safeWindow, basePromptLength);
         final int overlap = AiMapReduceSupport.overlap(sourceBudget);
         final List<String> all = AiSourceChunker.chunk(sourceText, sourceBudget, overlap, 0);
@@ -575,28 +614,110 @@ public class AiFieldGenerationSupport {
                 all.size());
         cutCalls = 0;
         cutParts = 0;
+        shortenedParts = 0;
         final List<String> partials = new ArrayList<>(chunks.size());
         int index = 0;
         for (final String chunk : chunks) {
             index++;
-            final String labelled = AiMapReduceSupport.chunkLabel(index, chunks.size(), all.size()) + chunk;
-            partials.add(summarizeChunk(fieldGeneration, mapKey, contextFile, labelled, baseHeader, safeWindow, true)
-                    .trim());
+            // the answer to a single chunk is the final one, which has to be complete
+            mapChunk(
+                    fieldGeneration,
+                    mapKey,
+                    contextFile,
+                    AiMapReduceSupport.chunkLabel(index, chunks.size(), all.size()),
+                    chunk,
+                    baseHeader,
+                    safeWindow,
+                    chunks.size() > 1,
+                    partials);
             LOGGER.info("  mapReduce chunk {}/{} summarized ({} chars)", index, chunks.size(), chunk.length());
         }
+        // a part that does not leave a quarter of a batch for the parts is cut for the reduce, never the parts
+        final String reduceFacts = AiMapReduceSupport.reduceFacts(facts, sourceBudget / REDUCE_FACTS_SHARE);
         final String reduced = reducePartials(
-                fieldGeneration, reduceKey, contextFile, baseHeader, partials, sourceBudget, safeWindow, facts);
-        return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size(), cutCalls, cutParts) + reduced;
+                fieldGeneration, reduceKey, contextFile, baseHeader, partials, sourceBudget, safeWindow, reduceFacts);
+        return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size(), cutCalls, cutParts, shortenedParts)
+                + reduced;
+    }
+
+    /**
+     * Summarizes one chunk into {@code partials}. A chunk denser than its window was sized for is split at a
+     * line end near its middle, and both halves are summarized, so its tail is read instead of cut; a half
+     * below twice {@link AiMapReduceSupport#MIN_CHUNK_CHARS} is cut to the window instead (and counted).
+     *
+     * @param fieldGeneration the rule
+     * @param mapKey          the prompt of a map call: the rule's prompt with its map prompt
+     * @param contextFile     the source file path
+     * @param label           the chunk's label line ({@link AiMapReduceSupport#chunkLabel})
+     * @param chunk           the chunk
+     * @param baseHeader      the header passed through to the request
+     * @param safeWindow      the per-call window budget
+     * @param part            whether the answer is one part of several (one cut off at the output budget is
+     *                        kept), not the final answer
+     * @param partials        the part summaries, appended to
+     * @throws IOException if the provider fails
+     */
+    private void mapChunk(
+            final AiFieldGenerationConfig fieldGeneration,
+            final String mapKey,
+            final Path contextFile,
+            final String label,
+            final String chunk,
+            final AiMdHeader baseHeader,
+            final int safeWindow,
+            final boolean part,
+            final List<String> partials)
+            throws IOException {
+        final boolean splittable = chunk.length() >= 2 * AiMapReduceSupport.MIN_CHUNK_CHARS;
+        try {
+            partials.add(generateComplete(
+                            fieldGeneration,
+                            mapKey,
+                            contextFile,
+                            label + chunk,
+                            baseHeader,
+                            safeWindow,
+                            !splittable,
+                            part)
+                    .trim());
+        } catch (final AiSourceCutException e) {
+            final int split = AiMapReduceSupport.halfSplit(chunk);
+            LOGGER.info(
+                    "  mapReduce chunk of {} chars does not fit the window of {} chars; read in two halves",
+                    chunk.length(),
+                    e.window());
+            mapChunk(
+                    fieldGeneration,
+                    mapKey,
+                    contextFile,
+                    AiMapReduceSupport.halfLabel(label, 1),
+                    chunk.substring(0, split),
+                    baseHeader,
+                    safeWindow,
+                    true,
+                    partials);
+            mapChunk(
+                    fieldGeneration,
+                    mapKey,
+                    contextFile,
+                    AiMapReduceSupport.halfLabel(label, 2),
+                    chunk.substring(split),
+                    baseHeader,
+                    safeWindow,
+                    true,
+                    partials);
+        }
     }
 
     /**
      * Combines per-chunk partial summaries into one body via a <strong>hierarchical</strong> reduce:
      * partials are packed into batches that fit the window (each batch at most {@link AiMapReduceSupport#MAX_REDUCE_FANIN}
      * partials), every batch is summarized, and the process repeats on the batch summaries until a single
-     * summary remains. This avoids the single-reduce trap where hundreds of partials overflow one call
-     * and the file's tail is silently trimmed away, so {@code maxChunks <= 0} (whole-file) coverage
-     * actually reaches the final summary. Every reduce call reads the exact facts line of the whole source in
-     * front of its batch, so the counts it states need no adding up of the parts' counts.
+     * summary remains. A batch that holds a single partial in a round that is not the last passes it on as it
+     * is. When no two partials fit one batch, each is {@link AiMapReduceSupport#shortened shortened} so two
+     * do, and the coverage line counts them: no partial is dropped. Every reduce call reads the exact facts
+     * line of the whole source in front of its batch, so the counts it states need no adding up of the
+     * parts' counts.
      *
      * @param fieldGeneration the rule
      * @param reduceKey   the prompt of a reduce call: the rule's prompt with its reduce prompt
@@ -605,7 +726,7 @@ public class AiFieldGenerationSupport {
      * @param partials    the per-chunk partial summaries (already trimmed); may be empty
      * @param sourceBudget the source-character budget used to pack a reduce batch
      * @param safeWindow  the per-call window budget passed to each reduce generation
-     * @param facts       the exact facts line of the whole source, {@code ""} for none
+     * @param facts       the exact facts line for a reduce call, {@code ""} for none
      * @return the single combined summary, or an empty string when there are no partials
      * @throws IOException if the provider throws during generation
      */
@@ -622,31 +743,44 @@ public class AiFieldGenerationSupport {
         if (partials.isEmpty()) {
             return "";
         }
+        final int batchBudget = Math.max(1, sourceBudget - facts.length());
         List<String> level = partials;
         int round = 0;
         while (level.size() > 1) {
             round++;
-            final List<String> batches =
-                    AiMapReduceSupport.reduceBatches(level, Math.max(1, sourceBudget - facts.length()));
-            if (batches.size() >= level.size()) {
-                // Pathological: partials too large to combine two at a time. Collapse to one trimmed reduce
-                // so the method always terminates rather than looping without shrinking.
-                return summarizeChunk(
+            List<List<String>> groups = AiMapReduceSupport.reduceGroups(level, batchBudget);
+            if (groups.size() >= level.size()) {
+                // no two partials fit one batch: shorten each so two do, and say so in the coverage line
+                final int maxChars = AiMapReduceSupport.pairablePartChars(batchBudget);
+                final List<String> shortened = new ArrayList<>(level.size());
+                for (final String partial : level) {
+                    final String head = AiMapReduceSupport.shortened(partial, maxChars);
+                    if (head.length() < partial.length()) {
+                        shortenedParts++;
+                    }
+                    shortened.add(head);
+                }
+                level = shortened;
+                groups = AiMapReduceSupport.reduceGroups(level, batchBudget);
+            }
+            // a round with one batch writes the final answer, which has to be complete; the others write parts
+            final boolean part = groups.size() > 1;
+            final List<String> next = new ArrayList<>(groups.size());
+            for (final List<String> group : groups) {
+                if (part && group.size() == 1) {
+                    // a summary of one summary only loses detail: it goes on to the next round as it is
+                    next.add(group.get(0));
+                    continue;
+                }
+                next.add(generateComplete(
                                 fieldGeneration,
                                 reduceKey,
                                 contextFile,
-                                facts + AiMapReduceSupport.combineAll(level),
+                                facts + AiMapReduceSupport.combineAll(group),
                                 baseHeader,
                                 safeWindow,
-                                false)
-                        .trim();
-            }
-            // a round with one batch writes the final answer, which has to be complete; the others write parts
-            final boolean part = batches.size() > 1;
-            final List<String> next = new ArrayList<>(batches.size());
-            for (final String batch : batches) {
-                next.add(summarizeChunk(
-                                fieldGeneration, reduceKey, contextFile, facts + batch, baseHeader, safeWindow, part)
+                                true,
+                                part)
                         .trim());
             }
             LOGGER.info("  mapReduce reduce round {}: {} -> {} partial(s)", round, level.size(), next.size());
@@ -656,52 +790,12 @@ public class AiFieldGenerationSupport {
     }
 
     /**
-     * Prepares the prompt for one chunk (trimming to the window) and returns the provider's summary.
-     *
-     * @param fieldGeneration        the rule
-     * @param promptKey              the prompt of the call: the rule's prompt with its map or reduce prompt
-     * @param contextFile            the source file path
-     * @param chunk                  the chunk (or concatenated partials) to summarize
-     * @param baseHeader             the header passed through to the request
-     * @param effectiveMaxInputChars the per-call window budget
-     * @param part                   whether the answer is a part summary the reduce reads (one cut off at the
-     *                               output budget is kept), not the final answer
-     * @return the provider's summary for the chunk
-     * @throws IOException if the provider throws during generation
-     */
-    private String summarizeChunk(
-            final AiFieldGenerationConfig fieldGeneration,
-            final String promptKey,
-            final Path contextFile,
-            final String chunk,
-            final AiMdHeader baseHeader,
-            final int effectiveMaxInputChars,
-            final boolean part)
-            throws IOException {
-        try {
-            return generateComplete(
-                    fieldGeneration, promptKey, contextFile, chunk, baseHeader, effectiveMaxInputChars, true);
-        } catch (final AiIncompleteAnswerException e) {
-            // a part summary cut at the output budget still holds what it got to, and the reduce summarizes
-            // it: a model that lists a long run of entries one by one would otherwise fail the whole file
-            if (part
-                    && e.reason() == AiIncompleteAnswerException.Reason.TRUNCATED
-                    && !compatibilityHelper.isBlank(e.partialText())) {
-                LOGGER.warn(
-                        INCOMPLETE_WARN_PREFIX + "a part of {}: {}; kept, the reduce reads it",
-                        contextFile,
-                        e.detail());
-                cutParts++;
-                return e.partialText();
-            }
-            throw e;
-        }
-    }
-
-    /**
      * Generates and insists on a complete answer: an empty text counts as incomplete as well, for a
-     * provider that returns one instead of refusing it. Under {@code onIncomplete: retryOnce} an
-     * incomplete answer is asked for once more; under {@code keep} a cut-off answer with text is taken.
+     * provider that returns one instead of refusing it. A part summary cut off at the output budget is kept
+     * at once, without asking again, since the reduce reads it as it is (counted in {@link #cutParts});
+     * under {@code onIncomplete: retryOnce} another incomplete answer is asked for once more; under
+     * {@code keep} a cut-off answer with text is taken. A call whose input was cut to a smaller window counts
+     * once in {@link #cutCalls}, however many attempts it took.
      *
      * @param fieldGeneration the rule (its incomplete-answer strategy)
      * @param promptKey       the prompt of the call
@@ -710,6 +804,7 @@ public class AiFieldGenerationSupport {
      * @param baseHeader      the header passed through to the request
      * @param window          the per-call window budget
      * @param mayCut          whether the source may be cut to fit the window
+     * @param part            whether the answer is a part summary the reduce reads, not the final answer
      * @return the complete answer
      * @throws AiIncompleteAnswerException if the last attempt's answer is still incomplete
      * @throws IOException                 if the provider fails, or the source would be cut and may not be
@@ -721,35 +816,58 @@ public class AiFieldGenerationSupport {
             final String source,
             final AiMdHeader baseHeader,
             final int window,
-            final boolean mayCut)
+            final boolean mayCut,
+            final boolean part)
             throws IOException {
         final int attempts = fieldGeneration.incompleteStrategy().attempts();
         final AiGenerationConfig model = modelDefinitionSupport.getConfig(fieldGeneration.getAiDefinitionKey());
         final int tokenLimit = AiTokenWindow.promptTokenLimit(model.getContextSize(), model.getMaxOutputTokens());
-        for (int attempt = 1; ; attempt++) {
-            try {
-                final String text = generateWithOverflowRetry(
-                        promptKey, contextFile, source, baseHeader, window, mayCut, tokenLimit);
-                if (compatibilityHelper.isBlank(text)) {
-                    throw new AiIncompleteAnswerException(
-                            AiIncompleteAnswerException.Reason.EMPTY, "The model answered nothing for " + contextFile);
-                }
-                return text;
-            } catch (final AiIncompleteAnswerException e) {
-                if (fieldGeneration.incompleteStrategy() == AiIncompleteStrategy.KEEP
-                        && e.reason() == AiIncompleteAnswerException.Reason.TRUNCATED
-                        && !compatibilityHelper.isBlank(e.partialText())) {
+        callCut = false;
+        try {
+            for (int attempt = 1; ; attempt++) {
+                try {
+                    final String text = generateWithOverflowRetry(
+                            promptKey, contextFile, source, baseHeader, window, mayCut, tokenLimit);
+                    if (compatibilityHelper.isBlank(text)) {
+                        throw new AiIncompleteAnswerException(
+                                AiIncompleteAnswerException.Reason.EMPTY,
+                                "The model answered nothing for " + contextFile);
+                    }
+                    return text;
+                } catch (final AiIncompleteAnswerException e) {
+                    final boolean cutWithText = e.reason() == AiIncompleteAnswerException.Reason.TRUNCATED
+                            && !compatibilityHelper.isBlank(e.partialText());
+                    if (cutWithText && part) {
+                        // a part summary cut at the output budget still holds what it got to, and the reduce
+                        // summarizes it: a model that lists a long run of entries one by one would otherwise
+                        // fail the whole file
+                        LOGGER.warn(
+                                INCOMPLETE_WARN_PREFIX + "a part of {}: {}; kept, the reduce reads it",
+                                contextFile,
+                                e.detail());
+                        cutParts++;
+                        return e.partialText();
+                    }
+                    if (cutWithText && fieldGeneration.incompleteStrategy() == AiIncompleteStrategy.KEEP) {
+                        LOGGER.warn(
+                                INCOMPLETE_WARN_PREFIX + "{}: {}; kept as it is (onIncomplete: keep)",
+                                contextFile,
+                                e.detail());
+                        return e.partialText();
+                    }
+                    if (attempt >= attempts) {
+                        throw e;
+                    }
                     LOGGER.warn(
-                            INCOMPLETE_WARN_PREFIX + "{}: {}; kept as it is (onIncomplete: keep)",
+                            INCOMPLETE_WARN_PREFIX + "{} ({}): {}; asking once more",
                             contextFile,
+                            e.reason(),
                             e.detail());
-                    return e.partialText();
                 }
-                if (attempt >= attempts) {
-                    throw e;
-                }
-                LOGGER.warn(
-                        INCOMPLETE_WARN_PREFIX + "{} ({}): {}; asking once more", contextFile, e.reason(), e.detail());
+            }
+        } finally {
+            if (callCut) {
+                cutCalls++;
             }
         }
     }
@@ -760,9 +878,10 @@ public class AiFieldGenerationSupport {
      * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
      * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
      * exception propagates immediately. A provider that counts a prompt's tokens is asked first: a prompt
-     * over {@code tokenLimit} is not sent, the window shrinks by the measured density instead
-     * ({@link AiTokenWindow#smallerWindow}). A source that the smaller window would cut is cut only when
-     * {@code mayCut} allows it (and counted in {@link #cutCalls}); otherwise {@link AiSourceCutException}
+     * over {@code tokenLimit} is never sent; the window shrinks by the measured density instead
+     * ({@link AiTokenWindow#smallerWindow}), up to {@link AiTokenWindow#MAX_SMALLER_WINDOWS} times, and a
+     * prompt still over the limit then is refused. A source that the smaller window would cut is cut only
+     * when {@code mayCut} allows it (and marked in {@link #callCut}); otherwise {@link AiSourceCutException}
      * hands the window back to the caller, whose rule decides.
      *
      * @param promptKey   the prompt template key
@@ -774,8 +893,8 @@ public class AiFieldGenerationSupport {
      * @param tokenLimit  the tokens a prompt may take ({@link AiTokenWindow#promptTokenLimit}), or
      *                    {@link AiTokenWindow#NO_LIMIT} to send every prompt unchecked
      * @return the provider's generated text
-     * @throws IOException if the provider throws an {@link IOException} during generation, or the source
-     *                     would be cut and may not be
+     * @throws IOException if the provider throws an {@link IOException} during generation, the source
+     *                     would be cut and may not be, or the prompt stays over the token limit
      */
     private String generateWithOverflowRetry(
             final String promptKey,
@@ -787,41 +906,44 @@ public class AiFieldGenerationSupport {
             final int tokenLimit)
             throws IOException {
         int budget = window;
-        boolean cut = false;
-        for (int attempt = 0; ; attempt++) {
+        int overflows = 0;
+        int smallerWindows = 0;
+        while (true) {
             final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
                     new AiGenerationRequest(promptKey, contextFile, source, baseHeader), budget);
             if (prepared.trimmed()) {
                 if (!mayCut) {
                     throw new AiSourceCutException(budget);
                 }
-                // one call counts once, however many smaller windows it took
-                if (!cut) {
-                    cut = true;
-                    cutCalls++;
-                }
+                callCut = true;
             }
             final AiGenerationRequest call =
                     new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader);
-            // counted while a smaller window may still be asked for; 0 = not counted
-            final int counted = tokenLimit == AiTokenWindow.NO_LIMIT || attempt >= AiOverflowBackoff.MAX_RETRIES
+            final int counted = tokenLimit == AiTokenWindow.NO_LIMIT
                     ? 0
                     : generationProvider.promptTokens(call).orElse(0);
             if (counted > tokenLimit) {
                 final int smaller = AiTokenWindow.smallerWindow(
                         budget, tokenLimit, prepared.prompt().length(), counted);
-                if (smaller > 0) {
-                    LOGGER.info(
-                            "The prompt for {} takes {} tokens, the model's window leaves {}; not sent, a smaller"
-                                    + " window ({} -> {} chars)",
-                            contextFile,
-                            counted,
-                            tokenLimit,
-                            budget,
-                            smaller);
-                    budget = smaller;
-                    continue;
+                if (smaller <= 0 || smallerWindows >= AiTokenWindow.MAX_SMALLER_WINDOWS) {
+                    if (!mayCut) {
+                        throw new AiSourceCutException(Math.max(0, smaller));
+                    }
+                    throw new IOException("The prompt for " + contextFile + " still takes " + counted
+                            + " tokens after " + smallerWindows + " smaller windows, the model's window leaves "
+                            + tokenLimit + "; not sent");
                 }
+                smallerWindows++;
+                LOGGER.info(
+                        "The prompt for {} takes {} tokens, the model's window leaves {}; not sent, a smaller"
+                                + " window ({} -> {} chars)",
+                        contextFile,
+                        counted,
+                        tokenLimit,
+                        budget,
+                        smaller);
+                budget = smaller;
+                continue;
             }
             lastReadChars = prepared.trimmedSourceLength();
             try {
@@ -832,7 +954,7 @@ public class AiFieldGenerationSupport {
                 // a call that failed still cost its tokens
                 usage = usage.add(generationProvider.lastUsage());
                 final int reduced = AiOverflowBackoff.isContextOverflow(e)
-                        ? AiOverflowBackoff.nextWindow(attempt, budget)
+                        ? AiOverflowBackoff.nextWindow(overflows++, budget)
                         : AiOverflowBackoff.NO_SMALLER_WINDOW;
                 if (reduced == AiOverflowBackoff.NO_SMALLER_WINDOW) {
                     throw e;

@@ -368,7 +368,8 @@ public class AiFieldGenerationConfig {
      * @param mapPromptKey the map prompt key
      */
     public void setMapPromptKey(final @Nullable String mapPromptKey) {
-        this.mapPromptKey = mapPromptKey;
+        // blank is unset, as composedKey reads it, so validation and loading see the same
+        this.mapPromptKey = mapPromptKey == null || mapPromptKey.trim().isEmpty() ? null : mapPromptKey;
     }
 
     /**
@@ -386,7 +387,8 @@ public class AiFieldGenerationConfig {
      * @param reducePromptKey the reduce prompt key
      */
     public void setReducePromptKey(final @Nullable String reducePromptKey) {
-        this.reducePromptKey = reducePromptKey;
+        // blank is unset, as composedKey reads it, so validation and loading see the same
+        this.reducePromptKey = reducePromptKey == null || reducePromptKey.trim().isEmpty() ? null : reducePromptKey;
     }
 
     /**

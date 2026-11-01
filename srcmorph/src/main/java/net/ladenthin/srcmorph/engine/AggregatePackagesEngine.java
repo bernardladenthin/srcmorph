@@ -77,13 +77,18 @@ public final class AggregatePackagesEngine {
      * Aggregates every package beneath the configured output directory.
      *
      * @return the number of package index files written; {@code 0} when the output directory does not yet
-     *         exist
+     *         exist or the run is {@link SrcMorphConfiguration#isPlanOnly() planOnly}
      * @throws SrcMorphException if the phase has not exactly one rule, the prompt/model definitions are
      *                           misconfigured, or, after every package
      *                           was tried, when a package got an incomplete answer and was not written
      * @throws IOException       if the output tree cannot be read or written
      */
     public int execute() throws SrcMorphException, IOException {
+        if (config.isPlanOnly()) {
+            // planOnly plans the file phase and loads no model; this phase would write, so it does not run
+            LOGGER.info("planOnly: the package phase does not run.");
+            return 0;
+        }
         final Path basePath =
                 config.getBaseDirectory().toPath().toAbsolutePath().normalize();
         final Path outputPath =

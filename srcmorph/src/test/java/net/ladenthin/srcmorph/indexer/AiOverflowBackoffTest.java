@@ -70,4 +70,9 @@ public class AiOverflowBackoffTest {
         assertThat(AiOverflowBackoff.isContextOverflow(null), is(false));
     }
     // </editor-fold>
+
+    @Test
+    public void nextWindow_ofAHugeWindow_doesNotOverflow() {
+        assertThat(AiOverflowBackoff.nextWindow(0, 40_000_000), is(30_000_000));
+    }
 }

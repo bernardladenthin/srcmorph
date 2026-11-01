@@ -404,6 +404,41 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **The map-reduce drops, cuts and resends nothing behind the summary's back** (seven reviews of the
+  branch). When no two part summaries fitted one reduce batch, all of them went into one call cut from
+  the head, and the final answer read 2 of 22 parts under a coverage line that said 22 of 22; now each
+  part is shortened at a line end so two fit, and the line says how many (`3 part summaries shortened
+  to fit the reduce`). A chunk denser than its window was sized for is read in two halves instead of
+  losing its tail. A window that leaves fewer than 1000 characters for a chunk next to the map and
+  reduce prompts fails the file with that number, instead of cutting every chunk. The answer to a
+  single chunk is the final one and has to be complete. A part cut at the output budget is kept at
+  once, also under `retryOnce`, and counted under `keep` too; a call cut to a smaller window counts
+  once. In a round that is not the last, a batch of one part passes it on unchanged. A facts line
+  longer than a quarter of a batch is cut for the reduce at a counter. A trimmed prompt is never longer
+  than its window (the EOF marker took room from it, and a line break at the cut kept one character
+  more); the token pre-check aims 2 % below the limit, leaves room for the 4 beginning and end tokens
+  a count does not see, has its own budget of four smaller windows and then refuses the prompt instead
+  of sending it. The density is measured on a head of four estimated windows, not on the whole file.
+  A chunk's overlap starts at a line start. Window arithmetic no longer overflows above 28 M
+  characters. A blank `mapPromptKey` / `reducePromptKey` is unset, and the prompt hash tags the map and
+  reduce prompts by role.
+- **A request the server may already be billing is never sent twice.** A read timeout while the
+  answer body was read still resent the POST, and the JDK itself resends a buffered POST once after a
+  connection reset (`sun.net.http.retryPost`); a POST now goes in streaming mode with a fixed length,
+  and a 401, whose body that mode cannot read, says that the key was refused or none was sent. A
+  timeout that ends the retries is the file's failure, not an interrupt of the run (a
+  `SocketTimeoutException` is an `InterruptedIOException`; the run ends only when the thread is
+  interrupted). Gemini's per-minute 429 waits and retries (its message reads "exceeded your current
+  quota" too; only the daily quota is final), and a `Retry-After` given as an HTTP date is honoured. A
+  source with a NUL character is not counted by the local tokenizer, which would stop at it.
+- **A run leaves the configuration as it was given.** `check()` followed by `execute()`, or two
+  `execute()` calls, failed on a rule with `factsKey` ("names its facts twice"), since the run resolved
+  the facts into the caller's rules; it works on copies now. A map or reduce prompt without a template
+  fails before a model loads, not in every file of the rule after it. An empty list item in the
+  configuration file (`- ` in YAML) is refused naming the list instead of reaching the run as a null.
+  `planOnly` stops the package and project phases too, so the plugin's aggregate goals load no model
+  under it. `SourceFileIndexer.indexFile` without the hashes is gone (it wrote headers without `P` and
+  `N`), and `RunRecord` keeps no value equality over its growing list of entries (CodeQL).
 - **A part summary cut at the output budget no longer fails its file.** A small model that lists a
   long run of entries one by one (Granite 4.0 H-1B on a 6 000-constant enum: every constant as its
   own line until the 1536 tokens ran out) had its map answer refused as incomplete, and the whole file

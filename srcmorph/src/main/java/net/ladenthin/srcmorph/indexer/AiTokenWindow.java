@@ -15,13 +15,29 @@ public final class AiTokenWindow {
     /** The token limit of a model whose window is not known: no call is checked. */
     public static final int NO_LIMIT = 0;
 
+    /**
+     * Tokens a prompt may take beyond its count: the beginning- and end-of-sequence tokens a vocabulary
+     * adds at prefill, which the tokenizer's count of the rendered template leaves out.
+     */
+    public static final int UNCOUNTED_TOKENS = 4;
+
+    /** Percent below the limit a smaller window aims at, so a re-trimmed prompt lands under it. */
+    public static final int MARGIN_PERCENT = 2;
+
+    /** How many smaller windows a call's count may ask for before the prompt is refused. */
+    public static final int MAX_SMALLER_WINDOWS = 4;
+
+    /** Percent divisor. */
+    private static final int PERCENT = 100;
+
     /** Utility class; not instantiable. */
     private AiTokenWindow() {
         // no-op
     }
 
     /**
-     * Returns how many tokens a call's prompt may take: the window less the tokens the answer may take.
+     * Returns how many tokens a call's prompt may take: the window less the tokens the answer may take and
+     * the {@link #UNCOUNTED_TOKENS}.
      *
      * @param contextSize     the model's window in tokens, {@code 0} or less when not known
      * @param maxOutputTokens the tokens the answer may take
@@ -31,7 +47,7 @@ public final class AiTokenWindow {
         if (contextSize <= 0) {
             return NO_LIMIT;
         }
-        return Math.max(1, contextSize - Math.max(0, maxOutputTokens));
+        return Math.max(1, contextSize - Math.max(0, maxOutputTokens) - UNCOUNTED_TOKENS);
     }
 
     /**
@@ -50,8 +66,8 @@ public final class AiTokenWindow {
 
     /**
      * Returns the next window for a prompt that took more tokens than the limit: the
-     * {@link #measuredWindow measured window}, but always below {@code window}, so a retry never asks the
-     * same again.
+     * {@link #measuredWindow measured window} less {@link #MARGIN_PERCENT}, and always below {@code window},
+     * so a retry never asks the same again and a re-trimmed prompt lands under the limit.
      *
      * @param window       the window the prompt was prepared for
      * @param tokenLimit   the tokens a prompt may take
@@ -61,6 +77,7 @@ public final class AiTokenWindow {
      */
     public static int smallerWindow(
             final int window, final int tokenLimit, final int promptChars, final int promptTokens) {
-        return Math.min(window - 1, measuredWindow(tokenLimit, promptChars, promptTokens));
+        final long measured = measuredWindow(tokenLimit, promptChars, promptTokens);
+        return (int) Math.min(window - 1L, measured * (PERCENT - MARGIN_PERCENT) / PERCENT);
     }
 }

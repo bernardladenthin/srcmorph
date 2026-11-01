@@ -172,4 +172,26 @@ public class AiSourceChunkerTest {
     }
 
     // </editor-fold>
+
+    @Test
+    public void chunk_theOverlapStartsAtALineStart() {
+        final StringBuilder source = new StringBuilder();
+        for (int i = 0; i < 200; i++) {
+            source.append("line number ").append(i).append('\n');
+        }
+
+        final List<String> chunks = AiSourceChunker.chunk(source.toString(), 300, 40, 0);
+
+        for (int i = 1; i < chunks.size(); i++) {
+            assertThat(chunks.get(i).startsWith("line number "), is(true));
+        }
+    }
+
+    @Test
+    public void chunk_anOverlapWithinOneLine_startsWhereTheCharactersSay() {
+        // no line end inside the overlap: it starts mid-line rather than not at all
+        final List<String> chunks = AiSourceChunker.chunk("abcdefghij\nklmnopqrst", 10, 3, 0);
+
+        assertThat(chunks.get(1), is(equalTo("hij\n")));
+    }
 }

@@ -60,13 +60,19 @@ public final class AggregateProjectEngine {
      * Aggregates the project index beneath the configured output directory.
      *
      * @return {@code 1} if the project index was written, {@code 0} otherwise (no package index files
-     *         yet, the output directory does not exist, or the existing file is up to date)
+     *         yet, the output directory does not exist, the existing file is up to date, or the run is
+     *         {@link SrcMorphConfiguration#isPlanOnly() planOnly})
      * @throws SrcMorphException if more than one rule is given, the overview's prompt/model definitions are
      *                           misconfigured, or the
      *                           overview's answer was incomplete and the project index was not written
      * @throws IOException       if the output tree cannot be read or the project index cannot be written
      */
     public int execute() throws SrcMorphException, IOException {
+        if (config.isPlanOnly()) {
+            // planOnly plans the file phase and loads no model; this phase would write, so it does not run
+            LOGGER.info("planOnly: the project phase does not run.");
+            return 0;
+        }
         final Path outputPath =
                 config.getOutputDirectory().toPath().toAbsolutePath().normalize();
 

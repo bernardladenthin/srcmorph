@@ -40,6 +40,20 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on the RunRecord of a generate run.
+
+        RunRecord collects one Entry per routed file while the run goes on (entries
+        grow) and is written once as JSON; no code path compares two records, and a
+        value equality over a growing list would mislead (CodeQL flagged the
+        Lombok-generated one). Its Entry keeps value equality. Identity is the
+        correct semantics for the record being built.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.RunRecord"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
         IMC_IMMATURE_CLASS_NO_EQUALS on the AiModelDefinitionSupport service.
 
         AiModelDefinitionSupport is a service/lookup class: it owns a

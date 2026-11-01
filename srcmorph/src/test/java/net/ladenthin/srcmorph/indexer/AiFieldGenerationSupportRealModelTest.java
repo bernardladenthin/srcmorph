@@ -38,8 +38,11 @@ public class AiFieldGenerationSupportRealModelTest {
 
     private static final String MODEL_PATH = NativeLlamaAvailability.modelPath();
 
-    /** Small context so a modest synthetic source is over-window and triggers map-reduce with the tiny model. */
-    private static final int SMALL_CONTEXT = 512;
+    /**
+     * Small context so a modest synthetic source is over-window and triggers map-reduce with the tiny model, yet
+     * leaves a chunk of at least the minimum next to the prompts.
+     */
+    private static final int SMALL_CONTEXT = 1024;
 
     private static final String MODEL_KEY = "smol";
 

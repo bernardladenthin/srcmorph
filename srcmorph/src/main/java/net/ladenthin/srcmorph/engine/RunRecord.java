@@ -25,7 +25,6 @@ import net.ladenthin.srcmorph.provider.AiGenerationUsage;
  * is visible. Written as JSON to {@code runRecordFile} when the configuration names one.
  */
 @ToString
-@EqualsAndHashCode
 public final class RunRecord {
 
     /** Seconds per nanosecond. */

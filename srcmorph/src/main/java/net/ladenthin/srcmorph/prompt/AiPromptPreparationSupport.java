@@ -64,7 +64,9 @@ public class AiPromptPreparationSupport {
                 new AiGenerationRequest(request.promptKey(), request.sourceFile(), "", request.currentHeader());
 
         final String promptWithoutSource = promptSupport.buildPrompt(emptySourceRequest);
-        final int availableSourceChars = Math.max(0, maxInputChars - promptWithoutSource.length());
+        // the marker goes behind the trimmed source, so it takes its room from the source's: a trimmed
+        // prompt is never longer than maxInputChars
+        final int availableSourceChars = Math.max(0, maxInputChars - promptWithoutSource.length() - EOF_MARKER_LENGTH);
 
         final String sourceText = request.sourceText();
         final int trimPoint = Math.min(sourceText.length(), availableSourceChars);
@@ -107,7 +109,8 @@ public class AiPromptPreparationSupport {
      *
      * @param sourceText the source code to trim
      * @param targetIndex the target character index
-     * @return the source trimmed at the last newline at or before {@code targetIndex},
+     * @return the source trimmed after the last newline before {@code targetIndex}, so at most
+     *         {@code targetIndex} characters,
      *         or the entire source if no newline is found before the index
      */
     // Package-private (not private) so the line-boundary trimming branches can be unit-tested
@@ -117,7 +120,8 @@ public class AiPromptPreparationSupport {
             return sourceText;
         }
 
-        final int lastNewline = sourceText.lastIndexOf('\n', targetIndex);
+        // a line break at targetIndex itself would keep targetIndex + 1 characters
+        final int lastNewline = sourceText.lastIndexOf('\n', targetIndex - 1);
         if (lastNewline < 0) {
             return sourceText.substring(0, targetIndex);
         }

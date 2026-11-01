@@ -16,6 +16,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -114,9 +117,14 @@ final class OpenAiCompatibleProviderSupport {
     /** Up to this fraction of the backoff is added as jitter. */
     static final double RETRY_JITTER_FRACTION = 0.25d;
 
-    /** A 429 that no wait cures: the account's quota or credit is used up. */
+    /**
+     * A 429 that no wait cures: the account's quota or credit is used up (OpenAI's {@code insufficient_quota},
+     * OpenRouter's credits), or Gemini's daily quota. Gemini words a per-minute limit as "exceeded your
+     * current quota" too, which a wait does cure, so that wording counts only with a per-day quota id.
+     */
     private static final Pattern QUOTA_EXHAUSTED = Pattern.compile(
-            "insufficient_quota|exceeded your current quota|insufficient credits", Pattern.CASE_INSENSITIVE);
+            "insufficient_quota|insufficient credits|exceeded your current quota(?=[\\s\\S]*PerDay)",
+            Pattern.CASE_INSENSITIVE);
 
     /** A 5xx that sending again cannot change: not implemented, HTTP version not supported. */
     private static final int HTTP_NOT_IMPLEMENTED = 501;
@@ -629,13 +637,37 @@ final class OpenAiCompatibleProviderSupport {
      * @param jitter     a random number in {@code [0, 1)}
      * @return the delay in milliseconds
      */
-    static long retryDelayMillis(final @Nullable String retryAfter, final int retry, final double jitter) {
-        final long asked = retryAfterMillis(retryAfter == null ? "" : retryAfter.trim());
+    static long retryDelayMillis(
+            final @Nullable String retryAfter, final int retry, final double jitter, final long nowMillis) {
+        final String value = retryAfter == null ? "" : retryAfter.trim();
+        long asked = retryAfterMillis(value);
+        if (asked < 0) {
+            asked = retryAtMillis(value, nowMillis);
+        }
         if (asked >= 0) {
             return asked;
         }
         final long backoff = Math.min(MAX_RETRY_BACKOFF_MILLIS, RETRY_BASE_DELAY_MILLIS << Math.min(retry - 1, 30));
         return backoff + (long) (backoff * RETRY_JITTER_FRACTION * jitter);
+    }
+
+    /**
+     * The wait until a {@code Retry-After} given as an HTTP date (RFC 9110 allows a date as well as seconds),
+     * at most {@link #MAX_RETRY_AFTER_MILLIS}; a date in the past waits nothing.
+     *
+     * @param date      the trimmed header value
+     * @param nowMillis the current time
+     * @return the milliseconds, or {@code -1} when the value is no HTTP date
+     */
+    private static long retryAtMillis(final String date, final long nowMillis) {
+        try {
+            final long at = ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME)
+                    .toInstant()
+                    .toEpochMilli();
+            return Math.min(MAX_RETRY_AFTER_MILLIS, Math.max(0L, at - nowMillis));
+        } catch (final DateTimeParseException e) {
+            return -1;
+        }
     }
 
     /**

@@ -582,8 +582,24 @@ public class OpenAiCompatibleProviderSupportTest {
                 OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":{\"code\":\"insufficient_quota\"}}"),
                 is(false));
         assertThat(
-                OpenAiCompatibleProviderSupport.isRetryable(429, "You exceeded your current quota, please check"),
+                OpenAiCompatibleProviderSupport.isRetryable(
+                        429,
+                        "You exceeded your current quota, please check your plan; \"code\":\"insufficient_quota\""),
                 is(false));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":{\"message\":\"Insufficient credits\"}}"),
+                is(false));
+    }
+
+    @Test
+    public void isRetryable_geminisQuota_perMinuteWaits_perDayDoesNot() {
+        final String perMinute = "You exceeded your current quota, please check your plan. quotaId:"
+                + " GenerateRequestsPerMinutePerProjectPerModel";
+        final String perDay = "You exceeded your current quota, please check your plan. quotaId:"
+                + " GenerateRequestsPerDayPerProjectPerModel";
+
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, perMinute), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, perDay), is(false));
     }
 
     @Test
@@ -608,38 +624,38 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void retryDelayMillis_retryAfterSecondsIsHonouredUpToItsCap() {
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(" 2 ", 1, 0.9d), is(2_000L));
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("0", 3, 0.0d), is(0L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(" 2 ", 1, 0.9d, 0L), is(2_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("0", 3, 0.0d, 0L), is(0L));
         assertThat(
-                OpenAiCompatibleProviderSupport.retryDelayMillis("100000", 1, 0.0d),
+                OpenAiCompatibleProviderSupport.retryDelayMillis("100000", 1, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
         assertThat(
-                OpenAiCompatibleProviderSupport.retryDelayMillis("299", 1, 0.0d),
+                OpenAiCompatibleProviderSupport.retryDelayMillis("299", 1, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS - 1_000L));
         // a number of seconds of any length is a long wait, not the short backoff
         assertThat(
-                OpenAiCompatibleProviderSupport.retryDelayMillis("99999999999999999999", 1, 0.0d),
+                OpenAiCompatibleProviderSupport.retryDelayMillis("99999999999999999999", 1, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
     }
 
     @Test
     public void retryDelayMillis_aRetryAfterThatIsNoNumber_takesTheBackoff() {
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("", 1, 0.0d), is(1_000L));
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("-1", 1, 0.0d), is(1_000L));
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("1.5", 1, 0.0d), is(1_000L));
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("9a", 1, 0.0d), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("", 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("-1", 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("1.5", 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("9a", 1, 0.0d, 0L), is(1_000L));
     }
 
     @Test
     public void retryDelayMillis_withoutRetryAfter_doublesUpToItsCapPlusJitter() {
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 1, 0.0d), is(1_000L));
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 2, 0.0d), is(2_000L));
-        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 3, 0.5d), is(4_500L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 2, 0.0d, 0L), is(2_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 3, 0.5d, 0L), is(4_500L));
         assertThat(
-                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed, 21 Oct 2026 07:28:00 GMT", 7, 0.0d),
+                OpenAiCompatibleProviderSupport.retryDelayMillis("not a date", 7, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_BACKOFF_MILLIS));
         assertThat(
-                OpenAiCompatibleProviderSupport.retryDelayMillis(null, 99, 0.0d),
+                OpenAiCompatibleProviderSupport.retryDelayMillis(null, 99, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_BACKOFF_MILLIS));
     }
     // </editor-fold>
@@ -867,4 +883,31 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(timings.decodeTokensPerSecond(), is(0.0d));
     }
     // </editor-fold>
+
+    @Test
+    public void retryDelayMillis_aRetryAfterDate_waitsUntilThen() {
+        final long at = java.time.ZonedDateTime.parse(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+                .toInstant()
+                .toEpochMilli();
+
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", 1, 0.0d, at - 30_000L),
+                is(30_000L));
+        // a date in the past waits nothing, one far ahead the longest honoured wait
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed, 21 Oct 2026 07:28:00 GMT", 1, 0.0d, at + 1L),
+                is(0L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed, 21 Oct 2026 07:28:00 GMT", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(
+                        "Wed, 21 Oct 2026 07:28:00 GMT",
+                        1,
+                        0.0d,
+                        at - OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+    }
 }

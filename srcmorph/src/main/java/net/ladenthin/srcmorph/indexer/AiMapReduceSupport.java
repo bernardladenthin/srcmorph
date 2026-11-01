@@ -41,11 +41,26 @@ public final class AiMapReduceSupport {
     /** Label prefix of one partial summary inside a reduce prompt. */
     public static final String PART_LABEL = "Part ";
 
+    /** The end of a partial's label line. */
+    private static final String PART_LABEL_END = ":\n";
+
+    /** The blank line after a partial. */
+    private static final String PART_SEPARATOR = "\n\n";
+
     /**
      * The characters reserved for a chunk's label ({@link #chunkLabel(int, int, int)}) in the budget of a
      * map call: {@code Chunk 99999 of 99999, sampled from 99999 chunks:} and its line end, with room.
      */
     public static final int CHUNK_LABEL_RESERVE = 64;
+
+    /** The line that ends a partial {@link #shortened shortened} to fit a reduce batch. */
+    public static final String SHORTENED_MARKER = "\n...";
+
+    /** The separator between two counters of a facts line. */
+    private static final String FACTS_SEPARATOR = "; ";
+
+    /** The end of a facts line {@link #reduceFacts cut} for a reduce call. */
+    private static final String FACTS_ELLIPSIS = "; ...\n\n";
 
     /** Approximate per-partial label and separator overhead when packing a reduce batch. */
     public static final int LABEL_OVERHEAD_CHARS = 16;
@@ -72,7 +87,8 @@ public final class AiMapReduceSupport {
      * @return the window a chunk or a batch is sized against
      */
     public static int safeWindow(final int maxInputChars) {
-        return maxInputChars - maxInputChars * TOKEN_HEADROOM_PERCENT / PERCENT;
+        // in long, so a window above Integer.MAX_VALUE / 20 does not overflow
+        return (int) (maxInputChars - (long) maxInputChars * TOKEN_HEADROOM_PERCENT / PERCENT);
     }
 
     /**
@@ -109,22 +125,103 @@ public final class AiMapReduceSupport {
      * @return the batch texts, in order
      */
     public static List<String> reduceBatches(final List<String> partials, final int sourceBudget) {
-        final List<String> batches = new ArrayList<>(partials.size());
-        int i = 0;
-        while (i < partials.size()) {
-            final StringBuilder batch = new StringBuilder();
-            int inBatch = 0;
-            while (inBatch < MAX_REDUCE_FANIN
-                    && i < partials.size()
-                    && (inBatch == 0
-                            || batch.length() + partials.get(i).length() + LABEL_OVERHEAD_CHARS <= sourceBudget)) {
-                appendPart(batch, inBatch + 1, partials.get(i));
-                inBatch++;
-                i++;
-            }
-            batches.add(batch.toString());
+        final List<List<String>> groups = reduceGroups(partials, sourceBudget);
+        final List<String> batches = new ArrayList<>(groups.size());
+        for (final List<String> group : groups) {
+            batches.add(combineAll(group));
         }
         return batches;
+    }
+
+    /**
+     * Groups one reduce round's partials as {@link #reduceBatches(List, int)} packs them, without the
+     * labels: the caller sees which batch holds a single partial.
+     *
+     * @param partials     the partial summaries of the round
+     * @param sourceBudget the characters one batch may hold
+     * @return the groups, in order, each with at least one partial
+     */
+    public static List<List<String>> reduceGroups(final List<String> partials, final int sourceBudget) {
+        final List<List<String>> groups = new ArrayList<>(partials.size());
+        int i = 0;
+        while (i < partials.size()) {
+            final List<String> group = new ArrayList<>(MAX_REDUCE_FANIN);
+            // the length the batch text has so far: every part with its label and separators
+            int length = 0;
+            while (group.size() < MAX_REDUCE_FANIN
+                    && i < partials.size()
+                    && (group.isEmpty() || length + partials.get(i).length() + LABEL_OVERHEAD_CHARS <= sourceBudget)) {
+                length += partLength(group.size() + 1, partials.get(i));
+                group.add(partials.get(i));
+                i++;
+            }
+            groups.add(group);
+        }
+        return groups;
+    }
+
+    /**
+     * Returns the longest a partial may be so that any two of them fit one batch of {@code sourceBudget}:
+     * the budget less two parts' label overhead, halved.
+     *
+     * @param sourceBudget the characters one batch may hold
+     * @return the length, at least {@code 1}
+     */
+    public static int pairablePartChars(final int sourceBudget) {
+        return Math.max(1, (sourceBudget - 2 * LABEL_OVERHEAD_CHARS) / 2);
+    }
+
+    /**
+     * Returns {@code partial} shortened to {@code maxChars} at its last line end before them, with
+     * {@link #SHORTENED_MARKER}, or the partial as it is when it fits.
+     *
+     * @param partial  the partial summary
+     * @param maxChars the characters it may take, the marker included
+     * @return the partial or its head
+     */
+    public static String shortened(final String partial, final int maxChars) {
+        if (partial.length() <= maxChars) {
+            return partial;
+        }
+        final int room = Math.max(0, maxChars - SHORTENED_MARKER.length());
+        final int lineEnd = partial.lastIndexOf('\n', room);
+        return partial.substring(0, lineEnd > 0 ? lineEnd : room) + SHORTENED_MARKER;
+    }
+
+    /**
+     * Returns the facts line a reduce call reads in front of its parts: the whole line when it takes at
+     * most {@code maxChars}, otherwise its counters up to the last {@code "; "} that fits, then
+     * {@code "; ..."}, so a long line never leaves the batch without room for the parts.
+     *
+     * @param facts    the facts line with its blank line, or {@code ""}
+     * @param maxChars the characters it may take
+     * @return the line for the reduce
+     */
+    public static String reduceFacts(final String facts, final int maxChars) {
+        if (facts.length() <= maxChars) {
+            return facts;
+        }
+        final int cut = facts.lastIndexOf(FACTS_SEPARATOR, Math.max(0, maxChars - FACTS_ELLIPSIS.length()));
+        // no counter that fits: the ellipsis alone
+        return facts.substring(0, Math.max(0, cut)) + FACTS_ELLIPSIS;
+    }
+
+    /**
+     * Returns where to split a chunk in two at a line end near its middle: after the last line break at
+     * or before the middle, or the first one after it, or the middle itself in a single line.
+     *
+     * @param chunk the chunk, at least two characters
+     * @return the length of the first half, between {@code 1} and {@code chunk.length() - 1}
+     */
+    public static int halfSplit(final String chunk) {
+        final int middle = chunk.length() / 2;
+        final int before = chunk.lastIndexOf('\n', middle - 1);
+        if (before >= 0) {
+            return before + 1;
+        }
+        final int after = chunk.indexOf('\n', middle);
+        // a line end found is at the middle or behind it; the last character would leave no second half
+        return after >= middle && after < chunk.length() - 1 ? after + 1 : middle;
     }
 
     /**
@@ -138,6 +235,19 @@ public final class AiMapReduceSupport {
      */
     public static String chunkLabel(final int number, final int read, final int total) {
         return "Chunk " + number + " of " + read + (read < total ? ", sampled from " + total + " chunks" : "") + ":\n";
+    }
+
+    /**
+     * Returns the label of one half of a chunk read in two: {@code Chunk 3 of 44, half 1:}.
+     *
+     * @param label the chunk's label ({@link #chunkLabel(int, int, int)}, or a half's)
+     * @param half  {@code 1} or {@code 2}
+     * @return the half's label and its line end
+     */
+    public static String halfLabel(final String label, final int half) {
+        final String line =
+                label.endsWith(PART_LABEL_END) ? label.substring(0, label.length() - PART_LABEL_END.length()) : label;
+        return line + ", half " + half + PART_LABEL_END;
     }
 
     /**
@@ -158,18 +268,22 @@ public final class AiMapReduceSupport {
 
     /**
      * Returns the coverage line of a map-reduce: how many of the source's chunks the summary read, how
-     * many of its calls a context overflow made cut to a smaller window, and how many part summaries the
-     * output budget cut off (kept, the reduce read them).
+     * many of its calls a context overflow made cut to a smaller window, how many part summaries the
+     * output budget cut off (kept, the reduce read them), and how many the reduce shortened because no two
+     * of them fitted one batch.
      *
      * @param summarized the chunks summarized
      * @param total      the chunks of the source
      * @param cutCalls   the map and reduce calls whose input was cut to fit the window
      * @param cutParts   the part summaries cut off at the output budget
+     * @param shortened  the part summaries shortened to fit a reduce batch
      * @return {@code **Coverage:** 6 of 9 chunks summarized (sampled; 2 calls cut to fit the window; 1 part
-     *         summary cut at the output budget)}, each note only when it applies
+     *         summary cut at the output budget; 3 part summaries shortened to fit the reduce)}, each note only
+     *         when it applies
      */
-    public static String chunkCoverage(final int summarized, final int total, final int cutCalls, final int cutParts) {
-        final List<String> notes = new ArrayList<>(3);
+    public static String chunkCoverage(
+            final int summarized, final int total, final int cutCalls, final int cutParts, final int shortened) {
+        final List<String> notes = new ArrayList<>(4);
         if (summarized < total) {
             notes.add("sampled");
         }
@@ -178,6 +292,10 @@ public final class AiMapReduceSupport {
         }
         if (cutParts > 0) {
             notes.add(cutParts + (cutParts == 1 ? " part summary" : " part summaries") + " cut at the output budget");
+        }
+        if (shortened > 0) {
+            notes.add(shortened + (shortened == 1 ? " part summary" : " part summaries")
+                    + " shortened to fit the reduce");
         }
         return COVERAGE_HEADER + summarized + " of " + total + " chunks summarized"
                 + (notes.isEmpty() ? "" : " (" + String.join("; ", notes) + ")") + COVERAGE_SUFFIX;
@@ -227,6 +345,18 @@ public final class AiMapReduceSupport {
     }
 
     private static void appendPart(final StringBuilder target, final int number, final String partial) {
-        target.append(PART_LABEL).append(number).append(":\n").append(partial).append("\n\n");
+        target.append(PART_LABEL)
+                .append(number)
+                .append(PART_LABEL_END)
+                .append(partial)
+                .append(PART_SEPARATOR);
+    }
+
+    private static int partLength(final int number, final String partial) {
+        return PART_LABEL.length()
+                + Integer.toString(number).length()
+                + PART_LABEL_END.length()
+                + partial.length()
+                + PART_SEPARATOR.length();
     }
 }

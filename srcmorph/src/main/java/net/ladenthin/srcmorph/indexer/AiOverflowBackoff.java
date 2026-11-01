@@ -50,7 +50,8 @@ public final class AiOverflowBackoff {
      * @return the smaller window, or {@link #NO_SMALLER_WINDOW}
      */
     public static int nextWindow(final int attempt, final int window) {
-        final int reduced = Math.max(MIN_WINDOW_CHARS, window * BACKOFF_PERCENT / PERCENT);
+        // in long, so a window above Integer.MAX_VALUE / 75 does not overflow
+        final int reduced = (int) Math.max(MIN_WINDOW_CHARS, (long) window * BACKOFF_PERCENT / PERCENT);
         return attempt >= MAX_RETRIES || reduced >= window ? NO_SMALLER_WINDOW : reduced;
     }
 

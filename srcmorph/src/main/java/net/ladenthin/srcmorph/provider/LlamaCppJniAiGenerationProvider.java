@@ -210,6 +210,11 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     // tokenizer throw only unchecked exceptions (BED).
     @Override
     public OptionalInt promptTokens(final AiGenerationRequest request) {
+        // the binding hands the text to the tokenizer as a C string, which ends at the first NUL: a source
+        // with one (a UTF-16 export, binary data) would count as hardly more than its system prompt
+        if (request.sourceText().indexOf('\u0000') >= 0) {
+            return OptionalInt.empty();
+        }
         // the prompt as the chat template renders it, system and user message and the generation prompt,
         // counted by the model's tokenizer: what the call's prefill reads
         final LlamaModel loaded = model();

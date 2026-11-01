@@ -65,6 +65,12 @@ public final class GenerateEngine {
     /** The checksums of the run record's prompt and facts hashes. */
     private static final AiChecksumSupport CHECKSUMS = new AiChecksumSupport();
 
+    /** The tag in front of a rule's map prompt in the text its prompt hash is taken over. */
+    private static final String MAP_PROMPT_TAG = "\u0000map\u0000";
+
+    /** The tag in front of a rule's reduce prompt in the text its prompt hash is taken over. */
+    private static final String REDUCE_PROMPT_TAG = "\u0000reduce\u0000";
+
     private final SrcMorphConfiguration config;
     private final AiGenerationProviderFactory providerFactory;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
@@ -134,10 +140,13 @@ public final class GenerateEngine {
         LOGGER.info("Force           : {}", config.isForce());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
 
-        final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
-        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
+        final List<AiFieldGenerationConfig> configured = config.getFieldGenerations();
+        if (configured == null || configured.isEmpty()) {
             throw new SrcMorphException("No <fieldGenerations> configured for the generate goal.");
         }
+        // the run resolves the facts keys into copies: the caller's rules stay as given, so check() and a
+        // second execute() of the same configuration read them as the first did
+        final List<AiFieldGenerationConfig> fieldGenerations = copies(configured);
 
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
@@ -157,6 +166,7 @@ public final class GenerateEngine {
             throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
         }
         EngineSupport.requireDefinedModels(modelDefinitionSupport, fieldGenerations);
+        requirePrompts(promptSupport, fieldGenerations);
 
         final SourceFileIndexer fileIndexer = new SourceFileIndexer(
                 basePath,
@@ -276,8 +286,14 @@ public final class GenerateEngine {
                                     promptHash(promptSupport, entry.rule()),
                                     AiFactExtractor.factsHash(entry.rule().getFacts()));
                         } catch (final InterruptedIOException e) {
-                            // an interrupt ends the run, it is not one file's failure
-                            throw e;
+                            // an interrupt ends the run, it is not one file's failure; a timeout is one (a
+                            // SocketTimeoutException is an InterruptedIOException as well)
+                            if (Thread.currentThread().isInterrupted()) {
+                                throw e;
+                            }
+                            LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
+                            LOGGER.debug("Summarizing {} failed", entry.file(), e);
+                            outcome = AiIndexOutcome.FAILED;
                         } catch (final IOException | RuntimeException e) {
                             // one failed request (after its retries) does not end the run, nor does an unchecked
                             // error of a provider (the llama.cpp binding throws only those)
@@ -402,6 +418,41 @@ public final class GenerateEngine {
     }
 
     /**
+     * Returns a copy of every rule, so a run changes none of the caller's.
+     *
+     * @param rules the configured rules
+     * @return the copies, in order
+     */
+    private static List<AiFieldGenerationConfig> copies(final List<AiFieldGenerationConfig> rules) {
+        final List<AiFieldGenerationConfig> copies = new ArrayList<>(rules.size());
+        for (final AiFieldGenerationConfig rule : rules) {
+            copies.add(rule.copy());
+        }
+        return copies;
+    }
+
+    /**
+     * Checks that every prompt a routing rule names, its map and reduce prompts too, has a template, before
+     * a model loads: a key without one would otherwise fail every file of the rule once the model is up.
+     *
+     * @param promptSupport the prompts
+     * @param rules         the rules
+     * @throws SrcMorphException naming the key without a template
+     */
+    private static void requirePrompts(final AiPromptSupport promptSupport, final List<AiFieldGenerationConfig> rules)
+            throws SrcMorphException {
+        for (final AiFieldGenerationConfig rule : rules) {
+            if (!rule.isSkip()) {
+                try {
+                    promptHash(promptSupport, rule);
+                } catch (final IllegalArgumentException e) {
+                    throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
+                }
+            }
+        }
+    }
+
+    /**
      * Returns the CRC32 of the system prompt a rule's summaries are written with, and of its map and reduce
      * prompts when it has them, so a change to either shows too.
      *
@@ -412,9 +463,10 @@ public final class GenerateEngine {
     private static String promptHash(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
         final String mapKey = rule.getMapPromptKey();
         final String reduceKey = rule.getReducePromptKey();
+        // tagged by role, so a prompt that moves from the map to the reduce changes the hash too
         return CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey())
-                + (mapKey != null ? promptSupport.systemPrompt(mapKey) : "")
-                + (reduceKey != null ? promptSupport.systemPrompt(reduceKey) : ""));
+                + (mapKey != null ? MAP_PROMPT_TAG + promptSupport.systemPrompt(mapKey) : "")
+                + (reduceKey != null ? REDUCE_PROMPT_TAG + promptSupport.systemPrompt(reduceKey) : ""));
     }
 
     /**
