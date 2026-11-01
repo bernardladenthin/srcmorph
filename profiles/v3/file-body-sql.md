@@ -19,7 +19,7 @@ For tables/views: each column as `name type` plus constraints (PK, FK, NOT NULL,
 Tables and columns this object READS from (FROM / JOIN / subquery sources, function inputs).
 
 #### Writes
-Tables and columns this object WRITES (INSERT / UPDATE / DELETE / MERGE targets, or the table a trigger fires on). For data (INSERT ... VALUES): state the exact number of rows inserted into each table; count the value tuples and recount before finalizing. When several INSERTs write the same table, write the count of each INSERT as an addition, then the total (e.g. `voucher: 4 + 2 = 6 rows`).
+Tables and columns this object WRITES (INSERT / UPDATE / DELETE / MERGE targets, or the table a trigger fires on). For data (INSERT ... VALUES): state the exact number of rows inserted into each table; count the value tuples and recount before finalizing. When several INSERTs write the same table, write the count of each INSERT as an addition, then the total (e.g. `voucher: 4 + 2 = 6 rows`); more than five INSERTs into one table are a family: the number of INSERTs and the total rows only.
 
 #### Relationships
 Foreign keys and join relationships to other tables, as searchable `table.column -> table.column` pairs.

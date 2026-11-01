@@ -330,7 +330,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   to merge the parts keeping every name a part states. Every map call's input starts with
   `Chunk i of n:` (`AiMapReduceSupport.chunkLabel`). The keys apply only to the two chunked
   strategies; a prompt key may not contain `+`. The self-test, the CLI example and `run.py` name them
-  in every chunked rule and the package and project rules; the header's `- P:` covers them.
+  in every chunked rule and the package and project rules; the header's `- P:` covers them. Every
+  reduce call also reads the exact facts line of the whole input in front of the parts, and
+  `reduce-parts` says to state its counts as given: gpt-oss-20b spent the whole 4096-token budget of
+  the dump's final reduce reasoning, adding up the row counts of nine parts, and answered nothing.
 - **The self-test's ~275 KB .. 1 MB tier map-reduces with Granite 4.0 H-Tiny over a 64K window**
   instead of one pass over 384K: in one pass over the large corpus's 870 KB catalog H-Tiny copied the
   XML into a code fence with invented values (every price 972.00, every stock 0) until its output
@@ -339,10 +342,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `onOversize: mapReduce`; `models.json` keeps the old preset for the earlier measurements.
 - **The family rule of the prompts names no analysis channel.** `file-body-java` told the model to
   count a family of near-identical members "in the analysis channel", which only gpt-oss has; it now
-  asks for the pattern, the exact total and the first and last name, and to name every member or
-  group that breaks the pattern separately. `file-body-sql`, `-xml` and `-fallback` get the same rule
-  for rows, records and numbered constants: Granite 4.0 H-1B listed 6 000 enum constants one by one
-  until its output budget ended, in five of eleven chunks.
+  asks for the exact total and the index range only (a clause that also had the model name every
+  member breaking the pattern was dropped again: GPT-6 Luna then reasoned at length over one Java
+  file in three of six runs, against none of three before). `file-body-sql`, `-xml` and `-fallback`
+  get a family rule for rows, records and numbered constants: Granite 4.0 H-1B listed 6 000 enum
+  constants one by one until its output budget ended, in five of eleven chunks. In `file-body-sql`
+  more than five INSERTs into one table are a family too: the number of INSERTs and the total rows,
+  not each count as an addition.
 - **The package and project rules default to `onOversize: mapReduce`.** Their input is the summaries
   below them; with the general default `fail` a package over its window failed on every run and its
   parent lost the subtree, `sample` would drop the children behind its head. A rule that sets

@@ -310,7 +310,8 @@ public class AiFieldGenerationSupport {
                             contextType,
                             sourceText,
                             baseHeader,
-                            window);
+                            window,
+                            factsPrefix);
         }
         try {
             return factsPrefix
@@ -334,7 +335,8 @@ public class AiFieldGenerationSupport {
                             contextType,
                             sourceText,
                             baseHeader,
-                            e.window());
+                            e.window(),
+                            factsPrefix);
         }
     }
 
@@ -397,6 +399,8 @@ public class AiFieldGenerationSupport {
      * @param sourceText       the full source text
      * @param baseHeader       the header passed through to each request
      * @param window           the window the source does not fit
+     * @param facts            the exact facts line of the whole source ({@code ""} for none), which every
+     *                         reduce call reads in front of the part summaries
      * @return the body, without the facts line
      * @throws IOException if the strategy is {@code fail} or the provider fails
      */
@@ -407,7 +411,8 @@ public class AiFieldGenerationSupport {
             final String contextType,
             final String sourceText,
             final AiMdHeader baseHeader,
-            final int window)
+            final int window,
+            final String facts)
             throws IOException {
         final AiOversizeStrategy oversize = fieldGeneration.oversizeStrategy();
         if (oversize == AiOversizeStrategy.FAIL) {
@@ -428,7 +433,7 @@ public class AiFieldGenerationSupport {
             return AiDeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
         }
         if (oversize == AiOversizeStrategy.MAP_REDUCE || oversize == AiOversizeStrategy.SAMPLE_CHUNKS) {
-            return mapReduceSummarize(fieldGeneration, contextFile, sourceText, baseHeader, window);
+            return mapReduceSummarize(fieldGeneration, contextFile, sourceText, baseHeader, window, facts);
         }
         final String generated = generateLogged(
                 fieldGeneration, generationConfig, contextFile, contextType, sourceText, baseHeader, window, true);
@@ -530,6 +535,7 @@ public class AiFieldGenerationSupport {
      * @param sourceText             the full source text
      * @param baseHeader             the header passed through to each request
      * @param effectiveMaxInputChars the per-call window budget
+     * @param facts                  the exact facts line of the whole source, {@code ""} for none
      * @return the combined summary body
      * @throws IOException if the provider throws during generation
      */
@@ -538,7 +544,8 @@ public class AiFieldGenerationSupport {
             final Path contextFile,
             final String sourceText,
             final AiMdHeader baseHeader,
-            final int effectiveMaxInputChars)
+            final int effectiveMaxInputChars,
+            final String facts)
             throws IOException {
         final String mapKey =
                 AiPromptSupport.composedKey(fieldGeneration.getPromptKey(), fieldGeneration.getMapPromptKey());
@@ -577,8 +584,8 @@ public class AiFieldGenerationSupport {
                     .trim());
             LOGGER.info("  mapReduce chunk {}/{} summarized ({} chars)", index, chunks.size(), chunk.length());
         }
-        final String reduced =
-                reducePartials(fieldGeneration, reduceKey, contextFile, baseHeader, partials, sourceBudget, safeWindow);
+        final String reduced = reducePartials(
+                fieldGeneration, reduceKey, contextFile, baseHeader, partials, sourceBudget, safeWindow, facts);
         return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size(), cutCalls, cutParts) + reduced;
     }
 
@@ -588,7 +595,8 @@ public class AiFieldGenerationSupport {
      * partials), every batch is summarized, and the process repeats on the batch summaries until a single
      * summary remains. This avoids the single-reduce trap where hundreds of partials overflow one call
      * and the file's tail is silently trimmed away, so {@code maxChunks <= 0} (whole-file) coverage
-     * actually reaches the final summary.
+     * actually reaches the final summary. Every reduce call reads the exact facts line of the whole source in
+     * front of its batch, so the counts it states need no adding up of the parts' counts.
      *
      * @param fieldGeneration the rule
      * @param reduceKey   the prompt of a reduce call: the rule's prompt with its reduce prompt
@@ -597,6 +605,7 @@ public class AiFieldGenerationSupport {
      * @param partials    the per-chunk partial summaries (already trimmed); may be empty
      * @param sourceBudget the source-character budget used to pack a reduce batch
      * @param safeWindow  the per-call window budget passed to each reduce generation
+     * @param facts       the exact facts line of the whole source, {@code ""} for none
      * @return the single combined summary, or an empty string when there are no partials
      * @throws IOException if the provider throws during generation
      */
@@ -607,7 +616,8 @@ public class AiFieldGenerationSupport {
             final AiMdHeader baseHeader,
             final List<String> partials,
             final int sourceBudget,
-            final int safeWindow)
+            final int safeWindow,
+            final String facts)
             throws IOException {
         if (partials.isEmpty()) {
             return "";
@@ -616,7 +626,8 @@ public class AiFieldGenerationSupport {
         int round = 0;
         while (level.size() > 1) {
             round++;
-            final List<String> batches = AiMapReduceSupport.reduceBatches(level, sourceBudget);
+            final List<String> batches =
+                    AiMapReduceSupport.reduceBatches(level, Math.max(1, sourceBudget - facts.length()));
             if (batches.size() >= level.size()) {
                 // Pathological: partials too large to combine two at a time. Collapse to one trimmed reduce
                 // so the method always terminates rather than looping without shrinking.
@@ -624,7 +635,7 @@ public class AiFieldGenerationSupport {
                                 fieldGeneration,
                                 reduceKey,
                                 contextFile,
-                                AiMapReduceSupport.combineAll(level),
+                                facts + AiMapReduceSupport.combineAll(level),
                                 baseHeader,
                                 safeWindow,
                                 false)
@@ -634,7 +645,8 @@ public class AiFieldGenerationSupport {
             final boolean part = batches.size() > 1;
             final List<String> next = new ArrayList<>(batches.size());
             for (final String batch : batches) {
-                next.add(summarizeChunk(fieldGeneration, reduceKey, contextFile, batch, baseHeader, safeWindow, part)
+                next.add(summarizeChunk(
+                                fieldGeneration, reduceKey, contextFile, facts + batch, baseHeader, safeWindow, part)
                         .trim());
             }
             LOGGER.info("  mapReduce reduce round {}: {} -> {} partial(s)", round, level.size(), next.size());

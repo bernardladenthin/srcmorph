@@ -1140,4 +1140,33 @@ public class AiFieldGenerationSupportTest {
         assertThat(requests.get(0).sourceText(), is(equalTo(source)));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="facts in the reduce">
+    @Test
+    public void mapReduce_everyReduceCallReadsTheFactsOfTheWholeSource_noMapCall() throws Exception {
+        // arrange
+        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            requests.add(request);
+            return "S";
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("lines");
+        counter.setPattern("(?m)^line ");
+        rule.setFacts(Collections.singletonList(counter));
+
+        // act
+        support.generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+
+        // assert: the map calls read their chunk, the reduce call the facts, then the parts
+        final AiGenerationRequest reduce = requests.get(requests.size() - 1);
+        assertThat(reduce.sourceText(), startsWith(AiFactExtractor.FACTS_HEADER + "lines: 7000"));
+        assertThat(reduce.sourceText(), containsString(AiMapReduceSupport.PART_LABEL + "1:\nS\n"));
+        for (final AiGenerationRequest map : requests.subList(0, requests.size() - 1)) {
+            assertThat(map.sourceText(), startsWith("Chunk "));
+        }
+    }
+    // </editor-fold>
 }

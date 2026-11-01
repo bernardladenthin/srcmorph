@@ -8,4 +8,6 @@ earlier merges). Write ONE summary of the whole input, in the format above.
   one part names stays in the merged summary.
 - A run of similar entries spread over several parts is still one family: its pattern, its count,
   the first and the last entry.
+- When the input starts with an exact facts line (`**Facts (exact, whole file):**`), its counts are
+  those of the whole input: state them as given; never add up or recount the parts' counts.
 - State only what the parts state; never add a name, value or behaviour no part has.
