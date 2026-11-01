@@ -71,6 +71,7 @@ public final class LlamaCppJniConfigFactory {
                 .apiKeyEnv(config.getApiKeyEnv())
                 .stream(config.isStream())
                 .requestsPerMinute(config.getRequestsPerMinute())
+                .maxRetries(config.getMaxRetries())
                 .reasoningEffort(config.getReasoningEffort())
                 .reasoningBudgetTokens(config.getReasoningBudgetTokens())
                 .dryMultiplier(config.getDryMultiplier())

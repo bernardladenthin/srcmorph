@@ -665,7 +665,7 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.exchange (the
+        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.exchangeOnce (the
         chat-completions POST and the GET of the model list). The URL is
         the baseUrl of the user's own model definition, not input from a remote party: srcmorph is a
         build tool and CLI that runs with the rights of whoever wrote its configuration, and calling
@@ -676,8 +676,27 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
-        <Method name="exchange"/>
+        <Method name="exchangeOnce"/>
         <Bug pattern="URLCONNECTION_SSRF_FD"/>
+    </Match>
+
+    <!--
+        OpenAiCompatibleAiGenerationProvider.exchange, the retry loop around exchangeOnce:
+
+        PREDICTABLE_RANDOM on the jitter of the backoff. The random number only spreads the retries of
+        clients that failed together; it guards nothing, so a predictable one is fine.
+
+        CRLF_INJECTION_LOGS on the retry line: it names the endpoint of the operator's own model
+        definition and the failure, whose server body excerpt is the same text the run's error
+        message carries - the trust boundary of the engine suppressions below.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
+        <Method name="exchange"/>
+        <Or>
+            <Bug pattern="PREDICTABLE_RANDOM"/>
+            <Bug pattern="CRLF_INJECTION_LOGS"/>
+        </Or>
     </Match>
 
     <!--

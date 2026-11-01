@@ -16,12 +16,6 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-3. **Provider robustness.** Retries for 408, 429, 5xx and timeouts (`Retry-After`, else exponential
-   backoff with jitter, `maxRetries` per model, waiting on a `Condition`); none for 400/401/403/404/413.
-   A remote context overflow (400/413 with the provider's overflow text) is a context-overflow error,
-   so the budget shrink applies to remote models too. `apiKeyEnv` trimmed and checked before the plan;
-   loopback detection case-insensitive and for full IPv6. One failing file does not end the run; the
-   run fails at its end.
 4. **Engine correctness.** `maxInputChars` per file, not cached from the first file's name;
    `onOversize: fail` enforced at run time; the package and project phases take exactly one rule
    (`examples/config_All.json`); a subtree outside `baseDirectory`, on another drive or missing is an

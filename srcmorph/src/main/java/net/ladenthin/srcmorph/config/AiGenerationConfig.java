@@ -415,10 +415,19 @@ public class AiGenerationConfig {
      * limit. A positive value holds a request back until fewer than that many requests to the same
      * server started in the last 60 seconds, so a fast model stays under a server's rate limit (the
      * GitHub Copilot API Gateway answers a request over its {@code rateLimitPerMinute} with
-     * {@code 429}, and srcmorph does not retry). Every model of one server with the same key and the
+     * {@code 429}, which srcmorph only retries {@link #DEFAULT_MAX_RETRIES maxRetries} times). Every model
+     * of one server with the same key and the
      * same limit shares one window, across the phases of one run.
      */
     public static final int DEFAULT_REQUESTS_PER_MINUTE = 0;
+
+    /**
+     * Default of the {@code openai-compatible} provider's {@code maxRetries}: {@code 3}. A request that
+     * failed with {@code 408}, {@code 429}, a {@code 5xx} status or a timeout is sent again that many times
+     * at most, after the server's {@code Retry-After} or an exponential backoff with jitter; any other
+     * failure is final at once. {@code 0} sends every request once.
+     */
+    public static final int DEFAULT_MAX_RETRIES = 3;
 
     /**
      * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
@@ -490,6 +499,7 @@ public class AiGenerationConfig {
     private String apiKeyEnv = DEFAULT_API_KEY_ENV;
     private boolean stream = DEFAULT_STREAM;
     private int requestsPerMinute = DEFAULT_REQUESTS_PER_MINUTE;
+    private int maxRetries = DEFAULT_MAX_RETRIES;
     private String reasoningEffort = DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
@@ -1190,6 +1200,25 @@ public class AiGenerationConfig {
      */
     public void setRequestsPerMinute(final int requestsPerMinute) {
         this.requestsPerMinute = requestsPerMinute;
+    }
+
+    /**
+     * Returns how often the {@code openai-compatible} provider sends a failed request again.
+     *
+     * @return the retries; {@code 0} or less for none
+     */
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    /**
+     * Sets how often the {@code openai-compatible} provider sends a failed request again; see
+     * {@link #DEFAULT_MAX_RETRIES}.
+     *
+     * @param maxRetries the retries; {@code 0} or less for none
+     */
+    public void setMaxRetries(final int maxRetries) {
+        this.maxRetries = maxRetries;
     }
 
     /**

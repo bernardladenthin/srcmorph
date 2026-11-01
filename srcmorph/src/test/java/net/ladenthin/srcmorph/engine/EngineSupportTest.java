@@ -670,6 +670,26 @@ public class EngineSupportTest {
     }
 
     @Test
+    public void validateRoutedModelPaths_remoteModelWithAnUnsetApiKeyEnv_throwsBeforeAnyRequest() {
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("routed");
+        definition.setProvider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+        definition.setBaseUrl("https://openrouter.ai/api/v1");
+        definition.setApiKeyEnv("SRCMORPH_TEST_KEY_THAT_IS_NEVER_SET");
+        final AiModelDefinitionSupport remote = new AiModelDefinitionSupport(Arrays.asList(definition));
+
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.validateRoutedModelPaths(
+                        AiGenerationProviderFactory.PROVIDER_MOCK, remote, Arrays.asList(routedRule(false, "routed"))));
+
+        assertThat(
+                thrown.getMessage(),
+                is("aiDefinition 'routed': its apiKeyEnv names SRCMORPH_TEST_KEY_THAT_IS_NEVER_SET, which is not set"
+                        + " in this process's environment (checked before any request is sent)"));
+    }
+
+    @Test
     public void validateRoutedModelPaths_runProviderOpenAiCompatible_checksTheUrlToo() {
         assertThrows(
                 SrcMorphException.class,

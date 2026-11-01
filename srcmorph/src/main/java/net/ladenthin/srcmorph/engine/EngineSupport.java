@@ -22,6 +22,7 @@ import net.ladenthin.srcmorph.provider.GgufModelInfo;
 import net.ladenthin.srcmorph.provider.GgufModelInspector;
 import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
 import net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory;
+import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -228,11 +229,13 @@ final class EngineSupport {
     }
 
     /**
-     * Checks an {@code openai-compatible} model: its {@code baseUrl} must be an {@code http(s)} URL.
+     * Checks an {@code openai-compatible} model: its {@code baseUrl} must be an {@code http(s)} URL, a
+     * named {@code apiKeyEnv} must be set, and its key must not go in cleartext to another machine.
      *
      * @param aiDefinitionKey the definition's key, named in the error
      * @param modelConfig     the definition's resolved configuration
-     * @throws SrcMorphException if the URL is not {@code http(s)}
+     * @throws SrcMorphException if the URL is not {@code http(s)}, or the key is missing or would go out
+     *                           in cleartext
      */
     private static void validateRemoteModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
             throws SrcMorphException {
@@ -241,6 +244,11 @@ final class EngineSupport {
             throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
                     + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
                     + " provider but its baseUrl is not an http(s) URL: '" + baseUrl + "'");
+        }
+        final String keyProblem = OpenAiCompatibleAiGenerationProvider.keyProblem(baseUrl, modelConfig.getApiKeyEnv());
+        if (keyProblem != null) {
+            throw new SrcMorphException(
+                    "aiDefinition '" + aiDefinitionKey + "': " + keyProblem + " (checked before any request is sent)");
         }
     }
 

@@ -211,7 +211,14 @@ public final class GenerateEngine {
                 final AiFieldGenerationSupport support =
                         new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
                 for (final AiIndexPlan.Entry entry : group.getValue()) {
-                    final AiIndexOutcome outcome = fileIndexer.indexFile(entry.file(), entry.rule(), support);
+                    AiIndexOutcome outcome;
+                    try {
+                        outcome = fileIndexer.indexFile(entry.file(), entry.rule(), support);
+                    } catch (final IOException e) {
+                        // one failed request (after its retries) does not end the run
+                        LOGGER.error("Summarizing {} failed: {}", entry.file(), String.valueOf(e.getMessage()));
+                        outcome = AiIndexOutcome.FAILED;
+                    }
                     if (outcome == AiIndexOutcome.WRITTEN) {
                         wrote++;
                     } else if (outcome == AiIndexOutcome.UNCHANGED) {
@@ -244,8 +251,8 @@ public final class GenerateEngine {
                 skippedCount,
                 failed);
         if (failed > 0) {
-            throw new SrcMorphException(failed + " file(s) got an incomplete answer and were not written;"
-                    + " the WARN lines name them, and the next run tries them again");
+            throw new SrcMorphException(failed + " file(s) were not written (an incomplete answer or a failed"
+                    + " request); the WARN and ERROR lines name them, and the next run tries them again");
         }
         LOGGER.info("AI index generation finished.");
 

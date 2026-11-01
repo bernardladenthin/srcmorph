@@ -497,7 +497,11 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void isLoopbackHost_onlyLoopbackLiteralsAndLocalhost() {
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("localhost"), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("LocalHost"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("LocalHost"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[0:0:0:0:0:0:0:1]"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[::2]"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[1:2:3]"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[::1:::]"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("127.0.0.1"), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("127.255.0.9"), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[::1]"), is(true));
@@ -505,6 +509,101 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("128.0.0.1"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("localhost.example"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("llama-server"), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="keyProblem">
+    private static final Function<String, @Nullable String> KEY_SET =
+            name -> "OPENROUTER_API_KEY".equals(name) ? "k" : null;
+
+    @Test
+    public void keyProblem_noApiKeyEnv_isNone() {
+        assertThat(OpenAiCompatibleProviderSupport.keyProblem("http://example.org/v1", " ", KEY_SET), is(nullValue()));
+    }
+
+    @Test
+    public void keyProblem_unsetOrBlankVariable_isNamed() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("https://openrouter.ai/api/v1", " OTHER_KEY ", KEY_SET),
+                is("its apiKeyEnv names OTHER_KEY, which is not set in this process's environment"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("https://openrouter.ai/api/v1", "BLANK", name -> " "),
+                is("its apiKeyEnv names BLANK, which is not set in this process's environment"));
+    }
+
+    @Test
+    public void keyProblem_setKeyOverHttpsOrToLoopback_isNone() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem(
+                        "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is(nullValue()));
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("http://127.0.0.1:8080/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is(nullValue()));
+    }
+
+    @Test
+    public void keyProblem_setKeyInCleartextToAnotherHost_isNamed() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("http://example.org:8080/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is("its key from OPENROUTER_API_KEY would go in cleartext to example.org; use an https baseUrl,"
+                        + " a loopback server, or an empty apiKeyEnv"));
+    }
+
+    @Test
+    public void keyProblem_httpBaseUrlThatIsNoUrl_isNamed() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("http://[bad/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is("its baseUrl is not a URL: 'http://[bad/v1'"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="retries and context overflow">
+    @Test
+    public void isRetryable_timeoutRateLimitAndServerErrors() {
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(408), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(500), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(599), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(499), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(600), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(400), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(401), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(413), is(false));
+    }
+
+    @Test
+    public void isContextOverflow_payloadTooLargeOrABadRequestThatSaysSo() {
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(413, ""), is(true));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isContextOverflow(
+                        400, "{\"error\":\"This model's Maximum Context length is 131072\"}"),
+                is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(400, "exceed the context window"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(400, "unknown model"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(500, "context length"), is(false));
+    }
+
+    @Test
+    public void retryDelayMillis_retryAfterSecondsIsHonouredUpToItsCap() {
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(" 2 ", 1, 0.9d), is(2_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("0", 3, 0.0d), is(0L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("100000", 1, 0.0d),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+    }
+
+    @Test
+    public void retryDelayMillis_withoutRetryAfter_doublesUpToItsCapPlusJitter() {
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 1, 0.0d), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 2, 0.0d), is(2_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 3, 0.5d), is(4_500L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed, 21 Oct 2026 07:28:00 GMT", 7, 0.0d),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_BACKOFF_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(null, 99, 0.0d),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_BACKOFF_MILLIS));
     }
     // </editor-fold>
 

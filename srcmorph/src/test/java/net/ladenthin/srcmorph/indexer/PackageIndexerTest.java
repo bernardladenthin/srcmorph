@@ -325,4 +325,39 @@ public class PackageIndexerTest {
         assertThat(Files.exists(packageDirectory.resolve("package.ai.md")), is(false));
     }
     // </editor-fold>
+
+    @Test
+    public void aggregate_requestThatFails_isCountedAsFailedAndTheOtherPackagesAreWritten() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path failing = outputRoot.resolve("main/java/com/example/failing");
+        final Path working = outputRoot.resolve("main/java/com/example/working");
+        Files.createDirectories(failing);
+        Files.createDirectories(working);
+        writeChildFile(failing.resolve("Foo.java.ai.md"), "Foo.java", "Summary of Foo.");
+        writeChildFile(working.resolve("Bar.java.ai.md"), "Bar.java", "Summary of Bar.");
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                request -> {
+                    if (request.sourceFile().startsWith(failing)) {
+                        throw new java.io.IOException("server unreachable");
+                    }
+                    return "A package summary.";
+                },
+                CommonTestFixtures.createPackageFieldGenerations(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        final AiIndexTally tally = indexer.aggregate(outputRoot);
+
+        assertThat(tally.failed(), is(equalTo(1)));
+        assertThat(Files.exists(failing.resolve("package.ai.md")), is(false));
+        assertThat(Files.exists(working.resolve("package.ai.md")), is(true));
+    }
 }

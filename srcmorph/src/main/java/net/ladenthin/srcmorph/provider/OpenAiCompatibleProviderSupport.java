@@ -11,7 +11,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -74,6 +77,48 @@ final class OpenAiCompatibleProviderSupport {
     /** How many characters of an error body go into the exception message. */
     static final int ERROR_BODY_EXCERPT = 500;
 
+    /** {@code 400 Bad Request}: refused as malformed, or, with the wording, as too long for the context. */
+    static final int HTTP_BAD_REQUEST = 400;
+
+    /** {@code 408 Request Timeout}. */
+    static final int HTTP_REQUEST_TIMEOUT = 408;
+
+    /** {@code 413 Payload Too Large}: OpenRouter's answer to a prompt longer than the model's context. */
+    static final int HTTP_PAYLOAD_TOO_LARGE = 413;
+
+    /** {@code 429 Too Many Requests}. */
+    static final int HTTP_TOO_MANY_REQUESTS = 429;
+
+    /** First server-error status. */
+    static final int HTTP_SERVER_ERROR_FIRST = 500;
+
+    /** One past the last server-error status. */
+    static final int HTTP_SERVER_ERROR_END = 600;
+
+    /** How servers word a refused prompt that is longer than the context, in any case. */
+    private static final Pattern CONTEXT_OVERFLOW_WORDING = Pattern.compile(
+            "context[ _]length|maximum context|context window|too many tokens|prompt is too long"
+                    + "|reduce the length|exceeds? the context",
+            Pattern.CASE_INSENSITIVE);
+
+    /** The backoff before the first retry when the server sends no {@code Retry-After}. */
+    static final long RETRY_BASE_DELAY_MILLIS = 1_000L;
+
+    /** The longest backoff between two attempts. */
+    static final long MAX_RETRY_BACKOFF_MILLIS = 60_000L;
+
+    /** The longest {@code Retry-After} honoured; a server asking for more waits this long. */
+    static final long MAX_RETRY_AFTER_MILLIS = 300_000L;
+
+    /** Up to this fraction of the backoff is added as jitter. */
+    static final double RETRY_JITTER_FRACTION = 0.25d;
+
+    /** A {@code Retry-After} given in seconds. */
+    private static final Pattern RETRY_AFTER_SECONDS = Pattern.compile("[0-9]{1,9}");
+
+    /** Milliseconds per second. */
+    private static final long MILLIS_PER_SECOND = 1_000L;
+
     /** Lowest HTTP status that counts as success. */
     private static final int HTTP_OK_FIRST = 200;
 
@@ -86,8 +131,8 @@ final class OpenAiCompatibleProviderSupport {
     /** The HTTPS scheme prefix a {@code baseUrl} may start with. */
     static final String HTTPS_SCHEME = "https://";
 
-    /** Host name of the loopback interface. */
-    private static final String LOOPBACK_HOST_NAME = "localhost";
+    /** Host name of the loopback interface, in any case. */
+    private static final Pattern LOOPBACK_HOST_NAME = Pattern.compile("localhost", Pattern.CASE_INSENSITIVE);
 
     /**
      * An IPv4 loopback literal ({@code 127.0.0.0/8}). A literal, not a prefix: {@code 127.evil.com}
@@ -95,8 +140,8 @@ final class OpenAiCompatibleProviderSupport {
      */
     private static final Pattern IPV4_LOOPBACK = Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
 
-    /** The IPv6 loopback address as {@link URL#getHost()} returns it, in brackets. */
-    private static final String IPV6_LOOPBACK = "[::1]";
+    /** A bracketed IPv6 literal as {@link URL#getHost()} returns it: hex digits and colons only. */
+    private static final Pattern IPV6_LITERAL = Pattern.compile("\\[[0-9A-Fa-f:]{2,39}]");
 
     /** Appended to an error body cut at {@link #ERROR_BODY_EXCERPT}. */
     private static final String ELLIPSIS = "...";
@@ -423,7 +468,7 @@ final class OpenAiCompatibleProviderSupport {
         if (compatibilityHelper.isBlank(config.apiKeyEnv())) {
             return null;
         }
-        final String key = environment.apply(config.apiKeyEnv());
+        final String key = environment.apply(config.apiKeyEnv().trim());
         if (key == null || compatibilityHelper.isBlank(key)) {
             return null;
         }
@@ -463,10 +508,59 @@ final class OpenAiCompatibleProviderSupport {
      * Whether a host names the local machine's loopback interface.
      *
      * @param host the host part of a URL, as {@link URL#getHost()} returns it
-     * @return {@code true} for {@code localhost} (exactly, lower case), {@code 127.x.x.x} and {@code [::1]}
+     * @return {@code true} for {@code localhost} in any case, {@code 127.x.x.x} and the IPv6 loopback in
+     *         any of its written forms ({@code [::1]}, {@code [0:0:0:0:0:0:0:1]})
      */
     static boolean isLoopbackHost(final String host) {
-        return LOOPBACK_HOST_NAME.equals(host) || IPV4_LOOPBACK.matcher(host).matches() || IPV6_LOOPBACK.equals(host);
+        if (LOOPBACK_HOST_NAME.matcher(host).matches()
+                || IPV4_LOOPBACK.matcher(host).matches()) {
+            return true;
+        }
+        if (!IPV6_LITERAL.matcher(host).matches()) {
+            return false;
+        }
+        try {
+            // an IPv6 literal (hex digits and colons only): getByName checks its format, it looks nothing up
+            return InetAddress.getByName(host.substring(1, host.length() - 1)).isLoopbackAddress();
+        } catch (final UnknownHostException e) {
+            return false;
+        }
+    }
+
+    /**
+     * What would fail the first request of a model, found before any request is made: an
+     * {@code apiKeyEnv} whose variable is not set, or a key that would go in cleartext to another
+     * machine (a plain {@code http} {@code baseUrl} that is not loopback).
+     *
+     * @param baseUrl     the model's {@code baseUrl}, an {@code http(s)} URL
+     * @param apiKeyEnv   the model's {@code apiKeyEnv}
+     * @param environment looks up an environment variable by name, {@code null} when unset
+     * @return the problem, or {@code null} when there is none
+     */
+    static @Nullable String keyProblem(
+            final String baseUrl, final String apiKeyEnv, final Function<String, @Nullable String> environment) {
+        final String name = apiKeyEnv.trim();
+        if (name.isEmpty()) {
+            return null;
+        }
+        final String key = environment.apply(name);
+        if (key == null || key.trim().isEmpty()) {
+            return "its apiKeyEnv names " + name + ", which is not set in this process's environment";
+        }
+        final String base = baseUrl.trim();
+        if (!base.startsWith(HTTP_SCHEME)) {
+            return null;
+        }
+        final String host;
+        try {
+            host = new URL(base).getHost();
+        } catch (final MalformedURLException e) {
+            return "its baseUrl is not a URL: '" + base + "'";
+        }
+        return isLoopbackHost(host)
+                ? null
+                : "its key from " + name + " would go in cleartext to " + host
+                        + "; use an https baseUrl, a loopback server, or an empty apiKeyEnv";
     }
 
     /**
@@ -477,6 +571,56 @@ final class OpenAiCompatibleProviderSupport {
      */
     static boolean isSuccess(final int status) {
         return status >= HTTP_OK_FIRST && status < HTTP_OK_END;
+    }
+
+    /**
+     * Whether a request that failed with this status may succeed when sent again: a timeout of the
+     * server ({@code 408}), a rate limit ({@code 429}) or a server error ({@code 5xx}).
+     *
+     * @param status the HTTP status
+     * @return {@code true} for 408, 429 and 500 to 599
+     */
+    static boolean isRetryable(final int status) {
+        return status == HTTP_REQUEST_TIMEOUT
+                || status == HTTP_TOO_MANY_REQUESTS
+                || (status >= HTTP_SERVER_ERROR_FIRST && status < HTTP_SERVER_ERROR_END);
+    }
+
+    /**
+     * Whether a failed answer says the prompt is longer than the model's context: a {@code 413}, or a
+     * {@code 400} whose body says so in one of the wordings servers use.
+     *
+     * @param status the HTTP status
+     * @param body   the error body
+     * @return {@code true} for a context overflow
+     */
+    static boolean isContextOverflow(final int status, final String body) {
+        if (status == HTTP_PAYLOAD_TOO_LARGE) {
+            return true;
+        }
+        return status == HTTP_BAD_REQUEST
+                && CONTEXT_OVERFLOW_WORDING.matcher(body).find();
+    }
+
+    /**
+     * How long to wait before retry number {@code retry}: the server's {@code Retry-After} in seconds
+     * when it sends one (at most {@link #MAX_RETRY_AFTER_MILLIS}), otherwise an exponential backoff from
+     * {@link #RETRY_BASE_DELAY_MILLIS}, at most {@link #MAX_RETRY_BACKOFF_MILLIS}, plus up to a quarter
+     * of it as jitter so that clients that failed together do not retry together.
+     *
+     * @param retryAfter the {@code Retry-After} header, or {@code null}; a date instead of seconds is
+     *                   ignored
+     * @param retry      the retry about to be made, from {@code 1}
+     * @param jitter     a random number in {@code [0, 1)}
+     * @return the delay in milliseconds
+     */
+    static long retryDelayMillis(final @Nullable String retryAfter, final int retry, final double jitter) {
+        final String seconds = retryAfter == null ? "" : retryAfter.trim();
+        if (RETRY_AFTER_SECONDS.matcher(seconds).matches()) {
+            return Math.min(MAX_RETRY_AFTER_MILLIS, Long.parseLong(seconds) * MILLIS_PER_SECOND);
+        }
+        final long backoff = Math.min(MAX_RETRY_BACKOFF_MILLIS, RETRY_BASE_DELAY_MILLIS << Math.min(retry - 1, 30));
+        return backoff + (long) (backoff * RETRY_JITTER_FRACTION * jitter);
     }
 
     /**

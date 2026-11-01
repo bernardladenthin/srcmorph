@@ -78,6 +78,16 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
     private HttpServer server;
     private int status;
+
+    /** Statuses answered before {@link #status}, one per request; empty after they are used up. */
+    private final java.util.Deque<Integer> firstStatuses = new java.util.ArrayDeque<>();
+
+    /** The {@code Retry-After} header sent with a status of {@link #firstStatuses}, or {@code null}. */
+    private @Nullable String retryAfter;
+
+    /** How many requests the server received. */
+    private int requests;
+
     private String answer;
     private String requestMethod;
     private String requestPath;
@@ -132,6 +142,19 @@ public class OpenAiCompatibleAiGenerationProviderTest {
                 }
                 return;
             }
+            requests++;
+            final Integer first = firstStatuses.poll();
+            if (first != null) {
+                if (retryAfter != null) {
+                    exchange.getResponseHeaders().set("Retry-After", retryAfter);
+                }
+                final byte[] error = "{\"error\":\"busy\"}".getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(first, error.length);
+                try (OutputStream out = exchange.getResponseBody()) {
+                    out.write(error);
+                }
+                return;
+            }
             final byte[] bytes = answer.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(status, bytes.length == 0 ? -1 : bytes.length);
             try (OutputStream out = exchange.getResponseBody()) {
@@ -150,10 +173,13 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/";
     }
 
+    /** The waits a provider made between attempts; a test waits for nothing. */
+    private final java.util.List<Long> waits = new java.util.ArrayList<>();
+
     private OpenAiCompatibleAiGenerationProvider provider(
             final LlamaCppJniConfig.Builder builder, final Function<String, @Nullable String> environment) {
         return new OpenAiCompatibleAiGenerationProvider(
-                builder.baseUrl(baseUrl()).build(), PROMPT_SUPPORT, environment);
+                builder.baseUrl(baseUrl()).build(), PROMPT_SUPPORT, environment, waits::add);
     }
 
     private @Nullable String header(final String name) {
@@ -222,12 +248,68 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     }
 
     @Test
+    public void generate_rateLimitedTwice_retriesAfterTheServersRetryAfterAndSucceeds() throws Exception {
+        firstStatuses.add(429);
+        firstStatuses.add(503);
+        retryAfter = "2";
+
+        final String text =
+                provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST);
+
+        assertThat(text, is("A tiny test class."));
+        assertThat(requests, is(3));
+        assertThat(waits, is(java.util.Arrays.asList(2_000L, 2_000L)));
+    }
+
+    @Test
+    public void generate_serverErrorBeyondMaxRetries_failsWithTheLastAnswer() {
+        firstStatuses.add(502);
+        firstStatuses.add(502);
+
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> provider(LlamaCppJniConfig.builder("").maxRetries(1), NO_ENVIRONMENT)
+                        .generate(REQUEST));
+
+        assertThat(thrown.getMessage(), containsString("answered HTTP 502"));
+        assertThat(requests, is(2));
+        assertThat(waits.size(), is(1));
+    }
+
+    @Test
+    public void generate_clientError_isNotRetried() {
+        status = 401;
+        answer = "{\"error\":\"no key\"}";
+
+        assertThrows(
+                IOException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        assertThat(requests, is(1));
+        assertThat(waits.isEmpty(), is(true));
+    }
+
+    @Test
+    public void generate_promptLongerThanTheContext_isAContextOverflow() {
+        status = 400;
+        answer = "{\"error\":{\"message\":\"This endpoint's maximum context length is 131072 tokens\"}}";
+
+        final AiContextOverflowException thrown = assertThrows(
+                AiContextOverflowException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        assertThat(thrown.getMessage(), containsString("answered HTTP 400"));
+        assertThat(requests, is(1));
+    }
+
+    @Test
     public void generate_errorStatusWithoutBody_throwsWithTheStatus() {
         status = 503;
         answer = "";
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(LlamaCppJniConfig.builder("").maxRetries(0), NO_ENVIRONMENT)
+                        .generate(REQUEST));
         assertThat(thrown.getMessage(), containsString("answered HTTP 503: "));
     }
 

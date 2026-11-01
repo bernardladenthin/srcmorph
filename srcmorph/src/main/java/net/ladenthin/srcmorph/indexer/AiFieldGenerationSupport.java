@@ -22,6 +22,7 @@ import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.AiPreparedPrompt;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
+import net.ladenthin.srcmorph.provider.AiContextOverflowException;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
 import net.ladenthin.srcmorph.support.AiDeterministicSummary;
@@ -601,23 +602,42 @@ public class AiFieldGenerationSupport {
             try {
                 return generationProvider.generate(
                         new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
+            } catch (final AiContextOverflowException e) {
+                budget = smallerWindow(attempt, budget, contextFile, e);
             } catch (final RuntimeException e) {
-                final int reduced = Math.max(MIN_CHUNK_CHARS, budget * OVERFLOW_RETRY_BACKOFF_PERCENT / PERCENT);
-                // Rethrow (giving up) once the retries are exhausted, when the window is already at the
-                // floor (shrinking further would not help), or on a non-overflow error. The cheap
-                // comparisons are checked before the cause-chain walk of isContextOverflow(e).
-                if (attempt >= MAX_OVERFLOW_RETRIES || reduced >= budget || !isContextOverflow(e)) {
+                if (!isContextOverflow(e)) {
                     throw e;
                 }
-                LOGGER.warn(
-                        "AI provider rejected the prompt (context overflow) for {}; retrying with a smaller window"
-                                + " ({} -> {} chars)",
-                        contextFile,
-                        budget,
-                        reduced);
-                budget = reduced;
+                budget = smallerWindow(attempt, budget, contextFile, e);
             }
         }
+    }
+
+    /**
+     * Returns the window for the next attempt after a context overflow, or rethrows the overflow once
+     * the retries are exhausted or the window is already at the floor (shrinking further would not help).
+     *
+     * @param attempt     the attempt that overflowed, from {@code 0}
+     * @param budget      its window
+     * @param contextFile the source file path, for the log
+     * @param overflow    the overflow
+     * @param <E>         the overflow's type
+     * @return the smaller window
+     * @throws E the overflow, when there is no smaller window to try
+     */
+    private static <E extends Exception> int smallerWindow(
+            final int attempt, final int budget, final Path contextFile, final E overflow) throws E {
+        final int reduced = Math.max(MIN_CHUNK_CHARS, budget * OVERFLOW_RETRY_BACKOFF_PERCENT / PERCENT);
+        if (attempt >= MAX_OVERFLOW_RETRIES || reduced >= budget) {
+            throw overflow;
+        }
+        LOGGER.warn(
+                "AI provider rejected the prompt (context overflow) for {}; retrying with a smaller window"
+                        + " ({} -> {} chars)",
+                contextFile,
+                budget,
+                reduced);
+        return reduced;
     }
 
     /**

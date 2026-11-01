@@ -33,6 +33,7 @@ import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.provider.AiContextOverflowException;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
 import org.junit.jupiter.api.AfterEach;
@@ -476,6 +477,27 @@ public class AiFieldGenerationSupportTest {
 
         assertThat(result.body(), is(equalTo("OK")));
         assertThat(calls.get(), is(equalTo(2)));
+    }
+
+    @Test
+    public void generate_remoteContextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            if (calls.incrementAndGet() == 1) {
+                throw new AiContextOverflowException("http://h answered HTTP 413: ");
+            }
+            return "OK";
+        };
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .processFieldGenerations(
+                        Collections.singletonList(normalRule("m", null)),
+                        Files.createTempFile("Test", ".java"),
+                        "file",
+                        "public class Test {}",
+                        anyHeader());
+
+        assertThat(calls.get(), is(equalTo(2)));
+        assertThat(result.body(), is(equalTo("OK")));
     }
 
     @Test

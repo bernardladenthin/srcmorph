@@ -55,6 +55,7 @@ public class LlamaCppJniConfigFactoryTest {
         config.setApiKeyEnv("MY_KEY");
         config.setStream(true);
         config.setRequestsPerMinute(25);
+        config.setMaxRetries(5);
         config.setReasoningEffort("high");
         config.setReasoningBudgetTokens(512);
         config.setDryMultiplier(0.5f);
@@ -106,6 +107,7 @@ public class LlamaCppJniConfigFactoryTest {
         assertThat(result.apiKeyEnv(), is("MY_KEY"));
         assertThat(result.stream(), is(true));
         assertThat(result.requestsPerMinute(), is(25));
+        assertThat(result.maxRetries(), is(5));
         assertThat(result.reasoningEffort(), is("high"));
         assertThat(result.reasoningBudgetTokens(), is(512));
         assertThat(result.dryMultiplier(), is(0.5f));
@@ -180,6 +182,7 @@ public class LlamaCppJniConfigFactoryTest {
         assertThat(result.apiKeyEnv(), is(AiGenerationConfig.DEFAULT_API_KEY_ENV));
         assertThat(result.stream(), is(AiGenerationConfig.DEFAULT_STREAM));
         assertThat(result.requestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));
+        assertThat(result.maxRetries(), is(AiGenerationConfig.DEFAULT_MAX_RETRIES));
         assertThat(result.reasoningEffort(), is(AiGenerationConfig.DEFAULT_REASONING_EFFORT));
         assertThat(result.reasoningBudgetTokens(), is(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS));
         assertThat(result.dryMultiplier(), is(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER));

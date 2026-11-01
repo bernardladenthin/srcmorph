@@ -102,8 +102,8 @@ public final class AggregatePackagesEngine {
                 aggregated.unchanged(),
                 aggregated.failed());
         if (aggregated.failed() > 0) {
-            throw new SrcMorphException(aggregated.failed() + " package(s) got an incomplete answer and were not"
-                    + " written; the WARN lines name them, and the next run tries them again");
+            throw new SrcMorphException(aggregated.failed() + " package(s) were not written (an incomplete answer"
+                    + " or a failed request); the WARN and ERROR lines name them, and the next run tries them again");
         }
         LOGGER.info("AI package aggregation finished.");
         return aggregated.written();

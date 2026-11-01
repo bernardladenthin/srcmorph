@@ -12,6 +12,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **Retries and a context overflow for the `openai-compatible` provider (`maxRetries`).** A request
+  that failed with `408`, `429`, a `5xx` status or a read timeout is sent again up to `maxRetries`
+  times (default 3), after the server's `Retry-After` in seconds or an exponential backoff from 1 s with
+  jitter; other failures are final at once. A prompt the server refuses as longer than the context
+  (`413`, or `400` saying so) is an `AiContextOverflowException`, and the window is shrunk and the
+  prompt asked again, as for a local model. One file or package whose request still fails no longer
+  ends the run: it is counted, the others are indexed, and the run fails at its end. A named
+  `apiKeyEnv` that is not set, or a key that would go over plain `http` to another machine, fails the
+  run before any request; `apiKeyEnv` is trimmed, and `localhost` and the IPv6 loopback count as
+  loopback in any written form.
 - **An incomplete answer is never a summary (`onIncomplete`).** A model answer that is empty (also a
   reasoning-only one), cut off at the output budget, or a response without an answer (no choice, an
   HTML page or an `{"error": ...}` object with status 200) is refused by the provider

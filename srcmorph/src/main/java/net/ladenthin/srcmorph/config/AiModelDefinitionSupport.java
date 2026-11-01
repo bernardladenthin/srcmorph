@@ -186,6 +186,7 @@ public final class AiModelDefinitionSupport {
         config.setApiKeyEnv(definition.getApiKeyEnv());
         config.setStream(definition.isStream());
         config.setRequestsPerMinute(definition.getRequestsPerMinute());
+        config.setMaxRetries(definition.getMaxRetries());
         config.setReasoningEffort(definition.getReasoningEffort());
         config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
         config.setDryMultiplier(definition.getDryMultiplier());

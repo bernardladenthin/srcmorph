@@ -460,7 +460,7 @@ public class GenerateEngineTest {
             final SrcMorphException thrown =
                     assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
 
-            assertThat(thrown.getMessage(), containsString("1 file(s) got an incomplete answer"));
+            assertThat(thrown.getMessage(), containsString("1 file(s) were not written"));
             assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
             assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Bar.java.ai.md")), is(false));
         } finally {
@@ -468,4 +468,44 @@ public class GenerateEngineTest {
         }
     }
     // </editor-fold>
+
+    @Test
+    public void execute_fileWhoseRequestFails_writesTheOthersAndFailsAtTheEnd() throws Exception {
+        // a loopback stub that refuses every request for Bar.java (401, not retried) and answers the others
+        final HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/v1/chat/completions", exchange -> {
+            final String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            final boolean refused = request.contains("Bar.java");
+            final byte[] response = (refused
+                            ? "{\"error\":\"no\"}"
+                            : "{\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\","
+                                    + "\"content\":\"A summary.\"},\"finish_reason\":\"stop\"}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(refused ? 401 : 200, response.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(response);
+            }
+        });
+        server.start();
+        try {
+            final SrcMorphConfiguration config = baseConfig();
+            Files.write(
+                    tempDir.resolve("src/main/java/com/example/Bar.java"),
+                    "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
+            final AiModelDefinition remote = mockModelDefinition();
+            remote.setProvider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+            remote.setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
+            remote.setRemoteModel("stub");
+            config.setAiDefinitions(Collections.singletonList(remote));
+
+            final SrcMorphException thrown =
+                    assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+
+            assertThat(thrown.getMessage(), containsString("1 file(s) were not written"));
+            assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+            assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Bar.java.ai.md")), is(false));
+        } finally {
+            server.stop(0);
+        }
+    }
 }

@@ -79,6 +79,7 @@ public class AiModelDefinitionSupportTest {
         definition.setApiKeyEnv("MY_KEY");
         definition.setStream(true);
         definition.setRequestsPerMinute(25);
+        definition.setMaxRetries(7);
         definition.setReasoningEffort("high");
         definition.setReasoningBudgetTokens(512);
         definition.setDryMultiplier(0.7f);
@@ -152,6 +153,7 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getApiKeyEnv(), is(equalTo("MY_KEY")));
         assertThat(config.isStream(), is(true));
         assertThat(config.getRequestsPerMinute(), is(25));
+        assertThat(config.getMaxRetries(), is(7));
         // Non-default reasoningEffort propagates — kills the dropped-setReasoningEffort void-call mutant.
         assertThat(config.getReasoningEffort(), is(equalTo("high")));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(512)));
@@ -208,6 +210,7 @@ public class AiModelDefinitionSupportTest {
         assertThat(config.getApiKeyEnv(), is(equalTo(AiGenerationConfig.DEFAULT_API_KEY_ENV)));
         assertThat(config.isStream(), is(AiGenerationConfig.DEFAULT_STREAM));
         assertThat(config.getRequestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));
+        assertThat(config.getMaxRetries(), is(AiGenerationConfig.DEFAULT_MAX_RETRIES));
         assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
         assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
         assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));

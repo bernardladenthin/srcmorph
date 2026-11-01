@@ -179,7 +179,15 @@ public class PackageIndexer {
         }
 
         if (matchesAggregationScope(directory) && shouldCreatePackageFile(directory)) {
-            tally.add(writePackageFile(directory));
+            AiIndexOutcome outcome;
+            try {
+                outcome = writePackageFile(directory);
+            } catch (final IOException e) {
+                // one failed request (after its retries) does not end the pass
+                LOGGER.error("Summarizing the package {} failed: {}", directory, String.valueOf(e.getMessage()));
+                outcome = AiIndexOutcome.FAILED;
+            }
+            tally.add(outcome);
         }
     }
 

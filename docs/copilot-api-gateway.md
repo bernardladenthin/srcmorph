@@ -169,9 +169,11 @@ Rules of thumb:
 - **Not reproducible.** The Language Model API has no seed parameter, and which sampling settings
   reach the model is up to the gateway and Copilot; expect two runs to give different summaries.
 - **`maxOutputTokens` is not enforced.** A test request with `max_tokens` 20 got 89 tokens back, so
-  srcmorph's cut-off warning (finish reason `length`) is not to be relied on either.
-- **No retries.** A `429` from the gateway's rate limit or concurrency cap fails the file; run
-  again with `force` off and only the missing files are generated. `requestsPerMinute` in the model
+  srcmorph's cut-off check (finish reason `length`) is not to be relied on either.
+- **Retries.** A `429` from the gateway's rate limit or concurrency cap is sent again up to
+  `maxRetries` times (3 by default), after the gateway's `Retry-After` or a backoff; a file that still
+  fails is left out, the other files are generated, and the run fails at its end, so run again with
+  `force` off and only the missing files are generated. `requestsPerMinute` in the model
   definition (the example sets 25) avoids the rate-limit `429`: srcmorph waits until fewer than that
   many of its requests to the gateway started in the last minute. It counts its own requests only,
   and only within one process; another client of the gateway, or a run started right after another,
