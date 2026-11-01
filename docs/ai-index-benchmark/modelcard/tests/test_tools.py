@@ -87,6 +87,30 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(hashes["file-body-java.md"], run.sha256_of(profile / "file-body-java.md"))
 
 
+class CostTest(unittest.TestCase):
+
+    def test_cachedPromptTokens_atTheCacheReadPrice(self):
+        totals = {"promptTokens": 1000, "cachedPromptTokens": 600, "completionTokens": 100}
+
+        self.assertEqual(run.token_cost(totals, (1e-6, 2e-6, 1e-7)), round(400e-6 + 600e-7 + 200e-6, 6))
+        self.assertEqual(run.token_cost({"promptTokens": 10, "completionTokens": 0}, (1e-3, 0, 0)), 0.01)
+
+
+class ScrubTest(unittest.TestCase):
+
+    def test_theRunDirectory_inEitherSlashForm_becomesAPlaceholder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "run1"
+            lines = [f"failed: {root / 'work' / 'A.java'}", "failed: " + str(root).replace("\\", "/") + "/work/B.java",
+                     "no path here"]
+
+            out = run.scrubbed(lines, root)
+
+        self.assertEqual(out[0].replace("\\", "/"), "failed: <run>/work/A.java")
+        self.assertEqual(out[1], "failed: <run>/work/B.java")
+        self.assertEqual(out[2], "no path here")
+
+
 class WorkTest(unittest.TestCase):
 
     def test_aWorkDirectoryRunPyDidNotCreate_isRefused(self):

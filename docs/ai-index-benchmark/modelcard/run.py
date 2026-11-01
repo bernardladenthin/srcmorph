@@ -41,8 +41,10 @@ profile and options, the SHA-256 of every prompt and fact file the rules name, t
 and Java version, start and end (UTC), per phase its exit code, seconds, cut-off paths and on a
 failure the log's last lines, and from srcmorph's run record (runRecordFile) the file phase's calls,
 prompt / cached / completion tokens and finish reasons; for an OpenRouter model also the cost of
-those tokens at the model's list price (tokenCostUsd, without cache discounts) next to the account's
-usage delta (costUsd, which also books whatever else used the key meanwhile).
+the file phase's tokens at the model's list prices, cached prompt tokens at the cache-read price
+(tokenCostUsd: an upper bound, the provider OpenRouter routes to may charge less, and the package and
+project phases are not in it), next to the account's usage delta (costUsd, all three phases, which
+also books whatever else used the key meanwhile, and late).
 """
 import argparse
 import hashlib
@@ -226,16 +228,40 @@ def java_version(java):
 
 
 def openrouter_price(remote_model):
-    """USD per prompt and per completion token of an OpenRouter model, from its public model list."""
+    """USD per prompt, completion and cache-read token of an OpenRouter model, from its public model
+    list (a model without a cache-read price reads its cache at the prompt price)."""
     with urllib.request.urlopen("https://openrouter.ai/api/v1/models", timeout=30) as response:
         for model in json.load(response)["data"]:
             if model["id"] == remote_model:
-                return float(model["pricing"]["prompt"]), float(model["pricing"]["completion"])
+                pricing = model["pricing"]
+                prompt = float(pricing["prompt"])
+                return prompt, float(pricing["completion"]), float(pricing.get("input_cache_read", prompt))
     return None
+
+
+def token_cost(totals, price):
+    """The cost of a run record's tokens: uncached prompt, cached prompt and completion tokens."""
+    prompt, completion, cache_read = price
+    cached = totals.get("cachedPromptTokens", 0)
+    return round((totals["promptTokens"] - cached) * prompt + cached * cache_read
+                 + totals["completionTokens"] * completion, 6)
 
 
 def last_lines(path, count=20):
     return path.read_text(encoding="utf-8", errors="replace").splitlines()[-count:]
+
+
+def scrubbed(lines, root):
+    """The lines with the run's directory (work, output and logs below it) written as <run>: where the
+    benchmark ran is machine data, not part of the result."""
+    forms = {str(Path(root).resolve()), str(Path(root))}
+    forms |= {f.replace("\\", "/") for f in forms} | {f.replace("/", "\\") for f in forms}
+    out = []
+    for line in lines:
+        for form in sorted(forms, key=len, reverse=True):
+            line = line.replace(form, "<run>")
+        out.append(line)
+    return out
 
 
 def utc_now():
@@ -311,7 +337,8 @@ def run_model(args, models, profile, model):
                                  "cutOff": cut_off_files(log_dir / f"{phase}.log", Path(args.work), out_dir)}
         print(f"{key} {phase} exit {rc} in {meta['phases'][phase]['seconds']} s", flush=True)
         if rc != 0:
-            meta["phases"][phase]["errorTail"] = last_lines(log_dir / f"{phase}.log")
+            meta["phases"][phase]["errorTail"] = scrubbed(last_lines(log_dir / f"{phase}.log"),
+                                                          Path(args.work).parent)
             break
     meta["finishedAt"] = utc_now()
     if run_record.exists():
@@ -323,9 +350,7 @@ def run_model(args, models, profile, model):
         if model["backend"] == "openrouter":
             price = openrouter_price(definition["remoteModel"])
             if price is not None:
-                totals = record["totals"]
-                meta["tokenCostUsd"] = round(totals["promptTokens"] * price[0]
-                                             + totals["completionTokens"] * price[1], 6)
+                meta["tokenCostUsd"] = token_cost(record["totals"], price)
     if usage_before is not None:
         meta["costUsd"] = round(openrouter_usage() - usage_before, 6)
     meta["files"] = sum(1 for _ in out_dir.rglob("*.ai.md")) if out_dir.exists() else 0
