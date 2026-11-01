@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiCondition;
+import net.ladenthin.srcmorph.config.AiFactDefinition;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
@@ -289,6 +290,81 @@ public class GenerateEngineTest {
         assertThat(thrown.getMessage(), containsString("Invalid factDefinitions/factsKey configuration"));
     }
 
+    // <editor-fold defaultstate="collapsed" desc="profile directory">
+    private Path profile(final String factsFileText) throws IOException {
+        final Path profile = Files.createDirectories(tempDir.resolve("profile"));
+        Files.write(
+                profile.resolve(CommonTestFixtures.PROMPT_KEY_FILE_BODY + ".md"),
+                "You are a Java code indexer.\n".getBytes(StandardCharsets.UTF_8));
+        Files.write(profile.resolve("java-facts.tsv"), factsFileText.getBytes(StandardCharsets.UTF_8));
+        return profile;
+    }
+
+    /**
+     * A configuration that names a profile directory needs no {@code promptDefinitions} and no
+     * {@code factDefinitions}: the rule's keys are files there.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    public void execute_keysOfTheRule_areReadFromTheProfileDirectory() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        config.setPromptDefinitions(null);
+        config.setProfileDirectory(
+                profile("# counters\nclasses\t\\bclass\\s+\\w\n").toFile());
+        final AiFieldGenerationConfig rule = javaFileRule();
+        rule.setFactsKey("java-facts");
+        config.setFieldGenerations(Collections.singletonList(rule));
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(1));
+        final String written = new String(
+                Files.readAllBytes(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")),
+                StandardCharsets.UTF_8);
+        assertThat(written, containsString("classes: 1"));
+    }
+
+    @Test
+    public void execute_malformedFactsFileInTheProfile_throwsWithTheConfigurationHint() throws IOException {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        config.setProfileDirectory(profile("no tab on this line\n").toFile());
+        final AiFieldGenerationConfig rule = javaFileRule();
+        rule.setFactsKey("java-facts");
+        config.setFieldGenerations(Collections.singletonList(rule));
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("Invalid factDefinitions/factsKey configuration"));
+        assertThat(thrown.getMessage(), containsString("java-facts.tsv line 1"));
+    }
+
+    @Test
+    public void execute_unreadableFactsFile_throwsWithTheConfigurationHint() throws IOException {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        final AiFactDefinition definition = new AiFactDefinition();
+        definition.setKey("java-facts");
+        definition.setFactsFile(tempDir.resolve("missing.tsv").toString());
+        config.setFactDefinitions(Collections.singletonList(definition));
+        final AiFieldGenerationConfig rule = javaFileRule();
+        rule.setFactsKey("java-facts");
+        config.setFieldGenerations(Collections.singletonList(rule));
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("cannot be read"));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="planOnly stays model-free">

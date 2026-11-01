@@ -17,8 +17,8 @@ public class AiFactCounterTest {
     public void label_defaultsNullAndRoundTrips() {
         final AiFactCounter c = new AiFactCounter();
         assertThat(c.getLabel(), is(nullValue()));
-        c.setLabel("INSERT rows");
-        assertThat(c.getLabel(), is(equalTo("INSERT rows")));
+        c.setLabel("INSERT statements");
+        assertThat(c.getLabel(), is(equalTo("INSERT statements")));
     }
 
     @Test

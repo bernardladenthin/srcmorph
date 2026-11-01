@@ -31,7 +31,7 @@ public class AiPromptTemplateLoaderTest {
     private static final String JAVA_PROMPT = "You are a Java code indexer.\nWrite the lead first.\n";
 
     @TempDir
-    Path promptDirectory;
+    Path profileDirectory;
 
     private static AiPromptDefinition inline(final String key, final String template) {
         final AiPromptDefinition definition = new AiPromptDefinition();
@@ -48,7 +48,7 @@ public class AiPromptTemplateLoaderTest {
     }
 
     private Path write(final String relative, final String text) throws IOException {
-        final Path file = promptDirectory.resolve(relative);
+        final Path file = profileDirectory.resolve(relative);
         Files.createDirectories(file.getParent());
         Files.write(file, text.getBytes(StandardCharsets.UTF_8));
         return file;
@@ -56,13 +56,13 @@ public class AiPromptTemplateLoaderTest {
 
     private List<AiPromptDefinition> load(final AiPromptDefinition... definitions) throws IOException {
         return Objects.requireNonNull(
-                new AiPromptTemplateLoader(promptDirectory.toFile()).load(Arrays.asList(definitions)));
+                new AiPromptTemplateLoader(profileDirectory.toFile()).load(Arrays.asList(definitions)));
     }
 
     // <editor-fold defaultstate="collapsed" desc="load">
     @Test
     public void load_nullList_staysNull() throws IOException {
-        assertThat(new AiPromptTemplateLoader(promptDirectory.toFile()).load(null), is(nullValue()));
+        assertThat(new AiPromptTemplateLoader(profileDirectory.toFile()).load(null), is(nullValue()));
     }
 
     @Test
@@ -84,7 +84,7 @@ public class AiPromptTemplateLoaderTest {
     }
 
     @Test
-    public void load_relativeTemplateFile_isReadFromThePromptDirectory() throws IOException {
+    public void load_relativeTemplateFile_isReadFromTheProfileDirectory() throws IOException {
         write("v1/file-body-java.md", JAVA_PROMPT);
 
         final List<AiPromptDefinition> loaded = load(fromFile("file-body-java", "v1/file-body-java.md"));
@@ -96,7 +96,7 @@ public class AiPromptTemplateLoaderTest {
 
     @Test
     @AbsolutePathRequirement
-    public void load_absoluteTemplateFile_ignoresThePromptDirectory(@TempDir final Path elsewhere) throws IOException {
+    public void load_absoluteTemplateFile_ignoresTheProfileDirectory(@TempDir final Path elsewhere) throws IOException {
         final Path file = elsewhere.resolve("project-body.md");
         Files.write(file, "Write the overview.".getBytes(StandardCharsets.UTF_8));
 
@@ -106,12 +106,12 @@ public class AiPromptTemplateLoaderTest {
     }
 
     /**
-     * Without a prompt directory the path is relative to the working directory, the module directory
+     * Without a profile directory the path is relative to the working directory, the module directory
      * under Maven; the file goes below {@code target} so a temp directory on another drive does not
      * matter.
      */
     @Test
-    public void load_withoutPromptDirectory_resolvesAgainstTheWorkingDirectory() throws IOException {
+    public void load_withoutProfileDirectory_resolvesAgainstTheWorkingDirectory() throws IOException {
         final Path relative = Paths.get("target", "prompt-loader-test", "cwd-relative.md");
         Files.createDirectories(relative.getParent());
         Files.write(relative, JAVA_PROMPT.getBytes(StandardCharsets.UTF_8));
@@ -136,16 +136,16 @@ public class AiPromptTemplateLoaderTest {
 
     @Test
     public void load_leadingByteOrderMark_isDropped() throws IOException {
-        write("bom.md", "﻿" + JAVA_PROMPT);
+        write("bom.md", "\uFEFF" + JAVA_PROMPT);
 
         assertThat(load(fromFile("bom", "bom.md")).get(0).getTemplate(), is(JAVA_PROMPT));
     }
 
     @Test
     public void load_byteOrderMarkLaterInTheText_staysPartOfIt() throws IOException {
-        write("inner.md", "a﻿b");
+        write("inner.md", "a\uFEFFb");
 
-        assertThat(load(fromFile("inner", "inner.md")).get(0).getTemplate(), is("a﻿b"));
+        assertThat(load(fromFile("inner", "inner.md")).get(0).getTemplate(), is("a\uFEFFb"));
     }
 
     @Test
@@ -175,6 +175,104 @@ public class AiPromptTemplateLoaderTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="load: used keys from the profile directory">
+    private List<AiPromptDefinition> loadUsing(
+            final @Nullable List<AiPromptDefinition> definitions, final @Nullable String... usedKeys)
+            throws IOException {
+        return new AiPromptTemplateLoader(profileDirectory.toFile()).load(definitions, Arrays.asList(usedKeys));
+    }
+
+    @Test
+    public void load_usedKeyWithoutDefinition_isReadFromItsFileInTheProfileDirectory() throws IOException {
+        write("file-body-java.md", JAVA_PROMPT);
+
+        final List<AiPromptDefinition> loaded = loadUsing(null, "file-body-java");
+
+        assertThat(loaded.size(), is(1));
+        assertThat(loaded.get(0).getKey(), is("file-body-java"));
+        assertThat(loaded.get(0).getTemplate(), is(JAVA_PROMPT));
+        assertThat(loaded.get(0).getTemplateFile(), is(nullValue()));
+    }
+
+    @Test
+    public void load_usedKeys_comeAfterTheDefinitionsInTheOrderUsed() throws IOException {
+        write("b.md", "B.");
+        write("c.md", "C.");
+
+        final List<AiPromptDefinition> loaded = loadUsing(Arrays.asList(inline("a", "A.")), "c", "b");
+
+        assertThat(loaded.get(0).getKey(), is("a"));
+        assertThat(loaded.get(1).getTemplate(), is("C."));
+        assertThat(loaded.get(2).getTemplate(), is("B."));
+    }
+
+    @Test
+    public void load_usedKeyWithADefinition_keepsTheDefinition() throws IOException {
+        write("file-body-java.md", "the file, not used");
+        final AiPromptDefinition definition = inline("file-body-java", JAVA_PROMPT);
+
+        final List<AiPromptDefinition> loaded = loadUsing(Arrays.asList(definition), "file-body-java");
+
+        assertThat(loaded.size(), is(1));
+        assertThat(loaded.get(0), is(sameInstance(definition)));
+    }
+
+    @Test
+    public void load_keyUsedTwiceAndNullKeys_readTheFileOnce() throws IOException {
+        write("package-body.md", "P.");
+
+        final List<AiPromptDefinition> loaded = loadUsing(null, null, "package-body", "package-body", null);
+
+        assertThat(loaded.size(), is(1));
+        assertThat(loaded.get(0).getTemplate(), is("P."));
+    }
+
+    @Test
+    public void load_usedKeyWithoutProfileDirectory_isNotLookedUp() throws IOException {
+        final List<AiPromptDefinition> loaded = new AiPromptTemplateLoader(null)
+                .load(Arrays.asList(inline("a", "A.")), Arrays.<@Nullable String>asList("a", "missing"));
+
+        assertThat(loaded.size(), is(1));
+        assertThat(loaded.get(0).getKey(), is("a"));
+    }
+
+    @Test
+    public void load_usedKeyFile_dropsALeadingByteOrderMark() throws IOException {
+        write("x.md", "\uFEFF" + JAVA_PROMPT);
+
+        assertThat(loadUsing(null, "x").get(0).getTemplate(), is(JAVA_PROMPT));
+    }
+
+    @Test
+    public void load_usedKeyWithoutFile_isRefusedNamingTheFileLookedFor() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> loadUsing(null, "file-body-sql"));
+
+        assertThat(
+                thrown.getMessage(),
+                is("prompt key file-body-sql is used by a rule, but no promptDefinition has it and the profile has no "
+                        + new File(profileDirectory.toFile(), "file-body-sql.md")));
+    }
+
+    @Test
+    public void load_usedKeyNamingADirectory_isRefused() throws IOException {
+        Files.createDirectories(profileDirectory.resolve("dir.md"));
+
+        assertThrows(IllegalArgumentException.class, () -> loadUsing(null, "dir"));
+    }
+
+    @Test
+    public void load_usedKeyWithAnEmptyFile_isRefusedNamingTheKey() throws IOException {
+        write("blank.md", " \n");
+
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> loadUsing(null, "blank"));
+
+        assertThat(thrown.getMessage(), containsString("prompt key blank: file "));
+        assertThat(thrown.getMessage(), containsString(" is empty"));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="load: refused configurations">
     @Test
     public void load_templateAndTemplateFile_isRefused() throws IOException {
@@ -197,7 +295,7 @@ public class AiPromptTemplateLoaderTest {
         assertThat(thrown.getMessage(), containsString("promptDefinitions[1] (key package-body): templateFile "));
         assertThat(
                 thrown.getMessage(),
-                containsString(new File(promptDirectory.toFile(), "v1/missing.md").getPath() + " cannot be read: "));
+                containsString(new File(profileDirectory.toFile(), "v1/missing.md").getPath() + " cannot be read: "));
     }
 
     @Test
@@ -227,16 +325,16 @@ public class AiPromptTemplateLoaderTest {
 
     @Test
     public void load_fileWithOnlyAByteOrderMark_isRefused() throws IOException {
-        write("bom-only.md", "﻿");
+        write("bom-only.md", "\uFEFF");
 
         assertThrows(IllegalArgumentException.class, () -> load(fromFile("bom-only", "bom-only.md")));
     }
     // </editor-fold>
 
     @Test
-    public void toString_namesThePromptDirectory() {
+    public void toString_namesTheProfileDirectory() {
         assertThat(
-                new AiPromptTemplateLoader(promptDirectory.toFile()).toString(),
-                containsString(promptDirectory.toString()));
+                new AiPromptTemplateLoader(profileDirectory.toFile()).toString(),
+                containsString(profileDirectory.toString()));
     }
 }

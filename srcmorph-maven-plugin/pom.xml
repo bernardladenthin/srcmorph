@@ -109,6 +109,10 @@ SPDX-License-Identifier: Apache-2.0
              default is the owner's model drive. -->
         <ai.modelDir>M:/Modelle</ai.modelDir>
 
+        <!-- The srcmorph-selftest profile's <profileDirectory>: the prompt and fact-counter set
+             its rules name by key (profiles/README.md). -->
+        <ai.profileDir>${project.basedir}/../profiles/v2</ai.profileDir>
+
         <!-- Prompt-cache toggle (default on). Reuses the shared prompt-template prefix KV across
              files. Override per run for benchmarking, e.g. -Dai.cachePrompt=false. -->
         <ai.cachePrompt>true</ai.cachePrompt>
@@ -965,40 +969,13 @@ SPDX-License-Identifier: Apache-2.0
                             </aiDefinitions>
 
                             <!--
-                                Prompt templates shared across all executions, one file each under the
-                                repository's prompts/ directory (prompts/README.md says which is which and
-                                where it was measured). Each promptKey is referenced from fieldGenerations
-                                in the executions below; a relative <templateFile> resolves against
-                                <promptDirectory>.
+                                The profile: the prompts and fact counters of the measured set, one file per
+                                key in the repository's profiles/ directory (profiles/README.md). A rule's
+                                <promptKey> names profiles/v2/<key>.md and its <factsKey>
+                                profiles/v2/<key>.tsv, so no prompt text and no regex is repeated here. Another
+                                set: -Dai.profileDir=/path/to/set.
                             -->
-                            <promptDirectory>${project.basedir}/../prompts</promptDirectory>
-                            <promptDefinitions>
-                                <promptDefinition>
-                                    <key>file-body-java</key>
-                                    <templateFile>v2/file-body-java.md</templateFile>
-                                </promptDefinition>
-                                <promptDefinition>
-                                    <key>file-body-sql</key>
-                                    <templateFile>v2/file-body-sql.md</templateFile>
-                                </promptDefinition>
-                                <promptDefinition>
-                                    <key>file-body-fallback</key>
-                                    <templateFile>v2/file-body-fallback.md</templateFile>
-                                </promptDefinition>
-                                <promptDefinition>
-                                    <key>package-body</key>
-                                    <templateFile>v2/package-body.md</templateFile>
-                                </promptDefinition>
-                                <promptDefinition>
-                                    <key>project-body</key>
-                                    <templateFile>v2/project-body.md</templateFile>
-                                </promptDefinition>
-                                <!-- A prompt set to compare against v1 goes into prompts/ as its own
-                                     directory and gets a definition here with its own key (for example
-                                     file-body-java-v2 with <templateFile>v2/file-body-java.md</templateFile>),
-                                     selected via -Dexp.filePrompt / -Dexp.pkgPrompt. The June experiment
-                                     that did so is in the history, see prompts/README.md. -->
-                            </promptDefinitions>
+                            <profileDirectory>${ai.profileDir}</profileDirectory>
 
                         </configuration>
 
@@ -1053,45 +1030,6 @@ SPDX-License-Identifier: Apache-2.0
                                         <fileExtension>.java</fileExtension>
                                         <fileExtension>.sql</fileExtension>
                                     </fileExtensions>
-                                    <!--
-                                        Reusable fact-counter groups. Each <fact> reports its regex match count
-                                        over the WHOLE source (exact, language-agnostic structural counts the
-                                        sampled AI prose cannot reliably produce). Defined ONCE here and referenced
-                                        from rules below via <factsKey>, instead of repeating the same <facts>
-                                        block inline on the normal + huge rule for each language. Keep patterns
-                                        robust (line-anchored / unambiguous) - a fact that miscounts is worse than
-                                        none. (?m) opts into multi-line matching; (?i) case-insensitive for SQL.
-                                    -->
-                                    <factDefinitions>
-                                        <factDefinition>
-                                            <key>java-facts</key>
-                                            <facts>
-                                                <fact><label>type declarations</label><pattern>(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w</pattern></fact>
-                                                <fact><label>public declarations</label><pattern>\bpublic\b</pattern></fact>
-                                                <fact><label>TODO/FIXME</label><pattern>\b(?:TODO|FIXME)\b</pattern></fact>
-                                                <fact><label>@Override</label><pattern>@Override\b</pattern></fact>
-                                                <!-- Structural counts validated against real OpenJDK source (see
-                                                     JavaStructureFactPatternsTest). These are regex heuristics, so the labels are
-                                                     honest: methods are "(approx)" (~3%, includes constructors - subtract them),
-                                                     and the field count only sees fields with a STRONG modifier (final-only and
-                                                     package-private fields are deliberately NOT counted, to avoid counting final
-                                                     local variables). For exact structure you would need a real Java parser. -->
-                                                <fact><label>methods (approx)</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:&lt;[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:&lt;[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]</pattern></fact>
-                                                <fact><label>constructors</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{</pattern></fact>
-                                                <fact><label>field declarations (w/ modifier)</label><pattern>(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:&lt;[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]*)?;</pattern></fact>
-                                            </facts>
-                                        </factDefinition>
-                                        <factDefinition>
-                                            <key>sql-facts</key>
-                                            <facts>
-                                                <fact><label>INSERT rows</label><pattern>(?im)^\s*INSERT\s+INTO\b</pattern></fact>
-                                                <fact><label>tables</label><pattern>(?im)^\s*CREATE\s+TABLE\b</pattern></fact>
-                                                <fact><label>views</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b</pattern></fact>
-                                                <fact><label>indexes</label><pattern>(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b</pattern></fact>
-                                                <fact><label>functions/procedures</label><pattern>(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b</pattern></fact>
-                                            </facts>
-                                        </factDefinition>
-                                    </factDefinitions>
                                     <fieldGenerations>
                                         <!-- Size-tiered routing for large files. THREE bands per source kind, by
                                              ascending priority so the most specific (largest) wins:
@@ -1148,10 +1086,10 @@ SPDX-License-Identifier: Apache-2.0
                                             <maxChunks>6</maxChunks>
                                             <!-- Deterministic, EXACT whole-file counts prepended to the AI body. The
                                                  sampled map-reduce prose can't count reliably (no call sees the whole
-                                                 file), so each <fact> reports its regex match count over the FULL
-                                                 source. Fully generic/language-agnostic - the meaning is in the regex,
-                                                 so the same mechanism counts INSERT rows here or `\bboolean\b` fields
-                                                 in Java. Multi-line matching is opt-in via the inline (?m) flag. -->
+                                                 file), so each counter of profiles/v2/sql-facts.tsv reports its regex
+                                                 match count over the FULL source. Fully generic/language-agnostic - the
+                                                 meaning is in the regex, so the same mechanism counts SQL rows here or
+                                                 `\bboolean\b` fields in Java. -->
                                             <factsKey>sql-facts</factsKey>
                                             <condition>
                                                 <and>
@@ -1212,8 +1150,8 @@ SPDX-License-Identifier: Apache-2.0
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <!-- Exact, whole-file structural counts prepended to EVERY Java summary (not just
                                                  oversize files), giving downstream agents authoritative numbers the prose need
-                                                 not restate. Shared, defined once in <factDefinitions> above and referenced by
-                                                 key here (and by huge-java) instead of repeating the block inline. -->
+                                                 not restate. The counters are profiles/v2/java-facts.tsv, named by key here
+                                                 (and by huge-java) instead of repeating them inline. -->
                                             <factsKey>java-facts</factsKey>
                                             <condition>
                                                 <extensions><extension>.java</extension></extensions>

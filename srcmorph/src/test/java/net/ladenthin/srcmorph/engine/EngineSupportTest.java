@@ -107,7 +107,7 @@ public class EngineSupportTest {
     // <editor-fold defaultstate="collapsed" desc="buildPromptSupport">
     @Test
     public void buildPromptSupport_nullListBuildsEmptySupport() throws SrcMorphException {
-        final AiPromptSupport support = EngineSupport.buildPromptSupport(null, null);
+        final AiPromptSupport support = EngineSupport.buildPromptSupport(null, null, null);
         assertThat(support, is(notNullValue()));
     }
 
@@ -116,19 +116,20 @@ public class EngineSupportTest {
         final AiPromptDefinition bad = new AiPromptDefinition();
         bad.setTemplate("template with no key");
 
-        final SrcMorphException e =
-                assertThrows(SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(bad), null));
+        final SrcMorphException e = assertThrows(
+                SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(bad), null, null));
         assertThat(e.getMessage(), containsString("Invalid plugin configuration:"));
     }
 
     @Test
-    public void buildPromptSupport_templateFile_isReadFromThePromptDirectory() throws Exception {
+    public void buildPromptSupport_templateFile_isReadFromTheProfileDirectory() throws Exception {
         Files.write(tempDir.resolve("file-body-java.md"), "You are a Java code indexer.".getBytes(UTF_8));
         final AiPromptDefinition fromFile = new AiPromptDefinition();
         fromFile.setKey("file-body-java");
         fromFile.setTemplateFile("file-body-java.md");
 
-        final AiPromptSupport support = EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile());
+        final AiPromptSupport support =
+                EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile(), null);
 
         assertThat(support.systemPrompt("file-body-java"), is("You are a Java code indexer."));
     }
@@ -141,7 +142,7 @@ public class EngineSupportTest {
 
         final SrcMorphException e = assertThrows(
                 SrcMorphException.class,
-                () -> EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile()));
+                () -> EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile(), null));
 
         assertThat(e.getMessage(), containsString("Invalid plugin configuration: promptDefinitions[0]"));
         assertThat(e.getMessage(), containsString("missing.md cannot be read"));
@@ -155,7 +156,7 @@ public class EngineSupportTest {
         both.setTemplateFile("file.md");
 
         final SrcMorphException e = assertThrows(
-                SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(both), null));
+                SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(both), null, null));
 
         assertThat(e.getMessage(), containsString("sets both template and templateFile"));
     }

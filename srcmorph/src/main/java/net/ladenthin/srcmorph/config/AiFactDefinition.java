@@ -38,6 +38,9 @@ public class AiFactDefinition {
     /** The fact counters this group contributes. */
     private @Nullable List<AiFactCounter> facts;
 
+    /** The file the counters are read from instead of {@link #facts}, see {@link AiFactDefinitionLoader}. */
+    private @Nullable String factsFile;
+
     /**
      * Returns the lookup key.
      *
@@ -72,5 +75,25 @@ public class AiFactDefinition {
      */
     public void setFacts(final @Nullable List<AiFactCounter> facts) {
         this.facts = facts;
+    }
+
+    /**
+     * Returns the file the counters are read from.
+     *
+     * @return path of the facts file ({@code label<TAB>pattern} per line), or {@code null} when the
+     *         counters are given inline
+     */
+    public @Nullable String getFactsFile() {
+        return factsFile;
+    }
+
+    /**
+     * Sets the file the counters are read from, instead of inline {@link #setFacts facts}.
+     *
+     * @param factsFile path of the facts file, relative to the configuration's {@code profileDirectory}
+     *                  (or the working directory without one), or absolute
+     */
+    public void setFactsFile(final @Nullable String factsFile) {
+        this.factsFile = factsFile;
     }
 }

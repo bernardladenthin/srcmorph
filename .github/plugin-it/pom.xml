@@ -72,25 +72,14 @@
                         </aiDefinition>
                     </aiDefinitions>
 
-                    <!-- Three prompts come from the repository's prompts/ directory through
-                         <promptDirectory> + <templateFile>, one stays inline in <template>: both
-                         forms bind here. A relative <templateFile> exists only below
-                         <promptDirectory>, so an unbound <promptDirectory> fails the run instead of
-                         passing unseen. -->
-                    <promptDirectory>${project.basedir}/../../prompts</promptDirectory>
+                    <!-- The repository's current profile: the java and fallback prompts, the
+                         package prompt and the java-facts counters are files there, named only by
+                         the rules' <promptKey> / <factsKey>; project-body stays an inline
+                         <promptDefinition>, which wins over a file of the same key. None of those
+                         keys exists without <profileDirectory>, so an unbound <profileDirectory>
+                         fails the run instead of passing unseen. -->
+                    <profileDirectory>${project.basedir}/../../profiles/v2</profileDirectory>
                     <promptDefinitions>
-                        <promptDefinition>
-                            <key>file-body-java</key>
-                            <templateFile>v2/file-body-java.md</templateFile>
-                        </promptDefinition>
-                        <promptDefinition>
-                            <key>file-body-fallback</key>
-                            <templateFile>v2/file-body-fallback.md</templateFile>
-                        </promptDefinition>
-                        <promptDefinition>
-                            <key>package-body</key>
-                            <templateFile>v2/package-body.md</templateFile>
-                        </promptDefinition>
                         <promptDefinition>
                             <key>project-body</key>
                             <template>Write a short overview of the whole project from its per-package leads.</template>
@@ -106,6 +95,7 @@
                             <id>java</id>
                             <promptKey>file-body-java</promptKey>
                             <aiDefinitionKey>fixture-model</aiDefinitionKey>
+                            <factsKey>java-facts</factsKey>
                             <condition>
                                 <extensions><extension>.java</extension></extensions>
                             </condition>
@@ -132,6 +122,7 @@
                                     <id>java</id>
                                     <promptKey>file-body-java</promptKey>
                                     <aiDefinitionKey>fixture-model</aiDefinitionKey>
+                                    <factsKey>java-facts</factsKey>
                                     <condition>
                                         <extensions><extension>.java</extension></extensions>
                                     </condition>

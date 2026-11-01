@@ -12,14 +12,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
-- **Prompt files: `templateFile` and `promptDirectory`.** A prompt definition takes either its
-  text (`template`) or a UTF-8 file holding it (`templateFile`, read verbatim, a leading byte order
-  mark dropped), so several configurations share one prompt instead of a copy each. A relative
-  `templateFile` resolves against the new `promptDirectory` (CLI and library: relative to the
-  working directory; plugin: `srcmorph.promptDirectory`, relative to `${basedir}`), as a model path
-  resolves against `modelDirectory`. Both `template` and `templateFile`, or a file that is empty or
-  cannot be read, fail the run as a configuration error. In the library:
-  `AiPromptTemplateLoader`, used by every engine.
+- **Profiles: prompts and fact counters as files, named by key (`profileDirectory`).** A profile is
+  one directory with a file per prompt (`<key>.md`, the system prompt verbatim) and per group of
+  exact fact counters (`<key>.tsv`: `label<TAB>regex` per line, `#` comments). With
+  `profileDirectory` set (CLI and library: relative to the working directory; plugin:
+  `srcmorph.profileDirectory`, relative to `${basedir}`; absolute always as it is), a rule's
+  `promptKey` and `factsKey` that no definition has are read from there, so a configuration names
+  keys only and repeats no prompt text and no regex. A key found nowhere fails the run before a model
+  loads, naming the file it looked for; a pattern that does not compile fails it with file and line.
+  A definition still works and wins over a file of the same key: a prompt is a `template` or a
+  `templateFile`, a fact group `facts` or the new `factsFile` (both files relative to
+  `profileDirectory`). Every file is read as UTF-8, a leading byte order mark dropped; an empty file is
+  an error. In the library: `AiPromptTemplateLoader`, `AiFactDefinitionLoader`, `AiProfileFileSupport`.
 - **CLI: rules per aggregation phase, `packageFieldGenerations` and `projectFieldGenerations`.**
   Top-level keys beside `srcMorph`: the package phase (`AggregatePackages`, and the package step of
   `All`) and the project phase run with these rules when set, as the Maven plugin's
@@ -30,22 +34,24 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   configuration**, nearly 1:1: gpt-oss-20b (native MXFP4, 96K window) for every file, package and the
   project overview, Granite 4.0 H-Tiny (384K window, one pass) for ~275 KB .. 1 MB and Granite 4.0
   H-1B (16K window, map-reduce over 6 sampled chunks) beyond, with the exact whole-file counts of
-  `factDefinitions` (Java: types, methods, fields, ...; SQL: INSERT rows, tables, views, indexes,
-  routines) on every Java and SQL summary, so a sampled summary of a multi-MB SQL dump still states
-  what the data holds. It replaces the one-model, one-placeholder-prompt example; a test compares it
+  the profile's `java-facts` and `sql-facts` (Java: types, methods, fields, ...; SQL: INSERT
+  statements and rows, tables, views, indexes, routines, triggers, types) on every Java and SQL
+  summary, so a sampled summary of a multi-MB SQL dump still states what the data holds. It replaces the one-model, one-placeholder-prompt example; a test compares it
   with the pom.
 - **The plugin's `srcmorph-selftest` profile carries two models only**: gpt-oss-20b
   (`gpt-oss-20B-mxfp4`) and the two Granite presets. The other model definitions (Mistral, Llama,
   Codestral, Qwen, Gemma, Ministral, the `EXP-*` benchmark keys, the other gpt-oss quantizations and
   windows) are gone; their measurements stay in `docs/ai-index-benchmark`.
-- **`prompts/`: the production prompts once in the repository, now v2.** `prompts/v2/` holds the
-  five prompts: v1, which the October 2026 model card measured, with targeted additions (the type's
+- **`profiles/`: the production prompts and fact counters once in the repository, now v2.**
+  `profiles/v2/` holds the five prompts and the `java-facts` / `sql-facts` counters, which the plugin
+  pom and the example configuration no longer write out; `SqlFactPatternsTest` and
+  `JavaStructureFactPatternsTest` read these files instead of copies. The prompts are v1, which the October 2026 model card measured, with targeted additions (the type's
   own name; getters and setters named one by one; SQL constraint and index names and row counts per
   table; constants, configuration variables, helpers and library calls of other files). Three runs
   each on OpenRouter: GPT-6 Luna 100 % in all three (v1 93.6 to 99.0 %), gpt-oss-20b 99.0 % (v1
   96.8 %), search unchanged within its noise (model card, finding 5). v1, the June v2 experiment and
-  v1 as the June benchmark ran it are in the history (`prompts/README.md`). The plugin's
-  `srcmorph-selftest` profile, the model-card benchmark (`run.py --prompts <set>`, default v2, replacing
+  v1 as the June benchmark ran it are in the history (`profiles/README.md`). The plugin's
+  `srcmorph-selftest` profile, the model-card benchmark (`run.py --profile <name>`, default v2, replacing
   `modelcard/prompts.json`), the examples (which had one-line placeholder prompts) and the plugin's
   integration-test fixture all read these files, so the CI smoke of the user-built jar and the
   plugin IT exercise `templateFile` as well.
@@ -117,6 +123,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `.github/release-assets.json` names no files beyond the Maven artifacts.
 
 ### Changed
+- **The SQL fact counters count what their labels say.** `INSERT rows` counted `INSERT INTO`
+  statements, so a multi-row `INSERT` of 28 rows read as 1; it is `INSERT statements` now, and the
+  new `VALUES rows (approx)` counts the row tuples of `VALUES` lists. `views` also counts
+  `MATERIALIZED` and `OR ALTER` views, `tables` `TEMP`/`UNLOGGED` tables, `indexes` T-SQL's
+  `CLUSTERED`/`NONCLUSTERED`, `functions/procedures` `CREATE PROC`, `OR ALTER` and MySQL's
+  `DEFINER=`; `triggers`, `types` and `ALTER TABLE` are new.
 - **Dependencies and build plugins:** logback-classic 1.6.6 (test scope), NullAway 0.14.3,
   maven-surefire-plugin 3.6.1, jacoco-maven-plugin 0.8.16, palantir-java-format 2.103.0 (no formatting
   change) and `anthropics/claude-code-action` v1.0.264.

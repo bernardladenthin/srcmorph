@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Tag;
  * <ul>
  *   <li>a model's {@code modelPath} and the fallback {@code llamaModelPath}, relative to
  *       {@code modelDirectory};</li>
- *   <li>a prompt's {@code templateFile}, relative to {@code promptDirectory};</li>
+ *   <li>a prompt's {@code templateFile}, relative to {@code profileDirectory};</li>
  *   <li>those two directories themselves.</li>
  * </ul>
  *

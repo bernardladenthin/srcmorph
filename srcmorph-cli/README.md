@@ -66,11 +66,12 @@ public class CConfiguration {
   plugin's mojos build from their own `@Parameter` fields. **Every key under `srcMorph` in your JSON/YAML
   file reads identically to the matching Maven `<configuration>` XML element** — `baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, `generationProvider`,
-  `promptDefinitions`, `promptDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations`,
+  `promptDefinitions`, `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations`,
   `factDefinitions`, the `llama*` fallback parameters, `force`, `planOnly`, `projectName`. A relative
-  `modelDirectory` or `promptDirectory` (like every relative path here) is relative to the working
-  directory the CLI is started in. A prompt is a `template` or a `templateFile`; the examples read the
-  measured prompts of [`../prompts/`](../prompts/README.md). If you already know the plugin's XML shape, you
+  `modelDirectory` or `profileDirectory` (like every relative path here) is relative to the working
+  directory the CLI is started in. With a `profileDirectory`, the rules' `promptKey` and `factsKey`
+  are files there (`<key>.md`, `<key>.tsv`) and need no definition; the examples read the measured
+  profile [`../profiles/v2/`](../profiles/README.md) that way. If you already know the plugin's XML shape, you
   already know this shape — see
   [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s
   "Configuration" section for the full field-by-field reference (routing-rule conditions, oversize

@@ -72,7 +72,7 @@ public class SrcMorphConfiguration {
     private @Nullable List<AiPromptDefinition> promptDefinitions;
     private @Nullable List<AiModelDefinition> aiDefinitions;
     private @Nullable File modelDirectory;
-    private @Nullable File promptDirectory;
+    private @Nullable File profileDirectory;
     private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
     private @Nullable List<AiFactDefinition> factDefinitions;
     private @Nullable String llamaModelPath;
@@ -329,24 +329,24 @@ public class SrcMorphConfiguration {
 
     /**
      * Returns the directory a relative {@code templateFile} of {@link #promptDefinitions} is resolved
-     * against; an absolute one is used as it is. So configurations can share one prompt directory
+     * against; an absolute one is used as it is. So configurations can share one profile directory
      * instead of a copy of every prompt each. Without it, a relative template file is relative to the
      * working directory of the JVM, as a model path is without {@link #modelDirectory}.
      *
-     * @return the prompt directory, or {@code null} when none is configured
+     * @return the profile directory, or {@code null} when none is configured
      */
-    public @Nullable File getPromptDirectory() {
-        return promptDirectory;
+    public @Nullable File getProfileDirectory() {
+        return profileDirectory;
     }
 
     /**
      * Sets the directory a relative prompt template file is resolved against.
      *
-     * @param promptDirectory the prompt directory, or {@code null} to resolve relative template files
+     * @param profileDirectory the profile directory, or {@code null} to resolve relative template files
      *                        against the working directory
      */
-    public void setPromptDirectory(final @Nullable File promptDirectory) {
-        this.promptDirectory = promptDirectory;
+    public void setProfileDirectory(final @Nullable File profileDirectory) {
+        this.profileDirectory = profileDirectory;
     }
 
     /**

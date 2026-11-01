@@ -27,14 +27,11 @@ srcMorph:
 
   generationProvider: openai-compatible
 
-  # The measured prompts of this repository (prompts/README.md), one file per prompt; a relative
-  # templateFile resolves against promptDirectory, which is relative to the working directory (start srcmorph
-  # from this directory). Copy the files and point promptDirectory at your copy to change them, or
-  # write a prompt inline with template: "...".
-  promptDirectory: "../../prompts"
-  promptDefinitions:
-    - key: file-body-java
-      templateFile: v2/file-body-java.md
+  # The profile: the measured prompts of this repository (profiles/README.md), one file per key. A
+  # rule's promptKey names <profileDirectory>/<key>.md; the directory is relative to the working
+  # directory (start srcmorph from this one). Copy it and point profileDirectory at the copy to change
+  # a prompt.
+  profileDirectory: "../../profiles/v2"
 
   aiDefinitions:
     - key: copilot

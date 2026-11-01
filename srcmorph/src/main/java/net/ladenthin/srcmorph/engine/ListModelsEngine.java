@@ -100,8 +100,8 @@ public final class ListModelsEngine {
         final List<AiModelDefinition> definitions = configured == null ? new ArrayList<>() : configured;
         final AiModelDefinitionSupport modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(definitions, config.getModelDirectory());
-        final AiPromptSupport promptSupport =
-                EngineSupport.buildPromptSupport(config.getPromptDefinitions(), config.getPromptDirectory());
+        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
         final List<ModelListReport.Listing> listings = new ArrayList<>(definitions.size());
         final Set<String> servers = new HashSet<>(definitions.size());
         for (final AiModelDefinition definition : definitions) {

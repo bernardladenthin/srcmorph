@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * The absolute-path requirement ({@link AbsolutePathRequirement}) for every path a configuration
  * resolves against a directory, through the engines' own entry points: a model's {@code modelPath},
  * the fallback {@code llamaModelPath} (both against {@code modelDirectory}) and a prompt's
- * {@code templateFile} (against {@code promptDirectory}). Each case runs once per kind of directory:
+ * {@code templateFile} (against {@code profileDirectory}). Each case runs once per kind of directory:
  * unset, relative, absolute, and absolute but missing. An absolute path must win in all of them, and
  * an absolute directory must make a relative path below it absolute.
  */
@@ -113,7 +113,7 @@ public class ConfiguredPathResolutionTest {
         final List<AiPromptDefinition> prompts = Collections.singletonList(promptFile(absolutePrompt.toString()));
 
         assertThat(
-                EngineSupport.buildPromptSupport(prompts, directory.apply(tempDir))
+                EngineSupport.buildPromptSupport(prompts, directory.apply(tempDir), null)
                         .systemPrompt("file-body-java"),
                 is(PROMPT));
     }
@@ -139,7 +139,7 @@ public class ConfiguredPathResolutionTest {
 
         assertThat(
                 EngineSupport.buildPromptSupport(
-                                prompts, absolutePrompt.getParent().toFile())
+                                prompts, absolutePrompt.getParent().toFile(), null)
                         .systemPrompt("file-body-java"),
                 is(PROMPT));
     }

@@ -5,14 +5,14 @@
 # The srcmorph-selftest profile of srcmorph-maven-plugin/pom.xml as one CLI configuration, nearly 1:1
 # (ExamplesConfigBindingTest checks the rules, facts and models against the pom). What run.sh /
 # run.bat do with it: every file under baseDirectory/subtrees with one of the fileExtensions is
-# matched to a rule in fieldGenerations; the rule names a prompt (promptDefinitions) and a model
-# (aiDefinitions). srcmorph sends the prompt as the system message and the file's name and source as
+# matched to a rule in fieldGenerations; the rule names a prompt (promptKey) and a model
+# (aiDefinitionKey). srcmorph sends the prompt as the system message and the file's name and source as
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
 #
 # Two models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
 # IBM Granite 4.0 for larger files - H-Tiny with a 384K window in one pass up to ~1 MB, H-1B with a
 # 16K window beyond, map-reducing a few sampled chunks. A Java or SQL summary starts with exact
-# whole-file counts (factDefinitions: INSERT rows, tables, views, methods, ...), so a sampled
+# whole-file counts (factsKey: INSERT statements, VALUES rows, tables, methods, ...), so a sampled
 # summary of a multi-MB SQL dump still states what the data holds.
 #
 # command:
@@ -49,22 +49,11 @@ srcMorph:
   generationProvider: llamacpp-jni      # "mock" runs without a model, for a dry test of the setup
   modelDirectory: "/path/to/models"     # a relative modelPath below is relative to this directory
 
-  # The measured prompts of this repository (prompts/README.md), one file per prompt; a relative
-  # templateFile resolves against promptDirectory, which is relative to the working directory (run.sh
-  # and run.bat start here). Copy the files and point promptDirectory at your copy to change them, or
-  # write a prompt inline with template: "...".
-  promptDirectory: "../../prompts"
-  promptDefinitions:
-    - key: file-body-java
-      templateFile: v2/file-body-java.md
-    - key: file-body-sql
-      templateFile: v2/file-body-sql.md
-    - key: file-body-fallback
-      templateFile: v2/file-body-fallback.md
-    - key: package-body
-      templateFile: v2/package-body.md
-    - key: project-body
-      templateFile: v2/project-body.md
+  # The profile: the measured prompts and fact counters of this repository (profiles/README.md), one
+  # file per key. A rule's promptKey names <profileDirectory>/<key>.md, its factsKey
+  # <profileDirectory>/<key>.tsv (label TAB regex per line). Relative to the working directory (run.sh
+  # and run.bat start here); copy the directory and point profileDirectory at the copy to change it.
+  profileDirectory: "../../profiles/v2"
 
   aiDefinitions:
     # gpt-oss-20b in its native MXFP4: reasoningEffort low (best for dense summaries), a 96K window
@@ -111,39 +100,6 @@ srcMorph:
       minP: 0.05
       repeatPenalty: 1.0
       reasoningEffort: ""
-
-  # Exact whole-file counts, prepended to the summary of every rule that names them by factsKey.
-  # Regex heuristics: "methods (approx)" includes constructors; the field count sees only fields with
-  # a strong modifier.
-  factDefinitions:
-    - key: java-facts
-      facts:
-        - label: 'type declarations'
-          pattern: '(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w'
-        - label: 'public declarations'
-          pattern: '\bpublic\b'
-        - label: 'TODO/FIXME'
-          pattern: '\b(?:TODO|FIXME)\b'
-        - label: '@Override'
-          pattern: '@Override\b'
-        - label: 'methods (approx)'
-          pattern: '(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]'
-        - label: 'constructors'
-          pattern: '(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{'
-        - label: 'field declarations (w/ modifier)'
-          pattern: '(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]*)?;'
-    - key: sql-facts
-      facts:
-        - label: 'INSERT rows'
-          pattern: '(?im)^\s*INSERT\s+INTO\b'
-        - label: 'tables'
-          pattern: '(?im)^\s*CREATE\s+TABLE\b'
-        - label: 'views'
-          pattern: '(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b'
-        - label: 'indexes'
-          pattern: '(?im)^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b'
-        - label: 'functions/procedures'
-          pattern: '(?im)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\b'
 
   # By priority, the most specific wins: huge (>1 MB) -> fastchunk map-reduce, big-window
   # (~275 KB .. 1 MB) -> one Granite pass, then gpt-oss for Java, SQL and every other file.

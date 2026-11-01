@@ -35,7 +35,7 @@ public class AiFactCounter {
         // no-op
     }
 
-    /** Human-readable label shown next to the count (e.g. {@code "INSERT rows"}). */
+    /** Human-readable label shown next to the count (e.g. {@code "INSERT statements"}). */
     private String label;
 
     /** Java regular expression whose non-overlapping match count over the whole source is reported. */

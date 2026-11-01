@@ -7,10 +7,7 @@ srcMorph:
   fileExtensions:
     - ".java"
   generationProvider: mock
-  promptDirectory: "../prompts"   # the measured prompts of this repository, see prompts/README.md
-  promptDefinitions:
-    - key: file-body
-      templateFile: v2/file-body-fallback.md
+  profileDirectory: "../profiles/v2"   # the measured prompts of this repository, see profiles/README.md
   aiDefinitions:
     - key: mock-model
       modelPath: unused-with-mock-provider.gguf
@@ -19,6 +16,6 @@ srcMorph:
       temperature: 0.15
       threads: 2
   fieldGenerations:
-    - promptKey: file-body
+    - promptKey: file-body-fallback
       aiDefinitionKey: mock-model
       fallback: true

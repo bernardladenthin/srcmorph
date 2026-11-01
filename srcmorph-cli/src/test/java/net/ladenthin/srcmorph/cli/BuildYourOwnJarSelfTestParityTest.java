@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.cli;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,13 +19,10 @@ import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiCondition;
 import net.ladenthin.srcmorph.config.AiConditionGroup;
-import net.ladenthin.srcmorph.config.AiFactCounter;
-import net.ladenthin.srcmorph.config.AiFactDefinition;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiRangeCondition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,13 +32,14 @@ import org.w3c.dom.Node;
 /**
  * {@code examples/build-your-own-jar/srcmorph.yaml} is the {@code srcmorph-selftest} profile of
  * {@code srcmorph-maven-plugin/pom.xml} as one CLI configuration, and stays that: the models, the
- * prompts, the fact counters, the file rules (with their conditions) and the package and project
- * rules are read from both and compared. A change to one that is not made in the other fails here.
+ * profile directory, the file rules (with their conditions) and the package and project rules are
+ * read from both and compared. A change to one that is not made in the other fails here.
  *
  * <p>Left out on purpose: the pom's GPU knobs ({@code ${ai.gpuLayers}} etc., defaulting to auto-fit,
  * which the YAML gets by leaving them unset), its paths ({@code baseDirectory}, {@code subtrees}, the
- * output directory, the model directory, which differ by nature) and the comments. The prompt
- * directory is compared by where it points: both name the repository's {@code prompts/}.</p>
+ * output directory, the model directory, which differ by nature) and the comments. The profile
+ * directory is compared by where it points: both name the same set under the repository's
+ * {@code profiles/}, and neither lists a prompt or a fact counter itself.</p>
  */
 public class BuildYourOwnJarSelfTestParityTest {
 
@@ -50,6 +49,7 @@ public class BuildYourOwnJarSelfTestParityTest {
     private static CConfiguration yaml;
     private static Element plugin;
     private static @Nullable String aiModel;
+    private static @Nullable String aiProfileDir;
 
     @BeforeAll
     static void load() throws Exception {
@@ -59,6 +59,7 @@ public class BuildYourOwnJarSelfTestParityTest {
                 .parse(PLUGIN_DIRECTORY.resolve("pom.xml").toFile())
                 .getDocumentElement();
         aiModel = Objects.requireNonNull(text(child(project, "properties"), "ai.model"));
+        aiProfileDir = Objects.requireNonNull(text(child(project, "properties"), "ai.profileDir"));
         Element selftest = null;
         for (final Element profile : children(child(project, "profiles"), "profile")) {
             if ("srcmorph-selftest".equals(text(profile, "id"))) {
@@ -160,25 +161,24 @@ public class BuildYourOwnJarSelfTestParityTest {
     }
 
     @Test
-    public void prompts_matchTheSelfTestProfile() throws IOException {
+    public void profileDirectory_matchesTheSelfTestProfile() throws IOException {
         final Element configuration = child(plugin, "configuration");
-        final List<String> pom = new ArrayList<>();
-        for (final Element prompt : children(child(configuration, "promptDefinitions"), "promptDefinition")) {
-            pom.add(text(prompt, "key") + " -> " + text(prompt, "templateFile"));
-        }
-        final List<String> example = new ArrayList<>();
-        for (final AiPromptDefinition prompt : Objects.requireNonNull(yaml.srcMorph.getPromptDefinitions())) {
-            example.add(prompt.getKey() + " -> " + prompt.getTemplateFile());
-        }
-        assertThat(example, is(pom));
-
-        final String pomDirectory = Objects.requireNonNull(text(configuration, "promptDirectory"))
-                .replace("${project.basedir}", PLUGIN_DIRECTORY.toString());
+        assertThat(text(configuration, "profileDirectory"), is("${ai.profileDir}"));
+        final String pomDirectory =
+                Objects.requireNonNull(aiProfileDir).replace("${project.basedir}", PLUGIN_DIRECTORY.toString());
         final File exampleDirectory = EXAMPLE_DIRECTORY
-                .resolve(Objects.requireNonNull(yaml.srcMorph.getPromptDirectory())
+                .resolve(Objects.requireNonNull(yaml.srcMorph.getProfileDirectory())
                         .getPath())
                 .toFile();
         assertThat(exampleDirectory.getCanonicalFile(), is(new File(pomDirectory).getCanonicalFile()));
+    }
+
+    @Test
+    public void promptsAndFacts_comeFromTheProfileOnly() {
+        assertThat(children(child(plugin, "configuration"), "promptDefinitions").isEmpty(), is(true));
+        assertThat(children(execution("ai-generate"), "factDefinitions").isEmpty(), is(true));
+        assertThat(yaml.srcMorph.getPromptDefinitions(), is(nullValue()));
+        assertThat(yaml.srcMorph.getFactDefinitions(), is(nullValue()));
     }
 
     @Test
@@ -196,24 +196,6 @@ public class BuildYourOwnJarSelfTestParityTest {
         assertThat(yaml.srcMorph.getFileExtensions(), is(extensions));
         assertThat(yaml.srcMorph.getExcludes(), is(excludes));
         assertThat(yaml.srcMorph.getGenerationProvider(), is(text(configuration, "generationProvider")));
-    }
-
-    @Test
-    public void facts_matchTheSelfTestProfile() {
-        final List<String> pom = new ArrayList<>();
-        for (final Element definition :
-                children(child(execution("ai-generate"), "factDefinitions"), "factDefinition")) {
-            for (final Element fact : children(child(definition, "facts"), "fact")) {
-                pom.add(text(definition, "key") + " | " + text(fact, "label") + " | " + text(fact, "pattern"));
-            }
-        }
-        final List<String> example = new ArrayList<>();
-        for (final AiFactDefinition definition : Objects.requireNonNull(yaml.srcMorph.getFactDefinitions())) {
-            for (final AiFactCounter fact : Objects.requireNonNull(definition.getFacts())) {
-                example.add(definition.getKey() + " | " + fact.getLabel() + " | " + fact.getPattern());
-            }
-        }
-        assertThat(example, is(pom));
     }
 
     @Test

@@ -5,46 +5,46 @@ package net.ladenthin.srcmorph.prompt;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.ToString;
 import net.ladenthin.srcmorph.support.AiPathSupport;
+import net.ladenthin.srcmorph.support.AiProfileFileSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Reads the template of every prompt definition that names a {@code templateFile}, so the rest of
- * the pipeline sees inline templates only.
+ * Reads the prompts of a configuration from files, so the rest of the pipeline sees inline templates
+ * only: the {@code templateFile} a definition names, and, for a prompt key a rule uses that no
+ * definition has, the file {@code <profileDirectory>/<key>.md} ({@link AiProfileFileSupport}).
  *
- * <p>A relative file is resolved against the prompt directory ({@link AiPathSupport#resolveAgainst},
- * the rule model paths follow too) and read as UTF-8, a leading byte order mark dropped. The text is
- * used as it is otherwise: the template is the system message verbatim, so trailing whitespace and
- * line breaks in the file reach the model. A definition with both {@code template} and
- * {@code templateFile} is refused, as is a file that holds nothing but whitespace. The configured
- * definitions are never modified: a definition with a file is replaced by a copy carrying its key and
- * the read template.</p>
+ * <p>A relative {@code templateFile} is resolved against the profile directory
+ * ({@link AiPathSupport#resolveAgainst}, the rule model paths follow too); an absolute one is always
+ * used as it is. Every file is read as UTF-8, a leading byte order mark dropped, and otherwise used as
+ * it is: the template is the system message verbatim. A definition with both {@code template} and
+ * {@code templateFile} is refused, as is a file that holds nothing but whitespace. With a profile
+ * directory set, a rule's prompt key that is neither defined nor a file there is refused right away,
+ * naming the file it looked for. The configured definitions are never modified: a definition with a
+ * file is replaced by a copy carrying its key and the read template.</p>
  */
 @ToString
 public final class AiPromptTemplateLoader {
 
-    /** The byte order mark a UTF-8 editor may put before the first character. */
-    private static final char BYTE_ORDER_MARK = '﻿';
-
-    private final @Nullable File promptDirectory;
-    private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+    private final @Nullable File profileDirectory;
 
     /**
      * Creates a loader for one configuration.
      *
-     * @param promptDirectory directory relative template files are resolved against, or {@code null}
-     *                        to resolve them against the working directory
+     * @param profileDirectory directory relative template files and the prompts named by key are
+     *                         resolved against, or {@code null} for the working directory and no
+     *                         lookup by key
      */
-    public AiPromptTemplateLoader(final @Nullable File promptDirectory) {
-        this.promptDirectory = promptDirectory;
+    public AiPromptTemplateLoader(final @Nullable File profileDirectory) {
+        this.profileDirectory = profileDirectory;
     }
 
     /**
@@ -62,10 +62,35 @@ public final class AiPromptTemplateLoader {
         if (promptDefinitions == null) {
             return null;
         }
-        final int count = promptDefinitions.size();
-        final List<AiPromptDefinition> loaded = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            final AiPromptDefinition definition = promptDefinitions.get(i);
+        return load(promptDefinitions, Collections.<@Nullable String>emptyList());
+    }
+
+    /**
+     * Returns the definitions with every template file read, plus a definition read from the profile
+     * directory for each used prompt key no definition has.
+     *
+     * @param promptDefinitions the configured definitions, or {@code null} for none
+     * @param usedPromptKeys    the prompt keys the configuration's rules use; {@code null} entries
+     *                          (a skip rule's) are ignored
+     * @return the configured definitions (template files read), then one per used key read from
+     *         {@code <profileDirectory>/<key>.md}, in the order the keys come
+     * @throws IOException              if a template file cannot be read
+     * @throws IllegalArgumentException if a definition sets both {@code template} and
+     *                                  {@code templateFile}, a file holds nothing but whitespace, or
+     *                                  with a profile directory a used key is neither defined nor a file
+     */
+    public List<AiPromptDefinition> load(
+            final @Nullable List<AiPromptDefinition> promptDefinitions,
+            final Collection<@Nullable String> usedPromptKeys)
+            throws IOException {
+        final List<AiPromptDefinition> configured =
+                promptDefinitions != null ? promptDefinitions : Collections.<AiPromptDefinition>emptyList();
+        final List<AiPromptDefinition> loaded = new ArrayList<>(configured.size() + usedPromptKeys.size());
+        final Set<String> defined = new HashSet<>(
+                new Java8CompatibilityHelper().hashMapCapacityFor(configured.size() + usedPromptKeys.size()));
+        for (int i = 0; i < configured.size(); i++) {
+            final AiPromptDefinition definition = configured.get(i);
+            defined.add(definition.getKey());
             final String templateFile = definition.getTemplateFile();
             if (templateFile == null) {
                 loaded.add(definition);
@@ -75,36 +100,33 @@ public final class AiPromptTemplateLoader {
             if (definition.getTemplate() != null) {
                 throw new IllegalArgumentException(label + " sets both template and templateFile; set one of them");
             }
-            final String path = AiPathSupport.resolveAgainst(promptDirectory, templateFile);
-            final String template = read(label, String.valueOf(path));
-            final AiPromptDefinition copy = new AiPromptDefinition();
-            copy.setKey(definition.getKey());
-            copy.setTemplate(template);
-            loaded.add(copy);
+            final String path = AiPathSupport.resolveAgainst(profileDirectory, templateFile);
+            loaded.add(inline(
+                    definition.getKey(), AiProfileFileSupport.read(label + ": templateFile", String.valueOf(path))));
+        }
+        final File directory = profileDirectory;
+        if (directory == null) {
+            return loaded;
+        }
+        for (final String key : usedPromptKeys) {
+            if (key == null || !defined.add(key)) {
+                continue;
+            }
+            final File file =
+                    AiProfileFileSupport.conventionalFile(directory, key, AiProfileFileSupport.PROMPT_EXTENSION);
+            if (!file.isFile()) {
+                throw new IllegalArgumentException("prompt key " + key
+                        + " is used by a rule, but no promptDefinition has it and the profile has no " + file);
+            }
+            loaded.add(inline(key, AiProfileFileSupport.read("prompt key " + key + ": file", file.getPath())));
         }
         return loaded;
     }
 
-    /**
-     * Reads one template file.
-     *
-     * @param label the definition's position and key, for the messages
-     * @param path  the resolved path
-     * @return the file's text, without a leading byte order mark
-     * @throws IOException              if the file cannot be read, or the path is no valid path
-     * @throws IllegalArgumentException if the file holds nothing but whitespace
-     */
-    private String read(final String label, final String path) throws IOException {
-        final String text;
-        try {
-            text = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
-        } catch (final IOException | InvalidPathException e) {
-            throw new IOException(label + ": templateFile " + path + " cannot be read: " + e, e);
-        }
-        final String template = !text.isEmpty() && text.charAt(0) == BYTE_ORDER_MARK ? text.substring(1) : text;
-        if (compatibilityHelper.isBlank(template)) {
-            throw new IllegalArgumentException(label + ": templateFile " + path + " is empty");
-        }
-        return template;
+    private static AiPromptDefinition inline(final String key, final String template) {
+        final AiPromptDefinition copy = new AiPromptDefinition();
+        copy.setKey(key);
+        copy.setTemplate(template);
+        return copy;
     }
 }

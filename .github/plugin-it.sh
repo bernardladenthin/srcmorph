@@ -131,6 +131,10 @@ assert_written "$OUT/extra/java/com/example/extra/Extra.java.ai.md" \
 # The mock provider's marker: proves the generated body came through the provider abstraction and
 # not from some fallback that writes an empty document.
 grep -q "Mock summary" "$GENERATED" || fail "the generated file summary carries no mock-provider marker"
+# The java rule's <factsKey> names profiles/v2/java-facts.tsv, which only <profileDirectory> reaches:
+# the exact counts in front of the summary prove the facts file was found, read and applied.
+grep -q "^\*\*Facts (exact, whole file):\*\* type declarations: 1; " "$GENERATED" \
+    || fail "the java-facts counters of the profile are not in the file summary -- got: $(grep -m1 'Facts' "$GENERATED" || echo none)"
 # The deterministic header the codec writes -- pins that a real AiMdDocument was written, not a stub.
 grep -q "^- X: file$" "$GENERATED" || fail "the generated file summary has no 'X: file' header field"
 grep -q "^- X: project$" "$OUT/project.ai.md" || fail "the project index has no 'X: project' header field"
@@ -186,7 +190,7 @@ EXPECTED_PROPS="$(printf '%s\n' \
     srcmorph.package.skip \
     srcmorph.planOnly \
     srcmorph.project.skip \
-    srcmorph.promptDirectory \
+    srcmorph.profileDirectory \
     srcmorph.skip \
     srcmorph.subtrees | sort)"
 if ! diff <(echo "$ACTUAL_PROPS") <(echo "$EXPECTED_PROPS") > "$LOGS/props.diff" 2>&1; then

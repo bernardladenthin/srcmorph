@@ -24,7 +24,7 @@ Major field groups:
 |---|---|
 | Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `minFileSizeBytes`/`maxFileSizeBytes` |
 | Output | `outputDirectory`, `force`, `planOnly` |
-| Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`: a `key` and a `template` or a `templateFile`), `promptDirectory` (a relative `templateFile` resolves against it), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` |
+| Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` (`List<AiFactDefinition>`: a `key` and `facts` or a `factsFile`) |
 | AI backend | `generationProvider` (`"mock"` or `"llamacpp-jni"`), plus the `llama*` fallback params (`llamaModelPath`/`llamaContextSize`/`llamaMaxOutputTokens`/`llamaTemperature`/`llamaThreads`), used only when `fieldGenerations` is empty |
 | Header metadata | `pluginVersion`, `aiVersion`, `projectName` |
 
@@ -79,19 +79,15 @@ import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.GenerateEngine;
 import net.ladenthin.srcmorph.engine.GenerateResult;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 
 SrcMorphConfiguration config = new SrcMorphConfiguration();
 config.setBaseDirectory(new File("."));
 config.setOutputDirectory(new File("target/srcmorph-ai"));
 config.setGenerationProvider("mock"); // or "llamacpp-jni" with a real GGUF model below
 
-AiPromptDefinition prompt = new AiPromptDefinition();
-prompt.setKey("file-body");
-// the measured prompt of srcmorph's prompts/v2/; setTemplate("...") writes it inline instead
-prompt.setTemplateFile("v2/file-body-fallback.md");
-config.setPromptDirectory(new File("prompts"));
-config.setPromptDefinitions(Collections.singletonList(prompt));
+// the profile: srcmorph's profiles/v2/ copied into the project; a rule's promptKey names
+// <key>.md there (an AiPromptDefinition with setTemplate("...") writes a prompt inline instead)
+config.setProfileDirectory(new File("src/srcmorph/profile"));
 
 AiModelDefinition model = new AiModelDefinition();
 model.setKey("coder");
@@ -99,7 +95,7 @@ model.setModelPath("/path/to/model.gguf"); // unused by the mock provider
 config.setAiDefinitions(Collections.singletonList(model));
 
 AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
-rule.setPromptKey("file-body");
+rule.setPromptKey("file-body-fallback");
 rule.setAiDefinitionKey("coder");
 rule.setFallback(true);
 config.setFieldGenerations(Collections.singletonList(rule));

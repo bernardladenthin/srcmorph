@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
  * itself ({@code template}) or a file holding it ({@code templateFile}), exactly one of the two.
  *
  * <p>A {@code templateFile} lets several configurations share one prompt file instead of a copy
- * each. A relative path is resolved against the configuration's {@code promptDirectory}, or against
+ * each. A relative path is resolved against the configuration's {@code profileDirectory}, or against
  * the working directory without one; {@link AiPromptTemplateLoader} reads it, as UTF-8, before the
  * prompts are registered.</p>
  *
@@ -85,7 +85,7 @@ public class AiPromptDefinition {
      * Sets the file the prompt template is read from, instead of an inline {@link #setTemplate template}.
      *
      * @param templateFile path of the template file, relative to the configuration's
-     *                     {@code promptDirectory} (or the working directory without one), or absolute
+     *                     {@code profileDirectory} (or the working directory without one), or absolute
      */
     public void setTemplateFile(final @Nullable String templateFile) {
         this.templateFile = templateFile;

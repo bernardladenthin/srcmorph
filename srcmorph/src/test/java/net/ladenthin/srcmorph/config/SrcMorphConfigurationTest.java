@@ -47,7 +47,7 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getFactDefinitions(), is(nullValue()));
         assertThat(c.getLlamaModelPath(), is(nullValue()));
         assertThat(c.getModelDirectory(), is(nullValue()));
-        assertThat(c.getPromptDirectory(), is(nullValue()));
+        assertThat(c.getProfileDirectory(), is(nullValue()));
         assertThat(c.getProjectName(), is(nullValue()));
     }
 
@@ -60,11 +60,11 @@ public class SrcMorphConfigurationTest {
     }
 
     @Test
-    public void promptDirectoryRoundTrips() {
+    public void profileDirectoryRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
         final File dir = new File("prompts");
-        c.setPromptDirectory(dir);
-        assertThat(c.getPromptDirectory(), is(sameInstance(dir)));
+        c.setProfileDirectory(dir);
+        assertThat(c.getProfileDirectory(), is(sameInstance(dir)));
     }
 
     @Test
