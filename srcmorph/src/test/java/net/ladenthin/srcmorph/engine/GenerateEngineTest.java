@@ -648,4 +648,63 @@ public class GenerateEngineTest {
         assertThat(again.written(), is(0));
         assertThat(again.unchanged(), is(1));
     }
+
+    // <editor-fold defaultstate="collapsed" desc="run record">
+    @Test
+    public void execute_runRecordFile_recordsEveryRoutedFile() throws Exception {
+        final SrcMorphConfiguration config = baseConfig();
+        final Path recordFile = tempDir.resolve("records/run.json");
+        config.setRunRecordFile(recordFile.toFile());
+
+        new GenerateEngine(config).execute();
+        final com.fasterxml.jackson.databind.JsonNode first =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(recordFile.toFile());
+        new GenerateEngine(config).execute();
+        final com.fasterxml.jackson.databind.JsonNode second =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(recordFile.toFile());
+
+        final com.fasterxml.jackson.databind.JsonNode file = first.get("files").get(0);
+        assertThat(file.get("file").asText(), is("src/main/java/com/example/Foo.java"));
+        assertThat(file.get("promptKey").asText(), is(CommonTestFixtures.PROMPT_KEY_FILE_BODY));
+        assertThat(file.get("model").asText(), is(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT));
+        assertThat(file.get("outcome").asText(), is("written"));
+        assertThat(file.get("calls").asInt(), is(1));
+        assertThat(file.get("completionTokens").asLong() > 0, is(true));
+        assertThat(file.get("finishReason").asText(), is("stop"));
+        assertThat(file.get("promptHash").asText().matches("[0-9A-F]{8}"), is(true));
+        assertThat(first.get("pluginVersion").asText(), is("1.0.0"));
+        // the second run found it up to date: no call, no tokens
+        assertThat(second.get("files").get(0).get("outcome").asText(), is("unchanged"));
+        assertThat(second.get("totals").get("calls").asInt(), is(0));
+    }
+
+    @Test
+    public void execute_noRunRecordFile_writesNoRecord() throws Exception {
+        new GenerateEngine(baseConfig()).execute();
+
+        try (java.util.stream.Stream<Path> files = Files.walk(tempDir)) {
+            assertThat(files.anyMatch(p -> p.toString().endsWith(".json")), is(false));
+        }
+    }
+
+    @Test
+    public void factsHash_changesWithEveryPartOfACounter() {
+        final net.ladenthin.srcmorph.config.AiFactCounter counter = new net.ladenthin.srcmorph.config.AiFactCounter();
+        counter.setLabel("tables");
+        counter.setPattern("CREATE TABLE");
+        final String plain = GenerateEngine.factsHash(Collections.singletonList(counter));
+        counter.setIgnore(true);
+        final String ignored = GenerateEngine.factsHash(Collections.singletonList(counter));
+        counter.setIgnore(false);
+        counter.setPattern("CREATE VIEW");
+        final String otherPattern = GenerateEngine.factsHash(Collections.singletonList(counter));
+        counter.setLabel("views");
+        final String otherLabel = GenerateEngine.factsHash(Collections.singletonList(counter));
+
+        assertThat(plain.matches("[0-9A-F]{8}"), is(true));
+        assertThat(new java.util.HashSet<>(Arrays.asList(plain, ignored, otherPattern, otherLabel)).size(), is(4));
+        assertThat(GenerateEngine.factsHash(null), is(""));
+        assertThat(GenerateEngine.factsHash(Collections.emptyList()), is(""));
+    }
+    // </editor-fold>
 }

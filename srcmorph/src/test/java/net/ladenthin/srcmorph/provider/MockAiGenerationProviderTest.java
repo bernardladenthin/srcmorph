@@ -70,4 +70,18 @@ public class MockAiGenerationProviderTest {
         assertThat(small.totalPromptTokens(), is(33));
         assertThat(large.totalPromptTokens(), is(36));
     }
+
+    @Test
+    public void lastUsage_isAFixedEstimateOfTheLastCall() throws IOException {
+        final MockAiGenerationProvider provider = new MockAiGenerationProvider();
+        org.hamcrest.MatcherAssert.assertThat(
+                provider.lastUsage(), org.hamcrest.CoreMatchers.is(AiGenerationUsage.NONE));
+
+        final String text = provider.generate(new net.ladenthin.srcmorph.document.AiGenerationRequest(
+                "k", java.nio.file.Paths.get("A.java"), "abcdefghijklmnop", HEADER));
+
+        org.hamcrest.MatcherAssert.assertThat(
+                provider.lastUsage(),
+                org.hamcrest.CoreMatchers.is(new AiGenerationUsage(1, 4, text.length() / 4, 0, "stop")));
+    }
 }

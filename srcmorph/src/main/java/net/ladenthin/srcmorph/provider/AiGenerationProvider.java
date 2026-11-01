@@ -34,6 +34,17 @@ public interface AiGenerationProvider extends AutoCloseable {
         return new AiGenerationTimings(generate(request), 0, 0, 0.0d, 0, 0.0d);
     }
 
+    /**
+     * Returns the tokens and the finish reason of this provider's last {@link #generate} call, also when it
+     * threw (an incomplete answer still cost its tokens); {@link AiGenerationUsage#NONE} when the provider
+     * does not know them. A provider serves one thread at a time, so "last" is the caller's own call.
+     *
+     * @return one call's usage, or {@link AiGenerationUsage#NONE}
+     */
+    default AiGenerationUsage lastUsage() {
+        return AiGenerationUsage.NONE;
+    }
+
     @Override
     default void close() throws IOException {}
 }

@@ -22,6 +22,7 @@ import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.AiPreparedPrompt;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
+import net.ladenthin.srcmorph.provider.AiGenerationUsage;
 import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
 import net.ladenthin.srcmorph.support.AiDeterministicSummary;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
@@ -134,6 +135,9 @@ public class AiFieldGenerationSupport {
      */
     private final Set<String> loggedWindows = new HashSet<>();
 
+    /** The usage of the calls since the last {@link #takeUsage()}. */
+    private AiGenerationUsage usage = AiGenerationUsage.NONE;
+
     /**
      * Creates a new {@code AiFieldGenerationSupport}.
      *
@@ -148,6 +152,18 @@ public class AiFieldGenerationSupport {
         this.generationProvider = generationProvider;
         this.promptPreparationSupport = promptPreparationSupport;
         this.modelDefinitionSupport = modelDefinitionSupport;
+    }
+
+    /**
+     * Returns the tokens and the finish reason of every model call since the last call of this method
+     * (one file's or package's calls when called after each), and starts counting anew.
+     *
+     * @return the summed usage, {@link AiGenerationUsage#NONE} when no call was made
+     */
+    public AiGenerationUsage takeUsage() {
+        final AiGenerationUsage taken = usage;
+        usage = AiGenerationUsage.NONE;
+        return taken;
     }
 
     /**
@@ -524,9 +540,13 @@ public class AiFieldGenerationSupport {
             final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
                     new AiGenerationRequest(promptKey, contextFile, source, baseHeader), budget);
             try {
-                return generationProvider.generate(
+                final String text = generationProvider.generate(
                         new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
+                usage = usage.add(generationProvider.lastUsage());
+                return text;
             } catch (final IOException | RuntimeException e) {
+                // a call that failed still cost its tokens
+                usage = usage.add(generationProvider.lastUsage());
                 final int reduced = AiOverflowBackoff.isContextOverflow(e)
                         ? AiOverflowBackoff.nextWindow(attempt, budget)
                         : AiOverflowBackoff.NO_SMALLER_WINDOW;

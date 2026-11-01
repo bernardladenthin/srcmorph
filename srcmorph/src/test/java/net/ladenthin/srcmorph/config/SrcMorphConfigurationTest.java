@@ -198,4 +198,13 @@ public class SrcMorphConfigurationTest {
         c.setGenerationProvider("llamacpp-jni");
         assertThat(c.toString(), org.hamcrest.CoreMatchers.containsString("llamacpp-jni"));
     }
+
+    @Test
+    public void runRecordFile_defaultsNullAndRoundTrips() {
+        final SrcMorphConfiguration c = new SrcMorphConfiguration();
+        org.hamcrest.MatcherAssert.assertThat(c.getRunRecordFile(), org.hamcrest.CoreMatchers.nullValue());
+        c.setRunRecordFile(new java.io.File("run.json"));
+        org.hamcrest.MatcherAssert.assertThat(
+                c.getRunRecordFile(), org.hamcrest.CoreMatchers.is(new java.io.File("run.json")));
+    }
 }

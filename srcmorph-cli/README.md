@@ -78,7 +78,8 @@ public class CConfiguration {
   (unset: `src/site/ai` below the base directory), `subtrees`, `excludes`, `fileExtensions`,
   `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
   `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations` (the file rules),
-  `factDefinitions`, `force`, `planOnly`, `aiVersion`, `projectName`. A relative directory resolves
+  `factDefinitions`, `force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile` (below). A
+  relative directory or `runRecordFile` resolves
   against the file's directory, a relative `modelPath` against `modelDirectory`, a relative
   `templateFile` or `factsFile` against `profileDirectory`. With a `profileDirectory`, the rules'
   `promptKey` and `factsKey` are files there (`<key>.md`, `<key>.tsv`) and need no definition; the
@@ -90,6 +91,13 @@ public class CConfiguration {
 - **`packageFieldGenerations`** / **`projectFieldGenerations`** — the rule of the package phase and of
   the project overview (see "Each phase its own rules" below).
 - **`modelFilter`** — `ListModels` only: keeps the model ids that contain it, ignoring case.
+
+**The run record.** With `srcMorph.runRecordFile` set, the file phase writes a JSON record there: per
+routed file its rule, prompt, model, outcome (`written`, `unchanged`, `failed`), the calls, the prompt,
+cached and completion tokens, the finish reason of the last call, the wall time, and the CRC32 of its
+prompt and of its fact counters; and the totals. It costs a run per file and model and shows which
+summaries a changed prompt touches. Unset (the default), no record is written, so a committed output
+tree does not change with every run.
 
 ### The eight `CCommand` values
 

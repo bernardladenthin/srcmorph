@@ -59,6 +59,7 @@ public class SrcMorphConfiguration {
     private @Nullable List<AiModelDefinition> aiDefinitions;
     private @Nullable File modelDirectory;
     private @Nullable File profileDirectory;
+    private @Nullable File runRecordFile;
     private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
     private @Nullable List<AiFactDefinition> factDefinitions;
     private String pluginVersion = "";
@@ -328,6 +329,27 @@ public class SrcMorphConfiguration {
      */
     public void setProfileDirectory(final @Nullable File profileDirectory) {
         this.profileDirectory = profileDirectory;
+    }
+
+    /**
+     * Returns the file the {@code generate} run writes its record to (one entry per routed file: rule,
+     * prompt, model, outcome, calls, tokens, finish reason, seconds, prompt and facts hashes; see
+     * {@code net.ladenthin.srcmorph.engine.RunRecord}), or {@code null} for no record. A relative path
+     * resolves against the configuration file's directory.
+     *
+     * @return the record file, or {@code null}
+     */
+    public @Nullable File getRunRecordFile() {
+        return runRecordFile;
+    }
+
+    /**
+     * Sets the file the {@code generate} run writes its record to.
+     *
+     * @param runRecordFile the record file, or {@code null} for no record
+     */
+    public void setRunRecordFile(final @Nullable File runRecordFile) {
+        this.runRecordFile = runRecordFile;
     }
 
     /**

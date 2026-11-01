@@ -522,4 +522,25 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         provider.close();
         assertThat(provider.toString(), containsString("OpenAiCompatibleAiGenerationProvider"));
     }
+
+    @Test
+    public void lastUsage_isTheUsageOfTheLastAnswer() throws Exception {
+        final OpenAiCompatibleAiGenerationProvider provider = provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT);
+        assertThat(provider.lastUsage(), is(AiGenerationUsage.NONE));
+
+        provider.generate(REQUEST);
+
+        assertThat(provider.lastUsage(), is(new AiGenerationUsage(1, 42, 7, 40, "stop")));
+    }
+
+    @Test
+    public void lastUsage_ofACutOffAnswer_isKeptAlthoughTheCallThrows() throws Exception {
+        answer = completion("half an answ", "length");
+        final OpenAiCompatibleAiGenerationProvider provider = provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT);
+
+        org.junit.jupiter.api.Assertions.assertThrows(java.io.IOException.class, () -> provider.generate(REQUEST));
+
+        assertThat(provider.lastUsage().finishReason(), is("length"));
+        assertThat(provider.lastUsage().completionTokens(), is(7L));
+    }
 }

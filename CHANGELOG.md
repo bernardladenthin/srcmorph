@@ -12,6 +12,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **A record of every run.** With `runRecordFile` set, the file phase writes a JSON record: per routed
+  file its rule, prompt, model, outcome, calls, prompt / cached / completion tokens, the finish reason
+  of its last call, its wall time and the CRC32 of its prompt and its facts, and the totals
+  (`engine.RunRecord`). The providers report each call's tokens and finish reason
+  (`AiGenerationProvider.lastUsage()`, `provider.AiGenerationUsage`), also for a call that ended
+  incomplete; `AiFieldGenerationSupport.takeUsage()` sums the calls of a file, a map-reduce's
+  included.
 - **`mapReduce` reads every chunk; sampling is `sampleChunks`, and every summary says what it read.**
   `onOversize: mapReduce` summarizes every chunk and reduces in batches until one summary is left; a
   `maxChunks` cap used to sample a subset silently, so a 1.6 MB dump was summarized from a third of it

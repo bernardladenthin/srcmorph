@@ -371,7 +371,7 @@ The POM sets only these; everything else is the configuration file (above).
 The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirectory`, `fileExtensions`,
 `excludes`, `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
 `profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
-`force`, `planOnly`, `aiVersion`, `projectName`) are described in
+`force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
 A configured subtree that does not exist, or lies outside the base directory, fails the goal; file
 extensions match with their dot and in any case.

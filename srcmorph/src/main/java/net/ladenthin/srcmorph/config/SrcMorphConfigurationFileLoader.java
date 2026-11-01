@@ -37,7 +37,8 @@ import java.util.regex.Pattern;
  *   <li>Relative directories resolve against the directory of the file, so the file names the same
  *       tree whatever directory it is run from: {@code baseDirectory} (unset, the caller's default),
  *       {@code outputDirectory} (unset, {@value SrcMorphConfiguration#DEFAULT_OUTPUT_DIRECTORY} below the
- *       base directory), {@code modelDirectory} and {@code profileDirectory}. A path with a root of its
+ *       base directory), {@code modelDirectory}, {@code profileDirectory} and {@code runRecordFile}. A path
+ *       with a root of its
  *       own (absolute, or on Windows root- or drive-relative) is used as it is.</li>
  * </ol>
  */
@@ -235,6 +236,10 @@ public final class SrcMorphConfigurationFileLoader {
         final File profileDirectory = srcMorph.getProfileDirectory();
         if (profileDirectory != null) {
             srcMorph.setProfileDirectory(resolved(directory, profileDirectory));
+        }
+        final File runRecordFile = srcMorph.getRunRecordFile();
+        if (runRecordFile != null) {
+            srcMorph.setRunRecordFile(resolved(directory, runRecordFile));
         }
     }
 

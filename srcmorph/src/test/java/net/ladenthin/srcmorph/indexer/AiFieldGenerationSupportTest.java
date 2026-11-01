@@ -816,4 +816,45 @@ public class AiFieldGenerationSupportTest {
             assertThat(warning.contains("Trimmed AI input"), is(false));
         }
     }
+
+    @Test
+    public void takeUsage_sumsTheCallsOfAFile_andStartsAnew() throws Exception {
+        final AiGenerationProvider provider = new AiGenerationProvider() {
+            @Override
+            public String generate(final net.ladenthin.srcmorph.document.AiGenerationRequest request) {
+                return "PARTIAL";
+            }
+
+            @Override
+            public net.ladenthin.srcmorph.provider.AiGenerationUsage lastUsage() {
+                return new net.ladenthin.srcmorph.provider.AiGenerationUsage(1, 100, 10, 0, "stop");
+            }
+        };
+        final AiFieldGenerationSupport support = supportWith(provider, "m");
+
+        support.generate(
+                oversizeRule("m", "sampleChunks", 2),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(600),
+                anyHeader());
+        final net.ladenthin.srcmorph.provider.AiGenerationUsage usage = support.takeUsage();
+
+        // two chunks and one reduce
+        assertThat(usage.calls(), is(3));
+        assertThat(usage.promptTokens(), is(300L));
+        assertThat(usage.completionTokens(), is(30L));
+        assertThat(usage.finishReason(), is(equalTo("stop")));
+        assertThat(support.takeUsage(), is(net.ladenthin.srcmorph.provider.AiGenerationUsage.NONE));
+    }
+
+    @Test
+    public void takeUsage_aFailedCall_stillCounts() throws Exception {
+        final AiFieldGenerationSupport support = supportWithModels(request -> "", normalWindowModel("m"));
+
+        support.generate(normalRule("m", null), Files.createTempFile("Small", ".java"), "file", "x", anyHeader());
+
+        // the empty answer was one call; a lambda provider reports no tokens
+        assertThat(support.takeUsage().calls(), is(1));
+    }
 }

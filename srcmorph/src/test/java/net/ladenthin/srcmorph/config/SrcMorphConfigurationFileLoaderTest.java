@@ -160,7 +160,8 @@ public class SrcMorphConfigurationFileLoaderTest {
         final Path file = write(
                 "project/config/srcmorph.yaml",
                 "srcMorph:\n  baseDirectory: \"..\"\n  outputDirectory: \"out\"\n"
-                        + "  modelDirectory: \"models\"\n  profileDirectory: \"../profiles\"\n");
+                        + "  modelDirectory: \"models\"\n  profileDirectory: \"../profiles\"\n"
+                        + "  runRecordFile: \"records/run.json\"\n");
         final Path directory = file.getParent().toAbsolutePath();
 
         final SrcMorphConfiguration srcMorph = SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES)
@@ -176,6 +177,9 @@ public class SrcMorphConfigurationFileLoaderTest {
         assertThat(
                 srcMorph.getProfileDirectory(),
                 is(equalTo(directory.getParent().resolve("profiles").toFile())));
+        assertThat(
+                srcMorph.getRunRecordFile(),
+                is(equalTo(directory.resolve("records/run.json").toFile())));
     }
 
     @Test
@@ -190,6 +194,7 @@ public class SrcMorphConfigurationFileLoaderTest {
                 is(equalTo(defaultBase().toPath().resolve("src/site/ai").toFile())));
         assertThat(srcMorph.getModelDirectory(), is(nullValue()));
         assertThat(srcMorph.getProfileDirectory(), is(nullValue()));
+        assertThat(srcMorph.getRunRecordFile(), is(nullValue()));
     }
 
     @Test

@@ -42,6 +42,9 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     @ToString.Exclude
     private @Nullable LlamaModel model;
 
+    /** The usage of the last {@link #generate} call. */
+    private AiGenerationUsage lastUsage = AiGenerationUsage.NONE;
+
     private final AiPromptSupport promptSupport;
 
     /**
@@ -173,7 +176,9 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
+        lastUsage = AiGenerationUsage.NONE;
         final ChatResponse response = chatResponse(request);
+        lastUsage = AiGenerationUsage.of(response);
         support.logPromptCacheReuse(request, response);
         final String text = completionParser.parseCompletion(response.getFirstContent());
         support.requireCompleteAnswer(request, response, text);
@@ -193,6 +198,11 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
      */
     private ChatResponse chatResponse(final AiGenerationRequest request) {
         return chatResponseParser.parseResponse(model().chatComplete(support.buildInferenceParameters(request)));
+    }
+
+    @Override
+    public AiGenerationUsage lastUsage() {
+        return lastUsage;
     }
 
     // Narrows away the interface's checked IOException: the chat path (chatComplete + parse) throws only

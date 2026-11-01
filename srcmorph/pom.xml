@@ -756,6 +756,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.provider.AiIncompleteAnswerException</param>
                         <param>net.ladenthin.srcmorph.provider.GgufModelInfo</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationTimings</param>
+                        <param>net.ladenthin.srcmorph.provider.AiGenerationUsage</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationProvider</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.srcmorph.provider.MockAiGenerationProvider</param>
@@ -785,6 +786,8 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory</param>
                                 <param>net.ladenthin.srcmorph.provider.LlamaCppJniProviderSupport</param>
                         <param>net.ladenthin.srcmorph.engine.EngineSupport</param>
+                        <param>net.ladenthin.srcmorph.engine.RunRecord</param>
+                        <param>net.ladenthin.srcmorph.engine.RunRecord$Entry</param>
                         <param>net.ladenthin.srcmorph.engine.GenerateResult</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport$ModelMeasurement</param>

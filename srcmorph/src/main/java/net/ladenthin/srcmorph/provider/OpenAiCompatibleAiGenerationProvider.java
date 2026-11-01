@@ -112,6 +112,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     @ToString.Exclude
     private final RetryWaiter waiter;
 
+    /** The usage of the last {@link #generate} call. */
+    private AiGenerationUsage lastUsage = AiGenerationUsage.NONE;
+
     /** How often a request that failed with a retryable status or a timeout is sent again. */
     private final int maxRetries;
 
@@ -169,10 +172,17 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
+        lastUsage = AiGenerationUsage.NONE;
         final ChatResponse response = chatResponse(request);
+        lastUsage = AiGenerationUsage.of(response);
         final String text = completionParser.parseCompletion(response.getFirstContent());
         truncationSupport.requireCompleteAnswer(request, response, text);
         return text;
+    }
+
+    @Override
+    public AiGenerationUsage lastUsage() {
+        return lastUsage;
     }
 
     @Override

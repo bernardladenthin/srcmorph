@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.engine;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
+import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFactDefinitionLoader;
 import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
@@ -24,6 +26,8 @@ import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.provider.AiGenerationUsage;
+import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.support.AiProgressBar;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
@@ -57,6 +61,9 @@ public final class GenerateEngine {
 
     /** Nanoseconds per second, for converting the measured run elapsed time to whole seconds. */
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
+
+    /** The checksums of the run record's prompt and facts hashes. */
+    private static final AiChecksumSupport CHECKSUMS = new AiChecksumSupport();
 
     private final SrcMorphConfiguration config;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
@@ -226,6 +233,7 @@ public final class GenerateEngine {
         final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
         final int totalFiles = plan.routedCount();
         final long runStartNanos = System.nanoTime();
+        final RunRecord record = new RunRecord(config.getPluginVersion());
         long doneEstimatedSeconds = 0;
         int doneFiles = 0;
         int wrote = 0;
@@ -246,6 +254,7 @@ public final class GenerateEngine {
                         new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
                 for (final AiIndexPlan.Entry entry : group.getValue()) {
                     AiIndexOutcome outcome;
+                    final long fileStartNanos = System.nanoTime();
                     try {
                         outcome = fileIndexer.indexFile(entry.file(), entry.rule(), support);
                     } catch (final IOException e) {
@@ -253,6 +262,14 @@ public final class GenerateEngine {
                         LOGGER.error("Summarizing {} failed: {}", entry.file(), String.valueOf(e.getMessage()));
                         outcome = AiIndexOutcome.FAILED;
                     }
+                    record.add(recordEntry(
+                            basePath,
+                            entry,
+                            aiDefinitionKey,
+                            outcome,
+                            support.takeUsage(),
+                            System.nanoTime() - fileStartNanos,
+                            promptSupport));
                     if (outcome == AiIndexOutcome.WRITTEN) {
                         wrote++;
                     } else if (outcome == AiIndexOutcome.UNCHANGED) {
@@ -277,6 +294,12 @@ public final class GenerateEngine {
             }
         }
 
+        final File runRecordFile = config.getRunRecordFile();
+        if (runRecordFile != null) {
+            record.write(runRecordFile.toPath());
+            LOGGER.info("Run record written: {}", runRecordFile);
+        }
+
         final int skippedCount = plan.skipped().size();
         LOGGER.info(
                 "Generated AI files: {} written, {} unchanged, {} skipped, {} failed",
@@ -291,6 +314,63 @@ public final class GenerateEngine {
         LOGGER.info("AI index generation finished.");
 
         return new GenerateResult(false, wrote, unchanged, skippedCount);
+    }
+
+    /**
+     * Returns the run record's entry of one routed file.
+     *
+     * @param basePath      the base directory, the file is recorded relative to it
+     * @param entry         the file's plan entry
+     * @param model         the model key of its group
+     * @param outcome       what happened to it
+     * @param usage         the tokens and calls it cost
+     * @param nanos         its wall time
+     * @param promptSupport the prompts, for the hash of its prompt
+     * @return the entry
+     */
+    private static RunRecord.Entry recordEntry(
+            final Path basePath,
+            final AiIndexPlan.Entry entry,
+            final String model,
+            final AiIndexOutcome outcome,
+            final AiGenerationUsage usage,
+            final long nanos,
+            final AiPromptSupport promptSupport) {
+        final AiFieldGenerationConfig rule = entry.rule();
+        final String id = rule.getId();
+        return new RunRecord.Entry(
+                basePath.relativize(entry.file()).toString().replace('\\', '/'),
+                id != null ? id : rule.getPromptKey(),
+                rule.getPromptKey(),
+                model,
+                outcome,
+                usage,
+                nanos,
+                CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey())),
+                factsHash(rule.getFacts()));
+    }
+
+    /**
+     * Returns the CRC32 of a rule's fact counters (label, pattern and ignore of each, in order), empty
+     * without counters.
+     *
+     * @param facts the counters
+     * @return the hash, or an empty string
+     */
+    static String factsHash(final @Nullable List<AiFactCounter> facts) {
+        if (facts == null || facts.isEmpty()) {
+            return "";
+        }
+        final StringBuilder text = new StringBuilder();
+        for (final AiFactCounter counter : facts) {
+            text.append(counter.getLabel())
+                    .append('\t')
+                    .append(counter.getPattern())
+                    .append('\t')
+                    .append(counter.isIgnore())
+                    .append('\n');
+        }
+        return CHECKSUMS.calculateCrc32Hex(text.toString());
     }
 
     /**
