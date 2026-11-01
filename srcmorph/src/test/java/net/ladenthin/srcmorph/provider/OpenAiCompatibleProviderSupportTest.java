@@ -561,15 +561,29 @@ public class OpenAiCompatibleProviderSupportTest {
     // <editor-fold defaultstate="collapsed" desc="retries and context overflow">
     @Test
     public void isRetryable_timeoutRateLimitAndServerErrors() {
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(408), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(500), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(599), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(499), is(false));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(600), is(false));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(400), is(false));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(401), is(false));
-        assertThat(OpenAiCompatibleProviderSupport.isRetryable(413), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(408, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":\"rate limited\"}"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(500, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(502, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(504, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(599, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(499, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(600, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(400, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(401, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(413, ""), is(false));
+    }
+
+    @Test
+    public void isRetryable_notWhatNoRetryChanges() {
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(501, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(505, ""), is(false));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":{\"code\":\"insufficient_quota\"}}"),
+                is(false));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isRetryable(429, "You exceeded your current quota, please check"),
+                is(false));
     }
 
     @Test
@@ -580,6 +594,14 @@ public class OpenAiCompatibleProviderSupportTest {
                         400, "{\"error\":\"This model's Maximum Context length is 131072\"}"),
                 is(true));
         assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(400, "exceed the context window"), is(true));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isContextOverflow(
+                        400, "the request exceeds the available context size, try increasing it"),
+                is(true));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isContextOverflow(
+                        400, "The input token count (1200000) exceeds the maximum number of tokens allowed"),
+                is(true));
         assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(400, "unknown model"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(500, "context length"), is(false));
     }
@@ -591,6 +613,21 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(
                 OpenAiCompatibleProviderSupport.retryDelayMillis("100000", 1, 0.0d),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("299", 1, 0.0d),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS - 1_000L));
+        // a number of seconds of any length is a long wait, not the short backoff
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("12345678901234567890", 1, 0.0d),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+    }
+
+    @Test
+    public void retryDelayMillis_aRetryAfterThatIsNoNumber_takesTheBackoff() {
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("", 1, 0.0d), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("-1", 1, 0.0d), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("1.5", 1, 0.0d), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("9a", 1, 0.0d), is(1_000L));
     }
 
     @Test

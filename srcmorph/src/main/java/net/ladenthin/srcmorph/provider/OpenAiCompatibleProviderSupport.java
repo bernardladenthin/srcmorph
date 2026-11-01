@@ -98,7 +98,8 @@ final class OpenAiCompatibleProviderSupport {
     /** How servers word a refused prompt that is longer than the context, in any case. */
     private static final Pattern CONTEXT_OVERFLOW_WORDING = Pattern.compile(
             "context[ _]length|maximum context|context window|too many tokens|prompt is too long"
-                    + "|reduce the length|exceeds? the context",
+                    + "|reduce the length|exceeds? the (?:available )?context|input token count"
+                    + "|maximum number of tokens",
             Pattern.CASE_INSENSITIVE);
 
     /** The backoff before the first retry when the server sends no {@code Retry-After}. */
@@ -113,8 +114,15 @@ final class OpenAiCompatibleProviderSupport {
     /** Up to this fraction of the backoff is added as jitter. */
     static final double RETRY_JITTER_FRACTION = 0.25d;
 
-    /** A {@code Retry-After} given in seconds. */
-    private static final Pattern RETRY_AFTER_SECONDS = Pattern.compile("[0-9]{1,9}");
+    /** A 429 that no wait cures: the account's quota or credit is used up. */
+    private static final Pattern QUOTA_EXHAUSTED = Pattern.compile(
+            "insufficient_quota|exceeded your current quota|insufficient credits", Pattern.CASE_INSENSITIVE);
+
+    /** A 5xx that sending again cannot change: not implemented, HTTP version not supported. */
+    private static final int HTTP_NOT_IMPLEMENTED = 501;
+
+    /** See {@link #HTTP_NOT_IMPLEMENTED}. */
+    private static final int HTTP_VERSION_NOT_SUPPORTED = 505;
 
     /** Milliseconds per second. */
     private static final long MILLIS_PER_SECOND = 1_000L;
@@ -575,15 +583,22 @@ final class OpenAiCompatibleProviderSupport {
 
     /**
      * Whether a request that failed with this status may succeed when sent again: a timeout of the
-     * server ({@code 408}), a rate limit ({@code 429}) or a server error ({@code 5xx}).
+     * server ({@code 408}), a rate limit ({@code 429}, unless its body says the quota or credit is used
+     * up) or a server error ({@code 5xx}, but not {@code 501} and {@code 505}, which no retry changes).
      *
      * @param status the HTTP status
-     * @return {@code true} for 408, 429 and 500 to 599
+     * @param body   the error body
+     * @return {@code true} for 408, a 429 of a rate limit, and 500 to 599 except 501 and 505
      */
-    static boolean isRetryable(final int status) {
+    static boolean isRetryable(final int status, final String body) {
+        if (status == HTTP_TOO_MANY_REQUESTS) {
+            return !QUOTA_EXHAUSTED.matcher(body).find();
+        }
         return status == HTTP_REQUEST_TIMEOUT
-                || status == HTTP_TOO_MANY_REQUESTS
-                || (status >= HTTP_SERVER_ERROR_FIRST && status < HTTP_SERVER_ERROR_END);
+                || (status >= HTTP_SERVER_ERROR_FIRST
+                        && status < HTTP_SERVER_ERROR_END
+                        && status != HTTP_NOT_IMPLEMENTED
+                        && status != HTTP_VERSION_NOT_SUPPORTED);
     }
 
     /**
@@ -608,19 +623,41 @@ final class OpenAiCompatibleProviderSupport {
      * {@link #RETRY_BASE_DELAY_MILLIS}, at most {@link #MAX_RETRY_BACKOFF_MILLIS}, plus up to a quarter
      * of it as jitter so that clients that failed together do not retry together.
      *
-     * @param retryAfter the {@code Retry-After} header, or {@code null}; a date instead of seconds is
-     *                   ignored
+     * @param retryAfter the {@code Retry-After} header, or {@code null}; seconds of any length are capped,
+     *                   a date instead of seconds is ignored
      * @param retry      the retry about to be made, from {@code 1}
      * @param jitter     a random number in {@code [0, 1)}
      * @return the delay in milliseconds
      */
     static long retryDelayMillis(final @Nullable String retryAfter, final int retry, final double jitter) {
-        final String seconds = retryAfter == null ? "" : retryAfter.trim();
-        if (RETRY_AFTER_SECONDS.matcher(seconds).matches()) {
-            return Math.min(MAX_RETRY_AFTER_MILLIS, Long.parseLong(seconds) * MILLIS_PER_SECOND);
+        final long asked = retryAfterMillis(retryAfter == null ? "" : retryAfter.trim());
+        if (asked >= 0) {
+            return asked;
         }
         final long backoff = Math.min(MAX_RETRY_BACKOFF_MILLIS, RETRY_BASE_DELAY_MILLIS << Math.min(retry - 1, 30));
         return backoff + (long) (backoff * RETRY_JITTER_FRACTION * jitter);
+    }
+
+    /**
+     * The {@code Retry-After} seconds as milliseconds, at most {@link #MAX_RETRY_AFTER_MILLIS}, read digit
+     * by digit so that no length overflows.
+     *
+     * @param seconds the trimmed header value
+     * @return the milliseconds, or {@code -1} when the value is not a number of seconds
+     */
+    private static long retryAfterMillis(final String seconds) {
+        if (seconds.isEmpty()) {
+            return -1;
+        }
+        long millis = 0;
+        for (int i = 0; i < seconds.length(); i++) {
+            final char c = seconds.charAt(i);
+            if (c < '0' || c > '9') {
+                return -1;
+            }
+            millis = Math.min(MAX_RETRY_AFTER_MILLIS, millis * 10 + (c - '0') * MILLIS_PER_SECOND);
+        }
+        return millis;
     }
 
     /**

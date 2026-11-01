@@ -25,8 +25,9 @@ import org.slf4j.LoggerFactory;
  * are in it, the next request waits until the oldest one leaves the window.
  *
  * <p>A server answers a request over its own limit with {@code 429} (the GitHub Copilot API Gateway's
- * {@code rateLimitPerMinute}), and the {@code openai-compatible} provider does not retry; a fast model
- * would stop the run after a few files. Waiting here keeps it under the limit instead.</p>
+ * {@code rateLimitPerMinute}). The {@code openai-compatible} provider retries a {@code 429} after a
+ * backoff, but a fast model would spend its retries on the limit and fail files; waiting here keeps it
+ * under the limit instead.</p>
  *
  * <p>{@link #shared(String, int)} hands every provider of one server (its {@code baseUrl} and key
  * variable) with the same limit the same window, so the models and the phases of one run count

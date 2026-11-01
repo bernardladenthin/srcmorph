@@ -26,7 +26,13 @@ public class AiChecksumSupport {
         return calculateCrc32Hex(value.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String calculateCrc32Hex(final byte[] bytes) {
+    /**
+     * Calculates the CRC32 of bytes as eight upper-case hexadecimal digits.
+     *
+     * @param bytes the bytes
+     * @return the checksum
+     */
+    public String calculateCrc32Hex(final byte[] bytes) {
         final CRC32 crc32 = new CRC32();
         crc32.update(bytes);
         return String.format("%08X", crc32.getValue());

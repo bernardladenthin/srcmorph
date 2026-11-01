@@ -40,6 +40,42 @@ public final class AiSourceLines {
     }
 
     /**
+     * Returns the bytes with every {@code \r\n} and every lone {@code \r} replaced by {@code \n}: the
+     * line endings of {@link #normalize(String)} on the bytes themselves, so a checksum over them sees
+     * every byte of a file that is not valid UTF-8 (whose decoded text has the replacement character
+     * where those bytes were) and, for valid UTF-8, equals the checksum of the normalized text: a
+     * {@code \r} or {@code \n} byte is never part of a multi-byte UTF-8 sequence.
+     *
+     * @param bytes the file's bytes
+     * @return the bytes with {@code \n} line endings only (the same array when it has no {@code \r})
+     */
+    public static byte[] normalize(final byte[] bytes) {
+        boolean carriageReturn = false;
+        for (final byte b : bytes) {
+            if (b == '\r') {
+                carriageReturn = true;
+                break;
+            }
+        }
+        if (!carriageReturn) {
+            return bytes;
+        }
+        final byte[] out = new byte[bytes.length];
+        int length = 0;
+        for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] == '\r') {
+                out[length++] = (byte) LINE_FEED;
+                if (i + 1 < bytes.length && bytes[i + 1] == '\n') {
+                    i++;
+                }
+            } else {
+                out[length++] = bytes[i];
+            }
+        }
+        return java.util.Arrays.copyOf(out, length);
+    }
+
+    /**
      * Counts the lines of a text: its line endings ({@code \r\n}, {@code \r} or {@code \n}), plus one when
      * the text does not end with one, so a final line ending adds no empty line. An empty text has none.
      *

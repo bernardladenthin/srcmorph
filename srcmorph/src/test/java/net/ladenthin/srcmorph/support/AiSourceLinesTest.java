@@ -71,4 +71,53 @@ public class AiSourceLinesTest {
         assertThat(AiSourceLines.split(""), is(equalTo(new String[] {""})));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="normalize(byte[])">
+    @Test
+    public void normalizeBytes_crLfAndLoneCr_becomeLf() {
+        final byte[] bytes = {'a', '\r', '\n', 'b', '\r', 'c', '\n', '\r'};
+
+        assertThat(AiSourceLines.normalize(bytes), is(equalTo(new byte[] {'a', '\n', 'b', '\n', 'c', '\n', '\n'})));
+    }
+
+    @Test
+    public void normalizeBytes_aCrAtTheStart_becomesLf() {
+        assertThat(AiSourceLines.normalize(new byte[] {'\r', '\n', 'x'}), is(equalTo(new byte[] {'\n', 'x'})));
+        assertThat(AiSourceLines.normalize(new byte[] {'\r'}), is(equalTo(new byte[] {'\n'})));
+    }
+
+    @Test
+    public void normalizeBytes_withoutCr_isTheSameArray() {
+        final byte[] bytes = {'a', '\n', 'b'};
+
+        assertThat(AiSourceLines.normalize(bytes), is(sameInstance(bytes)));
+    }
+
+    @Test
+    public void normalizeBytes_ofValidUtf8_areTheBytesOfTheNormalizedText() {
+        final String text = "Grüße\r\n€\r";
+        final byte[] utf8 = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        assertThat(
+                AiSourceLines.normalize(utf8),
+                is(equalTo(AiSourceLines.normalize(text).getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+    }
+
+    @Test
+    public void normalizeBytes_keepAnEditOfATextThatIsNotUtf8() {
+        // "aä" and "aö" in ISO-8859-1: both decode to "a�" as UTF-8, their bytes differ
+        final byte[] before = {'a', (byte) 0xE4};
+        final byte[] after = {'a', (byte) 0xF6};
+        final AiChecksumSupport checksums = new AiChecksumSupport();
+
+        assertThat(
+                new String(before, java.nio.charset.StandardCharsets.UTF_8),
+                is(equalTo(new String(after, java.nio.charset.StandardCharsets.UTF_8))));
+        assertThat(
+                checksums
+                        .calculateCrc32Hex(AiSourceLines.normalize(before))
+                        .equals(checksums.calculateCrc32Hex(AiSourceLines.normalize(after))),
+                is(false));
+    }
+    // </editor-fold>
 }

@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -284,9 +285,11 @@ public class SourceFileIndexer {
 
         final Path sourceFileNamePath = sourceFile.getFileName();
         final String fileName = sourceFileNamePath != null ? sourceFileNamePath.toString() : sourceFile.toString();
-        // read once, with \n line endings: the checksum, the prompt and the facts see the same text
-        final String sourceText = readSource(sourceFile);
-        final String checksum = checksumSupport.calculateCrc32Hex(sourceText);
+        // read once, with \n line endings: the prompt and the facts see the same text, and the checksum
+        // the same bytes, every one of them, also where a file that is not UTF-8 decodes to U+FFFD
+        final byte[] sourceBytes = Files.readAllBytes(sourceFile);
+        final String sourceText = AiSourceLines.normalize(new String(sourceBytes, StandardCharsets.UTF_8));
+        final String checksum = checksumSupport.calculateCrc32Hex(AiSourceLines.normalize(sourceBytes));
         final String sourceModified =
                 timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());

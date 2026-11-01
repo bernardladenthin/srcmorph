@@ -38,7 +38,8 @@ below was verified against the code. Fixed and deleted from here: the chunker's 
 behind a long line, the overflow retry that cut a fitting source behind the rule's back, a provider's
 unchecked error ending the run, the run record lost on an abort, the documentation drift, relative
 paths against the working directory, Calibrate's XML block, the unchecked package and project
-rules, an unknown provider name, `All` with `planOnly`, keys set to nothing, the echoed strategy.
+rules, an unknown provider name, `All` with `planOnly`, keys set to nothing, the echoed strategy,
+the resent POST after a read timeout, the checksum of non-UTF-8 files.
 
 **Decisions first** (they change what the fixes below look like):
 
@@ -63,15 +64,9 @@ rules, an unknown provider name, `All` with `planOnly`, keys set to nothing, the
 
 **Core (engine, indexer, provider, config):**
 
-- The checksum is taken over decoded text, so an edit in a non-UTF-8 file (an umlaut in Latin-1)
-  counts as unchanged; take it over the bytes with only the line endings normalized.
-- The OpenAI-compatible provider resends a POST after a read timeout (600 s) up to `maxRetries`
-  times, each possibly billed; retry connect timeouts only. Also: `Retry-After` of ten or more digits
-  or an HTTP date falls back to the short backoff; 501, 505 and a 429 with `insufficient_quota` are
-  retried although permanent; the overflow regex misses Gemini's "input token count exceeds".
-- CodeQL #271 (`NumberFormatException` in the `Retry-After` parse) cannot happen behind the
-  `[0-9]{1,9}` match; parse the digits without `parseLong` and the alert has nothing to point at.
-  CodeQL #272: drop `@EqualsAndHashCode` from the mutable `RunRecord` (keep it on `Entry`).
+- CodeQL #272: drop `@EqualsAndHashCode` from the mutable `RunRecord` (keep it on `Entry`). #271 has
+  nothing to point at any more (`Retry-After` is read digit by digit); the alert closes with the next
+  analysis or is dismissed by the owner. An HTTP-date `Retry-After` still takes the short backoff.
 - Overlapping or nested subtrees (the plugin adds every existing resource directory, e.g.
   `<directory>${project.basedir}</directory>`) collect files twice, and the run fails with "X and X
   would both be summarized"; deduplicate subtrees and candidates by their real path.

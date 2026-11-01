@@ -66,6 +66,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     /** Read timeout, in milliseconds: a long file on a slow model can take minutes to answer. */
     public static final int READ_TIMEOUT_MILLIS = 600_000;
 
+    /** Milliseconds per second, for the read timeout in a message. */
+    private static final int MILLIS_PER_SECOND = 1_000;
+
     /** The {@code X-Title} header, which OpenRouter shows as the application of these requests. */
     public static final String APPLICATION_TITLE = "srcmorph";
 
@@ -324,7 +327,20 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
                     out.write(body.getBytes(StandardCharsets.UTF_8));
                 }
             }
-            final int status = connection.getResponseCode();
+            final int status;
+            try {
+                status = connection.getResponseCode();
+            } catch (final SocketTimeoutException e) {
+                if (body == null) {
+                    throw e;
+                }
+                // the request was sent: the server may still be generating it and bill it, so it is not
+                // sent again (a connect timeout, before anything was sent, is retried)
+                throw new IOException(
+                        endpoint + " sent no answer within " + READ_TIMEOUT_MILLIS / MILLIS_PER_SECOND
+                                + " s; the request is not sent again",
+                        e);
+            }
             if (!OpenAiCompatibleProviderSupport.isSuccess(status)) {
                 final InputStream error = connection.getErrorStream();
                 final String text = error == null ? "" : read(error);
@@ -332,7 +348,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
                 if (OpenAiCompatibleProviderSupport.isContextOverflow(status, text)) {
                     throw new AiContextOverflowException(message);
                 }
-                if (OpenAiCompatibleProviderSupport.isRetryable(status)) {
+                if (OpenAiCompatibleProviderSupport.isRetryable(status, text)) {
                     throw new RetryableAnswerException(message, connection.getHeaderField("Retry-After"));
                 }
                 throw new IOException(message);
