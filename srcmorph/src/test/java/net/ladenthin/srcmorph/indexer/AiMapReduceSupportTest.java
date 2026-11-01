@@ -118,20 +118,32 @@ public class AiMapReduceSupportTest {
     @Test
     public void chunkCoverage_allOrSampled() {
         assertThat(
-                AiMapReduceSupport.chunkCoverage(9, 9, 0), is(equalTo("**Coverage:** 9 of 9 chunks summarized\n\n")));
+                AiMapReduceSupport.chunkCoverage(9, 9, 0, 0),
+                is(equalTo("**Coverage:** 9 of 9 chunks summarized\n\n")));
         assertThat(
-                AiMapReduceSupport.chunkCoverage(6, 9, 0),
+                AiMapReduceSupport.chunkCoverage(6, 9, 0, 0),
                 is(equalTo("**Coverage:** 6 of 9 chunks summarized (sampled)\n\n")));
     }
 
     @Test
     public void chunkCoverage_namesTheCallsCutToFit() {
         assertThat(
-                AiMapReduceSupport.chunkCoverage(9, 9, 1),
+                AiMapReduceSupport.chunkCoverage(9, 9, 1, 0),
                 is(equalTo("**Coverage:** 9 of 9 chunks summarized (1 call cut to fit the window)\n\n")));
         assertThat(
-                AiMapReduceSupport.chunkCoverage(6, 9, 2),
+                AiMapReduceSupport.chunkCoverage(6, 9, 2, 0),
                 is(equalTo("**Coverage:** 6 of 9 chunks summarized (sampled; 2 calls cut to fit the window)\n\n")));
+    }
+
+    @Test
+    public void chunkCoverage_namesThePartSummariesCutAtTheOutputBudget() {
+        assertThat(
+                AiMapReduceSupport.chunkCoverage(11, 11, 0, 1),
+                is(equalTo("**Coverage:** 11 of 11 chunks summarized (1 part summary cut at the output budget)\n\n")));
+        assertThat(
+                AiMapReduceSupport.chunkCoverage(6, 9, 1, 5),
+                is(equalTo("**Coverage:** 6 of 9 chunks summarized (sampled; 1 call cut to fit the window;"
+                        + " 5 part summaries cut at the output budget)\n\n")));
     }
 
     @Test

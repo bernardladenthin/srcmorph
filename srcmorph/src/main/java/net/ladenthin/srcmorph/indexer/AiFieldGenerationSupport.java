@@ -144,6 +144,9 @@ public class AiFieldGenerationSupport {
     /** The calls of the current map-reduce whose input a context overflow cut to a smaller window. */
     private int cutCalls;
 
+    /** The part summaries of the current map-reduce that were cut off at the output budget and kept. */
+    private int cutParts;
+
     /**
      * Raised inside when a context overflow's smaller window would cut a source its caller does not allow
      * to be cut; the caller's rule decides with {@link #window()}.
@@ -497,17 +500,18 @@ public class AiFieldGenerationSupport {
                 chunks.size(),
                 all.size());
         cutCalls = 0;
+        cutParts = 0;
         final List<String> partials = new ArrayList<>(chunks.size());
         int index = 0;
         for (final String chunk : chunks) {
             index++;
-            partials.add(summarizeChunk(fieldGeneration, contextFile, chunk, baseHeader, safeWindow)
+            partials.add(summarizeChunk(fieldGeneration, contextFile, chunk, baseHeader, safeWindow, true)
                     .trim());
             LOGGER.info("  mapReduce chunk {}/{} summarized ({} chars)", index, chunks.size(), chunk.length());
         }
         final String reduced =
                 reducePartials(fieldGeneration, contextFile, baseHeader, partials, sourceBudget, safeWindow);
-        return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size(), cutCalls) + reduced;
+        return AiMapReduceSupport.chunkCoverage(chunks.size(), all.size(), cutCalls, cutParts) + reduced;
     }
 
     /**
@@ -551,12 +555,15 @@ public class AiFieldGenerationSupport {
                                 contextFile,
                                 AiMapReduceSupport.combineAll(level),
                                 baseHeader,
-                                safeWindow)
+                                safeWindow,
+                                false)
                         .trim();
             }
+            // a round with one batch writes the final answer, which has to be complete; the others write parts
+            final boolean part = batches.size() > 1;
             final List<String> next = new ArrayList<>(batches.size());
             for (final String batch : batches) {
-                next.add(summarizeChunk(fieldGeneration, contextFile, batch, baseHeader, safeWindow)
+                next.add(summarizeChunk(fieldGeneration, contextFile, batch, baseHeader, safeWindow, part)
                         .trim());
             }
             LOGGER.info("  mapReduce reduce round {}: {} -> {} partial(s)", round, level.size(), next.size());
@@ -573,6 +580,8 @@ public class AiFieldGenerationSupport {
      * @param chunk                  the chunk (or concatenated partials) to summarize
      * @param baseHeader             the header passed through to the request
      * @param effectiveMaxInputChars the per-call window budget
+     * @param part                   whether the answer is a part summary the reduce reads (one cut off at the
+     *                               output budget is kept), not the final answer
      * @return the provider's summary for the chunk
      * @throws IOException if the provider throws during generation
      */
@@ -581,9 +590,26 @@ public class AiFieldGenerationSupport {
             final Path contextFile,
             final String chunk,
             final AiMdHeader baseHeader,
-            final int effectiveMaxInputChars)
+            final int effectiveMaxInputChars,
+            final boolean part)
             throws IOException {
-        return generateComplete(fieldGeneration, contextFile, chunk, baseHeader, effectiveMaxInputChars, true);
+        try {
+            return generateComplete(fieldGeneration, contextFile, chunk, baseHeader, effectiveMaxInputChars, true);
+        } catch (final AiIncompleteAnswerException e) {
+            // a part summary cut at the output budget still holds what it got to, and the reduce summarizes
+            // it: a model that lists a long run of entries one by one would otherwise fail the whole file
+            if (part
+                    && e.reason() == AiIncompleteAnswerException.Reason.TRUNCATED
+                    && !compatibilityHelper.isBlank(e.partialText())) {
+                LOGGER.warn(
+                        INCOMPLETE_WARN_PREFIX + "a part of {}: {}; kept, the reduce reads it",
+                        contextFile,
+                        e.detail());
+                cutParts++;
+                return e.partialText();
+            }
+            throw e;
+        }
     }
 
     /**

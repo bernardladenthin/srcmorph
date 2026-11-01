@@ -681,6 +681,55 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
+    public void mapReduce_aPartSummaryCutAtTheOutputBudget_isKeptAndNamed() throws Exception {
+        // arrange: every map answer is cut off (a model listing entries one by one); the reduce answers
+        final AiGenerationProvider provider = request -> {
+            if (!request.sourceText().contains(AiMapReduceSupport.PART_LABEL + "1:")) {
+                throw cutOff("- `A_00001` -> one\n- `A_00002` -> two");
+            }
+            return "FINAL";
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "mapReduce", 0),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+
+        // assert
+        assertThat(result.complete(), is(true));
+        assertThat(result.body(), containsString(" part summaries cut at the output budget)\n\nFINAL"));
+    }
+
+    @Test
+    public void mapReduce_aFinalAnswerCutAtTheOutputBudget_stillFailsTheFile() {
+        // arrange: the parts are complete, the final reduce is cut off
+        final AiGenerationProvider provider = request -> {
+            if (request.sourceText().contains(AiMapReduceSupport.PART_LABEL + "1:")) {
+                throw cutOff("half a summ");
+            }
+            return "PARTIAL";
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act + assert
+        final AiGenerationResult result = assertDoesNotThrowGenerate(support);
+        assertThat(result.complete(), is(false));
+    }
+
+    private static AiGenerationResult assertDoesNotThrowGenerate(final AiFieldGenerationSupport support) {
+        return org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> support.generate(
+                oversizeRule("m", "mapReduce", 0),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader()));
+    }
+
+    @Test
     public void incomplete_retryOnce_asksAgainAndTakesTheSecondAnswer() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> calls.incrementAndGet() == 1 ? "" : "A summary.";

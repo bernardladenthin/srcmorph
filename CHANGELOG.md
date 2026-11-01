@@ -364,6 +364,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **A part summary cut at the output budget no longer fails its file.** A small model that lists a
+  long run of entries one by one (Granite 4.0 H-1B on a 6 000-constant enum: every constant as its
+  own line until the 1536 tokens ran out) had its map answer refused as incomplete, and the whole file
+  failed at the first such chunk. A part summary is an intermediate the reduce reads, so a cut one is
+  kept now, with a WARN, and the coverage line counts it (`5 part summaries cut at the output budget`);
+  the final answer still has to be complete.
+
 - **A read timeout of a request is not sent again.** The `openai-compatible` provider resent a
   `POST` that got no answer within 600 s up to `maxRetries` times, each one possibly generated and
   billed; it now fails the file after the first (a connect timeout, before anything was sent, is still

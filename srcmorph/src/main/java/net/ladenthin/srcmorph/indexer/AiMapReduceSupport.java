@@ -138,22 +138,27 @@ public final class AiMapReduceSupport {
     }
 
     /**
-     * Returns the coverage line of a map-reduce: how many of the source's chunks the summary read, and
-     * how many of its calls a context overflow made cut to a smaller window.
+     * Returns the coverage line of a map-reduce: how many of the source's chunks the summary read, how
+     * many of its calls a context overflow made cut to a smaller window, and how many part summaries the
+     * output budget cut off (kept, the reduce read them).
      *
      * @param summarized the chunks summarized
      * @param total      the chunks of the source
      * @param cutCalls   the map and reduce calls whose input was cut to fit the window
-     * @return {@code **Coverage:** 6 of 9 chunks summarized (sampled; 2 calls cut to fit the window)},
-     *         without {@code sampled} when every chunk was read and without the cut calls when none was
+     * @param cutParts   the part summaries cut off at the output budget
+     * @return {@code **Coverage:** 6 of 9 chunks summarized (sampled; 2 calls cut to fit the window; 1 part
+     *         summary cut at the output budget)}, each note only when it applies
      */
-    public static String chunkCoverage(final int summarized, final int total, final int cutCalls) {
-        final List<String> notes = new ArrayList<>(2);
+    public static String chunkCoverage(final int summarized, final int total, final int cutCalls, final int cutParts) {
+        final List<String> notes = new ArrayList<>(3);
         if (summarized < total) {
             notes.add("sampled");
         }
         if (cutCalls > 0) {
             notes.add(cutCalls + (cutCalls == 1 ? " call" : " calls") + " cut to fit the window");
+        }
+        if (cutParts > 0) {
+            notes.add(cutParts + (cutParts == 1 ? " part summary" : " part summaries") + " cut at the output budget");
         }
         return COVERAGE_HEADER + summarized + " of " + total + " chunks summarized"
                 + (notes.isEmpty() ? "" : " (" + String.join("; ", notes) + ")") + COVERAGE_SUFFIX;
