@@ -22,11 +22,10 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
    `plot.py`) and the text that cites them -- deliberately not done yet, the card keeps its
    October numbers until that is decided; the large corpus's Granite H-Tiny catalog falls from
    86 to 0 % once a copied fence no longer counts, which is what the XML-prompt decision for the
-   self-test's Granite tiers rested on. `run.py` validates its options and records `maxChunks`,
-   hashes, version, tokens and the per-request cost (`runRecordFile`); `search.py` keys its cache
-   by prompt and backs off; `large.py` writes its facts beside the corpus and plants names in the
-   middle of the dump. Then three runs each of gpt-oss-20b and GPT-6 Luna on the language,
-   benchmark and large corpora.
+   self-test's Granite tiers rested on. Then three runs each of gpt-oss-20b and GPT-6 Luna on the
+   language, benchmark and large corpora (the tools for it are done: `run.py` validates its options
+   and records hashes, versions, tokens and their cost, `search.py` keys its cache by prompt and
+   backs off, `large.py` writes its facts beside the corpus and plants names in the middle).
 
 ### Other open items
 

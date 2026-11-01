@@ -9,11 +9,13 @@ output tree (one directory per model key under <out>) the 24 file summaries are 
   camelCase and snake_case identifiers split into words; deterministic and free;
 - reader: one LLM call per question that sees every summary under its path, as an agent browsing
   the index would, and names the three files most likely to answer (OpenRouter, the key from
-  OPENROUTER_API_KEY; answers are cached, so a rerun only pays for what is new).
+  OPENROUTER_API_KEY; answers are cached by model, system prompt, parameters, context and question,
+  so a rerun only pays for what is new, and a changed prompt is never answered from the cache).
 Two baselines go through the same retrievers: "source" (the source files themselves) and "paths"
 (nothing but the paths). hit@1 / hit@3 count a question as found when an answer file is ranked
 first / among the first three; MRR is the mean reciprocal rank of the first answer file (0 when
-the reader does not name one).
+the reader does not name one). BM25 ranks only the files that share a word with the question, so an
+empty index finds nothing instead of the alphabetically first file.
 
 Writes <scores>/search.json (per run and retriever) and <scores>/search.tsv (per question).
 
@@ -27,11 +29,14 @@ import math
 import os
 import re
 import threading
+import time
+import urllib.error
 import urllib.request
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from run import EXTENSIONS
 from score import body_of
 
 HERE = Path(__file__).resolve().parent
@@ -43,6 +48,8 @@ SYSTEM = ("You find files in a code base. You get one summary per file, each und
           "developer's question. Answer with the paths of the three files most likely to answer the "
           "question, best first, as JSON: {\"files\": [\"path1\", \"path2\", \"path3\"]}. Use only "
           "paths from the list. No other text.")
+PARAMS = {"temperature": 0, "seed": 1, "max_tokens": 300}
+RETRIES = 4
 
 
 def words(text):
@@ -57,7 +64,7 @@ def words(text):
 
 
 def bm25_rank(docs, query, k1=1.5, b=0.75):
-    """The doc keys by BM25 score, best first; ties keep the doc order."""
+    """The doc keys that share a word with the query, by BM25 score, best first; ties keep the doc order."""
     tokenized = {key: words(text) for key, text in docs.items()}
     avg = sum(len(t) for t in tokenized.values()) / len(tokenized) or 1
     df = Counter(w for t in tokenized.values() for w in set(t))
@@ -71,7 +78,7 @@ def bm25_rank(docs, query, k1=1.5, b=0.75):
                 idf = math.log(1 + (n - df[w] + 0.5) / (df[w] + 0.5))
                 score += idf * tf[w] * (k1 + 1) / (tf[w] + k1 * (1 - b + b * len(tokens) / avg))
         scores[key] = score
-    return sorted(scores, key=lambda k: -scores[k])
+    return [k for k in sorted(scores, key=lambda k: -scores[k]) if scores[k] > 0]
 
 
 def documents(run, out, work, files):
@@ -88,7 +95,8 @@ def documents(run, out, work, files):
 
 
 class Reader:
-    """The LLM retriever with a JSONL answer cache keyed by model, context and question."""
+    """The LLM retriever with a JSONL answer cache keyed by model, system prompt, parameters, context
+    and question."""
 
     def __init__(self, model, cache_path):
         self.model = model
@@ -102,10 +110,10 @@ class Reader:
                 self.cache[entry["id"]] = entry
 
     def ask(self, context, question):
-        key = hashlib.sha256((self.model + "\0" + context + "\0" + question).encode("utf-8")).hexdigest()
+        key = cache_key(self.model, context, question)
         if key in self.cache:
             return self.cache[key]["answer"]
-        body = {"model": self.model, "temperature": 0, "seed": 1, "max_tokens": 300,
+        body = {"model": self.model, **PARAMS,
                 "usage": {"include": True},
                 "messages": [{"role": "system", "content": SYSTEM},
                              {"role": "user", "content": context + "\n\nQuestion: " + question}]}
@@ -113,14 +121,7 @@ class Reader:
                                          data=json.dumps(body).encode("utf-8"),
                                          headers={"Authorization": "Bearer " + os.environ["OPENROUTER_API_KEY"],
                                                   "Content-Type": "application/json"})
-        for attempt in range(4):
-            try:
-                with urllib.request.urlopen(request, timeout=180) as response:
-                    data = json.load(response)
-                break
-            except OSError:
-                if attempt == 3:
-                    raise
+        data = post_with_backoff(request)
         answer = data["choices"][0]["message"].get("content") or ""
         with self.lock:
             self.cost += data.get("usage", {}).get("cost", 0.0)
@@ -129,6 +130,33 @@ class Reader:
             with open(self.cache_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
         return answer
+
+
+def cache_key(model, context, question):
+    """The reader cache's key: everything that decides the answer."""
+    return hashlib.sha256(json.dumps({"model": model, "system": SYSTEM, "params": PARAMS, "context": context,
+                                      "question": question}, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def post_with_backoff(request, sleep=time.sleep):
+    """The JSON answer of a request; a 429, a 5xx or a broken connection is retried after 2, 4 and 8
+    seconds, another HTTP error and an error object in the answer fail at once."""
+    for attempt in range(RETRIES):
+        try:
+            with urllib.request.urlopen(request, timeout=180) as response:
+                data = json.load(response)
+        except urllib.error.HTTPError as e:
+            if (e.code != 429 and e.code < 500) or attempt == RETRIES - 1:
+                raise
+        except OSError:
+            if attempt == RETRIES - 1:
+                raise
+        else:
+            if "error" in data:
+                raise IOError(f"the reader answered an error: {data['error']}")
+            return data
+        sleep(2 ** (attempt + 1))
+    raise AssertionError("unreachable")
 
 
 def reader_rank(answer, files):
@@ -178,7 +206,7 @@ def main():
 
     work, out = Path(args.work), Path(args.out)
     questions = json.loads((HERE / "search-questions.json").read_text(encoding="utf-8"))["questions"]
-    files = sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file())
+    files = sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file() and p.suffix in EXTENSIONS)
     for q in questions:
         missing = [a for a in q["answer"] if a not in files]
         assert not missing, f"{q['id']}: {missing} not in the corpus"
@@ -206,10 +234,12 @@ def main():
 
     scores = Path(args.scores)
     scores.mkdir(parents=True, exist_ok=True)
-    meta = {"questions": len(questions), "files": len(files), "reader": None if args.no_reader else args.reader}
+    meta = {"questions": len(questions), "files": len(files), "reader": None if args.no_reader else args.reader,
+            "system": hashlib.sha256(SYSTEM.encode("utf-8")).hexdigest()[:16], "params": PARAMS,
+            "readerCostUsd": round(reader.cost, 4) if reader else None}
     (scores / "search.json").write_text(json.dumps({"meta": meta, "runs": results}, indent=1) + "\n",
-                                        encoding="utf-8")
-    (scores / "search.tsv").write_text("\n".join(rows) + "\n", encoding="utf-8")
+                                        encoding="utf-8", newline="\n")
+    (scores / "search.tsv").write_text("\n".join(rows) + "\n", encoding="utf-8", newline="\n")
     if reader:
         print(f"reader cost this run: {reader.cost:.4f} USD")
 

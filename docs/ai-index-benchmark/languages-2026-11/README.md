@@ -13,9 +13,12 @@ The outputs behind the model card's finding 7 and the language prompts in
 | `large/granite-fallback/run1` | the same | `profiles/v3` without the language prompts (XML through `file-body-fallback`) | the two Granite presets, local |
 
 The large corpus is not in the repository: `python large.py --out <dir>` writes it (seed 20261031,
-1.6 MB SQL dump, 870 KB XML catalog, 283 KB Java enum) together with its expected facts
-(`<dir>/facts-large.json`; score a copy of the three source trees without it, or the JSON counts as
-a file the run left out). From `modelcard/`, with a copy of the corpus as the work directory:
+1.6 MB SQL dump, 870 KB XML catalog, 283 KB Java enum) together with its expected facts. The runs
+here were made with the large.py of that time, which wrote the facts into the corpus as
+`<dir>/facts-large.json` (score a copy of the three source trees without it) and had no names in
+the middle of the files; the current one writes `<dir>-facts.json` next to the directory and plants
+a table, an XML element and an error-code area in each file's middle (`middle` in the facts). From
+`modelcard/`, with a copy of the corpus as the work directory:
 
 ```bash
 python score.py --work <copy of corpus-languages> --out ../languages-2026-11/languages/run1/out \
