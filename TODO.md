@@ -19,8 +19,8 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
 8. **Benchmark and measurement.** `score.py` and the tools are done and `scores/` is re-scored; the
    runs are done: [`remeasure-2026-11-01/`](docs/ai-index-benchmark/remeasure-2026-11-01/README.md)
    (hosted: gpt-oss-20b 99.4 / 99.8 / 78.1 %, GPT-6 Luna 99.8 / 100 / 97.9 % on the language, card and
-   large corpora; locally every large-file run fails at least one file). Open: the model card and its
-   finding 7 from these numbers (with D2 below); what the runs found:
+   large corpora; locally every large-file run fails at least one file), and in finding 7 of the
+   card. What the runs found:
    - **On large files the final answer outgrows the output budget.** Since an incomplete answer is
      never written, a reduce answer cut off at `maxOutputTokens` fails its file: every local preset
      (H-1B at 1536, H-Tiny and gpt-oss-20b at 4096) lost at least one of the three large files, and
@@ -46,9 +46,8 @@ the resent POST after a read timeout, the checksum of non-UTF-8 files.
 D4 the Java names keep counting from prose, the asymmetry is documented in `score.py`, done; D5 the
 header records the prompt and facts hashes a summary was written with, done. Open from them:
 
-- **D2. The model card**: no full re-render now; update only what can be measured quickly and
-  remotely (finding 7 from `remeasure-2026-11-01/`, a note on the scorer change). A full re-render
-  waits for the next round of models.
+- **D2. The model card**: done as decided: a note on the scorer change and finding 7 with the
+  re-measurement; the full re-render waits for the next round of models.
 - **D3. The self-test's Granite tiers for big XML**: keep the generic prompt; first fix the large
   files' final answers that outgrow the output budget (item 8), then measure both prompts again.
 

@@ -12,6 +12,14 @@ models marked ¹ below were in it.
 <!-- assessment:begin -->
 ## Assessment
 
+> **Scored with the scorer of October 2026.** On 2026-11-01 `modelcard/score.py` changed: a code
+> fence counts against recall only when it copies the source, everyday words count only marked as
+> code, the Java names include annotated and multi-line signatures, and a `failed` column replaces
+> `empty`. The tables, charts and numbers of this card keep their October values; the re-scored ones
+> are in [`modelcard/scores/`](modelcard/scores/), and the two current models were measured again
+> ([`remeasure-2026-11-01/`](remeasure-2026-11-01/README.md), finding 7). A full re-render waits for
+> the next round of models.
+
 ### At a glance
 
 The **quality score** is the mean of four shares: Java recall, SQL recall, other-file recall, and
@@ -356,6 +364,18 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
      Granite presets have 3); `run.py --chars-per-token` sets it for a run.
    - The scorer took the facts line for the model's text before (no lead line, the counts as the
      model's); it now scores the body without it. No run of the card above had a facts line.
+
+   **Measured again on 2026-11-01** ([`remeasure-2026-11-01/`](remeasure-2026-11-01/README.md),
+   today's scorer, three runs each on OpenRouter): with `mapReduce` reading every chunk and names
+   planted in the middle of each large file, gpt-oss-20b scored 99.4 % on the language corpus,
+   99.8 % on this corpus and 78.1 % on the large one, GPT-6 Luna 99.8, 100 and 97.9 %. Luna names
+   the planted middle of all three files in every run; gpt-oss-20b only the SQL dump's, and once its
+   final answer for the enum was cut off at 4096 tokens and the file not written. Locally the two
+   Granite presets and gpt-oss-20b each lost at least one large file the same way: since an
+   incomplete answer is never written, a final answer longer than `maxOutputTokens` fails its file.
+   For H-Tiny the XML and the generic prompt fail the catalog alike, for H-1B the generic prompt
+   keeps 6 of 8 names where the XML prompt's answer is too short; the self-test keeps the generic
+   prompt until the answers fit their budget and both are measured again.
 
 ### Repeatability
 
