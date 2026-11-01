@@ -24,8 +24,9 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
    - **On large files the final answer outgrows the output budget.** Since an incomplete answer is
      never written, a reduce answer cut off at `maxOutputTokens` fails its file: every local preset
      (H-1B at 1536, H-Tiny and gpt-oss-20b at 4096) lost at least one of the three large files, and
-     hosted gpt-oss-20b the enum once. Options: a larger budget for the presets, a reduce prompt that
-     asks for a bounded answer, or `onIncomplete: retryOnce` in the presets.
+     hosted gpt-oss-20b the enum once. A cut part summary is kept now; a cut or empty final answer
+     still fails its file (hosted gpt-oss-20b the dump once in three runs, H-Tiny catalog and dump,
+     H-1B the dump), the cause in D3 below.
    - **gpt-oss-20b's map-reduce loses the middle of a file.** It never names the catalog's or the
      enum's planted middle names (Luna does in every run); the partial summaries are not kept, so
      where they are lost is not known. Keeping the partials (beside the run record, on request) would
@@ -48,8 +49,20 @@ header records the prompt and facts hashes a summary was written with, done. Ope
 
 - **D2. The model card**: done as decided: a note on the scorer change and finding 7 with the
   re-measurement; the full re-render waits for the next round of models.
-- **D3. The self-test's Granite tiers for big XML**: keep the generic prompt; first fix the large
-  files' final answers that outgrow the output budget (item 8), then measure both prompts again.
+- **D3. The self-test's Granite tiers for big XML**: keep the generic prompt. Done: a part summary cut
+  at the output budget is kept; the family rule names no analysis channel; the big tier map-reduces
+  with H-Tiny over 64K. Measured again (hosted three runs, Granite one run each): hosted unchanged
+  within variation; H-1B now writes the enum, and the catalog only with the generic prompt (6/8 names,
+  the middle one too; the XML prompt's answer is too short); H-Tiny writes neither catalog nor dump,
+  with either prompt. Open, the cause: **map and reduce calls get the file prompt with no word on
+  what their input is.** A chunk of INSERT rows is indexed as if it were the file, so gpt-oss-20b
+  (local, the dump) invented three tables, a procedure and a trigger and lost the middle table;
+  a reduce call gets `Part 1: ... Part 7:` summaries as the "source", and H-Tiny answered with the
+  prompt's example (a `VatCalculator` class, "Calculates VAT for invoices") repeated under `Part 8:`
+  .. `Part 18:` until the budget ended. Fix: tell a map call which chunk of how many it sees and to
+  index only that, a reduce call that its input is the part summaries of one file to merge (every
+  name any part states stays); then measure both prompts again. Also: Granite's SQL chunks overflow
+  the window on every call at `charsPerToken: 3` (the retry cuts them); 2.5 for SQL would fit.
 
 **Core (engine, indexer, provider, config):**
 
