@@ -46,27 +46,33 @@ final class EngineSupport {
     }
 
     /**
-     * Resolves the configured subtree strings against {@code basePath}, filtering out any paths that do
-     * not exist on disk. Used by {@link GenerateEngine} and {@link AggregatePackagesEngine}.
+     * Resolves the configured subtree strings against {@code basePath}. Used by {@link GenerateEngine} and
+     * {@link AggregatePackagesEngine}.
      *
      * @param basePath absolute, normalised project base directory
      * @param subtrees configured subtree strings, or {@code null}/empty for none
-     * @return list of resolved, existing subtree paths; empty if none configured or none exist
+     * @return list of resolved subtree paths; empty if none are configured
+     * @throws SrcMorphException if a subtree does not exist, or lies outside {@code basePath} (another
+     *                           drive included), where its output would leave the output directory
      */
-    static List<Path> resolveSubtrees(final Path basePath, final @Nullable List<String> subtrees) {
-        final List<Path> resolved = new ArrayList<>();
-
+    static List<Path> resolveSubtrees(final Path basePath, final @Nullable List<String> subtrees)
+            throws SrcMorphException {
         if (subtrees == null || subtrees.isEmpty()) {
-            return resolved;
+            return new ArrayList<>();
         }
+
+        final List<Path> resolved = new ArrayList<>(subtrees.size());
 
         for (final String subtree : subtrees) {
             final Path path = basePath.resolve(subtree).normalize();
-            if (path.toFile().exists()) {
-                resolved.add(path);
-            } else {
-                LOGGER.warn("Skipping missing subtree: {}", path);
+            if (!path.startsWith(basePath)) {
+                throw new SrcMorphException("Subtree '" + subtree + "' resolves to " + path
+                        + ", outside the base directory " + basePath + "; a subtree must lie inside it");
             }
+            if (!path.toFile().isDirectory()) {
+                throw new SrcMorphException("Subtree '" + subtree + "' does not exist: " + path);
+            }
+            resolved.add(path);
         }
 
         return resolved;

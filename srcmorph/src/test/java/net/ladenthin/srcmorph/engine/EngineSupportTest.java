@@ -65,19 +65,19 @@ public class EngineSupportTest {
 
     // <editor-fold defaultstate="collapsed" desc="resolveSubtrees">
     @Test
-    public void resolveSubtrees_nullReturnsEmpty() {
+    public void resolveSubtrees_nullReturnsEmpty() throws SrcMorphException {
         assertThat(EngineSupport.resolveSubtrees(tempDir, null), is(Collections.<Path>emptyList()));
     }
 
     @Test
-    public void resolveSubtrees_emptyReturnsEmpty() {
+    public void resolveSubtrees_emptyReturnsEmpty() throws SrcMorphException {
         assertThat(
                 EngineSupport.resolveSubtrees(tempDir, Collections.<String>emptyList()),
                 is(Collections.<Path>emptyList()));
     }
 
     @Test
-    public void resolveSubtrees_earlyReturnResultIsMutable() {
+    public void resolveSubtrees_earlyReturnResultIsMutable() throws SrcMorphException {
         // The early-return (null/empty subtrees) branch returns the same mutable ArrayList as the
         // loop-completion branch, not an immutable Collections.emptyList(), so callers can treat every
         // result uniformly. Mutating it here must not throw UnsupportedOperationException.
@@ -87,7 +87,7 @@ public class EngineSupportTest {
     }
 
     @Test
-    public void resolveSubtrees_existingSubtreeIsResolved() throws IOException {
+    public void resolveSubtrees_existingSubtreeIsResolved() throws IOException, SrcMorphException {
         final Path sub = tempDir.resolve("exists");
         Files.createDirectories(sub);
 
@@ -97,10 +97,29 @@ public class EngineSupportTest {
     }
 
     @Test
-    public void resolveSubtrees_missingSubtreeIsSkipped() {
-        final List<Path> resolved = EngineSupport.resolveSubtrees(tempDir, Arrays.asList("does-not-exist"));
+    public void resolveSubtrees_missingSubtree_isRefused() {
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class, () -> EngineSupport.resolveSubtrees(tempDir, Arrays.asList("does-not-exist")));
 
-        assertThat(resolved, is(Collections.<Path>emptyList()));
+        assertThat(thrown.getMessage(), containsString("Subtree 'does-not-exist' does not exist: "));
+    }
+
+    @Test
+    public void resolveSubtrees_aFileInsteadOfADirectory_isRefused() throws IOException {
+        Files.write(tempDir.resolve("plain.txt"), new byte[0]);
+
+        assertThrows(SrcMorphException.class, () -> EngineSupport.resolveSubtrees(tempDir, Arrays.asList("plain.txt")));
+    }
+
+    @Test
+    public void resolveSubtrees_outsideTheBaseDirectory_isRefused() throws IOException {
+        final Path base = Files.createDirectories(tempDir.resolve("base"));
+        Files.createDirectories(tempDir.resolve("other"));
+
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class, () -> EngineSupport.resolveSubtrees(base, Arrays.asList("../other")));
+
+        assertThat(thrown.getMessage(), containsString("outside the base directory"));
     }
     // </editor-fold>
 

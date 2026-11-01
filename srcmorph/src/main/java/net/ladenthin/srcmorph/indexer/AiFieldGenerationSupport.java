@@ -6,9 +6,9 @@ package net.ladenthin.srcmorph.indexer;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiCalibration;
 import net.ladenthin.srcmorph.config.AiFactExtractor;
@@ -188,7 +188,7 @@ public class AiFieldGenerationSupport {
      * value. Populated on first use so that the calculation and its detailed log output
      * are emitted exactly once per unique pair rather than once per processed file.
      */
-    private final Map<String, Integer> maxInputCharsCache = new HashMap<>();
+    private final Set<String> loggedWindows = new HashSet<>();
 
     /**
      * Creates a new {@code AiFieldGenerationSupport}.
@@ -311,6 +311,12 @@ public class AiFieldGenerationSupport {
         // through to the single-shot path below (the source was already trimmed to the window head).
         if (preparedPrompt.trimmed()) {
             final AiOversizeStrategy oversize = fieldGeneration.getOversizeStrategy();
+            if (oversize == AiOversizeStrategy.FAIL) {
+                throw new IOException(contextType + " '" + contextFile + "' (" + sourceText.length()
+                        + " chars) exceeds the window of model '" + fieldGeneration.getAiDefinitionKey()
+                        + "' (" + preparedPrompt.availableSourceChars() + " chars of source) and its rule has"
+                        + " onOversize: fail");
+            }
             if (oversize == AiOversizeStrategy.DETERMINISTIC) {
                 LOGGER.info(
                         "Oversize {} '{}' -> deterministic body (no model), {} chars",
@@ -693,8 +699,9 @@ public class AiFieldGenerationSupport {
      * Returns the effective {@code maxInputChars} for the given field generation entry.
      *
      * <p>When the {@link net.ladenthin.srcmorph.config.AiGenerationConfig#getCharsPerToken()} value is greater than zero,
-     * the maximum is computed once per unique {@code (aiDefinitionKey, promptKey)} pair,
-     * logged in detail, cached, and reused for all subsequent files. When
+     * the maximum is computed for every file, from the prompt rendered with that file's name, by the
+     * calculation the plan uses ({@link AiInputWindowCalculator}), so the plan and the run agree; the
+     * calculation is logged in detail once per {@code (aiDefinitionKey, promptKey)} pair. When
      * {@code charsPerToken} is zero, the static {@link net.ladenthin.srcmorph.config.AiGenerationConfig#getMaxInputChars()}
      * fallback is returned instead.</p>
      *
@@ -711,23 +718,18 @@ public class AiFieldGenerationSupport {
             return generationConfig.getMaxInputChars();
         }
 
-        final String cacheKey =
-                computeMaxInputCharsKey(fieldGeneration.getAiDefinitionKey(), fieldGeneration.getPromptKey());
-        final Integer cached = maxInputCharsCache.get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-
         final int basePromptLength =
                 promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
-        final int computed = calculateAndLogMaxInputChars(generationConfig, basePromptLength);
-        maxInputCharsCache.put(cacheKey, computed);
-        return computed;
+        if (loggedWindows.add(
+                computeMaxInputCharsKey(fieldGeneration.getAiDefinitionKey(), fieldGeneration.getPromptKey()))) {
+            logMaxInputChars(generationConfig, basePromptLength);
+        }
+        return AiInputWindowCalculator.maxInputChars(generationConfig, basePromptLength);
     }
 
     /**
-     * Computes and logs the detailed {@code maxInputChars} calculation for a given
-     * generation config and base prompt length.
+     * Logs the detailed {@code maxInputChars} calculation for a given generation config and base prompt
+     * length.
      *
      * <p>The formula is:</p>
      * <pre>
@@ -743,9 +745,8 @@ public class AiFieldGenerationSupport {
      * @param config          the resolved generation config supplying {@code contextSize},
      *                        {@code maxOutputTokens}, and {@code charsPerToken}
      * @param basePromptLength character length of the prompt template rendered with empty source
-     * @return final (rounded) maximum input character count
      */
-    private int calculateAndLogMaxInputChars(final AiGenerationConfig config, final int basePromptLength) {
+    private void logMaxInputChars(final AiGenerationConfig config, final int basePromptLength) {
         final int contextSize = config.getContextSize();
         final int charsPerToken = config.getCharsPerToken();
         final int maxOutputTokens = config.getMaxOutputTokens();
@@ -776,8 +777,6 @@ public class AiFieldGenerationSupport {
         LOGGER.info("  Available for source: [Total available] - [Subtotal overhead]");
         LOGGER.info("  Available for source: {} - {} = {} chars", totalChars, overheadTotal, availableChars);
         LOGGER.info("  Set to: {} (rounded, conservative)", finalChars);
-
-        return finalChars;
     }
 
     /**

@@ -211,42 +211,20 @@ public class GenerateEngineTest {
     }
 
     /**
-     * A configured subtree that does not exist must be reported, and this test pins what the run then
-     * actually does -- which is not what one would guess.
-     *
-     * <p>{@code EngineSupport.resolveSubtrees} filters missing entries out (logging the warning) before
-     * {@link GenerateEngine} ever looks at the list. Every configured subtree being wrong therefore
-     * leaves the resolved list EMPTY, which the engine treats as "none configured" and falls back to
-     * the default {@code src/main/java}. So a typo'd {@code <subtree>} does not index nothing -- it
-     * silently indexes the default tree instead, and the warning is the only signal that anything was
-     * off. That behaviour is asserted here rather than assumed: the first version of this test expected
-     * zero files written and failed against one.
-     *
-     * <p>A consequence worth knowing when touching this code: the second "Skipping missing subtree"
-     * warning inside {@code GenerateEngine.execute()} itself is unreachable in practice, since the list
-     * it iterates has already been filtered. Only a directory deleted between the two checks reaches it.
-     *
-     * @throws Exception if the run fails
+     * A configured subtree that does not exist fails the run before anything is planned. It used to
+     * be filtered out with a warning, which left the list empty, so the engine fell back to the
+     * default {@code src/main/java} and a typo'd {@code <subtree>} silently indexed another tree.
      */
     @Test
-    public void execute_configuredSubtreeDoesNotExist_warnsAndFallsBackToTheDefaultTree() throws Exception {
-        // arrange
+    public void execute_configuredSubtreeDoesNotExist_failsNamingIt() throws Exception {
         final SrcMorphConfiguration config = baseConfig();
         config.setSubtrees(Collections.singletonList("does/not/exist"));
 
-        // act
-        final GenerateResult result = new GenerateEngine(config).execute();
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
 
-        // assert
-        boolean warned = false;
-        for (final String message : capturedMessages(Level.WARN)) {
-            if (message.contains("Skipping missing subtree")) {
-                warned = true;
-            }
-        }
-        assertThat("a missing subtree must be reported, not silently dropped", warned, is(true));
-        // The fallback ran: the default src/main/java (created by baseConfig) was indexed.
-        assertThat(result.written(), is(1));
+        assertThat(thrown.getMessage(), containsString("Subtree 'does/not/exist' does not exist"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     /**
@@ -507,5 +485,38 @@ public class GenerateEngineTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    public void execute_twoSourcesWithTheSameSummary_failNamingBoth() throws Exception {
+        final SrcMorphConfiguration config = baseConfig();
+        // src/main/java/com/example/Foo.java (from baseConfig) and main/java/com/example/Foo.java both
+        // become main/java/com/example/Foo.java.ai.md
+        final Path twin = tempDir.resolve("main/java/com/example/Foo.java");
+        Files.createDirectories(twin.getParent());
+        Files.write(twin, "class Foo {}\n".getBytes(StandardCharsets.UTF_8));
+        config.setSubtrees(Arrays.asList("src/main/java", "main/java"));
+
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+
+        assertThat(thrown.getMessage(), containsString("would both be summarized into"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    @Test
+    public void execute_promptThatFillsTheWindow_failsNamingModelAndPrompt() throws Exception {
+        final SrcMorphConfiguration config = baseConfig();
+        final AiModelDefinition tiny = mockModelDefinition();
+        tiny.setContextSize(1);
+        tiny.setCharsPerToken(1);
+        config.setAiDefinitions(Collections.singletonList(tiny));
+        // sample, so the over-window check of the plan lets the file through to this one
+        config.getFieldGenerations().get(0).setOnOversize("sample");
+
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+
+        assertThat(thrown.getMessage(), containsString("leaves no room for the source in the window of model"));
     }
 }

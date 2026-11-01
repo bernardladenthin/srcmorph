@@ -26,9 +26,11 @@ public class AiMdHeaderSupport {
      * @param force           when {@code true}, always rewrite
      * @param targetFile      path to the {@code .ai.md} file
      * @param expectedHeader  header that would be written
-     * @return {@code true} when the file is missing, the body is blank, the header
-     *         version differs, or any structural header field differs from
-     *         {@code expectedHeader}
+     * @return {@code true} when the file is missing, the body is blank, the header version differs, or
+     *         the node type, title, content checksum or {@code aiVersion} differs from
+     *         {@code expectedHeader}. The source's modification time and the plugin version are not
+     *         compared: a fresh clone, a touched file or a new srcmorph release regenerate nothing whose
+     *         content is the same.
      * @throws IOException if the existing file cannot be read
      */
     public boolean shouldWrite(final boolean force, final Path targetFile, final AiMdHeader expectedHeader)
@@ -56,8 +58,6 @@ public class AiMdHeaderSupport {
                 || !expectedHeader.x().equals(actualHeader.x())
                 || !expectedHeader.title().equals(actualHeader.title())
                 || !expectedHeader.c().equals(actualHeader.c())
-                || !expectedHeader.d().equals(actualHeader.d())
-                || !expectedHeader.g().equals(actualHeader.g())
                 || !expectedHeader.a().equals(actualHeader.a());
     }
 }

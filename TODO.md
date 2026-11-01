@@ -16,13 +16,11 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-4. **Engine correctness.** `maxInputChars` per file, not cached from the first file's name;
-   `onOversize: fail` enforced at run time; the package and project phases take exactly one rule
-   (`examples/config_All.json`); a subtree outside `baseDirectory`, on another drive or missing is an
-   error; a prompt larger than the window fails before the run; extensions match with their dot and,
-   on Windows, ignoring case; colliding output paths are an error; the dead `llama*` fallback values
-   are not logged as run values. The incremental check compares the source checksum and `aiVersion`
-   only, so a fresh clone or a version bump regenerates nothing.
+4. **One rule for the package and project phases; the `llama*` fallback goes.** The package phase
+   takes exactly one rule and the project phase none or one (`examples/config_All.json` and the other
+   examples set `packageFieldGenerations` / `projectFieldGenerations`); with that, the `llama*`
+   fallback parameters of the configuration, the mojos and the CLI are dead and are removed, with
+   their log lines.
 7. **Tests and the PIT gate.** `LlamaCppJniConfig$Builder` and `AiIndexPlan$Entry` on the gate; the
    pure logic of `AiFieldGenerationSupport` (overflow backoff, reduce batching) and `SourceFileIndexer`
    (time estimate, line count) moved to gated support classes; mock-provider tests of `sample`,
@@ -32,8 +30,8 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
    and READMEs say which release the examples need; the CLI prints its usage and fails without
    arguments, `--help`; the plugin and CLI READMEs, the CLAUDE.md version table and stale TODO
    references match the code; plugin-it covers an incremental second run, the condition tree,
-   `templateFile`, inline `<facts>` with `<ignore>` and `srcmorph:help`; a small demo tree under
-   `examples/` so the smoke test can assert a file count; a `check` goal and CLI command (plan, model
+   `templateFile`, inline `<facts>` with `<ignore>` and `srcmorph:help`; the smoke test asserts the
+   file count of the demo tree `examples/src/main/java`; a `check` goal and CLI command (plan, model
    files, GGUF header, `baseUrl`, `apiKeyEnv`, profile files, no model load).
 9. **Complete mapReduce and a run record.** mapReduce reduces every chunk in stages instead of a
    silent sample (`sample` only when chosen), and the facts line states the coverage; a JSON record

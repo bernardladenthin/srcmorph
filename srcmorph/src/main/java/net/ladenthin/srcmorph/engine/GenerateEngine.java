@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.engine;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
@@ -167,6 +168,11 @@ public final class GenerateEngine {
                     + "the rule. The build does not pick a model for you; this is configuration only.");
         }
 
+        // 3c. Two source files summarized into the same .ai.md (src/main/java/Foo.java and
+        //     main/java/Foo.java) would overwrite each other; a prompt longer than its model's window
+        //     leaves no room for any source. Both are configuration errors, found before the run.
+        checkTargetsAndWindows(plan, fileIndexer);
+
         if (config.isPlanOnly()) {
             LOGGER.info("planOnly=true: stopping after the plan; no model loaded, nothing generated.");
             return GenerateResult.planned();
@@ -257,6 +263,34 @@ public final class GenerateEngine {
         LOGGER.info("AI index generation finished.");
 
         return new GenerateResult(false, wrote, unchanged, skippedCount);
+    }
+
+    /**
+     * Fails the run when two routed files would be summarized into the same {@code .ai.md}, or when a
+     * rule's prompt leaves its model's window no room for the source.
+     *
+     * @param plan        the routing plan
+     * @param fileIndexer the indexer that names each file's summary
+     * @throws SrcMorphException naming the files, or the model and the prompt
+     */
+    private static void checkTargetsAndWindows(final AiIndexPlan plan, final SourceFileIndexer fileIndexer)
+            throws SrcMorphException {
+        final Map<Path, Path> sourceByTarget = new HashMap<>();
+        for (final List<AiIndexPlan.Entry> entries : plan.routesByModel().values()) {
+            for (final AiIndexPlan.Entry entry : entries) {
+                final Path other = sourceByTarget.put(fileIndexer.targetFile(entry.file()), entry.file());
+                if (other != null) {
+                    throw new SrcMorphException(entry.file() + " and " + other + " would both be summarized into "
+                            + fileIndexer.targetFile(entry.file()) + "; exclude one of them or narrow the subtrees");
+                }
+                if (entry.windowChecked() && entry.availableSourceChars() <= 0) {
+                    throw new SrcMorphException("The prompt '" + entry.rule().getPromptKey()
+                            + "' leaves no room for the source in the window of model '"
+                            + entry.rule().getAiDefinitionKey() + "' (" + entry.file()
+                            + "); raise its contextSize or lower its maxOutputTokens");
+                }
+            }
+        }
     }
 
     private List<String> resolveFileExtensions() {

@@ -766,4 +766,51 @@ public class AiFieldGenerationSupportTest {
         assertThat(result.body(), is(equalTo("")));
     }
     // </editor-fold>
+
+    @Test
+    public void onOversize_failAtRunTime_isAnErrorNotATrimmedSummary() throws Exception {
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            return "MODEL OUTPUT";
+        };
+        final java.io.IOException thrown = assertThrows(
+                java.io.IOException.class,
+                () -> supportWith(provider, "m")
+                        .processFieldGenerations(
+                                Collections.singletonList(oversizeRule("m", "fail", 0)),
+                                Files.createTempFile("Huge", ".java"),
+                                "file",
+                                largeSource(500),
+                                anyHeader()));
+
+        assertThat(calls.get(), is(equalTo(0)));
+        assertThat(thrown.getMessage(), containsString("onOversize: fail"));
+    }
+
+    @Test
+    public void window_isComputedForEveryFile_fromItsOwnName() throws Exception {
+        // The prompt contains the file name, so a long name leaves less room for the source. A short-named
+        // file whose source fills exactly its own budget is not trimmed, even after a long-named one.
+        final AiModelDefinitionSupport models = normalWindowModel("m");
+        final AiPromptPreparationSupport preparation =
+                new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions()));
+        final Path shortName = Files.createTempFile("A", ".java");
+        final Path longName = Files.createTempFile("A_very_long_file_name_that_eats_into_the_prompt_budget", ".java");
+        final int budget = (int) AiInputWindowCalculator.availableSourceChars(
+                models.getConfig("m"),
+                preparation.getBasePromptLength(CommonTestFixtures.PROMPT_KEY_FILE_BODY, shortName));
+        final AiFieldGenerationSupport support = supportWithModels(request -> "OK", models);
+        final AiFieldGenerationConfig rule = normalRule("m", null);
+
+        support.processFieldGenerations(Collections.singletonList(rule), longName, "file", "x", anyHeader());
+        final String fits = largeSource(budget).substring(0, budget);
+        final AiGenerationResult result =
+                support.processFieldGenerations(Collections.singletonList(rule), shortName, "file", fits, anyHeader());
+
+        assertThat(result.body(), is(equalTo("OK")));
+        for (final String warning : getCapturedWarnings()) {
+            assertThat(warning.contains("Trimmed AI input"), is(false));
+        }
+    }
 }

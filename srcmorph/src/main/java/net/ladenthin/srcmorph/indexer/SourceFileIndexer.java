@@ -294,6 +294,19 @@ public class SourceFileIndexer {
     }
 
     /**
+     * Returns the {@code .ai.md} a source file is summarized into.
+     *
+     * @param sourceFile the source file
+     * @return its summary's path under the output root
+     */
+    public Path targetFile(final Path sourceFile) {
+        final Path relativeToBase = pathSupport.relativizeFromSrc(baseDirectory, sourceFile);
+        return outputRoot
+                .resolve(relativeToBase.toString() + AiMdHeaderCodec.AI_MD_EXTENSION)
+                .normalize();
+    }
+
+    /**
      * Writes the {@code .ai.md} for one source file using the given rule and a provider-bearing
      * support. Honours the incremental-skip rule: an up-to-date target (matching source checksum, no
      * {@code force}) is left untouched.
@@ -309,10 +322,7 @@ public class SourceFileIndexer {
     public AiIndexOutcome indexFile(
             final Path sourceFile, final AiFieldGenerationConfig rule, final AiFieldGenerationSupport support)
             throws IOException {
-        final Path relativeToBase = pathSupport.relativizeFromSrc(baseDirectory, sourceFile);
-        final Path targetFile = outputRoot
-                .resolve(relativeToBase.toString() + AiMdHeaderCodec.AI_MD_EXTENSION)
-                .normalize();
+        final Path targetFile = targetFile(sourceFile);
 
         final Path parent = targetFile.getParent();
         if (parent != null) {
@@ -436,7 +446,7 @@ public class SourceFileIndexer {
         }
         final String fileName = fileNamePath.toString();
         for (final String extension : fileExtensions) {
-            if (fileName.endsWith(extension)) {
+            if (AiPathSupport.hasExtension(fileName, extension)) {
                 return true;
             }
         }

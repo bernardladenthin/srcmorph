@@ -12,6 +12,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **The engine plans and runs alike, and checks its configuration before the run.** The source budget
+  is computed for every file from the prompt with that file's name, as the plan computes it; before, it
+  was cached from the first file of a model group, so a later file with a shorter name could be
+  trimmed although the plan said it fits, and `onOversize: fail` was not enforced at run time (it is
+  now, as a failed file). A configured subtree that does not exist or lies outside `baseDirectory`
+  (another drive included) fails the run instead of being skipped with a warning, which silently
+  indexed the default tree; two sources summarized into one `.ai.md` and a prompt that leaves its
+  model's window no room for the source fail before the run. Extensions match with their dot and in
+  any case (`md` no longer matches `README.cmd`). The incremental check no longer compares the
+  source's modification time or the plugin version, and a package's checksum no longer includes its
+  children's times: a fresh clone, a touched file or a new srcmorph release regenerate nothing whose
+  content is the same.
 - **Retries and a context overflow for the `openai-compatible` provider (`maxRetries`).** A request
   that failed with `408`, `429`, a `5xx` status or a read timeout is sent again up to `maxRetries`
   times (default 3), after the server's `Retry-After` in seconds or an exponential backoff from 1 s with

@@ -405,4 +405,15 @@ public class SourceFileIndexerTest {
         assertThat(Arrays.equals(Files.readAllBytes(aiFile), older), is(true));
     }
     // </editor-fold>
+
+    @Test
+    public void targetFile_isTheSourcePathBelowSrcPlusAiMd() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
+
+        assertThat(
+                indexer.targetFile(temp.resolve("src/main/java/com/example/Foo.java")),
+                is(equalTo(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))));
+    }
 }

@@ -376,8 +376,10 @@ mvn clean install -Psrcmorph-selftest
 ## Plugin Configuration
 Run-level parameters (set in `<configuration>`):
 - `outputDirectory` — target directory for `.ai.md` files (default: `${project.basedir}/src/site/ai`)
-- `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`)
-- `fileExtensions` — file extensions to index (default: `.java`)
+- `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`). A
+  configured subtree that does not exist, or lies outside the base dir, fails the goal
+- `fileExtensions` — file extensions to index (default: `.java`), matched with their dot and in any case
+  (`java` and `.JAVA` both mean `.java`); `<extensions>` of a condition match the same way
 - `excludes` — glob patterns for source files to skip, matched against each file's path relative to
   the base dir with `/` separators, e.g. `**/package-info.java`, `**/generated/**` (default: none).
   `*` stays within one path segment, `**` spans directories, `?` is a single character.
