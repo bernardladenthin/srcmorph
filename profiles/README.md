@@ -19,6 +19,8 @@ handed on as a whole.
 | [`v3/file-body-fallback.md`](v3/file-body-fallback.md) | `promptKey: file-body-fallback` | any other source file |
 | [`v3/package-body.md`](v3/package-body.md) | `promptKey: package-body` | a package, from its file summaries |
 | [`v3/project-body.md`](v3/project-body.md) | `promptKey: project-body` | the project overview, from the package leads |
+| [`v3/map-chunk.md`](v3/map-chunk.md) | `mapPromptKey: map-chunk` | appended to a chunked rule's prompt in every map call |
+| [`v3/reduce-parts.md`](v3/reduce-parts.md) | `reducePromptKey: reduce-parts` | appended to a chunked rule's prompt in every reduce call |
 | [`v3/java-facts.tsv`](v3/java-facts.tsv) | `factsKey: java-facts` | exact counts in front of every Java summary |
 | [`v3/sql-facts.tsv`](v3/sql-facts.tsv) | `factsKey: sql-facts` | exact counts in front of every SQL summary |
 | [`v3/shell-facts.tsv`](v3/shell-facts.tsv) | `factsKey: shell-facts` | the same for Bash, POSIX sh and ksh93 scripts |
@@ -36,7 +38,7 @@ for Java; Schema, Reads, Writes, Relationships, Routine logic for SQL; Constants
 shell, Perl and other files; Definitions, Configuration and Dependencies for XML), with the rules against code fences, `###` headings and invented names, and the "index
 only what is literally present" guard for truncated sources.
 
-`map-chunk.md` and `reduce-parts.md` are not prompts of their own: a rule's `mapPromptKey` and
+`map-chunk.md` and `reduce-parts.md` (keys `map-chunk`, `reduce-parts`) are not prompts of their own: a rule's `mapPromptKey` and
 `reducePromptKey` append them to its prompt (after a blank line) in the map and the reduce calls of
 `mapReduce` and `sampleChunks`, so a call knows that it reads one chunk (`Chunk i of n:`) or the part
 summaries to merge (`Part n:`), and the language's sections stay those of the rule's prompt.
@@ -214,6 +216,12 @@ still lost there:
   differently; a script's arguments by the variable that holds them.
 - The Java, package and project prompts and the Java and SQL fact files were unchanged when v3
   was measured; the counters changed afterwards (see "Fact files" above).
+- After that measurement (2026-11-01) the prompts changed as well (CHANGELOG, Unreleased): the Java
+  family rule names no analysis channel; the SQL, XML and fallback prompts have a family rule for
+  long runs of rows, records and constants, and in the SQL prompt more than five `INSERT`s into one
+  table are a family; no prompt quotes an example lead any more, and none asks to recount; the
+  closing paragraph says that the user message starts with the file name; chunked rules append
+  `map-chunk` and `reduce-parts`. The tables below were measured before these changes.
 
 The last two additions came from the drafts in between: with the command-line sentence alone,
 gpt-oss described a shell script's arguments as `$1` instead of naming `SOURCE_DIR`, and an

@@ -4,5 +4,5 @@ subsystems and how they fit together, in 2 to 4 sentences. Use domain terms a de
 No headings, no bullet lists, no code fences, no XML tags, no formatter comments. Write in English. Base
 every statement only on the provided leads - never invent packages or behavior not present in them.
 
-The index file path and the per-package one-line leads are provided in the next (user) message:
-the path on the first line, then a blank line, then the leads to synthesize.
+The index file name and the per-package one-line leads are provided in the next (user) message:
+the name on the first line, then a blank line, then the leads to synthesize.

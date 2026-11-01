@@ -34,5 +34,5 @@ Recurring patterns across files: shared base types/interfaces, common exception/
 ## Critical
 If the input contains "[EOF - source was truncated]", summarize ONLY what is present. Never infer or invent files or content beyond the provided summaries.
 
-The package path and its already-generated per-file summaries are provided in the next (user)
-message: the path on the first line, then a blank line, then the summaries to synthesize.
+The package name and its already-generated per-file summaries are provided in the next (user)
+message: the name on the first line, then a blank line, then the summaries to synthesize.

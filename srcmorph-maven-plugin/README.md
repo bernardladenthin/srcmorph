@@ -76,7 +76,8 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - `body() -> String` — the AI-generated markdown body.
 ```
 
-`P` and `N` are the CRC32 of the system prompt and of the fact counters the summary was written with
+`P` and `N` are the CRC32 of the system prompt (with the rule's map and reduce prompts, when it names
+them) and of the fact counters the summary was written with
 (file summaries only, and only when set): a run record names them for an unchanged file, so a changed
 prompt shows which summaries it has not rewritten yet.
 ## Requirements
@@ -169,10 +170,11 @@ The file has three building blocks:
    - **`mapReduce`** — split the file into window-sized chunks at line boundaries (with overlap so
      records are never torn mid-syntax), summarize **every** chunk, then combine the partial summaries
      in batches until one is left. No part of the file goes unread; the calls grow linearly with its
-     size. **Route oversized files to a *small*, fast model for this — not the big-window one.** Prefill
-     is `O(n²)` in prompt length, so chunks should be small: many cheap small-window passes are far
-     faster than a few giant ones (one 384K-token pass alone can dwarf a whole run). mapReduce *on* a big
-     window is the slowest possible combination; avoid it.
+     size. **Size the chunks moderately.** Prefill is `O(n²)` in prompt length, so many cheap passes are
+     far faster than a few giant ones (one 384K-token pass alone can dwarf a whole run): the self-test
+     map-reduces with H-Tiny over 64K and samples with H-1B over 16K; map-reduce over a 384K-class window
+     is the slowest combination. A local model sizes the chunks by the source's density in tokens; a
+     chunk denser than that is read in two halves.
    - **`sampleChunks`** — the same over `maxChunks` representative chunks (always the first and the last,
      evenly spaced between), to bound the time of an arbitrarily large file (e.g. 7 MB): a 16K-window
      model with `maxChunks: 6` is ~7 calls (~1 h order on a reference CPU; less on GPU) — the right
@@ -417,7 +419,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default) sends no key. A named variable that is unset or empty fails the run before any request, as does a key that would go over plain `http` to another machine: a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
 | `stream` | `false` | `openai-compatible` only: request the answer as Server-Sent Events (`stream: true`, `stream_options.include_usage: true`) and assemble it into the same chat response, so the summary does not change. A stream without the closing `data: [DONE]` or with an `error` chunk fails the file. Required for the GitHub Copilot API Gateway, whose non-streaming path adds and runs VS Code's own tools (see [docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md)); it also moves the read timeout from the whole answer to the gap between two events |
 | `requestsPerMinute` | `0` | `openai-compatible` only: at most this many requests to the model's server start within any minute; a request beyond it waits until the oldest of the last minute is a minute old, instead of being answered with `429`. Every model of one server with the same `apiKeyEnv` and limit counts in one window, across the phases of a run in one process. Set it below the server's own limit, e.g. 25 for the Copilot API Gateway's `rateLimitPerMinute` 30. `0` or less: no limit |
-| `maxRetries` | `3` | `openai-compatible` only: how often a request that failed with `408`, `429`, a `5xx` status or a read timeout is sent again, after the server's `Retry-After` (in seconds, at most 5 minutes) or an exponential backoff from 1 s (at most 60 s, plus up to a quarter as jitter). Any other failure is final at once; a prompt the server refuses as longer than the model's context (`413`, or `400` saying so) is shrunk and asked again, as for a local model. `0` sends every request once. A request that still fails counts its file as failed; the other files are indexed and the goal fails at its end |
+| `maxRetries` | `3` | `openai-compatible` only: how often a request is sent again after a `408`, a `429` (not one that says the quota or credit is used up), a `5xx` other than `501` / `505` or a connect timeout, after the server's `Retry-After` (in seconds, at most 5 minutes) or an exponential backoff from 1 s (at most 60 s, plus up to a quarter as jitter). Any other failure is final at once; a prompt the server refuses as longer than the model's context (`413`, or `400` saying so) is shrunk and asked again, as for a local model. `0` sends every request once. A request that got no answer within the read timeout, or whose answer stopped while it was read, is not sent again: the server may already be generating and billing it (a `POST` goes in streaming mode, so the JDK does not resend it either). A request that still fails counts its file as failed; the other files are indexed and the goal fails at its end |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
 | `threads` | `4` (fewer on a machine with fewer cores) | CPU threads for inference. Never set more than the machine has cores: ggml's threads wait on each other, and an oversubscribed run is orders of magnitude slower |
@@ -428,7 +430,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
 | `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
 | `repeatLastN` | `-1` | Window the `repeatPenalty` above acts on (`--repeat-last-n`); `-1` = leave llama.cpp's own window (64 tokens), `0` = disable the penalty entirely. Configuring a penalty without its range leaves the strength adjustable but the reach fixed, which is why the two belong together |
-| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: one over it is counted whole, goes in one call when it fits after all, and is otherwise chunked by its measured density; a prompt over `contextSize - maxOutputTokens` is never sent |
+| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: one over it is counted whole, goes in one call when it fits after all, and is otherwise chunked by its measured density; a prompt over `contextSize - maxOutputTokens` (less 4 tokens a count does not see) is not sent: its window shrinks by the measured density, up to four times, and a prompt still over the limit then fails its file |
 | `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
 | `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
 | `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |
@@ -462,8 +464,9 @@ that is OpenRouter, i.e. a third party. It sends the same system prompt and user
 local provider and only the portable sampling knobs: `maxOutputTokens`, `temperature`, `topP`,
 `topK` and `minP` (when positive), `repeatPenalty`, `seed` (when set), `stopStrings` and
 `reasoningEffort`. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
-caching) are ignored. A `408`, `429`, `5xx` or read timeout is retried (`maxRetries`); any other non-2xx
-answer fails the file with the status and the server's error text. With `stream` set, the answer arrives as Server-Sent Events and is assembled
+caching) are ignored. A `408`, a `429` (not one saying the quota is used up), a `5xx` other than `501` /
+`505` or a connect timeout is retried (`maxRetries`); a read timeout after the request was sent, and any
+other non-2xx answer, fail the file with the status and the server's error text. With `stream` set, the answer arrives as Server-Sent Events and is assembled
 before it is parsed. For the models of a GitHub Copilot subscription through a local gateway, see
 [docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md).
 
@@ -478,7 +481,7 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 
 ## Prompt System
 Prompts are referenced by key from the rules and read from the profile (`profileDirectory`). The
-self-test configuration uses the eight prompt files and the six fact-counter files of
+self-test configuration uses the ten prompt files and the six fact-counter files of
 [`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
 prompt and each counter exists once in the repository:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
@@ -488,6 +491,9 @@ prompt and each counter exists once in the repository:
 - `file-body-fallback` — generic multi-language summary for any other source file
 - `package-body` — synthesizes a package summary from the already-generated file summaries
 - `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
+- `map-chunk`, `reduce-parts` — not prompts of their own: a chunked rule's `mapPromptKey` /
+  `reducePromptKey` appends them to its prompt in the map and the reduce calls (one chunk of the input;
+  the part summaries to merge)
 
 For the `generate` goal the rule, and with it the prompt, is chosen per file by the routing rules
 above: the matching rule with the highest `priority`, otherwise the one `fallback`.

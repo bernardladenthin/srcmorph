@@ -205,5 +205,31 @@ class JavaNamesTest(unittest.TestCase):
         self.assertEqual(score.java_names(source), ["Provider", "generate", "lastUsage", "of"])
 
 
+
+class NumbersTest(unittest.TestCase):
+
+    def test_aNumber_withOrWithoutThousandsSeparators_counts(self):
+        for text in ("20000 rows", "20,000 rows", "20 000 rows", "20\u202f000 rows", "rows: 20000."):
+            self.assertTrue(score.number_pattern(20000).search(text), text)
+
+    def test_aNumber_insideALongerNumberOrADecimal_doesNot(self):
+        for text in ("120000", "200001", "20000.5", "v1.20000", "20000 000", "1,20000"):
+            self.assertFalse(score.number_pattern(20000).search(text), text)
+
+    def test_aSmallNumber_isNotPartOfAGroupedOne(self):
+        self.assertTrue(score.number_pattern(61).search("61 INSERT statements"))
+        self.assertFalse(score.number_pattern(61).search("1,061 rows"))
+
+
+class MiddleTest(unittest.TestCase):
+
+    def test_aMiddleName_countsAsANameOrAsThePrefixOfOne(self):
+        self.assertEqual(score.middle_found(["LEDGER_LOCK"], "the LEDGER_LOCK_02701 constants"), ["LEDGER_LOCK"])
+        self.assertEqual(score.middle_found(["LEDGER_LOCK"], "LEDGER_LOCK errors"), ["LEDGER_LOCK"])
+        self.assertEqual(score.middle_found(["LEDGER_LOCK"], "LEDGER_LOCKED"), [])
+
+    def test_aQualifiedMiddleName_countsAsASubstring(self):
+        self.assertEqual(score.middle_found(["inv:recall"], "an `inv:recall` element"), ["inv:recall"])
+
 if __name__ == "__main__":
     unittest.main()

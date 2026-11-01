@@ -238,6 +238,23 @@ public final class AiMapReduceSupport {
     }
 
     /**
+     * Returns the note in front of a reduce's parts when they summarize a sample of the chunks, so the merge
+     * states the sample's counts as the sample's: {@code **Sample:** the parts summarize 6 of 44 chunks; the
+     * rest of the input was not read.}
+     *
+     * @param read  the chunks read
+     * @param total the chunks of the source
+     * @return the note and its blank line, or {@code ""} when every chunk was read
+     */
+    public static String sampleNote(final int read, final int total) {
+        if (read >= total) {
+            return "";
+        }
+        return "**Sample:** the parts summarize " + read + " of " + total
+                + " chunks; the rest of the input was not read." + COVERAGE_SUFFIX;
+    }
+
+    /**
      * Returns the label of one half of a chunk read in two: {@code Chunk 3 of 44, half 1:}.
      *
      * @param label the chunk's label ({@link #chunkLabel(int, int, int)}, or a half's)

@@ -9,7 +9,7 @@
 # (aiDefinitionKey). srcmorph sends the prompt as the system message and the file's name and source as
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
 #
-# Two models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
+# Three models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
 # IBM Granite 4.0 for larger files - H-Tiny map-reducing over a 64K window up to ~1 MB, H-1B with a
 # 16K window beyond, summarizing a few sampled chunks (sampleChunks). A Java, SQL, shell, Perl or XML
 # summary starts with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables,

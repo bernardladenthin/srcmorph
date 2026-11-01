@@ -216,5 +216,32 @@ class LargeTest(unittest.TestCase):
         self.assertIn("--scale must be above 0", result.stderr)
 
 
+
+class CutOffTest(unittest.TestCase):
+
+    def log(self, text):
+        path = Path(tempfile.mkdtemp()) / "phase.log"
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_anAnswerNotWritten_andOneKept_areCutOff_aKeptPartIsNot(self):
+        work, out = Path("W"), Path("O")
+        log = self.log(
+            "WARN AiFieldGenerationSupport - Incomplete answer for file '" + str(work / "sql" / "a.sql")
+            + "' (field 'file-body-sql', TRUNCATED): The answer for x was cut off at the 4096-token output"
+            " budget; not written, left for the next run\n"
+            "WARN AiFieldGenerationSupport - Incomplete answer for " + str(work / "java" / "B.java")
+            + ": The answer for x was cut off at the 4096-token output budget; kept as it is (onIncomplete: keep)\n"
+            "WARN AiFieldGenerationSupport - Incomplete answer for a part of " + str(work / "other" / "c.xml")
+            + ": The answer for x was cut off at the 4096-token output budget; kept, the reduce reads it\n"
+            "WARN AiFieldGenerationSupport - Incomplete answer for file '" + str(work / "sql" / "e.sql")
+            + "' (field 'file-body-sql', EMPTY): The model answered nothing\n")
+
+        self.assertEqual(run.cut_off_files(log, work, out), ["java/B.java", "sql/a.sql"])
+
+    def test_filesNotWritten_isTheOnlyFailureTheNextPhasesRunAfter(self):
+        self.assertTrue(run.files_not_written(self.log("SrcMorphException: 2 file(s) were not written (an incomplete")))
+        self.assertFalse(run.files_not_written(self.log("SrcMorphException: Invalid fieldGenerations: two fallbacks")))
+
 if __name__ == "__main__":
     unittest.main()

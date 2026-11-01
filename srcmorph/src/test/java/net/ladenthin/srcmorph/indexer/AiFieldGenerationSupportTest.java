@@ -1328,4 +1328,28 @@ public class AiFieldGenerationSupportTest {
         assertThat(maps.get(), is(Integer.parseInt(chunks)));
     }
     // </editor-fold>
+
+    @Test
+    public void sampleChunks_theReduceReadsThatThePartsAreASample() throws Exception {
+        // arrange
+        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            requests.add(request);
+            return "S";
+        };
+
+        // act
+        supportWithModels(provider, normalWindowModel("m"))
+                .generate(
+                        oversizeRule("m", "sampleChunks", 2),
+                        Files.createTempFile("Huge", ".java"),
+                        "file",
+                        largeSource(7000),
+                        anyHeader());
+
+        // assert
+        final AiGenerationRequest reduce = requests.get(requests.size() - 1);
+        assertThat(reduce.sourceText(), startsWith("**Sample:** the parts summarize 2 of "));
+        assertThat(reduce.sourceText(), containsString(AiMapReduceSupport.PART_LABEL + "2:"));
+    }
 }

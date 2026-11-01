@@ -41,25 +41,18 @@ public final class AiPromptSupport {
     /**
      * Creates a new {@link AiPromptSupport} pre-populated with the given definitions.
      *
-     * <p>Every entry in {@code promptDefinitions} must have both a non-null
-     * {@code key} and a non-null {@code template}; a null in either field
-     * throws {@link NullPointerException} naming the list index and dumping
-     * the offending entry. This is the contract enforcement boundary that
-     * makes misconfigured POM {@code <promptDefinitions>} fail at build
-     * configuration time rather than silently dropping the entry and
-     * surfacing as a "Missing prompt template for key" failure deeper in
-     * the goal. Callers (e.g. the llamacpp-ai-index-maven-plugin module's Mojos) wrap
-     * construction in {@link NullPointerException}
-     * &rarr; {@code org.apache.maven.plugin.MojoExecutionException} so the
-     * Maven framework reports it as a user configuration error rather
-     * than a plugin bug. This library itself has no Maven dependency, so that type is
-     * referenced here only in prose.
+     * <p>Every entry in {@code promptDefinitions} must have both a non-null {@code key} and a non-null
+     * {@code template}, and no key may contain {@link #COMPOSED_KEY_SEPARATOR}. This is the contract
+     * enforcement boundary: a misconfigured {@code promptDefinitions} entry of the configuration file fails
+     * here, naming the list index and the entry, instead of surfacing as a "Missing prompt template for key"
+     * failure deeper in the run. The callers ({@code EngineSupport}) wrap it into a {@code SrcMorphException},
+     * so the CLI and the plugin report it as a configuration error.
      *
-     * @param promptDefinitions prompt definitions to register; may be
-     *                          {@code null} (treated as no definitions);
-     *                          individual entries must be well-formed
-     * @throws NullPointerException if any entry has a {@code null} {@code key}
-     *                              or {@code null} {@code template}
+     * @param promptDefinitions prompt definitions to register; may be {@code null} (treated as no
+     *                          definitions); individual entries must be well-formed
+     * @throws NullPointerException     if any entry has a {@code null} {@code key} or {@code null}
+     *                                  {@code template}
+     * @throws IllegalArgumentException if a key contains {@link #COMPOSED_KEY_SEPARATOR}
      */
     public AiPromptSupport(final @Nullable List<AiPromptDefinition> promptDefinitions) {
         if (promptDefinitions == null) {

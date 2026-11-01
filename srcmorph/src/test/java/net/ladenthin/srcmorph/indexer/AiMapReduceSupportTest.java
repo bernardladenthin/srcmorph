@@ -343,4 +343,13 @@ public class AiMapReduceSupportTest {
         assertThat(AiMapReduceSupport.safeWindow(200_000_000), is(160_000_000));
     }
     // </editor-fold>
+
+    @Test
+    public void sampleNote_namesTheChunksRead_orIsEmpty() {
+        assertThat(
+                AiMapReduceSupport.sampleNote(6, 44),
+                is(equalTo("**Sample:** the parts summarize 6 of 44 chunks; the rest of the input was not read.\n\n")));
+        assertThat(AiMapReduceSupport.sampleNote(44, 44), is(equalTo("")));
+        assertThat(AiMapReduceSupport.sampleNote(45, 44), is(equalTo("")));
+    }
 }

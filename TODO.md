@@ -21,12 +21,12 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
    (hosted: gpt-oss-20b 99.4 / 99.8 / 78.1 %, GPT-6 Luna 99.8 / 100 / 97.9 % on the language, card and
    large corpora; locally every large-file run fails at least one file), and in finding 7 of the
    card. What the runs found:
-   - **On large files the final answer outgrows the output budget.** Since an incomplete answer is
-     never written, a reduce answer cut off at `maxOutputTokens` fails its file: every local preset
-     (H-1B at 1536, H-Tiny and gpt-oss-20b at 4096) lost at least one of the three large files, and
-     hosted gpt-oss-20b the enum once. A cut part summary is kept now; a cut or empty final answer
-     still fails its file (hosted gpt-oss-20b the dump once in three runs, H-Tiny catalog and dump,
-     H-1B the dump), the cause in D3 below.
+   - **On large files an answer outgrew the output budget.** Since an incomplete answer is never
+     written, an answer cut off at `maxOutputTokens` (a chunk's part summary at the time, or the final
+     answer) failed its file: every local preset lost at least one of the three large files, and hosted
+     gpt-oss-20b the enum once. Since then a cut part summary is kept, map and reduce calls say what
+     their input is, the reduce reads the exact facts, and a local model's windows are counted in
+     tokens (D3); the re-measurement of that state is the open item.
    - **gpt-oss-20b's map-reduce loses the middle of a file.** It never names the catalog's or the
      enum's planted middle names (Luna does in every run); the partial summaries are not kept, so
      where they are lost is not known. Keeping the partials (beside the run record, on request) would
@@ -44,31 +44,46 @@ rules, an unknown provider name, `All` with `planOnly`, keys set to nothing, the
 the resent POST after a read timeout, the checksum of non-UTF-8 files.
 
 **Decisions taken** (2026-11-01): D1 the package and project rules default to `mapReduce`, done;
-D4 the Java names keep counting from prose, the asymmetry is documented in `score.py`, done; D5 the
-header records the prompt and facts hashes a summary was written with, done. Open from them:
+D2 the card notes the scorer change and finding 7 the re-measurement, the re-render waits for the next
+round of models, done; D4 the Java names keep counting from prose, the asymmetry is documented in
+`score.py`, done; D5 the header records the prompt and facts hashes a summary was written with, done.
+Open from them:
 
-- **D2. The model card**: done as decided: a note on the scorer change and finding 7 with the
-  re-measurement; the full re-render waits for the next round of models.
-- **D3. The self-test's Granite tiers for big XML**: keep the generic prompt. Done: a part summary cut
-  at the output budget is kept; the family rule names no analysis channel; the big tier map-reduces
-  with H-Tiny over 64K. Measured again (hosted three runs, Granite one run each): hosted unchanged
-  within variation; H-1B now writes the enum, and the catalog only with the generic prompt (6/8 names,
-  the middle one too; the XML prompt's answer is too short); H-Tiny writes neither catalog nor dump,
-  with either prompt. Open, the cause: **map and reduce calls get the file prompt with no word on
-  what their input is.** A chunk of INSERT rows is indexed as if it were the file, so gpt-oss-20b
-  (local, the dump) invented three tables, a procedure and a trigger and lost the middle table;
-  a reduce call gets `Part 1: ... Part 7:` summaries as the "source", and H-Tiny answered with the
-  prompt's example (a `VatCalculator` class, "Calculates VAT for invoices") repeated under `Part 8:`
-  .. `Part 18:` until the budget ended. Fix: tell a map call which chunk of how many it sees and to
-  index only that, a reduce call that its input is the part summaries of one file to merge (every
-  name any part states stays); then measure both prompts again. Also: Granite's SQL chunks overflow
-  the window on every call at `charsPerToken: 3` (the retry cuts them); 2.5 for SQL would fit.
+- **D3. The self-test's Granite tiers for big XML**: keep the generic prompt until measured. Done: a
+  cut part summary is kept; the family rules name no analysis channel; the big tier map-reduces with
+  H-Tiny over 64K; map and reduce calls name their input (`mapPromptKey: map-chunk`,
+  `reducePromptKey: reduce-parts`, `Chunk i of n:`), the reduce reads the exact facts and, for a
+  sample, a note saying so; a local model's windows are counted in tokens. Open: measure both prompts
+  again on the large corpus (hosted three runs, Granite three runs each) and pick the prompt of the
+  `big-xml` / `huge-xml` tiers.
+
+### Review of 2026-11-02 (seven reviews of c2d6834), open items
+
+Seven reviews (map-reduce engine, providers, configuration and engine, prompts, documentation,
+benchmark tooling, tests) checked the branch at c2d6834; what they found is fixed (CHANGELOG,
+Unreleased) except:
+
+- The plan's chunk and call estimate sizes chunks with the rule's own prompt, not the composed map
+  and reduce prompts and the label reserve, and cannot know a counted window: its ETA drifts from the
+  run. One helper in `AiMapReduceSupport` for the plan and the run would fix the first part.
+- A prompt change is recorded (`P`, `N`), never acted on: an opt-in "rewrite what an older prompt
+  wrote" (compare `P`/`N` in `shouldWrite`) would make the hashes useful; `P` covers the map and
+  reduce prompts also for files that never used them.
+- The token count of a remote `llama-server` could use its `/tokenize`; OpenRouter has none.
+- Benchmark: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name
+  rate is taken inside backticks only and by substring; recall counts names, not faithfulness (a bare
+  name list scores 100 %, wrong claims are not measured); with three runs against three a Fisher test
+  cannot reach 0.05, and hit@1 is compared unpaired (McNemar fits); every prompt version was tuned on
+  the corpus it is scored on; the meta lacks the srcmorph commit, the Python version and a corpus
+  hash, and `large.py`'s `random` is not guaranteed across Python versions (pin a golden hash); `score.py`
+  scores files srcmorph does not index and fails on non-UTF-8 sources; `--out/<key>` is deleted
+  without the marker check `--work` has; 21 of 21 mutations of the tools went unnoticed by their tests.
 
 **Core (engine, indexer, provider, config):**
 
-- CodeQL #272: drop `@EqualsAndHashCode` from the mutable `RunRecord` (keep it on `Entry`). #271 has
-  nothing to point at any more (`Retry-After` is read digit by digit); the alert closes with the next
-  analysis or is dismissed by the owner. An HTTP-date `Retry-After` still takes the short backoff.
+- CodeQL #271 and #272 have nothing to point at any more (`Retry-After` is read digit by digit,
+  `RunRecord` has no value equality); the alerts close with the next analysis or are dismissed by the
+  owner.
 - Overlapping or nested subtrees (the plugin adds every existing resource directory, e.g.
   `<directory>${project.basedir}</directory>`) collect files twice, and the run fails with "X and X
   would both be summarized"; deduplicate subtrees and candidates by their real path.

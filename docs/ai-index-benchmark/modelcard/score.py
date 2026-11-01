@@ -206,6 +206,28 @@ def names_found(ids, prose, case_insensitive, everyday=()):
     return found
 
 
+# Between two digit groups of a number: a comma, a space, a thin or narrow no-break space, an apostrophe.
+THOUSANDS = "[,\u00a0\u2009\u202f' ]?"
+
+
+def number_pattern(n):
+    """A number as prose writes it: 20000, 20,000, 20 000; not inside a longer number or a decimal, but
+    before a sentence's period."""
+    digits = str(n)
+    head = len(digits) % 3 or 3
+    groups = [digits[:head]] + [digits[i:i + 3] for i in range(head, len(digits), 3)]
+    return re.compile(r"(?<![\d.,])(?<!\d[ \u00a0\u2009\u202f'])" + THOUSANDS.join(groups)
+                      + r"(?![\d])(?![.,][\d])(?![ \u00a0\u2009\u202f'][\d]{3}(?![\d]))")
+
+
+def middle_found(middle, prose):
+    """The middle names of a large-corpus file the prose names: a name, or the prefix of one
+    (LEDGER_LOCK names the area of LEDGER_LOCK_02701), case as written."""
+    words = IDENT.findall(prose)
+    return [m for m in middle if any(w == m or w.startswith(m + "_") for w in words) or
+            (not IDENT.fullmatch(m) and m in prose)]
+
+
 def failure_of(missing, body, lead, leaks):
     """Why a body is no summary, or "" when it is one."""
     if missing:
@@ -241,7 +263,7 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=()):
     # SQL names and keywords are case-insensitive: `integer` names the source's INTEGER.
     haystack = source.lower() if case_insensitive else source
     invented = [t for t in ticked if (t.lower() if case_insensitive else t) not in haystack]
-    stated = [n for n in numbers if re.search(r"(?<![\d.])" + str(n) + r"(?![\d.])", prose)]
+    stated = [n for n in numbers if number_pattern(n).search(prose)]
     lines = body.strip().splitlines()
     lead = bool(lines) and lines[0].startswith(">")
     leaks = len(LEAK.findall(body))
@@ -286,8 +308,13 @@ def score_model(model_dir, work, facts, cut_off=frozenset()):
             rows.append({"file": rel, "kind": kind_of(source_path), "missing": True, "failed": "missing",
                          "cutOff": False, "srcBytes": len(source.encode("utf-8")), "idsExpected": len(ids)})
             continue
-        row = score_file(source, body_of(out.read_text(encoding="utf-8")), ids, numbers,
+        body = body_of(out.read_text(encoding="utf-8"))
+        row = score_file(source, body, ids, numbers,
                          case_insensitive=kind_of(source_path) == "sql", everyday=everyday)
+        middle = (facts.get(rel) or {}).get("middle", [])
+        if middle:
+            row["middleExpected"] = len(middle)
+            row["middleFound"] = len(middle_found(middle, without_copies(model_text(body), source)))
         row.update({"file": rel, "kind": kind_of(source_path), "missing": False, "cutOff": rel in cut_off})
         rows.append(row)
     for agg in sorted(model_dir.rglob("package.ai.md")) + sorted(model_dir.glob("project.ai.md")):

@@ -81,7 +81,8 @@ public class AiFieldGenerationConfig {
      * What to do when a matched file is larger than its routed model's context window. One of
      * {@code fail} (default — abort the build), {@code sample} (trim to the window, summarize the head),
      * {@code mapReduce} (chunk + summarize every chunk + combine), {@code sampleChunks} (the same over
-     * {@link #maxChunks} representative chunks), {@code deterministic} (model-free metadata body). Parsed by {@link AiOversizeStrategy#fromConfig(String)}; {@code null}/blank = {@code fail}.
+     * {@link #maxChunks} representative chunks), {@code deterministic} (model-free metadata body). Parsed by {@link AiOversizeStrategy#fromConfig(String)}; {@code null}/blank = {@code fail} for a file rule, while the package
+     * and project phases' rule defaults to {@code mapReduce} (their input is the summaries below them).
      */
     private @Nullable String onOversize;
 

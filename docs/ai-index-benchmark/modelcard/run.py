@@ -49,6 +49,7 @@ also books whatever else used the key meanwhile, and late).
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -295,19 +296,40 @@ def openrouter_usage():
         return json.load(response)["data"]["total_usage"]
 
 
+# What srcmorph logs for an answer cut off at maxOutputTokens: the file it does not write ("... (field
+# 'x', TRUNCATED)"), the answer it keeps under onIncomplete: keep, and the older provider line.
+CUT_OFF_LINES = (
+    re.compile(r"Incomplete answer for (?:file|package|project) '(.+?)' \(field '[^']*', TRUNCATED\)"),
+    re.compile(r"Incomplete answer for (?!a part of )(.+?): The answer for .+? was cut off at the .+?; kept as it is"),
+    re.compile(r"Generated text for (.+?) was cut off at the"),
+)
+
+
 def cut_off_files(log_path, work, out_dir):
-    """Paths whose generation hit the maxOutputTokens budget (the provider's WARN line), relative to the
-    corpus for file summaries and to the model's output tree for package and project summaries."""
+    """Paths whose final answer hit the maxOutputTokens budget (srcmorph's WARN lines), relative to the
+    corpus for file summaries and to the model's output tree for package and project summaries. A part
+    summary of a map-reduce that was cut and kept is not one: the file's own answer was complete."""
     prefixes = [str(work) + os.sep, str(out_dir) + os.sep, out_dir.as_posix() + "/"]
     files = []
     for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        match = re.search(r"Generated text for (.+?) was cut off at the", line)
-        if match:
-            path = match.group(1)
-            for prefix in prefixes:
-                path = path.replace(prefix, "")
-            files.append(path.replace(os.sep, "/"))
-    return files
+        for pattern in CUT_OFF_LINES:
+            match = pattern.search(line)
+            if match:
+                path = match.group(1)
+                for prefix in prefixes:
+                    path = path.replace(prefix, "")
+                files.append(path.replace(os.sep, "/"))
+                break
+    return sorted(set(files))
+
+
+# srcmorph's message when a file phase ends with files it did not write; the phases after it still run
+FILES_NOT_WRITTEN = "file(s) were not written"
+
+
+def files_not_written(log_path):
+    """Whether a phase ended only because some files were not written (not a configuration error)."""
+    return FILES_NOT_WRITTEN in log_path.read_text(encoding="utf-8", errors="replace")
 
 
 def run_model(args, models, profile, model):
@@ -356,7 +378,10 @@ def run_model(args, models, profile, model):
         if rc != 0:
             meta["phases"][phase]["errorTail"] = scrubbed(last_lines(log_dir / f"{phase}.log"),
                                                           Path(args.work).parent)
-            break
+            # a file phase that wrote all but some files still feeds the package and project phases, so a
+            # model's score covers the same summaries as any other run's; any other failure ends the model
+            if not (phase == "GenerateFileIndex" and files_not_written(log_dir / f"{phase}.log")):
+                break
     meta["finishedAt"] = utc_now()
     if run_record.exists():
         record = json.loads(run_record.read_text(encoding="utf-8"))
@@ -364,6 +389,11 @@ def run_model(args, models, profile, model):
         meta["finishReasons"] = dict(sorted(
             (reason, sum(1 for f in record["files"] if f["finishReason"] == reason))
             for reason in {f["finishReason"] for f in record["files"] if f["calls"]}))
+        # the record knows every file whose last call stopped at the budget, whatever the log said
+        file_phase = meta["phases"].get("GenerateFileIndex")
+        if file_phase is not None:
+            file_phase["cutOff"] = sorted(set(file_phase["cutOff"]) | {
+                f["file"] for f in record["files"] if f["finishReason"] == "length" and f["outcome"] != "written"})
         if model["backend"] == "openrouter":
             price = openrouter_price(definition["remoteModel"])
             if price is not None:
@@ -382,7 +412,7 @@ def validate(parser, args, models):
         parser.error("--max-chunks applies only to --oversize sampleChunks (mapReduce reads every chunk)")
     if args.oversize == "sampleChunks" and (args.max_chunks is None or args.max_chunks < 1):
         parser.error("--oversize sampleChunks needs --max-chunks of at least 1")
-    if args.chars_per_token is not None and args.chars_per_token <= 0:
+    if args.chars_per_token is not None and not (math.isfinite(args.chars_per_token) and args.chars_per_token > 0):
         parser.error("--chars-per-token must be above 0 (0 would switch srcmorph to the static maxInputChars)")
     known = {m["key"] for m in models["models"]}
     unknown = [k for k in args.models.split(",") if k and k not in known]
@@ -413,6 +443,10 @@ def main():
     parser.add_argument("--max-chunks", type=int, default=None)
     parser.add_argument("--chars-per-token", type=float, default=None)
     args = parser.parse_args()
+    # srcmorph resolves a relative path against the configuration file's directory, not the working one
+    for name in ("work", "out", "meta"):
+        if getattr(args, name, None):
+            setattr(args, name, str(Path(getattr(args, name)).resolve()))
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
     validate(parser, args, models)
 

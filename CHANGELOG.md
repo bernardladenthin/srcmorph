@@ -309,6 +309,19 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
+- **The prompts lose what models copied or tripped over** (the prompt review of the same round). No
+  prompt quotes an example lead any more ("Calculates VAT for invoices" came back as Granite's lead of
+  an enum and as an invented class in a reduce), and each says not to copy wording from the
+  instructions or to write about them; the closing paragraph says that the user message starts with
+  the file name, not a path; headings are named plainly (`'#', '##', '###'`); Java and SQL no longer
+  ask to recount before finalizing (a reasoning model spends its budget on it). `map-chunk` and
+  `reduce-parts` drop their own `##` headings, say that they replace what the rule's prompt says about
+  the user message, name the sample and half labels and the overlap, keep part summaries short, and
+  merge format-neutrally (the project overview has no lead line or sections): the merged lead is
+  about the whole input, a family stays a family, getters and setters stay apart, the facts line's
+  counts are used without copying the line, a total added up from overlapping parts is "about N", an
+  addition the rule's prompt asks for is written as its total. A reduce over sampled chunks reads a
+  note saying so (`AiMapReduceSupport.sampleNote`), and states the sample's counts as the sample's.
 - **A local model's windows are measured in tokens, not estimated.** `charsPerToken` is an integer
   estimate, and source code, SQL and data tokenize denser than it assumes: Granite's 64K and 16K
   windows overflowed on every chunk of the large corpus's dump at `charsPerToken: 3`, and each retry
@@ -344,9 +357,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   count a family of near-identical members "in the analysis channel", which only gpt-oss has; it now
   asks for the exact total and the index range only (a clause that also had the model name every
   member breaking the pattern was dropped again: GPT-6 Luna then reasoned at length over one Java
-  file in three of six runs, against none of three before). `file-body-sql`, `-xml` and `-fallback`
-  get a family rule for rows, records and numbered constants: Granite 4.0 H-1B listed 6 000 enum
-  constants one by one until its output budget ended, in five of eleven chunks. In `file-body-sql`
+  file in three of six runs, against none of three before; Granite 4.0 H-1B had listed 6 000 enum
+  constants one by one until its output budget ended, in five of eleven chunks). `file-body-sql`, `-xml`
+  and `-fallback` get a family rule for the long runs of the large corpus's dump and catalog: rows,
+  records and numbered constants. In `file-body-sql`
   more than five INSERTs into one table are a family too: the number of INSERTs and the total rows,
   not each count as an addition.
 - **The package and project rules default to `onOversize: mapReduce`.** Their input is the summaries
@@ -404,6 +418,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **Benchmark: cut-off answers and unwritten files are counted, numbers with separators found.**
+  `run.py` looked for a provider line srcmorph no longer writes, so every meta's `cutOff` was empty; it
+  reads srcmorph's warnings and the run record's finish reasons now. A file phase that leaves some
+  files unwritten (exit 1) no longer skips the package and project phases, which made one lost file
+  cost a run 14 points of its format share. `score.py` counts `20,000` and `20 000` as 20000 and a
+  number before a sentence's period, and scores the large corpus's middle names (`middleFound`, a name
+  or the prefix of one: `LEDGER_LOCK` in `LEDGER_LOCK_02701`). A relative `--work` / `--out` / `--meta`
+  resolves against the working directory, and a NaN `--chars-per-token` is refused.
 - **The map-reduce drops, cuts and resends nothing behind the summary's back** (seven reviews of the
   branch). When no two part summaries fitted one reduce batch, all of them went into one call cut from
   the head, and the final answer read 2 of 22 parts under a coverage line that said 22 of 22; now each
@@ -491,13 +513,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   file: `fail` refuses it, `sample` says in its coverage line how much of the head the last call read,
   `mapReduce` / `sampleChunks` / `deterministic` take their path. A map-reduce whose calls had to be
   cut says so too: `**Coverage:** 9 of 9 chunks summarized (2 calls cut to fit the window)`
-  (`AiMapReduceSupport.chunkCoverage(summarized, total, cutCalls)`).
+  (`AiMapReduceSupport.chunkCoverage(summarized, total, cutCalls, cutParts, shortened)`).
 - **The benchmark's `score.py` took the facts line for the model's text.** With `--facts` a summary
   starts with srcmorph's exact counts, so the lead line was reported missing and the counts were
   scored as the model's. Every measure is now taken on the body without that line; the model
   card's runs had no facts lines, their scores do not change.
-- **The self-test's `big-window-java` and `big-window-sql` rules (~275 KB .. 1 MB) wrote no facts
-  line**, although the smaller and the larger files had one; they name `java-facts` / `sql-facts` now,
+- **The self-test's ~275 KB .. 1 MB rules (then `big-window-java` / `big-window-sql`, now `big-java`
+  / `big-sql`) wrote no facts line**, although the smaller and the larger files had one; they name `java-facts` / `sql-facts` now,
   in `srcmorph-maven-plugin/srcmorph-selftest.yaml` and in `examples/build-your-own-jar/srcmorph.yaml`.
 - **A local model reasoned with thinking switched off.** The llama.cpp provider sent
   `reasoningEffort` (default `low`, meant for gpt-oss) to every chat template as the
