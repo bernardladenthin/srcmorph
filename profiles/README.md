@@ -49,8 +49,11 @@ A label starting with `[ignore]` marks a region instead of a counter: its matche
 before the other counters count, every character except the line breaks, so `^` anchors and line
 counts see the same lines as before. That is how a sub named in Perl's POD, a function or a `set -e`
 in a shell heredoc, a commented-out POM dependency or an `INSERT` inside a SQL block comment stays
-out of the counts. An ignore line is not reported, and a file of ignore lines only is refused. In a
-configuration the same is a counter with `ignore: true`.
+out of the counts. An ignore line is not reported. The prefix may be written in any case; any other
+label starting with `[` is refused as an unknown marker. In a configuration the same is a counter
+with `ignore: true`, and its label must not start with `[`. A configuration's `facts` and a facts file
+are held to the same rules: a label and a pattern on every counter, no label twice, and at least one
+counter that is not an ignore counter.
 
 Several ignore lines blank in file order, each over the text the one before left, so a region that
 can hold another one's opener (a `<!--` inside CDATA, POD or `__END__` inside a Perl heredoc, a `/*`

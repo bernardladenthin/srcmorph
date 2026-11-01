@@ -29,7 +29,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   of the source, every character except the line breaks, before the other counters count. A sub
   named in Perl's POD, a function or a `set -e` inside a shell heredoc, a commented-out POM dependency
   or an `INSERT` in a SQL block comment then no longer counts, while `^` anchors see the same lines.
-  `AiFactExtractor.counts` returns the counts by label; a facts file of ignore lines only is refused.
+  `AiFactExtractor.counts` returns the counts by label. A configuration's `facts` and a facts file pass
+  one validation, `AiFactExtractor.validate(where, counters)`: every counter present, with a label and
+  a compiling pattern, no label twice or starting with `[`, and not only ignore counters; the
+  `[ignore]` prefix is read in any case, another `[...]` marker is refused.
   Several ignore lines blank in file order, so the profile's files have one per language, an
   alternation of all its regions where the one that starts first wins, as in a lexer (a `<!--` inside
   CDATA, POD inside a Perl heredoc or a `/*` inside a SQL string opens nothing), and their counters

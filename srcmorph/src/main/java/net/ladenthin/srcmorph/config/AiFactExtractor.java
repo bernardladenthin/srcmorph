@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.config;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -36,6 +39,9 @@ public final class AiFactExtractor {
     /** Trailing separator between the facts line and the AI body that follows it. */
     public static final String FACTS_SUFFIX = "\n\n";
 
+    /** No label starts with this: it opens a marker such as {@code [ignore]} in a facts file. */
+    public static final String LABEL_MARKER_START = "[";
+
     /** Utility class; not instantiable. */
     private AiFactExtractor() {
         // no-op
@@ -44,7 +50,7 @@ public final class AiFactExtractor {
     /**
      * Builds the facts block for the given counters over {@code source}, or an empty string when there are
      * no counters. Counters with a {@code null} label or pattern are skipped (they are rejected up front by
-     * {@link #validate(List)}).
+     * {@link #validate(String, List)}).
      *
      * @param counters the configured fact counters; {@code null} or empty yields an empty string
      * @param source   the full source text the regexes are counted over
@@ -95,32 +101,53 @@ public final class AiFactExtractor {
     }
 
     /**
-     * Validates that every counter has a non-null label and a compilable pattern, throwing
-     * {@link IllegalArgumentException} so the build fails fast on a misconfigured {@code <facts>} list.
+     * Validates one group of fact counters, from a configuration's {@code facts} or from a facts file, so
+     * both accept exactly the same groups: every entry is present and has a non-blank label and a
+     * non-blank pattern that compiles, no label is used twice or starts with {@value #LABEL_MARKER_START}
+     * (a marker such as {@code [ignore]} belongs to the facts-file syntax; a configuration sets
+     * {@code ignore}), and at least one counter is reported.
      *
-     * @param counters the configured fact counters; {@code null} or empty is valid (nothing to check)
-     * @throws IllegalArgumentException if a counter is missing its label/pattern or has an invalid regex
+     * @param where    the group, for the messages
+     * @param counters the fact counters; {@code null} or empty is valid (nothing to check)
+     * @throws IllegalArgumentException naming the group and the counter if any of that does not hold
      */
-    public static void validate(final @Nullable List<AiFactCounter> counters) {
-        if (counters == null) {
+    public static void validate(final String where, final @Nullable List<AiFactCounter> counters) {
+        if (counters == null || counters.isEmpty()) {
             return;
         }
-        for (final AiFactCounter counter : counters) {
+        final Set<String> labels = new HashSet<>(new Java8CompatibilityHelper().hashMapCapacityFor(counters.size()));
+        boolean reported = false;
+        for (int i = 0; i < counters.size(); i++) {
+            final AiFactCounter counter = counters.get(i);
+            final String entry = where + " counter " + (i + 1);
             if (counter == null) {
-                continue;
+                throw new IllegalArgumentException(entry + " is missing");
             }
-            if (counter.getLabel() == null) {
-                throw new IllegalArgumentException("A fact counter must have a label: " + counter);
+            final String label = counter.getLabel();
+            if (label == null || label.trim().isEmpty()) {
+                throw new IllegalArgumentException(entry + " must have a label");
             }
-            if (counter.getPattern() == null) {
-                throw new IllegalArgumentException("A fact counter must have a pattern: " + counter);
+            if (label.startsWith(LABEL_MARKER_START)) {
+                throw new IllegalArgumentException(entry + ": the label '" + label + "' starts with '"
+                        + LABEL_MARKER_START + "', which marks a region in a facts file; set ignore instead");
+            }
+            if (!labels.add(label)) {
+                throw new IllegalArgumentException(where + ": the label '" + label + "' is used twice");
+            }
+            final String pattern = counter.getPattern();
+            if (pattern == null || pattern.trim().isEmpty()) {
+                throw new IllegalArgumentException(entry + " ('" + label + "') must have a pattern");
             }
             try {
-                Pattern.compile(counter.getPattern());
+                Pattern.compile(pattern);
             } catch (final PatternSyntaxException e) {
                 throw new IllegalArgumentException(
-                        "Invalid fact pattern for label '" + counter.getLabel() + "': " + e.getMessage(), e);
+                        where + ": invalid fact pattern for label '" + label + "': " + e.getMessage(), e);
             }
+            reported |= !counter.isIgnore();
+        }
+        if (!reported) {
+            throw new IllegalArgumentException(where + ": no counter, only ignore patterns");
         }
     }
 

@@ -187,6 +187,33 @@ public class AiFactDefinitionLoaderTest {
 
         assertThat(thrown.getMessage(), is("f: no counter, only ignore patterns"));
     }
+
+    @Test
+    public void parse_ignorePrefixInAnyCase_marksAnIgnoreCounter() {
+        final List<AiFactCounter> counters =
+                AiFactDefinitionLoader.parse("f", "[IGNORE] POD\tx\n[Ignore] c\ty\nsubs\tz\n");
+
+        assertThat(counters.get(0).isIgnore(), is(true));
+        assertThat(counters.get(0).getLabel(), is("POD"));
+        assertThat(counters.get(1).isIgnore(), is(true));
+        assertThat(counters.get(1).getLabel(), is("c"));
+    }
+
+    @Test
+    public void parse_unknownMarker_isRefusedWithItsLineNumber() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "subs\tx\n[skip] POD\ty\n"));
+
+        assertThat(thrown.getMessage(), is("f line 2: unknown marker in '[skip] POD'; the only one is [ignore]"));
+    }
+
+    @Test
+    public void parse_labelUsedTwice_isRefused() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "subs\tx\n[ignore] subs\ty\n"));
+
+        assertThat(thrown.getMessage(), is("f: the label 'subs' is used twice"));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="load: factsFile">

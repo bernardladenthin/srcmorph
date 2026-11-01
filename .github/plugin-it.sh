@@ -135,6 +135,11 @@ grep -q "Mock summary" "$GENERATED" || fail "the generated file summary carries 
 # the exact counts in front of the summary prove the facts file was found, read and applied.
 grep -q "^\*\*Facts (exact, whole file):\*\* type declarations: 1; " "$GENERATED" \
     || fail "the java-facts counters of the profile are not in the file summary -- got: $(grep -m1 'Facts' "$GENERATED" || echo none)"
+# The extra rule's inline <facts>: the comment counter is <ignore>d, so it is not reported, and the
+# "class" of the line comment is not counted -- an unbound <ignore> would print both and count 2.
+EXTRA="$OUT/extra/java/com/example/extra/Extra.java.ai.md"
+grep -qx '\*\*Facts (exact, whole file):\*\* class keywords: 1' "$EXTRA" \
+    || fail "the inline <facts> with <ignore> did not bind -- got: $(grep -m1 'Facts' "$EXTRA" || echo none)"
 # The deterministic header the codec writes -- pins that a real AiMdDocument was written, not a stub.
 grep -q "^- X: file$" "$GENERATED" || fail "the generated file summary has no 'X: file' header field"
 grep -q "^- X: project$" "$OUT/project.ai.md" || fail "the project index has no 'X: project' header field"

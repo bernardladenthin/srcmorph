@@ -16,10 +16,6 @@ Six reviews of the codebase found the items below; each package is one commit wi
 finished package is deleted here. The design goal is a clean state, not backward compatibility:
 behaviour may change where the old one was wrong, and the CHANGELOG says so.
 
-5. **One validation for fact counters.** `AiFactExtractor.validate` refuses what
-   `AiFactDefinitionLoader.parse` refuses (only ignore counters, empty or duplicate labels); the
-   `[ignore]` prefix is case-insensitive and an unknown `[...]` marker is an error; binding tests for
-   `ignore` in JSON, YAML and the plugin-it fixture.
 2. **An incomplete answer is never a summary.** The provider fails on a 2xx answer without choices,
    HTML, `{"error": ...}`, `content: null`, a reasoning-only answer and `finish_reason: length` with
    nothing written; `<think>` blocks are stripped like Gemma's markers. `AiGenerationResult` carries

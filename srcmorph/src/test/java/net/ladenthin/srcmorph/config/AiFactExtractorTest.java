@@ -177,40 +177,63 @@ public class AiFactExtractorTest {
     }
     // </editor-fold>
 
-    @Test
-    public void validate_null_isAllowed() {
-        assertDoesNotThrow(() -> AiFactExtractor.validate(null));
+    // <editor-fold defaultstate="collapsed" desc="validate">
+    private static String refusal(final AiFactCounter... counters) {
+        return assertThrows(
+                        IllegalArgumentException.class, () -> AiFactExtractor.validate("g", Arrays.asList(counters)))
+                .getMessage();
     }
 
     @Test
-    public void validate_validCounters_doesNotThrow() {
-        assertDoesNotThrow(() -> AiFactExtractor.validate(Collections.singletonList(counter("rows", "(?m)^INSERT"))));
+    public void validate_nullOrEmpty_isAllowed() {
+        assertDoesNotThrow(() -> AiFactExtractor.validate("g", null));
+        assertDoesNotThrow(() -> AiFactExtractor.validate("g", Collections.<AiFactCounter>emptyList()));
     }
 
     @Test
-    public void validate_nullLabel_throws() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> AiFactExtractor.validate(Collections.singletonList(counter(null, "x"))));
+    public void validate_reportedAndIgnoreCounters_doNotThrow() {
+        assertDoesNotThrow(
+                () -> AiFactExtractor.validate("g", Arrays.asList(ignore("POD", POD), counter("rows", "(?m)^INSERT"))));
     }
 
     @Test
-    public void validate_nullPattern_throws() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> AiFactExtractor.validate(Collections.singletonList(counter("x", null))));
+    public void validate_missingEntry_isRefusedWithItsPosition() {
+        assertThat(refusal(counter("a", "x"), null), is("g counter 2 is missing"));
     }
 
     @Test
-    public void validate_invalidRegex_throwsNamingTheLabel() {
-        final IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
-                () -> AiFactExtractor.validate(Collections.singletonList(counter("bad", "["))));
-        assertThat(ex.getMessage(), containsString("bad"));
+    public void validate_nullOrBlankLabel_isRefused() {
+        assertThat(refusal(counter(null, "x")), is("g counter 1 must have a label"));
+        assertThat(refusal(counter("a", "x"), counter(" ", "x")), is("g counter 2 must have a label"));
     }
 
     @Test
-    public void validate_nullEntryInList_isSkipped() {
-        assertDoesNotThrow(() -> AiFactExtractor.validate(Collections.singletonList(null)));
+    public void validate_labelStartingWithAMarker_isRefused() {
+        assertThat(
+                refusal(counter("[ignore] POD", "x")),
+                is("g counter 1: the label '[ignore] POD' starts with '[', which marks a region in a facts file;"
+                        + " set ignore instead"));
     }
+
+    @Test
+    public void validate_labelUsedTwice_isRefused() {
+        assertThat(refusal(counter("rows", "x"), ignore("rows", "y")), is("g: the label 'rows' is used twice"));
+    }
+
+    @Test
+    public void validate_nullOrBlankPattern_isRefused() {
+        assertThat(refusal(counter("x", null)), is("g counter 1 ('x') must have a pattern"));
+        assertThat(refusal(counter("x", " ")), is("g counter 1 ('x') must have a pattern"));
+    }
+
+    @Test
+    public void validate_invalidRegex_isRefusedNamingTheLabel() {
+        assertThat(refusal(counter("bad", "[")), startsWith("g: invalid fact pattern for label 'bad': "));
+    }
+
+    @Test
+    public void validate_onlyIgnoreCounters_isRefused() {
+        assertThat(refusal(ignore("POD", POD), ignore("comments", "#.*")), is("g: no counter, only ignore patterns"));
+    }
+    // </editor-fold>
 }

@@ -217,7 +217,24 @@ public class AiFieldGenerationSelectorTest {
         bad.setLabel("broken");
         bad.setPattern("[");
         r.setFacts(Collections.singletonList(bad));
-        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+        // a rule without an id is named by its prompt key
+        assertThat(thrown.getMessage().startsWith("the facts of rule 'java': invalid fact pattern"), is(true));
+    }
+
+    @Test
+    public void validate_onlyIgnoreFacts_isRefusedNamingTheRuleById() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setId("big-java");
+        final AiFactCounter ignore = new AiFactCounter();
+        ignore.setLabel("comments");
+        ignore.setPattern("//.*");
+        ignore.setIgnore(true);
+        r.setFacts(Collections.singletonList(ignore));
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+        assertThat(thrown.getMessage(), is("the facts of rule 'big-java': no counter, only ignore patterns"));
     }
 
     @Test

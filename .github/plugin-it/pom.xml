@@ -91,6 +91,21 @@
                          only this block). The two aggregate executions override it with their own
                          single rule below. -->
                     <fieldGenerations>
+                        <!-- Extra.java: inline <facts> with an <ignore> counter, which only the plexus binding of
+                             AiFactCounter.ignore keeps out of the facts line and out of the count. -->
+                        <fieldGeneration>
+                            <id>extra</id>
+                            <promptKey>file-body-java</promptKey>
+                            <aiDefinitionKey>fixture-model</aiDefinitionKey>
+                            <priority>10</priority>
+                            <facts>
+                                <fact><label>comments</label><pattern>(?s)/\*.*?\*/|//[^\n]*</pattern><ignore>true</ignore></fact>
+                                <fact><label>class keywords</label><pattern>\bclass\b</pattern></fact>
+                            </facts>
+                            <condition>
+                                <pathGlob>**/extra/**</pathGlob>
+                            </condition>
+                        </fieldGeneration>
                         <fieldGeneration>
                             <id>java</id>
                             <promptKey>file-body-java</promptKey>
@@ -118,6 +133,21 @@
                         <goals><goal>generate</goal></goals>
                         <configuration>
                             <fieldGenerations>
+                                <!-- Extra.java: inline <facts> with an <ignore> counter, which only the plexus binding of
+                                     AiFactCounter.ignore keeps out of the facts line and out of the count. -->
+                                <fieldGeneration>
+                                    <id>extra</id>
+                                    <promptKey>file-body-java</promptKey>
+                                    <aiDefinitionKey>fixture-model</aiDefinitionKey>
+                                    <priority>10</priority>
+                                    <facts>
+                                        <fact><label>comments</label><pattern>(?s)/\*.*?\*/|//[^\n]*</pattern><ignore>true</ignore></fact>
+                                        <fact><label>class keywords</label><pattern>\bclass\b</pattern></fact>
+                                    </facts>
+                                    <condition>
+                                        <pathGlob>**/extra/**</pathGlob>
+                                    </condition>
+                                </fieldGeneration>
                                 <fieldGeneration>
                                     <id>java</id>
                                     <promptKey>file-body-java</promptKey>

@@ -81,8 +81,9 @@ public final class AiFieldGenerationSelector {
             }
             // Fail fast on an unknown onOversize token (throws IllegalArgumentException naming the value).
             config.getOversizeStrategy();
-            // Fail fast on a malformed <facts> counter (missing label/pattern or an invalid regex).
-            AiFactExtractor.validate(config.getFacts());
+            // Fail fast on a malformed <facts> group, by the rules a facts file is held to.
+            final String rule = config.getId() != null ? config.getId() : String.valueOf(config.getPromptKey());
+            AiFactExtractor.validate("the facts of rule '" + rule + "'", config.getFacts());
             if (config.isFallback()) {
                 fallbackCount++;
                 if (config.isSkip()) {
