@@ -12,6 +12,11 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **The jar smoke test counts what it planned.** `smoke-jar` runs `config_Plan.json` a second time
+  and asserts the plan's one file of the demo tree, so a launch that finds no sources fails. The
+  examples say they need 1.4.0 (`examples/build-your-own-jar/pom.xml`, the root README); stale
+  comments and references in `publish.yml`, the poms and CLAUDE.md (versions, layout, test lists)
+  match the code, and the root pom declares `sonar.organization` once.
 - **The Maven plugin is configured by the CLI's file; `check` goal and command.** The plugin reads
   one JSON or YAML file, the same one the CLI reads (`<configurationFile>`,
   `-Dsrcmorph.configurationFile`, default `${project.basedir}/srcmorph.yaml`), through one loader in

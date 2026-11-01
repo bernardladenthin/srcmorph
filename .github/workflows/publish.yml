@@ -148,8 +148,8 @@ jobs:
       # members, regardless of which modules actually end up executing. Using the fully-qualified
       # groupId:artifactId:goal form bypasses prefix resolution entirely (plugin *version* still
       # resolves correctly via each module's inherited pluginManagement pin); -pl restricts
-      # execution to the three modules that actually declare the plugin, skipping the parent pom
-      # and the source-less relocation stub, neither of which registers it anywhere.
+      # execution to the three modules that actually declare the plugin, skipping the parent pom,
+      # which registers it nowhere.
       - name: Spotless check (fail fast on format violations)
         run: mvn -B --no-transfer-progress -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin com.diffplug.spotless:spotless-maven-plugin:check
       - name: SpotBugs check (fail fast on static-analysis findings)
@@ -265,12 +265,11 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: jacoco-report
-          # srcmorph carries the bulk of the test suite (and the only PIT gate); its report is
+          # srcmorph carries the bulk of the test suite; its report is
           # the one forwarded to Coveralls/Codecov in the `report` job below, matching the
           # single-primary-module precedent already used by the sibling java-llama.cpp reactor
           # (which reports only its `llama` core module, not an aggregate across all modules).
-          # srcmorph-cli / srcmorph-maven-plugin jacoco reports are not currently
-          # aggregated or uploaded (documented gap, see TODO.md).
+          # srcmorph-cli / srcmorph-maven-plugin jacoco reports are not aggregated or uploaded.
           path: srcmorph/target/site/jacoco/jacoco.xml
           if-no-files-found: ignore
       - name: Memory after tests
@@ -414,6 +413,16 @@ jobs:
           jar-glob: 'srcmorph.jar'
           work-dir: examples
           marker: 'Main#run end\.'
+          args: config_Plan.json
+      # The same run, asserting what it planned: the one file of the demo tree examples/src/main/java,
+      # so a launch that finds no sources (a wrong base directory, a lost subtree) fails here.
+      - name: Run the jar and count the planned files
+        uses: bernardladenthin/actions/java/smoke-fatjar-cli@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
+        with:
+          jar-dir: smoke-jars
+          jar-glob: 'srcmorph.jar'
+          work-dir: examples
+          marker: '\*\*Total:\*\* 1 file\(s\) across 1 model\(s\)'
           args: config_Plan.json
       - name: Upload smoke logs
         if: failure()

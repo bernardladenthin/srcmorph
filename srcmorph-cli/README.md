@@ -120,15 +120,19 @@ plugin's aggregate goals read from the same keys:
 
 ## Testing
 
-- `MainTest` — unit tests for the extension-dispatched loader and the JSON/YAML mappers.
+- `MainTest` — the command line (usage, `--help`, a wrong argument count), the loader (paths against
+  the file's directory, `${name}` from the system properties, an unknown command) and the mappers.
 - `configuration.ConfigBindingTest` — round-trips a private ad-hoc
   `src/test/resources/test-fixtures/minimal-generate.{json,yaml}` fixture pair.
 - `ExamplesConfigBindingTest` — sweeps every shipped `../examples/config_*.{json,yaml}` file (the
-  public, documented examples) through the same strict mappers, so an example can never silently drift
+  public, documented examples) through the same strict loader, so an example can never silently drift
   out of sync with `SrcMorphConfiguration`'s field set.
 - `CliEndToEndTest` — drives `Main#run()` directly (no forked process) against the `mock` provider for
-  the `All` and `Plan` commands, asserting the expected `.ai.md` tree lands on disk (or, for `Plan`,
-  that nothing is written and the original configuration object is never mutated).
+  every command, asserting the expected `.ai.md` tree lands on disk (or, for `Plan` and `Check`, that
+  nothing is written and the original configuration object is never mutated), and that each phase
+  takes its own rule.
+- `BuildYourOwnJarSelfTestParityTest` — `../examples/build-your-own-jar/srcmorph.yaml` and the plugin's
+  `srcmorph-selftest.yaml` have the same models, profile, scope and rules.
 - `CliArchitectureTest` — ArchUnit rules: this module is the reactor's leaf-most consumer, no public
   mutable fields outside `configuration`, no `System.exit`, no dependency on the Maven Plugin API.
 

@@ -50,7 +50,7 @@ keep carrying it (and its `versions:set` exclusion footgun) in active developmen
 
 ```
 llamacpp-ai-index-maven-plugin/            (repo root; reactor parent)
-├── pom.xml                                net.ladenthin:srcmorph-parent:1.3.0 (packaging=pom)
+├── pom.xml                                net.ladenthin:srcmorph-parent:1.4.0-SNAPSHOT (packaging=pom)
 │                                           shared build plugins + dependencyManagement + release profile
 ├── srcmorph/                               CORE LIBRARY  net.ladenthin:srcmorph  (Java 8, Maven-API-free)
 │   └── src/main/java/net/ladenthin/srcmorph/
@@ -373,9 +373,10 @@ is unavailable.
 
 - `srcmorph` — the bulk of the test suite (framework-free logic); see that module's section above.
 - `srcmorph-cli` — `MainTest`, `ConfigBindingTest`, `ExamplesConfigBindingTest`, `CliArchitectureTest`,
-  `CliEndToEndTest`.
-- `srcmorph-maven-plugin` — `PluginArchitectureTest`, `MojoPhaseSkipTest`, plus the jcstress/
-  vmlens tests noted above.
+  `CliEndToEndTest`, `BuildYourOwnJarSelfTestParityTest`.
+- `srcmorph-maven-plugin` — `PluginArchitectureTest`, `AbstractAiIndexMojoTest` (the configuration file
+  and what Maven fills), `MojoGoalTest` (every goal against a mock configuration), `MojoPhaseSkipTest`,
+  plus the jcstress/vmlens tests noted above.
 
 See `TEST_WRITING_GUIDE.md` (repo root, applies to every module) for full conventions.
 
@@ -438,9 +439,8 @@ actually-representative test environment.
 | `claude-code-review.yml` | PR | AI-powered code review |
 | `claude.yml` | Issue/PR comment with `@claude` | Claude Code interactive assistant |
 
-`publish.yml` still reflects the pre-reactor single-module layout in places (report globs, artifact
-paths); adapting it fully to the 3-module reactor is a separate, later step (see `TODO.md`) — do not
-assume it has already been updated.
+`publish.yml` is adapted to the 3-module reactor; only the core's jacoco report is uploaded (the
+CLI's and the plugin's are not aggregated).
 
 ---
 
@@ -454,8 +454,8 @@ assume it has already been updated.
 | `ch.qos.logback:logback-classic` | 1.6.6 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
 | `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph-cli` (JSON config) |
 | `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph-cli` (YAML config) |
-| `org.apache.maven:maven-plugin-api` | 3.9.16 | `srcmorph-maven-plugin` (provided) |
-| `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.15.2 | `srcmorph-maven-plugin` (provided) |
+| `org.apache.maven:maven-plugin-api` | 3.10.0 | `srcmorph-maven-plugin` (provided); the descriptor states Maven 3.6.3 regardless |
+| `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.16.0 | `srcmorph-maven-plugin` (provided) |
 
 Test-only (every module): `org.junit.jupiter:junit-jupiter`, `org.hamcrest:hamcrest`,
 `com.tngtech.archunit:archunit-junit5`. `srcmorph` additionally uses jqwik (pinned ≤ 1.9.3 — see the
@@ -503,9 +503,9 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
    routing rules (composable `condition` tree, priority, skip, exactly one fallback) are data, never
    hardcoded in Java; see `SrcMorphConfiguration`'s Javadoc and each engine's own Javadoc for the
    `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` semantics.
-7. **Staged, always-green migration** — the plugin's public coordinates never change out from under an
-   existing consumer mid-migration; the rename to `srcmorph-maven-plugin` is a deliberately isolated,
-   later step (see `TODO.md`).
+7. **Staged, always-green migration** — the plugin's public coordinates never changed out from under an
+   existing consumer mid-migration; the rename to `srcmorph-maven-plugin` was a deliberately isolated
+   step, with a relocation stub for the old coordinates.
 
 ## Java 8 bytecode floor — what may ship
 
@@ -528,7 +528,7 @@ and both are easy to undo by accident:
   javac's symbol table, i.e. the *compile classpath*, so a 3.x checker-qual under the 4.x processor
   fails every build with `Could not load type:
   org.checkerframework.framework.qual.DoesNotUnrefineReceiver`. Processor and qualifiers must share a
-  major version. `provided` satisfies both: 4.3.0 where the checker needs it, and excluded from
+  major version. `provided` satisfies both: 4.3.1 where the checker needs it, and excluded from
   consumers' graph **and** from any `jar-with-dependencies` built from it (that descriptor takes
   scope `runtime`).
   `<optional>true</optional>` alone would not have been enough — that descriptor filters on scope
