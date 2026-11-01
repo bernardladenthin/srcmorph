@@ -107,4 +107,22 @@ public class LlamaCppJniAiGenerationProviderTest {
         }
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="promptTokens">
+    @Test
+    public void promptTokens_realProvider_areTheTokensTheCallsPrefillReads() throws Exception {
+        NativeLlamaAvailability.assumeAvailable();
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final AiGenerationRequest request = request("SELECT 1, 2, 3 FROM dual WHERE x = 'a,b;c';\n");
+
+        try (LlamaCppJniAiGenerationProvider provider =
+                new LlamaCppJniAiGenerationProvider(config(4096, 16), promptSupport)) {
+            final int counted = provider.promptTokens(request).getAsInt();
+            final AiGenerationTimings generated = provider.generateWithTimings(request);
+
+            // the count is the prompt the call reads, chat template included, before any call is made
+            assertThat(counted, is(generated.totalPromptTokens()));
+        }
+    }
+    // </editor-fold>
 }

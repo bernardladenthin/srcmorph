@@ -21,7 +21,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.ToIntFunction;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFactExtractor;
@@ -1023,6 +1025,119 @@ public class AiFieldGenerationSupportTest {
             assertThat(request.promptKey(), is(equalTo(CommonTestFixtures.PROMPT_KEY_FILE_BODY)));
         }
         assertThat(requests.get(0).sourceText(), startsWith("Chunk 1 of "));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="counted prompt tokens">
+    /** A provider that counts a prompt's tokens with {@code tokens} and records every request it answers. */
+    private static final class CountingProvider implements AiGenerationProvider {
+
+        private final ToIntFunction<AiGenerationRequest> tokens;
+        private final List<AiGenerationRequest> generated = new ArrayList<>();
+
+        CountingProvider(final ToIntFunction<AiGenerationRequest> tokens) {
+            this.tokens = tokens;
+        }
+
+        @Override
+        public String generate(final AiGenerationRequest request) {
+            generated.add(request);
+            return "S";
+        }
+
+        @Override
+        public OptionalInt promptTokens(final AiGenerationRequest request) {
+            return OptionalInt.of(tokens.applyAsInt(request));
+        }
+    }
+
+    /** The prompt tokens a call of {@link #normalWindowModel} may take: its 2048 less its 64 of answer. */
+    private static final int NORMAL_WINDOW_TOKEN_LIMIT = 2048 - 64;
+
+    @Test
+    public void countedTokens_aSourceOverTheEstimateThatFitsInTokens_takesOneCall() throws Exception {
+        // arrange: about 14 000 chars are over the estimated window (2048 tokens x 4 chars), at 8 chars per token
+        // they fit
+        final CountingProvider provider =
+                new CountingProvider(r -> r.sourceText().length() / 8);
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+        final String source = largeSource(1_500);
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "mapReduce", 0), Files.createTempFile("Dense", ".java"), "file", source, anyHeader());
+
+        // assert
+        assertThat(result.body(), is(equalTo("S")));
+        assertThat(provider.generated.size(), is(1));
+        assertThat(provider.generated.get(0).sourceText(), is(equalTo(source)));
+    }
+
+    @Test
+    public void countedTokens_aPromptOverTheLimit_isNeverSent() throws Exception {
+        // arrange: one char per token, so about 3 500 chars fit the estimate (2048 tokens x 4 chars) but not the
+        // model's 1984 prompt tokens
+        final CountingProvider provider =
+                new CountingProvider(r -> r.sourceText().length());
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "mapReduce", 0),
+                Files.createTempFile("Dense", ".java"),
+                "file",
+                largeSource(400),
+                anyHeader());
+
+        // assert: the file is map-reduced, and every call the provider answered fits
+        assertThat(result.complete(), is(true));
+        assertThat(provider.generated.size() > 1, is(true));
+        for (final AiGenerationRequest request : provider.generated) {
+            assertThat(request.sourceText().length() <= NORMAL_WINDOW_TOKEN_LIMIT, is(true));
+        }
+    }
+
+    @Test
+    public void countedTokens_aSourceOverTheEstimate_isChunkedByTheMeasuredDensity() throws Exception {
+        // arrange: one char per token, about 8 900 chars: a chunk of the estimate (about 5 800 chars) would be three
+        // times the limit, a chunk of the measured window is not
+        final CountingProvider provider =
+                new CountingProvider(r -> r.sourceText().length());
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        support.generate(
+                oversizeRule("m", "mapReduce", 0),
+                Files.createTempFile("Dense", ".java"),
+                "file",
+                largeSource(1_000),
+                anyHeader());
+
+        // assert: no map call needed a smaller window, so every chunk read the whole of itself
+        for (final AiGenerationRequest request : provider.generated) {
+            assertThat(request.sourceText().length() <= NORMAL_WINDOW_TOKEN_LIMIT, is(true));
+            assertThat(request.sourceText().contains("[EOF - source was truncated]"), is(false));
+        }
+    }
+
+    @Test
+    public void countedTokens_aProviderThatCannotCount_keepsTheEstimate() throws Exception {
+        // arrange: the default promptTokens is empty
+        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            requests.add(request);
+            return "S";
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+        final String source = largeSource(300);
+
+        // act
+        support.generate(
+                oversizeRule("m", "mapReduce", 0), Files.createTempFile("Small", ".java"), "file", source, anyHeader());
+
+        // assert: the source fits the estimate and goes whole
+        assertThat(requests.size(), is(1));
+        assertThat(requests.get(0).sourceText(), is(equalTo(source)));
     }
     // </editor-fold>
 }

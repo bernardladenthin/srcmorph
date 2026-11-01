@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.provider;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import lombok.ToString;
 import net.ladenthin.llama.LlamaModel;
 import net.ladenthin.llama.args.FlashAttn;
@@ -203,6 +204,16 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     @Override
     public AiGenerationUsage lastUsage() {
         return lastUsage;
+    }
+
+    // Narrows away the interface's checked IOException, as generateWithTimings does: the template and the
+    // tokenizer throw only unchecked exceptions (BED).
+    @Override
+    public OptionalInt promptTokens(final AiGenerationRequest request) {
+        // the prompt as the chat template renders it, system and user message and the generation prompt,
+        // counted by the model's tokenizer: what the call's prefill reads
+        final LlamaModel loaded = model();
+        return OptionalInt.of(loaded.encode(loaded.applyTemplate(support.buildInferenceParameters(request))).length);
     }
 
     // Narrows away the interface's checked IOException: the chat path (chatComplete + parse) throws only

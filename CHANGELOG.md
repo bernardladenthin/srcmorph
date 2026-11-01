@@ -309,6 +309,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
+- **A local model's windows are measured in tokens, not estimated.** `charsPerToken` is an integer
+  estimate, and source code, SQL and data tokenize denser than it assumes: Granite's 64K and 16K
+  windows overflowed on every chunk of the large corpus's dump at `charsPerToken: 3`, and each retry
+  cut a quarter of its chunk away. `AiGenerationProvider.promptTokens` counts a prompt as the chat
+  template renders it, with the model's own tokenizer (`llamacpp-jni`: `applyTemplate` and `encode`;
+  a remote API cannot, so it keeps the estimate and the overflow retry). With a count, a source over
+  the estimated window is counted whole: it goes in one call when it fits after all, and is otherwise
+  chunked by its measured density; and every call is counted before it is sent, so a prompt over
+  `contextSize - maxOutputTokens` is not sent but its window shrinks by the density
+  (`indexer.AiTokenWindow`). The plan still estimates, since it loads no model.
 - **Map and reduce calls say what their input is: `mapPromptKey` and `reducePromptKey`.** Every map
   and reduce call of `mapReduce` and `sampleChunks` took the rule's prompt, which describes a whole
   file: gpt-oss-20b indexed a chunk of INSERT rows of the large corpus's dump as a file and invented

@@ -428,7 +428,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
 | `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
 | `repeatLastN` | `-1` | Window the `repeatPenalty` above acts on (`--repeat-last-n`); `-1` = leave llama.cpp's own window (64 tokens), `0` = disable the penalty entirely. Configuring a penalty without its range leaves the strength adjustable but the reach fixed, which is why the two belong together |
-| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field). Use a value at or below your model's real ratio so the budget stays conservative |
+| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: one over it is counted whole, goes in one call when it fits after all, and is otherwise chunked by its measured density; a prompt over `contextSize - maxOutputTokens` is never sent |
 | `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
 | `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
 | `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |

@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.Set;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFactExtractor;
@@ -289,9 +290,18 @@ public class AiFieldGenerationSupport {
         // structural counts in the summary. Computed once here over the FULL source ("" when unset).
         final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
 
+        // Over the window by the estimate, the model's own count decides when the provider has one: the
+        // source may fit after all, and if not, its chunks are sized by the density it measured.
+        final int window = preparedPrompt.trimmed()
+                ? countedWindow(generationConfig, contextFile, contextType, request, effectiveMaxInputChars)
+                : effectiveMaxInputChars;
+        final boolean fits = window == effectiveMaxInputChars
+                ? !preparedPrompt.trimmed()
+                : !promptPreparationSupport.preparePrompt(request, window).trimmed();
+
         // An oversized file (the source did not fit the window) is handled per the rule's onOversize
         // strategy; a file that fits goes to the model whole.
-        if (preparedPrompt.trimmed()) {
+        if (!fits) {
             return factsPrefix
                     + oversized(
                             fieldGeneration,
@@ -300,7 +310,7 @@ public class AiFieldGenerationSupport {
                             contextType,
                             sourceText,
                             baseHeader,
-                            effectiveMaxInputChars);
+                            window);
         }
         try {
             return factsPrefix
@@ -311,7 +321,7 @@ public class AiFieldGenerationSupport {
                             contextType,
                             sourceText,
                             baseHeader,
-                            effectiveMaxInputChars,
+                            window,
                             false);
         } catch (final AiSourceCutException e) {
             // the source fits by the character estimate but not in tokens: the context overflow's smaller
@@ -326,6 +336,53 @@ public class AiFieldGenerationSupport {
                             baseHeader,
                             e.window());
         }
+    }
+
+    /**
+     * Returns the window of a source that does not fit its estimated window, from the model's own count of
+     * the whole prompt: the tokens the model's window leaves for a prompt, times the prompt's characters per
+     * token ({@link AiTokenWindow#measuredWindow}). The estimate stays when the provider cannot count or the
+     * model's window is not known.
+     *
+     * @param generationConfig the rule's model configuration
+     * @param contextFile      the file the body is for
+     * @param contextType      the context label for the log
+     * @param request          the request with the whole source
+     * @param estimate         the window by {@code charsPerToken}
+     * @return the window in characters
+     * @throws IOException if the provider fails to count
+     */
+    private int countedWindow(
+            final AiGenerationConfig generationConfig,
+            final Path contextFile,
+            final String contextType,
+            final AiGenerationRequest request,
+            final int estimate)
+            throws IOException {
+        final int tokenLimit = AiTokenWindow.promptTokenLimit(
+                generationConfig.getContextSize(), generationConfig.getMaxOutputTokens());
+        if (tokenLimit == AiTokenWindow.NO_LIMIT) {
+            return estimate;
+        }
+        final OptionalInt tokens = generationProvider.promptTokens(request);
+        if (!tokens.isPresent() || tokens.getAsInt() <= 0) {
+            return estimate;
+        }
+        final int promptChars = promptPreparationSupport.getBasePromptLength(request.promptKey(), contextFile)
+                + request.sourceText().length();
+        final int counted = tokens.getAsInt();
+        final int window = AiTokenWindow.measuredWindow(tokenLimit, promptChars, counted);
+        LOGGER.info(
+                "Counted {} '{}': {} prompt tokens for {} chars, the model's window leaves {} tokens: a window of"
+                        + " {} chars (estimated {})",
+                contextType,
+                contextFile,
+                counted,
+                promptChars,
+                tokenLimit,
+                window,
+                estimate);
+        return window;
     }
 
     /**
@@ -655,10 +712,12 @@ public class AiFieldGenerationSupport {
             final boolean mayCut)
             throws IOException {
         final int attempts = fieldGeneration.incompleteStrategy().attempts();
+        final AiGenerationConfig model = modelDefinitionSupport.getConfig(fieldGeneration.getAiDefinitionKey());
+        final int tokenLimit = AiTokenWindow.promptTokenLimit(model.getContextSize(), model.getMaxOutputTokens());
         for (int attempt = 1; ; attempt++) {
             try {
-                final String text =
-                        generateWithOverflowRetry(promptKey, contextFile, source, baseHeader, window, mayCut);
+                final String text = generateWithOverflowRetry(
+                        promptKey, contextFile, source, baseHeader, window, mayCut, tokenLimit);
                 if (compatibilityHelper.isBlank(text)) {
                     throw new AiIncompleteAnswerException(
                             AiIncompleteAnswerException.Reason.EMPTY, "The model answered nothing for " + contextFile);
@@ -688,7 +747,9 @@ public class AiFieldGenerationSupport {
      * (up to {@link AiOverflowBackoff#MAX_RETRIES}) when the provider rejects the prompt for exceeding the model's
      * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
      * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
-     * exception propagates immediately. A source that the smaller window would cut is cut only when
+     * exception propagates immediately. A provider that counts a prompt's tokens is asked first: a prompt
+     * over {@code tokenLimit} is not sent, the window shrinks by the measured density instead
+     * ({@link AiTokenWindow#smallerWindow}). A source that the smaller window would cut is cut only when
      * {@code mayCut} allows it (and counted in {@link #cutCalls}); otherwise {@link AiSourceCutException}
      * hands the window back to the caller, whose rule decides.
      *
@@ -698,6 +759,8 @@ public class AiFieldGenerationSupport {
      * @param baseHeader  the header passed through to the request
      * @param window      the initial per-call window budget (characters)
      * @param mayCut      whether the source may be cut to fit the window
+     * @param tokenLimit  the tokens a prompt may take ({@link AiTokenWindow#promptTokenLimit}), or
+     *                    {@link AiTokenWindow#NO_LIMIT} to send every prompt unchecked
      * @return the provider's generated text
      * @throws IOException if the provider throws an {@link IOException} during generation, or the source
      *                     would be cut and may not be
@@ -708,7 +771,8 @@ public class AiFieldGenerationSupport {
             final String source,
             final AiMdHeader baseHeader,
             final int window,
-            final boolean mayCut)
+            final boolean mayCut,
+            final int tokenLimit)
             throws IOException {
         int budget = window;
         boolean cut = false;
@@ -725,10 +789,31 @@ public class AiFieldGenerationSupport {
                     cutCalls++;
                 }
             }
+            final AiGenerationRequest call =
+                    new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader);
+            // counted while a smaller window may still be asked for; 0 = not counted
+            final int counted = tokenLimit == AiTokenWindow.NO_LIMIT || attempt >= AiOverflowBackoff.MAX_RETRIES
+                    ? 0
+                    : generationProvider.promptTokens(call).orElse(0);
+            if (counted > tokenLimit) {
+                final int smaller = AiTokenWindow.smallerWindow(
+                        budget, tokenLimit, prepared.prompt().length(), counted);
+                if (smaller > 0) {
+                    LOGGER.info(
+                            "The prompt for {} takes {} tokens, the model's window leaves {}; not sent, a smaller"
+                                    + " window ({} -> {} chars)",
+                            contextFile,
+                            counted,
+                            tokenLimit,
+                            budget,
+                            smaller);
+                    budget = smaller;
+                    continue;
+                }
+            }
             lastReadChars = prepared.trimmedSourceLength();
             try {
-                final String text = generationProvider.generate(
-                        new AiGenerationRequest(promptKey, contextFile, prepared.sourceText(), baseHeader));
+                final String text = generationProvider.generate(call);
                 usage = usage.add(generationProvider.lastUsage());
                 return text;
             } catch (final IOException | RuntimeException e) {
