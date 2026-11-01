@@ -272,7 +272,7 @@ reset
     || { cat "$LOGS/run6-calibrate.log"; fail "srcmorph:calibrate failed"; }
 grep -q "Model 'fixture-model'" "$LOGS/run6-calibrate.log" \
     || fail "calibrate did not resolve the aiDefinition by key"
-grep -q "<calibration>" "$LOGS/run6-calibrate.log" || fail "calibrate printed no paste-ready <calibration> block"
+grep -q "calibration:" "$LOGS/run6-calibrate.log" || fail "calibrate printed no paste-ready calibration: block"
 
 reset
 "${MVN[@]}" srcmorph:check > "$LOGS/run6-check.log" 2>&1 || { cat "$LOGS/run6-check.log"; fail "srcmorph:check failed on a sound configuration"; }

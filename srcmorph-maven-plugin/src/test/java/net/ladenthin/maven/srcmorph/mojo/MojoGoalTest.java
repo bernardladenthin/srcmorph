@@ -185,10 +185,10 @@ public class MojoGoalTest {
         final String all = String.join("\n", log.infoMessages());
         // the blank line that separates the block, asserted by position (contains cannot see it)
         assertThat(log.infoMessages().get(0), is(equalTo("")));
-        assertThat(all.contains("Paste each <calibration>"), is(true));
+        assertThat(all.contains("Paste each calibration: block into its model's entry"), is(true));
         assertThat(all.contains("measured prefill/decode throughput"), is(true));
-        assertThat(all.contains("<calibration>"), is(true));
-        assertThat(all.contains("</calibration>"), is(true));
+        assertThat(all.contains("\ncalibration:\n"), is(true));
+        assertThat(all.contains("  decodeTokensPerSecond: "), is(true));
         assertThat(all.contains("mock-model"), is(true));
     }
     // </editor-fold>

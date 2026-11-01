@@ -61,13 +61,13 @@ public class CalibrationReportTest {
     }
 
     @Test
-    public void renderXml_isEmptyForNoMeasurements() {
+    public void renderPasteBlock_isEmptyForNoMeasurements() {
         final CalibrationReport report = new CalibrationReport(new ArrayList<CalibrationReport.ModelMeasurement>());
-        assertThat(report.renderXml(), is(""));
+        assertThat(report.renderPasteBlock(), is(""));
     }
 
     @Test
-    public void renderXml_rendersOnePasteBlockPerModelInOrder() {
+    public void renderPasteBlock_rendersOneBlockPerModelInOrder() {
         final AiCalibrationMeasurement measurementA =
                 new AiCalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128);
         final AiCalibrationMeasurement measurementB =
@@ -76,24 +76,22 @@ public class CalibrationReportTest {
                 new CalibrationReport.ModelMeasurement("model-a", measurementA),
                 new CalibrationReport.ModelMeasurement("model-b", measurementB)));
 
-        final String expected = "<!-- calibration for aiDefinition 'model-a' (this machine) -->\n"
-                + "<calibration>\n"
-                + "    <prefillTokensPerSecond>1000.5</prefillTokensPerSecond>\n"
-                + "    <decodeTokensPerSecond>200.3</decodeTokensPerSecond>\n"
-                + "    <charsPerToken>4.57</charsPerToken>\n"
-                + "</calibration>\n"
-                + "<!-- calibration for aiDefinition 'model-b' (this machine) -->\n"
-                + "<calibration>\n"
-                + "    <prefillTokensPerSecond>500.0</prefillTokensPerSecond>\n"
-                + "    <decodeTokensPerSecond>100.0</decodeTokensPerSecond>\n"
-                + "    <charsPerToken>3.00</charsPerToken>\n"
-                + "</calibration>\n";
+        final String expected = "# calibration of the aiDefinitions entry \"model-a\" (this machine)\n"
+                + "calibration:\n"
+                + "  prefillTokensPerSecond: 1000.5\n"
+                + "  decodeTokensPerSecond: 200.3\n"
+                + "  charsPerToken: 4.57\n"
+                + "# calibration of the aiDefinitions entry \"model-b\" (this machine)\n"
+                + "calibration:\n"
+                + "  prefillTokensPerSecond: 500.0\n"
+                + "  decodeTokensPerSecond: 100.0\n"
+                + "  charsPerToken: 3.00\n";
 
-        assertThat(report.renderXml(), is(expected));
+        assertThat(report.renderPasteBlock(), is(expected));
     }
 
     @Test
-    public void renderXml_endsEveryLineWithLineFeedOnACrLfPlatform() throws IOException, InterruptedException {
+    public void renderPasteBlock_endsEveryLineWithLineFeedOnACrLfPlatform() throws IOException, InterruptedException {
         // String.format's %n is the platform line separator, fixed when the JVM starts, so only a JVM
         // whose separator is CRLF (Windows) shows a mixed block; on Linux this test starts one.
         final List<String> command = new ArrayList<>();
@@ -103,16 +101,16 @@ public class CalibrationReportTest {
         }
         command.add("-cp");
         command.add(System.getProperty("java.class.path"));
-        command.add(RenderXmlInThisJvm.class.getName());
+        command.add(RenderPasteBlockInThisJvm.class.getName());
         final Process process = new ProcessBuilder(command).start();
         final byte[] stdout = readAll(process.getInputStream());
         final byte[] stderr = readAll(process.getErrorStream());
         final int exit = process.waitFor();
 
         assertThat(new String(stderr, StandardCharsets.UTF_8), exit, is(0));
-        final String xml = new String(stdout, StandardCharsets.UTF_8);
-        assertThat(xml, not(containsString("\r")));
-        assertThat(xml, is(RenderXmlInThisJvm.EXPECTED));
+        final String block = new String(stdout, StandardCharsets.UTF_8);
+        assertThat(block, not(containsString("\r")));
+        assertThat(block, is(RenderPasteBlockInThisJvm.EXPECTED));
     }
 
     private static byte[] readAll(final InputStream in) throws IOException {
@@ -125,16 +123,15 @@ public class CalibrationReportTest {
     }
 
     /** Renders one block in a JVM started with a CRLF line separator; fails when it is not one. */
-    static final class RenderXmlInThisJvm {
+    static final class RenderPasteBlockInThisJvm {
 
-        static final String EXPECTED = "<!-- calibration for aiDefinition 'model-a' (this machine) -->\n"
-                + "<calibration>\n"
-                + "    <prefillTokensPerSecond>1000.5</prefillTokensPerSecond>\n"
-                + "    <decodeTokensPerSecond>200.3</decodeTokensPerSecond>\n"
-                + "    <charsPerToken>4.57</charsPerToken>\n"
-                + "</calibration>\n";
+        static final String EXPECTED = "# calibration of the aiDefinitions entry \"model-a\" (this machine)\n"
+                + "calibration:\n"
+                + "  prefillTokensPerSecond: 1000.5\n"
+                + "  decodeTokensPerSecond: 200.3\n"
+                + "  charsPerToken: 4.57\n";
 
-        private RenderXmlInThisJvm() {}
+        private RenderPasteBlockInThisJvm() {}
 
         public static void main(final String[] args) throws IOException {
             if (!"\r\n".equals(System.lineSeparator())) {
@@ -145,7 +142,7 @@ public class CalibrationReportTest {
             final CalibrationReport report =
                     new CalibrationReport(Collections.singletonList(new CalibrationReport.ModelMeasurement(
                             "model-a", new AiCalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128))));
-            System.out.write(report.renderXml().getBytes(StandardCharsets.UTF_8));
+            System.out.write(report.renderPasteBlock().getBytes(StandardCharsets.UTF_8));
             System.out.flush();
         }
     }
@@ -235,18 +232,18 @@ public class CalibrationReportTest {
 
     /**
      * The numbers the two documents share must be byte-identical to the ones {@link
-     * CalibrationReport#renderXml()} pastes, or a user comparing the JSON against the XML block would
-     * see two different measurements of the same run.
+     * CalibrationReport#renderPasteBlock()} pastes, or a user comparing the JSON against the paste block
+     * would see two different measurements of the same run.
      */
     @Test
-    public void renderJson_reusesTheExactNumberFormattingOfTheXmlBlock() {
+    public void renderJson_reusesTheExactNumberFormattingOfThePasteBlock() {
         final CalibrationReport report = reportOf(entry("m"));
-        final String xml = report.renderXml();
+        final String block = report.renderPasteBlock();
         final String json = report.renderJson();
 
-        assertThat(xml, containsString("<prefillTokensPerSecond>1234.6</prefillTokensPerSecond>"));
+        assertThat(block, containsString("  prefillTokensPerSecond: 1234.6\n"));
         assertThat(json, containsString("\"prefillTokensPerSecond\": 1234.6,"));
-        assertThat(xml, containsString("<charsPerToken>3.21</charsPerToken>"));
+        assertThat(block, containsString("  charsPerToken: 3.21\n"));
         assertThat(json, containsString("\"charsPerToken\": 3.21,"));
     }
 

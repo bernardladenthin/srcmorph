@@ -308,6 +308,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `.github/release-assets.json` names no files beyond the Maven artifacts.
 
 ### Changed
+
+- **Calibrate prints a YAML `calibration:` block** for the model's entry under `aiDefinitions` of the
+  configuration file, not an XML `<calibration>` element no configuration reads any more
+  (`CalibrationReport.renderPasteBlock()` replaces `renderXml()`).
+- **Unset, `modelDirectory` and `profileDirectory` are the configuration file's directory**, so a
+  relative `modelPath`, `templateFile` or `factsFile` resolves against the file's directory like every
+  other relative path of the file, never against the working directory.
 - **The SQL fact counters count what their labels say.** `INSERT rows` counted `INSERT INTO`
   statements, so a multi-row `INSERT` of 28 rows read as 1; it is `INSERT statements` now, and the
   new `VALUES rows (approx)` counts the row tuples of `VALUES` lists. `views` also counts

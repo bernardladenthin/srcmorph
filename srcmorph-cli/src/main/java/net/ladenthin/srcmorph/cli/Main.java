@@ -298,10 +298,10 @@ public class Main {
                 }
                 case Calibrate: {
                     final CalibrationReport report = new CalibrateEngine(configuration.srcMorph).execute();
-                    // Deliberate System.out, not SLF4J: this is a paste-ready <calibration> XML
-                    // snippet meant for the user to copy into their POM's <aiDefinition>, not a log
+                    // Deliberate System.out, not SLF4J: this is a paste-ready YAML calibration: block
+                    // for the model's entry under aiDefinitions of the configuration file, not a log
                     // line, so it must not carry a logger's timestamp/level prefix.
-                    System.out.println(report.renderXml()); // NOPMD - intentional stdout, see above
+                    System.out.println(report.renderPasteBlock()); // NOPMD - intentional stdout, see above
                     break;
                 }
                 case ListModels: {

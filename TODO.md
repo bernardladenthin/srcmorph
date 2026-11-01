@@ -36,7 +36,8 @@ Eleven parallel reviews (the whole PR, then config, fact counters, indexer, prov
 CLI and examples, docs, benchmark tooling, tests and gates) checked the PR at b74aa6b; every item
 below was verified against the code. Fixed and deleted from here: the chunker's repeated chunks
 behind a long line, the overflow retry that cut a fitting source behind the rule's back, a provider's
-unchecked error ending the run, the run record lost on an abort, the documentation drift.
+unchecked error ending the run, the run record lost on an abort, the documentation drift, relative
+paths against the working directory, Calibrate's XML block.
 
 **Decisions first** (they change what the fixes below look like):
 
@@ -68,8 +69,6 @@ unchecked error ending the run, the run record lost on an abort, the documentati
 - The package and project rules are never validated (`onOversize`, `onIncomplete`, `maxChunks` with
   `mapReduce`, `sampleChunks` without it) and their `factsKey` is never resolved, although the
   CHANGELOG says the overview honours its rule's facts; `check` passes all of it.
-- A relative `modelPath`, `templateFile` or `factsFile` resolves against the working directory when
-  `modelDirectory` / `profileDirectory` are unset; default both to the configuration file's directory.
 - An empty `srcMorph:` (or a key set to nothing) puts `null` into non-null fields: a bare
   `NullPointerException` in the loader, an NPE in the plugin for `pluginVersion`. Skip nulls in both
   mappers.
@@ -88,8 +87,6 @@ unchecked error ending the run, the run record lost on an abort, the documentati
   would both be summarized"; deduplicate subtrees and candidates by their real path.
 - The plugin's property map has no `${project.*}` (`project.basedir`, `project.build.directory`,
   `project.version`); an unknown `${x}` stays literal and becomes a directory name.
-- Calibrate still prints a paste-ready XML `<calibration>` block; print a YAML `calibration:` block
-  (the plugin-it asserts the XML block today).
 - `[ignore]` blanking deletes the region instead of replacing it with spaces, so `FROM t/* x */JOIN u`
   counts no `JOIN`.
 - `getOversizeStrategy()` is a bean getter: the echoed configuration carries `oversizeStrategy`, which
@@ -157,10 +154,8 @@ unchecked error ending the run, the run record lost on an abort, the documentati
   is the file's directory, so it cannot catch a base-directory regression; run it from the root.
 - SonarCloud reports 98 new issues that are not readable without a token.
 
-**Documentation:** the docs already describe two code changes still open above (relative paths
-against the file's directory, Calibrate's YAML block); `examples/run_calibrate.*`, `plugin-it.sh` and
-`srcmorph/spotbugs-exclude.xml` still name the XML block, and the `languages-2026-11` README's
-`--max-chunks 6` command is refused by today's `run.py`.
+**Documentation:** the `languages-2026-11` README's `--max-chunks 6` command is refused by today's
+`run.py` (with the finding-7 update).
 
 ### Other open items
 

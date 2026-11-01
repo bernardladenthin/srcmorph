@@ -37,9 +37,10 @@ import java.util.regex.Pattern;
  *   <li>Relative directories resolve against the directory of the file, so the file names the same
  *       tree whatever directory it is run from: {@code baseDirectory} (unset, the caller's default),
  *       {@code outputDirectory} (unset, {@value SrcMorphConfiguration#DEFAULT_OUTPUT_DIRECTORY} below the
- *       base directory), {@code modelDirectory}, {@code profileDirectory} and {@code runRecordFile}. A path
- *       with a root of its
- *       own (absolute, or on Windows root- or drive-relative) is used as it is.</li>
+ *       base directory), {@code modelDirectory} and {@code profileDirectory} (unset, the file's
+ *       directory, so a model's {@code modelPath}, a prompt's {@code templateFile} and a fact
+ *       definition's {@code factsFile} resolve against it too) and {@code runRecordFile}. A path with a
+ *       root of its own (absolute, or on Windows root- or drive-relative) is used as it is.</li>
  * </ol>
  */
 public final class SrcMorphConfigurationFileLoader {
@@ -229,14 +230,12 @@ public final class SrcMorphConfigurationFileLoader {
                 outputSet && configuredOutput != null
                         ? resolved(directory, configuredOutput)
                         : resolved(base, new File(SrcMorphConfiguration.DEFAULT_OUTPUT_DIRECTORY)));
+        // unset, they are the file's directory: a relative modelPath, templateFile or factsFile resolves
+        // through them, so against the file's directory as well, never against the working directory
         final File modelDirectory = srcMorph.getModelDirectory();
-        if (modelDirectory != null) {
-            srcMorph.setModelDirectory(resolved(directory, modelDirectory));
-        }
+        srcMorph.setModelDirectory(modelDirectory != null ? resolved(directory, modelDirectory) : directory);
         final File profileDirectory = srcMorph.getProfileDirectory();
-        if (profileDirectory != null) {
-            srcMorph.setProfileDirectory(resolved(directory, profileDirectory));
-        }
+        srcMorph.setProfileDirectory(profileDirectory != null ? resolved(directory, profileDirectory) : directory);
         final File runRecordFile = srcMorph.getRunRecordFile();
         if (runRecordFile != null) {
             srcMorph.setRunRecordFile(resolved(directory, runRecordFile));

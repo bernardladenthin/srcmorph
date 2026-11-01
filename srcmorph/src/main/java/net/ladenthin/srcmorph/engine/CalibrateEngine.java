@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * referenced by {@link SrcMorphConfiguration#getFieldGenerations()}), loads the model once (catching a
  * bad path / OOM / wrong native early), runs a couple of representative generations via
  * {@link AiCalibrationRunner}, and reads the model's own measured prefill/decode throughput. The caller
- * pastes {@link CalibrationReport#renderXml()} onto the matching {@code <aiDefinition>} so the plan's time
+ * pastes {@link CalibrationReport#renderPasteBlock()} into the model's entry under {@code aiDefinitions} so the plan's time
  * estimate reflects <em>this</em> machine instead of the built-in reference-CPU coefficients.</p>
  */
 @ToString

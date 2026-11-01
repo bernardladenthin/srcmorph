@@ -14,15 +14,16 @@ import org.apache.maven.plugins.annotations.Mojo;
  * model loaded) and a real {@code generate} run.
  *
  * <p>For each distinct model a run would load (the {@code aiDefinitionKey}s referenced by
- * {@code <fieldGenerations>}) it loads the model once (catching a bad path / OOM / wrong native early),
- * runs a couple of representative generations, reads the model's own measured prefill/decode throughput,
- * and prints a paste-ready {@code <calibration>} block. Paste that onto the matching {@code <aiDefinition>}
- * so the plan's time estimate reflects <em>this</em> machine instead of the built-in reference-CPU
- * coefficients. The numbers are per machine (GPU/CPU, quant, context), so re-run on each host.</p>
+ * file rules) it loads the model once (catching a bad path / OOM / wrong native early), runs a couple of
+ * representative generations, reads the model's own measured prefill/decode throughput, and prints a
+ * paste-ready YAML {@code calibration:} block. Paste that into the model's entry under
+ * {@code aiDefinitions} of the configuration file so the plan's time estimate reflects <em>this</em>
+ * machine instead of the built-in reference-CPU coefficients. The numbers are per machine (GPU/CPU,
+ * quant, context), so re-run on each host.</p>
  *
  * <p>Thin wrapper: builds the configuration of the file rules from the configuration file and delegates
  * the whole run to {@link CalibrateEngine}; only the final paste-ready banner and
- * {@link CalibrationReport#renderXml()} output stay in this mojo.</p>
+ * {@link CalibrationReport#renderPasteBlock()} output stay in this mojo.</p>
  */
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "calibrate", threadSafe = true)
@@ -51,10 +52,11 @@ public class CalibrateMojo extends AbstractAiIndexMojo {
             final CalibrationReport report = new CalibrateEngine(buildConfiguration(RuleSection.FILES)).execute();
 
             getLog().info("");
-            getLog().info("Paste each <calibration> onto its matching <aiDefinition> (numbers are per machine).");
+            getLog().info("Paste each calibration: block into its model's entry under aiDefinitions"
+                    + " (numbers are per machine).");
             getLog().info("These are the model's own measured prefill/decode throughput (from the engine's "
                     + "per-call timings); only the mock/no-timings path falls back to a wall-clock estimate.");
-            for (final String line : report.renderXml().split("\n", -1)) {
+            for (final String line : report.renderPasteBlock().split("\n", -1)) {
                 getLog().info(line);
             }
         } catch (SrcMorphException e) {

@@ -53,9 +53,10 @@ public enum CCommand {
     /**
      * Calibrates every distinct model referenced by the configured routing rules
      * ({@code net.ladenthin.srcmorph.engine.CalibrateEngine}) and prints a paste-ready
-     * {@code <calibration>} XML block per model to standard output.
+     * YAML {@code calibration:} block per model (for its entry under {@code aiDefinitions}) to standard
+     * output.
      */
-    Calibrate("measures every routed model and prints a <calibration> block per model"),
+    Calibrate("measures every routed model and prints a calibration: block per model"),
 
     /**
      * Lists the models of every OpenAI-compatible server the {@code aiDefinitions} name

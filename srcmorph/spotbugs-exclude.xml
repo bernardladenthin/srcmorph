@@ -215,7 +215,7 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the <calibration> accessors of the Maven @Parameter config beans
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the calibration accessors of the configuration beans
         (AiModelDefinition, AiGenerationConfig). Same rationale as the routing-config EI suppression above:
         these are mutable JavaBeans the plugin framework populates via reflection; the AiCalibration the
         getter returns / the setter stores IS the configuration, read once during the run and never shared

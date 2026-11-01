@@ -478,7 +478,7 @@ public class CliEndToEndTest {
 
     /**
      * The {@code Calibrate} arm deliberately uses {@code System.out} rather than the logger: the
-     * rendered block is a paste-ready {@code <calibration>} snippet the user copies into their POM,
+     * rendered block is a paste-ready {@code calibration:} block the user copies into the configuration file,
      * so it must not carry a logger's timestamp/level prefix. That distinction is the whole point of
      * the line, and nothing asserted it — removing the {@code println} left every test green.
      *
@@ -502,8 +502,8 @@ public class CliEndToEndTest {
 
         // assert -- the block reached stdout, and it is the real report, not an empty render
         final String stdout = captured.toString(StandardCharsets.UTF_8.name());
-        assertThat(stdout.contains("<calibration>"), is(true));
-        assertThat(stdout.contains("</calibration>"), is(true));
+        assertThat(stdout.contains("\ncalibration:\n"), is(true));
+        assertThat(stdout.contains("  prefillTokensPerSecond: "), is(true));
         assertThat(stdout.contains("mock-model"), is(true));
     }
 

@@ -192,9 +192,36 @@ public class SrcMorphConfigurationFileLoaderTest {
         assertThat(
                 srcMorph.getOutputDirectory(),
                 is(equalTo(defaultBase().toPath().resolve("src/site/ai").toFile())));
-        assertThat(srcMorph.getModelDirectory(), is(nullValue()));
-        assertThat(srcMorph.getProfileDirectory(), is(nullValue()));
+        // unset, the model and profile directories are the file's own, never the working directory
+        assertThat(
+                srcMorph.getModelDirectory(),
+                is(equalTo(tempDir.toAbsolutePath().toFile())));
+        assertThat(
+                srcMorph.getProfileDirectory(),
+                is(equalTo(tempDir.toAbsolutePath().toFile())));
         assertThat(srcMorph.getRunRecordFile(), is(nullValue()));
+    }
+
+    @Test
+    public void load_aRelativeModelPath_resolvesAgainstTheFilesDirectory() throws IOException {
+        // arrange
+        final Path file = write(
+                "conf/srcmorph.yaml",
+                "srcMorph:\n  aiDefinitions:\n    - key: \"m\"\n      modelPath: \"models/m.gguf\"\n");
+
+        // act
+        final SrcMorphConfiguration srcMorph = SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES)
+                .getSrcMorph();
+        final AiModelDefinitionSupport models =
+                new AiModelDefinitionSupport(srcMorph.getAiDefinitions(), srcMorph.getModelDirectory());
+
+        // assert
+        assertThat(
+                models.getConfig("m").getModelPath(),
+                is(equalTo(file.getParent()
+                        .toAbsolutePath()
+                        .resolve("models/m.gguf")
+                        .toString())));
     }
 
     @Test
