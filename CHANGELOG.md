@@ -175,7 +175,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   assignments. XML blanks the DOCTYPE; POMs blank every plugin body, so a plugin's dependencies and
   configuration do not count, and `managed plugin sections` is new. Routing takes `.zsh`, `.bats`,
   `.t`, `.cgi`, `.psgi`, `.wsdl` and `.xhtml` too, and a POM above 275 KB keeps the Maven counters
-  in the Granite tiers (`huge-pom`, `big-window-pom`).
+  in the Granite tiers (`huge-pom`, `big-pom`).
   `ShellFactPatternsTest`, `PerlFactPatternsTest` and `XmlFactPatternsTest` pin every counter. The
   self-test profile and `examples/build-your-own-jar/srcmorph.yaml` route `.sh` / `.bash` / `.ksh`,
   `.pl` / `.pm`, `**/*pom.xml` and `.xml` / `.xsd` / `.xsl` / `.xslt` to them, and big XML files take
@@ -210,7 +210,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   model.
 - **`examples/build-your-own-jar/srcmorph.yaml` is the plugin's self-test profile as a CLI
   configuration**, nearly 1:1: gpt-oss-20b (native MXFP4, 96K window) for every file, package and the
-  project overview, Granite 4.0 H-Tiny (384K window, one pass) for ~275 KB .. 1 MB and Granite 4.0
+  project overview, Granite 4.0 H-Tiny (64K window, `mapReduce`) for ~275 KB .. 1 MB and Granite 4.0
   H-1B (16K window, `sampleChunks` with `maxChunks: 6`) beyond, with the exact whole-file counts of
   the profile's fact files (Java: types, methods, fields, ...; SQL: INSERT statements and rows,
   tables, views, indexes, routines, triggers, types; and the shell, Perl, XML and POM counters) on
@@ -309,6 +309,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
+- **The self-test's ~275 KB .. 1 MB tier map-reduces with Granite 4.0 H-Tiny over a 64K window**
+  instead of one pass over 384K: in one pass over the large corpus's 870 KB catalog H-Tiny copied the
+  XML into a code fence with invented values (every price 972.00, every stock 0) until its output
+  budget ended. The definition is `granite-4.0-h-tiny-mapreduce` (was `granite-4.0-h-tiny-bigwindow`),
+  its rules `big-java`, `big-sql`, `big-xml` and `big-pom` (were `big-window-*`) with
+  `onOversize: mapReduce`; `models.json` keeps the old preset for the earlier measurements.
+- **The family rule of the prompts names no analysis channel.** `file-body-java` told the model to
+  count a family of near-identical members "in the analysis channel", which only gpt-oss has; it now
+  asks for the pattern, the exact total and the first and last name, and to name every member or
+  group that breaks the pattern separately. `file-body-sql`, `-xml` and `-fallback` get the same rule
+  for rows, records and numbered constants: Granite 4.0 H-1B listed 6 000 enum constants one by one
+  until its output budget ended, in five of eleven chunks.
 - **The package and project rules default to `onOversize: mapReduce`.** Their input is the summaries
   below them; with the general default `fail` a package over its window failed on every run and its
   parent lost the subtree, `sample` would drop the children behind its head. A rule that sets

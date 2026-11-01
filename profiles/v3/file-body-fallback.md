@@ -36,6 +36,7 @@ Notable thrown/handled exceptions or error conditions.
 ## Rules
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Weave class / type / table / domain names into the bullets so they are searchable.
+- A long run of similar entries (numbered constants, array or table rows, functions that differ only by a number) is one family: its pattern, the exact count, the first and last entry. Never list or copy such a run one by one; name separately every entry or group that breaks the pattern (another prefix, another signature).
 - No code fences, no ```markdown / ```java / ```sql, no XML tags, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 

@@ -33,6 +33,7 @@ Other tables, views, functions, or sequences referenced, as searchable names.
 ## Rules
 - Markdown bullets and short clauses, not prose paragraphs.
 - Weave table / column / constraint / domain names into the bullets so they are searchable.
+- A long run of similar entries (inserted rows, value tuples, near-identical statements) is one family: its pattern, the exact count, the first and last entry. Never list or copy such a run one by one; name separately every entry or group that breaks the pattern (another table, an index or a column only some statements have).
 - No code fences, no ```markdown / ```sql, no XML tags, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 

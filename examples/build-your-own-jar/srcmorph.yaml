@@ -10,7 +10,7 @@
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
 #
 # Two models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
-# IBM Granite 4.0 for larger files - H-Tiny with a 384K window in one pass up to ~1 MB, H-1B with a
+# IBM Granite 4.0 for larger files - H-Tiny map-reducing over a 64K window up to ~1 MB, H-1B with a
 # 16K window beyond, summarizing a few sampled chunks (sampleChunks). A Java, SQL, shell, Perl or XML
 # summary starts with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables,
 # methods, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
@@ -87,10 +87,12 @@ srcMorph:
       minP: 0.05
       repeatPenalty: 1.0
       reasoningEffort: low
-    # ~275 KB .. ~1 MB in one pass: Granite 4.0 H-Tiny's KV grows only linearly, so 384K fits 8 GB.
-    - key: granite-4.0-h-tiny-bigwindow
+    # ~275 KB .. ~1 MB: Granite 4.0 H-Tiny map-reduces over a 64K window, every chunk read. One pass
+    # over a 384K window fits 8 GB (the KV grows only linearly), but over an 870 KB catalog it copied
+    # the XML with invented values instead of summarizing it.
+    - key: granite-4.0-h-tiny-mapreduce
       modelPath: granite-4.0-h-tiny-Q4_K_M.gguf
-      contextSize: 393216
+      contextSize: 65536
       maxOutputTokens: 4096
       temperature: 0.2
       threads: 8
@@ -117,8 +119,8 @@ srcMorph:
       repeatPenalty: 1.0
       reasoningEffort: ""
 
-  # By priority, the most specific wins: huge (>1 MB) -> fastchunk map-reduce, big-window
-  # (~275 KB .. 1 MB) -> one Granite pass, then gpt-oss for Java, SQL and every other file.
+  # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
+  # (~275 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
   fieldGenerations:
     - id: huge-java
       promptKey: file-body-java
@@ -145,20 +147,22 @@ srcMorph:
           conditions:
             - extensions: [".sql"]
             - size: {min: 1000000}
-    - id: big-window-java
+    - id: big-java
       promptKey: file-body-java
-      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
+      onOversize: mapReduce
       factsKey: java-facts
       condition:
         and:
           conditions:
             - extensions: [".java"]
             - size: {min: 275000}
-    - id: big-window-sql
+    - id: big-sql
       promptKey: file-body-sql
-      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
+      onOversize: mapReduce
       factsKey: sql-facts
       condition:
         and:
@@ -191,10 +195,11 @@ srcMorph:
           conditions:
             - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
             - size: {min: 1000000}
-    - id: big-window-xml
+    - id: big-xml
       promptKey: file-body-fallback
-      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
+      onOversize: mapReduce
       factsKey: xml-facts
       condition:
         and:
@@ -213,10 +218,11 @@ srcMorph:
           conditions:
             - pathGlob: "**/*pom.xml"
             - size: {min: 1000000}
-    - id: big-window-pom
+    - id: big-pom
       promptKey: file-body-fallback
-      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 110
+      onOversize: mapReduce
       factsKey: pom-facts
       condition:
         and:

@@ -186,7 +186,7 @@ variation (Fisher's exact test, p = 0.4), nor show that it is one; the same hold
 hit@1 of 95 against 92 %, 1.3 of 43 questions. No run wrote a code fence or a `###` heading in a
 shell, Perl or XML summary.
 
-The size tiers for big XML files (`huge-xml`, `big-window-xml` in the plugin's self-test) stay on
+The size tiers for big XML files (`huge-xml`, `big-xml` in the plugin's self-test) stay on
 `file-body-fallback` for now: with `file-body-xml`, both Granite models named fewer of an 870 KB
 catalog's elements (86 to 14 % and 86 to 57 %), and H-1B took the prompt's example sentence as its
 lead. That rests on one run each, and H-Tiny's 86 % with the generic prompt came from copying the

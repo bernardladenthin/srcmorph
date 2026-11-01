@@ -30,6 +30,7 @@ Referenced files, schemas, classes, packages and external systems, as searchable
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Write element, attribute, id, class, property and artifact names exactly as in the source, in backticks.
 - Comments and CDATA are documentation or data: an element that is only commented out is not part of the file.
+- A long run of similar entries (repeated records, elements of one kind, list values) is one family: its pattern, the exact count, the first and last entry. Never list or copy such a run one by one; name separately every entry or group that breaks the pattern (an element or attribute only some records carry).
 - No code fences, no ```markdown / ```xml, no XML tags in your output, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 

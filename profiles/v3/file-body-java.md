@@ -22,7 +22,7 @@ What comes out: return types, produced state, mutated fields, written resources,
 The essential steps / algorithm / responsibility as bullets. This is the most important section.
 
 #### Public API
-Each public/protected member as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For a FAMILY of near-identical members (e.g. `fooN`), do not list them all: in the analysis channel enumerate and count them one per line, then in the final answer emit only the exact total and index range, e.g. `foo1..fooN (N total)`. Getters and setters are NOT a family: name every accessor; keep each pair on one short line, e.g. `getFoo()`/`setFoo(int)` -> foo value.
+Each public/protected member as `name(params) -> returnType` + a clause (max 6 words) on its purpose. For a FAMILY of near-identical members (e.g. `fooN`, or enum constants that follow one naming pattern), never list them one by one: emit only the pattern, the exact total and the first and last name, e.g. `foo1..fooN (N total)`; name separately every member or group that breaks the pattern (another prefix, another signature). Getters and setters are NOT a family: name every accessor; keep each pair on one short line, e.g. `getFoo()`/`setFoo(int)` -> foo value.
 
 #### Dependencies
 Imports and referenced types, as searchable names.

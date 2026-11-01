@@ -157,11 +157,13 @@ The file has three building blocks:
    if trimmed. What happens then is **configuration only** — the plugin never picks a model for
    you — and is chosen per rule with `onOversize`:
    - **`fail`** *(default)* — abort the build (a hard fail). The fix is a rule with a size `condition`
-     that routes oversized files to a model with a large enough window (see the
-     `granite-4.0-h-tiny-bigwindow` definition + the `big-window-java` / `big-window-sql` rules of
-     [`srcmorph-selftest.yaml`](srcmorph-selftest.yaml) — IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid
-     Mamba model whose KV cache grows only linearly, configured at a 384K window to cover files up to
-     ~1 MB; verified summarizing a ~995 KB / ~268K-token file on an 8 GB GPU with no OOM).
+     that routes oversized files to a model with a large enough window or to one of the strategies
+     below (see the `granite-4.0-h-tiny-mapreduce` definition + the `big-java` / `big-sql` rules of
+     [`srcmorph-selftest.yaml`](srcmorph-selftest.yaml) — IBM Granite 4.0-H-Tiny, Apache-2.0,
+     map-reducing files up to ~1 MB over a 64K window). A large window alone is not enough: H-Tiny, a
+     hybrid Mamba model whose KV cache grows only linearly, fits a 384K window on an 8 GB GPU (a
+     ~995 KB / ~268K-token file ran without OOM), but over an 870 KB XML catalog in one pass it copied
+     records with invented values instead of summarizing them.
    - **`sample`** — feed only the head of the file (trimmed to the window) in a single call. Fast and
      bounded; good for repetitive data where the head represents the whole.
    - **`mapReduce`** — split the file into window-sized chunks at line boundaries (with overlap so
@@ -548,7 +550,7 @@ pros/cons, a source-faithfulness deep-dive, and reproduction steps in
 `gpt-oss` is a *reasoning* model whose analysis tokens share the output budget, so use
 `reasoningEffort=low` for code summaries (best quality here) and size the budget to the file. The
 self-test profile carries gpt-oss-20b once, `gpt-oss-20B-mxfp4` at a 96K window, plus the two Granite
-presets for larger files (`granite-4.0-h-tiny-bigwindow`, `granite-4.0-h-1b-fastchunk`). What a window
+presets for larger files (`granite-4.0-h-tiny-mapreduce`, `granite-4.0-h-1b-fastchunk`). What a window
 covers, measured on CPU (full rationale in [COMPARISON.md §11](../docs/ai-index-benchmark/COMPARISON.md)):
 
 | `contextSize` | covers up to | ~ time (CPU) |
