@@ -264,7 +264,35 @@ public class EngineSupportTest {
     public void requiredPhaseRule_exactlyOne_isReturned() throws SrcMorphException {
         final AiFieldGenerationConfig rule = phaseRule("package-body", "m");
 
-        assertThat(EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule)), is(rule));
+        final AiFieldGenerationConfig returned = EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule));
+
+        assertThat(returned.getPromptKey(), is("package-body"));
+        assertThat(returned.getAiDefinitionKey(), is("m"));
+    }
+
+    @Test
+    public void phaseRule_withoutOnOversize_readsAllOfItsInput_theConfigurationStaysAsGiven() throws SrcMorphException {
+        // arrange
+        final AiFieldGenerationConfig rule = phaseRule("package-body", "m");
+
+        // act
+        final AiFieldGenerationConfig required = EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule));
+        final AiFieldGenerationConfig optional = EngineSupport.optionalPhaseRule("p", "k", Arrays.asList(rule));
+
+        // assert
+        assertThat(required.oversizeStrategy(), is(net.ladenthin.srcmorph.config.AiOversizeStrategy.MAP_REDUCE));
+        assertThat(optional.oversizeStrategy(), is(net.ladenthin.srcmorph.config.AiOversizeStrategy.MAP_REDUCE));
+        assertThat(rule.getOnOversize(), is(nullValue()));
+    }
+
+    @Test
+    public void phaseRule_withAnOnOversize_keepsIt() throws SrcMorphException {
+        final AiFieldGenerationConfig rule = phaseRule("package-body", "m");
+        rule.setOnOversize("fail");
+
+        assertThat(
+                EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule)).oversizeStrategy(),
+                is(net.ladenthin.srcmorph.config.AiOversizeStrategy.FAIL));
     }
 
     @Test
@@ -305,7 +333,8 @@ public class EngineSupportTest {
     @Test
     public void optionalPhaseRule_one_isReturned_two_areRefused() throws SrcMorphException {
         final AiFieldGenerationConfig rule = phaseRule("project-body", "m");
-        assertThat(EngineSupport.optionalPhaseRule("p", "k", Arrays.asList(rule)), is(rule));
+        assertThat(
+                EngineSupport.optionalPhaseRule("p", "k", Arrays.asList(rule)).getPromptKey(), is("project-body"));
 
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class,

@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 
@@ -217,5 +218,28 @@ public final class AiFactExtractor {
             count++;
         }
         return count;
+    }
+
+    /**
+     * Returns the CRC32 of fact counters (label, pattern and ignore of each, in order), empty without
+     * counters: the facts hash of a summary's header and of the run record.
+     *
+     * @param facts the counters
+     * @return the hash, or an empty string
+     */
+    public static String factsHash(final @Nullable List<AiFactCounter> facts) {
+        if (facts == null || facts.isEmpty()) {
+            return "";
+        }
+        final StringBuilder text = new StringBuilder();
+        for (final AiFactCounter counter : facts) {
+            text.append(counter.getLabel())
+                    .append('\t')
+                    .append(counter.getPattern())
+                    .append('\t')
+                    .append(counter.isIgnore())
+                    .append('\n');
+        }
+        return new AiChecksumSupport().calculateCrc32Hex(text.toString());
     }
 }

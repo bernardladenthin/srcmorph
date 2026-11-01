@@ -60,6 +60,8 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - G: 1.0.0
 - A: 0.0.0
 - X: file
+- P: 3F2A91C0
+- N: 7D04E5B1
 ---
 > Immutable value type pairing a deterministic metadata header with the AI-generated markdown body of one .ai.md document.
 
@@ -73,6 +75,10 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - `header() -> AiMdHeader` — the document's metadata header.
 - `body() -> String` — the AI-generated markdown body.
 ```
+
+`P` and `N` are the CRC32 of the system prompt and of the fact counters the summary was written with
+(file summaries only, and only when set): a run record names them for an unchanged file, so a changed
+prompt shows which summaries it has not rewritten yet.
 ## Requirements
 - Java 8+ (the plugin and the core are Java 8 bytecode; the descriptor states Java 1.8)
 - Maven 3.6.3+
@@ -326,7 +332,9 @@ Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.
 `lines` works the same way; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
 recently changed files. `onOversize` (`fail` *(default)* / `sample` / `mapReduce` / `sampleChunks` / `deterministic` —
 see the context-window note above) chooses what a rule does when a file is still larger than its routed
-model's window; `maxChunks` is how many chunks `sampleChunks` summarizes. `onIncomplete` chooses
+model's window; `maxChunks` is how many chunks `sampleChunks` summarizes. The package and project rules
+default to `mapReduce`: their input is the summaries below them, and leaving a part out would drop a
+whole subtree. `onIncomplete` chooses
 what a rule does when the model's answer is no summary -- empty (for example a reasoning-only answer),
 cut off at the output budget, or a response without an answer: `fail` *(default)* counts the file as
 failed, `retryOnce` asks once more first, `keep` writes a cut-off answer that has text. Such an answer

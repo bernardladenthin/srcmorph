@@ -56,6 +56,12 @@ public class AiMdHeaderCodec {
     /** Field key for the node type ({@code x}). */
     public static final String FIELD_KEY_X = "X";
 
+    /** Header field key for the CRC32 of the system prompt a summary was written with; only when set. */
+    public static final String FIELD_KEY_P = "P";
+
+    /** Header field key for the CRC32 of the fact counters a summary was written with; only when set. */
+    public static final String FIELD_KEY_N = "N";
+
     /**
      * Field key for a child-link line ({@code F}). Unlike the scalar keys this one may appear
      * multiple times — once per child — and the values are collected into {@link AiMdHeader#children()}.
@@ -176,15 +182,16 @@ public class AiMdHeaderCodec {
         }
 
         return new AiMdHeader(
-                title != null ? title : "",
-                valueOrEmpty(values, FIELD_KEY_H),
-                valueOrEmpty(values, FIELD_KEY_C),
-                valueOrEmpty(values, FIELD_KEY_D),
-                valueOrEmpty(values, FIELD_KEY_T),
-                valueOrEmpty(values, FIELD_KEY_G),
-                valueOrEmpty(values, FIELD_KEY_A),
-                valueOrEmpty(values, FIELD_KEY_X),
-                children);
+                        title != null ? title : "",
+                        valueOrEmpty(values, FIELD_KEY_H),
+                        valueOrEmpty(values, FIELD_KEY_C),
+                        valueOrEmpty(values, FIELD_KEY_D),
+                        valueOrEmpty(values, FIELD_KEY_T),
+                        valueOrEmpty(values, FIELD_KEY_G),
+                        valueOrEmpty(values, FIELD_KEY_A),
+                        valueOrEmpty(values, FIELD_KEY_X),
+                        children)
+                .withHashes(valueOrEmpty(values, FIELD_KEY_P), valueOrEmpty(values, FIELD_KEY_N));
     }
 
     /**
@@ -204,10 +211,23 @@ public class AiMdHeaderCodec {
                         + "- A: %s\n"
                         + "- X: %s\n",
                 header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x()));
+        // the hashes only when recorded, so a package or project header (and an older file) stays as it was
+        appendWhenSet(builder, FIELD_KEY_P, header.p());
+        appendWhenSet(builder, FIELD_KEY_N, header.n());
         for (final String child : header.children()) {
             builder.append(CHILD_FIELD_LINE_PREFIX).append(child).append('\n');
         }
         return builder.toString();
+    }
+
+    private static void appendWhenSet(final StringBuilder builder, final String key, final String value) {
+        if (!value.isEmpty()) {
+            builder.append(HEADER_FIELD_PREFIX)
+                    .append(key)
+                    .append(": ")
+                    .append(value)
+                    .append('\n');
+        }
     }
 
     private String valueOrEmpty(final Map<String, String> values, final String key) {

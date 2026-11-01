@@ -7,12 +7,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.file.Path;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
@@ -268,7 +269,12 @@ public final class GenerateEngine {
                         AiIndexOutcome outcome;
                         final long fileStartNanos = System.nanoTime();
                         try {
-                            outcome = fileIndexer.indexFile(entry.file(), entry.rule(), support);
+                            outcome = fileIndexer.indexFile(
+                                    entry.file(),
+                                    entry.rule(),
+                                    support,
+                                    promptHash(promptSupport, entry.rule()),
+                                    AiFactExtractor.factsHash(entry.rule().getFacts()));
                         } catch (final InterruptedIOException e) {
                             // an interrupt ends the run, it is not one file's failure
                             throw e;
@@ -286,7 +292,7 @@ public final class GenerateEngine {
                                 outcome,
                                 support.takeUsage(),
                                 System.nanoTime() - fileStartNanos,
-                                promptSupport));
+                                recordedHeader(fileIndexer, entry, outcome, promptSupport)));
                         if (outcome == AiIndexOutcome.WRITTEN) {
                             wrote++;
                         } else if (outcome == AiIndexOutcome.UNCHANGED) {
@@ -370,7 +376,7 @@ public final class GenerateEngine {
      * @param outcome       what happened to it
      * @param usage         the tokens and calls it cost
      * @param nanos         its wall time
-     * @param promptSupport the prompts, for the hash of its prompt
+     * @param hashes        its prompt hash (key) and facts hash (value)
      * @return the entry
      */
     private static RunRecord.Entry recordEntry(
@@ -380,7 +386,7 @@ public final class GenerateEngine {
             final AiIndexOutcome outcome,
             final AiGenerationUsage usage,
             final long nanos,
-            final AiPromptSupport promptSupport) {
+            final Map.Entry<String, String> hashes) {
         final AiFieldGenerationConfig rule = entry.rule();
         final String id = rule.getId();
         return new RunRecord.Entry(
@@ -391,31 +397,45 @@ public final class GenerateEngine {
                 outcome,
                 usage,
                 nanos,
-                CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey())),
-                factsHash(rule.getFacts()));
+                hashes.getKey(),
+                hashes.getValue());
     }
 
     /**
-     * Returns the CRC32 of a rule's fact counters (label, pattern and ignore of each, in order), empty
-     * without counters.
+     * Returns the CRC32 of the system prompt a rule's summaries are written with.
      *
-     * @param facts the counters
-     * @return the hash, or an empty string
+     * @param promptSupport the prompts
+     * @param rule          the rule
+     * @return the hash
      */
-    static String factsHash(final @Nullable List<AiFactCounter> facts) {
-        if (facts == null || facts.isEmpty()) {
-            return "";
+    private static String promptHash(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
+        return CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey()));
+    }
+
+    /**
+     * Returns the prompt and facts hashes of a file's record entry: of the summary as it stands, so an
+     * unchanged file shows the prompt that wrote it (from its header; empty for a summary written before
+     * the header recorded it), a written or failed one the current prompt.
+     *
+     * @param fileIndexer   the indexer that knows the summary's path
+     * @param entry         the plan entry
+     * @param outcome       the file's outcome
+     * @param promptSupport the prompts
+     * @return the prompt hash (key) and the facts hash (value)
+     * @throws IOException if an unchanged file's summary cannot be read
+     */
+    private static Map.Entry<String, String> recordedHeader(
+            final SourceFileIndexer fileIndexer,
+            final AiIndexPlan.Entry entry,
+            final AiIndexOutcome outcome,
+            final AiPromptSupport promptSupport)
+            throws IOException {
+        if (outcome == AiIndexOutcome.UNCHANGED) {
+            return fileIndexer.recordedHashes(entry.file());
         }
-        final StringBuilder text = new StringBuilder();
-        for (final AiFactCounter counter : facts) {
-            text.append(counter.getLabel())
-                    .append('\t')
-                    .append(counter.getPattern())
-                    .append('\t')
-                    .append(counter.isIgnore())
-                    .append('\n');
-        }
-        return CHECKSUMS.calculateCrc32Hex(text.toString());
+        return new AbstractMap.SimpleImmutableEntry<>(
+                promptHash(promptSupport, entry.rule()),
+                AiFactExtractor.factsHash(entry.rule().getFacts()));
     }
 
     /**

@@ -309,6 +309,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
+- **The package and project rules default to `onOversize: mapReduce`.** Their input is the summaries
+  below them; with the general default `fail` a package over its window failed on every run and its
+  parent lost the subtree, `sample` would drop the children behind its head. A rule that sets
+  `onOversize` keeps it.
+- **A file summary's header records the prompt and facts it was written with**: `- P:` (the CRC32 of
+  the system prompt) and `- N:` (of the fact counters), written only when set, so package and project
+  headers and older summaries stay as they are. The run record takes both from the header for an
+  unchanged file, so after a prompt change it shows which summaries the old prompt wrote
+  (`AiMdHeader.withHashes`, `p()`, `n()`; `AiFactExtractor.factsHash` replaces the engine's own).
+
 - **Calibrate prints a YAML `calibration:` block** for the model's entry under `aiDefinitions` of the
   configuration file, not an XML `<calibration>` element no configuration reads any more
   (`CalibrationReport.renderPasteBlock()` replaces `renderXml()`).

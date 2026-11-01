@@ -753,6 +753,43 @@ public class GenerateEngineTest {
     }
 
     @Test
+    public void execute_aChangedPrompt_theRecordOfAnUnchangedFileShowsThePromptThatWroteIt() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        final Path recordFile = tempDir.resolve("run.json");
+        config.setRunRecordFile(recordFile.toFile());
+        final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+
+        // act: write, change the prompt, run again (unchanged), then force
+        new GenerateEngine(config).execute();
+        final String written = json.readTree(recordFile.toFile())
+                .get("files")
+                .get(0)
+                .get("promptHash")
+                .asText();
+        config.getPromptDefinitions().get(0).setTemplate("Another prompt.\n\nFile: %s\n\nSource:\n%s\n");
+        new GenerateEngine(config).execute();
+        final com.fasterxml.jackson.databind.JsonNode unchanged =
+                json.readTree(recordFile.toFile()).get("files").get(0);
+        config.setForce(true);
+        new GenerateEngine(config).execute();
+        final String rewritten = json.readTree(recordFile.toFile())
+                .get("files")
+                .get(0)
+                .get("promptHash")
+                .asText();
+
+        // assert
+        assertThat(unchanged.get("outcome").asText(), is("unchanged"));
+        assertThat(unchanged.get("promptHash").asText(), is(written));
+        assertThat(rewritten.equals(written), is(false));
+        final String summary = new String(
+                Files.readAllBytes(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")),
+                StandardCharsets.UTF_8);
+        assertThat(summary, containsString("- P: " + rewritten + "\n"));
+    }
+
+    @Test
     public void execute_noRunRecordFile_writesNoRecord() throws Exception {
         new GenerateEngine(baseConfig()).execute();
 
@@ -766,19 +803,23 @@ public class GenerateEngineTest {
         final net.ladenthin.srcmorph.config.AiFactCounter counter = new net.ladenthin.srcmorph.config.AiFactCounter();
         counter.setLabel("tables");
         counter.setPattern("CREATE TABLE");
-        final String plain = GenerateEngine.factsHash(Collections.singletonList(counter));
+        final String plain =
+                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(true);
-        final String ignored = GenerateEngine.factsHash(Collections.singletonList(counter));
+        final String ignored =
+                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(false);
         counter.setPattern("CREATE VIEW");
-        final String otherPattern = GenerateEngine.factsHash(Collections.singletonList(counter));
+        final String otherPattern =
+                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setLabel("views");
-        final String otherLabel = GenerateEngine.factsHash(Collections.singletonList(counter));
+        final String otherLabel =
+                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
 
         assertThat(plain.matches("[0-9A-F]{8}"), is(true));
         assertThat(new java.util.HashSet<>(Arrays.asList(plain, ignored, otherPattern, otherLabel)).size(), is(4));
-        assertThat(GenerateEngine.factsHash(null), is(""));
-        assertThat(GenerateEngine.factsHash(Collections.emptyList()), is(""));
+        assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(null), is(""));
+        assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.emptyList()), is(""));
     }
     // </editor-fold>
 }

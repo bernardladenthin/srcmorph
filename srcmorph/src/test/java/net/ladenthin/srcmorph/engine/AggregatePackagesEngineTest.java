@@ -123,6 +123,53 @@ public class AggregatePackagesEngineTest {
     }
 
     @Test
+    public void execute_aPackageOverItsWindow_isMapReducedByDefault() throws Exception {
+        // arrange: forty child summaries of 2 000 characters each, a model with a window of a few thousand
+        final Path outputRoot = tempDir.resolve("ai");
+        final Path packageDirectory = Files.createDirectories(outputRoot.resolve("com/example"));
+        final StringBuilder body = new StringBuilder("> A child.\n\n");
+        while (body.length() < 2_000) {
+            body.append("- a detail of this child file that the package summary has to read\n");
+        }
+        for (int i = 0; i < 40; i++) {
+            final AiMdHeader header = new AiMdHeader(
+                    "Child" + i + ".java",
+                    AiMdHeaderCodec.HEADER_VERSION_1_0,
+                    "AAAAAAAA",
+                    "2026-03-16T00:00:00Z",
+                    "2026-03-16T00:00:10Z",
+                    "1.0.0",
+                    "0.0.0",
+                    AiMdHeaderCodec.NODE_TYPE_FILE);
+            documentCodec.write(
+                    packageDirectory.resolve("Child" + i + ".java.ai.md"), new AiMdDocument(header, body.toString()));
+        }
+        final AiModelDefinition smallWindow = mockModelDefinition();
+        smallWindow.setContextSize(2048);
+        smallWindow.setCharsPerToken(4);
+        smallWindow.setMaxOutputTokens(64);
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(tempDir.toFile());
+        config.setOutputDirectory(outputRoot.toFile());
+        config.setGenerationProvider("mock");
+        config.setPluginVersion("1.0.0");
+        config.setAiVersion("0.0.0");
+        config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
+        config.setAiDefinitions(Collections.singletonList(smallWindow));
+        config.setFieldGenerations(CommonTestFixtures.createPackageFieldGenerations());
+
+        // act
+        new AggregatePackagesEngine(config).execute();
+
+        // assert: the package summary read every chunk of its input, and says so
+        final String written = new String(
+                Files.readAllBytes(packageDirectory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)),
+                java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(written, containsString("**Coverage:** "));
+        assertThat(written.contains("(sampled"), is(false));
+    }
+
+    @Test
     public void execute_twoRules_areRefusedBeforeAnyPackageIsWritten() throws Exception {
         final Path outputRoot = tempDir.resolve("ai");
         final Path packageDirectory = Files.createDirectories(outputRoot.resolve("com/example"));

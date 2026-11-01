@@ -16,6 +16,7 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
@@ -189,12 +190,19 @@ final class EngineSupport {
         if (rule.isSkip()) {
             throw new SrcMorphException("The rule of " + phase + " cannot be a skip rule: " + rule);
         }
+        // Unset, a phase reads all of an input over its window: the input is the child summaries, and a
+        // part left out (or a failure) would drop a whole subtree from the summary above. A copy, so the
+        // configuration stays as it was given.
+        final AiFieldGenerationConfig effective = rule.copy();
+        if (isBlank(effective.getOnOversize())) {
+            effective.setOnOversize(AiOversizeStrategy.MAP_REDUCE.configValue());
+        }
         try {
-            new AiFieldGenerationSelector().validateRule(rule);
+            new AiFieldGenerationSelector().validateRule(effective);
         } catch (final IllegalArgumentException e) {
             throw new SrcMorphException("Invalid rule of " + phase + ": " + e.getMessage(), e);
         }
-        return rule;
+        return effective;
     }
 
     /**

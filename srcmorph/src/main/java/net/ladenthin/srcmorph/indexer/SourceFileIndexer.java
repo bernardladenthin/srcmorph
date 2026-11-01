@@ -7,9 +7,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiCondition;
@@ -248,10 +250,23 @@ public class SourceFileIndexer {
     }
 
     /**
-     * Returns the {@code .ai.md} a source file is summarized into.
+     * Returns the hashes of the prompt and the fact counters a source file's existing summary was written
+     * with, from its header ({@code ""} each when the summary does not record them).
      *
      * @param sourceFile the source file
-     * @return its summary's path under the output root
+     * @return the prompt hash (key) and the facts hash (value)
+     * @throws IOException if the summary cannot be read
+     */
+    public Map.Entry<String, String> recordedHashes(final Path sourceFile) throws IOException {
+        final AiMdHeader header = documentCodec.read(targetFile(sourceFile)).header();
+        return new AbstractMap.SimpleImmutableEntry<>(header.p(), header.n());
+    }
+
+    /**
+     * Returns the {@code .ai.md} path a source file is summarized into.
+     *
+     * @param sourceFile the source file
+     * @return the target path
      */
     public Path targetFile(final Path sourceFile) {
         final Path relativeToBase = pathSupport.relativizeFromSrc(baseDirectory, sourceFile);
@@ -276,6 +291,29 @@ public class SourceFileIndexer {
     public AiIndexOutcome indexFile(
             final Path sourceFile, final AiFieldGenerationConfig rule, final AiFieldGenerationSupport support)
             throws IOException {
+        return indexFile(sourceFile, rule, support, "", "");
+    }
+
+    /**
+     * Writes the {@code .ai.md} for one source file as {@link #indexFile(Path, AiFieldGenerationConfig,
+     * AiFieldGenerationSupport)} does, with the hashes of the prompt and the fact counters it is written
+     * with in its header ({@code P}, {@code N}).
+     *
+     * @param sourceFile the source file
+     * @param rule       the routing rule selected for it
+     * @param support    the field-generation support holding the model group's provider
+     * @param promptHash the CRC32 of the rule's system prompt, or {@code ""}
+     * @param factsHash  the CRC32 of the rule's fact counters, or {@code ""}
+     * @return the outcome
+     * @throws IOException if the file cannot be read or written
+     */
+    public AiIndexOutcome indexFile(
+            final Path sourceFile,
+            final AiFieldGenerationConfig rule,
+            final AiFieldGenerationSupport support,
+            final String promptHash,
+            final String factsHash)
+            throws IOException {
         final Path targetFile = targetFile(sourceFile);
 
         final Path parent = targetFile.getParent();
@@ -295,14 +333,15 @@ public class SourceFileIndexer {
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
-                fileName,
-                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                checksum,
-                sourceModified,
-                generatedAt,
-                pluginVersion,
-                aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_FILE);
+                        fileName,
+                        AiMdHeaderCodec.HEADER_VERSION_1_0,
+                        checksum,
+                        sourceModified,
+                        generatedAt,
+                        pluginVersion,
+                        aiVersion,
+                        AiMdHeaderCodec.NODE_TYPE_FILE)
+                .withHashes(promptHash, factsHash);
 
         if (!headerSupport.shouldWrite(force, targetFile, baseHeader)) {
             LOGGER.info("Unchanged AI index file: {}", targetFile);

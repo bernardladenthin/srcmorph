@@ -15,7 +15,10 @@ For every model under <out> (one directory per model key) and every source file 
   format column holds it against the body. A name the facts list under "words" is an everyday
   word too (`author`, `status`, `main`): it counts only where the body marks it as code (backticks,
   a call `main(`, bold, qualified, an option, the label of a list item), because prose uses the same
-  word for something else. SQL names are matched without regard to case;
+  word for something else. The Java names read from the source have no such list, deliberately: a
+  Java summary that writes "close releases the model" means the method `close`, and requiring code
+  marks there cost more right names than it saved wrong ones. SQL names are matched without regard
+  to case;
 - invented = backticked identifiers outside a copied fence that occur nowhere in the source, per 100
   backticked identifiers (a proxy for hallucinated names, not a full fact check). A qualified name
   counts as its last part, and keywords, standard-library types, escapes and format placeholders

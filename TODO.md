@@ -42,26 +42,15 @@ paths against the working directory, Calibrate's XML block, the unchecked packag
 rules, an unknown provider name, `All` with `planOnly`, keys set to nothing, the echoed strategy,
 the resent POST after a read timeout, the checksum of non-UTF-8 files.
 
-**Decisions first** (they change what the fixes below look like):
+**Decisions taken** (2026-11-01): D1 the package and project rules default to `mapReduce`, done;
+D4 the Java names keep counting from prose, the asymmetry is documented in `score.py`, done; D5 the
+header records the prompt and facts hashes a summary was written with, done. Open from them:
 
-- **D1. Default `onOversize` of the package and project rules.** The default `fail` now throws at
-  run time (main trimmed with a warning), and a package's source is all its child summaries, so a
-  large package fails on every run and its parent loses the subtree; an over-window overview fails
-  the aggregate-project goal. Options: `sample` (the head, with its coverage line) or `mapReduce` as
-  the aggregation phases' default, or keep `fail` and let `check` / the plan warn.
-- **D2. The model card.** Render it from the re-scored `scores/` (tables, charts, the text that cites
-  them) or keep the October numbers and mark the scorer change; the re-scored values are known (no
-  model has to run again).
-- **D3. The self-test's Granite tiers for big XML.** They keep the generic prompt because both
-  Granite presets scored lower on the catalog with the XML prompt; with copied fences no longer
-  counted, H-Tiny's generic 86 % becomes 0 % and its XML-prompt 57 % is better. The new local runs
-  (above) are the basis to decide on.
-- **D4. Everyday words in the Java expectations.** `provider`, `temperature`, `build`, `builder` count
-  from plain prose, as the SQL and other files' everyday words no longer do; a Java words list would
-  make the kinds consistent and lower Java recall a little.
-- **D5. Unchanged files in the run record.** Their rule, model and prompt hash describe the current
-  configuration, not the one that wrote the summary (the incremental check compares content only).
-  Record the hashes in the `.ai.md` header to make them historical, or document it.
+- **D2. The model card**: no full re-render now; update only what can be measured quickly and
+  remotely (finding 7 from `remeasure-2026-11-01/`, a note on the scorer change). A full re-render
+  waits for the next round of models.
+- **D3. The self-test's Granite tiers for big XML**: keep the generic prompt; first fix the large
+  files' final answers that outgrow the output budget (item 8), then measure both prompts again.
 
 **Core (engine, indexer, provider, config):**
 
