@@ -11,6 +11,7 @@ use warnings;
 use POSIX qw(strftime);
 use List::Util qw(max sum);
 use Carp qw(croak);
+use parent 'Exporter';
 
 use constant {
     MAX_LINES     => 50_000,

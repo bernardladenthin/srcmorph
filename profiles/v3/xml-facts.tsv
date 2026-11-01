@@ -4,12 +4,13 @@
 #
 # XML fact counters (any XML, XSD, XSLT, Spring, Maven): one per line, label TAB pattern (Java regex),
 # counted over the whole file. The [ignore] line runs first and reads the file as a parser does,
-# leftmost region first: it blanks comments, CDATA sections and processing instructions (keeping the
-# line breaks), so a commented-out element does not count and a "<!--" inside CDATA opens nothing.
-# Element and attribute counts are regex heuristics over the text, not a parse: a ">" inside an
-# attribute value or markup inside a DOCTYPE entity is not seen. XmlFactPatternsTest pins every case;
-# pom-facts adds the Maven counters.
-[ignore] comments, CDATA and processing instructions	(?s)<!--.*?-->|<!\[CDATA\[.*?\]\]>|<\?.*?\?>
+# leftmost region first: it blanks comments, CDATA sections, processing instructions and the DOCTYPE
+# with its internal subset (keeping the line breaks), so a commented-out element or the markup of an
+# entity does not count and a "<!--" inside CDATA opens nothing. Element and attribute counts are
+# regex heuristics over the text, not a parse: a ">" inside an attribute value, or a "]" inside an
+# attribute value of the internal subset, is not seen. XmlFactPatternsTest pins every case; pom-facts
+# adds the Maven counters.
+[ignore] comments, CDATA, processing instructions and the DOCTYPE	(?s)<!--.*?-->|<!\[CDATA\[.*?\]\]>|<\?.*?\?>|<!DOCTYPE[^\[>]*(?:\[.*?\][^>]*)?>
 elements	<(?![!?/])[A-Za-z_][\w.:-]*
 namespace declarations	\bxmlns(?::[\w.-]+)?[ \t\r\n]*=[ \t\r\n]*["']
 id and name attributes	[ \t\r\n](?!xmlns:)(?:[\w.-]+:)?(?:id|name)[ \t\r\n]*=[ \t\r\n]*["']

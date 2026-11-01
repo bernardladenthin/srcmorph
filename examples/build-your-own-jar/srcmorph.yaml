@@ -45,12 +45,19 @@ srcMorph:
     - ".sh"
     - ".bash"
     - ".ksh"
+    - ".zsh"
+    - ".bats"
     - ".pl"
     - ".pm"
+    - ".t"
+    - ".cgi"
+    - ".psgi"
     - ".xml"
     - ".xsd"
     - ".xsl"
     - ".xslt"
+    - ".wsdl"
+    - ".xhtml"
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
@@ -181,7 +188,7 @@ srcMorph:
       condition:
         and:
           conditions:
-            - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
             - size: {min: 1000000}
     - id: big-window-xml
       promptKey: file-body-fallback
@@ -191,20 +198,42 @@ srcMorph:
       condition:
         and:
           conditions:
-            - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - size: {min: 275000}
+    - id: huge-pom                      # a big POM takes the XML tiers one step higher, with the Maven counters
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 210
+      onOversize: mapReduce
+      maxChunks: 6
+      factsKey: pom-facts
+      condition:
+        and:
+          conditions:
+            - pathGlob: "**/*pom.xml"
+            - size: {min: 1000000}
+    - id: big-window-pom
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      priority: 110
+      factsKey: pom-facts
+      condition:
+        and:
+          conditions:
+            - pathGlob: "**/*pom.xml"
             - size: {min: 275000}
     - id: shell                         # shell, Perl, XML: a prompt and counts of their own
       promptKey: file-body-shell
       aiDefinitionKey: gpt-oss-20B-mxfp4
       factsKey: shell-facts
       condition:
-        extensions: [".sh", ".bash", ".ksh"]
+        extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
     - id: perl
       promptKey: file-body-perl
       aiDefinitionKey: gpt-oss-20B-mxfp4
       factsKey: perl-facts
       condition:
-        extensions: [".pl", ".pm"]
+        extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
     - id: pom                           # matches xml too; the priority gives a POM the Maven counters
       promptKey: file-body-xml
       aiDefinitionKey: gpt-oss-20B-mxfp4
@@ -217,7 +246,7 @@ srcMorph:
       aiDefinitionKey: gpt-oss-20B-mxfp4
       factsKey: xml-facts
       condition:
-        extensions: [".xml", ".xsd", ".xsl", ".xslt"]
+        extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
     - id: fallback                      # the rule for every file no other rule matches
       promptKey: file-body-fallback
       aiDefinitionKey: gpt-oss-20B-mxfp4

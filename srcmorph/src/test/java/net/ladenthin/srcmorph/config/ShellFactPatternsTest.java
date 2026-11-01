@@ -5,7 +5,9 @@ package net.ladenthin.srcmorph.config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +23,12 @@ import org.junit.jupiter.api.Test;
 public class ShellFactPatternsTest {
 
     private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("shell-facts");
+
+    /** Copies of the deploy script in the run-time test, about 1.5 MB. */
+    private static final int LONG_INPUT_COPIES = 300;
+
+    /** What the long input may take; the lookbehind getopts counter alone took about a second. */
+    private static final Duration LONG_INPUT_LIMIT = Duration.ofSeconds(10);
 
     private static int count(final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(COUNTERS, source);
@@ -49,7 +57,7 @@ public class ShellFactPatternsTest {
                         "traps",
                         "set -e",
                         "exit statements with a status",
-                        "typeset declarations",
+                        "typeset and declare declarations",
                         "ksh discipline functions")));
     }
 
@@ -66,7 +74,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void functions_emptyArrayAndAQuotedPair_doNotCount() {
-        assertThat(count("functions", "arr=()\nfoo\necho \"bar() {\"\n"), is(0));
+        assertThat(count("functions", "arr=()\nfoo\necho \"bar() {\"\nfoo() ifx\n"), is(0));
     }
 
     @Test
@@ -106,6 +114,42 @@ public class ShellFactPatternsTest {
     @Test
     public void functions_hereString_isNoHeredoc() {
         assertThat(count("functions", "read x <<< \"$y\"\nf() {\n}\n"), is(1));
+    }
+
+    @Test
+    public void ignore_trailingComment_isBlanked() {
+        final String source = "do_it # formerly exit 1 and getopts here\nfoo # bar() {\n";
+        assertThat(count("getopts loops", source), is(0));
+        assertThat(count("getopts option letters", source), is(0));
+        assertThat(count("exit statements with a status", source), is(0));
+        assertThat(count("functions", source), is(0));
+    }
+
+    @Test
+    public void ignore_hashOfParameterCountLengthAndQuotedPatterns_isNoComment() {
+        assertThat(count("exit statements with a status", "[ $# -eq 0 ] && exit 2\nn=${#arr[@]}\n"), is(1));
+        assertThat(
+                count(
+                        "exit statements with a status",
+                        "grep -v '^#' file\nsed 's/#.*//' f\necho \"# header\" > f\nexit 3\n"),
+                is(1));
+    }
+
+    @Test
+    public void ignore_blankAndHashInsideAString_readsAsAComment() {
+        // the accepted limit: the shell knows the quotes, the regex does not, so OTHER is lost
+        assertThat(count("exported variables", "export MSG=\"a # b\" OTHER=1\n"), is(1));
+    }
+
+    @Test
+    public void functions_compoundCommandBodies_count() {
+        assertThat(
+                count(
+                        "functions",
+                        "f() if true; then :; fi\ng() [[ -n $1 ]]\nh() for x in a; do :; done\n"
+                                + "j() while :; do break; done\nk() case $1 in a) ;; esac\n"
+                                + "l() until false; do break; done\nm() (( x++ ))\n"),
+                is(7));
     }
     // </editor-fold>
 
@@ -196,6 +240,27 @@ public class ShellFactPatternsTest {
     public void scriptLevelAssignments_onlyAtColumnZero() {
         assertThat(count("script-level assignments", "LOG_DIR=/var/log\nverbose=0\nf() {\n  inner=1\n}\n"), is(2));
     }
+
+    @Test
+    public void scriptLevelAssignments_environmentPrefixesOfACommand_doNotCount() {
+        assertThat(
+                count(
+                        "script-level assignments",
+                        "LC_ALL=C sort file\nIFS= read -r line\nPATH+=:/opt/bin\nX=1 Y=2\nX=1 Y=2 cmd\n"
+                                + "FOO=bar; export FOO\nIFS=$'\\n'\nname=\"$(basename \"$SOURCE_DIR\")\"\narr=(a b c)\n"
+                                + "x=$(( 1 + 2 ))\nHOST_FILES=([staging]=\"hosts.staging\" [production]=\"hosts.production\")\n"
+                                + "DRY_RUN=0\nX=\"a b\" cmd\n"),
+                is(9));
+    }
+
+    @Test
+    public void scriptLevelAssignments_aContinuedLine_counts() {
+        assertThat(
+                count(
+                        "script-level assignments",
+                        "DESCRIPTOR=\"$(unzip -p \"$JAR\" plugin.xml)\" \\\n    || fail \"no descriptor\"\n"),
+                is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="control">
@@ -233,12 +298,28 @@ public class ShellFactPatternsTest {
     public void exitStatementsWithAStatus_onlyLiteralStatuses() {
         assertThat(count("exit statements with a status", "exit 0\n[ -f x ] || exit 2\nexit \"$rc\"\nexit\n"), is(2));
     }
+
+    @Test
+    public void sourcedFiles_afterAndThenSemicolonElseDoAndABrace_count() {
+        assertThat(
+                count(
+                        "sourced files",
+                        "[ -f ~/.env ] && . ~/.env\nif [ -f /etc/default/foo ]; then . /etc/default/foo; fi\n"
+                                + ". lib.sh; source other.sh\nsudo . x\nfind . -name x\n{ . a; }\n"
+                                + "if false; then :; else source alt.sh; fi\nfor f in conf.d/*.sh; do . \"$f\"; done\n"
+                                + "./run.sh\n"),
+                is(7));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="ksh">
     @Test
-    public void typesetDeclarations_atAnyIndent() {
-        assertThat(count("typeset declarations", "typeset -i n=0\ntypeset -A map\n  typeset -n ref=$1\n"), is(3));
+    public void typesetAndDeclareDeclarations_atAnyIndent() {
+        assertThat(
+                count(
+                        "typeset and declare declarations",
+                        "declare -a HOSTS=()\ndeclare -A MAP\ntypeset -i n=0\n  declare -r X=1\n"),
+                is(4));
     }
 
     @Test
@@ -248,6 +329,15 @@ public class ShellFactPatternsTest {
                         "ksh discipline functions",
                         "function counter.get {\n  .sh.value=$((n+1))\n}\nfunction x.set { :; }\n"
                                 + "function get {\n}\n"),
+                is(2));
+    }
+
+    @Test
+    public void kshDisciplineFunctions_getnCountsAndOtherDottedNamesDoNot() {
+        assertThat(
+                count(
+                        "ksh discipline functions",
+                        "function n.getn {\n}\nfunction n.get {\n}\nfunction n.getx {\n}\nfunction get {\n}\n"),
                 is(2));
     }
     // </editor-fold>
@@ -271,7 +361,8 @@ public class ShellFactPatternsTest {
         // the remote script's "set -e" sits in a heredoc and is blanked
         assertThat(count("set -e", source), is(1));
         assertThat(count("exit statements with a status", source), is(3));
-        assertThat(count("typeset declarations", source), is(0));
+        // declare -a HOSTS and declare -A HOST_FILES
+        assertThat(count("typeset and declare declarations", source), is(2));
         assertThat(count("ksh discipline functions", source), is(0));
     }
 
@@ -288,7 +379,7 @@ public class ShellFactPatternsTest {
         assertThat(count("defaulted variables", source), is(1));
         assertThat(count("script-level assignments", source), is(1));
         assertThat(count("exit statements with a status", source), is(1));
-        assertThat(count("typeset declarations", source), is(10));
+        assertThat(count("typeset and declare declarations", source), is(10));
         assertThat(count("traps", source), is(0));
         assertThat(count("sourced files", source), is(0));
         assertThat(count("set -e", source), is(0));
@@ -304,6 +395,18 @@ public class ShellFactPatternsTest {
         assertThat(count("set -e", source), is(0));
         assertThat(count("getopts loops", source), is(0));
         assertThat(count("dash-option case arms", source), is(0));
+    }
+
+    @Test
+    public void counts_aLongScript_stayLinear() {
+        final String script = ProfileFactPatterns.languageCorpusFile("other/shell/deploy_release.sh");
+        final StringBuilder source = new StringBuilder();
+        for (int i = 0; i < LONG_INPUT_COPIES; i++) {
+            source.append(script);
+        }
+        assertThat(
+                assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("getopts option letters", source.toString())),
+                is(5 * LONG_INPUT_COPIES));
     }
     // </editor-fold>
 }

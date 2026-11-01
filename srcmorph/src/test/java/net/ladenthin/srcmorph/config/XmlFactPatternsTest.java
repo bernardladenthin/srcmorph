@@ -56,7 +56,8 @@ public class XmlFactPatternsTest {
                         "plugins",
                         "modules",
                         "profiles",
-                        "test-scoped dependencies")));
+                        "test-scoped dependencies",
+                        "managed plugin sections")));
     }
 
     // <editor-fold defaultstate="collapsed" desc="xml-facts">
@@ -141,6 +142,23 @@ public class XmlFactPatternsTest {
                         "<beans>\n<bean id=\"a\"/>\n<!-- <bean id=\"old\"/> -->\n<bean-name>x</bean-name>\n</beans>\n"),
                 is(1));
     }
+
+    @Test
+    public void elements_markupInADoctypeInternalSubset_doesNotCount() {
+        assertThat(
+                count(
+                        XML,
+                        "elements",
+                        "<?xml version=\"1.0\"?>\n<!DOCTYPE r [\n<!ENTITY e \"<b>x</b>\">\n<!ELEMENT r (#PCDATA)>\n]>\n<r>&e;</r>\n"),
+                is(1));
+        assertThat(
+                count(
+                        XML,
+                        "elements",
+                        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" "
+                                + "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n<html><body/></html>\n"),
+                is(2));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="pom-facts">
@@ -179,6 +197,55 @@ public class XmlFactPatternsTest {
                         "test-scoped dependencies",
                         "<scope>test</scope>\n<scope> test </scope>\n<scope>runtime</scope>\n"),
                 is(2));
+    }
+
+    @Test
+    public void dependencies_ofAPlugin_doNotCount() {
+        final String pom = "<dependencies><dependency><scope>test</scope></dependency></dependencies>\n"
+                + "<build><plugins><plugin>\n    <artifactId>x</artifactId>\n"
+                + "    <dependencies><dependency><scope>test</scope></dependency><dependency/></dependencies>\n"
+                + "</plugin></plugins></build>\n";
+        assertThat(count(POM, "dependencies", pom), is(1));
+        assertThat(count(POM, "test-scoped dependencies", pom), is(1));
+        assertThat(count(POM, "plugins", pom), is(1));
+    }
+
+    @Test
+    public void plugins_everyPlaceCountsAndManagedPluginSectionsSaysWhetherThereAreAny() {
+        final String pom = "<build><pluginManagement><plugins><plugin/></plugins></pluginManagement>\n"
+                + "<plugins><plugin>\n</plugin></plugins></build>\n<reporting><plugins><plugin/></plugins></reporting>\n"
+                + "<profiles><profile><build><plugins><plugin/></plugins></build></profile></profiles>\n";
+        assertThat(count(POM, "plugins", pom), is(4));
+        assertThat(count(POM, "managed plugin sections", pom), is(1));
+    }
+
+    @Test
+    public void modulesAndProfiles_insideAPluginConfiguration_doNotCount() {
+        final String pom = "<plugin><configuration><modules><module>a</module></modules>"
+                + "<profiles><profile>x</profile></profiles></configuration></plugin>\n";
+        assertThat(count(POM, "modules", pom), is(0));
+        assertThat(count(POM, "profiles", pom), is(0));
+    }
+
+    @Test
+    public void plugins_nestedInASpotBugsConfiguration_areNoPluginsAndItsDependencyIsNone() {
+        final String pom = "<plugins><plugin>\n    <artifactId>spotbugs-maven-plugin</artifactId>\n"
+                + "    <configuration><plugins>\n        <plugin><artifactId>fb-contrib</artifactId></plugin>\n"
+                + "        <plugin><artifactId>findsecbugs-plugin</artifactId></plugin>\n    </plugins></configuration>\n"
+                + "    <dependencies><dependency/></dependencies>\n</plugin></plugins>\n"
+                + "<dependencies><dependency/></dependencies>\n";
+        assertThat(count(POM, "plugins", pom), is(1));
+        assertThat(count(POM, "dependencies", pom), is(1));
+    }
+
+    @Test
+    public void dependencies_inCdataOrAfterACommentedPluginOpener_countOnce() {
+        assertThat(
+                count(
+                        POM,
+                        "dependencies",
+                        "<description><![CDATA[<dependency/>]]></description>\n<!-- <plugin> -->\n<dependency/>\n"),
+                is(1));
     }
     // </editor-fold>
 
@@ -219,6 +286,7 @@ public class XmlFactPatternsTest {
         assertThat(count(POM, "modules", source), is(0));
         assertThat(count(POM, "profiles", source), is(1));
         assertThat(count(POM, "test-scoped dependencies", source), is(2));
+        assertThat(count(POM, "managed plugin sections", source), is(0));
     }
     // </editor-fold>
 }

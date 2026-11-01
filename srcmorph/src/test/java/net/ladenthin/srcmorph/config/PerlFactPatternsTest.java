@@ -114,6 +114,15 @@ public class PerlFactPatternsTest {
     public void subs_shiftOperator_isNoHeredoc() {
         assertThat(count("subs", "my $x = 1 << 3;\nsub after {\n}\nmy $y = $a<<2;\n"), is(1));
     }
+
+    @Test
+    public void packagesAndSubs_perl538ClassAndMethod_count() {
+        final String source = "use v5.38;\nuse experimental 'class';\nclass Point {\n    field $x :param = 0;\n"
+                + "    field $y :param = 0;\n    method coords { return ($x, $y) }\n    method move ($dx, $dy) {\n    }\n}\n"
+                + "class Point3D :isa(Point) {\n}\nmy %h = (class => 'x', method => 'y');\n";
+        assertThat(count("packages", source), is(2));
+        assertThat(count("subs", source), is(2));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="modules, constants and variables">
@@ -162,12 +171,23 @@ public class PerlFactPatternsTest {
     }
 
     @Test
-    public void environmentVariablesRead_bareAndQuotedKeys_count() {
+    public void environmentVariablesRead_bareQuotedAndDashedKeys_countAndALocalWriteDoesNot() {
         assertThat(
                 count(
                         "environment variables read",
                         "my $h = $ENV{HOME};\nmy $p = $ENV{'PATH'} // '';\nlocal $ENV{\"LANG\"} = 'C';\n"),
-                is(3));
+                is(2));
+    }
+
+    @Test
+    public void environmentVariablesRead_readsCountAndWritesDoNot() {
+        assertThat(
+                count(
+                        "environment variables read",
+                        "$ENV{PATH} = '/bin';\nlocal $ENV{PATH} = 1;\nprint $ENV{PATH};\n$ENV{'MY-VAR'};\ndelete $ENV{TMP};\n"
+                                + "if ($ENV{DEBUG} == 1) {}\nif ($ENV{HOME} =~ /x/) {}\n$ENV{X} .= 'a';\n$ENV{Y} //= 'd';\n"
+                                + "my $h = $ENV{HOME};\nmy $p = $ENV{'PATH'} // '';\nlocal $ENV{\"LANG\"} = 'C';\nexists $ENV{FOO}\n"),
+                is(7));
     }
 
     @Test
@@ -199,6 +219,16 @@ public class PerlFactPatternsTest {
                         "print \"Bitte die Datei pruefen\\n\";\nmy %h = (die => 1);\n$obj->die;\n"),
                 is(0));
     }
+
+    @Test
+    public void modulesUsed_parentAndBase_countAndOtherPragmasDoNot() {
+        assertThat(
+                count(
+                        "modules used",
+                        "use parent 'Exporter';\nuse base qw(Exporter);\nuse parent -norequire, 'Foo';\n"
+                                + "use strict;\nuse lib \"$Bin\";\nuse Getopt::Long;\n"),
+                is(4));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="the benchmark's language corpus">
@@ -208,7 +238,8 @@ public class PerlFactPatternsTest {
         assertThat(count("packages", source), is(1));
         // the sub named in the POD after __END__ is not one
         assertThat(count("subs", source), is(6));
-        assertThat(count("modules used", source), is(3));
+        // POSIX, List::Util, Carp and use parent
+        assertThat(count("modules used", source), is(4));
         assertThat(count("use constant statements", source), is(2));
         assertThat(count("package variables (our)", source), is(2));
         assertThat(count("file-scope lexicals (my at column 0)", source), is(1));

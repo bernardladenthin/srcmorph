@@ -72,39 +72,39 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 | `sql-facts` | Counts |
 |---|---|
 | `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL |
-| `INSERT statements` | `INSERT INTO` at the start of a line, also `INSERT IGNORE` / `LOW_PRIORITY` and `REPLACE INTO` |
+| `INSERT statements` | `INSERT [INTO]` at the start of a line, also MySQL's `IGNORE` / `LOW_PRIORITY`, an Oracle hint, `INSERT ALL` / `FIRST` and `REPLACE INTO`; not a `MERGE` branch or a trigger's event list |
 | `VALUES rows (approx)` | the row tuples of `VALUES` lists, so a multi-row `INSERT` counts each row; rows an `INSERT ... SELECT` reads from a table are not seen |
-| `tables`, `views`, `indexes` | `CREATE` statements, also `TEMP`/`UNLOGGED` tables, `MATERIALIZED`, `OR REPLACE`/`OR ALTER` and Oracle's `FORCE EDITIONABLE` views, `UNIQUE`/`CLUSTERED`/`FULLTEXT`/`SPATIAL`/`BITMAP` indexes |
+| `tables`, `views`, `indexes` | `CREATE` statements, also `TEMP`/`UNLOGGED` tables, `MATERIALIZED`, `OR REPLACE`/`OR ALTER`, MySQL's `ALGORITHM` / `DEFINER` / `SQL SECURITY` and Oracle's `FORCE EDITIONABLE` views (not a `MATERIALIZED VIEW LOG`), `UNIQUE`/`CLUSTERED`/`FULLTEXT`/`SPATIAL`/`BITMAP` indexes |
 | `functions/procedures`, `triggers` | `CREATE [OR REPLACE / OR ALTER] [EDITIONABLE] FUNCTION / PROCEDURE / PROC / TRIGGER`, also MySQL's `DEFINER=` |
-| `types` | `CREATE TYPE` (enums, composite types) |
+| `types` | `CREATE [OR REPLACE] [EDITIONABLE] TYPE` (enums, composite and object types; not a `TYPE BODY`) |
 | `ALTER TABLE` | every `ALTER TABLE` statement |
-| `sequences`, `extensions`, `schemas and databases`, `packages and package bodies` | `CREATE [TEMP] SEQUENCE`, `CREATE EXTENSION`, `CREATE SCHEMA` / `DATABASE`, Oracle's `CREATE [OR REPLACE] PACKAGE [BODY]` |
+| `sequences`, `extensions`, `schemas and databases`, `packages and package bodies` | `CREATE [TEMP] SEQUENCE`, `CREATE EXTENSION`, `CREATE SCHEMA` / `DATABASE` (not a `DATABASE LINK` or `SCOPED CREDENTIAL`), Oracle's `CREATE [OR REPLACE] PACKAGE [BODY]` |
 
 | `shell-facts` (Bash, sh, ksh93) | Counts |
 |---|---|
-| `[ignore]` comment lines and heredoc bodies | a whole-line `#` comment; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-` |
-| `functions` | `name()`, `name ()` and `function name` definitions |
+| `[ignore]` comments and heredoc bodies | a `#` comment, a whole line or after a blank; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-` |
+| `functions` | `name()`, `name ()` and `function name` definitions, with any compound command as the body (`{`, `(`, `if`, `for`, `while`, `until`, `case`, `select`, `[[`) |
 | `getopts loops`, `getopts option letters`, `dash-option case arms` | `getopts` calls; each letter of a literal option string; `case` arms of `-x` / `--long` options, as a hand-written option loop has them |
 | `named positional parameters` | an argument assigned to a name (`SRC="$1"`, `local mode=${3:-fast}`) |
 | `exported variables`, `readonly variables`, `defaulted variables` | every name of an `export` / `declare -x` line, not `export -f` / `-n`; every name of a `readonly` / `declare -r` / `typeset -r` / `local -r` line, not `readonly -f`; `${NAME:-default}` and `${NAME:=default}` |
-| `script-level assignments` | an assignment at column 0 |
-| `sourced files`, `traps`, `set -e`, `exit statements with a status` | `source` / `.`; `trap` (not `trap -p`); `set -e` / `-o errexit`; `exit` with a literal status |
-| `typeset declarations`, `ksh discipline functions` | ksh93's `typeset`; `function name.get` / `.set` / `.unset` / `.append` |
+| `script-level assignments` | an assignment at column 0 (`+=` and array elements too), not the environment prefix of a command (`LC_ALL=C sort`) |
+| `sourced files`, `traps`, `set -e`, `exit statements with a status` | `source` / `.`, also after `&&`, `;`, `then`, `else`, `do` or `{`; `trap` (not `trap -p`); `set -e` / `-o errexit`; `exit` with a literal status |
+| `typeset and declare declarations`, `ksh discipline functions` | `typeset` and `declare`; `function name.get` / `.getn` / `.set` / `.unset` / `.append` |
 
 | `perl-facts` | Counts |
 |---|---|
 | `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<<\END`, `<<END`, `<<~END` bodies; whole-line `#` comments; leftmost first |
-| `packages`, `subs` | `package` statements and blocks; named, lexical (`my sub`), signature and attribute subs (`sub f :prototype($$) ($x, $y)`), not anonymous subs or forward declarations |
-| `modules used`, `modules required` | `use Some::Module` (not pragmas or versions); `require Module` / `require 'file'` (not versions) |
+| `packages`, `subs` | `package` statements and blocks and 5.38 `class` blocks; named, lexical (`my sub`), signature and attribute subs (`sub f :prototype($$) ($x, $y)`) and 5.38 `method`s, not anonymous subs or forward declarations |
+| `modules used`, `modules required` | `use Some::Module`, `use parent` / `base` (not other pragmas or versions); `require Module` / `require 'file'` (not versions) |
 | `use constant statements`, `package variables (our)`, `file-scope lexicals (my at column 0)` | each `use constant`; `our` declarations; a `my` at column 0 |
-| `environment variables read`, `GetOptions calls`, `die, croak and confess` | `$ENV{KEY}`; `GetOptions(...)` and its variants; a call of the three where a statement starts or after `or` / `and` / `\|\|` / `&&` / `//`, so neither `use Carp qw(croak)` nor the German article in a message counts |
+| `environment variables read`, `GetOptions calls`, `die, croak and confess` | a read of `$ENV{KEY}`, not an assignment, `local` or `delete`; `GetOptions(...)` and its variants; a call of the three where a statement starts or after `or` / `and` / `\|\|` / `&&` / `//`, so neither `use Carp qw(croak)` nor the German article in a message counts |
 
 | `xml-facts` / `pom-facts` | Counts |
 |---|---|
-| `[ignore]` comments, CDATA and processing instructions | `<!-- ... -->`, `<![CDATA[ ... ]]>` and `<? ... ?>`, leftmost first (xml-facts); `<!-- ... -->` (pom-facts) |
+| `[ignore]` comments, CDATA, processing instructions and the DOCTYPE | `<!-- ... -->`, `<![CDATA[ ... ]]>`, `<? ... ?>` and `<!DOCTYPE ... [ ... ]>`, leftmost first (xml-facts); comments, CDATA and the body of every `<plugin>` (pom-facts) |
 | `elements`, `namespace declarations`, `id and name attributes` | start tags; `xmlns` / `xmlns:prefix`; `id=` and `name=` attributes, also prefixed ones (`android:id`, `xml:id`) |
 | `XSD type definitions`, `XSLT templates`, `Spring beans` | named `complexType` / `simpleType`; `template` elements (not calls); `bean` elements |
-| `dependencies`, `managed dependency sections`, `plugins`, `modules`, `profiles`, `test-scoped dependencies` | pom-facts: each `<dependency>` (managed and profile ones included), `<dependencyManagement>`, `<plugin>`, `<module>`, `<profile>`, `<scope>test</scope>` |
+| `dependencies`, `managed dependency sections`, `plugins`, `modules`, `profiles`, `test-scoped dependencies`, `managed plugin sections` | pom-facts: each `<dependency>` (managed and profile ones included, not a plugin's own), `<dependencyManagement>`, `<plugin>` (build, management, reporting, profiles; not one inside a plugin configuration), `<module>`, `<profile>`, `<scope>test</scope>`, `<pluginManagement>` |
 
 ## Using a profile
 

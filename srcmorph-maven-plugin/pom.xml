@@ -1035,12 +1035,19 @@ SPDX-License-Identifier: Apache-2.0
                                         <fileExtension>.sh</fileExtension>
                                         <fileExtension>.bash</fileExtension>
                                         <fileExtension>.ksh</fileExtension>
+                                        <fileExtension>.zsh</fileExtension>
+                                        <fileExtension>.bats</fileExtension>
                                         <fileExtension>.pl</fileExtension>
                                         <fileExtension>.pm</fileExtension>
+                                        <fileExtension>.t</fileExtension>
+                                        <fileExtension>.cgi</fileExtension>
+                                        <fileExtension>.psgi</fileExtension>
                                         <fileExtension>.xml</fileExtension>
                                         <fileExtension>.xsd</fileExtension>
                                         <fileExtension>.xsl</fileExtension>
                                         <fileExtension>.xslt</fileExtension>
+                                        <fileExtension>.wsdl</fileExtension>
+                                        <fileExtension>.xhtml</fileExtension>
                                     </fileExtensions>
                                     <fieldGenerations>
                                         <!-- Size-tiered routing for large files. THREE bands per source kind, by
@@ -1196,7 +1203,7 @@ SPDX-License-Identifier: Apache-2.0
                                                 <and>
                                                     <conditions>
                                                         <condition>
-                                                            <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension></extensions>
+                                                            <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension><extension>.wsdl</extension><extension>.xhtml</extension></extensions>
                                                         </condition>
                                                         <condition>
                                                             <size><min>1000000</min></size>
@@ -1215,7 +1222,48 @@ SPDX-License-Identifier: Apache-2.0
                                                 <and>
                                                     <conditions>
                                                         <condition>
-                                                            <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension></extensions>
+                                                            <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension><extension>.wsdl</extension><extension>.xhtml</extension></extensions>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>275000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <!-- A big POM takes the XML size tiers, one step above them, and keeps the Maven counters. -->
+                                        <fieldGeneration>
+                                            <id>huge-pom</id>
+                                            <promptKey>file-body-fallback</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
+                                            <priority>210</priority>
+                                            <onOversize>mapReduce</onOversize>
+                                            <maxChunks>6</maxChunks>
+                                            <factsKey>pom-facts</factsKey>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <pathGlob>**/*pom.xml</pathGlob>
+                                                        </condition>
+                                                        <condition>
+                                                            <size><min>1000000</min></size>
+                                                        </condition>
+                                                    </conditions>
+                                                </and>
+                                            </condition>
+                                        </fieldGeneration>
+                                        <fieldGeneration>
+                                            <id>big-window-pom</id>
+                                            <promptKey>file-body-fallback</promptKey>
+                                            <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
+                                            <priority>110</priority>
+                                            <factsKey>pom-facts</factsKey>
+                                            <condition>
+                                                <and>
+                                                    <conditions>
+                                                        <condition>
+                                                            <pathGlob>**/*pom.xml</pathGlob>
                                                         </condition>
                                                         <condition>
                                                             <size><min>275000</min></size>
@@ -1233,7 +1281,7 @@ SPDX-License-Identifier: Apache-2.0
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <factsKey>shell-facts</factsKey>
                                             <condition>
-                                                <extensions><extension>.sh</extension><extension>.bash</extension><extension>.ksh</extension></extensions>
+                                                <extensions><extension>.sh</extension><extension>.bash</extension><extension>.ksh</extension><extension>.zsh</extension><extension>.bats</extension></extensions>
                                             </condition>
                                         </fieldGeneration>
                                         <fieldGeneration>
@@ -1242,7 +1290,7 @@ SPDX-License-Identifier: Apache-2.0
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <factsKey>perl-facts</factsKey>
                                             <condition>
-                                                <extensions><extension>.pl</extension><extension>.pm</extension></extensions>
+                                                <extensions><extension>.pl</extension><extension>.pm</extension><extension>.t</extension><extension>.cgi</extension><extension>.psgi</extension></extensions>
                                             </condition>
                                         </fieldGeneration>
                                         <fieldGeneration>
@@ -1261,7 +1309,7 @@ SPDX-License-Identifier: Apache-2.0
                                             <aiDefinitionKey>${ai.model}</aiDefinitionKey>
                                             <factsKey>xml-facts</factsKey>
                                             <condition>
-                                                <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension></extensions>
+                                                <extensions><extension>.xml</extension><extension>.xsd</extension><extension>.xsl</extension><extension>.xslt</extension><extension>.wsdl</extension><extension>.xhtml</extension></extensions>
                                             </condition>
                                         </fieldGeneration>
                                         <!-- Explicit fallback: applies to any file no rule above matched.

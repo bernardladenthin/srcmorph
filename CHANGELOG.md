@@ -43,7 +43,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   used and required, `use constant`, `our` and file-scope `my`, `%ENV` keys, `GetOptions`, `die` /
   `croak` / `confess`), XML (elements, namespaces, `id` / `name` attributes, XSD types, XSLT
   templates, Spring beans) and Maven POMs (dependencies, managed sections, plugins, modules,
-  profiles, test scope), each with its comments, heredocs, POD or CDATA ignored.
+  profiles, test scope), each with its comments, heredocs, POD or CDATA ignored. SQL `INSERT`
+  counts without `INTO`, after an Oracle hint and as `INSERT ALL` / `FIRST`; MySQL's `DEFINER=`
+  views and Oracle's `CREATE OR REPLACE TYPE` count, a `TYPE BODY`, `MATERIALIZED VIEW LOG` and
+  `DATABASE LINK` do not. Shell comments after code are blanked, a function body may be any compound
+  command, `source` counts after `&&` / `then` / `;`, an environment prefix (`LC_ALL=C sort`) is no
+  assignment, and `declare` counts with `typeset` (label `typeset and declare declarations`). Perl
+  counts 5.38 `class` / `method` and `use parent` / `base`, and `%ENV` reads without its
+  assignments. XML blanks the DOCTYPE; POMs blank every plugin body, so a plugin's dependencies and
+  configuration do not count, and `managed plugin sections` is new. Routing takes `.zsh`, `.bats`,
+  `.t`, `.cgi`, `.psgi`, `.wsdl` and `.xhtml` too, and a POM above 275 KB keeps the Maven counters
+  in the Granite tiers (`huge-pom`, `big-window-pom`).
   `ShellFactPatternsTest`, `PerlFactPatternsTest` and `XmlFactPatternsTest` pin every counter. The
   self-test profile and `examples/build-your-own-jar/srcmorph.yaml` route `.sh` / `.bash` / `.ksh`,
   `.pl` / `.pm`, `**/*pom.xml` and `.xml` / `.xsd` / `.xsl` / `.xslt` to them, and big XML files take

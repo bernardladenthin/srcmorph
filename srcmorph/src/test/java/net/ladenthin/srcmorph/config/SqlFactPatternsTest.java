@@ -106,6 +106,49 @@ public class SqlFactPatternsTest {
     public void insertStatements_afterAnInlineBlockComment_count() {
         assertThat(count("INSERT statements", "/* seed */ INSERT INTO t VALUES (1);\n"), is(1));
     }
+
+    @Test
+    public void insertStatements_withoutInto_count() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT t VALUES (1);\nINSERT IGNORE t VALUES (1);\nINSERT dbo.T (a) VALUES (1);\n"
+                                + "INSERT #tmp SELECT 1;\nINSERT @tab VALUES (1);\nINSERT [dbo].[T] VALUES (1);\n"),
+                is(6));
+    }
+
+    @Test
+    public void insertStatements_oracleHintInsertAllAndInsertFirst_count() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT /*+ APPEND */ INTO t SELECT * FROM s;\n"
+                                + "INSERT /*+ APPEND PARALLEL(t, 4) */ INTO t SELECT * FROM s;\n"
+                                + "INSERT ALL\n  INTO a VALUES (1)\n  INTO b VALUES (2)\nSELECT * FROM dual;\n"
+                                + "INSERT FIRST\n  WHEN x > 1 THEN INTO a VALUES (x)\n  ELSE INTO b VALUES (x)\n"
+                                + "SELECT x FROM s;\n"),
+                is(4));
+    }
+
+    @Test
+    public void insertStatements_mergeBranchAndTriggerEventListOnTheirOwnLine_doNotCount() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "MERGE t USING s ON t.id = s.id\nWHEN NOT MATCHED THEN\n    INSERT (id) VALUES (s.id);\n"
+                                + "CREATE TRIGGER trg BEFORE\n  INSERT OR UPDATE ON t\n  FOR EACH ROW EXECUTE FUNCTION f();\n"
+                                + "CREATE TRIGGER trg2 AFTER\n  INSERT ON t\n  FOR EACH ROW EXECUTE FUNCTION f();\n"),
+                is(0));
+    }
+
+    @Test
+    public void insertStatements_withoutIntoInAStringOrAComment_doNotCount() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "SELECT 'INSERT t VALUES (1)' AS s;\n-- INSERT t VALUES (2)\nINSERT t VALUES (3);\n"),
+                is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="comments and string literals">
@@ -308,6 +351,27 @@ public class SqlFactPatternsTest {
     public void views_refreshAndDrop_doNotCount() {
         assertThat(count("views", "REFRESH MATERIALIZED VIEW d;\nDROP VIEW a;\n"), is(0));
     }
+
+    @Test
+    public void views_mySqlAlgorithmDefinerAndSqlSecurity_count() {
+        assertThat(
+                count(
+                        "views",
+                        "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW v1 AS SELECT 1;\n"
+                                + "CREATE OR REPLACE ALGORITHM = MERGE VIEW v2 AS SELECT 1;\n"
+                                + "CREATE DEFINER=`app`@`%` VIEW v3 AS SELECT 1;\n"
+                                + "CREATE SQL SECURITY INVOKER VIEW v4 AS SELECT 1;\n"),
+                is(4));
+    }
+
+    @Test
+    public void views_materializedViewLog_isNoView() {
+        assertThat(
+                count(
+                        "views",
+                        "CREATE MATERIALIZED VIEW LOG ON t WITH ROWID;\nCREATE MATERIALIZED VIEW mv AS SELECT 1;\n"),
+                is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="indexes">
@@ -437,6 +501,18 @@ public class SqlFactPatternsTest {
     public void alterTable_alterOfOtherObjects_doesNotCount() {
         assertThat(count("ALTER TABLE", "ALTER INDEX a RENAME TO b;\nALTER VIEW v RENAME TO w;\n"), is(0));
     }
+
+    @Test
+    public void types_oracleOrReplaceAndEditionable_countAndTheTypeBodyDoesNot() {
+        assertThat(
+                count(
+                        "types",
+                        "CREATE OR REPLACE TYPE addr_t AS OBJECT (street VARCHAR2(80));\n/\n"
+                                + "CREATE OR REPLACE EDITIONABLE TYPE BODY addr_t AS\nEND;\n/\n"
+                                + "CREATE OR REPLACE NONEDITIONABLE TYPE nums_t AS VARRAY(3) OF NUMBER;\n/\n"
+                                + "CREATE TYPE status AS ENUM ('A');\n"),
+                is(3));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="sequences, extensions, schemas and packages">
@@ -454,7 +530,11 @@ public class SqlFactPatternsTest {
 
     @Test
     public void schemasAndDatabases_both_count() {
-        assertThat(count("schemas and databases", "CREATE SCHEMA app;\nCREATE DATABASE x;\n"), is(2));
+        assertThat(
+                count(
+                        "schemas and databases",
+                        "CREATE SCHEMA app;\nCREATE DATABASE x;\nCREATE SCHEMA IF NOT EXISTS s AUTHORIZATION u;\n"),
+                is(3));
     }
 
     @Test
@@ -465,6 +545,18 @@ public class SqlFactPatternsTest {
                         "CREATE OR REPLACE PACKAGE emp_pkg AS\nEND;\n/\n"
                                 + "CREATE OR REPLACE EDITIONABLE PACKAGE BODY emp_pkg AS\nEND;\n/\n"),
                 is(2));
+    }
+
+    @Test
+    public void schemasAndDatabases_linkScopedCredentialAuditAndEncryptionKey_doNotCount() {
+        assertThat(
+                count(
+                        "schemas and databases",
+                        "CREATE DATABASE LINK dl CONNECT TO u IDENTIFIED BY p USING 'x';\n"
+                                + "CREATE DATABASE SCOPED CREDENTIAL c WITH IDENTITY = 'x';\n"
+                                + "CREATE DATABASE AUDIT SPECIFICATION s FOR SERVER AUDIT a;\n"
+                                + "CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_256 ENCRYPTION BY SERVER CERTIFICATE c;\n"),
+                is(0));
     }
     // </editor-fold>
 }

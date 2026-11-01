@@ -3,14 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Maven POM fact counters, for a rule matching pom.xml files next to xml-facts: one per line, label TAB
-# pattern (Java regex). The [ignore] line blanks comments first, so a commented-out dependency does not
-# count. "dependencies" counts every <dependency> element, also those of dependencyManagement and of
-# profiles; "managed dependency sections" says whether there are any. XmlFactPatternsTest pins every
-# case.
-[ignore] comments	(?s)<!--.*?-->
+# pattern (Java regex). The [ignore] line blanks comments, CDATA sections and the body of every
+# <plugin> element first, so a commented-out dependency, a plugin's own dependencies and the words of a
+# plugin configuration (SpotBugs detectors, assembly modules) do not count. "dependencies" counts every
+# <dependency> of the dependencies, dependencyManagement and profile sections; "plugins" every plugin
+# of build, pluginManagement, reporting and profiles; the two "managed ... sections" say whether there
+# are any. A plugin opener other than <plugin>, or plugins nested more than one level deep, are not
+# read. XmlFactPatternsTest pins every case.
+[ignore] comments, CDATA and plugin bodies	(?s)<!--.*?-->|<!\[CDATA\[.*?\]\]>|(?<=<plugin>)(?:[^<]++|<(?!/plugin>|plugin>)|<plugin>(?:[^<]++|<(?!/plugin>))*+</plugin>)*+
 dependencies	<dependency[ \t\r\n/>]
 managed dependency sections	<dependencyManagement[ \t\r\n/>]
 plugins	<plugin[ \t\r\n/>]
 modules	<module[ \t\r\n/>]
 profiles	<profile[ \t\r\n/>]
 test-scoped dependencies	<scope>[ \t\r\n]*test[ \t\r\n]*</scope>
+managed plugin sections	<pluginManagement[ \t\r\n/>]
