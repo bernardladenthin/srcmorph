@@ -155,6 +155,26 @@ public class EngineSupportTest {
     }
 
     @Test
+    public void buildPromptSupport_aRulesMapAndReducePrompts_areReadFromTheProfileDirectory() throws Exception {
+        Files.write(tempDir.resolve("file-body-java.md"), "BODY".getBytes(UTF_8));
+        Files.write(tempDir.resolve("map-chunk.md"), "MAP".getBytes(UTF_8));
+        Files.write(tempDir.resolve("reduce-parts.md"), "REDUCE".getBytes(UTF_8));
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setPromptKey("file-body-java");
+        rule.setMapPromptKey("map-chunk");
+        rule.setReducePromptKey("reduce-parts");
+        final AiFieldGenerationConfig plain = new AiFieldGenerationConfig();
+        plain.setPromptKey("file-body-java");
+
+        final AiPromptSupport support =
+                EngineSupport.buildPromptSupport(null, tempDir.toFile(), Arrays.asList(rule, plain));
+
+        assertThat(support.systemPrompt("map-chunk"), is("MAP"));
+        assertThat(support.systemPrompt("reduce-parts"), is("REDUCE"));
+        assertThat(support.systemPrompt("file-body-java+map-chunk"), is("BODY\n\nMAP"));
+    }
+
+    @Test
     public void buildPromptSupport_missingTemplateFile_throwsSrcMorphException() {
         final AiPromptDefinition fromFile = new AiPromptDefinition();
         fromFile.setKey("file-body-java");

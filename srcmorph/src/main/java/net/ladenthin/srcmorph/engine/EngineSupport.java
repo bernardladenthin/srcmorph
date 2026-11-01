@@ -107,13 +107,10 @@ final class EngineSupport {
         final List<@Nullable String> usedKeys = new ArrayList<>();
         if (fieldGenerations != null) {
             for (final AiFieldGenerationConfig rule : fieldGenerations) {
+                // a null key (a skip rule's prompt, an unset map or reduce prompt) is ignored by the loader
                 usedKeys.add(rule.getPromptKey());
-                if (rule.getMapPromptKey() != null) {
-                    usedKeys.add(rule.getMapPromptKey());
-                }
-                if (rule.getReducePromptKey() != null) {
-                    usedKeys.add(rule.getReducePromptKey());
-                }
+                usedKeys.add(rule.getMapPromptKey());
+                usedKeys.add(rule.getReducePromptKey());
             }
         }
         try {

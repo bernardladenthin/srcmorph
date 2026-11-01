@@ -33,7 +33,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/srcmorph/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/srcmorph?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/srcmorph/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/srcmorph)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/srcmorph?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/srcmorph)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(77%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(78%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_srcmorph&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_srcmorph)  
