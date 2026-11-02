@@ -114,19 +114,15 @@ Unreleased) except:
 
 **Fact counters (`profiles/v3/`, after the benchmark runs, which read the profile):**
 
-- `java-facts.tsv` `constructors` / `methods`: `\([^;{]*\)` is quadratic on a long enum (13 s on the
-  large corpus's 6 000 constants); a possessive one-level parameter list fixes it. `type
-  declarations` misses private/protected nested types and `@interface`, uses the forbidden `^\s*`, and
-  has no test.
-- Shell and Perl `[ignore]`: a `<<` that is a left shift or in a string opens a heredoc that scans to
-  the end of the file (20 000 lines: 35 s shell, 217 s Perl).
+- Shell and Perl `[ignore]`, what is left of the heredoc reading: the shell arithmetic check looks back
+  120 characters and misses a nested `((a))` close before the `<<`; a Perl `<<` after `}`
+  (`$h{x} <<BITS`) and one inside a regex or `q{}` still open a heredoc.
 - `sql-facts.tsv` `[ignore]`: no PostgreSQL `$$`, Oracle `q'[…]'`, MySQL `"…"` strings or `#`
   comments; an apostrophe inside one blanks real statements.
 - `pom-facts.tsv`: an unclosed `<plugin>` in a comment runs the plugin-body region to the end.
 - Smaller: `yield f(x);` and `record X(` count as methods, nested generic bounds and same-line
   annotations are missed, an enum constant with a body counts as a constructor; Javadoc "public"
-  counts (Java has no `[ignore]`); a heredoc marker in a Perl trailing comment, `<<EOF` in a shell
-  string; `${MSG:-…}` assignments; `VALUES(col)` of `ON DUPLICATE KEY UPDATE` counted as rows;
+  counts (Java has no `[ignore]`); `${MSG:-…}` assignments; `VALUES(col)` of `ON DUPLICATE KEY UPDATE` counted as rows;
   MariaDB `CREATE OR REPLACE TABLE`, T-SQL columnstore indexes, `CREATE FOREIGN TABLE`; the README's
   table lacks PostgreSQL's `'C:\'` and nested comments; removing `(?![!+])` from the SQL ignore keeps
   two tests green; XML `name = 'a'` in element text; `lineBreaks` keeps only `\r` and `\n`; the

@@ -439,6 +439,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   unbounded"; the `onOversize` and `onIncomplete` lists name `sampleChunks` and `keep`; `SrcMorphException`
   says what it is thrown for. Changed messages: "Invalid configuration:", "No fieldGenerations configured
   (srcMorph.fieldGenerations of the configuration file)", "add a rule with fallback: true".
+- **Fact counters: a shift no longer opens a heredoc, and a long Java enum counts in linear time.** In
+  shell, a `<<` inside `(( ))`, `$(( ))` or `$[ ]`, or whose line goes on with an unclosed quote, opens
+  nothing; in Perl, a `<<` after a variable, a number, `)` or `]`, in a trailing comment or in a string
+  opens nothing (`print $fh <<EOT` and `<< "EOT"` are heredocs). An unclosed heredoc runs to the end of
+  the file, as bash reads it. 20 000 such lines took 25 to 207 s in shell and 95 to 223 s in Perl, now
+  at most 0.2 s. `java-facts` reads a parameter list possessively, one level of parentheses deep: the
+  6 000 constants of the large corpus's enum took 8.2 s in `constructors`, now 0.1 s for the whole file.
+  `type declarations` anchors with `^[ \t]*` (40 000 blank lines took 65 s, now 0.02 s) and counts
+  private and protected nested types and `@interface`s. No count the tests pin changed.
 - **What 1.3.0 wrote from an incomplete answer is written again.** 1.3.0 wrote the facts line alone
   for an empty or cut-off file answer, and a project index without its `#### Overview` for an empty
   overview answer, under the checksum of a complete one, so no later run touched them. A summary
