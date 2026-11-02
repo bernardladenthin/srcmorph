@@ -182,8 +182,9 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     Map<String, String> properties() {
         final Map<String, String> properties = new HashMap<>();
         putAll(properties, System.getProperties());
-        put(properties, "basedir", projectDirectory.getAbsolutePath());
-        put(properties, "project.basedir", projectDirectory.getAbsolutePath());
+        final String basedir = projectDirectory.getAbsolutePath();
+        put(properties, "basedir", basedir);
+        put(properties, "project.basedir", basedir);
         put(properties, "project.build.directory", buildDirectory == null ? null : buildDirectory.getAbsolutePath());
         put(
                 properties,
