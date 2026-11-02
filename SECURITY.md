@@ -9,8 +9,8 @@ within a line is a version bump and nothing else.
 
 | Version | Supported |
 |---------|-----------|
-| 1.3.x (current release line) | ✅ Security fixes released from `main` |
-| 1.2.x and older | ❌ Upgrade to the current line |
+| 1.4.x (current release line) | ✅ Security fixes released from `main` |
+| 1.3.x and older | ❌ Upgrade to the current line |
 | `main` (development) | ✅ Fixes land here first |
 
 ---

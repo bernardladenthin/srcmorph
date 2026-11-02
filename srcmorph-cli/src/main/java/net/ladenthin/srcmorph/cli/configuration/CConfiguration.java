@@ -33,10 +33,10 @@ public class CConfiguration {
     public CCommand command = CCommand.Plan;
 
     /**
-     * The shared core configuration passed to whichever engine {@link #command} selects — the SAME
-     * {@link SrcMorphConfiguration} type the {@code srcmorph-maven-plugin} module's mojos
-     * build from their own {@code @Parameter} fields, so a JSON/YAML key here reads identically to
-     * the matching Maven {@code <configuration>} XML element.
+     * The shared core configuration passed to whichever engine {@link #command} selects: the
+     * {@code srcMorph} section of the configuration file, the SAME {@link SrcMorphConfiguration} the
+     * {@code srcmorph-maven-plugin} module's mojos read from the same file, so a key means the same to
+     * both.
      */
     public SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
 
@@ -48,16 +48,18 @@ public class CConfiguration {
 
     /**
      * The rule of the package phase ({@link CCommand#AggregatePackages}, and the package step of
-     * {@link CCommand#All}), as the Maven plugin's {@code aggregate-packages} execution has its own
-     * {@code <fieldGenerations>}: exactly one rule, with the package prompt and its model. The phase
-     * fails without it; the file rules of {@code srcMorph.fieldGenerations} never reach it.
+     * {@link CCommand#All}), the top-level {@code packageFieldGenerations} of the configuration file,
+     * which the Maven plugin's {@code aggregate-packages} goal reads too: exactly one rule, with the
+     * package prompt and its model. The phase fails without it; the file rules of
+     * {@code srcMorph.fieldGenerations} never reach it.
      */
     public @Nullable List<AiFieldGenerationConfig> packageFieldGenerations;
 
     /**
      * The rule of the project phase ({@link CCommand#AggregateProject}, and the project step of
-     * {@link CCommand#All}), as the Maven plugin's {@code aggregate-project} execution has its own
-     * {@code <fieldGenerations>}: at most one rule, with the project-overview prompt and its model.
+     * {@link CCommand#All}), the top-level {@code projectFieldGenerations} of the configuration file,
+     * which the Maven plugin's {@code aggregate-project} goal reads too: at most one rule, with the
+     * project-overview prompt and its model.
      * Unset (the default), the project index is written without an overview.
      */
     public @Nullable List<AiFieldGenerationConfig> projectFieldGenerations;

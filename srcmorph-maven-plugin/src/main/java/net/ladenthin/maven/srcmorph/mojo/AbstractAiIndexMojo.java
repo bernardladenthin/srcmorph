@@ -5,6 +5,7 @@ package net.ladenthin.maven.srcmorph.mojo;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -92,6 +93,18 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.version}", readonly = true)
     protected String projectVersion;
 
+    /** The project's build directory, for {@code ${project.build.directory}} in the file. */
+    @Parameter(defaultValue = "${project.build.directory}", readonly = true)
+    protected @Nullable File buildDirectory;
+
+    /** The project's group id, for {@code ${project.groupId}} in the file. */
+    @Parameter(defaultValue = "${project.groupId}", readonly = true)
+    protected @Nullable String groupId;
+
+    /** The project's artifact id, for {@code ${project.artifactId}} in the file. */
+    @Parameter(defaultValue = "${project.artifactId}", readonly = true)
+    protected @Nullable String artifactId;
+
     /** The project's properties, for a {@code ${name}} in the file. */
     @Parameter(defaultValue = "${project.properties}", readonly = true)
     protected @Nullable Properties projectProperties;
@@ -159,16 +172,37 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
 
     /**
      * The properties a {@code ${name}} in the file is replaced by: the system properties, overridden by
-     * the project's, overridden by the command line's.
+     * the project's values a POM names the same way ({@code basedir}, {@code project.basedir},
+     * {@code project.build.directory}, {@code project.build.sourceDirectory}, {@code project.groupId},
+     * {@code project.artifactId}, {@code project.version}, {@code project.name}), overridden by the
+     * project's properties, overridden by the command line's.
      *
      * @return the properties by name
      */
     Map<String, String> properties() {
         final Map<String, String> properties = new HashMap<>();
         putAll(properties, System.getProperties());
+        final String basedir = projectDirectory.getAbsolutePath();
+        put(properties, "basedir", basedir);
+        put(properties, "project.basedir", basedir);
+        put(properties, "project.build.directory", buildDirectory == null ? null : buildDirectory.getAbsolutePath());
+        put(
+                properties,
+                "project.build.sourceDirectory",
+                sourceDirectory == null ? null : sourceDirectory.getAbsolutePath());
+        put(properties, "project.groupId", groupId);
+        put(properties, "project.artifactId", artifactId);
+        put(properties, "project.version", projectVersion);
+        put(properties, "project.name", projectName);
         putAll(properties, projectProperties);
         putAll(properties, userProperties);
         return properties;
+    }
+
+    private static void put(final Map<String, String> target, final String name, final @Nullable String value) {
+        if (value != null) {
+            target.put(name, value);
+        }
     }
 
     private static void putAll(final Map<String, String> target, final @Nullable Properties source) {
@@ -185,7 +219,9 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
 
     /**
      * The subtrees of a file that names none: the project's source directory and resource
-     * directories that exist below the base directory, each once.
+     * directories that exist below the base directory, each once. A resource directory that holds the
+     * source directory (a POM that packs files of the project directory itself, say) is no source tree
+     * and is left out: it would index the whole project, build output included.
      *
      * @param baseDirectory the base directory of the run
      * @return the directories, absolute
@@ -196,9 +232,23 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
         final List<Resource> projectResources = resources == null ? Collections.<Resource>emptyList() : resources;
         for (final Resource resource : projectResources) {
             final String directory = resource.getDirectory();
-            addIfBelow(directories, baseDirectory, directory == null ? null : new File(directory));
+            final File resourceDirectory = directory == null ? null : new File(directory);
+            if (resourceDirectory != null && holdsTheSourceDirectory(resourceDirectory)) {
+                getLog().info("Resource directory " + resourceDirectory + " is or holds the source directory "
+                        + sourceDirectory + "; it is no subtree of its own");
+                continue;
+            }
+            addIfBelow(directories, baseDirectory, resourceDirectory);
         }
         return new ArrayList<>(directories);
+    }
+
+    private boolean holdsTheSourceDirectory(final File resourceDirectory) {
+        if (sourceDirectory == null) {
+            return false;
+        }
+        final Path resource = resourceDirectory.toPath().toAbsolutePath().normalize();
+        return sourceDirectory.toPath().toAbsolutePath().normalize().startsWith(resource);
     }
 
     private static void addIfBelow(

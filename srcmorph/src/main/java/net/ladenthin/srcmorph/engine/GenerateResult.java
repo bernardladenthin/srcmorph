@@ -29,7 +29,7 @@ public final class GenerateResult {
      *                  loaded and nothing was generated)
      * @param written   number of {@code .ai.md} files written or refreshed
      * @param unchanged number of routed files left untouched (already up to date)
-     * @param skipped   number of files matched by a {@code <skip>} rule
+     * @param skipped   number of files matched by a {@code skip} rule
      */
     public GenerateResult(final boolean planOnly, final int written, final int unchanged, final int skipped) {
         this.planOnly = planOnly;
@@ -76,7 +76,7 @@ public final class GenerateResult {
     }
 
     /**
-     * Returns the number of files matched by a {@code <skip>} rule.
+     * Returns the number of files matched by a {@code skip} rule.
      *
      * @return the skipped count
      */

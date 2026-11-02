@@ -10,14 +10,11 @@ import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A list of child {@link AiCondition}s, used as the body of an {@code <and>} / {@code <or>} combinator
+ * A list of child {@link AiCondition}s, used as the body of an {@code and} / {@code or} combinator
  * in {@link AiCondition}.
  *
- * <p>The list field is named {@code conditions} so the Maven plugin framework binds the items as
- * {@code <conditions><condition>…</condition></conditions>} — Maven derives a collection's item element
- * name from the field name's singular, which is why the combinators wrap their children in this group
- * rather than holding a {@code List<AiCondition>} directly (a field named {@code and}/{@code or} would
- * require the items to be {@code <and>}/{@code <or>}).</p>
+ * <p>In the configuration file the children are the list under {@code conditions}
+ * ({@code and: {conditions: [...]}}), not a list given to {@code and} or {@code or} directly.</p>
  */
 @ToString
 @SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})

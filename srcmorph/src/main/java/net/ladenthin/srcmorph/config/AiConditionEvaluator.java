@@ -115,29 +115,29 @@ public final class AiConditionEvaluator {
         final String modifiedBefore = condition.getModifiedBefore();
         final String pathGlob = condition.getPathGlob();
         if (and != null) {
-            validateGroup(and, "<and>");
+            validateGroup(and, "and");
         } else if (or != null) {
-            validateGroup(or, "<or>");
+            validateGroup(or, "or");
         } else if (not != null) {
             validate(not);
         } else if (extensions != null) {
             if (extensions.isEmpty()) {
-                throw new IllegalArgumentException("an <extensions> condition must list at least one extension");
+                throw new IllegalArgumentException("an extensions condition must list at least one extension");
             }
         } else if (size != null) {
             if (!size.hasBound()) {
-                throw new IllegalArgumentException("a <size> condition must set <min> or <max>");
+                throw new IllegalArgumentException("a size condition must set min or max");
             }
         } else if (lines != null) {
             if (!lines.hasBound()) {
-                throw new IllegalArgumentException("a <lines> condition must set <min> or <max>");
+                throw new IllegalArgumentException("a lines condition must set min or max");
             }
         } else if (modifiedAfter != null) {
             parseEpochMilli(modifiedAfter);
         } else if (modifiedBefore != null) {
             parseEpochMilli(modifiedBefore);
         } else if (pathGlob != null && pathGlob.trim().isEmpty()) {
-            throw new IllegalArgumentException("a <pathGlob> condition must not be blank");
+            throw new IllegalArgumentException("a pathGlob condition must not be blank");
         }
     }
 
@@ -180,11 +180,11 @@ public final class AiConditionEvaluator {
     }
 
     /**
-     * Validates an {@code <and>}/{@code <or>} group: it must hold at least one child, and each child is
+     * Validates an {@code and}/{@code or} group: it must hold at least one child, and each child is
      * validated recursively.
      *
      * @param group the combinator group
-     * @param label the element label for error messages
+     * @param label the key of the combinator, for error messages
      */
     private void validateGroup(final AiConditionGroup group, final String label) {
         final List<AiCondition> children = group.getConditions();

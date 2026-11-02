@@ -68,7 +68,8 @@ public final class CalibrateEngine {
     public CalibrationReport execute() throws SrcMorphException {
         final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
         if (fieldGenerations == null || fieldGenerations.isEmpty()) {
-            throw new SrcMorphException("No <fieldGenerations> configured; nothing to calibrate.");
+            throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
+                    + " configuration file); nothing to calibrate.");
         }
 
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(

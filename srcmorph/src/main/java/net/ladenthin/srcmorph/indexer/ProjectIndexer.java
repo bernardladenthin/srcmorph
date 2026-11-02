@@ -159,7 +159,7 @@ public class ProjectIndexer {
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
         this.force = force;
-        // Defensive copy: the field generation is a mutable Maven JavaBean owned by the caller.
+        // Defensive copy: the field generation is a mutable configuration JavaBean owned by the caller.
         this.overviewFieldGeneration = copyFieldGeneration(overviewFieldGeneration);
         if (generationProvider != null
                 && overviewFieldGeneration != null
@@ -260,7 +260,8 @@ public class ProjectIndexer {
 
         final Path projectFile = rootDirectory.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
 
-        if (!headerSupport.shouldWrite(force, projectFile, baseHeader)) {
+        final boolean withOverview = overview != null && support != null;
+        if (!headerSupport.shouldWrite(force, projectFile, baseHeader) && !lacksOverview(projectFile, withOverview)) {
             LOGGER.info("Unchanged project index file: {}", projectFile);
             return AiIndexOutcome.UNCHANGED;
         }
@@ -281,6 +282,24 @@ public class ProjectIndexer {
         documentCodec.write(projectFile, new AiMdDocument(baseHeader, body));
         LOGGER.info("Wrote project index file: {} ({} packages)", projectFile, entries.size());
         return AiIndexOutcome.WRITTEN;
+    }
+
+    /**
+     * Returns whether an up-to-date project index lacks the overview its rule asks for. Since 1.4.0 an
+     * incomplete overview answer fails the project instead of being written, but 1.3.0 wrote the index
+     * without its {@value #OVERVIEW_HEADING} section then, under the same checksum.
+     *
+     * @param projectFile  the existing project index file
+     * @param withOverview whether an overview rule is configured
+     * @return {@code true} if the overview is configured and the file has no overview section
+     * @throws IOException if the file cannot be read
+     */
+    private boolean lacksOverview(final Path projectFile, final boolean withOverview) throws IOException {
+        if (!withOverview || documentCodec.read(projectFile).body().contains(OVERVIEW_HEADING)) {
+            return false;
+        }
+        LOGGER.info("Project index file without its overview, written again: {}", projectFile);
+        return true;
     }
 
     /**

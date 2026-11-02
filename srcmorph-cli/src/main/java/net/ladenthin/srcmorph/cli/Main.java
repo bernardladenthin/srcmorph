@@ -331,7 +331,7 @@ public class Main {
 
     /**
      * The configuration one aggregation phase runs with: a copy of {@link CConfiguration#srcMorph} whose
-     * {@code fieldGenerations} are the phase's own rule, as a Maven plugin execution overrides them. The
+     * {@code fieldGenerations} are the phase's own rule, as the plugin's aggregate goals build theirs. The
      * file rules of {@code srcMorph} never reach a phase: the package phase takes exactly one rule and
      * fails without {@link CConfiguration#packageFieldGenerations}, the project phase writes its index
      * without an overview when {@link CConfiguration#projectFieldGenerations} is unset. The shared
@@ -362,9 +362,7 @@ public class Main {
      * maintain. Deliberately uses a <em>lenient</em> mapper (unlike {@link SrcMorphConfigurationFileLoader#newJsonMapper()}, which
      * loads user-authored config files and must fail fast on a typo): the source object also carries
      * derived, read-only, setter-less getters that a strict mapper's serialize-then-deserialize
-     * round-trip would otherwise reject as "unknown properties" (e.g.
-     * {@code AiFieldGenerationConfig#oversizeStrategy()}, computed from the raw
-     * {@code onOversize} string field). This copy step never touches user input — {@code original}
+     * round-trip would otherwise reject as "unknown properties". This copy step never touches user input — {@code original}
      * was already accepted by the strict mapper when the configuration file was first loaded — so
      * leniency here does not weaken the config-file-typo-fails-fast contract.</p>
      *

@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
@@ -157,6 +158,44 @@ public class AbstractAiIndexMojoTest {
     }
 
     @Test
+    public void buildConfiguration_aResourceDirectoryHoldingTheSources_isNoSubtree() throws Exception {
+        // a POM that packs files of the project directory itself: indexing it would index the whole project
+        writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
+        final Path sources = Files.createDirectories(project.resolve("src/main/java"));
+        final Path resources = Files.createDirectories(project.resolve("src/main/resources"));
+        final TestMojo mojo = mojo();
+        final CapturingLog log = new CapturingLog();
+        mojo.setLog(log);
+        mojo.resources = Arrays.asList(resource(project), resource(resources), resource(project.resolve("src")));
+
+        assertThat(
+                mojo.buildConfiguration(RuleSection.FILES).getSubtrees(),
+                is(equalTo(Arrays.asList(
+                        sources.toFile().getAbsolutePath(), resources.toFile().getAbsolutePath()))));
+        assertThat(
+                log.infoMessages(),
+                is(equalTo(Arrays.asList(
+                        "Resource directory " + project.toFile() + " is or holds the source directory "
+                                + sources.toFile() + "; it is no subtree of its own",
+                        "Resource directory " + project.resolve("src").toFile()
+                                + " is or holds the source directory " + sources.toFile()
+                                + "; it is no subtree of its own"))));
+    }
+
+    @Test
+    public void buildConfiguration_noSourceDirectory_theResourcesAreTheSubtrees() throws Exception {
+        writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
+        final Path resources = Files.createDirectories(project.resolve("src/main/resources"));
+        final TestMojo mojo = mojo();
+        mojo.sourceDirectory = null;
+        mojo.resources = Collections.singletonList(resource(resources));
+
+        assertThat(
+                mojo.buildConfiguration(RuleSection.FILES).getSubtrees(),
+                is(equalTo(Collections.singletonList(resources.toFile().getAbsolutePath()))));
+    }
+
+    @Test
     public void buildConfiguration_noSourceDirectoryAndNoResources_noSubtrees() throws Exception {
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
         final TestMojo mojo = mojo();
@@ -212,6 +251,51 @@ public class AbstractAiIndexMojoTest {
         assertThat(mojo.properties().get("java.version"), is(equalTo("project-java")));
         assertThat(mojo.properties().get("os.name"), is(equalTo(System.getProperty("os.name"))));
         assertThat(mojo.properties().containsKey("fixture.c"), is(false));
+    }
+
+    @Test
+    public void properties_theProjectsValues_areNamedAsInAPom() throws Exception {
+        final TestMojo mojo = mojo();
+        mojo.buildDirectory = project.resolve("target").toFile();
+        mojo.groupId = "com.example";
+        mojo.artifactId = "fixture";
+
+        final Map<String, String> properties = mojo.properties();
+
+        final String basedir = project.toFile().getAbsolutePath();
+        assertThat(properties.get("basedir"), is(equalTo(basedir)));
+        assertThat(properties.get("project.basedir"), is(equalTo(basedir)));
+        assertThat(
+                properties.get("project.build.directory"),
+                is(equalTo(project.resolve("target").toFile().getAbsolutePath())));
+        assertThat(
+                properties.get("project.build.sourceDirectory"),
+                is(equalTo(project.resolve("src/main/java").toFile().getAbsolutePath())));
+        assertThat(properties.get("project.groupId"), is(equalTo("com.example")));
+        assertThat(properties.get("project.artifactId"), is(equalTo("fixture")));
+        assertThat(properties.get("project.version"), is(equalTo("1.0.0-fixture")));
+        assertThat(properties.get("project.name"), is(equalTo("fixture-project")));
+    }
+
+    @Test
+    public void properties_aProjectValueMavenLeavesUnset_isNoProperty() throws Exception {
+        final TestMojo mojo = mojo();
+        mojo.sourceDirectory = null;
+
+        final Map<String, String> properties = mojo.properties();
+
+        assertThat(properties.containsKey("project.build.directory"), is(false));
+        assertThat(properties.containsKey("project.build.sourceDirectory"), is(false));
+        assertThat(properties.containsKey("project.groupId"), is(false));
+    }
+
+    @Test
+    public void buildConfiguration_projectBasedirReachesAPath() throws Exception {
+        writeConfiguration(project, "srcMorph:\n  outputDirectory: \"${project.basedir}/docs/ai\"\n");
+
+        assertThat(
+                mojo().buildConfiguration(RuleSection.FILES).getOutputDirectory(),
+                is(equalTo(project.resolve("docs/ai").toFile())));
     }
 
     @Test

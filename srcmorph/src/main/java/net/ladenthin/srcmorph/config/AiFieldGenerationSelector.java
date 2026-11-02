@@ -117,13 +117,13 @@ public final class AiFieldGenerationSelector {
                 }
                 if (config.getCondition() != null) {
                     throw new IllegalArgumentException(
-                            "A fallback rule must not have a <condition> (it catches everything else): " + config);
+                            "A fallback rule must not have a condition (it catches everything else): " + config);
                 }
                 requireRouteKeys(config);
             } else {
                 final AiCondition condition = config.getCondition();
                 if (condition == null) {
-                    throw new IllegalArgumentException("A non-fallback rule must have a <condition>: " + config);
+                    throw new IllegalArgumentException("A non-fallback rule must have a condition: " + config);
                 }
                 conditionEvaluator.validate(condition);
                 if (!config.isSkip()) {

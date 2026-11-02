@@ -11,6 +11,35 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-02
+
+### Upgrading from 1.3.0
+
+The entries below hold the details; what a 1.3.0 user changes:
+
+- **Maven plugin: the configuration moves into a file.** The goals' XML parameters are gone. What the
+  POM's `<configuration>` held (`aiDefinitions`, `fieldGenerations`, `promptDefinitions`,
+  `factDefinitions`, the paths, `generationProvider`, ...) goes into `srcmorph.yaml` next to the POM,
+  under `srcMorph:`, in the CLI's format; the package and the project rule go into the top-level
+  `packageFieldGenerations` / `projectFieldGenerations`. The POM keeps the goals, `configurationFile`,
+  the skip switches and `srcmorph.force` / `srcmorph.planOnly`. Without the file every goal fails,
+  naming where it looked. The worked example is in `srcmorph-maven-plugin/README.md`.
+- **One rule per aggregation phase, no `llama*` run parameters.** `packageFieldGenerations` takes
+  exactly one rule and `projectFieldGenerations` none or one; neither falls back to the file rules any
+  more. `llamaModelPath`, `llamaContextSize`, `llamaMaxOutputTokens`, `llamaTemperature` and
+  `llamaThreads` are removed: every model parameter is a field of an `aiDefinition`.
+- **Paths resolve against the configuration file's directory**, not the working directory, for the
+  CLI too; a `${name}` that no property sets fails the load when it stands in a path.
+- **Defaults that changed:** the package and project rules map-reduce a long input
+  (`onOversize: mapReduce`); an incomplete answer is never written (`onIncomplete`), so a file whose
+  answer stays empty or cut off is reported, fails the run at its end and is tried again by the next
+  run.
+- **No runnable jar is attached to the release any more:** build one for your machine with
+  `examples/build-your-own-jar` (root README).
+- **Existing summaries stay:** a new srcmorph version alone regenerates nothing (the plugin version and
+  the source's modification time are no longer compared); a summary 1.3.0 wrote from an incomplete
+  answer is written again.
+
 ### Added
 - **The plan shows the source tokens.** Every routed file has an estimated token count (its
   characters over its model's `charsPerToken`), every model section the sum, and a section sums them per
@@ -420,6 +449,47 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **The plugin knows `${project.basedir}` and the other project values.** A `${name}` in the
+  configuration file was a user, project or system property only, so `${project.basedir}` stayed as
+  it was and became a directory of that name. `basedir`, `project.basedir`, `project.build.directory`,
+  `project.build.sourceDirectory`, `project.groupId`, `project.artifactId`, `project.version` and
+  `project.name` are known now, and a `${name}` that no property sets fails the load when it stands in
+  a directory, `runRecordFile` or a subtree (CLI and plugin alike).
+- **Nested subtrees no longer fail the run.** A subtree inside another one, or listed twice, collected
+  its files twice, and the run failed with "X and X would both be summarized"; it is left out now, and
+  every file is collected once. The plugin no longer takes a resource directory that holds the source
+  directory (a POM that packs files of the project directory itself) as a subtree: it would index the
+  whole project, build output included.
+- **Javadoc and messages name the configuration file's keys, not the removed XML.** Comments and error
+  messages no longer speak of `<fieldGenerations>`, `<aiDefinitions>` or the plugin configuration; they
+  name the keys of the one configuration file (`fieldGenerations`, `packageFieldGenerations`,
+  `projectFieldGenerations`, `factDefinitions`). `maxChunks` is documented as the chunk count of
+  `sampleChunks` (required there, `0` otherwise; `mapReduce` reads every chunk), not as "0 =
+  unbounded"; the `onOversize` and `onIncomplete` lists name `sampleChunks` and `keep`; `SrcMorphException`
+  says what it is thrown for. Changed messages: "Invalid configuration:", "No fieldGenerations configured
+  (srcMorph.fieldGenerations of the configuration file)", "add a rule with fallback: true".
+- **Fact counters: a shift no longer opens a heredoc, and a long Java enum counts in linear time.** In
+  shell, a `<<` inside `(( ))`, `$(( ))` or `$[ ]`, or whose line goes on with an unclosed quote, opens
+  nothing; in Perl, a `<<` after a variable, a number, `)` or `]`, in a trailing comment or in a string
+  opens nothing (`print $fh <<EOT` and `<< "EOT"` are heredocs). An unclosed heredoc runs to the end of
+  the file, as bash reads it. 20 000 such lines took 25 to 207 s in shell and 95 to 223 s in Perl, now
+  at most 0.2 s. `java-facts` reads a parameter list possessively, one level of parentheses deep: the
+  6 000 constants of the large corpus's enum took 8.2 s in `constructors`, now 0.1 s for the whole file.
+  `type declarations` anchors with `^[ \t]*` (40 000 blank lines took 65 s, now 0.02 s) and counts
+  private and protected nested types and `@interface`s. No count the tests pin changed.
+- **An ignored region within one line leaves a space.** The `[ignore]` counters blanked a region to
+  its line breaks only, so `FROM t/* x */JOIN u` read `tJOIN` and counted no `JOIN`; a region within
+  one line now leaves one space. No count the tests pin changed.
+- **The deterministic summary shows the real last lines.** For a source ending with a line break,
+  "Last N lines" showed N-1 lines and an empty one, and "Content" an empty last line.
+- **A cut-off answer kept by `onIncomplete: keep` says so.** It ends with
+  `_(Cut off at the output budget; kept by onIncomplete: keep.)_` instead of stopping mid-sentence
+  without a sign.
+- **What 1.3.0 wrote from an incomplete answer is written again.** 1.3.0 wrote the facts line alone
+  for an empty or cut-off file answer, and a project index without its `#### Overview` for an empty
+  overview answer, under the checksum of a complete one, so no later run touched them. A summary
+  whose body is the facts line and nothing else now counts as missing, and a project index without
+  its overview is written again when an overview rule is configured.
 - **The plan sizes a map-reduce's chunks as the run does**: next to the longer of the rule's map and
   reduce prompts with a chunk's label reserve, not next to the rule's prompt alone, so its call count
   and time follow the run (`AiRouteEstimator.estimateRouteSeconds` with a chunk prompt length).
@@ -1511,7 +1581,8 @@ First public release on Maven Central. Pre-OpenSSF history themes (March–May 2
 
 ---
 
-[Unreleased]: https://github.com/bernardladenthin/srcmorph/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/bernardladenthin/srcmorph/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/bernardladenthin/srcmorph/compare/v1.1.0...v1.1.1

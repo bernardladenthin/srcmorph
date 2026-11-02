@@ -306,8 +306,8 @@ public final class AiIndexPlan {
     /**
      * Returns the number of over-window files whose rule's {@code onOversize} strategy is
      * {@link AiOversizeStrategy#FAIL} — i.e. the ones that abort the build. Over-window files with a
-     * {@code sample}/{@code mapReduce}/{@code deterministic} strategy are handled at run time and do not
-     * count here.
+     * {@code sample}/{@code mapReduce}/{@code sampleChunks}/{@code deterministic} strategy are handled at
+     * run time and do not count here.
      *
      * @return the count of over-window files that fail the build
      */
@@ -524,7 +524,8 @@ public final class AiIndexPlan {
         }
         if (windowFailCount() > 0) {
             sb.append("\nThe onOversize=fail entries fail the build. Either route them to a model with a large")
-                    .append(" enough context window, or set onOversize on the rule (sample/mapReduce/deterministic)")
+                    .append(" enough context window, or set onOversize on the rule")
+                    .append(" (sample/mapReduce/sampleChunks/deterministic)")
                     .append(" to handle oversized files (config only; the build never picks a model for you).\n");
         }
     }

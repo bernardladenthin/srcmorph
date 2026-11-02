@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class SrcMorphConfigurationFileLoaderTest {
 
@@ -151,6 +153,44 @@ public class SrcMorphConfigurationFileLoaderTest {
                 SrcMorphConfigurationFileLoader.load(file, defaultBase(), Collections.singletonMap("size", "4096"));
 
         assertThat(content.getSrcMorph().getMaxFileSizeBytes(), is(4096L));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(
+            strings = {
+                "baseDirectory: \"${nope}/x\"",
+                "outputDirectory: \"${nope}/x\"",
+                "modelDirectory: \"${nope}/x\"",
+                "profileDirectory: \"${nope}/x\"",
+                "runRecordFile: \"${nope}/run.json\"",
+                "subtrees: [\"src\", \"${nope}/x\"]"
+            })
+    public void load_aPathNamingAPropertyNobodySets_failsNamingIt(final String line) throws IOException {
+        // a reference no property replaced would become a directory named ${nope}
+        final Path file = write("srcmorph.yaml", "srcMorph:\n  " + line + "\n");
+        final String key = line.substring(0, line.indexOf(':'));
+
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES));
+
+        assertThat(thrown.getMessage(), containsString("srcMorph." + key + " names ${nope}, which no property sets"));
+        assertThat(thrown.getMessage(), containsString("-Dnope=..."));
+    }
+
+    @Test
+    public void load_aPathNamingASetProperty_isThatPath() throws IOException {
+        final Path file =
+                write("srcmorph.yaml", "srcMorph:\n  outputDirectory: \"${out}/x\"\n  subtrees: [\"${out}\"]\n");
+
+        final SrcMorphConfiguration srcMorph = SrcMorphConfigurationFileLoader.load(
+                        file, defaultBase(), Collections.singletonMap("out", "gen"))
+                .getSrcMorph();
+
+        assertThat(
+                srcMorph.getOutputDirectory(),
+                is(equalTo(tempDir.resolve("gen/x").toFile())));
+        assertThat(srcMorph.getSubtrees(), is(equalTo(Collections.singletonList("gen"))));
     }
     // </editor-fold>
 

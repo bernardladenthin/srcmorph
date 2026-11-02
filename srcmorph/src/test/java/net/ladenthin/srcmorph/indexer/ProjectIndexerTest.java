@@ -329,5 +329,32 @@ public class ProjectIndexerTest {
         assertThat(outcome, is(AiIndexOutcome.FAILED));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
+
+    @Test
+    public void aggregate_upToDateIndexWithoutItsOverview_isWrittenAgain() throws Exception {
+        // arrange: what 1.3.0 wrote after an empty overview answer, the same header without the overview
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(
+                outputRoot.resolve("main/java/com/example/package.ai.md"),
+                "main/java/com/example",
+                "> Example package.\n");
+        assertThat(overviewIndexer(false).aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+        final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
+        final AiMdDocument complete = documentCodec.read(projectFile);
+        final String body = complete.body();
+        documentCodec.write(
+                projectFile,
+                new AiMdDocument(
+                        complete.header(),
+                        body.substring(0, body.indexOf(OVERVIEW_HEADING))
+                                + body.substring(body.indexOf("#### Packages"))));
+
+        // act
+        final AiIndexOutcome outcome = overviewIndexer(false).aggregate(outputRoot);
+
+        // assert
+        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        assertThat(documentCodec.read(projectFile).body(), containsString(OVERVIEW_HEADING));
+    }
     // </editor-fold>
 }

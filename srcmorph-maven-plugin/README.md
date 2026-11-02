@@ -111,7 +111,7 @@ nothing else. What the file leaves unset, Maven fills from the project:
 | Key | Unset in the file |
 |---|---|
 | `baseDirectory` | `${project.basedir}` |
-| `subtrees` | the project's source directory and resource directories that exist below the base directory (a resource's includes and excludes are not applied) |
+| `subtrees` | the project's source directory and resource directories that exist below the base directory (a resource's includes and excludes are not applied; a resource directory that holds the source directory, such as the project directory itself, is left out) |
 | `outputDirectory` | `src/site/ai` below the base directory |
 | `projectName` | `${project.name}` |
 | `pluginVersion` | `${project.version}` |
@@ -119,8 +119,12 @@ nothing else. What the file leaves unset, Maven fills from the project:
 Relative paths in the file resolve against the file's directory: the directories, `runRecordFile`,
 and a `modelPath`, `templateFile` or `factsFile` through `modelDirectory` / `profileDirectory`,
 which are the file's directory when unset. A `${name}` in a value is a Maven property (the command
-line's `-D`, then the project's, then the system's), so `gpuLayers: ${ai.gpuLayers}` takes
-`-Dai.gpuLayers=12`; an unknown one stays as it is. Every goal takes its section of the file:
+line's `-D`, then the project's `<properties>`, then the project's own values as a POM names them,
+then the system's), so `gpuLayers: ${ai.gpuLayers}` takes `-Dai.gpuLayers=12`. The project's values
+are `basedir`, `project.basedir`, `project.build.directory`, `project.build.sourceDirectory`,
+`project.groupId`, `project.artifactId`, `project.version` and `project.name`. An unknown one stays as
+it is, except in a directory, `runRecordFile` or a subtree, where it fails the goal. Every goal takes
+its section of the file:
 
 | Goal | Rules |
 |---|---|

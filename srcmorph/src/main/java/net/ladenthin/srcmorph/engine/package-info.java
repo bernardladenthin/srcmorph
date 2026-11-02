@@ -4,7 +4,7 @@
 
 /**
  * Per-phase orchestration engines, extracted from the {@code llamacpp-ai-index-maven-plugin} module's
- * mojo {@code execute()} bodies so a run can be driven from plain Java (and, eventually, a CLI) without a
- * Maven runtime. Sits above every other package in this library.
+ * mojo {@code execute()} bodies so a run can be driven from plain Java without a Maven runtime (the CLI
+ * does); the plugin's mojos only delegate to them. Sits above every other package in this library.
  */
 package net.ladenthin.srcmorph.engine;

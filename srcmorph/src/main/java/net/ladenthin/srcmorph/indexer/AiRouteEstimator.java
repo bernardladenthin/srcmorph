@@ -13,7 +13,7 @@ import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 /**
  * The time estimate of a routed file, the one both the plan ({@link SourceFileIndexer}) and the live
  * per-file line of a run ({@link AiFieldGenerationSupport}) use, so the two agree: a model's
- * {@code <calibration>} when it has one, otherwise the built-in model of
+ * {@code calibration} when it has one, otherwise the built-in model of
  * {@link AiGenerationTimeEstimator}.
  */
 @ToString
@@ -27,7 +27,7 @@ public final class AiRouteEstimator {
     }
 
     /**
-     * Estimates one generation's seconds for a character count, from the model's {@code <calibration>}
+     * Estimates one generation's seconds for a character count, from the model's {@code calibration}
      * (measured per-machine throughput) when present, otherwise the estimator's built-in model.
      *
      * @param chars       the character count to estimate for; more than {@link Integer#MAX_VALUE} counts

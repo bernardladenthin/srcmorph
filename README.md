@@ -180,9 +180,8 @@ cd examples/build-your-own-jar
 java -jar target/srcmorph.jar ../config_All.json
 ```
 
-The examples follow this repository and need srcmorph 1.4.0: until it is released, `mvn install` the
-reactor and build the jar with `-Dsrcmorph.version=1.4.0-SNAPSHOT` (for 1.3.0, take the examples of the
-`v1.3.0` tag). Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider
+The examples follow this repository and need srcmorph 1.4.0 (for 1.3.0, take the examples of the
+`v1.3.0` tag); against a reactor build, `mvn install` it and pass its version as `-Dsrcmorph.version`. Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider
 (no GGUF model required) — see [`examples/`](examples/) for the full set plus paired `run_*.sh`/`run_*.bat`
 launcher scripts, and [`srcmorph-cli/README.md`](srcmorph-cli/README.md) for the config-file
 reference. A walkthrough for a Windows laptop with Vulkan is in
@@ -241,7 +240,7 @@ on `main` with `publish_to_central` checked — not automatically on push:
 https://central.sonatype.com/repository/maven-snapshots/net/ladenthin/
 ```
 
-Current reactor version: `1.4.0-SNAPSHOT`. Last released version: `1.3.0`.
+Current reactor version: `1.4.0`. Last released version: `1.3.0`.
 
 ## A Note on History
 

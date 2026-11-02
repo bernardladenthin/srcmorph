@@ -52,6 +52,19 @@ public class AiDeterministicSummaryTest {
     }
 
     @Test
+    public void largeFileEndingWithALineBreak_theLastLinesAreTheLastLines() {
+        // the trailing "\n" splits into one more, empty element, which must not take a line's place
+        final String body = AiDeterministicSummary.body("ln0\nln1\nln2\nln3\nln4\nln5\n", "Big.java", 2);
+        assertThat(body, containsString("Last 2 lines:\n```\nln4\nln5\n```\n"));
+    }
+
+    @Test
+    public void smallFileEndingWithALineBreak_hasNoEmptyLastLine() {
+        final String body = AiDeterministicSummary.body("L1\nL2\n", "S.java", 5);
+        assertThat(body, containsString("Content:\n```\nL1\nL2\n```\n"));
+    }
+
+    @Test
     public void exactlyDoubleSampleLines_stillShowsContentNotHeadTail() {
         // lines == 2*sampleLines is the boundary: <= keeps one "Content" block (not First/Last).
         final String body = AiDeterministicSummary.body("a\nb\nc\nd", "B.java", 2);

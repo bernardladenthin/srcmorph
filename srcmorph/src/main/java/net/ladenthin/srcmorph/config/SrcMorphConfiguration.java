@@ -23,9 +23,9 @@ import org.jspecify.annotations.Nullable;
  * {@code skipProject} flags. Those are a Maven lifecycle concern (whether an execution runs at all) and
  * stay mojo-side; an engine constructed from this configuration always executes when asked.</p>
  *
- * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters so that every binding
- * technology (Maven plexus reflection, a Jackson {@code ObjectMapper}/{@code YAMLMapper}, or a plain
- * caller) can populate it the same way.</p>
+ * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters so that the
+ * configuration file (a Jackson {@code ObjectMapper}/{@code YAMLMapper}) and a plain caller populate it
+ * the same way.</p>
  */
 @SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
@@ -372,7 +372,7 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns the reusable, named {@code <factDefinitions>} groups referenced from a rule's
+     * Returns the reusable, named {@code factDefinitions} groups referenced from a rule's
      * {@code factsKey}.
      *
      * @return the fact definitions, or {@code null} when none are configured
@@ -382,7 +382,7 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Sets the reusable, named {@code <factDefinitions>} groups.
+     * Sets the reusable, named {@code factDefinitions} groups.
      *
      * @param factDefinitions the fact definitions, or {@code null} for none
      */

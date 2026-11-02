@@ -69,6 +69,12 @@ public class AiFieldGenerationSupport {
     private static final String INCOMPLETE_WARN_PREFIX = "Incomplete answer for ";
 
     /**
+     * Ends an answer cut off at the output budget that {@code onIncomplete: keep} writes, so a reader of the
+     * summary sees that it stops early.
+     */
+    public static final String KEPT_CUT_NOTE = "\n\n_(Cut off at the output budget; kept by onIncomplete: keep.)_";
+
+    /**
      * Separator used to construct the cache key for the computed {@code maxInputChars}
      * per {@code (aiDefinitionKey, promptKey)} pair.
      *
@@ -302,7 +308,7 @@ public class AiFieldGenerationSupport {
         final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
         // Deterministic, whole-file "facts" (exact regex counts) are prepended to the body of EVERY
-        // file that configures <facts> - not just oversize ones - so downstream agents get exact
+        // file that configures facts - not just oversize ones - so downstream agents get exact
         // structural counts in the summary. Computed once here over the FULL source ("" when unset).
         final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
 
@@ -510,7 +516,7 @@ public class AiFieldGenerationSupport {
         final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
                 ? SIZE_BELOW_ONE_KIB_LABEL
                 : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
-        // Use the model's measured <calibration> when present, so the live per-file ETA matches the
+        // Use the model's measured calibration when present, so the live per-file ETA matches the
         // (already calibrated) plan ETA instead of the built-in reference-CPU model.
         final long estimatedSeconds = routeEstimator.estimateSeconds(processedSourceChars, generationConfig);
         LOGGER.info(
@@ -896,7 +902,7 @@ public class AiFieldGenerationSupport {
                                 INCOMPLETE_WARN_PREFIX + "{}: {}; kept as it is (onIncomplete: keep)",
                                 contextFile,
                                 e.detail());
-                        return e.partialText();
+                        return e.partialText().trim() + KEPT_CUT_NOTE;
                     }
                     if (attempt >= attempts) {
                         throw e;

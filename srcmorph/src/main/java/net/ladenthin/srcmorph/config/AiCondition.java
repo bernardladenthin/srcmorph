@@ -17,17 +17,17 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  *   <li><b>combinators:</b> {@code and} (all children true), {@code or} (any child true),
  *       {@code not} (single child negated);</li>
- *   <li><b>leaves:</b> {@code extension} (file name ends with any of the listed extensions),
+ *   <li><b>leaves:</b> {@code extensions} (file name ends with any of the listed extensions),
  *       {@code size} ({@link AiRangeCondition} over file bytes), {@code lines}
  *       ({@link AiRangeCondition} over line count), {@code modifiedAfter} / {@code modifiedBefore}
  *       (ISO-8601 instant compared to the file's last-modified time), {@code pathGlob} (glob over the
  *       base-relative path, same syntax as {@code excludes}).</li>
  * </ul>
  *
- * <p>Because every variant is a distinctly named field, the Maven plugin framework binds the tree
- * natively (no {@code implementation=} attributes); nesting is expressed by repeating {@code
- * <condition>} inside {@code <and>}/{@code <or>}/{@code <not>}. New leaf kinds are added by adding a
- * field here and a branch in the evaluator. Mutable JavaBean for the Maven configurator.</p>
+ * <p>Because every variant is a distinctly named field, the configuration file binds the tree
+ * without type hints; nesting is a condition under {@code not}, or a list of conditions under
+ * {@code and}/{@code or} ({@link AiConditionGroup}). New leaf kinds are added by adding a field here
+ * and a branch in the evaluator. Mutable JavaBean, bound through its setters.</p>
  */
 @ToString
 public class AiCondition {
