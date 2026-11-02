@@ -63,13 +63,17 @@ Seven reviews (map-reduce engine, providers, configuration and engine, prompts, 
 benchmark tooling, tests) checked the branch at c2d6834; what they found is fixed (CHANGELOG,
 Unreleased) except:
 
-- The plan's chunk and call estimate sizes chunks with the rule's own prompt, not the composed map
-  and reduce prompts and the label reserve, and cannot know a counted window: its ETA drifts from the
-  run. One helper in `AiMapReduceSupport` for the plan and the run would fix the first part.
+- The plan's chunk estimate cannot know a counted window (it loads no model), so for a local model its
+  ETA of a dense file stays an estimate.
 - A prompt change is recorded (`P`, `N`), never acted on: an opt-in "rewrite what an older prompt
   wrote" (compare `P`/`N` in `shouldWrite`) would make the hashes useful; `P` covers the map and
   reduce prompts also for files that never used them.
 - The token count of a remote `llama-server` could use its `/tokenize`; OpenRouter has none.
+- Hosted gpt-oss-20b loses the large corpus's dump in two of three runs: the final merge runs away (the
+  answer is cut at the budget; a probe of the same call wrote a complete, correct summary). 16384
+  output tokens instead of 4096 did not help (three runs: 51.0 against 75.2 %), so the benchmark keeps
+  4096. Next to try: pin OpenRouter's upstream provider for gpt-oss (its routing varies between runs), or
+  cap the reasoning (`reasoning.max_tokens`) separately from the answer.
 - Benchmark: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name
   rate is taken inside backticks only and by substring; recall counts names, not faithfulness (a bare
   name list scores 100 %, wrong claims are not measured); with three runs against three a Fisher test

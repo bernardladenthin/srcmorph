@@ -139,4 +139,21 @@ public class AiRouteEstimatorTest {
                 is(equalTo(window(0L))));
     }
     // </editor-fold>
+
+    @Test
+    public void estimateRouteSeconds_chunksSizedNextToALongerChunkPrompt_areMore() {
+        // arrange: a map-reduce of a source ten windows long
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setOnOversize("mapReduce");
+        final AiGenerationConfig model = new AiGenerationConfig();
+        final AiRouteEstimator estimator = new AiRouteEstimator();
+
+        // act
+        final long sameAsTheRule = estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000, 1_000);
+        final long longer = estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000, 5_000);
+
+        // assert
+        assertThat(longer > sameAsTheRule, is(true));
+        assertThat(estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000), is(sameAsTheRule));
+    }
 }

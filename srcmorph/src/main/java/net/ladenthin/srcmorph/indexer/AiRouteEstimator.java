@@ -72,6 +72,38 @@ public final class AiRouteEstimator {
             final long sourceChars,
             final long availableSourceChars,
             final int basePromptLength) {
+        return estimateRouteSeconds(
+                rule,
+                modelConfig,
+                fileSizeBytes,
+                sourceChars,
+                availableSourceChars,
+                basePromptLength,
+                basePromptLength);
+    }
+
+    /**
+     * Estimates a route as {@link #estimateRouteSeconds(AiFieldGenerationConfig, AiGenerationConfig, long, long,
+     * long, int)} does, with the chunks sized as the run sizes them: next to {@code chunkPromptLength}, the
+     * longer of the rule's map and reduce prompts with a chunk's label reserve.
+     *
+     * @param rule                 the routing rule
+     * @param modelConfig          the routed model's config
+     * @param fileSizeBytes        the file size in bytes, the estimate of a file that fits
+     * @param sourceChars          the source length in characters
+     * @param availableSourceChars the per-call source-character budget of the routed model and prompt
+     * @param basePromptLength     the length of the rule's prompt template with an empty source
+     * @param chunkPromptLength    the prompt length a chunk is sized next to
+     * @return the estimated seconds
+     */
+    public long estimateRouteSeconds(
+            final AiFieldGenerationConfig rule,
+            final AiGenerationConfig modelConfig,
+            final long fileSizeBytes,
+            final long sourceChars,
+            final long availableSourceChars,
+            final int basePromptLength,
+            final int chunkPromptLength) {
         if (sourceChars <= availableSourceChars) {
             return estimateSeconds(fileSizeBytes, modelConfig);
         }
@@ -83,10 +115,12 @@ public final class AiRouteEstimator {
         if (strategy != AiOversizeStrategy.MAP_REDUCE && strategy != AiOversizeStrategy.SAMPLE_CHUNKS) {
             return windowSeconds;
         }
+        // the window is the rule's: its source budget and its prompt; the chunks are sized next to the
+        // chunk prompt, as the run sizes them
         final int sourceBudget = AiMapReduceSupport.sourceBudget(
                 AiMapReduceSupport.safeWindow(
                         (int) Math.min(Integer.MAX_VALUE, availableSourceChars + basePromptLength)),
-                basePromptLength);
+                chunkPromptLength);
         final long allChunks =
                 AiMapReduceSupport.chunkCount(sourceChars, sourceBudget, AiMapReduceSupport.overlap(sourceBudget));
         final long chunks =

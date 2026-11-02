@@ -418,6 +418,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **The plan sizes a map-reduce's chunks as the run does**: next to the longer of the rule's map and
+  reduce prompts with a chunk's label reserve, not next to the rule's prompt alone, so its call count
+  and time follow the run (`AiRouteEstimator.estimateRouteSeconds` with a chunk prompt length).
 - **Benchmark: cut-off answers and unwritten files are counted, numbers with separators found.**
   `run.py` looked for a provider line srcmorph no longer writes, so every meta's `cutOff` was empty; it
   reads srcmorph's warnings and the run record's finish reasons now. A file phase that leaves some

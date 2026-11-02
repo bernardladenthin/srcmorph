@@ -21,6 +21,7 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiFileContext;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -28,6 +29,7 @@ import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
+import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.support.AiPathSupport;
@@ -229,7 +231,13 @@ public class SourceFileIndexer {
                         AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = source.length();
                 final long routeSeconds = routeEstimator.estimateRouteSeconds(
-                        rule, modelConfig, fileSizeBytes, sourceChars, availableSourceChars, basePromptLength);
+                        rule,
+                        modelConfig,
+                        fileSizeBytes,
+                        sourceChars,
+                        availableSourceChars,
+                        basePromptLength,
+                        chunkPromptLength(rule, file, basePromptLength, promptPreparationSupport));
                 final double charsPerToken = modelConfig.getCharsPerToken() > 0
                         ? modelConfig.getCharsPerToken()
                         : AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;
@@ -274,6 +282,34 @@ public class SourceFileIndexer {
         return outputRoot
                 .resolve(relativeToBase.toString() + AiMdHeaderCodec.AI_MD_EXTENSION)
                 .normalize();
+    }
+
+    /**
+     * Returns the prompt length the run sizes a chunk next to: for a chunked rule the longer of its map and
+     * reduce prompts with a chunk's label reserve, as {@code AiFieldGenerationSupport} computes it; otherwise
+     * the rule's own.
+     *
+     * @param rule             the routing rule
+     * @param file             the file, whose name heads the prompt
+     * @param basePromptLength the rule's own prompt length
+     * @param preparation      the prompts
+     * @return the length
+     */
+    private static int chunkPromptLength(
+            final AiFieldGenerationConfig rule,
+            final Path file,
+            final int basePromptLength,
+            final AiPromptPreparationSupport preparation) {
+        final AiOversizeStrategy strategy = rule.oversizeStrategy();
+        if (strategy != AiOversizeStrategy.MAP_REDUCE && strategy != AiOversizeStrategy.SAMPLE_CHUNKS) {
+            return basePromptLength;
+        }
+        return Math.max(
+                        preparation.getBasePromptLength(
+                                AiPromptSupport.composedKey(rule.getPromptKey(), rule.getMapPromptKey()), file),
+                        preparation.getBasePromptLength(
+                                AiPromptSupport.composedKey(rule.getPromptKey(), rule.getReducePromptKey()), file))
+                + AiMapReduceSupport.CHUNK_LABEL_RESERVE;
     }
 
     /**
