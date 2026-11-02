@@ -352,16 +352,18 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
      (`accounts`, `transactions`, `ledger_entries`) and name none of the three real ones, and they
      copy a prompt's example sentence as the lead: H-1B the XML prompt's ("Builds the reporting
      module and its PDF export") for the catalog, H-Tiny the Java prompt's for the enum. With the
-     XML prompt both scored lower on the catalog (86 to 14 % and 86 to 57 % of its names), so the
-     self-test's Granite tiers for big XML keep the generic prompt for now. That rests on one run
-     each, and H-Tiny's 86 % with the generic prompt came from copying the catalog's first records
-     into a code fence, which names the products but summarizes nothing. gpt-oss and Luna name
+     XML prompt both scored lower on the catalog (86 to 14 % and 86 to 57 % of its names) in this
+     one run each, and H-Tiny's 86 % with the generic prompt came from copying the catalog's first
+     records into a code fence, which names the products but summarizes nothing; the three runs of
+     2026-11-02 below decided the self-test's tiers. gpt-oss and Luna name
      every table, index and view of the dump.
    - **A data file has fewer characters per token than code.** At srcmorph's default of 4,
      gpt-oss's first chunk of the SQL dump was refused by the provider (about 135 000 tokens for a
      131 072 window); at 3 the second chunk was (149 394 tokens); the dump's numbers and IBANs run
-     at about 2 characters per token. `charsPerToken` is the setting for it (the self-test's
-     Granite presets have 3); `run.py --chars-per-token` sets it for a run.
+     at about 2 characters per token. `charsPerToken` is the setting for it on a remote API (the
+     self-test's Granite presets have 3); `run.py --chars-per-token` sets it for a run. A local
+     (`llamacpp-jni`) model counts its prompts in tokens since 2026-11-02, so there the estimate only
+     picks which files are counted.
    - The scorer took the facts line for the model's text before (no lead line, the counts as the
      model's); it now scores the body without it. No run of the card above had a facts line.
 
@@ -372,10 +374,30 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    the planted middle of all three files in every run; gpt-oss-20b only the SQL dump's, and once its
    final answer for the enum was cut off at 4096 tokens and the file not written. Locally the two
    Granite presets and gpt-oss-20b each lost at least one large file the same way: since an
-   incomplete answer is never written, a final answer longer than `maxOutputTokens` fails its file.
+   incomplete answer is never written, an answer longer than `maxOutputTokens` (a chunk's part summary
+   at the time, or the final answer) failed its file; a cut part summary is kept since.
    For H-Tiny the XML and the generic prompt fail the catalog alike, for H-1B the generic prompt
-   keeps 6 of 8 names where the XML prompt's answer is too short; the self-test keeps the generic
-   prompt until the answers fit their budget and both are measured again.
+   keeps 6 of 8 names where the XML prompt's answer is too short.
+
+   **Measured again on 2026-11-02** ([`remeasure-2026-11-02/`](remeasure-2026-11-02/README.md),
+   three runs each), after the map-reduce work: a cut part summary is kept, a dense chunk is split,
+   the map and reduce calls have prompts of their own, the reduce reads the facts line, a local
+   model's windows are counted in tokens. On OpenRouter gpt-oss-20b scored 99.1 % on the language
+   corpus, 99.9 % on this corpus and 75.2 % (59.7 / 69.1 / 96.9) on the large one, GPT-6 Luna 99.5,
+   100 and 99.0 %. Luna names the planted middle of all three large files in every run. gpt-oss-20b
+   names the catalog's in every run and never the enum's; in runs 1 and 2 its final answer for the
+   SQL dump ran to the 4096-token limit and the file was not written. With `maxOutputTokens` 16384
+   it did worse (39.7 / 66.0 / 47.2 %): the dump's answer ran to that limit in all three runs and
+   the catalog's in one, so the model's preset keeps 4096. Locally, Granite at temperature 0.2 gave the same names in all three runs:
+
+   | Large corpus, local, three runs | Quality | Enum | Catalog | Dump |
+   |---|---|---|---|---|
+   | Granite 4.0 H-Tiny, map-reduce over 64K: XML / generic prompt for XML | 66.6 / 57.1 % | 7 of 8 | **7** / 4 of 8 | 3 of 11 |
+   | Granite 4.0 H-1B, sampled 16K chunks: XML / generic prompt for XML | 3.8 / 17.1 % | too short | 0 / **5** of 8 | 0 of 11 |
+
+   So the self-test's `big-xml` (H-Tiny) takes `file-body-xml` and `huge-xml` (H-1B) keeps
+   `file-body-fallback`. Neither Granite preset names a planted middle name, and both still invent
+   SQL tables.
 
 ### Repeatability
 

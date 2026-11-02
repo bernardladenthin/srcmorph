@@ -1,0 +1,76 @@
+{
+ "key": "granite-4.0-h-tiny-mapreduce",
+ "name": "Granite 4.0 H-Tiny (Q4_K_M, 64K window, map-reduce)",
+ "backend": "local",
+ "definition": {
+  "key": "granite-4.0-h-tiny-mapreduce",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 65536,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "granite-4.0-h-tiny-Q4_K_M.gguf",
+  "charsPerToken": 3
+ },
+ "javaCommit": null,
+ "corpus": "large-corpus",
+ "profile": "v3",
+ "facts": true,
+ "oversize": "mapReduce",
+ "maxChunks": null,
+ "profileHashes": {
+  "file-body-fallback.md": "ff9d8b8c71cedc242bfb320e6e73d29991d9383a7a147d20294b70117581d282",
+  "file-body-java.md": "8b30608f9c2ecfe877bff7a83a76cf0dc97dcea7a490b00747a3e4b8161b64cf",
+  "file-body-sql.md": "4889a4c990acb5a5fde52e8aeb72cadab1b5e39ed8b5760e9e4c5e6ca8e00e0e",
+  "java-facts.tsv": "0125740aa1a020482b1adca9690ff9033942ff73e0bdedb37823f2178a6955d9",
+  "map-chunk.md": "ebc4aa4592de553fb7616b66f1e727fd94da30828c8c1d76986a8ee4e885aec3",
+  "package-body.md": "e4398dd0c0e4a01648166b2db2decf78a42b63e5298c04739568a98e8b5406e4",
+  "perl-facts.tsv": "b03326076d564d3bb2c935474bfc15302ddb93c7592cbe0938f0d466b0944aa3",
+  "pom-facts.tsv": "a478acce942ea5e3d23646900c59bf1a87ed9a5287c89c9e419b7bdf9e06f77a",
+  "project-body.md": "2ccf5e75f1fb1140f98cfa1033a9b88bb3c1e7eb222cbef0387a6b0136b86241",
+  "reduce-parts.md": "067474a90b6a35bc6092fccc5b9c929daccf18506fad638c0d4eee98316032b7",
+  "shell-facts.tsv": "ef2db12994b1b1f1849b3d2de3c9bedbaf3ad958e08fbad38f8ff875ef1f69da",
+  "sql-facts.tsv": "758a4073153452b9ef190d082bf8b1df2fff4a10787937119ea3d52d10569bd0",
+  "xml-facts.tsv": "f2e6d089887efaa7e3405a21cce2d0f709ecdbc0d341681165aa81cd9bfc8cf9"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.4.0-SNAPSHOT.jar",
+  "sha256": "103d68c2b440a400bfdda51fcf8133b601e62126468990dda84316b38e23632c"
+ },
+ "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS",
+ "startedAt": "2026-11-02T00:42:48Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 501.4,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 33.8,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 13.0,
+   "cutOff": []
+  }
+ },
+ "finishedAt": "2026-11-02T00:51:56Z",
+ "fileTokens": {
+  "files": 3,
+  "written": 3,
+  "unchanged": 0,
+  "failed": 0,
+  "calls": 31,
+  "promptTokens": 1304254,
+  "cachedPromptTokens": 27846,
+  "completionTokens": 12691,
+  "seconds": 499.3408202
+ },
+ "finishReasons": {
+  "stop": 3
+ },
+ "files": 11
+}

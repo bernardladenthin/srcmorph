@@ -26,11 +26,16 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
      answer) failed its file: every local preset lost at least one of the three large files, and hosted
      gpt-oss-20b the enum once. Since then a cut part summary is kept, map and reduce calls say what
      their input is, the reduce reads the exact facts, and a local model's windows are counted in
-     tokens (D3); the re-measurement of that state is the open item.
-   - **gpt-oss-20b's map-reduce loses the middle of a file.** It never names the catalog's or the
-     enum's planted middle names (Luna does in every run); the partial summaries are not kept, so
-     where they are lost is not known. Keeping the partials (beside the run record, on request) would
-     show it.
+     tokens (D3). Measured again on 2026-11-02
+     ([`remeasure-2026-11-02/`](docs/ai-index-benchmark/remeasure-2026-11-02/README.md)): gpt-oss-20b
+     99.1 / 99.9 / 75.2 %, Luna 99.5 / 100 / 99.0 %; H-Tiny over 64K 66.6 % (over 384K on 2026-11-01:
+     21.9), H-1B 17.1 % with the generic prompt. Open: gpt-oss-20b's final answer for the SQL dump still ran to 4096 tokens in two
+     of three runs, and 16384 made it worse (51.0 % over three runs); next try provider pinning or
+     `reasoning.max_tokens`.
+   - **gpt-oss-20b's map-reduce loses the middle of a file.** Since the map and reduce prompts it
+     names the catalog's planted middle element in every run, still never the enum's middle area
+     (Luna does in every run); the partial summaries are not kept, so where it is lost is not known.
+     Keeping the partials (beside the run record, on request) would show it.
 
 ### Verification of 2026-11-01 (eleven reviews of b74aa6b), open items
 
@@ -49,13 +54,14 @@ round of models, done; D4 the Java names keep counting from prose, the asymmetry
 `score.py`, done; D5 the header records the prompt and facts hashes a summary was written with, done.
 Open from them:
 
-- **D3. The self-test's Granite tiers for big XML**: keep the generic prompt until measured. Done: a
+- **D3. The self-test's Granite tiers for big XML**: decided on 2026-11-02 by three runs each
+  (`remeasure-2026-11-02/`): `big-xml` (H-Tiny) takes `file-body-xml` (catalog 7 of 8 names against
+  4), `huge-xml` (H-1B) keeps `file-body-fallback` (5 of 8 against 0). Open: a large POM for
+  `big-pom` / `huge-pom`, which keep the generic prompt unmeasured. Done before: a
   cut part summary is kept; the family rules name no analysis channel; the big tier map-reduces with
   H-Tiny over 64K; map and reduce calls name their input (`mapPromptKey: map-chunk`,
   `reducePromptKey: reduce-parts`, `Chunk i of n:`), the reduce reads the exact facts and, for a
-  sample, a note saying so; a local model's windows are counted in tokens. Open: measure both prompts
-  again on the large corpus (hosted three runs, Granite three runs each) and pick the prompt of the
-  `big-xml` / `huge-xml` tiers.
+  sample, a note saying so; a local model's windows are counted in tokens.
 
 ### Review of 2026-11-02 (seven reviews of c2d6834), open items
 

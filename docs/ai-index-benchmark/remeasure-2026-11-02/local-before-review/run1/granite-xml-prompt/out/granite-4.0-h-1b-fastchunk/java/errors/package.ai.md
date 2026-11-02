@@ -1,0 +1,35 @@
+### java/errors
+- H: 1.0
+- C: D12AEEF3
+- D: 2026-11-01T22:06:01Z
+- T: 2026-11-01T22:28:34Z
+- G: 
+- A: 0.0.0
+- X: package
+- F: [PlatformErrorCode.java](PlatformErrorCode.java.ai.md)
+---
+### Purpose
+This package defines a set of error codes (`PlatformErrorCode`) used throughout the platform to indicate various platform-related issues or exceptions. The `PlatformErrorCode.java` file contains the type declaration for these error codes, along with their corresponding values and timestamps.
+
+#### Responsibilities
+- Provide a standardized way to represent and handle platform-specific errors or exceptions.
+- Allow developers to easily identify and handle platform-related issues in their code.
+
+#### Key units
+- `PlatformErrorCode`: A class representing the error codes used throughout the platform.
+
+#### Data flow
+- Errors or exceptions are caught and handled by the platform code.
+- The appropriate `PlatformErrorCode` is retrieved and used to indicate the nature of the error or exception.
+
+#### Dependencies
+- No external dependencies.
+
+#### Cross-cutting
+- The `PlatformErrorCode` class follows a consistent naming convention and structure across the platform.
+- The `PlatformErrorCode.java` file is referenced by other parts of the platform code to handle platform-related errors or exceptions.
+
+#### Rules
+- The `PlatformErrorCode` class follows the Java naming conventions for classes and fields.
+- The `PlatformErrorCode.java` file is well-documented and follows the Java coding standards.
+- The `PlatformErrorCode` class is used consistently throughout the platform code to handle platform-related errors or exceptions.

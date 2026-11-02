@@ -1,0 +1,45 @@
+### invoice-service-pom.xml
+- H: 1.0
+- C: 1C5813B5
+- D: 2026-10-31T21:26:46Z
+- T: 2026-11-01T23:55:08Z
+- G: 
+- A: 0.0.0
+- X: file
+- P: 144CA22B
+---
+> Configures the `invoice-service` Maven module to build an invoice-processing JAR, manage database migrations, and support optional PDF generation.
+
+#### Purpose
+- Builds the customer invoice service and configures its runtime, test, migration, and optional native-PDF dependencies.
+
+#### Type
+- Maven POM; root element `project`.
+- Namespaces: default `http://maven.apache.org/POM/4.0.0`; `xsi` `http://www.w3.org/2001/XMLSchema-instance`.
+
+#### Definitions
+- Coordinates: parent `org.example.billing:billing-parent:2.7.0`; artifactId `invoice-service`; packaging `jar`; groupId inherited from the parent.
+- Name: `Invoice service`; description: `Creates, numbers and archives customer invoices.`
+- Dependencies:
+  - `com.fasterxml.jackson.core:jackson-databind` — compile scope (default); version `${jackson.version}`.
+  - `org.flywaydb:flyway-core` — compile scope (default); version `${flyway.version}`.
+  - `org.postgresql:postgresql` — `runtime`.
+  - `org.junit.jupiter:junit-jupiter` — `test`.
+  - `org.testcontainers:postgresql` — `test`.
+- Plugins:
+  - `flyway-maven-plugin` — version `${flyway.version}`; migration location `filesystem:src/main/resources/db/migration`.
+  - `maven-surefire-plugin` — sets system property `invoice.archive.dir` to `${invoice.archive.dir}`.
+- Properties: `maven.compiler.release` = `17`; `jackson.version` = `2.19.2`; `flyway.version` = `11.4.0`; `invoice.archive.dir` = `${project.build.directory}/archive`.
+- Profile: `native-pdf` — adds `org.apache.pdfbox:pdfbox` version `3.0.5`.
+- Modules: none declared.
+
+#### Configuration
+- Java compiler release: `17`.
+- Jackson version: `2.19.2`; Flyway version: `11.4.0`.
+- Invoice archive directory: `${project.build.directory}/archive`; passed to tests as `invoice.archive.dir`.
+- Flyway migration location: `filesystem:src/main/resources/db/migration`.
+
+#### Dependencies
+- Parent POM: `org.example.billing:billing-parent:2.7.0`.
+- Migration files: `src/main/resources/db/migration`.
+- External libraries and systems: Jackson Databind; Flyway; PostgreSQL; JUnit Jupiter; Testcontainers; Apache PDFBox (profile `native-pdf`).

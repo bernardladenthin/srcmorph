@@ -193,11 +193,14 @@ variation (Fisher's exact test, p = 0.4), nor show that it is one; the same hold
 hit@1 of 95 against 92 %, 1.3 of 43 questions. No run wrote a code fence or a `###` heading in a
 shell, Perl or XML summary.
 
-The size tiers for big XML files (`huge-xml`, `big-xml` in the plugin's self-test) stay on
-`file-body-fallback` for now: with `file-body-xml`, both Granite models named fewer of an 870 KB
-catalog's elements (86 to 14 % and 86 to 57 %), and H-1B took the prompt's example sentence as its
-lead. That rests on one run each, and H-Tiny's 86 % with the generic prompt came from copying the
-catalog's first records into a code fence.
+The size tiers for big XML files in the plugin's self-test take the prompt their model did better
+with: `big-xml` (Granite H-Tiny, map-reduce over 64K) `file-body-xml`, `huge-xml` (Granite H-1B,
+sampled 16K chunks) `file-body-fallback`. On the large corpus's 870 KB catalog, three runs each on
+2026-11-02, H-Tiny named 7 of 8 expected names with the XML prompt and 4 of 8 with the generic one,
+H-1B 0 of 8 with the XML prompt and 5 of 8 with the generic one, the same in every run (Granite at
+temperature 0.2 hardly varies between runs). The runs are under
+[`remeasure-2026-11-02/`](../docs/ai-index-benchmark/remeasure-2026-11-02/README.md). `big-pom`
+and `huge-pom` keep the generic prompt: no large POM was measured.
 
 ## v3 against v2
 

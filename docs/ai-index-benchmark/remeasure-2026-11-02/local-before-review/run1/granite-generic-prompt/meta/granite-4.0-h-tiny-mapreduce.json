@@ -1,0 +1,89 @@
+{
+ "key": "granite-4.0-h-tiny-mapreduce",
+ "name": "Granite 4.0 H-Tiny (Q4_K_M, 64K window, map-reduce)",
+ "backend": "local",
+ "definition": {
+  "key": "granite-4.0-h-tiny-mapreduce",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 65536,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "granite-4.0-h-tiny-Q4_K_M.gguf",
+  "charsPerToken": 3
+ },
+ "javaCommit": null,
+ "corpus": "large-corpus",
+ "profile": "v3",
+ "facts": true,
+ "oversize": "mapReduce",
+ "maxChunks": null,
+ "profileHashes": {
+  "file-body-fallback.md": "cbb1705109525b7be8eaa0543904dfe4796619bfe53dcc7246aeb06cc59438bb",
+  "file-body-java.md": "6ca11aa93e821d6e5142e32b03f6f74c0a195f26f6d818287a191e06785494ed",
+  "file-body-sql.md": "dbc77a3a6db065a2b80561c12b0ab66bc952b258aa85a24270b57f63d9fd5d4e",
+  "java-facts.tsv": "0125740aa1a020482b1adca9690ff9033942ff73e0bdedb37823f2178a6955d9",
+  "map-chunk.md": "57dfed6a102359d332403ea7165da422efacf5812f4d0039403c88c399623946",
+  "package-body.md": "666395bd98a0f6727ca58399a9204f8e9850f7785886ddda6ef6d59a87509d77",
+  "perl-facts.tsv": "b03326076d564d3bb2c935474bfc15302ddb93c7592cbe0938f0d466b0944aa3",
+  "pom-facts.tsv": "a478acce942ea5e3d23646900c59bf1a87ed9a5287c89c9e419b7bdf9e06f77a",
+  "project-body.md": "f642a9df0444d128587dc10fad02b497aa51ca99d1641b726297afef7defb330",
+  "reduce-parts.md": "42b1c8406ef92778d66bb72ed64588f2de0c664cdb89cb21cb0f3dfe266df653",
+  "shell-facts.tsv": "ef2db12994b1b1f1849b3d2de3c9bedbaf3ad958e08fbad38f8ff875ef1f69da",
+  "sql-facts.tsv": "758a4073153452b9ef190d082bf8b1df2fff4a10787937119ea3d52d10569bd0",
+  "xml-facts.tsv": "f2e6d089887efaa7e3405a21cce2d0f709ecdbc0d341681165aa81cd9bfc8cf9"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.4.0-SNAPSHOT.jar",
+  "sha256": "103d68c2b440a400bfdda51fcf8133b601e62126468990dda84316b38e23632c"
+ },
+ "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS",
+ "startedAt": "2026-11-01T22:29:05Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 1,
+   "seconds": 570.5,
+   "cutOff": [],
+   "errorTail": [
+    "9.12.040.014 I slot      release: id  0 | task 18879 | stop processing: n_tokens = 10877, truncated = 0",
+    "[main] INFO net.ladenthin.llama.timings - prompt: 6782 tok in 1845.5 ms (3674.9 tok/s) | gen: 4096 tok in 30087.0 ms (136.1 tok/s) | cache: 0",
+    "[main] WARN net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport - Incomplete answer for file '<run>\\work\\other\\catalog\\catalog.xml' (field 'file-body-fallback', TRUNCATED): The answer for <run>\\work\\other\\catalog\\catalog.xml was cut off at the 4096-token output budget, not finished by the model; raise maxOutputTokens for this model, or shorten the prompt; not written, left for the next run",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - [####################] 100% 3/3 files - est. ~1139 min/~1139 min done, ~0 s left (estimate) | ~9 min elapsed (actual)",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Run record written: <run>\\logs\\granite-4.0-h-tiny-mapreduce\\run-record.json",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Generated AI files: 2 written, 0 unchanged, 0 skipped, 1 failed",
+    "[main] ERROR net.ladenthin.srcmorph.cli.Main - Fatal error during Main.run.",
+    "net.ladenthin.srcmorph.engine.SrcMorphException: 1 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:341)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:101)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:282)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:232)",
+    "Exception in thread \"main\" java.lang.IllegalStateException: Main.run() failed on thread main",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:328)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:232)",
+    "Caused by: net.ladenthin.srcmorph.engine.SrcMorphException: 1 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:341)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:101)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:282)",
+    "\t... 1 more"
+   ]
+  }
+ },
+ "finishedAt": "2026-11-01T22:38:36Z",
+ "fileTokens": {
+  "files": 3,
+  "written": 2,
+  "unchanged": 0,
+  "failed": 1,
+  "calls": 34,
+  "promptTokens": 1311697,
+  "cachedPromptTokens": 28110,
+  "completionTokens": 22275,
+  "seconds": 567.9455255
+ },
+ "finishReasons": {
+  "length": 1,
+  "stop": 2
+ },
+ "files": 2
+}

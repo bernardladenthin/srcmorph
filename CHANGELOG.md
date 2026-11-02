@@ -190,9 +190,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   one empty answer of the provider), GPT-6 Luna from 99.6 to 99.9 %; on the other two corpora
   gpt-oss lost a few names of unchanged Java and SQL prompts, which three runs cannot tell from
   variation (`profiles/README.md`, model card finding 7). The self-test's `shell`, `perl`, `pom`
-  and `xml` rules and the example configuration use them; the Granite tiers for big XML stay on
-  `file-body-fallback` for now, since both Granite models named fewer of a catalog's elements with
-  the XML prompt (one run each).
+  and `xml` rules and the example configuration use them. Of the Granite tiers for big XML,
+  `big-xml` (H-Tiny) takes `file-body-xml` and `huge-xml` (H-1B) keeps `file-body-fallback`: on an
+  870 KB catalog H-Tiny named 7 of 8 names with the XML prompt and 4 with the generic one, H-1B 0
+  and 5, in each of three runs (`docs/ai-index-benchmark/remeasure-2026-11-02/`).
 - **Benchmark: a language corpus, a large-file corpus and the fact counters in `run.py`.**
   `docs/ai-index-benchmark/corpus-languages/` holds nine files written for it (Perl, Bash, ksh93,
   POSIX sh, a POM, a Spring context, an XSD, an XSLT), with their expected names in
