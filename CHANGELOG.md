@@ -11,6 +11,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-02
+
 ### Upgrading from 1.3.0
 
 The entries below hold the details; what a 1.3.0 user changes:
@@ -1571,7 +1573,8 @@ First public release on Maven Central. Pre-OpenSSF history themes (March–May 2
 
 ---
 
-[Unreleased]: https://github.com/bernardladenthin/srcmorph/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/bernardladenthin/srcmorph/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/bernardladenthin/srcmorph/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/bernardladenthin/srcmorph/compare/v1.1.0...v1.1.1
