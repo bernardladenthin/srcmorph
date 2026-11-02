@@ -431,6 +431,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   every file is collected once. The plugin no longer takes a resource directory that holds the source
   directory (a POM that packs files of the project directory itself) as a subtree: it would index the
   whole project, build output included.
+- **Javadoc and messages name the configuration file's keys, not the removed XML.** Comments and error
+  messages no longer speak of `<fieldGenerations>`, `<aiDefinitions>` or the plugin configuration; they
+  name the keys of the one configuration file (`fieldGenerations`, `packageFieldGenerations`,
+  `projectFieldGenerations`, `factDefinitions`). `maxChunks` is documented as the chunk count of
+  `sampleChunks` (required there, `0` otherwise; `mapReduce` reads every chunk), not as "0 =
+  unbounded"; the `onOversize` and `onIncomplete` lists name `sampleChunks` and `keep`; `SrcMorphException`
+  says what it is thrown for. Changed messages: "Invalid configuration:", "No fieldGenerations configured
+  (srcMorph.fieldGenerations of the configuration file)", "add a rule with fallback: true".
 - **What 1.3.0 wrote from an incomplete answer is written again.** 1.3.0 wrote the facts line alone
   for an empty or cut-off file answer, and a project index without its `#### Overview` for an empty
   overview answer, under the checksum of a complete one, so no later run touched them. A summary

@@ -102,10 +102,9 @@ Unreleased) except:
   owner.
 - `[ignore]` blanking deletes the region instead of replacing it with spaces, so `FROM t/* x */JOIN u`
   counts no `JOIN`.
-- Javadoc and messages that still describe the removed XML (`EngineSupport`, `GenerateEngine`,
-  `CConfiguration`, `AiModelDefinition`, `AiFieldGenerationConfig`), `maxChunks` "0 = unbounded",
-  strategy lists without `sampleChunks` / `keep`, `RequestRateLimiter` "does not retry",
-  `SrcMorphException` "misconfiguration, not I/O".
+- `srcmorph/spotbugs-exclude.xml` still gives "the operator's POM XML" as the reason of about eight
+  suppressions; `Main.copyWithPlanOnlyForced` names `AiFieldGenerationConfig#oversizeStrategy()` as a
+  setter-less getter, which it no longer is.
 - Smaller: `AiGenerationUsage.add` counts one call whatever it adds; the deterministic body's "last N
   lines" drops a line when the source ends with `\n`; the plan's token figures ignore the oversize
   strategy; the reduce estimate assumes a fan-in of 16; `onIncomplete: keep` writes a cut answer
