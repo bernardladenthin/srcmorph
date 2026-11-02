@@ -691,7 +691,9 @@ sources fails by design (19 files exceed the demo model's context window with `o
 that would make the smoke non-deterministic, not more thorough. Run from `examples/`, the shipped
 `Plan` example plans the one file of the demo tree `examples/src/main/java`. The tree has to stay,
 because a configured subtree that does not exist fails the run, and its file has to stay below the
-examples' mock window of 497 source characters, or `onOversize=fail` fails the smoke.
+examples' mock window, or `onOversize=fail` fails the smoke. That window is what the mock model's
+`contextSize` (4096) leaves next to the profile's fallback prompt, so a longer prompt shrinks it: at
+2048 a prompt change of 2026-11-02 left no room at all.
 
 ## Dependency Convergence Pinning
 
