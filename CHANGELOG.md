@@ -11,6 +11,33 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Upgrading from 1.3.0
+
+The entries below hold the details; what a 1.3.0 user changes:
+
+- **Maven plugin: the configuration moves into a file.** The goals' XML parameters are gone. What the
+  POM's `<configuration>` held (`aiDefinitions`, `fieldGenerations`, `promptDefinitions`,
+  `factDefinitions`, the paths, `generationProvider`, ...) goes into `srcmorph.yaml` next to the POM,
+  under `srcMorph:`, in the CLI's format; the package and the project rule go into the top-level
+  `packageFieldGenerations` / `projectFieldGenerations`. The POM keeps the goals, `configurationFile`,
+  the skip switches and `srcmorph.force` / `srcmorph.planOnly`. Without the file every goal fails,
+  naming where it looked. The worked example is in `srcmorph-maven-plugin/README.md`.
+- **One rule per aggregation phase, no `llama*` run parameters.** `packageFieldGenerations` takes
+  exactly one rule and `projectFieldGenerations` none or one; neither falls back to the file rules any
+  more. `llamaModelPath`, `llamaContextSize`, `llamaMaxOutputTokens`, `llamaTemperature` and
+  `llamaThreads` are removed: every model parameter is a field of an `aiDefinition`.
+- **Paths resolve against the configuration file's directory**, not the working directory, for the
+  CLI too; a `${name}` that no property sets fails the load when it stands in a path.
+- **Defaults that changed:** the package and project rules map-reduce a long input
+  (`onOversize: mapReduce`); an incomplete answer is never written (`onIncomplete`), so a file whose
+  answer stays empty or cut off is reported, fails the run at its end and is tried again by the next
+  run.
+- **No runnable jar is attached to the release any more:** build one for your machine with
+  `examples/build-your-own-jar` (root README).
+- **Existing summaries stay:** a new srcmorph version alone regenerates nothing (the plugin version and
+  the source's modification time are no longer compared); a summary 1.3.0 wrote from an incomplete
+  answer is written again.
+
 ### Added
 - **The plan shows the source tokens.** Every routed file has an estimated token count (its
   characters over its model's `charsPerToken`), every model section the sum, and a section sums them per
