@@ -385,19 +385,25 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    model's windows are counted in tokens. On OpenRouter gpt-oss-20b scored 99.1 % on the language
    corpus, 99.9 % on this corpus and 75.2 % (59.7 / 69.1 / 96.9) on the large one, GPT-6 Luna 99.5,
    100 and 99.0 %. Luna names the planted middle of all three large files in every run. gpt-oss-20b
-   names the catalog's in every run and never the enum's; in runs 1 and 2 its final answer for the
+   names the catalog's in every run and the enum's in none; in runs 1 and 2 its final answer for the
    SQL dump ran to the 4096-token limit and the file was not written. With `maxOutputTokens` 16384
    it did worse (39.7 / 66.0 / 47.2 %): the dump's answer ran to that limit in all three runs and
-   the catalog's in one, so the model's preset keeps 4096. Locally, Granite at temperature 0.2 gave the same names in all three runs:
+   the catalog's in one, so the model's preset keeps 4096 (one of those runs named the enum's middle
+   area). Locally, Granite at temperature 0.2 gave the same names in all three runs, both presets
+   with `--oversize mapReduce`:
 
    | Large corpus, local, three runs | Quality | Enum | Catalog | Dump |
    |---|---|---|---|---|
    | Granite 4.0 H-Tiny, map-reduce over 64K: XML / generic prompt for XML | 66.6 / 57.1 % | 7 of 8 | **7** / 4 of 8 | 3 of 11 |
-   | Granite 4.0 H-1B, sampled 16K chunks: XML / generic prompt for XML | 3.8 / 17.1 % | too short | 0 / **5** of 8 | 0 of 11 |
+   | Granite 4.0 H-1B, map-reduce over 16K: XML / generic prompt for XML | 3.8 / 17.1 % | too short | 0 / **5** of 8 | 0 of 11 |
 
-   So the self-test's `big-xml` (H-Tiny) takes `file-body-xml` and `huge-xml` (H-1B) keeps
-   `file-body-fallback`. Neither Granite preset names a planted middle name, and both still invent
-   SQL tables.
+   So the self-test's `big-xml` (H-Tiny, 275 KB to 1 MB, where the 870 KB catalog falls) takes
+   `file-body-xml`, measured as it runs. H-1B map-reducing every chunk is not how `huge-xml` runs
+   it: that tier samples six chunks of a file over 1 MB. Run that way on a 1.15 MB catalog, three
+   times each, H-1B wrote one correct sentence with the XML prompt (16.2 %), while with the generic
+   prompt its final answer ran to the 1536-token limit and the file failed every time; so
+   `huge-xml` takes `file-body-xml` too. Neither Granite preset names a planted middle name, and
+   both still invent SQL names.
 
 ### Repeatability
 

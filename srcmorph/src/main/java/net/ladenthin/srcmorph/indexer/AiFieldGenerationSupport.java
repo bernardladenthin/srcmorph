@@ -849,7 +849,7 @@ public class AiFieldGenerationSupport {
                                 contextFile,
                                 e.detail());
                         cutParts++;
-                        return e.partialText();
+                        return AiMapReduceSupport.cutPart(e.partialText().trim());
                     }
                     if (cutWithText && fieldGeneration.incompleteStrategy() == AiIncompleteStrategy.KEEP) {
                         LOGGER.warn(

@@ -301,19 +301,48 @@ public class AiMapReduceSupportTest {
 
     @Test
     public void halfSplit_isAfterALineEndNearTheMiddle() {
+        // the line end before the middle is nearer
         assertThat(AiMapReduceSupport.halfSplit("aaaa\nbbbb\ncccc\n"), is(5));
+        // the line end after the middle is nearer
+        assertThat(AiMapReduceSupport.halfSplit("a\nbcd\nefgh"), is(6));
+        // as near on both sides: the one before
+        assertThat(AiMapReduceSupport.halfSplit("abc\nd\nfghi"), is(4));
         // no line end before the middle: the first one after it
         assertThat(AiMapReduceSupport.halfSplit("aaaaaaa\nbb"), is(8));
-        // a single line: the middle
-        assertThat(AiMapReduceSupport.halfSplit("abcdef"), is(3));
-        // a line end only as the last character: the middle
-        assertThat(AiMapReduceSupport.halfSplit("abcdef\n"), is(3));
-        // a line end at the very start counts as one before the middle
-        assertThat(AiMapReduceSupport.halfSplit("\nabcdefgh"), is(1));
-        // the line end before the middle wins over one at it
-        assertThat(AiMapReduceSupport.halfSplit("a\nbcd\nefgh"), is(2));
         // a line end at the middle itself, none before it
         assertThat(AiMapReduceSupport.halfSplit("abc\ndef"), is(4));
+        // a single line: the middle
+        assertThat(AiMapReduceSupport.halfSplit("abcdef"), is(3));
+        assertThat(AiMapReduceSupport.halfSplit("ab"), is(1));
+    }
+
+    @Test
+    public void halfSplit_aLineEndThatLeavesAHalfBelowAQuarter_isNotTaken() {
+        // a quarter of 8 is 2: a first half of 2 is taken, of 1 is not
+        assertThat(AiMapReduceSupport.halfSplit("a\nbbbbbb"), is(2));
+        assertThat(AiMapReduceSupport.halfSplit("\nbbbbbbb"), is(4));
+        // a second half of 2 is taken, of 1 is not
+        assertThat(AiMapReduceSupport.halfSplit("bbbbb\nbb"), is(6));
+        assertThat(AiMapReduceSupport.halfSplit("bbbbbb\nb"), is(4));
+        // a line end only as the last character
+        assertThat(AiMapReduceSupport.halfSplit("abcdef\n"), is(3));
+        // blank lines in front of one long line: the middle, not an almost empty first half
+        final String dense = "\n\n" + "x".repeat(3_000);
+        assertThat(AiMapReduceSupport.halfSplit(dense), is(dense.length() / 2));
+    }
+
+    @Test
+    public void cutPart_dropsTheLineTheCutEndedInAndMarksIt() {
+        assertThat(
+                AiMapReduceSupport.cutPart("- a\n- b\n- c, cut in the mi"),
+                is(equalTo("- a\n- b" + AiMapReduceSupport.SHORTENED_MARKER)));
+        // one line: kept whole, with the marker
+        assertThat(
+                AiMapReduceSupport.cutPart("- a part"), is(equalTo("- a part" + AiMapReduceSupport.SHORTENED_MARKER)));
+        // a line end only at the start leaves the text whole
+        assertThat(
+                AiMapReduceSupport.cutPart("\n- a part"),
+                is(equalTo("\n- a part" + AiMapReduceSupport.SHORTENED_MARKER)));
     }
 
     @Test

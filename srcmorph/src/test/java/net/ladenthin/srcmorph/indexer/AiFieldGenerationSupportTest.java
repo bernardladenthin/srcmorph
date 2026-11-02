@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.indexer;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.endsWith;
@@ -1192,9 +1193,12 @@ public class AiFieldGenerationSupportTest {
     public void reduce_partsTooLongToPair_areShortenedAndAllRead() throws Exception {
         // arrange: every map answer is longer than half a reduce batch, so no two fit one; the reduce answers
         final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AtomicInteger maps = new AtomicInteger();
         final AiGenerationProvider provider = request -> {
             requests.add(request);
-            return request.sourceText().startsWith("Chunk ") ? linesOf(4_000) : "S";
+            return request.sourceText().startsWith("Chunk ")
+                    ? "MAP" + maps.incrementAndGet() + "\n" + linesOf(4_000)
+                    : "S";
         };
         final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
@@ -1215,6 +1219,17 @@ public class AiFieldGenerationSupportTest {
         assertThat(firstReduce.sourceText(), containsString(AiMapReduceSupport.SHORTENED_MARKER));
         assertThat(result.complete(), is(true));
         assertThat(result.body(), containsString(" part summaries shortened to fit the reduce)"));
+        // every map answer reached a reduce
+        assertThat(maps.get() > 2, is(true));
+        for (int map = 1; map <= maps.get(); map++) {
+            final String tag = "MAP" + map + "\n";
+            assertThat(
+                    tag,
+                    requests.stream()
+                            .anyMatch(r -> !r.sourceText().startsWith("Chunk ")
+                                    && r.sourceText().contains(tag)),
+                    is(true));
+        }
     }
 
     @Test
@@ -1303,6 +1318,32 @@ public class AiFieldGenerationSupportTest {
 
         // assert
         assertThat(result.body(), containsString(" part summaries cut at the output budget)\n\nFINAL"));
+    }
+
+    @Test
+    public void incomplete_aCutPart_reachesTheReduceWithoutItsCutLineAndMarked() throws Exception {
+        // arrange: every map answer is cut in its third line
+        final List<String> reduces = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            if (request.sourceText().startsWith("Chunk ")) {
+                throw cutOff("- one\n- two\n- thr");
+            }
+            reduces.add(request.sourceText());
+            return "FINAL";
+        };
+
+        // act
+        supportWithModels(provider, normalWindowModel("m"))
+                .generate(
+                        oversizeRule("m", "mapReduce", 0),
+                        Files.createTempFile("Huge", ".java"),
+                        "file",
+                        largeSource(7000),
+                        anyHeader());
+
+        // assert
+        assertThat(reduces.get(0), containsString("- one\n- two" + AiMapReduceSupport.SHORTENED_MARKER));
+        assertThat(reduces.get(0), not(containsString("- thr")));
     }
 
     @Test

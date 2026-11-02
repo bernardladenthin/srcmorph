@@ -193,14 +193,14 @@ variation (Fisher's exact test, p = 0.4), nor show that it is one; the same hold
 hit@1 of 95 against 92 %, 1.3 of 43 questions. No run wrote a code fence or a `###` heading in a
 shell, Perl or XML summary.
 
-The size tiers for big XML files in the plugin's self-test take the prompt their model did better
-with: `big-xml` (Granite H-Tiny, map-reduce over 64K) `file-body-xml`, `huge-xml` (Granite H-1B,
-sampled 16K chunks) `file-body-fallback`. On the large corpus's 870 KB catalog, three runs each on
-2026-11-02, H-Tiny named 7 of 8 expected names with the XML prompt and 4 of 8 with the generic one,
-H-1B 0 of 8 with the XML prompt and 5 of 8 with the generic one, the same in every run (Granite at
-temperature 0.2 hardly varies between runs). The runs are under
-[`remeasure-2026-11-02/`](../docs/ai-index-benchmark/remeasure-2026-11-02/README.md). `big-pom`
-and `huge-pom` keep the generic prompt: no large POM was measured.
+The size tiers for big XML files in the plugin's self-test take `file-body-xml` too, each measured
+as it runs, three runs each on 2026-11-02 (Granite at temperature 0.2 hardly varies between runs).
+`big-xml` (Granite H-Tiny, map-reduce over 64K): on an 870 KB catalog H-Tiny named 7 of 8 expected
+names with the XML prompt and 4 with the generic one. `huge-xml` (Granite H-1B, six sampled 16K
+chunks): on a 1.15 MB catalog H-1B wrote one correct sentence with the XML prompt, while with the
+generic one its final answer ran to the output limit and the file failed, in every run. The runs are
+under [`remeasure-2026-11-02/`](../docs/ai-index-benchmark/remeasure-2026-11-02/README.md).
+`big-pom` and `huge-pom` keep the generic prompt: no large POM was measured.
 
 ## v3 against v2
 

@@ -190,10 +190,11 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   one empty answer of the provider), GPT-6 Luna from 99.6 to 99.9 %; on the other two corpora
   gpt-oss lost a few names of unchanged Java and SQL prompts, which three runs cannot tell from
   variation (`profiles/README.md`, model card finding 7). The self-test's `shell`, `perl`, `pom`
-  and `xml` rules and the example configuration use them. Of the Granite tiers for big XML,
-  `big-xml` (H-Tiny) takes `file-body-xml` and `huge-xml` (H-1B) keeps `file-body-fallback`: on an
-  870 KB catalog H-Tiny named 7 of 8 names with the XML prompt and 4 with the generic one, H-1B 0
-  and 5, in each of three runs (`docs/ai-index-benchmark/remeasure-2026-11-02/`).
+  and `xml` rules and the example configuration use them. The Granite tiers for big XML,
+  `big-xml` (H-Tiny) and `huge-xml` (H-1B), take `file-body-xml` too: on an 870 KB catalog H-Tiny
+  named 7 of 8 names with the XML prompt and 4 with the generic one; on a 1.15 MB catalog, sampled
+  as `huge-xml` samples it, H-1B wrote a short summary with the XML prompt and failed the file with
+  the generic one, in each of three runs (`docs/ai-index-benchmark/remeasure-2026-11-02/`).
 - **Benchmark: a language corpus, a large-file corpus and the fact counters in `run.py`.**
   `docs/ai-index-benchmark/corpus-languages/` holds nine files written for it (Perl, Bash, ksh93,
   POSIX sh, a POM, a Spring context, an XSD, an XSLT), with their expected names in
@@ -435,10 +436,11 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   the head, and the final answer read 2 of 22 parts under a coverage line that said 22 of 22; now each
   part is shortened at a line end so two fit, and the line says how many (`3 part summaries shortened
   to fit the reduce`). A chunk denser than its window was sized for is read in two halves instead of
-  losing its tail. A window that leaves fewer than 1000 characters for a chunk next to the map and
+  losing its tail, split at the line end nearest the middle that leaves each half a quarter of the
+  chunk (not after a blank line at its very start). A window that leaves fewer than 1000 characters for a chunk next to the map and
   reduce prompts fails the file with that number, instead of cutting every chunk. The answer to a
   single chunk is the final one and has to be complete. A part cut at the output budget is kept at
-  once, also under `retryOnce`, and counted under `keep` too; a call cut to a smaller window counts
+  once, without the line the cut ended in and marked with `...` so the reduce sees it stops early, also under `retryOnce`, and counted under `keep` too; a call cut to a smaller window counts
   once. In a round that is not the last, a batch of one part passes it on unchanged. A facts line
   longer than a quarter of a batch is cut for the reduce at a counter. A trimmed prompt is never longer
   than its window (the EOF marker took room from it, and a line break at the cut kept one character
@@ -455,7 +457,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   timeout that ends the retries is the file's failure, not an interrupt of the run (a
   `SocketTimeoutException` is an `InterruptedIOException`; the run ends only when the thread is
   interrupted). Gemini's per-minute 429 waits and retries (its message reads "exceeded your current
-  quota" too; only the daily quota is final), and a `Retry-After` given as an HTTP date is honoured. A
+  quota" too; only the daily quota is final), and a `Retry-After` given as an HTTP date is honoured, in all three forms RFC 9110 has a
+  recipient accept (IMF-fixdate, rfc850-date with its two-digit year, asctime-date). A
   source with a NUL character is not counted by the local tokenizer, which would stop at it.
 - **A run leaves the configuration as it was given.** `check()` followed by `execute()`, or two
   `execute()` calls, failed on a rule with `factsKey` ("names its facts twice"), since the run resolved

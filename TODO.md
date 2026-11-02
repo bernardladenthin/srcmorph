@@ -33,8 +33,8 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
      of three runs, and 16384 made it worse (51.0 % over three runs); next try provider pinning or
      `reasoning.max_tokens`.
    - **gpt-oss-20b's map-reduce loses the middle of a file.** Since the map and reduce prompts it
-     names the catalog's planted middle element in every run, still never the enum's middle area
-     (Luna does in every run); the partial summaries are not kept, so where it is lost is not known.
+     names the catalog's planted middle element in every run, the enum's middle area in none of
+     the 4096-token runs (once at 16384; Luna in every run); the partial summaries are not kept, so where it is lost is not known.
      Keeping the partials (beside the run record, on request) would show it.
 
 ### Verification of 2026-11-01 (eleven reviews of b74aa6b), open items
@@ -55,9 +55,10 @@ round of models, done; D4 the Java names keep counting from prose, the asymmetry
 Open from them:
 
 - **D3. The self-test's Granite tiers for big XML**: decided on 2026-11-02 by three runs each
-  (`remeasure-2026-11-02/`): `big-xml` (H-Tiny) takes `file-body-xml` (catalog 7 of 8 names against
-  4), `huge-xml` (H-1B) keeps `file-body-fallback` (5 of 8 against 0). Open: a large POM for
-  `big-pom` / `huge-pom`, which keep the generic prompt unmeasured. Done before: a
+  (`remeasure-2026-11-02/`): `big-xml` (H-Tiny) takes `file-body-xml` (an 870 KB catalog: 7 of 8
+  names against 4), `huge-xml` (H-1B, six sampled chunks) too (a 1.15 MB catalog: a short summary
+  against a file failed at the output limit). Open: a large POM for `big-pom` / `huge-pom`, which
+  keep the generic prompt unmeasured. Done before: a
   cut part summary is kept; the family rules name no analysis channel; the big tier map-reduces with
   H-Tiny over 64K; map and reduce calls name their input (`mapPromptKey: map-chunk`,
   `reducePromptKey: reduce-parts`, `Chunk i of n:`), the reduce reads the exact facts and, for a

@@ -910,4 +910,63 @@ public class OpenAiCompatibleProviderSupportTest {
                         at - OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
     }
+
+    @Test
+    public void retryDelayMillis_theObsoleteHttpDateForms_areRead() {
+        // arrange: the same instant as an rfc850-date and an asctime-date
+        final long at = java.time.ZonedDateTime.parse(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+                .toInstant()
+                .toEpochMilli();
+
+        // act / assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(
+                        "Wednesday, 21-Oct-26 07:28:00 GMT", 1, 0.0d, at - 30_000L),
+                is(30_000L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed Oct 21 07:28:00 2026", 1, 0.0d, at - 30_000L),
+                is(30_000L));
+        // a one-digit day is padded with a space
+        final long sixth = at - 15L * 24 * 3_600_000L;
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Tue Oct  6 07:28:00 2026", 1, 0.0d, sixth - 1_000L),
+                is(1_000L));
+    }
+
+    @Test
+    public void retryDelayMillis_anRfc850YearMoreThanFiftyYearsAhead_isOfThePastCentury() {
+        // arrange: now is 2026-10-21 07:28:00 UTC
+        final long now = java.time.ZonedDateTime.parse(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+                .toInstant()
+                .toEpochMilli();
+
+        // act / assert: 94 is 1994, in the past, so the retry waits nothing
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Sunday, 06-Nov-94 08:49:37 GMT", 1, 0.0d, now),
+                is(0L));
+        // exactly fifty years ahead stays ahead, and waits the cap
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wednesday, 21-Oct-76 07:28:00 GMT", 1, 0.0d, now),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+        // a second later is of the past century, whose weekday it is checked against: 1976-10-21 was a Thursday
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Thursday, 21-Oct-76 07:28:01 GMT", 1, 0.0d, now),
+                is(0L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wednesday, 21-Oct-76 07:28:01 GMT", 1, 0.0d, now),
+                is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
+    }
+
+    @Test
+    public void retryDelayMillis_aDateOfNoForm_isTheBackoff() {
+        // a wrong weekday or a two-digit year in the asctime form is no HTTP date
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Monday, 21-Oct-26 07:28:00 GMT", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed Oct 21 07:28:00 26", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
+    }
 }

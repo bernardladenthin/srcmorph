@@ -193,10 +193,9 @@ srcMorph:
       factsKey: sql-facts
       condition:
         extensions: [".sql"]
-    - id: huge-xml                      # big XML data takes the Java/SQL size tiers too, each with the
-                                        # prompt its model named more with: H-1B the generic one, H-Tiny
-                                        # file-body-xml, three runs each (MODEL-CARD finding 7)
-      promptKey: file-body-fallback
+    - id: huge-xml                      # big XML data takes the Java/SQL size tiers too, with the XML
+                                        # prompt: three runs each per tier (MODEL-CARD finding 7)
+      promptKey: file-body-xml
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
       mapPromptKey: map-chunk

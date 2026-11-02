@@ -16,16 +16,23 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.llama.value.ChatResponse;
@@ -192,6 +199,38 @@ final class OpenAiCompatibleProviderSupport {
     private static final String NO_FINISH_REASON = "";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * The date and time of the obsolete rfc850-date form of an HTTP date ({@code 06-Nov-94 08:49:37 GMT}
+     * behind {@code Sunday, }), which RFC 9110 section 5.6.7 has a recipient accept; its two-digit year is
+     * read in 2000 to 2099 first, the weekday checked after the century is settled.
+     */
+    private static final DateTimeFormatter RFC_850_DATE = new DateTimeFormatterBuilder()
+            .appendPattern("dd-MMM-")
+            .appendValueReduced(ChronoField.YEAR, 2, 2, 2000)
+            .appendPattern(" HH:mm:ss 'GMT'")
+            .toFormatter(Locale.ENGLISH)
+            .withZone(ZoneOffset.UTC);
+
+    /** An rfc850-date: its weekday, then the rest for {@link #RFC_850_DATE}. */
+    private static final Pattern RFC_850_WEEKDAY = Pattern.compile("([A-Za-z]+), (.+)");
+
+    /**
+     * The obsolete asctime-date form of an HTTP date ({@code Sun Nov  6 08:49:37 1994}), in UTC, which RFC 9110
+     * section 5.6.7 has a recipient accept.
+     */
+    private static final DateTimeFormatter ASCTIME_DATE = DateTimeFormatter.ofPattern(
+                    "EEE MMM ppd HH:mm:ss yyyy", Locale.ENGLISH)
+            .withZone(ZoneOffset.UTC);
+
+    /**
+     * How far ahead an rfc850-date's two-digit year may put it; one further ahead is read a century earlier
+     * (RFC 9110 section 5.6.7).
+     */
+    private static final int RFC_850_MAX_YEARS_AHEAD = 50;
+
+    /** The years an rfc850-date read too far ahead is moved back. */
+    private static final int YEARS_PER_CENTURY = 100;
 
     private final LlamaCppJniConfig config;
 
@@ -660,13 +699,56 @@ final class OpenAiCompatibleProviderSupport {
      * @return the milliseconds, or {@code -1} when the value is no HTTP date
      */
     private static long retryAtMillis(final String date, final long nowMillis) {
-        try {
-            final long at = ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME)
-                    .toInstant()
-                    .toEpochMilli();
-            return Math.min(MAX_RETRY_AFTER_MILLIS, Math.max(0L, at - nowMillis));
-        } catch (final DateTimeParseException e) {
+        final ZonedDateTime at = httpDate(date, Instant.ofEpochMilli(nowMillis).atZone(ZoneOffset.UTC));
+        if (at == null) {
             return -1;
+        }
+        return Math.min(MAX_RETRY_AFTER_MILLIS, Math.max(0L, at.toInstant().toEpochMilli() - nowMillis));
+    }
+
+    /**
+     * Reads an HTTP date in any of its three forms: IMF-fixdate, asctime-date, rfc850-date.
+     *
+     * @param date the trimmed header value
+     * @param now  the current time, which settles an rfc850-date's century
+     * @return the date, or {@code null} when the value is none of them
+     */
+    private static @Nullable ZonedDateTime httpDate(final String date, final ZonedDateTime now) {
+        final ZonedDateTime imf = parsedDate(date, DateTimeFormatter.RFC_1123_DATE_TIME);
+        if (imf != null) {
+            return imf;
+        }
+        final ZonedDateTime asctime = parsedDate(date, ASCTIME_DATE);
+        if (asctime != null) {
+            return asctime;
+        }
+        final Matcher rfc850 = RFC_850_WEEKDAY.matcher(date);
+        if (!rfc850.matches()) {
+            return null;
+        }
+        // both groups take part in every match; valueOf only satisfies the nullness checker
+        final ZonedDateTime read = parsedDate(String.valueOf(rfc850.group(2)), RFC_850_DATE);
+        if (read == null) {
+            return null;
+        }
+        final ZonedDateTime at =
+                read.isAfter(now.plusYears(RFC_850_MAX_YEARS_AHEAD)) ? read.minusYears(YEARS_PER_CENTURY) : read;
+        final String weekday = at.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        return weekday.equals(rfc850.group(1)) ? at : null;
+    }
+
+    /**
+     * Parses a date with one formatter.
+     *
+     * @param text      the text
+     * @param formatter the form
+     * @return the date, or {@code null} when the text is not of that form
+     */
+    private static @Nullable ZonedDateTime parsedDate(final String text, final DateTimeFormatter formatter) {
+        try {
+            return ZonedDateTime.parse(text, formatter);
+        } catch (final DateTimeParseException e) {
+            return null;
         }
     }
 

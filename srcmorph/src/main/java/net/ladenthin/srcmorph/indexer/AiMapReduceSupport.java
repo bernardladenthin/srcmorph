@@ -189,6 +189,19 @@ public final class AiMapReduceSupport {
     }
 
     /**
+     * Returns a part summary cut off at the output budget as the reduce reads it: up to its last line end,
+     * which drops the entry the cut ended in the middle of, then {@link #SHORTENED_MARKER}, so the reduce
+     * sees that the part stops early; a part of one line stays whole, with the marker.
+     *
+     * @param partial the text the model wrote before the cut
+     * @return the part for the reduce
+     */
+    public static String cutPart(final String partial) {
+        final int lineEnd = partial.lastIndexOf('\n');
+        return partial.substring(0, lineEnd > 0 ? lineEnd : partial.length()) + SHORTENED_MARKER;
+    }
+
+    /**
      * Returns the facts line a reduce call reads in front of its parts: the whole line when it takes at
      * most {@code maxChars}, otherwise its counters up to the last {@code "; "} that fits, then
      * {@code "; ..."}, so a long line never leaves the batch without room for the parts.
@@ -207,21 +220,26 @@ public final class AiMapReduceSupport {
     }
 
     /**
-     * Returns where to split a chunk in two at a line end near its middle: after the last line break at
-     * or before the middle, or the first one after it, or the middle itself in a single line.
+     * Returns where to split a chunk in two at a line end near its middle: after the line break nearest
+     * the middle on either side (the one before it on a tie) that leaves each half at least a quarter of
+     * the chunk, or the middle itself when there is none, so no half is left almost empty.
      *
      * @param chunk the chunk, at least two characters
      * @return the length of the first half, between {@code 1} and {@code chunk.length() - 1}
      */
     public static int halfSplit(final String chunk) {
-        final int middle = chunk.length() / 2;
-        final int before = chunk.lastIndexOf('\n', middle - 1);
-        if (before >= 0) {
-            return before + 1;
+        final int length = chunk.length();
+        final int middle = length / 2;
+        final int least = Math.max(1, length / 4);
+        // the split after the nearest line end before the middle and at or after it; 0 when there is none
+        final int before = chunk.lastIndexOf('\n', middle - 1) + 1;
+        final int after = chunk.indexOf('\n', middle) + 1;
+        final boolean beforeFits = before >= least;
+        final boolean afterFits = after > 0 && after <= length - least;
+        if (beforeFits && (!afterFits || middle - before <= after - middle)) {
+            return before;
         }
-        final int after = chunk.indexOf('\n', middle);
-        // a line end found is at the middle or behind it; the last character would leave no second half
-        return after >= middle && after < chunk.length() - 1 ? after + 1 : middle;
+        return afterFits ? after : middle;
     }
 
     /**
