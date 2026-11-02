@@ -12,11 +12,6 @@ everything below is genuinely still open.
 
 ### After the release of 1.4.0
 
-- The Publish runs of `main` at `530c55c` and `b4930a3` (the merges of #261 and #263) were cancelled
-  in their start gates; the next run on `main` must be green.
-- `mvn test-compile org.pitest:pitest-maven:mutationCoverage` from the root fails offline
-  ("Error resolving version for plugin 'org.pitest:pitest-maven'"); per module (`-f srcmorph/pom.xml`)
-  it runs. Pin the plugin in the root's `pluginManagement` so the documented command works offline.
 - `java-facts` `type declarations` counts private and protected nested types and `@interface`s since
   `0374f73`: the facts line of such a Java file differs from the runs of
   `docs/ai-index-benchmark/remeasure-2026-11-02/`; scores read names, not this count.
