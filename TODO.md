@@ -10,14 +10,10 @@ everything below is genuinely still open.
 
 ## Open
 
-### Release 1.4.0 (PR #263), after the merge
+### After the release of 1.4.0
 
-- The owner's steps 3 to 5 of `docs/RELEASE.md`: tag `v1.4.0` on the merge commit, dispatch Publish
-  with `publish_to_central`, check the four artifacts on Central and the Portal deployment id.
-- Step 6: `main` to `1.5.0-SNAPSHOT` (`versions:set`, the hand-maintained literals of step 1, the
-  CLAUDE.md paragraph on the version state), as a pull request.
-- The Publish run of `main` at `530c55c` (the merge of #261) was cancelled in its start gate; the
-  next run on `main` must be green.
+- The Publish runs of `main` at `530c55c` and `b4930a3` (the merges of #261 and #263) were cancelled
+  in their start gates; the next run on `main` must be green.
 - `mvn test-compile org.pitest:pitest-maven:mutationCoverage` from the root fails offline
   ("Error resolving version for plugin 'org.pitest:pitest-maven'"); per module (`-f srcmorph/pom.xml`)
   it runs. Pin the plugin in the root's `pluginManagement` so the documented command works offline.
