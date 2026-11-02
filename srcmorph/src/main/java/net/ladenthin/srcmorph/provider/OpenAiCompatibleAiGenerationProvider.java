@@ -129,6 +129,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     private final AiCompletionParser completionParser = new AiCompletionParser();
     private final ChatResponseParser chatResponseParser = new ChatResponseParser();
 
+    /** How long a read of the answer may wait ({@link #READ_TIMEOUT_MILLIS}, shorter in tests). */
+    private final int readTimeoutMillis;
+
     /**
      * Creates a provider that reads the API key from the process environment.
      *
@@ -167,7 +170,27 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             final AiPromptSupport promptSupport,
             final Function<String, @Nullable String> environment,
             final RetryWaiter waiter) {
+        this(config, promptSupport, environment, waiter, READ_TIMEOUT_MILLIS);
+    }
+
+    /**
+     * Creates a provider with an explicit environment lookup, retry waiter and read timeout (tests: a stub
+     * server that stalls shows what a timeout does without waiting ten minutes).
+     *
+     * @param config            the model configuration
+     * @param promptSupport     the prompt definitions
+     * @param environment       looks up an environment variable by name, {@code null} when unset
+     * @param waiter            waits between two attempts of a request
+     * @param readTimeoutMillis how long a read of the answer may wait
+     */
+    OpenAiCompatibleAiGenerationProvider(
+            final LlamaCppJniConfig config,
+            final AiPromptSupport promptSupport,
+            final Function<String, @Nullable String> environment,
+            final RetryWaiter waiter,
+            final int readTimeoutMillis) {
         Objects.requireNonNull(config, "config");
+        this.readTimeoutMillis = readTimeoutMillis;
         Objects.requireNonNull(promptSupport, "promptSupport");
         this.support = new OpenAiCompatibleProviderSupport(config, promptSupport, environment);
         this.truncationSupport = new LlamaCppJniProviderSupport(config, promptSupport);
@@ -320,7 +343,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
         try {
             connection.setRequestMethod(body == null ? "GET" : "POST");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
-            connection.setReadTimeout(READ_TIMEOUT_MILLIS);
+            connection.setReadTimeout(readTimeoutMillis);
             connection.setRequestProperty("Accept", accept);
             connection.setRequestProperty("X-Title", APPLICATION_TITLE);
             if (key != null) {
@@ -354,7 +377,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
                 // the request was sent: the server may still be generating it and bill it, so it is not
                 // sent again (a connect timeout, before anything was sent, is retried)
                 throw new IOException(
-                        endpoint + " sent no answer within " + READ_TIMEOUT_MILLIS / MILLIS_PER_SECOND
+                        endpoint + " sent no answer within " + readTimeoutMillis / MILLIS_PER_SECOND
                                 + " s; the request is not sent again",
                         e);
             }
@@ -382,7 +405,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
                 // the answer stopped while it was read: the request was generated (and billed), it is not sent
                 // again
                 throw new IOException(
-                        endpoint + " stopped answering for " + READ_TIMEOUT_MILLIS / MILLIS_PER_SECOND
+                        endpoint + " stopped answering for " + readTimeoutMillis / MILLIS_PER_SECOND
                                 + " s; the request is not sent again",
                         e);
             }

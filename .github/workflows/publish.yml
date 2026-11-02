@@ -154,6 +154,10 @@ jobs:
         run: mvn -B --no-transfer-progress -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin com.diffplug.spotless:spotless-maven-plugin:check
       - name: SpotBugs check (fail fast on static-analysis findings)
         run: mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin compile com.github.spotbugs:spotbugs-maven-plugin:check
+      # The benchmark's own tools (run.py, score.py, large.py, search.py) have unit tests on the standard
+      # library alone; the runner's python3 runs them.
+      - name: Benchmark tools' unit tests (Python)
+        run: python3 -I -m unittest discover -s docs/ai-index-benchmark/modelcard/tests
       - name: Print internal package dependency graph (jdeps, informational)
         continue-on-error: true
         run: |

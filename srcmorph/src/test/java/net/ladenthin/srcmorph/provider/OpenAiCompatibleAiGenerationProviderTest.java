@@ -88,6 +88,12 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     /** How many requests the server received. */
     private int requests;
 
+    /** Milliseconds the server waits before it answers at all. */
+    private int stallBeforeAnswer;
+
+    /** Milliseconds the server waits after the first part of its answer. */
+    private int stallInAnswer;
+
     private String answer;
     private String requestMethod;
     private String requestPath;
@@ -143,6 +149,21 @@ public class OpenAiCompatibleAiGenerationProviderTest {
                 return;
             }
             requests++;
+            if (stallBeforeAnswer > 0) {
+                sleep(stallBeforeAnswer);
+            }
+            if (stallInAnswer > 0) {
+                // the headers and the first bytes go out, then the answer stops
+                exchange.sendResponseHeaders(status, 0);
+                try (OutputStream out = exchange.getResponseBody()) {
+                    out.write("{\"choices\":".getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                    sleep(stallInAnswer);
+                } catch (final IOException e) {
+                    // the client gave up and closed the connection
+                }
+                return;
+            }
             final Integer first = firstStatuses.poll();
             if (first != null) {
                 if (retryAfter != null) {
@@ -168,6 +189,84 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     public void stopServer() {
         server.stop(0);
     }
+
+    private static void sleep(final int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** A provider whose reads wait {@link #SHORT_READ_TIMEOUT} at most. */
+    private OpenAiCompatibleAiGenerationProvider impatientProvider(final LlamaCppJniConfig.Builder builder) {
+        return new OpenAiCompatibleAiGenerationProvider(
+                builder.baseUrl(baseUrl()).build(), PROMPT_SUPPORT, NO_ENVIRONMENT, waits::add, SHORT_READ_TIMEOUT);
+    }
+
+    /** A read timeout a test can wait for. */
+    private static final int SHORT_READ_TIMEOUT = 200;
+
+    /** Longer than {@link #SHORT_READ_TIMEOUT}: the server stalls past it. */
+    private static final int STALL = 1_500;
+
+    // <editor-fold defaultstate="collapsed" desc="timeouts">
+    @Test
+    public void generate_noAnswerWithinTheReadTimeout_isNotSentAgain() {
+        // arrange: the request was sent and may be billed; the server does not answer in time
+        stallBeforeAnswer = STALL;
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> impatientProvider(LlamaCppJniConfig.builder("").maxRetries(3))
+                        .generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("the request is not sent again"));
+        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
+        assertThat(requests, is(1));
+        assertThat(waits.isEmpty(), is(true));
+    }
+
+    @Test
+    public void generate_anAnswerThatStopsWhileRead_isNotSentAgain() {
+        // arrange: the answer starts, then stalls
+        stallInAnswer = STALL;
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> impatientProvider(LlamaCppJniConfig.builder("").maxRetries(3))
+                        .generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("stopped answering"));
+        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
+        assertThat(requests, is(1));
+        // no wait for a second attempt: the one-threaded stub could not count one in time
+        assertThat(waits.isEmpty(), is(true));
+    }
+
+    @Test
+    public void listModels_aTimeout_isRetried_andEndsAsAPlainIOException() {
+        // arrange: a GET may be sent again; every attempt times out
+        stallBeforeAnswer = STALL;
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> impatientProvider(LlamaCppJniConfig.builder("").maxRetries(1))
+                        .listModels());
+
+        // assert: two attempts, one wait, and no InterruptedIOException that would end a whole run (the
+        // one-threaded stub is still asleep in the first exchange when the second attempt gives up, so the
+        // attempts are counted by the provider's message, not by the server)
+        assertThat(thrown.getMessage(), containsString("timed out 2 times"));
+        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
+        assertThat(waits.size(), is(1));
+    }
+    // </editor-fold>
 
     private String baseUrl() {
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/";

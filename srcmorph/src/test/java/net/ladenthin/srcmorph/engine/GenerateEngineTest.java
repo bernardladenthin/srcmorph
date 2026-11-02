@@ -729,6 +729,7 @@ public class GenerateEngineTest {
 
         // assert: the record exists and holds what was done before the interrupt
         assertThat(Files.exists(recordFile), is(true));
+        assertThat(new String(Files.readAllBytes(recordFile), StandardCharsets.UTF_8), containsString("Bar.java"));
     }
 
     @Test
@@ -861,6 +862,56 @@ public class GenerateEngineTest {
         assertThat(new java.util.HashSet<>(Arrays.asList(plain, ignored, otherPattern, otherLabel)).size(), is(4));
         assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(null), is(""));
         assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.emptyList()), is(""));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="prompt hash and prompt check">
+    private static net.ladenthin.srcmorph.prompt.AiPromptDefinition promptOf(final String key, final String template) {
+        final net.ladenthin.srcmorph.prompt.AiPromptDefinition definition =
+                new net.ladenthin.srcmorph.prompt.AiPromptDefinition();
+        definition.setKey(key);
+        definition.setTemplate(template);
+        return definition;
+    }
+
+    @Test
+    public void promptHash_tellsTheMapPromptFromTheReducePrompt_andFromNone() {
+        // arrange
+        final net.ladenthin.srcmorph.prompt.AiPromptSupport prompts = new net.ladenthin.srcmorph.prompt.AiPromptSupport(
+                java.util.Arrays.asList(promptOf("body", "BODY"), promptOf("x", "X")));
+        final AiFieldGenerationConfig plain = new AiFieldGenerationConfig();
+        plain.setPromptKey("body");
+        final AiFieldGenerationConfig mapped = plain.copy();
+        mapped.setMapPromptKey("x");
+        final AiFieldGenerationConfig reduced = plain.copy();
+        reduced.setReducePromptKey("x");
+
+        // act
+        final String none = GenerateEngine.promptHash(prompts, plain);
+        final String map = GenerateEngine.promptHash(prompts, mapped);
+        final String reduce = GenerateEngine.promptHash(prompts, reduced);
+
+        // assert
+        assertThat(map.equals(reduce), is(false));
+        assertThat(map.equals(none), is(false));
+        assertThat(reduce.equals(none), is(false));
+        assertThat(none, is(new net.ladenthin.srcmorph.support.AiChecksumSupport().calculateCrc32Hex("BODY")));
+    }
+
+    @Test
+    public void check_aMapPromptWithoutATemplate_failsBeforeAModelLoads() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        final AiFieldGenerationConfig rule = config.getFieldGenerations().get(0);
+        rule.setOnOversize("mapReduce");
+        rule.setMapPromptKey("no-such-prompt");
+
+        // act
+        final SrcMorphException failed =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).check());
+
+        // assert
+        assertThat(failed.getMessage(), containsString("no-such-prompt"));
     }
     // </editor-fold>
 }

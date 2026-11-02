@@ -79,6 +79,15 @@ Unreleased) except:
   scores files srcmorph does not index and fails on non-UTF-8 sources; `--out/<key>` is deleted
   without the marker check `--work` has; 21 of 21 mutations of the tools went unnoticed by their tests.
 
+- Tests (the test review): `AiFieldGenerationSupport` holds most of the pure map-reduce logic off the
+  PIT gate; split it the way `LlamaCppJniProviderSupport` was. The checksum over bytes has no
+  indexer-level test. A chunk of exactly 2000 characters (the split boundary) is not tested. The broad
+  fb-contrib SpotBugs match hides 15 benign findings in four classes and suppresses nothing else; split
+  it per class. Drift from TEST_WRITING_GUIDE in older tests (two-segment names, no arrange/act/assert
+  comments, tests outside folds, fully qualified names); random temp-file names feed a prompt length;
+  the test logger's level is never restored; the calibration paste block is never read back through
+  the strict loader.
+
 **Core (engine, indexer, provider, config):**
 
 - CodeQL #271 and #272 have nothing to point at any more (`Retry-After` is read digit by digit,

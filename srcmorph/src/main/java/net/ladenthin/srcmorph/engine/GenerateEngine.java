@@ -460,7 +460,7 @@ public final class GenerateEngine {
      * @param rule          the rule
      * @return the hash
      */
-    private static String promptHash(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
+    static String promptHash(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
         final String mapKey = rule.getMapPromptKey();
         final String reduceKey = rule.getReducePromptKey();
         // tagged by role, so a prompt that moves from the map to the reduce changes the hash too

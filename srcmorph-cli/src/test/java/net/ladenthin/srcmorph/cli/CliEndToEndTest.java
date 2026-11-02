@@ -99,6 +99,26 @@ public class CliEndToEndTest {
 
     @Test
     public void run_allCommand_planOnly_writesNothing() throws Exception {
+        // arrange: a run left a file summary, whose package and project summaries are gone; a package or
+        // project phase that ran would write them again
+        new Main(buildAllCommandConfiguration()).run();
+        final Path outputRoot = tempDir.resolve("out");
+        final Path leafPackage = outputRoot.resolve("main/java/com/example/" + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME);
+        Files.delete(leafPackage);
+        Files.delete(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.srcMorph.setPlanOnly(true);
+
+        // act
+        new Main(configuration).run();
+
+        // assert: no package and no project summary
+        assertThat(Files.exists(leafPackage), is(false));
+        assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
+    }
+
+    @Test
+    public void run_allCommand_planOnly_onAnEmptyOutput_writesNothing() throws Exception {
         // arrange
         final CConfiguration configuration = buildAllCommandConfiguration();
         configuration.srcMorph.setPlanOnly(true);

@@ -965,7 +965,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void takeUsage_aFailedCall_stillCounts() throws Exception {
+    public void takeUsage_anEmptyAnswer_stillCounts() throws Exception {
         final AiFieldGenerationSupport support = supportWithModels(request -> "", normalWindowModel("m"));
 
         support.generate(normalRule("m", null), Files.createTempFile("Small", ".java"), "file", "x", anyHeader());
@@ -1130,7 +1130,7 @@ public class AiFieldGenerationSupportTest {
     }
 
     @Test
-    public void countedTokens_aProviderThatCannotCount_keepsTheEstimate() throws Exception {
+    public void countedTokens_aProviderThatCannotCount_sendsASourceThatFitsTheEstimateWhole() throws Exception {
         // arrange: the default promptTokens is empty
         final List<AiGenerationRequest> requests = new ArrayList<>();
         final AiGenerationProvider provider = request -> {
@@ -1352,4 +1352,139 @@ public class AiFieldGenerationSupportTest {
         assertThat(reduce.sourceText(), startsWith("**Sample:** the parts summarize 2 of "));
         assertThat(reduce.sourceText(), containsString(AiMapReduceSupport.PART_LABEL + "2:"));
     }
+
+    // <editor-fold defaultstate="collapsed" desc="test review">
+    @Test
+    public void takeUsage_aFailedCall_stillCounts() throws Exception {
+        // arrange: the request fails, its usage was reported
+        final AiGenerationProvider provider = new AiGenerationProvider() {
+            @Override
+            public String generate(final AiGenerationRequest request) throws java.io.IOException {
+                throw new java.io.IOException("the server is down");
+            }
+
+            @Override
+            public net.ladenthin.srcmorph.provider.AiGenerationUsage lastUsage() {
+                return new net.ladenthin.srcmorph.provider.AiGenerationUsage(1, 100, 0, 0, "");
+            }
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        assertThrows(
+                java.io.IOException.class,
+                () -> support.generate(
+                        normalRule("m", null), Files.createTempFile("Small", ".java"), "file", "x", anyHeader()));
+
+        // assert
+        assertThat(support.takeUsage().promptTokens(), is(100L));
+    }
+
+    @Test
+    public void countedTokens_aProviderThatCannotCount_chunksByTheEstimate() throws Exception {
+        // arrange
+        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            requests.add(request);
+            return "S";
+        };
+
+        // act
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(
+                        oversizeRule("m", "mapReduce", 0),
+                        Files.createTempFile("Huge", ".java"),
+                        "file",
+                        largeSource(7000),
+                        anyHeader());
+
+        // assert: chunks of the estimated window, none cut
+        assertThat(requests.size() > 2, is(true));
+        assertThat(result.body().contains("cut to fit the window"), is(false));
+    }
+
+    @Test
+    public void sampleChunks_labelsEveryChunkWithTheSample() throws Exception {
+        // arrange
+        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            requests.add(request);
+            return "S";
+        };
+
+        // act
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(
+                        oversizeRule("m", "sampleChunks", 2),
+                        Files.createTempFile("Huge", ".java"),
+                        "file",
+                        largeSource(7000),
+                        anyHeader());
+
+        // assert: two chunks sampled from all of them, as the coverage line names them
+        final String total = result.body().replaceAll("(?s).*?2 of (\\d+) chunks summarized.*", "$1");
+        assertThat(requests.get(0).sourceText(), startsWith("Chunk 1 of 2, sampled from " + total + " chunks:\n"));
+        assertThat(requests.get(1).sourceText(), startsWith("Chunk 2 of 2, sampled from " + total + " chunks:\n"));
+    }
+
+    @Test
+    public void countedTokens_aPromptAtTheLimit_isSent_oneAboveIsNot() throws Exception {
+        // arrange
+        final CountingProvider atLimit = new CountingProvider(r -> NORMAL_WINDOW_TOKEN_LIMIT);
+        final CountingProvider aboveLimit = new CountingProvider(r -> NORMAL_WINDOW_TOKEN_LIMIT + 1);
+        final String source = largeSource(300);
+
+        // act
+        supportWithModels(atLimit, normalWindowModel("m"))
+                .generate(normalRule("m", null), Files.createTempFile("Small", ".java"), "file", source, anyHeader());
+        final java.io.IOException failed = assertThrows(
+                java.io.IOException.class,
+                () -> supportWithModels(aboveLimit, normalWindowModel("m"))
+                        .generate(
+                                oversizeRule("m", "sample", 0),
+                                Files.createTempFile("Small", ".java"),
+                                "file",
+                                source,
+                                anyHeader()));
+
+        // assert
+        assertThat(atLimit.generated.size(), is(1));
+        assertThat(atLimit.generated.get(0).sourceText(), is(equalTo(source)));
+        assertThat(aboveLimit.generated.isEmpty(), is(true));
+        assertThat(failed.getMessage(), containsString("; not sent"));
+    }
+
+    @Test
+    public void coverage_ofTheNextFile_startsCountingAnew() throws Exception {
+        // arrange: the first file's map answers are cut, the second file's are not
+        final AtomicInteger file = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            if (file.get() == 0 && request.sourceText().startsWith("Chunk ")) {
+                throw cutOff("- a part");
+            }
+            return "S";
+        };
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+        final AiGenerationResult first = support.generate(
+                oversizeRule("m", "mapReduce", 0),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+        file.incrementAndGet();
+
+        // act
+        final AiGenerationResult second = support.generate(
+                oversizeRule("m", "mapReduce", 0),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+
+        // assert
+        assertThat(first.body(), containsString("cut at the output budget"));
+        assertThat(second.body().contains("cut at the output budget"), is(false));
+        assertThat(second.body(), startsWith(AiMapReduceSupport.COVERAGE_HEADER));
+    }
+    // </editor-fold>
 }
