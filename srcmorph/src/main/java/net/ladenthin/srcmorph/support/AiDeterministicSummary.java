@@ -41,12 +41,14 @@ public final class AiDeterministicSummary {
         if (sampleLines <= 0 || lines == 0) {
             return sb.toString();
         }
+        // a source that ends with a line break splits into one more, empty element: the lines are the first
+        // `lines` elements
         final String[] all = AiSourceLines.split(source);
         if (lines <= sampleLines * 2) {
-            appendFenced(sb, "Content", all, 0, all.length);
+            appendFenced(sb, "Content", all, 0, lines);
         } else {
             appendFenced(sb, "First " + sampleLines + " lines", all, 0, sampleLines);
-            appendFenced(sb, "Last " + sampleLines + " lines", all, all.length - sampleLines, all.length);
+            appendFenced(sb, "Last " + sampleLines + " lines", all, lines - sampleLines, lines);
         }
         return sb.toString();
     }

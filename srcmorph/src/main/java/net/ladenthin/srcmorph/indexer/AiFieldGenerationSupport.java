@@ -69,6 +69,12 @@ public class AiFieldGenerationSupport {
     private static final String INCOMPLETE_WARN_PREFIX = "Incomplete answer for ";
 
     /**
+     * Ends an answer cut off at the output budget that {@code onIncomplete: keep} writes, so a reader of the
+     * summary sees that it stops early.
+     */
+    public static final String KEPT_CUT_NOTE = "\n\n_(Cut off at the output budget; kept by onIncomplete: keep.)_";
+
+    /**
      * Separator used to construct the cache key for the computed {@code maxInputChars}
      * per {@code (aiDefinitionKey, promptKey)} pair.
      *
@@ -896,7 +902,7 @@ public class AiFieldGenerationSupport {
                                 INCOMPLETE_WARN_PREFIX + "{}: {}; kept as it is (onIncomplete: keep)",
                                 contextFile,
                                 e.detail());
-                        return e.partialText();
+                        return e.partialText().trim() + KEPT_CUT_NOTE;
                     }
                     if (attempt >= attempts) {
                         throw e;

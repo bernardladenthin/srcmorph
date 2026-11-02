@@ -145,6 +145,14 @@ public class AiFactExtractorTest {
     }
 
     @Test
+    public void counts_anIgnoredRegionWithinALine_keepsTheWordsAroundItApart() {
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(ignore("comments", "(?s)/\\*.*?\\*/"), counter("joins", "\\bJOIN\\b")),
+                "SELECT * FROM t/* x */JOIN u");
+        assertThat(counts.get("joins"), is(1));
+    }
+
+    @Test
     public void counts_twoIgnoreCounters_bothBlank() {
         final Map<String, Integer> counts = AiFactExtractor.counts(
                 Arrays.asList(ignore("a", "x1"), ignore("b", "x2"), counter("x", "x\\d")), "x1 x2 x3");

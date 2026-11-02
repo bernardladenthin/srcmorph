@@ -477,6 +477,14 @@ The entries below hold the details; what a 1.3.0 user changes:
   6 000 constants of the large corpus's enum took 8.2 s in `constructors`, now 0.1 s for the whole file.
   `type declarations` anchors with `^[ \t]*` (40 000 blank lines took 65 s, now 0.02 s) and counts
   private and protected nested types and `@interface`s. No count the tests pin changed.
+- **An ignored region within one line leaves a space.** The `[ignore]` counters blanked a region to
+  its line breaks only, so `FROM t/* x */JOIN u` read `tJOIN` and counted no `JOIN`; a region within
+  one line now leaves one space. No count the tests pin changed.
+- **The deterministic summary shows the real last lines.** For a source ending with a line break,
+  "Last N lines" showed N-1 lines and an empty one, and "Content" an empty last line.
+- **A cut-off answer kept by `onIncomplete: keep` says so.** It ends with
+  `_(Cut off at the output budget; kept by onIncomplete: keep.)_` instead of stopping mid-sentence
+  without a sign.
 - **What 1.3.0 wrote from an incomplete answer is written again.** 1.3.0 wrote the facts line alone
   for an empty or cut-off file answer, and a project index without its `#### Overview` for an empty
   overview answer, under the checksum of a complete one, so no later run touched them. A summary

@@ -10,6 +10,21 @@ everything below is genuinely still open.
 
 ## Open
 
+### Release 1.4.0 (PR #263), after the merge
+
+- The owner's steps 3 to 5 of `docs/RELEASE.md`: tag `v1.4.0` on the merge commit, dispatch Publish
+  with `publish_to_central`, check the four artifacts on Central and the Portal deployment id.
+- Step 6: `main` to `1.5.0-SNAPSHOT` (`versions:set`, the hand-maintained literals of step 1, the
+  CLAUDE.md paragraph on the version state), as a pull request.
+- The Publish run of `main` at `530c55c` (the merge of #261) was cancelled in its start gate; the
+  next run on `main` must be green.
+- `mvn test-compile org.pitest:pitest-maven:mutationCoverage` from the root fails offline
+  ("Error resolving version for plugin 'org.pitest:pitest-maven'"); per module (`-f srcmorph/pom.xml`)
+  it runs. Pin the plugin in the root's `pluginManagement` so the documented command works offline.
+- `java-facts` `type declarations` counts private and protected nested types and `@interface`s since
+  `0374f73`: the facts line of such a Java file differs from the runs of
+  `docs/ai-index-benchmark/remeasure-2026-11-02/`; scores read names, not this count.
+
 ### Audit of 2026-11-01 (PR #261), in this order
 
 Six reviews of the codebase found the items below; each package is one commit with its tests, and a
@@ -97,20 +112,20 @@ Unreleased) except:
 
 **Core (engine, indexer, provider, config):**
 
-- CodeQL #271 and #272 have nothing to point at any more (`Retry-After` is read digit by digit,
-  `RunRecord` has no value equality); the alerts close with the next analysis or are dismissed by the
-  owner.
-- `[ignore]` blanking deletes the region instead of replacing it with spaces, so `FROM t/* x */JOIN u`
-  counts no `JOIN`.
+- CodeQL #270 (`RequestRateLimiter`: the return value of `awaitNanos` ignored) is a false positive:
+  the loop in `acquire()` re-checks the window after every wake-up; the owner dismisses it.
 - `srcmorph/spotbugs-exclude.xml` still gives "the operator's POM XML" as the reason of about eight
-  suppressions; `Main.copyWithPlanOnlyForced` names `AiFieldGenerationConfig#oversizeStrategy()` as a
-  setter-less getter, which it no longer is.
-- Smaller: `AiGenerationUsage.add` counts one call whatever it adds; the deterministic body's "last N
-  lines" drops a line when the source ends with `\n`; the plan's token figures ignore the oversize
-  strategy; the reduce estimate assumes a fan-in of 16; `onIncomplete: keep` writes a cut answer
-  without a marker; the per-file time of a local group's first file includes the model load; the
-  record's totals have no skipped count and no run wall time; credentials in a `baseUrl` would be echoed in messages; `AiCompletionParser` keeps reasoning
-  when the template injected the opening `<think>`.
+  suppressions, and the plugin's `spotbugs-exclude.xml` explains its Mojo suppressions with the
+  `<configuration>` block of a POM; both are the configuration file now.
+- The configuration echo of the CLI and the messages that name a `baseUrl` (`ListModelsEngine`,
+  `EngineSupport`, the provider's endpoint errors, the rate limiter) print it as written, user info
+  included. `HttpURLConnection` does not authenticate with a URL's user info, so a key there does not
+  work anyway; mask it if a server ever takes one.
+- Smaller: `AiGenerationUsage.add` counts one call whatever it adds (also `NONE` from a provider
+  that knows no usage); the plan's token figures ignore the oversize strategy; the reduce estimate
+  assumes a fan-in of 16; the per-file time of a local group's first file includes the model load;
+  the record's totals have no skipped count and no run wall time; `AiCompletionParser` keeps
+  reasoning when the template injected the opening `<think>`.
 
 **Fact counters (`profiles/v3/`, after the benchmark runs, which read the profile):**
 
@@ -157,6 +172,9 @@ Unreleased) except:
 
 
 ### Other open items
+
+- **The Claude Code Review workflow fails on every pull request**: its `claude_code_oauth_token`
+  secret is empty. The owner sets it, or the workflow stays red.
 
 - **Use jllama's `ChatStreamAssembler` instead of srcmorph's own stream assembly.** The `stream`
   setting of the `openai-compatible` provider needs a Server-Sent Events body assembled into a chat

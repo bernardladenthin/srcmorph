@@ -179,7 +179,9 @@ public final class AiFactExtractor {
             final StringBuilder blanked = new StringBuilder(text.length());
             int last = 0;
             while (matcher.find()) {
-                blanked.append(text, last, matcher.start()).append(lineBreaks(matcher.group()));
+                final String breaks = lineBreaks(matcher.group());
+                // a region within one line leaves a space, so FROM t/* x */JOIN u still reads as two words
+                blanked.append(text, last, matcher.start()).append(breaks.isEmpty() ? " " : breaks);
                 last = matcher.end();
             }
             text = blanked.append(text, last, text.length()).toString();

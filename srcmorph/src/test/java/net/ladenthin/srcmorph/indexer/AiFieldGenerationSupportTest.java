@@ -814,7 +814,8 @@ public class AiFieldGenerationSupportTest {
                         anyHeader());
 
         assertThat(result.complete(), is(true));
-        assertThat(result.body(), is(equalTo("half a sum")));
+        // the summary says that it stops early
+        assertThat(result.body(), is(equalTo("half a sum" + AiFieldGenerationSupport.KEPT_CUT_NOTE)));
         assertThat(getCapturedWarnings().get(0), containsString("kept as it is"));
     }
 
