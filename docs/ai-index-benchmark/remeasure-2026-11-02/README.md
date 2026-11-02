@@ -29,6 +29,7 @@ records the thin `srcmorph-cli` jar only, which is the same in both; the core ja
 | `local/run1..3/granite-xml-prompt`, `granite-generic-prompt` | the same | the two Granite presets, `--facts --oversize mapReduce`, `profiles/v3` with and without `file-body-xml` |
 | `local-before-review/run1..3/...` | the same | the same at `c2d6834` |
 | `huge-xml/run1..3/granite-xml-prompt`, `granite-generic-prompt` | the catalog alone of `large.py --scale 1.3` (1.15 MB) | Granite H-1B as the self-test's `huge-xml` runs it: `--facts --oversize sampleChunks --max-chunks 6` |
+| `oss-runaway/before-fix/<variant>`, `oss-runaway/with-fix/run1..3` | the large corpus | gpt-oss-20b as in `large/`, through the logging proxy `oss-runaway/proxy.py`; see the last section |
 
 Scored with today's `score.py` (`--meta` of each run; the large corpus with the
 `<dir>-facts.json` that `large.py` writes next to it). Quality is the card's: the mean of the
@@ -53,12 +54,13 @@ mean of other-file recall and format.
   index, the catalog's `inv:recall`, the enum's `LEDGER_LOCK`). gpt-oss-20b now names the catalog's
   in every run (on 2026-11-01 in none), the enum's in none of the 4096-token runs and in one of the
   16384-token runs (`LEDGER_LOCK_02899`, run 2).
-- **gpt-oss-20b's final answer for the SQL dump ran to the output limit** in runs 1 and 2
-  (`finishReason` `length`), so the file was not written and scores as missing; run 3 wrote it with
-  every expected name. With 16384 output tokens the dump's answer ran to the limit in all three
-  runs and the catalog's in one: a longer budget is room for a longer runaway, not a finished
-  answer. A single probe of the same reduce call at 16384 wrote a complete and correct summary, so
-  the runaway is random. The preset keeps 4096; the next things to try are in TODO.md.
+- **gpt-oss-20b's answer for one chunk of the SQL dump ran to the output limit** in runs 1 and 2
+  (`finishReason` `length`; the log's WARN follows chunk 4 and chunk 2 of 9), so the file was not
+  written and scores as missing; run 3 wrote it with every expected name. With 16384 output tokens
+  a chunk of the dump ran to the limit in all three runs (chunk 3 of 10 each time) and one of the
+  catalog in one: a longer budget is room for a longer runaway, not a finished answer. A single
+  probe of the same file at 16384 wrote a complete and correct summary, so the runaway is random.
+  The preset keeps 4096. Why the chunk came back empty, and the fix: the last section.
 - **Cost.** The account delta of a run also books its package and project phases, and late. Luna's
   large runs cost 0.13 USD at list price with a cold cache and 0.016 USD with the prompt cached.
 
@@ -112,3 +114,36 @@ H-1B with `sampleChunks` and six chunks, as `huge-xml` routes a file over 1 MB.
   each with a unique SKU, title, price (in EUR), and stock quantity") under the exact facts line.
 - So `huge-xml` takes `file-body-xml` too: a short, right summary is worth more than a file that
   fails in every run. Neither names the middle element.
+
+## gpt-oss-20b's runaway: a part answered with reasoning only
+
+The dump failures above, taken apart: gpt-oss-20b on the large corpus at 4096 output tokens through
+a logging proxy in front of OpenRouter ([`oss-runaway/proxy.py`](oss-runaway/proxy.py): it merges a
+variant's fields into each request body and logs, per call, the upstream provider, `finish_reason`
+and the usage with its reasoning tokens, in `calls-before-fix.jsonl` / `calls-with-fix.jsonl`). One
+run per variant at `82e91f8` (core jar `2bb040a199dd…`), then three runs with the fix (core jar
+`e86ae0f0241d…`), default routing.
+
+| | Quality: run 1 / 2 / 3 | Dump | Calls at the limit (reasoning tokens, answer) |
+|---|---|---|---|
+| default routing, `82e91f8` | 66.0 % | not written | 2: 4093 and none; 0 and 9 056 characters |
+| bf16 providers only (`provider.quantizations`), `82e91f8` | 62.8 % | not written | 1: 4096 and none |
+| `reasoning.max_tokens` 1024 instead of `effort` low, `82e91f8` | 69.1 % | not written | 1: 4093 and none |
+| default routing, with the fix | 88.3 / 93.8 / 96.9 % (mean 93.0) | written every run, 2 / 3 / 3 of 3 middle names | 3 / 0 / 1, all reasoning except one of 440 characters |
+
+- **It is a part, not the final answer.** Every call that ran to the limit was a map call over a
+  chunk of the dump (199 K characters), and in all but two the model spent the whole budget
+  reasoning and wrote nothing. A part cut with text is kept for the reduce (since `9c0289b`), but an
+  empty one failed the whole file. That is what happened in the runs above too.
+- **Not the provider.** The same chunk ran away on PrimeIntellect (fp4) and on DekaLLM (bf16, 20 of
+  21 calls of that run); the default routing spread one run over five or six providers.
+- **`reasoning.max_tokens` does not cap gpt-oss on OpenRouter**: 4093 reasoning tokens under a cap
+  of 1024. OpenRouter turns the value into an effort level for OpenAI models, and the effort is low
+  already.
+- **Random**: a different chunk in a different run, and none in run 2 with the fix.
+- **The fix.** A part that comes back without text (empty, or cut before it wrote any) is read again
+  as its two halves, split at a line end near the middle; a piece below twice the minimum chunk
+  still fails the file. With it the dump was written in all three runs, three chunks were read in
+  halves, and every run named the dump's middle table or index. The enum's middle (`LEDGER_LOCK`)
+  is still named in none.
+- **Cost**: 0.010 to 0.024 USD per run at the account; the halves add two to four calls.

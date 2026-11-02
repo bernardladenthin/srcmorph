@@ -474,6 +474,14 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   failed at the first such chunk. A part summary is an intermediate the reduce reads, so a cut one is
   kept now, with a WARN, and the coverage line counts it (`5 part summaries cut at the output budget`);
   the final answer still has to be complete.
+- **A part that comes back without text is read again in two halves.** A reasoning model can spend
+  the whole output budget thinking about one chunk and answer nothing: hosted gpt-oss-20b did on
+  chunks of the large corpus's 1.6 MB SQL dump (4093 of 4096 tokens reasoning, on fp4 and bf16
+  providers alike, and more often with a larger budget), and the whole file failed. A map answer
+  that is empty or cut before any text now has its chunk read again as two halves at a line end
+  near the middle, as a chunk too dense for its window is; a piece below twice the minimum chunk
+  still fails the file. Measured: the dump is written in three of three runs, 93.0 % against 75.2 %
+  on the large corpus (`docs/ai-index-benchmark/remeasure-2026-11-02/`).
 
 - **A read timeout of a request is not sent again.** The `openai-compatible` provider resent a
   `POST` that got no answer within 600 s up to `maxRetries` times, each one possibly generated and

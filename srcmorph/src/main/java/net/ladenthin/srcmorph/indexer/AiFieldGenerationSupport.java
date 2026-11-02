@@ -646,6 +646,8 @@ public class AiFieldGenerationSupport {
      * Summarizes one chunk into {@code partials}. A chunk denser than its window was sized for is split at a
      * line end near its middle, and both halves are summarized, so its tail is read instead of cut; a half
      * below twice {@link AiMapReduceSupport#MIN_CHUNK_CHARS} is cut to the window instead (and counted).
+     * A chunk whose answer has no text (empty, or cut at the output budget before any) is read again as
+     * its two halves the same way; such a piece below twice the minimum fails the file.
      *
      * @param fieldGeneration the rule
      * @param mapKey          the prompt of a map call: the rule's prompt with its map prompt
@@ -683,32 +685,70 @@ public class AiFieldGenerationSupport {
                             part)
                     .trim());
         } catch (final AiSourceCutException e) {
-            final int split = AiMapReduceSupport.halfSplit(chunk);
             LOGGER.info(
                     "  mapReduce chunk of {} chars does not fit the window of {} chars; read in two halves",
                     chunk.length(),
                     e.window());
-            mapChunk(
-                    fieldGeneration,
-                    mapKey,
-                    contextFile,
-                    AiMapReduceSupport.halfLabel(label, 1),
-                    chunk.substring(0, split),
-                    baseHeader,
-                    safeWindow,
-                    true,
-                    partials);
-            mapChunk(
-                    fieldGeneration,
-                    mapKey,
-                    contextFile,
-                    AiMapReduceSupport.halfLabel(label, 2),
-                    chunk.substring(split),
-                    baseHeader,
-                    safeWindow,
-                    true,
-                    partials);
+            mapHalves(fieldGeneration, mapKey, contextFile, label, chunk, baseHeader, safeWindow, partials);
+        } catch (final AiIncompleteAnswerException e) {
+            if (!splittable || !compatibilityHelper.isBlank(e.partialText())) {
+                throw e;
+            }
+            // a reasoning model can spend the whole output budget thinking about one chunk and answer
+            // nothing: the halves are other inputs, and one such chunk no longer fails the whole file
+            LOGGER.warn(
+                    "  mapReduce chunk of {} chars came back without an answer ({}); read in two halves",
+                    chunk.length(),
+                    e.reason());
+            mapHalves(fieldGeneration, mapKey, contextFile, label, chunk, baseHeader, safeWindow, partials);
         }
+    }
+
+    /**
+     * Summarizes a chunk as its two halves, split at a line end near its middle
+     * ({@link AiMapReduceSupport#halfSplit}), each one part of several.
+     *
+     * @param fieldGeneration the rule
+     * @param mapKey          the prompt of a map call
+     * @param contextFile     the source file path
+     * @param label           the chunk's label line
+     * @param chunk           the chunk
+     * @param baseHeader      the header passed through to the request
+     * @param safeWindow      the per-call window budget
+     * @param partials        the part summaries, appended to
+     * @throws IOException if the provider fails
+     */
+    private void mapHalves(
+            final AiFieldGenerationConfig fieldGeneration,
+            final String mapKey,
+            final Path contextFile,
+            final String label,
+            final String chunk,
+            final AiMdHeader baseHeader,
+            final int safeWindow,
+            final List<String> partials)
+            throws IOException {
+        final int split = AiMapReduceSupport.halfSplit(chunk);
+        mapChunk(
+                fieldGeneration,
+                mapKey,
+                contextFile,
+                AiMapReduceSupport.halfLabel(label, 1),
+                chunk.substring(0, split),
+                baseHeader,
+                safeWindow,
+                true,
+                partials);
+        mapChunk(
+                fieldGeneration,
+                mapKey,
+                contextFile,
+                AiMapReduceSupport.halfLabel(label, 2),
+                chunk.substring(split),
+                baseHeader,
+                safeWindow,
+                true,
+                partials);
     }
 
     /**

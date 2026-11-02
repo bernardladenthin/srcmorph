@@ -385,12 +385,14 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    model's windows are counted in tokens. On OpenRouter gpt-oss-20b scored 99.1 % on the language
    corpus, 99.9 % on this corpus and 75.2 % (59.7 / 69.1 / 96.9) on the large one, GPT-6 Luna 99.5,
    100 and 99.0 %. Luna names the planted middle of all three large files in every run. gpt-oss-20b
-   names the catalog's in every run and the enum's in none; in runs 1 and 2 its final answer for the
-   SQL dump ran to the 4096-token limit and the file was not written. With `maxOutputTokens` 16384
-   it did worse (39.7 / 66.0 / 47.2 %): the dump's answer ran to that limit in all three runs and
-   the catalog's in one, so the model's preset keeps 4096 (one of those runs named the enum's middle
-   area). Locally, Granite at temperature 0.2 gave the same names in all three runs, both presets
-   with `--oversize mapReduce`:
+   names the catalog's in every run and the enum's in none; in runs 1 and 2 its answer for one chunk
+   of the SQL dump ran to the 4096-token limit, all of it reasoning, and the file was not written.
+   With `maxOutputTokens` 16384 it did worse (39.7 / 66.0 / 47.2 %): a chunk of the dump ran to that
+   limit in all three runs and one of the catalog in one, so the model's preset keeps 4096 (one of
+   those runs named the enum's middle area). Since a part that comes back without text is read
+   again in two halves, three more runs wrote the dump every time: 88.3 / 93.8 / 96.9 %. Locally,
+   Granite at temperature 0.2 gave the same names in all three runs, both presets with
+   `--oversize mapReduce`:
 
    | Large corpus, local, three runs | Quality | Enum | Catalog | Dump |
    |---|---|---|---|---|

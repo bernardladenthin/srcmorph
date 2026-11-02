@@ -856,21 +856,108 @@ public class AiFieldGenerationSupportTest {
         assertThat(result.incompleteReason(), is(equalTo("no choice")));
     }
 
-    @Test
-    public void incomplete_mapReduceChunkWithAnEmptyAnswer_makesTheFileIncomplete() throws Exception {
-        final AtomicInteger calls = new AtomicInteger();
-        // the second chunk's answer is empty; the reduce must not run over it
-        final AiGenerationProvider provider = request -> calls.incrementAndGet() == 2 ? "" : "PARTIAL";
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .generate(
-                        (oversizeRule("m", "sampleChunks", 2)),
-                        Files.createTempFile("Huge", ".java"),
-                        "file",
-                        largeSource(7000),
-                        anyHeader());
+    /** Records every request and answers the n-th (from 1) as the script says. */
+    private static final class ScriptedProvider implements AiGenerationProvider {
 
-        assertThat(calls.get(), is(equalTo(2)));
+        /** The answer to one call. */
+        interface Script {
+            String answer(int call) throws java.io.IOException;
+        }
+
+        private final Script script;
+        private final List<AiGenerationRequest> generated = new ArrayList<>();
+
+        ScriptedProvider(final Script script) {
+            this.script = script;
+        }
+
+        @Override
+        public String generate(final AiGenerationRequest request) throws java.io.IOException {
+            generated.add(request);
+            return script.answer(generated.size());
+        }
+
+        /** The source of the n-th call (from 1) without its chunk label line. */
+        String chunkOf(final int call) {
+            final String text = generated.get(call - 1).sourceText();
+            return text.substring(text.indexOf('\n') + 1);
+        }
+    }
+
+    @Test
+    public void incomplete_mapReduceChunkWithAnEmptyAnswer_isReadInTwoHalves() throws Exception {
+        // arrange: the second chunk's answer is empty (a model that spent its whole budget reasoning)
+        final ScriptedProvider provider = new ScriptedProvider(n -> n == 2 ? "" : "PARTIAL" + n);
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "sampleChunks", 2),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+
+        // assert: the chunk was read again as its two halves, and every answer reached the reduce
+        assertThat(result.complete(), is(true));
+        assertThat(provider.generated.size(), is(5));
+        assertThat(provider.generated.get(2).sourceText(), containsString(", half 1:\n"));
+        assertThat(provider.generated.get(3).sourceText(), containsString(", half 2:\n"));
+        assertThat(provider.chunkOf(3) + provider.chunkOf(4), is(equalTo(provider.chunkOf(2))));
+        final String reduce = provider.generated.get(4).sourceText();
+        assertThat(reduce, containsString("PARTIAL1"));
+        assertThat(reduce, containsString("PARTIAL3"));
+        assertThat(reduce, containsString("PARTIAL4"));
+    }
+
+    @Test
+    public void incomplete_mapReduceChunkCutBeforeAnyText_isReadInTwoHalves() throws Exception {
+        // arrange: the first map answer is cut at the output budget before it wrote anything
+        final ScriptedProvider provider = new ScriptedProvider(n -> {
+            if (n == 1) {
+                throw cutOff("");
+            }
+            return "PARTIAL" + n;
+        });
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "sampleChunks", 2),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+
+        // assert
+        assertThat(result.complete(), is(true));
+        assertThat(provider.generated.get(1).sourceText(), containsString(", half 1:\n"));
+        assertThat(provider.generated.get(2).sourceText(), containsString(", half 2:\n"));
+        assertThat(provider.chunkOf(2) + provider.chunkOf(3), is(equalTo(provider.chunkOf(1))));
+    }
+
+    @Test
+    public void incomplete_mapReduceChunkEmptyDownToItsSmallestHalf_makesTheFileIncomplete() throws Exception {
+        // arrange: every answer is empty; a half below twice the minimum chunk is not split again
+        final ScriptedProvider provider = new ScriptedProvider(n -> "");
+        final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        final AiGenerationResult result = support.generate(
+                oversizeRule("m", "sampleChunks", 2),
+                Files.createTempFile("Huge", ".java"),
+                "file",
+                largeSource(7000),
+                anyHeader());
+
+        // assert: each call read the first half of the one before, down to a piece too small to split
         assertThat(result.complete(), is(false));
+        final int calls = provider.generated.size();
+        for (int call = 2; call <= calls; call++) {
+            assertThat(provider.chunkOf(call - 1), startsWith(provider.chunkOf(call)));
+            assertThat(provider.chunkOf(call - 1).length() >= 2 * AiMapReduceSupport.MIN_CHUNK_CHARS, is(true));
+        }
+        assertThat(provider.chunkOf(calls).length() < 2 * AiMapReduceSupport.MIN_CHUNK_CHARS, is(true));
     }
 
     @Test

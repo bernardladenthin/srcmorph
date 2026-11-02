@@ -29,9 +29,10 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
      tokens (D3). Measured again on 2026-11-02
      ([`remeasure-2026-11-02/`](docs/ai-index-benchmark/remeasure-2026-11-02/README.md)): gpt-oss-20b
      99.1 / 99.9 / 75.2 %, Luna 99.5 / 100 / 99.0 %; H-Tiny over 64K 66.6 % (over 384K on 2026-11-01:
-     21.9), H-1B 17.1 % with the generic prompt. Open: gpt-oss-20b's final answer for the SQL dump still ran to 4096 tokens in two
-     of three runs, and 16384 made it worse (51.0 % over three runs); next try provider pinning or
-     `reasoning.max_tokens`.
+     21.9), H-1B 17.1 % with the generic prompt. gpt-oss-20b lost the SQL dump in two of three runs
+     when one chunk's answer was all reasoning (4096 tokens, no text; 16384 made it worse, provider
+     and `reasoning.max_tokens` did not matter); since such a part is read again in two halves the
+     dump is written in every run (93.0 % over three runs, `oss-runaway/` of the same folder).
    - **gpt-oss-20b's map-reduce loses the middle of a file.** Since the map and reduce prompts it
      names the catalog's planted middle element in every run, the enum's middle area in none of
      the 4096-token runs (once at 16384; Luna in every run); the partial summaries are not kept, so where it is lost is not known.
@@ -76,11 +77,6 @@ Unreleased) except:
   wrote" (compare `P`/`N` in `shouldWrite`) would make the hashes useful; `P` covers the map and
   reduce prompts also for files that never used them.
 - The token count of a remote `llama-server` could use its `/tokenize`; OpenRouter has none.
-- Hosted gpt-oss-20b loses the large corpus's dump in two of three runs: the final merge runs away (the
-  answer is cut at the budget; a probe of the same call wrote a complete, correct summary). 16384
-  output tokens instead of 4096 did not help (three runs: 51.0 against 75.2 %), so the benchmark keeps
-  4096. Next to try: pin OpenRouter's upstream provider for gpt-oss (its routing varies between runs), or
-  cap the reasoning (`reasoning.max_tokens`) separately from the answer.
 - Benchmark: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name
   rate is taken inside backticks only and by substring; recall counts names, not faithfulness (a bare
   name list scores 100 %, wrong claims are not measured); with three runs against three a Fisher test
