@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
+import net.ladenthin.srcmorph.config.AiFactExtractor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -133,6 +134,37 @@ public class AiMdHeaderSupportTest {
 
         // assert
         assertThat(result, is(true));
+    }
+
+    @Test
+    public void shouldWrite_matchingExistingHeaderFactsLineOnly_returnsTrue() throws IOException {
+        // arrange: what 1.3.0 wrote for an empty or cut-off answer, the facts line and no summary
+        final Path target = folder.resolve("test.ai.md");
+        final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
+        documentCodec.write(
+                target, new AiMdDocument(header, AiFactExtractor.FACTS_HEADER + "classes: 1; methods: 3\n\n"));
+
+        // act
+        final boolean result = headerSupport.shouldWrite(false, target, header);
+
+        // assert
+        assertThat(result, is(true));
+    }
+
+    @Test
+    public void shouldWrite_matchingExistingHeaderFactsLineAndSummary_returnsFalse() throws IOException {
+        // arrange
+        final Path target = folder.resolve("test.ai.md");
+        final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
+        documentCodec.write(
+                target,
+                new AiMdDocument(header, AiFactExtractor.FACTS_HEADER + "classes: 1; methods: 3\n\n" + EXISTING_BODY));
+
+        // act
+        final boolean result = headerSupport.shouldWrite(false, target, header);
+
+        // assert
+        assertThat(result, is(false));
     }
 
     @Test

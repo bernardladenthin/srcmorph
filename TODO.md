@@ -107,9 +107,6 @@ Unreleased) except:
   `project.version`); an unknown `${x}` stays literal and becomes a directory name.
 - `[ignore]` blanking deletes the region instead of replacing it with spaces, so `FROM t/* x */JOIN u`
   counts no `JOIN`.
-- A summary written by 1.3.0 from an incomplete answer (facts line only, a project without its
-  Overview) is never repaired: audit item 2 promised it, the header check rewrites only a missing
-  file or a blank body.
 - Javadoc and messages that still describe the removed XML (`EngineSupport`, `GenerateEngine`,
   `CConfiguration`, `AiModelDefinition`, `AiFieldGenerationConfig`), `maxChunks` "0 = unbounded",
   strategy lists without `sampleChunks` / `keep`, `RequestRateLimiter` "does not retry",

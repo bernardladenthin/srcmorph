@@ -420,6 +420,11 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **What 1.3.0 wrote from an incomplete answer is written again.** 1.3.0 wrote the facts line alone
+  for an empty or cut-off file answer, and a project index without its `#### Overview` for an empty
+  overview answer, under the checksum of a complete one, so no later run touched them. A summary
+  whose body is the facts line and nothing else now counts as missing, and a project index without
+  its overview is written again when an overview rule is configured.
 - **The plan sizes a map-reduce's chunks as the run does**: next to the longer of the rule's map and
   reduce prompts with a chunk's label reserve, not next to the rule's prompt alone, so its call count
   and time follow the run (`AiRouteEstimator.estimateRouteSeconds` with a chunk prompt length).
