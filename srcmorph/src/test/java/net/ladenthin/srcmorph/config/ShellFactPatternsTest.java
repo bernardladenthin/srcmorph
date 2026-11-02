@@ -27,8 +27,23 @@ public class ShellFactPatternsTest {
     /** Copies of the deploy script in the run-time test, about 1.5 MB. */
     private static final int LONG_INPUT_COPIES = 300;
 
-    /** What the long input may take; the lookbehind getopts counter alone took about a second. */
+    /**
+     * What a long input may take; the lookbehind getopts counter alone took about a second, a heredoc
+     * opened behind each of 20 000 shifts about 25 s.
+     */
     private static final Duration LONG_INPUT_LIMIT = Duration.ofSeconds(10);
+
+    /** Lines of the generated inputs of the heredoc run-time tests. */
+    private static final int LONG_INPUT_LINES = 20_000;
+
+    /** Repeats {@code line} {@value #LONG_INPUT_LINES} times behind a function definition. */
+    private static String functionThenLines(final String line) {
+        final StringBuilder source = new StringBuilder("f() {\n}\n");
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            source.append(line).append('\n');
+        }
+        return source.toString();
+    }
 
     private static int count(final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(COUNTERS, source);
@@ -114,6 +129,59 @@ public class ShellFactPatternsTest {
     @Test
     public void functions_hereString_isNoHeredoc() {
         assertThat(count("functions", "read x <<< \"$y\"\nf() {\n}\n"), is(1));
+    }
+
+    @Test
+    public void functions_arithmeticShift_opensNoHeredoc() {
+        // each shift would otherwise open a heredoc ending at the line "4", "n", "2" or "="
+        assertThat(count("functions", "x=$((1 << 4))\nf() {\n}\n4\ng() {\n}\n"), is(2));
+        assertThat(
+                count(
+                        "functions",
+                        "(( mask <<= 2 ))\ny=$(( (a + b) << n ))\nz=$[1<<2]\nfor (( i = 1; i << 1; )); do :; done\n"
+                                + "f() {\n}\nn\n=\n2\n1\ng() {\n}\n"),
+                is(2));
+    }
+
+    @Test
+    public void functions_heredocMarkerInsideAString_opensNothing() {
+        assertThat(count("functions", "echo \"usage: cat <<EOF\"\nf() {\n}\nEOF\ng() {\n}\n"), is(2));
+        assertThat(count("functions", "grep -c '<<EOF' x\nf() {\n}\nEOF\ng() {\n}\n"), is(2));
+        assertThat(count("functions", "echo \"a <<EOF\" \"b\"\nf() {\n}\nEOF\ng() {\n}\n"), is(2));
+    }
+
+    @Test
+    public void functions_heredocAfterQuotedWordsAndBeforeAComment_isBlanked() {
+        assertThat(
+                count(
+                        "functions",
+                        "ssh \"$h\" bash -s <<EOF # it's remote\nfake() {\nEOF\n"
+                                + "cat <<\"END\" > \"$out\"\nfake2() {\nEND\nreal() {\n}\n"),
+                is(1));
+    }
+
+    @Test
+    public void functions_unclosedHeredoc_isBlankedToTheEnd() {
+        // bash reads the rest of the file as the heredoc's body ("delimited by end-of-file")
+        assertThat(count("functions", "f() {\n}\ncat <<EOF\ng() {\n}\n"), is(1));
+    }
+
+    @Test
+    public void ignore_manyArithmeticShifts_stayLinear() {
+        final String source = functionThenLines("x=$((1 << 4))");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
+    }
+
+    @Test
+    public void ignore_manyHeredocMarkersInStrings_stayLinear() {
+        final String source = functionThenLines("echo \"cat <<EOF here\"");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
+    }
+
+    @Test
+    public void ignore_manyUnclosedHeredocs_stayLinear() {
+        final String source = functionThenLines("cat <<EOF >> out.txt");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
     }
 
     @Test

@@ -6,12 +6,14 @@
 # matches over the whole source file and writes them as exact facts before the AI summary.
 # These are regex heuristics, so the labels are honest: methods are "(approx)" (includes the
 # constructors, subtract them), and the field count only sees fields with a strong modifier
-# (final-only and package-private fields are not counted, to skip final local variables).
-# JavaStructureFactPatternsTest pins the accepted false-positive/negative boundary.
-type declarations	(?m)^\s*(?:public\s+|final\s+|abstract\s+|sealed\s+|non-sealed\s+|static\s+)*(?:class|interface|enum|record)\s+\w
+# (final-only and package-private fields are not counted, to skip final local variables). A parameter
+# list may hold one level of parentheses (@Size(max = 3) String s), read possessively, so the
+# constants of a long enum stay linear; "type declarations" counts nested and private types, records
+# and @interface too. JavaStructureFactPatternsTest pins the accepted false-positive/negative boundary.
+type declarations	(?m)^[ \t]*(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed|strictfp)[ \t]+)*(?:class|interface|@interface|enum|record)[ \t]+[A-Za-z_$]
 public declarations	\bpublic\b
 TODO/FIXME	\b(?:TODO|FIXME)\b
 @Override	@Override\b
-methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]
-constructors	(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\([^;{]*\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{
+methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]
+constructors	(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{
 field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]*)?;

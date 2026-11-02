@@ -69,13 +69,19 @@ per language, an alternation of all its regions: the region that starts first wi
 Blanking removes the characters, so `INSERT/* x */INTO` reads as `INSERTINTO`. A counter anchored at
 a line start allows spaces and tabs there (`^[ \t]*`), never `\s*`: a blanked region leaves a run of
 line breaks, and `^\s*` over one is quadratic (a 40 000-line block comment took 44 s, now 0.05 s;
-`SqlFactPatternsTest` pins it).
+`SqlFactPatternsTest` pins it). For the same reason a region whose end never comes runs to the end
+of the file (an unclosed `/*`, a heredoc without its marker): a region that failed would be searched
+again from every later opener. A shell or Perl `<<` that is a shift or sits in a string opens none
+(20 000 lines of shifts, strings or unclosed heredocs took 25 to 207 s in shell and 95 to 223 s in
+Perl, now at most 0.2 s), and the Java parameter list is read possessively, one level of parentheses
+deep (the 6 000 constants of the large corpus's enum took 8 s, now 0.1 s); `ShellFactPatternsTest`, `PerlFactPatternsTest` and
+`JavaStructureFactPatternsTest` pin these.
 
 The counters are regex heuristics, and their labels say so where they are approximate. The tests read
 these files, not copies, and count through the production extractor, so the ignore lines apply:
 `SqlFactPatternsTest` pins every SQL counter on PostgreSQL, MySQL, T-SQL and Oracle forms (including
 the known over- and undercount of `VALUES rows (approx)`), `JavaStructureFactPatternsTest` the
-boundary of the Java method, constructor and field counts, and `ShellFactPatternsTest`,
+boundary of the Java type declaration, method, constructor and field counts, and `ShellFactPatternsTest`,
 `PerlFactPatternsTest` and `XmlFactPatternsTest` each counter's forms and near misses plus the
 counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-index-benchmark/corpus-languages/)).
 
@@ -92,7 +98,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `shell-facts` (Bash, sh, ksh93) | Counts |
 |---|---|
-| `[ignore]` comments and heredoc bodies | a `#` comment, a whole line or after a blank; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-` |
+| `[ignore]` comments and heredoc bodies | a `#` comment, a whole line or after a blank; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-`, without one to the end of the file (as bash reads it); not a shift inside `(( ))`, `$(( ))` or `$[ ]`, nor a `<<` whose line goes on with an unclosed quote (inside a string) |
 | `functions` | `name()`, `name ()` and `function name` definitions, with any compound command as the body (`{`, `(`, `if`, `for`, `while`, `until`, `case`, `select`, `[[`) |
 | `getopts loops`, `getopts option letters`, `dash-option case arms` | `getopts` calls; each letter of a literal option string; `case` arms of `-x` / `--long` options, as a hand-written option loop has them |
 | `named positional parameters` | an argument assigned to a name (`SRC="$1"`, `local mode=${3:-fast}`) |
@@ -103,7 +109,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `perl-facts` | Counts |
 |---|---|
-| `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<<\END`, `<<END`, `<<~END` bodies; whole-line `#` comments; leftmost first |
+| `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<< "END"`, `<<\END`, `<<END`, `<<~END` bodies, without an end marker to the end of the file; not a shift after a variable, a number, `)` or `]` (`$x <<BITS`; `print $fh <<END` is a heredoc), nor a `<<` in a trailing comment or a string; whole-line `#` comments; leftmost first |
 | `packages`, `subs` | `package` statements and blocks and 5.38 `class` blocks; named, lexical (`my sub`), signature and attribute subs (`sub f :prototype($$) ($x, $y)`) and 5.38 `method`s, not anonymous subs or forward declarations |
 | `modules used`, `modules required` | `use Some::Module`, `use parent` / `base` (not other pragmas or versions); `require Module` / `require 'file'` (not versions) |
 | `use constant statements`, `package variables (our)`, `file-scope lexicals (my at column 0)` | each `use constant`; `our` declarations; a `my` at column 0 |

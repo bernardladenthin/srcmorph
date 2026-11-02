@@ -5,7 +5,9 @@ package net.ladenthin.srcmorph.config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +23,21 @@ import org.junit.jupiter.api.Test;
 public class PerlFactPatternsTest {
 
     private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("perl-facts");
+
+    /** Lines of the generated inputs of the heredoc run-time tests. */
+    private static final int LONG_INPUT_LINES = 20_000;
+
+    /** What a long input may take; a heredoc opened behind each of 20 000 shifts took 209 s. */
+    private static final Duration LONG_INPUT_LIMIT = Duration.ofSeconds(10);
+
+    /** Repeats {@code line} {@value #LONG_INPUT_LINES} times behind a sub definition. */
+    private static String subThenLines(final String line) {
+        final StringBuilder source = new StringBuilder("sub f {\n}\n");
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            source.append(line).append('\n');
+        }
+        return source.toString();
+    }
 
     private static int count(final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(COUNTERS, source);
@@ -113,6 +130,60 @@ public class PerlFactPatternsTest {
     @Test
     public void subs_shiftOperator_isNoHeredoc() {
         assertThat(count("subs", "my $x = 1 << 3;\nsub after {\n}\nmy $y = $a<<2;\n"), is(1));
+    }
+
+    @Test
+    public void subs_shiftByAConstantAfterATerm_isNoHeredoc() {
+        // each shift would otherwise open a heredoc ending at the line "SHIFT", "FLAG", "BITS" or "X"
+        assertThat(
+                count(
+                        "subs",
+                        "my $x = $y <<SHIFT;\nmy $f = 1<<FLAG;\nmy $b = $a[0] <<BITS;\nmy $c = f() <<X;\n"
+                                + "sub a {}\nSHIFT\nFLAG\nBITS\nX\nsub b {}\n"),
+                is(2));
+    }
+
+    @Test
+    public void subs_heredocMarkerInsideAStringOrATrailingComment_opensNothing() {
+        assertThat(count("subs", "print \"cat <<EOF\\n\";\nsub a {}\nEOF\nsub b {}\n"), is(2));
+        assertThat(count("subs", "foo(); # print <<EOF\nsub a {}\nEOF\nsub b {}\n"), is(2));
+    }
+
+    @Test
+    public void subs_heredocToAFilehandleAndWithASpaceBeforeTheQuote_isBlanked() {
+        assertThat(
+                count(
+                        "subs",
+                        "print $fh <<EOT;\nsub no1 {}\nEOT\nprint {$fh} <<EOT;\nsub no2 {}\nEOT\n"
+                                + "my $t = << \"END\";\nsub no3 {}\nEND\nprint STDERR <<'X' . \"it's\"; # it's\nsub no4 {}\nX\n"
+                                + "sub real {}\n"),
+                is(1));
+    }
+
+    @Test
+    public void subs_unclosedHeredoc_isBlankedToTheEnd() {
+        // perl refuses the file ("Can't find string terminator"); the rest counts as the heredoc's body
+        assertThat(count("subs", "sub a {}\nprint <<EOF;\nsub b {}\n"), is(1));
+    }
+
+    @Test
+    public void ignore_manyShiftsByAConstant_stayLinear() {
+        final String source = subThenLines("my $x = $y <<SHIFT;");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", source)), is(1));
+    }
+
+    @Test
+    public void ignore_manyHeredocMarkersInStringsAndTrailingComments_stayLinear() {
+        final String strings = subThenLines("print \"cat <<EOF here\\n\";");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", strings)), is(1));
+        final String comments = subThenLines("foo(); # see <<EOF");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", comments)), is(1));
+    }
+
+    @Test
+    public void ignore_manyUnclosedHeredocs_stayLinear() {
+        final String source = subThenLines("print <<EOF;");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", source)), is(1));
     }
 
     @Test
