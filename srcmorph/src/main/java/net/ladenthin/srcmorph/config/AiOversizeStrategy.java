@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * What to do when a source file is larger than its routed model's context window.
  *
- * <p>Configured per routing rule via {@code <onOversize>} (a string, parsed by
+ * <p>Configured per routing rule via {@code onOversize} (a string, parsed by
  * {@link #fromConfig(String)}). The default is {@link #FAIL}: the build aborts and the user must route
  * oversized files to a larger-context model (no automatic model choice). The other strategies let a rule
  * deliberately handle oversized files:</p>
@@ -48,7 +48,7 @@ public enum AiOversizeStrategy {
     /** The strategy applied when none is configured. */
     public static final AiOversizeStrategy DEFAULT = FAIL;
 
-    /** The {@code <onOversize>} config token for this strategy. */
+    /** The {@code onOversize} config token for this strategy. */
     private final String configValue;
 
     AiOversizeStrategy(final String configValue) {
@@ -56,7 +56,7 @@ public enum AiOversizeStrategy {
     }
 
     /**
-     * Returns the {@code <onOversize>} config token (e.g. {@code "mapReduce"}).
+     * Returns the {@code onOversize} config token (e.g. {@code "mapReduce"}).
      *
      * @return the config token
      */
@@ -65,7 +65,7 @@ public enum AiOversizeStrategy {
     }
 
     /**
-     * Parses a {@code <onOversize>} config value (case-insensitive). {@code null} or blank yields
+     * Parses an {@code onOversize} config value (case-insensitive). {@code null} or blank yields
      * {@link #DEFAULT}.
      *
      * @param value the configured value, or {@code null}

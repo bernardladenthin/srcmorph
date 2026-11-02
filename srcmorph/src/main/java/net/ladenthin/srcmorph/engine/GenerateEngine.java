@@ -142,7 +142,8 @@ public final class GenerateEngine {
 
         final List<AiFieldGenerationConfig> configured = config.getFieldGenerations();
         if (configured == null || configured.isEmpty()) {
-            throw new SrcMorphException("No <fieldGenerations> configured for the generate goal.");
+            throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
+                    + " configuration file); nothing to generate.");
         }
         // the run resolves the facts keys into copies: the caller's rules stay as given, so check() and a
         // second execute() of the same configuration read them as the first did
@@ -203,21 +204,21 @@ public final class GenerateEngine {
         if (!plan.unmatched().isEmpty()) {
             throw new SrcMorphException(plan.unmatched().size()
                     + " source file(s) matched no rule and no fallback is configured; "
-                    + "add a <fallback> rule or a matching rule (see the plan above).");
+                    + "add a rule with fallback: true or a matching rule (see the plan above).");
         }
 
         // 3b. A file larger than its routed model's window would lose content if trimmed. By default
         //     (onOversize=fail) this is a hard failure: the fix is user configuration, never an
         //     automatic model choice — route oversized files to a larger-context model, or set the
-        //     rule's onOversize (sample/mapReduce/deterministic) to handle them at run time. Only the
-        //     fail entries abort here; the handled ones are processed during generation.
+        //     rule's onOversize (sample/mapReduce/sampleChunks/deterministic) to handle them at run time.
+        //     Only the fail entries abort here; the handled ones are processed during generation.
         final int overWindowFailCount = plan.windowFailCount();
         if (overWindowFailCount > 0) {
             throw new SrcMorphException(overWindowFailCount
                     + " source file(s) exceed their routed model's context window with onOversize=fail "
                     + "(see the 'Over window' section in the plan above). Route them to a model with a "
-                    + "large enough context window, or set onOversize=sample|mapReduce|deterministic on "
-                    + "the rule. The build does not pick a model for you; this is configuration only.");
+                    + "large enough context window, or set onOversize=sample|mapReduce|sampleChunks|deterministic"
+                    + " on the rule. The build does not pick a model for you; this is configuration only.");
         }
 
         // 3c. Two source files summarized into the same .ai.md (src/main/java/Foo.java and

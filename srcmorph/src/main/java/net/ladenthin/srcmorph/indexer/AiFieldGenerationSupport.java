@@ -302,7 +302,7 @@ public class AiFieldGenerationSupport {
         final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
         // Deterministic, whole-file "facts" (exact regex counts) are prepended to the body of EVERY
-        // file that configures <facts> - not just oversize ones - so downstream agents get exact
+        // file that configures facts - not just oversize ones - so downstream agents get exact
         // structural counts in the summary. Computed once here over the FULL source ("" when unset).
         final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
 
@@ -510,7 +510,7 @@ public class AiFieldGenerationSupport {
         final String sourceSizeKb = sourceText.length() < KIBIBYTES_DIVISOR
                 ? SIZE_BELOW_ONE_KIB_LABEL
                 : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
-        // Use the model's measured <calibration> when present, so the live per-file ETA matches the
+        // Use the model's measured calibration when present, so the live per-file ETA matches the
         // (already calibrated) plan ETA instead of the built-in reference-CPU model.
         final long estimatedSeconds = routeEstimator.estimateSeconds(processedSourceChars, generationConfig);
         LOGGER.info(

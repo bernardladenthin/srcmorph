@@ -159,7 +159,7 @@ public class ProjectIndexer {
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
         this.force = force;
-        // Defensive copy: the field generation is a mutable Maven JavaBean owned by the caller.
+        // Defensive copy: the field generation is a mutable configuration JavaBean owned by the caller.
         this.overviewFieldGeneration = copyFieldGeneration(overviewFieldGeneration);
         if (generationProvider != null
                 && overviewFieldGeneration != null

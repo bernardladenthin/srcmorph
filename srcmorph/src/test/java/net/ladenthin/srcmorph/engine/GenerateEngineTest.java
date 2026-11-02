@@ -100,7 +100,7 @@ public class GenerateEngineTest {
         config.setFieldGenerations(null);
 
         final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
-        assertThat(e.getMessage(), containsString("No <fieldGenerations> configured"));
+        assertThat(e.getMessage(), containsString("No fieldGenerations configured"));
     }
 
     @Test

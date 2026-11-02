@@ -331,7 +331,7 @@ public class Main {
 
     /**
      * The configuration one aggregation phase runs with: a copy of {@link CConfiguration#srcMorph} whose
-     * {@code fieldGenerations} are the phase's own rule, as a Maven plugin execution overrides them. The
+     * {@code fieldGenerations} are the phase's own rule, as the plugin's aggregate goals build theirs. The
      * file rules of {@code srcMorph} never reach a phase: the package phase takes exactly one rule and
      * fails without {@link CConfiguration#packageFieldGenerations}, the project phase writes its index
      * without an overview when {@link CConfiguration#projectFieldGenerations} is unset. The shared

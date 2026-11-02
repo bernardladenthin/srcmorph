@@ -9,13 +9,14 @@ import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One routing rule for the {@code generate} goal: a {@link #condition} that selects files, a
- * {@link #priority} to break ties when several rules match, and an action — route the matched files to
- * a {@code (promptKey, aiDefinitionKey)}, mark them {@link #skip skipped}, or act as the single explicit
- * {@link #fallback}.
+ * One routing rule of the configuration file's {@code fieldGenerations}: a {@link #condition} that
+ * selects files, a {@link #priority} to break ties when several rules match, and an action — route the
+ * matched files to a {@code (promptKey, aiDefinitionKey)}, mark them {@link #skip skipped}, or act as
+ * the single explicit {@link #fallback}. The package and project phases take one rule of the same
+ * shape from {@code packageFieldGenerations} / {@code projectFieldGenerations}.
  *
- * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters because the Maven
- * plugin framework populates it via reflection.</p>
+ * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters because the
+ * configuration file is bound through them.</p>
  *
  * @see AiFieldGenerationSelector
  * @see AiCondition
@@ -39,7 +40,7 @@ public class AiFieldGenerationConfig {
     private String promptKey;
 
     /**
-     * Key that references an {@link AiModelDefinition} registered in the {@code <aiDefinitions>} list;
+     * Key that references an {@link AiModelDefinition} registered in the {@code aiDefinitions} list;
      * that definition supplies all AI generation parameters (model path, context size, sampling, …).
      */
     private String aiDefinitionKey;
@@ -57,7 +58,8 @@ public class AiFieldGenerationConfig {
     /**
      * Selection priority. When several rules match the same file, the highest priority wins; ties are
      * broken by declaration order (the earlier rule wins). Default {@code 0}. Lets a specific rule
-     * (e.g. a high-priority {@link #skip}) override a more general one regardless of XML order.
+     * (e.g. a high-priority {@link #skip}) override a more general one regardless of the order in the
+     * configuration file.
      */
     private int priority;
 
@@ -88,8 +90,9 @@ public class AiFieldGenerationConfig {
 
     /**
      * What to do when the model's answer is no summary (empty, cut off at the output budget, or no answer
-     * at all): {@code fail} (default; the file is counted as failed and the run fails at its end) or
-     * {@code retryOnce} (ask once more first). Such an answer is never written. Parsed by
+     * at all): {@code fail} (default; the file is counted as failed and the run fails at its end),
+     * {@code retryOnce} (ask once more first) or {@code keep} (write an answer cut off at the output budget
+     * as it is, when it has text). Any other such answer is never written. Parsed by
      * {@link AiIncompleteStrategy#fromConfig(String)}.
      */
     private @Nullable String onIncomplete;
@@ -116,7 +119,7 @@ public class AiFieldGenerationConfig {
     private @Nullable String reducePromptKey;
 
     /**
-     * Optional deterministic "fact" counters ({@code <facts>}). When set, each counter's
+     * Optional deterministic "fact" counters ({@code facts}). When set, each counter's
      * {@code label: <match count over the whole file>} is prepended to the generated body of <em>every</em>
      * file this rule matches (oversize or not) — exact, language-agnostic structural counts (e.g. SQL
      * {@code INSERT} rows / tables / views, Java types / {@code boolean} fields) that give downstream
@@ -126,11 +129,11 @@ public class AiFieldGenerationConfig {
     private @Nullable List<AiFactCounter> facts;
 
     /**
-     * Optional reference to a shared {@code <factDefinitions>} group by its key ({@code <factsKey>}),
-     * instead of repeating an inline {@link #facts} block. Resolved before indexing by
-     * {@link AiFactDefinitionSupport#resolveFactsKeys(Iterable)}, which copies the referenced counters
-     * onto {@link #facts} (overwriting any inline value). {@code null} = use the inline {@code <facts>}
-     * (or none).
+     * Optional reference to a shared {@code factDefinitions} group by its key ({@code factsKey}), or to
+     * the file {@code <profileDirectory>/<key>.tsv}, instead of repeating an inline {@link #facts} list.
+     * Resolved before indexing by {@link AiFactDefinitionSupport#resolveFactsKeys(Iterable)}, which copies
+     * the referenced counters onto {@link #facts}; a rule that sets both fails. {@code null} = use the
+     * inline {@code facts} (or none).
      */
     private @Nullable String factsKey;
 
@@ -270,7 +273,8 @@ public class AiFieldGenerationConfig {
     }
 
     /**
-     * Sets the {@code onOversize} config token (one of {@code fail}/{@code sample}/{@code mapReduce}/{@code deterministic}).
+     * Sets the {@code onOversize} config token (one of {@code fail}/{@code sample}/{@code mapReduce}/
+     * {@code sampleChunks}/{@code deterministic}).
      *
      * @param onOversize the oversize-strategy token
      */
@@ -299,7 +303,7 @@ public class AiFieldGenerationConfig {
     }
 
     /**
-     * Sets the {@code onIncomplete} config token ({@code fail} or {@code retryOnce}).
+     * Sets the {@code onIncomplete} config token (one of {@code fail}/{@code retryOnce}/{@code keep}).
      *
      * @param onIncomplete the incomplete-answer strategy token
      */
@@ -319,18 +323,20 @@ public class AiFieldGenerationConfig {
     }
 
     /**
-     * Returns the map-reduce chunk cap ({@code 0} = unbounded).
+     * Returns how many chunks {@code sampleChunks} reads. Above {@code 0} for {@code sampleChunks}, which
+     * requires it; {@code 0} (unset) for every other strategy ({@code mapReduce} reads every chunk).
      *
-     * @return the maximum number of chunks
+     * @return the number of chunks {@code sampleChunks} reads, or {@code 0}
      */
     public int getMaxChunks() {
         return maxChunks;
     }
 
     /**
-     * Sets the map-reduce chunk cap ({@code 0} = unbounded).
+     * Sets how many chunks {@code sampleChunks} reads. Required above {@code 0} with {@code sampleChunks};
+     * a positive value with another strategy fails the rule set.
      *
-     * @param maxChunks the maximum number of chunks
+     * @param maxChunks the number of chunks {@code sampleChunks} reads, or {@code 0}
      */
     public void setMaxChunks(final int maxChunks) {
         this.maxChunks = maxChunks;

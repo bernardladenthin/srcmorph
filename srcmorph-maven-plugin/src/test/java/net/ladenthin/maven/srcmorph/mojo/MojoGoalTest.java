@@ -67,7 +67,7 @@ public class MojoGoalTest {
 
         final MojoExecutionException thrown = assertThrows(MojoExecutionException.class, this::generate);
 
-        assertThat(thrown.getMessage(), containsString("No <fieldGenerations> configured"));
+        assertThat(thrown.getMessage(), containsString("No fieldGenerations configured"));
     }
     // </editor-fold>
 

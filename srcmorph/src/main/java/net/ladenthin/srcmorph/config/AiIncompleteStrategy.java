@@ -9,7 +9,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * What a rule does when the model's answer is no summary: empty, cut off at the output budget, or a
- * response without an answer. Configured per rule as {@code <onIncomplete>}. An incomplete answer is
+ * response without an answer. Configured per rule as {@code onIncomplete}. An incomplete answer is
  * not written (only {@link #KEEP} writes a cut-off answer that has text): the file keeps its older
  * summary, or none, the run counts it and fails at its end, and the next run tries it again.
  */
@@ -37,7 +37,7 @@ public enum AiIncompleteStrategy {
     }
 
     /**
-     * Returns the {@code <onIncomplete>} config token (e.g. {@code "retryOnce"}).
+     * Returns the {@code onIncomplete} config token (e.g. {@code "retryOnce"}).
      *
      * @return the config token
      */
@@ -55,7 +55,7 @@ public enum AiIncompleteStrategy {
     }
 
     /**
-     * Parses a {@code <onIncomplete>} config value (case-insensitive). {@code null} or blank yields
+     * Parses an {@code onIncomplete} config value (case-insensitive). {@code null} or blank yields
      * {@link #DEFAULT}.
      *
      * @param value the configured value, or {@code null}

@@ -17,22 +17,20 @@ import org.jspecify.annotations.Nullable;
  * Resolves {@link AiModelDefinition} entries by their key, returning the corresponding
  * {@link AiGenerationConfig}.
  *
- * <p>Built from the {@code <aiDefinitions>} list in the plugin configuration, this
+ * <p>Built from the {@code aiDefinitions} list of the configuration file, this
  * support class acts as a lookup table that converts each {@link AiModelDefinition} into
- * a ready-to-use {@link AiGenerationConfig} object. Field-generation entries and mojos
+ * a ready-to-use {@link AiGenerationConfig} object. Routing rules and engines
  * reference definitions by their string key rather than embedding the full parameter
  * set inline.</p>
  *
  * <p>Every entry in the supplied list must have a non-null {@code key}; a null key
  * throws {@link NullPointerException} naming the list index and dumping the offending
- * entry. This is the contract enforcement boundary that makes misconfigured POM
- * {@code <aiDefinitions>} fail at build configuration time rather than silently
+ * entry. This is the contract enforcement boundary that makes a misconfigured
+ * {@code aiDefinitions} list fail before the run starts rather than silently
  * dropping the entry and surfacing later as a "Missing AI model definition" failure
- * deeper in the goal. Callers (e.g. the llamacpp-ai-index-maven-plugin module's Mojos) wrap
- * construction in {@link NullPointerException}
- * &rarr; {@code org.apache.maven.plugin.MojoExecutionException} so the Maven
- * framework reports it as a user configuration error rather than a plugin bug. This library
- * itself has no Maven dependency, so that type is referenced here only in prose.</p>
+ * deeper in the run. The engines wrap that {@link NullPointerException} in
+ * {@code net.ladenthin.srcmorph.engine.SrcMorphException}, so the CLI and the plugin report
+ * it as a configuration error rather than a bug.</p>
  *
  * <p>Lookups for missing keys throw {@link IllegalArgumentException} so that
  * configuration errors are detected eagerly at runtime.</p>

@@ -151,7 +151,7 @@ public class EngineSupportTest {
 
         final SrcMorphException e = assertThrows(
                 SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(bad), null, null));
-        assertThat(e.getMessage(), containsString("Invalid plugin configuration:"));
+        assertThat(e.getMessage(), containsString("Invalid configuration:"));
     }
 
     @Test
@@ -197,7 +197,7 @@ public class EngineSupportTest {
                 SrcMorphException.class,
                 () -> EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile(), null));
 
-        assertThat(e.getMessage(), containsString("Invalid plugin configuration: promptDefinitions[0]"));
+        assertThat(e.getMessage(), containsString("Invalid configuration: promptDefinitions[0]"));
         assertThat(e.getMessage(), containsString("missing.md cannot be read"));
     }
 
@@ -241,7 +241,7 @@ public class EngineSupportTest {
 
         final SrcMorphException e = assertThrows(
                 SrcMorphException.class, () -> EngineSupport.buildAiModelDefinitionSupport(Arrays.asList(bad), null));
-        assertThat(e.getMessage(), containsString("Invalid plugin configuration:"));
+        assertThat(e.getMessage(), containsString("Invalid configuration:"));
     }
     // </editor-fold>
 
@@ -329,7 +329,7 @@ public class EngineSupportTest {
     }
 
     @Test
-    public void requiredPhaseRule_noneOrTwo_isRefusedNamingThePhaseAndTheCliKey() {
+    public void requiredPhaseRule_noneOrTwo_isRefusedNamingThePhaseAndItsKey() {
         for (final List<AiFieldGenerationConfig> rules : Arrays.asList(
                 null,
                 Collections.<AiFieldGenerationConfig>emptyList(),
@@ -339,7 +339,7 @@ public class EngineSupportTest {
                     () -> EngineSupport.requiredPhaseRule("aggregate-packages", "packageFieldGenerations", rules));
 
             assertThat(thrown.getMessage(), containsString("aggregate-packages takes exactly one rule"));
-            assertThat(thrown.getMessage(), containsString("packageFieldGenerations in the CLI"));
+            assertThat(thrown.getMessage(), containsString("packageFieldGenerations in the configuration file"));
             assertThat(thrown.getMessage(), containsString((rules == null ? 0 : rules.size()) + " given"));
         }
     }

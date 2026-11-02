@@ -9,7 +9,7 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
 
 /**
  * The result of one model's calibration measurement (see {@link AiCalibrationRunner}): the load time and
- * the measured near-window throughput that becomes the model's {@code <calibration>}, plus the mid-window
+ * the measured near-window throughput that becomes the model's {@code calibration}, plus the mid-window
  * prefill rate for a curvature hint and the near-window run's KV-cache hit count.
  *
  * <p>Record-shaped value type marked {@link ConvertToRecord} for the future Java&nbsp;17+ migration.</p>

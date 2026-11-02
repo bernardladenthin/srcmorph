@@ -4,14 +4,17 @@
 package net.ladenthin.srcmorph.engine;
 
 /**
- * Checked exception thrown by the {@code engine} package for a run that fails because of misconfiguration
- * (an invalid rule set, an unmatched file with no fallback, an oversized file with {@code onOversize=fail},
- * a bad prompt/model definition, …) rather than an I/O failure.
+ * Checked exception thrown by the {@code engine} package when a run fails with a message for the user,
+ * not a stack trace. Mostly misconfiguration, found before any model is loaded (an invalid rule set, an
+ * unmatched file with no fallback, an oversized file with {@code onOversize=fail}, a bad prompt, fact or
+ * model definition, a missing model file); a prompt or facts file that cannot be read is reported here
+ * too. It also ends a run that went wrong on the way: files left unwritten after an incomplete answer or
+ * a failed request, a model that fails to load or generate during calibration, a calibration report
+ * that cannot be written, a server whose models cannot be listed.
  *
- * <p>This is the framework-free replacement for {@code org.apache.maven.plugin.MojoExecutionException}
- * inside core code: the {@code llamacpp-ai-index-maven-plugin} module's mojos catch this (alongside a
- * plain {@link java.io.IOException} for genuine I/O failures) and rewrap it into a
- * {@code MojoExecutionException} so Maven still reports the same user-facing error it always has.</p>
+ * <p>Walking the source tree and reading or writing the index files fail with a plain
+ * {@link java.io.IOException} instead. The plugin's mojos rewrap both into a
+ * {@code MojoExecutionException}; the CLI's {@code Main} into an {@link IllegalStateException}.</p>
  */
 public class SrcMorphException extends Exception {
 

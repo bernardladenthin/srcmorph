@@ -12,7 +12,7 @@ import lombok.ToString;
  * therefore written as {@code range2.min == range1.max} (a value exactly on the boundary belongs to the
  * lower range).
  *
- * <p>Mutable JavaBean so the Maven plugin framework can populate {@code <min>}/{@code <max>}.</p>
+ * <p>Mutable JavaBean so the configuration file can set {@code min}/{@code max} through the setters.</p>
  */
 @ToString
 public class AiRangeCondition {

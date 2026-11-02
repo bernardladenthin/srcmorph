@@ -15,18 +15,17 @@ import org.jspecify.annotations.Nullable;
 /**
  * Resolves reusable {@link AiFactDefinition} groups by key and applies them to routing rules.
  *
- * <p>Built from the goal's {@code <factDefinitions>} list, this is the fact-set equivalent of
- * {@code AiModelDefinitionSupport}: a rule references a shared fact group via
- * {@link AiFieldGenerationConfig#getFactsKey() factsKey} instead of repeating the same {@code <facts>}
- * block inline. {@link #resolveFactsKeys(Iterable)} copies the referenced group's counters onto each
+ * <p>Built from the {@code factDefinitions} list of the configuration file, this is the fact-set
+ * equivalent of {@code AiModelDefinitionSupport}: a rule references a shared fact group via
+ * {@link AiFieldGenerationConfig#getFactsKey() factsKey} instead of repeating the same {@code facts}
+ * list inline. {@link #resolveFactsKeys(Iterable)} copies the referenced group's counters onto each
  * rule (setting {@link AiFieldGenerationConfig#setFacts(List)}) so the rest of the pipeline reads the
  * already-resolved {@code getFacts()} uniformly, whether the counters were inline or shared.</p>
  *
  * <p>Every entry must have a non-null {@code key} (a null key throws {@link NullPointerException} naming
- * the index); a {@code factsKey} that matches no group throws {@link IllegalArgumentException}. Callers
- * (e.g. the llamacpp-ai-index-maven-plugin module's Mojos) wrap these in
- * {@code org.apache.maven.plugin.MojoExecutionException} so a misconfigured POM fails fast as a user
- * error. This library itself has no Maven dependency, so that type is referenced here only in prose.</p>
+ * the index); a {@code factsKey} that matches no group throws {@link IllegalArgumentException}. The
+ * engines wrap these in {@code net.ladenthin.srcmorph.engine.SrcMorphException}, so a misconfigured
+ * configuration file fails fast as a configuration error before any model is loaded.</p>
  *
  * @see AiFactDefinition
  * @see AiFieldGenerationConfig#getFactsKey()
@@ -62,7 +61,7 @@ public final class AiFactDefinitionSupport {
                     () -> "factDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
             final List<AiFactCounter> facts = definition.getFacts();
             // Normalize a group that declared no counters to an empty list, so the map value is never null
-            // (a group that references no facts is a no-op, same as an empty <facts>).
+            // (a group that references no facts is a no-op, same as an empty facts list).
             factsByKey.put(definition.getKey(), facts != null ? facts : Collections.emptyList());
         }
     }
@@ -84,11 +83,12 @@ public final class AiFactDefinitionSupport {
 
     /**
      * Resolves each rule's {@link AiFieldGenerationConfig#getFactsKey() factsKey} to the referenced shared
-     * counters, overwriting the rule's inline {@code facts}. Rules without a {@code factsKey} are left
-     * untouched (their inline {@code <facts>}, if any, stand).
+     * counters, set as the rule's {@code facts}. Rules without a {@code factsKey} are left untouched
+     * (their inline {@code facts}, if any, stand).
      *
      * @param rules the routing rules to resolve in place; {@code null} entries are skipped
-     * @throws IllegalArgumentException if a rule's {@code factsKey} matches no registered group
+     * @throws IllegalArgumentException if a rule's {@code factsKey} matches no registered group, or a rule
+     *                                  sets both inline {@code facts} and a {@code factsKey}
      */
     public void resolveFactsKeys(final Iterable<AiFieldGenerationConfig> rules) {
         for (final AiFieldGenerationConfig rule : rules) {

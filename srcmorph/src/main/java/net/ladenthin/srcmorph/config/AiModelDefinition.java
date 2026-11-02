@@ -11,11 +11,11 @@ import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Maven plugin configuration POJO that pairs a lookup key with a complete set of
+ * Configuration POJO that pairs a lookup key with a complete set of
  * AI model parameters.
  *
- * <p>Instances are registered in the {@code <aiDefinitions>} list of the plugin
- * configuration and referenced by their {@link #key} from
+ * <p>Instances are registered in the {@code aiDefinitions} list of the configuration
+ * file and referenced by their {@link #key} from
  * {@link AiFieldGenerationConfig#aiDefinitionKey}. This allows a single model configuration
  * to be defined once and reused across multiple field-generation entries and goals.</p>
  *
@@ -23,8 +23,7 @@ import org.jspecify.annotations.Nullable;
  * a minimal definition only needs to supply a {@link #key} and a {@link #modelPath}.</p>
  *
  * <p><strong>Note:</strong> This class must remain a mutable JavaBean with setters because
- * Maven's plugin framework instantiates configuration objects via reflection and injects
- * values through setters.</p>
+ * the configuration file is bound through them.</p>
  *
  * @see AiModelDefinitionSupport
  * @see AiGenerationConfig

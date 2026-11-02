@@ -141,7 +141,7 @@ final class EngineSupport {
         try {
             return new AiPromptSupport(new AiPromptTemplateLoader(profileDirectory).load(promptDefinitions, usedKeys));
         } catch (final NullPointerException | IllegalArgumentException | IOException e) {
-            throw new SrcMorphException("Invalid plugin configuration: " + e.getMessage(), e);
+            throw new SrcMorphException("Invalid configuration: " + e.getMessage(), e);
         }
     }
 
@@ -161,7 +161,7 @@ final class EngineSupport {
         try {
             return new AiModelDefinitionSupport(aiDefinitions, modelDirectory);
         } catch (final NullPointerException e) {
-            throw new SrcMorphException("Invalid plugin configuration: " + e.getMessage(), e);
+            throw new SrcMorphException("Invalid configuration: " + e.getMessage(), e);
         }
     }
 
@@ -170,7 +170,7 @@ final class EngineSupport {
      * flag means nothing here, with no files to route.
      *
      * @param phase            the goal, named in the error
-     * @param cliKey           the CLI's key for the phase's rules, named in the error
+     * @param cliKey           the configuration file's key for the phase's rules, named in the error
      * @param fieldGenerations the phase's rules
      * @return the rule
      * @throws SrcMorphException if not exactly one rule is given, or it names no prompt or no model
@@ -186,7 +186,7 @@ final class EngineSupport {
      * overview) or with one.
      *
      * @param phase            the goal, named in the error
-     * @param cliKey           the CLI's key for the phase's rules, named in the error
+     * @param cliKey           the configuration file's key for the phase's rules, named in the error
      * @param fieldGenerations the phase's rules
      * @return the rule, or {@code null} when none is given
      * @throws SrcMorphException if more than one rule is given, or it names no prompt or no model
@@ -208,8 +208,8 @@ final class EngineSupport {
             throws SrcMorphException {
         if (fieldGenerations == null || fieldGenerations.size() != 1) {
             throw new SrcMorphException(phase + " takes " + takes + " (its prompt and model), "
-                    + (fieldGenerations == null ? 0 : fieldGenerations.size()) + " given; give the phase its own: the"
-                    + " fieldGenerations of its plugin execution, " + cliKey + " in the CLI");
+                    + (fieldGenerations == null ? 0 : fieldGenerations.size()) + " given; give the phase its own: "
+                    + cliKey + " in the configuration file");
         }
         final AiFieldGenerationConfig rule = fieldGenerations.get(0);
         if (rule == null || isBlank(rule.getPromptKey()) || isBlank(rule.getAiDefinitionKey())) {
@@ -282,13 +282,13 @@ final class EngineSupport {
     }
 
     /**
-     * Fails the run when a routed {@code <aiDefinition>}'s model file does not exist.
+     * Fails the run when the model file of a routed {@code aiDefinitions} entry does not exist.
      *
-     * <p>Without this, a typo in a {@code <modelPath>} survives the entire plan phase — the walk, the
+     * <p>Without this, a typo in a {@code modelPath} survives the entire plan phase — the walk, the
      * classification, the rendered plan — and only dies inside the native loader. With several model
      * groups that happens <em>after</em> the earlier groups have already generated, so the failure can
      * arrive an hour into a run for a mistake that was visible before it started. This joins the other
-     * fail-fast checks the engines already run (missing {@code <fieldGenerations>}, rule-set
+     * fail-fast checks the engines already run (missing {@code fieldGenerations}, rule-set
      * validation, unmatched files, over-window files).
      *
      * <p><strong>Gated on the provider on purpose.</strong> Only {@code llamacpp-jni} loads a GGUF;
@@ -300,7 +300,7 @@ final class EngineSupport {
      * in a {@code llamacpp-jni} run, and instead must name an {@code http(s)} {@code baseUrl}.
      *
      * @param generationProvider     the configured provider key
-     * @param modelDefinitionSupport model lookup built from the configured {@code <aiDefinitions>}
+     * @param modelDefinitionSupport model lookup built from the configured {@code aiDefinitions}
      * @param fieldGenerations       the routing rules, already validated
      * @throws SrcMorphException if a routed model's file is missing or its path is unset
      */
@@ -337,11 +337,11 @@ final class EngineSupport {
     }
 
     /**
-     * Fails when a rule names a model no {@code <aiDefinition>} defines, naming the rule and the key; the
-     * lookup itself would end the run with an {@link IllegalArgumentException} the surfaces do not
+     * Fails when a rule names a model no {@code aiDefinitions} entry defines, naming the rule and the key;
+     * the lookup itself would end the run with an {@link IllegalArgumentException} the surfaces do not
      * report as a configuration error.
      *
-     * @param modelDefinitionSupport model lookup built from the configured {@code <aiDefinitions>}
+     * @param modelDefinitionSupport model lookup built from the configured {@code aiDefinitions}
      * @param fieldGenerations       the rules
      * @throws SrcMorphException if a rule (other than a skip rule) names an undefined model
      */

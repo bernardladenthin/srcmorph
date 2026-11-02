@@ -35,7 +35,7 @@ public final class AggregatePackagesEngine {
     /** The goal, named in a configuration error. */
     private static final String PHASE = "aggregate-packages";
 
-    /** The CLI's key for the phase's rule, named in a configuration error. */
+    /** The configuration file's key for the phase's rule, named in a configuration error. */
     private static final String CLI_KEY = "packageFieldGenerations";
 
     private final SrcMorphConfiguration config;

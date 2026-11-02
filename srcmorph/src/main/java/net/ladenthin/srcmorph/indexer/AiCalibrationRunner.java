@@ -17,7 +17,7 @@ import net.ladenthin.srcmorph.provider.AiGenerationTimings;
  * Measures one model's per-machine timing for the {@code srcmorph:calibrate} goal: it triggers the load,
  * runs two representative generations (mid- and near-window sized), and reads the model's own measured
  * prefill/decode throughput. Lives in the indexer layer because it builds requests and drives the
- * provider; the mojo stays thin (orchestrate + format).
+ * provider; {@code engine.CalibrateEngine} stays thin (orchestrate + format).
  */
 public final class AiCalibrationRunner {
 
