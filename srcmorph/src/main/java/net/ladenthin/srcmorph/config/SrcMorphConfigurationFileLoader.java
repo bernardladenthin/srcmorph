@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Reads a srcmorph configuration file, the same way for the CLI and the Maven plugin.
@@ -32,7 +33,9 @@ import java.util.regex.Pattern;
  *       {@code .yml} YAML, in any case.</li>
  *   <li>A {@code ${name}} in a value is replaced by the property {@code name} when the caller knows one
  *       (the plugin: the Maven user, project and system properties, so {@code -Dai.gpuLayers=12}
- *       reaches the file); an unknown one stays as it is. It is replaced after parsing, in the parsed
+ *       reaches the file); an unknown one stays as it is, except in a directory, the run record file or a
+ *       subtree, where it fails the load instead of naming a directory {@code ${name}}. It is replaced
+ *       after parsing, in the parsed
  *       values, so a value with backslashes or quotes (a Windows path) needs no escaping, and a number
  *       written as {@code ${name}} binds as the number it becomes.</li>
  *   <li>The values bind strictly: an unknown key fails, naming it.</li>
@@ -67,6 +70,18 @@ public final class SrcMorphConfigurationFileLoader {
 
     /** The key of the output directory in the run configuration. */
     private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
+
+    /** The key of the model directory in the run configuration. */
+    private static final String MODEL_DIRECTORY_KEY = "modelDirectory";
+
+    /** The key of the profile directory in the run configuration. */
+    private static final String PROFILE_DIRECTORY_KEY = "profileDirectory";
+
+    /** The key of the run record file in the run configuration. */
+    private static final String RUN_RECORD_FILE_KEY = "runRecordFile";
+
+    /** The key of the subtrees in the run configuration. */
+    private static final String SUBTREES_KEY = "subtrees";
 
     /** A property reference: {@code ${name}}. */
     private static final Pattern PROPERTY_REFERENCE = Pattern.compile("\\$\\{([^}]+)}");
@@ -120,7 +135,8 @@ public final class SrcMorphConfigurationFileLoader {
      * @return the content, its paths resolved
      * @throws IOException              if the file cannot be read, or its content does not bind (an
      *                                  unknown key, a wrong type), naming the place
-     * @throws IllegalArgumentException if the file's extension is none of the four
+     * @throws IllegalArgumentException if the file's extension is none of the four, or a path names a
+     *                                  {@code ${name}} that no property sets
      */
     public static SrcMorphConfigurationFile load(
             final Path file, final File defaultBaseDirectory, final Map<String, String> properties) throws IOException {
@@ -131,6 +147,7 @@ public final class SrcMorphConfigurationFileLoader {
         final SrcMorphConfigurationFile bound =
                 tree == null ? null : mapper.treeToValue(tree, SrcMorphConfigurationFile.class);
         final SrcMorphConfigurationFile content = bound != null ? bound : new SrcMorphConfigurationFile();
+        requireReplaced(content.getSrcMorph());
         final Path parent = file.toAbsolutePath().normalize().getParent();
         final File directory = parent != null ? parent.toFile() : defaultBaseDirectory;
         final JsonNode srcMorph = tree == null ? null : tree.get(SRC_MORPH_KEY);
@@ -205,6 +222,39 @@ public final class SrcMorphConfigurationFileLoader {
         }
         matcher.appendTail(result);
         return result.toString();
+    }
+
+    /**
+     * Fails when a path of the run configuration still holds a {@code ${name}} that no property replaced:
+     * the run would create or read a directory of that name.
+     *
+     * @param srcMorph the run configuration, its properties replaced
+     * @throws IllegalArgumentException naming the key and the reference
+     */
+    static void requireReplaced(final SrcMorphConfiguration srcMorph) {
+        requireReplaced(BASE_DIRECTORY_KEY, srcMorph.getBaseDirectory());
+        requireReplaced(OUTPUT_DIRECTORY_KEY, srcMorph.getOutputDirectory());
+        requireReplaced(MODEL_DIRECTORY_KEY, srcMorph.getModelDirectory());
+        requireReplaced(PROFILE_DIRECTORY_KEY, srcMorph.getProfileDirectory());
+        requireReplaced(RUN_RECORD_FILE_KEY, srcMorph.getRunRecordFile());
+        final List<String> subtrees = srcMorph.getSubtrees();
+        if (subtrees != null) {
+            for (final String subtree : subtrees) {
+                requireReplaced(SUBTREES_KEY, subtree);
+            }
+        }
+    }
+
+    private static void requireReplaced(final String key, final @Nullable Object value) {
+        if (value == null) {
+            return;
+        }
+        final Matcher matcher = PROPERTY_REFERENCE.matcher(value.toString());
+        if (matcher.find()) {
+            throw new IllegalArgumentException(SRC_MORPH_KEY + "." + key + " names " + matcher.group()
+                    + ", which no property sets (" + value + "); set it (-D" + matcher.group(1)
+                    + "=...) or write the path");
+        }
     }
 
     private static ObjectMapper mapperFor(final Path file) {

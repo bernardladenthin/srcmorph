@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import net.ladenthin.srcmorph.config.AiFactDefinitionLoader;
 import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
@@ -51,11 +52,12 @@ final class EngineSupport {
 
     /**
      * Resolves the configured subtree strings against {@code basePath}. Used by {@link GenerateEngine} and
-     * {@link AggregatePackagesEngine}.
+     * {@link AggregatePackagesEngine}. A subtree that another one holds, or that is listed twice, is walked
+     * by that one already and is left out, so no file is collected twice.
      *
      * @param basePath absolute, normalised project base directory
      * @param subtrees configured subtree strings, or {@code null}/empty for none
-     * @return list of resolved subtree paths; empty if none are configured
+     * @return list of resolved subtree paths, none inside another; empty if none are configured
      * @throws SrcMorphException if a subtree does not exist, or lies outside {@code basePath} (another
      *                           drive included), where its output would leave the output directory
      */
@@ -76,10 +78,33 @@ final class EngineSupport {
             if (!path.toFile().isDirectory()) {
                 throw new SrcMorphException("Subtree '" + subtree + "' does not exist: " + path);
             }
-            resolved.add(path);
+            addOutermost(resolved, path);
         }
 
         return resolved;
+    }
+
+    /**
+     * Adds a subtree unless one already added holds it, and drops those it holds.
+     *
+     * @param resolved the subtrees so far, changed in place
+     * @param path     the subtree to add
+     */
+    private static void addOutermost(final List<Path> resolved, final Path path) {
+        for (final Path other : resolved) {
+            if (path.startsWith(other)) {
+                LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", path, other);
+                return;
+            }
+        }
+        for (final Iterator<Path> iterator = resolved.iterator(); iterator.hasNext(); ) {
+            final Path other = iterator.next();
+            if (other.startsWith(path)) {
+                LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", other, path);
+                iterator.remove();
+            }
+        }
+        resolved.add(path);
     }
 
     /**

@@ -13,8 +13,8 @@ import org.apache.maven.plugin.logging.SystemStreamLog;
  *
  * <p>Extends {@link SystemStreamLog} rather than implementing the ~20-method {@code Log} interface
  * by hand; this module has no mocking framework on the test classpath. Shared by
- * {@code MojoPhaseSkipTest} (which asserts the skip message) and
- * {@code MojoGoalTest} (which asserts the calibrate report).</p>
+ * {@code MojoPhaseSkipTest} (which asserts the skip message), {@code MojoGoalTest} (which asserts the
+ * calibrate report) and {@code AbstractAiIndexMojoTest} (which asserts a resource directory left out).</p>
  */
 final class CapturingLog extends SystemStreamLog {
 

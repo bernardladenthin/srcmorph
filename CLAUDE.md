@@ -255,8 +255,10 @@ themselves (five goals, `RuleSection`).
   for models, rules, prompts or paths. `AbstractAiIndexMojo.buildConfiguration(RuleSection)` reads the
   file with the core's loader and fills what it leaves unset from Maven: `baseDirectory`
   (`${project.basedir}`), `subtrees` (the source directory and the resource directories that exist
-  below the base), `projectName`, `pluginVersion`; `${name}` in the file is a Maven property (user
-  over project over system), which is how the self-test's `-Dai.*` reach `srcmorph-selftest.yaml`.
+  below the base; a resource directory that holds the source directory is left out), `projectName`,
+  `pluginVersion`; `${name}` in the file is a Maven property (user over project properties over the
+  project's own values such as `project.basedir` over system), which is how the self-test's `-Dai.*`
+  reach `srcmorph-selftest.yaml`.
   `RuleSection` picks the goal's rules: `FILES` (`generate`, `calibrate`), `PACKAGE`
   (`aggregate-packages`), `PROJECT` (`aggregate-project`); `CheckMojo` (`srcmorph:check`) checks all
   three. The remaining parameters are run switches the file cannot see: `srcmorph.force` and

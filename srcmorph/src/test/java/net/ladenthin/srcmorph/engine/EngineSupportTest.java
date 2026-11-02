@@ -98,6 +98,19 @@ public class EngineSupportTest {
     }
 
     @Test
+    public void resolveSubtrees_aSubtreeInsideAnotherOrTwice_isLeftOut() throws IOException, SrcMorphException {
+        // without this, every file below src/main/java would be collected twice and fail the run
+        for (final String directory : new String[] {"src/main/java", "src/test", "lib"}) {
+            Files.createDirectories(tempDir.resolve(directory));
+        }
+
+        final List<Path> resolved =
+                EngineSupport.resolveSubtrees(tempDir, Arrays.asList("src/main/java", "src", "lib", "src/test", "lib"));
+
+        assertThat(resolved, is(Arrays.asList(tempDir.resolve("src"), tempDir.resolve("lib"))));
+    }
+
+    @Test
     public void resolveSubtrees_missingSubtree_isRefused() {
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class, () -> EngineSupport.resolveSubtrees(tempDir, Arrays.asList("does-not-exist")));

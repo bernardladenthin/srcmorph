@@ -100,11 +100,6 @@ Unreleased) except:
 - CodeQL #271 and #272 have nothing to point at any more (`Retry-After` is read digit by digit,
   `RunRecord` has no value equality); the alerts close with the next analysis or are dismissed by the
   owner.
-- Overlapping or nested subtrees (the plugin adds every existing resource directory, e.g.
-  `<directory>${project.basedir}</directory>`) collect files twice, and the run fails with "X and X
-  would both be summarized"; deduplicate subtrees and candidates by their real path.
-- The plugin's property map has no `${project.*}` (`project.basedir`, `project.build.directory`,
-  `project.version`); an unknown `${x}` stays literal and becomes a directory name.
 - `[ignore]` blanking deletes the region instead of replacing it with spaces, so `FROM t/* x */JOIN u`
   counts no `JOIN`.
 - Javadoc and messages that still describe the removed XML (`EngineSupport`, `GenerateEngine`,

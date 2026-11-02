@@ -420,6 +420,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Fixed
 
+- **The plugin knows `${project.basedir}` and the other project values.** A `${name}` in the
+  configuration file was a user, project or system property only, so `${project.basedir}` stayed as
+  it was and became a directory of that name. `basedir`, `project.basedir`, `project.build.directory`,
+  `project.build.sourceDirectory`, `project.groupId`, `project.artifactId`, `project.version` and
+  `project.name` are known now, and a `${name}` that no property sets fails the load when it stands in
+  a directory, `runRecordFile` or a subtree (CLI and plugin alike).
+- **Nested subtrees no longer fail the run.** A subtree inside another one, or listed twice, collected
+  its files twice, and the run failed with "X and X would both be summarized"; it is left out now, and
+  every file is collected once. The plugin no longer takes a resource directory that holds the source
+  directory (a POM that packs files of the project directory itself) as a subtree: it would index the
+  whole project, build output included.
 - **What 1.3.0 wrote from an incomplete answer is written again.** 1.3.0 wrote the facts line alone
   for an empty or cut-off file answer, and a project index without its `#### Overview` for an empty
   overview answer, under the checksum of a complete one, so no later run touched them. A summary
