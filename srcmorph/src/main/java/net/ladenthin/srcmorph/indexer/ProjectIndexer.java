@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -174,9 +173,11 @@ public class ProjectIndexer {
     }
 
     /**
-     * Returns a defensive copy of {@code source}, or {@code null} when {@code source} is {@code null}.
-     * The overview field generation is a mutable Maven {@link AiFieldGenerationConfig} JavaBean owned
-     * by the caller; copying it prevents external mutation after construction.
+     * Returns a copy of {@code source} with every field ({@link AiFieldGenerationConfig#copy()}), or
+     * {@code null} when {@code source} is {@code null}. The overview rule is a mutable JavaBean owned by
+     * the caller; copying it prevents external mutation after construction. It used to copy only the
+     * prompt, the model and {@code onIncomplete}, so the overview ignored its rule's {@code onOversize}
+     * and facts.
      *
      * @param source the caller-supplied field generation, or {@code null}
      * @return an independent copy, or {@code null}
@@ -186,23 +187,19 @@ public class ProjectIndexer {
         if (source == null) {
             return null;
         }
-        final AiFieldGenerationConfig copy = new AiFieldGenerationConfig();
-        copy.setPromptKey(source.getPromptKey());
-        copy.setAiDefinitionKey(source.getAiDefinitionKey());
-        // The project-overview generation uses a single field generation; per-file routing fields
-        // (condition/priority/skip/fallback) do not apply, so only prompt + model are copied.
-        return copy;
+        return source.copy();
     }
 
     /**
      * Aggregates every package index beneath {@code rootDirectory} into a single project index file.
      *
      * @param rootDirectory output root directory to walk for {@code package.ai.md} files
-     * @return {@code 1} if the project index file was written or refreshed, {@code 0} if there were
-     *         no package index files or the existing file was already up to date
+     * @return {@link AiIndexOutcome#WRITTEN}; {@link AiIndexOutcome#UNCHANGED} when there were no package
+     *         index files or the existing file was already up to date; {@link AiIndexOutcome#FAILED} when
+     *         the overview's answer was incomplete and nothing was written
      * @throws IOException if the output tree cannot be read or the project index cannot be written
      */
-    public int aggregate(final Path rootDirectory) throws IOException {
+    public AiIndexOutcome aggregate(final Path rootDirectory) throws IOException {
         final List<Path> packageFiles;
         try (Stream<Path> stream = Files.walk(rootDirectory)) {
             packageFiles = compatibilityHelper.toList(
@@ -211,7 +208,7 @@ public class ProjectIndexer {
 
         if (packageFiles.isEmpty()) {
             LOGGER.info("No package index files found under {}; skipping project index.", rootDirectory);
-            return 0;
+            return AiIndexOutcome.UNCHANGED;
         }
 
         final List<PackageEntry> entries = new ArrayList<>(packageFiles.size());
@@ -265,22 +262,25 @@ public class ProjectIndexer {
 
         if (!headerSupport.shouldWrite(force, projectFile, baseHeader)) {
             LOGGER.info("Unchanged project index file: {}", projectFile);
-            return 0;
+            return AiIndexOutcome.UNCHANGED;
         }
 
         final String body;
         if (overview != null && support != null) {
-            final String overviewText = generateOverview(support, overview, projectFile, entries, baseHeader);
-            body = compatibilityHelper.isBlank(overviewText)
-                    ? deterministicBody
-                    : leadLine + "\n\n" + OVERVIEW_HEADING + "\n" + overviewText.trim() + "\n\n" + packagesSection;
+            final AiGenerationResult overviewResult =
+                    generateOverview(support, overview, projectFile, entries, baseHeader);
+            if (!overviewResult.complete()) {
+                return AiIndexOutcome.FAILED;
+            }
+            body = leadLine + "\n\n" + OVERVIEW_HEADING + "\n"
+                    + overviewResult.body().trim() + "\n\n" + packagesSection;
         } else {
             body = deterministicBody;
         }
 
         documentCodec.write(projectFile, new AiMdDocument(baseHeader, body));
         LOGGER.info("Wrote project index file: {} ({} packages)", projectFile, entries.size());
-        return 1;
+        return AiIndexOutcome.WRITTEN;
     }
 
     /**
@@ -329,7 +329,7 @@ public class ProjectIndexer {
 
     /**
      * Generates the AI overview paragraph from the per-package leads via {@link AiFieldGenerationSupport}
-     * (which handles trimming, retries, and empty-output warnings). The model receives only the project
+     * (which handles trimming and retries, and reports an incomplete answer). The model receives only the project
      * title and the one-line package leads, never the full package bodies, keeping the input compact.
      *
      * @param support     the AI generation loop (non-null)
@@ -337,10 +337,10 @@ public class ProjectIndexer {
      * @param projectFile the project index file path, used as the request context file
      * @param entries     the harvested package entries
      * @param baseHeader  the project index header passed through to the generation request
-     * @return the generated overview text (possibly blank if the model produced nothing)
+     * @return the generated overview, or an incomplete result when the model's answer was incomplete
      * @throws IOException if the AI provider throws during generation
      */
-    private String generateOverview(
+    private AiGenerationResult generateOverview(
             final AiFieldGenerationSupport support,
             final AiFieldGenerationConfig overview,
             final Path projectFile,
@@ -348,9 +348,7 @@ public class ProjectIndexer {
             final AiMdHeader baseHeader)
             throws IOException {
         final String overviewSource = buildOverviewSource(entries);
-        final AiGenerationResult result = support.processFieldGenerations(
-                Collections.singletonList(overview), projectFile, CONTEXT_TYPE_PROJECT, overviewSource, baseHeader);
-        return result.body();
+        return support.generate(overview, projectFile, CONTEXT_TYPE_PROJECT, overviewSource, baseHeader);
     }
 
     /**

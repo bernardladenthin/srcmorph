@@ -40,6 +40,20 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on the RunRecord of a generate run.
+
+        RunRecord collects one Entry per routed file while the run goes on (entries
+        grow) and is written once as JSON; no code path compares two records, and a
+        value equality over a growing list would mislead (CodeQL flagged the
+        Lombok-generated one). Its Entry keeps value equality. Identity is the
+        correct semantics for the record being built.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.RunRecord"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
         IMC_IMMATURE_CLASS_NO_EQUALS on the AiModelDefinitionSupport service.
 
         AiModelDefinitionSupport is a service/lookup class: it owns a
@@ -215,7 +229,7 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the <calibration> accessors of the Maven @Parameter config beans
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the calibration accessors of the configuration beans
         (AiModelDefinition, AiGenerationConfig). Same rationale as the routing-config EI suppression above:
         these are mutable JavaBeans the plugin framework populates via reflection; the AiCalibration the
         getter returns / the setter stores IS the configuration, read once during the run and never shared
@@ -261,6 +275,10 @@ SPDX-License-Identifier: Apache-2.0
         aiDefinitions/fieldGenerations/factDefinitions) the same way the mojo's own @Parameter fields used
         to. One instance is built once per goal invocation and handed to exactly one engine, which reads
         it and discards it - the same single-threaded, no-shared-state lifecycle as the beans above.
+
+        SrcMorphConfigurationFile is the content of the configuration file around it (the run
+        configuration and the two phase rules), bound by Jackson through these setters and read once
+        by the CLI or the mojo that loaded it: the same lifecycle again.
     -->
     <Match>
         <Or>
@@ -269,6 +287,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationConfig"/>
             <Class name="net.ladenthin.srcmorph.config.AiFactDefinition"/>
             <Class name="net.ladenthin.srcmorph.config.SrcMorphConfiguration"/>
+            <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFile"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry"/>
         </Or>
@@ -362,6 +381,12 @@ SPDX-License-Identifier: Apache-2.0
             @NullMarked validation style (see the DCN rationale in the plugin module's filter file);
             the explicit guards are the deliberate fail-fast contract, not dead checks.
 
+        SrcMorphConfigurationFileLoader: newJsonMapper / newYamlMapper are public because the CLI module
+        reads and echoes its configuration with the same strict mappers, which this module's analysis
+        cannot see (OPM); resolve() checks the bound base and output directory for null although the
+        getters are non-null, because a key set to nothing in the file binds null through Jackson,
+        past the annotation (RCN).
+
         Migration step 5 (engine extraction) additions, same rationale class:
           - LlamaCppJniConfigFactory.fromGenerationConfig: the pure field-by-field translation from
             AiGenerationConfig to LlamaCppJniConfig (moved verbatim out of the old
@@ -379,10 +404,6 @@ SPDX-License-Identifier: Apache-2.0
           - CalibrationReport's constructor parameter is typed List (not Collection) because callers
             always have an ordered List of measurements and the class explicitly preserves that order
             (OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER).
-          - EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport)'s fallback branch
-            throws NullPointerException("llamaModelPath") with a static message when
-            SrcMorphConfiguration#getLlamaModelPath() is unset - the same user-facing "which field is
-            missing" diagnostic style as everywhere else in this list (WEM).
     -->
     <Match>
         <Or>
@@ -396,6 +417,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
             <Class name="net.ladenthin.srcmorph.engine.CalibrationReport"/>
             <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+            <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader"/>
         </Or>
         <Or>
             <Bug pattern="CE_CLASS_ENVY"/>
@@ -420,6 +442,27 @@ SPDX-License-Identifier: Apache-2.0
         <Class name="net.ladenthin.srcmorph.config.AiOversizeStrategy"/>
         <Method name="fromConfig"/>
         <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+
+    <!--
+        IMPROPER_UNICODE on AiIncompleteStrategy.fromConfig: the same shape and rationale as
+        AiOversizeStrategy.fromConfig above, for the closed set of ASCII tokens fail/retryOnce/keep of
+        &lt;onIncomplete&gt;.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiIncompleteStrategy"/>
+        <Method name="fromConfig"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on AiIncompleteAnswerException. An exception has identity
+        semantics, like every Throwable: two refusals of two answers are two events even when their
+        reason and text agree, and nothing compares or hashes them.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.AiIncompleteAnswerException"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
 
     <!--
@@ -493,8 +536,8 @@ SPDX-License-Identifier: Apache-2.0
 
     <!--
         PATH_TRAVERSAL_IN on AiPathSupport.resolveAgainst and its helper hasRoot, the one rule for
-        every configured path that may be relative to a directory: a model's modelPath and the
-        fallback llamaModelPath against modelDirectory, a prompt's templateFile against
+        every configured path that may be relative to a directory: a model's modelPath against
+        modelDirectory, a prompt's templateFile against
         profileDirectory. They join the directory and a relative path into one, and ask
         Paths.get(path).getRoot() whether the path stands on its own; both values come from the
         operator's own POM XML or CLI configuration, the same trust boundary as validateLocalModel
@@ -644,7 +687,7 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.exchange (the
+        URLCONNECTION_SSRF_FD (find-sec-bugs) on OpenAiCompatibleAiGenerationProvider.exchangeOnce (the
         chat-completions POST and the GET of the model list). The URL is
         the baseUrl of the user's own model definition, not input from a remote party: srcmorph is a
         build tool and CLI that runs with the rights of whoever wrote its configuration, and calling
@@ -655,8 +698,27 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
-        <Method name="exchange"/>
+        <Method name="exchangeOnce"/>
         <Bug pattern="URLCONNECTION_SSRF_FD"/>
+    </Match>
+
+    <!--
+        OpenAiCompatibleAiGenerationProvider.exchange, the retry loop around exchangeOnce:
+
+        PREDICTABLE_RANDOM on the jitter of the backoff. The random number only spreads the retries of
+        clients that failed together; it guards nothing, so a predictable one is fine.
+
+        CRLF_INJECTION_LOGS on the retry line: it names the endpoint of the operator's own model
+        definition and the failure, whose server body excerpt is the same text the run's error
+        message carries - the trust boundary of the engine suppressions below.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
+        <Method name="exchange"/>
+        <Or>
+            <Bug pattern="PREDICTABLE_RANDOM"/>
+            <Bug pattern="CRLF_INJECTION_LOGS"/>
+        </Or>
     </Match>
 
     <!--

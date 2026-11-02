@@ -51,11 +51,15 @@ public final class AiSourceChunker {
         final int overlap = Math.max(0, Math.min(overlapChars, maxChars - 1));
 
         int pos = 0;
+        int previousEnd = 0;
         while (pos < length) {
             int end = Math.min(pos + maxChars, length);
             if (end < length) {
                 final int lastNewline = source.lastIndexOf('\n', end - 1);
-                if (lastNewline > pos) {
+                // cut at a line end only when it gets past the previous chunk: behind a line longer than
+                // the budget, the last line end is the previous cut, and cutting there again would repeat
+                // the overlap one character further on, once per character
+                if (lastNewline > pos && lastNewline + 1 > previousEnd) {
                     end = lastNewline + 1;
                 }
             }
@@ -63,7 +67,17 @@ public final class AiSourceChunker {
             if (end >= length) {
                 break;
             }
-            pos = Math.max(pos + 1, end - overlap);
+            previousEnd = end;
+            // the overlap starts at a line start, after the first line end inside it, so no chunk begins in
+            // the middle of a line; an overlap within one line starts where the characters say
+            int next = end - overlap;
+            if (next > 0 && source.charAt(next - 1) != '\n') {
+                final int lineEnd = source.indexOf('\n', next);
+                if (lineEnd >= 0 && lineEnd + 1 < end) {
+                    next = lineEnd + 1;
+                }
+            }
+            pos = Math.max(pos + 1, next);
         }
         return select(chunks, maxChunks);
     }
@@ -76,7 +90,7 @@ public final class AiSourceChunker {
      * @param maxChunks the cap ({@code <= 0} = unbounded)
      * @return the (possibly reduced) chunk list
      */
-    private static List<String> select(final List<String> chunks, final int maxChunks) {
+    public static List<String> select(final List<String> chunks, final int maxChunks) {
         final int total = chunks.size();
         if (maxChunks <= 0 || total <= maxChunks) {
             return chunks;

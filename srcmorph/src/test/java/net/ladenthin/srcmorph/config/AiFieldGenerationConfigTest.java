@@ -7,8 +7,12 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 public class AiFieldGenerationConfigTest {
@@ -80,9 +84,25 @@ public class AiFieldGenerationConfigTest {
     @Test
     public void oversizeStrategy_defaultsFailAndReflectsToken() {
         final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
-        assertThat(c.getOversizeStrategy(), is(AiOversizeStrategy.FAIL));
+        assertThat(c.oversizeStrategy(), is(AiOversizeStrategy.FAIL));
         c.setOnOversize("deterministic");
-        assertThat(c.getOversizeStrategy(), is(AiOversizeStrategy.DETERMINISTIC));
+        assertThat(c.oversizeStrategy(), is(AiOversizeStrategy.DETERMINISTIC));
+    }
+
+    @Test
+    public void onIncomplete_defaultsNullAndRoundTrips() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.getOnIncomplete(), is(nullValue()));
+        c.setOnIncomplete("retryOnce");
+        assertThat(c.getOnIncomplete(), is(equalTo("retryOnce")));
+    }
+
+    @Test
+    public void incompleteStrategy_defaultsFailAndReflectsToken() {
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        assertThat(c.incompleteStrategy(), is(AiIncompleteStrategy.FAIL));
+        c.setOnIncomplete("keep");
+        assertThat(c.incompleteStrategy(), is(AiIncompleteStrategy.KEEP));
     }
 
     @Test
@@ -109,5 +129,66 @@ public class AiFieldGenerationConfigTest {
         assertThat(c.getFactsKey(), is(nullValue()));
         c.setFactsKey("java-facts");
         assertThat(c.getFactsKey(), is(equalTo("java-facts")));
+    }
+
+    @Test
+    public void copy_carriesEveryField_andOwnsItsFactsList() {
+        final AiCondition condition = new AiCondition();
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("tables");
+        final List<AiFactCounter> facts = new ArrayList<>(Arrays.asList(counter));
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setId("sql");
+        c.setPromptKey("file-body-sql");
+        c.setAiDefinitionKey("m");
+        c.setCondition(condition);
+        c.setPriority(7);
+        c.setFallback(true);
+        c.setSkip(true);
+        c.setOnOversize("mapReduce");
+        c.setOnIncomplete("keep");
+        c.setMaxChunks(5);
+        c.setFacts(facts);
+        c.setFactsKey("sql-facts");
+
+        final AiFieldGenerationConfig copy = c.copy();
+
+        assertThat(copy.getId(), is(equalTo("sql")));
+        assertThat(copy.getPromptKey(), is(equalTo("file-body-sql")));
+        assertThat(copy.getAiDefinitionKey(), is(equalTo("m")));
+        assertThat(copy.getCondition(), is(sameInstance(condition)));
+        assertThat(copy.getPriority(), is(equalTo(7)));
+        assertThat(copy.isFallback(), is(true));
+        assertThat(copy.isSkip(), is(true));
+        assertThat(copy.getOnOversize(), is(equalTo("mapReduce")));
+        assertThat(copy.getOnIncomplete(), is(equalTo("keep")));
+        assertThat(copy.getMaxChunks(), is(equalTo(5)));
+        assertThat(copy.getFacts(), is(equalTo(facts)));
+        assertThat(copy.getFactsKey(), is(equalTo("sql-facts")));
+
+        facts.clear();
+        c.setPromptKey("changed");
+        assertThat(copy.getFacts(), is(equalTo(Arrays.asList(counter))));
+        assertThat(copy.getPromptKey(), is(equalTo("file-body-sql")));
+    }
+
+    @Test
+    public void copy_ofAnEmptyRule_keepsTheNulls() {
+        final AiFieldGenerationConfig copy = new AiFieldGenerationConfig().copy();
+
+        assertThat(copy.getFacts(), is(nullValue()));
+        assertThat(copy.getCondition(), is(nullValue()));
+        assertThat(copy.isFallback(), is(false));
+        assertThat(copy.isSkip(), is(false));
+    }
+
+    @Test
+    public void mapAndReducePromptKeys_blank_areUnset() {
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setMapPromptKey(" ");
+        rule.setReducePromptKey("");
+
+        assertThat(rule.getMapPromptKey(), is(nullValue()));
+        assertThat(rule.getReducePromptKey(), is(nullValue()));
     }
 }

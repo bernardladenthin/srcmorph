@@ -9,7 +9,9 @@ import static org.hamcrest.Matchers.is;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import net.ladenthin.srcmorph.cli.Main;
+import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
@@ -87,5 +89,13 @@ public class ConfigBindingTest {
         assertThat(rule.getPromptKey(), is(equalTo("file-body")));
         assertThat(rule.getAiDefinitionKey(), is(equalTo("mock-model")));
         assertThat(rule.isFallback(), is(true));
+
+        // ignore binds as a plain property of a counter, true for the first one and false by default
+        final List<AiFactCounter> facts = rule.getFacts();
+        assertThat(facts.size(), is(equalTo(2)));
+        assertThat(facts.get(0).getLabel(), is(equalTo("comments")));
+        assertThat(facts.get(0).isIgnore(), is(true));
+        assertThat(facts.get(1).getLabel(), is(equalTo("lines")));
+        assertThat(facts.get(1).isIgnore(), is(false));
     }
 }

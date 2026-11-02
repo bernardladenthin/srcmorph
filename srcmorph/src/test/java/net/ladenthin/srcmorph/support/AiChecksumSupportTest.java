@@ -6,17 +6,9 @@ package net.ladenthin.srcmorph.support;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 public class AiChecksumSupportTest {
-
-    @TempDir
-    public Path folder;
 
     private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
 
@@ -30,12 +22,5 @@ public class AiChecksumSupportTest {
     @Test
     public void crc32IsEightCharUppercaseHex() {
         assertThat(checksumSupport.calculateCrc32Hex(""), is("00000000"));
-    }
-
-    @Test
-    public void crc32OfFileMatchesStringForm() throws IOException {
-        Path file = folder.resolve("data.txt");
-        Files.write(file, "hello".getBytes(StandardCharsets.UTF_8));
-        assertThat(checksumSupport.calculateCrc32Hex(file), is("3610A686"));
     }
 }

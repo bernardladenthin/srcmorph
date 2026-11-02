@@ -38,8 +38,11 @@ public class AiFieldGenerationSupportRealModelTest {
 
     private static final String MODEL_PATH = NativeLlamaAvailability.modelPath();
 
-    /** Small context so a modest synthetic source is over-window and triggers map-reduce with the tiny model. */
-    private static final int SMALL_CONTEXT = 512;
+    /**
+     * Small context so a modest synthetic source is over-window and triggers map-reduce with the tiny model, yet
+     * leaves a chunk of at least the minimum next to the prompts.
+     */
+    private static final int SMALL_CONTEXT = 1024;
 
     private static final String MODEL_KEY = "smol";
 
@@ -80,8 +83,10 @@ public class AiFieldGenerationSupportRealModelTest {
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(MODEL_KEY);
-        rule.setOnOversize("mapReduce");
+        rule.setOnOversize("sampleChunks");
         rule.setMaxChunks(2);
+        // the tiny test model is cut off at the test budget; keep what it wrote, as the path is under test
+        rule.setOnIncomplete("keep");
         final AiFactCounter counter = new AiFactCounter();
         counter.setLabel("lines");
         counter.setPattern("(?m)^line ");
@@ -93,8 +98,7 @@ public class AiFieldGenerationSupportRealModelTest {
 
         try (LlamaCppJniAiGenerationProvider provider = new LlamaCppJniAiGenerationProvider(jniConfig, promptSupport)) {
             final AiFieldGenerationSupport support = new AiFieldGenerationSupport(provider, prep, models);
-            final AiGenerationResult result = support.processFieldGenerations(
-                    Collections.singletonList(rule), contextFile, "file", source, header());
+            final AiGenerationResult result = support.generate((rule), contextFile, "file", source, header());
 
             // The exact facts (counted over the whole source) lead the body; the map-reduced AI summary
             // follows. This proves the real-model chunk -> hierarchical-reduce path completes end-to-end.

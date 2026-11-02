@@ -2,18 +2,18 @@
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# The srcmorph-selftest profile of srcmorph-maven-plugin/pom.xml as one CLI configuration, nearly 1:1
-# (ExamplesConfigBindingTest checks the rules, facts and models against the pom). What run.sh /
+# The srcmorph-selftest configuration of srcmorph-maven-plugin (srcmorph-selftest.yaml) for the CLI,
+# nearly 1:1 (BuildYourOwnJarSelfTestParityTest checks the models and rules against it). What run.sh /
 # run.bat do with it: every file under baseDirectory/subtrees with one of the fileExtensions is
 # matched to a rule in fieldGenerations; the rule names a prompt (promptKey) and a model
 # (aiDefinitionKey). srcmorph sends the prompt as the system message and the file's name and source as
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
 #
-# Two models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
-# IBM Granite 4.0 for larger files - H-Tiny with a 384K window in one pass up to ~1 MB, H-1B with a
-# 16K window beyond, map-reducing a few sampled chunks. A Java or SQL summary starts with exact
-# whole-file counts (factsKey: INSERT statements, VALUES rows, tables, methods, ...), so a sampled
-# summary of a multi-MB SQL dump still states what the data holds.
+# Three models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
+# IBM Granite 4.0 for larger files - H-Tiny map-reducing over a 64K window up to ~1 MB, H-1B with a
+# 16K window beyond, summarizing a few sampled chunks (sampleChunks). A Java, SQL, shell, Perl or XML
+# summary starts with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables,
+# methods, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
 #
 # command:
 #   Plan               prints which file gets which model and prompt; loads nothing, writes nothing
@@ -23,13 +23,17 @@
 # Start with Plan, then switch to GenerateFileIndex or All. A second run only redoes changed files.
 command: Plan
 
-# The package and the project phase have rules of their own, as the plugin's aggregate-packages and
-# aggregate-project executions do.
+# The package and the project phase have rules of their own (the plugin's aggregate-packages and
+# aggregate-project goals read them from the same file).
 packageFieldGenerations:
   - promptKey: package-body
+    mapPromptKey: map-chunk
+    reducePromptKey: reduce-parts
     aiDefinitionKey: gpt-oss-20B-mxfp4
 projectFieldGenerations:
   - promptKey: project-body
+    mapPromptKey: map-chunk
+    reducePromptKey: reduce-parts
     aiDefinitionKey: gpt-oss-20B-mxfp4
 
 srcMorph:
@@ -42,6 +46,22 @@ srcMorph:
   fileExtensions:
     - ".java"
     - ".sql"
+    - ".sh"
+    - ".bash"
+    - ".ksh"
+    - ".zsh"
+    - ".bats"
+    - ".pl"
+    - ".pm"
+    - ".t"
+    - ".cgi"
+    - ".psgi"
+    - ".xml"
+    - ".xsd"
+    - ".xsl"
+    - ".xslt"
+    - ".wsdl"
+    - ".xhtml"
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
@@ -51,9 +71,9 @@ srcMorph:
 
   # The profile: the measured prompts and fact counters of this repository (profiles/README.md), one
   # file per key. A rule's promptKey names <profileDirectory>/<key>.md, its factsKey
-  # <profileDirectory>/<key>.tsv (label TAB regex per line). Relative to the working directory (run.sh
-  # and run.bat start here); copy the directory and point profileDirectory at the copy to change it.
-  profileDirectory: "../../profiles/v2"
+  # <profileDirectory>/<key>.tsv (label TAB regex per line). Relative to this file's directory, as
+  # every relative path here; copy the directory and point profileDirectory at the copy to change it.
+  profileDirectory: "../../profiles/v3"
 
   aiDefinitions:
     # gpt-oss-20b in its native MXFP4: reasoningEffort low (best for dense summaries), a 96K window
@@ -71,10 +91,12 @@ srcMorph:
       minP: 0.05
       repeatPenalty: 1.0
       reasoningEffort: low
-    # ~275 KB .. ~1 MB in one pass: Granite 4.0 H-Tiny's KV grows only linearly, so 384K fits 8 GB.
-    - key: granite-4.0-h-tiny-bigwindow
+    # ~275 KB .. ~1 MB: Granite 4.0 H-Tiny map-reduces over a 64K window, every chunk read. One pass
+    # over a 384K window fits 8 GB (the KV grows only linearly), but over an 870 KB catalog it copied
+    # the XML with invented values instead of summarizing it.
+    - key: granite-4.0-h-tiny-mapreduce
       modelPath: granite-4.0-h-tiny-Q4_K_M.gguf
-      contextSize: 393216
+      contextSize: 65536
       maxOutputTokens: 4096
       temperature: 0.2
       threads: 8
@@ -101,14 +123,17 @@ srcMorph:
       repeatPenalty: 1.0
       reasoningEffort: ""
 
-  # By priority, the most specific wins: huge (>1 MB) -> fastchunk map-reduce, big-window
-  # (~275 KB .. 1 MB) -> one Granite pass, then gpt-oss for Java, SQL and every other file.
+  # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
+  # (~275 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
   fieldGenerations:
     - id: huge-java
       promptKey: file-body-java
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
-      onOversize: mapReduce             # or sample (head only, one call) / deterministic (no model)
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: sampleChunks          # maxChunks of the chunks; mapReduce would read every one,
+                                        # sample only the head, deterministic call no model
       maxChunks: 6
       factsKey: java-facts
       condition:
@@ -120,7 +145,9 @@ srcMorph:
       promptKey: file-body-sql
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
-      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: sampleChunks
       maxChunks: 6
       factsKey: sql-facts
       condition:
@@ -128,19 +155,27 @@ srcMorph:
           conditions:
             - extensions: [".sql"]
             - size: {min: 1000000}
-    - id: big-window-java
+    - id: big-java
       promptKey: file-body-java
-      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: mapReduce
+      factsKey: java-facts
       condition:
         and:
           conditions:
             - extensions: [".java"]
             - size: {min: 275000}
-    - id: big-window-sql
+    - id: big-sql
       promptKey: file-body-sql
-      aiDefinitionKey: granite-4.0-h-tiny-bigwindow
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: mapReduce
+      factsKey: sql-facts
       condition:
         and:
           conditions:
@@ -158,6 +193,86 @@ srcMorph:
       factsKey: sql-facts
       condition:
         extensions: [".sql"]
+    - id: huge-xml                      # big XML data takes the Java/SQL size tiers too, with the XML
+                                        # prompt: three runs each per tier (MODEL-CARD finding 7)
+      promptKey: file-body-xml
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 200
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: sampleChunks
+      maxChunks: 6
+      factsKey: xml-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - size: {min: 1000000}
+    - id: big-xml
+      promptKey: file-body-xml
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
+      priority: 100
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: mapReduce
+      factsKey: xml-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - size: {min: 275000}
+    - id: huge-pom                      # a big POM takes the XML tiers one step higher, with the Maven counters
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      priority: 210
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: sampleChunks
+      maxChunks: 6
+      factsKey: pom-facts
+      condition:
+        and:
+          conditions:
+            - pathGlob: "**/*pom.xml"
+            - size: {min: 1000000}
+    - id: big-pom
+      promptKey: file-body-fallback
+      aiDefinitionKey: granite-4.0-h-tiny-mapreduce
+      priority: 110
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      onOversize: mapReduce
+      factsKey: pom-facts
+      condition:
+        and:
+          conditions:
+            - pathGlob: "**/*pom.xml"
+            - size: {min: 275000}
+    - id: shell                         # shell, Perl, XML: a prompt and counts of their own
+      promptKey: file-body-shell
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: shell-facts
+      condition:
+        extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
+    - id: perl
+      promptKey: file-body-perl
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: perl-facts
+      condition:
+        extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
+    - id: pom                           # matches xml too; the priority gives a POM the Maven counters
+      promptKey: file-body-xml
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: pom-facts
+      condition:
+        pathGlob: "**/*pom.xml"
+    - id: xml
+      promptKey: file-body-xml
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: xml-facts
+      condition:
+        extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
     - id: fallback                      # the rule for every file no other rule matches
       promptKey: file-body-fallback
       aiDefinitionKey: gpt-oss-20B-mxfp4

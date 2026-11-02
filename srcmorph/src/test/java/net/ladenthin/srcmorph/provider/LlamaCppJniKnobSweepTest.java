@@ -97,8 +97,9 @@ public class LlamaCppJniKnobSweepTest {
                 "devices",
                 "backend device names (e.g. \"Vulkan1\") exist only on the machine that enumerates them, "
                         + "so no value is valid on an arbitrary runner");
-        for (final String remoteKnob :
-                new String[] {"provider", "remoteModel", "baseUrl", "apiKeyEnv", "stream", "requestsPerMinute"}) {
+        for (final String remoteKnob : new String[] {
+            "provider", "remoteModel", "baseUrl", "apiKeyEnv", "stream", "requestsPerMinute", "maxRetries"
+        }) {
             reasons.put(
                     remoteKnob,
                     "a setting of the openai-compatible provider; the llama.cpp JNI provider never reads it "
@@ -198,7 +199,9 @@ public class LlamaCppJniKnobSweepTest {
         final String body;
         try (LlamaCppJniAiGenerationProvider provider =
                 new LlamaCppJniAiGenerationProvider(builder.build(), promptSupport)) {
-            body = provider.generate(request());
+            // generateWithTimings runs the same chat completion but does not judge the answer: at the
+            // sweep's tiny output budget every answer is cut off, which generate rightly refuses.
+            body = provider.generateWithTimings(request()).text();
         }
 
         // assert -- the contract is that the binding accepted the value and inference ran, not that

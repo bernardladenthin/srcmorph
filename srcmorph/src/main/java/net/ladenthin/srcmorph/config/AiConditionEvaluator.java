@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
+import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
 import org.jspecify.annotations.Nullable;
 
@@ -235,7 +236,7 @@ public final class AiConditionEvaluator {
 
     private boolean matchesExtension(final List<String> extensions, final String fileName) {
         for (final @Nullable String extension : extensions) {
-            if (extension != null && fileName.endsWith(extension)) {
+            if (extension != null && AiPathSupport.hasExtension(fileName, extension)) {
                 return true;
             }
         }

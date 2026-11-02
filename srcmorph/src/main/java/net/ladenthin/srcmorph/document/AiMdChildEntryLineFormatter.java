@@ -39,18 +39,11 @@ public class AiMdChildEntryLineFormatter {
      * for package-level aggregation.
      *
      * @param name        child name (file or package name)
-     * @param childHeader child header to read {@code c}, {@code d}, and {@code x} from
-     * @return checksum line terminated by a newline character, in the form
-     *         {@code <name>|<c>|<d>|<x>\n}
+     * @param childHeader child header to read {@code c} and {@code x} from
+     * @return checksum line terminated by a newline character, in the form {@code <name>|<c>|<x>\n}; the
+     *         child's modification time is left out, so a touched source does not change its package
      */
     public String format(final String name, final AiMdHeader childHeader) {
-        return name
-                + CHECKSUM_LINE_SEPARATOR
-                + childHeader.c()
-                + CHECKSUM_LINE_SEPARATOR
-                + childHeader.d()
-                + CHECKSUM_LINE_SEPARATOR
-                + childHeader.x()
-                + '\n';
+        return name + CHECKSUM_LINE_SEPARATOR + childHeader.c() + CHECKSUM_LINE_SEPARATOR + childHeader.x() + '\n';
     }
 }

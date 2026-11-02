@@ -10,12 +10,12 @@
       ".java"
     ],
     "generationProvider": "mock",
-    "profileDirectory": "../profiles/v2",
+    "profileDirectory": "../profiles/v3",
     "aiDefinitions": [
       {
         "key": "mock-model",
         "modelPath": "unused-with-mock-provider.gguf",
-        "contextSize": 2048,
+        "contextSize": 4096,
         "maxOutputTokens": 64,
         "temperature": 0.15,
         "threads": 2

@@ -281,6 +281,14 @@ public class AiModelDefinitionTest {
     }
 
     @Test
+    public void maxRetriesDefaultsAndRoundTrips() {
+        final AiModelDefinition c = new AiModelDefinition();
+        assertThat(c.getMaxRetries(), is(AiGenerationConfig.DEFAULT_MAX_RETRIES));
+        c.setMaxRetries(7);
+        assertThat(c.getMaxRetries(), is(7));
+    }
+
+    @Test
     public void requestsPerMinuteDefaultsToNoLimitAndRoundTrips() {
         AiModelDefinition c = new AiModelDefinition();
         assertThat(c.getRequestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));

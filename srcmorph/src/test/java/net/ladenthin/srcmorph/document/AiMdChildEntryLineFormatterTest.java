@@ -24,6 +24,7 @@ public class AiMdChildEntryLineFormatterTest {
                 "1.0.0",
                 "file");
         // Pin the exact line so the empty-string return mutant is killed and field order is asserted.
-        assertThat(formatter.format("MyClass.java", header), is("MyClass.java|A1B2C3D4|2026-03-16T00:00:00Z|file\n"));
+        // the modification time is no part of it: a touched source does not change its package
+        assertThat(formatter.format("MyClass.java", header), is("MyClass.java|A1B2C3D4|file\n"));
     }
 }

@@ -148,12 +148,16 @@ jobs:
       # members, regardless of which modules actually end up executing. Using the fully-qualified
       # groupId:artifactId:goal form bypasses prefix resolution entirely (plugin *version* still
       # resolves correctly via each module's inherited pluginManagement pin); -pl restricts
-      # execution to the three modules that actually declare the plugin, skipping the parent pom
-      # and the source-less relocation stub, neither of which registers it anywhere.
+      # execution to the three modules that actually declare the plugin, skipping the parent pom,
+      # which registers it nowhere.
       - name: Spotless check (fail fast on format violations)
         run: mvn -B --no-transfer-progress -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin com.diffplug.spotless:spotless-maven-plugin:check
       - name: SpotBugs check (fail fast on static-analysis findings)
         run: mvn -B --no-transfer-progress -DskipTests -Denforcer.skip=true -pl srcmorph,srcmorph-cli,srcmorph-maven-plugin compile com.github.spotbugs:spotbugs-maven-plugin:check
+      # The benchmark's own tools (run.py, score.py, large.py, search.py) have unit tests on the standard
+      # library alone; the runner's python3 runs them.
+      - name: Benchmark tools' unit tests (Python)
+        run: python3 -I -m unittest discover -s docs/ai-index-benchmark/modelcard/tests
       - name: Print internal package dependency graph (jdeps, informational)
         continue-on-error: true
         run: |
@@ -265,12 +269,11 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: jacoco-report
-          # srcmorph carries the bulk of the test suite (and the only PIT gate); its report is
+          # srcmorph carries the bulk of the test suite; its report is
           # the one forwarded to Coveralls/Codecov in the `report` job below, matching the
           # single-primary-module precedent already used by the sibling java-llama.cpp reactor
           # (which reports only its `llama` core module, not an aggregate across all modules).
-          # srcmorph-cli / srcmorph-maven-plugin jacoco reports are not currently
-          # aggregated or uploaded (documented gap, see TODO.md).
+          # srcmorph-cli / srcmorph-maven-plugin jacoco reports are not aggregated or uploaded.
           path: srcmorph/target/site/jacoco/jacoco.xml
           if-no-files-found: ignore
       - name: Memory after tests
@@ -415,6 +418,16 @@ jobs:
           work-dir: examples
           marker: 'Main#run end\.'
           args: config_Plan.json
+      # The same run, asserting what it planned: the one file of the demo tree examples/src/main/java,
+      # so a launch that finds no sources (a wrong base directory, a lost subtree) fails here.
+      - name: Run the jar and count the planned files
+        uses: bernardladenthin/actions/java/smoke-fatjar-cli@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
+        with:
+          jar-dir: smoke-jars
+          jar-glob: 'srcmorph.jar'
+          work-dir: examples
+          marker: '\*\*Total:\*\* 1 file\(s\) across 1 model\(s\)'
+          args: config_Plan.json
       - name: Upload smoke logs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -429,10 +442,10 @@ jobs:
   # Plugin integration test -- the only job that runs srcmorph-maven-plugin AS A PLUGIN.
   #
   # Every other check on that module calls Java methods directly (PluginArchitectureTest,
-  # MojoPhaseSkipTest, MojoConfigurationMappingTest, PIT at 62/62), so nothing covers what only
-  # Maven does: plexus binding of the <configuration> XML onto the @Parameter fields, goal-prefix
-  # resolution, the srcmorph.* property strings, lifecycle-phase binding, and the descriptor
-  # maven-plugin-plugin generates. A renamed @Parameter property shipped green before this job.
+  # AbstractAiIndexMojoTest, MojoGoalTest, MojoPhaseSkipTest, PIT at 62/62), so nothing covers what
+  # only Maven does: injecting the srcmorph.* properties and ${project.*} values into the @Parameter
+  # fields, goal-prefix resolution, lifecycle-phase binding, and the descriptor maven-plugin-plugin
+  # generates. A renamed @Parameter property shipped green before this job.
   #
   # needs: startgate, not build -- it compiles what it needs itself and consumes no uploaded
   # artifact, so hanging it off build would only serialize it behind a compile it repeats anyway.
@@ -449,9 +462,8 @@ jobs:
           distribution: temurin
           cache: maven
       # -pl srcmorph-maven-plugin -am resolves to exactly parent + srcmorph + the plugin;
-      # srcmorph-cli is a leaf (CliArchitectureTest#cliIsLeaf), so its unconditionally
-      # package-bound ~80 MB assembly never runs here. install (not package) because the fixture
-      # resolves the plugin from the local repository. The skips drop work code-style and test
+      # srcmorph-cli is a leaf (CliArchitectureTest#cliIsLeaf), so it is not built here. install
+      # (not package) because the fixture resolves the plugin from the local repository. The skips drop work code-style and test
       # already do -- keeping them would roughly double the job for no extra signal.
       # Every assertion in this job is about Maven semantics (plexus binding, prefix resolution,
       # -D vs <configuration> precedence), so the log has to record which Maven produced the result.
@@ -496,7 +508,7 @@ jobs:
         with:
           persist-credentials: false
       # Only srcmorph's jacoco report is uploaded by the `test` job (see the comment there) —
-      # it carries the bulk of the test suite and the only PIT gate. Coveralls/Codecov are
+      # it carries the bulk of the test suite and the largest PIT gate. Coveralls/Codecov are
       # pointed at it directly rather than an aggregated multi-module report, matching the
       # single-primary-module precedent already used by the sibling java-llama.cpp reactor.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8

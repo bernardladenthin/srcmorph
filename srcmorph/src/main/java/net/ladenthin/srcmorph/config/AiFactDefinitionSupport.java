@@ -97,6 +97,11 @@ public final class AiFactDefinitionSupport {
             }
             final String factsKey = rule.getFactsKey();
             if (factsKey != null) {
+                final List<AiFactCounter> inline = rule.getFacts();
+                if (inline != null && !inline.isEmpty()) {
+                    throw new IllegalArgumentException("A rule names its facts twice, as facts and as factsKey '"
+                            + factsKey + "'; keep one: " + rule);
+                }
                 rule.setFacts(facts(factsKey));
             }
         }

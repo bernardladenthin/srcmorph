@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<!-- Spring wiring of the reminder scheduler: a data source, the reminder job and its trigger. -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd
+           http://www.springframework.org/schema/task https://www.springframework.org/schema/task/spring-task.xsd">
+
+    <context:property-placeholder location="classpath:reminder.properties"/>
+    <context:component-scan base-package="org.example.reminder.web"/>
+
+    <bean id="reminderDataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <property name="jdbcUrl" value="${reminder.db.url}"/>
+        <property name="username" value="${reminder.db.user}"/>
+        <property name="maximumPoolSize" value="8"/>
+    </bean>
+
+    <bean id="reminderRepository" class="org.example.reminder.JdbcReminderRepository">
+        <constructor-arg ref="reminderDataSource"/>
+    </bean>
+
+    <bean id="mailGateway" class="org.example.reminder.SmtpMailGateway">
+        <property name="host" value="${reminder.smtp.host}"/>
+        <property name="port" value="587"/>
+    </bean>
+
+    <bean id="overdueReminderJob" class="org.example.reminder.OverdueReminderJob">
+        <constructor-arg ref="reminderRepository"/>
+        <constructor-arg ref="mailGateway"/>
+        <property name="graceDays" value="14"/>
+    </bean>
+
+    <task:scheduler id="reminderScheduler" pool-size="2"/>
+    <task:scheduled-tasks scheduler="reminderScheduler">
+        <task:scheduled ref="overdueReminderJob" method="sendDueReminders" cron="0 0 7 * * MON-FRI"/>
+    </task:scheduled-tasks>
+</beans>

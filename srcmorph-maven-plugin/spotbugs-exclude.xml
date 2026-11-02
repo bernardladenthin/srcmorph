@@ -53,9 +53,8 @@ SPDX-License-Identifier: Apache-2.0
         SPP_FIELD_COULD_BE_STATIC on Maven @Parameter instance fields on the
         project's own Mojos (GenerateMojo, AggregatePackagesMojo, AggregateProjectMojo).
 
-        fb-contrib flags @Parameter fields on each Mojo (e.g. pluginVersion,
-        aiVersion, llamaContextSize, llamaThreads on the generate/aggregate-packages
-        goals; pluginVersion, aiVersion, projectName on aggregate-project) as
+        fb-contrib flags @Parameter fields on each Mojo (e.g. skipFile and planOnly
+        on generate, skipPackage on aggregate-packages, skipProject on aggregate-project) as
         "assigned at most once, could be static" purely from bytecode shape. The rule is wrong for
         Maven @Parameter fields by contract:
 
@@ -171,5 +170,19 @@ SPDX-License-Identifier: Apache-2.0
         thinned mojos (skip check -> buildConfiguration() -> new XxxEngine(config).execute() -> wrap
         SrcMorphException/IOException) trigger none of these detectors.
     -->
+
+    <!--
+        PATH_TRAVERSAL_IN on AbstractAiIndexMojo.projectSubtrees: it turns the directories of the
+        project's resources (Resource.getDirectory(), injected by Maven from the project model) into
+        File objects to test whether they exist and lie below the base directory. The paths come from
+        the operator's own POM, the same trust boundary as every other configured path (see the
+        srcmorph module's filter on AiPathSupport.resolveAgainst); nothing is opened or read here.
+        Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.maven.srcmorph.mojo.AbstractAiIndexMojo"/>
+        <Method name="projectSubtrees"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
 
 </FindBugsFilter>

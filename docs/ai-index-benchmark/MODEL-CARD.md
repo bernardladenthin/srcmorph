@@ -12,6 +12,14 @@ models marked ¹ below were in it.
 <!-- assessment:begin -->
 ## Assessment
 
+> **Scored with the scorer of October 2026.** On 2026-11-01 `modelcard/score.py` changed: a code
+> fence counts against recall only when it copies the source, everyday words count only marked as
+> code, the Java names include annotated and multi-line signatures, and a `failed` column replaces
+> `empty`. The tables, charts and numbers of this card keep their October values; the re-scored ones
+> are in [`modelcard/scores/`](modelcard/scores/), and the two current models were measured again
+> ([`remeasure-2026-11-01/`](remeasure-2026-11-01/README.md), finding 7). A full re-render waits for
+> the next round of models.
+
 ### At a glance
 
 The **quality score** is the mean of four shares: Java recall, SQL recall, other-file recall, and
@@ -53,9 +61,9 @@ cost are from the card's run, as in the charts.
 | Local, 8 GB GPU, fast | **Gemma 4 E4B, thinking off** | 93.0 % | 92.8–93.2 | 11.1 | – |
 | With a GitHub Copilot plan | **Claude Haiku 5.5** | 98.2 % | one run | 6.8 | Copilot plan |
 
-The table is measured with the v1 prompts. The current prompts, v2 (finding 5), lift GPT-6 Luna to
-100 % in all three of its runs and gpt-oss-20b to 99.0 %, so both stand level with Muse and above
-Qwen3.8-27B; the other models have not been run with v2.
+The table is measured with the v1 prompts. The later sets lift GPT-6 Luna to 100 % in all of its
+runs and gpt-oss-20b to 99.0 % with v2 and 100 % with v3, the current one (findings 5 and 6), so
+both stand level with Muse and above Qwen3.8-27B; the other models have not been run with them.
 
 - **Muse Spark 1.3 in Meta's Contributor tier** (100 %, 10.1 s per file, 0.019 USD for the run) is
   the only run with nothing missing: full recall on every kind, all four seed counts, a clean format,
@@ -239,7 +247,8 @@ Qwen3.8-27B; the other models have not been run with v2.
    accessors of `AiGenerationConfig.java` as a family, both drop constants and configuration
    variables of the scripts and C files (`REQUIRED_COLUMNS`, `SOURCE_DIR`, `BINS`, `RINGBUF_OK`),
    internal helpers and library calls, and named SQL constraints and indexes, and gpt-oss states
-   no seed counts. [`profiles/v2/`](../../profiles/README.md) adds one instruction per kind, with
+   no seed counts. Profile v2 (`profiles/v2/` in commit `b89d028`, see
+   [`profiles/README.md`](../../profiles/README.md)) adds one instruction per kind, with
    example names that occur nowhere in this corpus; the package and project prompts are unchanged.
    Three runs each on OpenRouter (`run.py --prompts v2`, outputs under
    [`prompt-v2-2026-10/`](prompt-v2-2026-10/)):
@@ -258,7 +267,145 @@ Qwen3.8-27B; the other models have not been run with v2.
    43 questions lower on average, within the two to seven points runs of one prompt spread over
    (BM25 over gpt-oss's summaries lost about two). Two cautions: v2 was written from the misses on
    this corpus, so part of the gain may be fitted to it, and the other models have not been run
-   with it. v2 is the current prompt set; v1 is in the history (`profiles/README.md`).
+   with it. v3 (finding 6) has replaced v2; v1 and v2 are in the history (`profiles/README.md`).
+6. **Prompt v3: v2 on a second corpus, and what it still lost there.** To test the first caution of
+   finding 5, both models ran v1 and v2 three times each on a second corpus that is not part of
+   this repository (Java with its SQL migrations, a shell script, C and Python from other
+   open-source projects), scored the same way against hand-written expected names and numbers.
+   v2's gain carried over: gpt-oss-20b 94.6 to 99.0 %, GPT-6 Luna 98.6 to 100 %. What gpt-oss
+   still lost there became [`profiles/v3/`](../../profiles/README.md): a table's total over several
+   `INSERT`s, written as an addition (it counted each statement right and summed wrong); every
+   `CREATE EXTENSION` and `CREATE TYPE` by name; the entry point `main`; and a command-line tool's
+   commands and options by the name a user types, also where the function behind one is named
+   differently. Two drafts lost names elsewhere: with the command-line sentence alone,
+   gpt-oss wrote a shell script's arguments as `$1` instead of `SOURCE_DIR`, and an index-only
+   migration lost its index list, so v3 also asks for a script's arguments by their variable and
+   for every index as its own bullet. Three runs each on OpenRouter (`run.py --profile v3`, outputs
+   under [`prompt-v3-2026-10/`](prompt-v3-2026-10/)):
+
+   | | Quality: run 1 / 2 / 3 | Mean | Reader hit@1 | Mean | s/file | USD |
+   |---|---|---|---|---|---|---|
+   | GPT-6 Luna, v3 | 100 / 100 / 100 % | **100 %** | 93 / 88 / 88 % | 90 % | 7.8 / 6.7 / 7.5 | 0.020 / 0.018 / 0.015 |
+   | gpt-oss-20b, v3 | 100 / 100 / 100 % | **100 %** | 91 / 95 / 91 % | 92 % | 7.9 / 15.8 / 15.3 | 0.008 / 0.007 / 0.009 |
+
+   gpt-oss now keeps every expected name of this corpus in every run; the one number it leaves out
+   in all three is the 110 of `05_seed_data.sql`, as with v2. On the second corpus it went from
+   99.0 to 99.8 % (one run missed an operator class, one a table total), Luna stayed at 100 %. No
+   code fence, no `###` heading, the index did not grow (gpt-oss 53 to 57 KB, Luna 65 to 66 KB),
+   and the reader's hit@1 stayed at 92 and 90 % (v2: 92 and 89 %). The drafts also showed how much
+   gpt-oss varies between runs: with the SQL prompt unchanged between two of them, its SQL recall
+   on the second corpus went from 100 % in three runs to 91 to 97 %. Three runs tell a miss that
+   recurs from one that does not, not a one-point difference. The other models have not been run
+   with v3.
+7. **Shell, Perl and XML: prompts of their own, and files of 0.3 to 1.6 MB.** These files went
+   through the generic prompt. A third corpus written for it,
+   [`corpus-languages/`](corpus-languages/) (Perl, Bash, ksh93, POSIX sh, a POM, a Spring context,
+   an XSD, an XSLT), showed what gpt-oss-20b lost with it: a deploy script's options and globals
+   (70 % of its names), a POM's plugins, lower-case ksh variables. `profiles/v3/` now has
+   `file-body-shell`, `file-body-perl` and `file-body-xml` (what they ask for:
+   [`profiles/README.md`](../../profiles/README.md)). Three runs each on OpenRouter, six with the
+   new prompts on the language corpus, outputs under [`languages-2026-11/`](languages-2026-11/)
+   (the generic prompt's in `languages-generic/`):
+
+   | | Language corpus: generic / own prompts | This corpus | Second corpus | Reader hit@1 |
+   |---|---|---|---|---|
+   | GPT-6 Luna | 99.6 / **99.9 %** | 100 % | 100 % | 93 / 88 / 93 % (91 %) |
+   | gpt-oss-20b | 95.7 / **97.7 %** (99.1 % without one empty answer) | 99.6 % | 99.5 % | 93 / 95 / 98 % (95 %) |
+
+   Runs 4 to 6 on the language corpus came after one wording change in `file-body-perl` (an option
+   as the user types it, `--max-age`, its Getopt::Long spec only as the source), which left the Perl
+   files where they were; gpt-oss still writes the spec. gpt-oss scored 100, 98.5, 99.3, 98.9,
+   99.7 and 89.5 %: in run 6 the provider returned an empty answer for the ksh script, which
+   srcmorph wrote as a summary without a body (it logs `AI provider returned empty body`); without
+   that file the run scores 98.2 % and the six runs 99.1 %.
+
+   On this corpus and the second one, every miss with the new prompts is in a Java or SQL file,
+   whose prompts are unchanged; v3 before them scored 100 and 99.8 % for gpt-oss there. On this
+   corpus gpt-oss lost the same name of one SQL migration (`book_free_le_total`) in two of the
+   three runs, which v3 kept in all three: three runs cannot tell that from run-to-run variation
+   (Fisher's exact test, p = 0.4), nor show that it is one. The reader's hit@1 is the same case:
+   95 against 92 % for gpt-oss is 1.3 of 43 questions, inside the 2 to 7 points one configuration
+   moves between runs ([Search](#search-do-the-summaries-lead-to-the-right-file)). One shell draft
+   showed what a prompt can cost: asked for every assignment as `name=value`, gpt-oss copied them
+   into a code fence in two of three runs, and "one bullet each" kept the values without the
+   fence.
+
+   [`modelcard/large.py`](modelcard/large.py) writes three files no window of this card holds: a
+   1.6 MB SQL dump (3 tables, 30 000 rows), an 870 KB XML catalog and a 283 KB Java enum of 6 000
+   constants. Run with the fact counters and `onOversize` `mapReduce` over at most 6 chunks; more
+   chunks than that are a sample: at `charsPerToken` 2 gpt-oss's window cuts the dump into about
+   nine, and srcmorph summarizes six of them, evenly spaced, while Luna reads all five of its
+   chunks. Every name the score expects stands in the dump's first chunk, so the score does not
+   see the rows gpt-oss skipped; the facts line counts them all. The cost is the change of the
+   account's OpenRouter usage over a run, which is booked late: Luna's third run shows 0.02 USD for
+   the work the first two show as 0.16.
+
+   | | Quality: run 1 / 2 / 3 | USD per run |
+   |---|---|---|
+   | GPT-6 Luna | 100 / 100 / 96.4 % | 0.02 to 0.16 |
+   | gpt-oss-20b, `charsPerToken` 2 | 96.4 / 97.7 / 100 % | 0.024 to 0.026 |
+   | Granite 4.0 H-Tiny, 384K window, local: generic / XML prompt | 52.6 / 45.5 % (one run) | – |
+   | Granite 4.0 H-1B, 16K chunks, local: generic / XML prompt | 27.3 / 9.4 % (one run) | – |
+
+   - **The facts line is right for every model**: 60 `INSERT`s, 30 000 rows, 3 tables, 1 view,
+     2 indexes; 20 041 XML elements. The prose is not: both Granite models invent SQL tables
+     (`accounts`, `transactions`, `ledger_entries`) and name none of the three real ones, and they
+     copy a prompt's example sentence as the lead: H-1B the XML prompt's ("Builds the reporting
+     module and its PDF export") for the catalog, H-Tiny the Java prompt's for the enum. With the
+     XML prompt both scored lower on the catalog (86 to 14 % and 86 to 57 % of its names) in this
+     one run each, and H-Tiny's 86 % with the generic prompt came from copying the catalog's first
+     records into a code fence, which names the products but summarizes nothing; the three runs of
+     2026-11-02 below decided the self-test's tiers. gpt-oss and Luna name
+     every table, index and view of the dump.
+   - **A data file has fewer characters per token than code.** At srcmorph's default of 4,
+     gpt-oss's first chunk of the SQL dump was refused by the provider (about 135 000 tokens for a
+     131 072 window); at 3 the second chunk was (149 394 tokens); the dump's numbers and IBANs run
+     at about 2 characters per token. `charsPerToken` is the setting for it on a remote API (the
+     self-test's Granite presets have 3); `run.py --chars-per-token` sets it for a run. A local
+     (`llamacpp-jni`) model counts its prompts in tokens since 2026-11-02, so there the estimate only
+     picks which files are counted.
+   - The scorer took the facts line for the model's text before (no lead line, the counts as the
+     model's); it now scores the body without it. No run of the card above had a facts line.
+
+   **Measured again on 2026-11-01** ([`remeasure-2026-11-01/`](remeasure-2026-11-01/README.md),
+   today's scorer, three runs each on OpenRouter): with `mapReduce` reading every chunk and names
+   planted in the middle of each large file, gpt-oss-20b scored 99.4 % on the language corpus,
+   99.8 % on this corpus and 78.1 % on the large one, GPT-6 Luna 99.8, 100 and 97.9 %. Luna names
+   the planted middle of all three files in every run; gpt-oss-20b only the SQL dump's, and once its
+   final answer for the enum was cut off at 4096 tokens and the file not written. Locally the two
+   Granite presets and gpt-oss-20b each lost at least one large file the same way: since an
+   incomplete answer is never written, an answer longer than `maxOutputTokens` (a chunk's part summary
+   at the time, or the final answer) failed its file; a cut part summary is kept since.
+   For H-Tiny the XML and the generic prompt fail the catalog alike, for H-1B the generic prompt
+   keeps 6 of 8 names where the XML prompt's answer is too short.
+
+   **Measured again on 2026-11-02** ([`remeasure-2026-11-02/`](remeasure-2026-11-02/README.md),
+   three runs each), after the map-reduce work: a cut part summary is kept, a dense chunk is split,
+   the map and reduce calls have prompts of their own, the reduce reads the facts line, a local
+   model's windows are counted in tokens. On OpenRouter gpt-oss-20b scored 99.1 % on the language
+   corpus, 99.9 % on this corpus and 75.2 % (59.7 / 69.1 / 96.9) on the large one, GPT-6 Luna 99.5,
+   100 and 99.0 %. Luna names the planted middle of all three large files in every run. gpt-oss-20b
+   names the catalog's in every run and the enum's in none; in runs 1 and 2 its answer for one chunk
+   of the SQL dump ran to the 4096-token limit, all of it reasoning, and the file was not written.
+   With `maxOutputTokens` 16384 it did worse (39.7 / 66.0 / 47.2 %): a chunk of the dump ran to that
+   limit in all three runs and one of the catalog in one, so the model's preset keeps 4096 (one of
+   those runs named the enum's middle area). Since a part that comes back without text is read
+   again in two halves, three more runs wrote the dump every time: 88.3 / 93.8 / 96.9 %. Locally,
+   Granite at temperature 0.2 gave the same names in all three runs, both presets with
+   `--oversize mapReduce`:
+
+   | Large corpus, local, three runs | Quality | Enum | Catalog | Dump |
+   |---|---|---|---|---|
+   | Granite 4.0 H-Tiny, map-reduce over 64K: XML / generic prompt for XML | 66.6 / 57.1 % | 7 of 8 | **7** / 4 of 8 | 3 of 11 |
+   | Granite 4.0 H-1B, map-reduce over 16K: XML / generic prompt for XML | 3.8 / 17.1 % | too short | 0 / **5** of 8 | 0 of 11 |
+
+   So the self-test's `big-xml` (H-Tiny, 275 KB to 1 MB, where the 870 KB catalog falls) takes
+   `file-body-xml`, measured as it runs. H-1B map-reducing every chunk is not how `huge-xml` runs
+   it: that tier samples six chunks of a file over 1 MB. Run that way on a 1.15 MB catalog, three
+   times each, H-1B wrote one correct sentence with the XML prompt (16.2 %), while with the generic
+   prompt its final answer ran to the 1536-token limit and the file failed every time; so
+   `huge-xml` takes `file-body-xml` too. Neither Granite preset names a planted middle name, and
+   both still invent SQL names.
 
 ### Repeatability
 
@@ -412,17 +559,17 @@ Ordered by what would change a decision:
    every method and still describe one wrongly. A hand check of about five files per top model,
    each statement marked right or wrong against the source, or a judge model with that check
    sampled by hand.
-2. **Large files.** The largest file here is 51 KB. srcmorph's oversize path (map-reduce over
-   chunks) has been timed but not judged for quality. One 300 KB to 1 MB file per kind through the
-   top models would show where quality drops and what it costs.
+2. **Large files on more models.** Finding 7 ran three files of 0.3 to 1.6 MB through two hosted
+   models and the two Granite presets. The local models between them (gpt-oss-20b and Gemma 4 on
+   the GPU, with their windows) and the `sample` strategy against `mapReduce` are open.
 3. **Token usage per call.** srcmorph does not log the usage the API returns. With it, cost and
    speed could be explained per file (input against output against reasoning), and the Hugging
    Face runs could be priced exactly.
 4. **Local options this card does not cover:** Gemma 4 E4B at Q8_0 against Q4_K_M (it fits in
    8 GB either way), and the prompt v2 of June against v1 on the winners.
-5. **Prompt v2 on a corpus it was not written on**, and on the other models: v2 was written from
-   this corpus's misses (finding 5), so a second corpus (another project's Java, SQL and scripts)
-   would separate the general gain from the fitted part.
+5. **The current prompts on the other models.** v2 and v3 have run on gpt-oss-20b and GPT-6 Luna
+   only, on this corpus and on a second one (findings 5 and 6); the other top models and the local
+   ones have not.
 6. **A harder search test.** With 24 files the reader finds nearly every answer from any decent
    summary, so the search measurement separates only broken summaries from working ones. A larger
    corpus with many files of the same kind (a whole module, say 200 files) and questions that need
@@ -578,8 +725,8 @@ Every model ran the three CLI phases `GenerateFileIndex`, `AggregatePackages` an
 and project phases use `package-body` and `project-body`. These are the v1 prompts (in the
 history of [`profiles/`](../../profiles/README.md), `prompts/v1/` in commit `6fe8335`); the card's
 runs got them from the plugin pom's inline copy, with a leading line break and a trailing line
-break plus 36 spaces around the same text. Only finding 5 runs the current set,
-`profiles/v2/` (`run.py --profile v2`, the default now).
+break plus 36 spaces around the same text. Findings 5 and 6 run v2 and
+v3; `profiles/v3/` is the current set (`run.py --profile v3`, the default now).
 
 ### Settings
 

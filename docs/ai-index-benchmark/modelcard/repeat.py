@@ -23,16 +23,18 @@ HERE = Path(__file__).resolve().parent
 
 
 def quality(rows):
-    """Recall per kind (an empty body counts 0), format share and the card's quality score."""
+    """Recall per kind (a failed body counts 0), format share and the card's quality score. A kind the
+    corpus has no expected names for (the language corpus has only other files) is left out of the mean."""
     recall = {}
     for kind in ("java", "sql", "other"):
-        per_file = [r["idsFound"] / r["idsExpected"] if r["bodyBytes"] else 0.0
-                    for r in rows if r["kind"] == kind and not r["missing"] and r.get("idsExpected")]
-        recall[kind] = sum(per_file) / len(per_file)
-    clean = sum(1 for r in rows if not r["missing"] and r["bodyBytes"] and r["lead"]
+        per_file = [0.0 if r["failed"] else r["idsFound"] / r["idsExpected"]
+                    for r in rows if r["kind"] == kind and r.get("idsExpected")]
+        if per_file:
+            recall[kind] = sum(per_file) / len(per_file)
+    clean = sum(1 for r in rows if not r["failed"] and r["lead"]
                 and not r["badHeadings"] and not r["fences"] and not r["leaks"])
     fmt = clean / len(rows)
-    return {"quality": round((recall["java"] + recall["sql"] + recall["other"] + fmt) / 4, 4),
+    return {"quality": round((sum(recall.values()) + fmt) / (len(recall) + 1), 4),
             "recall": {k: round(v, 4) for k, v in recall.items()}, "format": round(fmt, 4)}
 
 
@@ -59,13 +61,13 @@ def spread(values):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--work", required=True)
-    parser.add_argument("--repeat", default=",".join(
-        str(p) for p in sorted((HERE.parent / "repeat-2026-10").iterdir()) if p.is_dir()))
+    parser.add_argument("--repeat", default=None)
     parser.add_argument("--scores", default=str(HERE / "scores"))
     args = parser.parse_args()
     work = Path(args.work)
     facts = json.loads((HERE / "facts.json").read_text(encoding="utf-8"))
-    roots = [Path(r) for r in args.repeat.split(",")]
+    roots = ([Path(r) for r in args.repeat.split(",")] if args.repeat
+             else sorted(p for p in (HERE.parent / "repeat-2026-10").iterdir() if p.is_dir()))
     keys = sorted({p.name for root in roots for p in (root / "out").iterdir() if p.is_dir()})
 
     result = {}
@@ -84,11 +86,12 @@ def main():
     from plot import load
     card = {d["key"]: d["quality"] for d in load()}
     for key, entry in result.items():
-        assert abs(card[key] - entry["runs"][0]["quality"]) < 1e-3, (key, card[key], entry["runs"][0]["quality"])
+        if key not in card or abs(card[key] - entry["runs"][0]["quality"]) >= 1e-3:
+            raise SystemExit(f"{key}: the card's quality {card.get(key)} != {entry['runs'][0]['quality']}")
 
     scores = Path(args.scores)
     scores.mkdir(parents=True, exist_ok=True)
-    (scores / "repeat.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    (scores / "repeat.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

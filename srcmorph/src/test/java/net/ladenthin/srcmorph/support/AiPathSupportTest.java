@@ -107,4 +107,26 @@ public class AiPathSupportTest {
         assertThat(AiPathSupport.resolveAgainst(new File("prompts"), null), is(nullValue()));
     }
     // </editor-fold>
+
+    @Test
+    public void hasExtension_withOrWithoutTheDotAndInAnyCase() {
+        assertThat(AiPathSupport.hasExtension("Foo.java", ".java"), is(true));
+        assertThat(AiPathSupport.hasExtension("Foo.java", "java"), is(true));
+        assertThat(AiPathSupport.hasExtension("Foo.JAVA", ".java"), is(true));
+        assertThat(AiPathSupport.hasExtension("Foo.java", " .Java "), is(true));
+    }
+
+    @Test
+    public void hasExtension_theDotIsPartOfIt() {
+        assertThat(AiPathSupport.hasExtension("README.cmd", "md"), is(false));
+        assertThat(AiPathSupport.hasExtension("README.md", "md"), is(true));
+        assertThat(AiPathSupport.hasExtension("md", "md"), is(false));
+        assertThat(AiPathSupport.hasExtension(".md", "md"), is(true));
+    }
+
+    @Test
+    public void hasExtension_blankMatchesNothing() {
+        assertThat(AiPathSupport.hasExtension("Foo.java", ""), is(false));
+        assertThat(AiPathSupport.hasExtension("Foo.java", "  "), is(false));
+    }
 }

@@ -15,9 +15,9 @@ import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
  * The outcome of one {@link CalibrateEngine#execute()} run: one {@link ModelMeasurement} per distinct
  * routed model, in calibration order.
  *
- * <p>{@link #renderXml()} is the pure, paste-ready {@code <calibration>} XML block renderer — the same
- * text the {@code srcmorph:calibrate} goal has always printed, extracted here so it is unit-testable
- * without a Maven {@code Log} and reusable by any future caller (e.g. a CLI).</p>
+ * <p>{@link #renderPasteBlock()} renders the paste-ready YAML {@code calibration:} block of each model,
+ * which the {@code srcmorph:calibrate} goal and the CLI's {@code Calibrate} print for the model's entry
+ * under {@code aiDefinitions} of the configuration file.</p>
  */
 @ToString
 @EqualsAndHashCode
@@ -32,13 +32,13 @@ public final class CalibrationReport {
     /** File name of the machine-readable YAML report, written alongside {@link #JSON_FILE_NAME}. */
     public static final String YAML_FILE_NAME = "srcmorph-calibration.yaml";
 
-    /** Format of the two throughput figures, shared by {@link #renderXml()} and the JSON/YAML reports. */
+    /** Format of the two throughput figures, shared by {@link #renderPasteBlock()} and the reports. */
     private static final String FORMAT_TOKENS_PER_SECOND = "%.1f";
 
-    /** Format of the chars-per-token figure, shared by {@link #renderXml()} and the JSON/YAML reports. */
+    /** Format of the chars-per-token figure, shared by {@link #renderPasteBlock()} and the reports. */
     private static final String FORMAT_CHARS_PER_TOKEN = "%.2f";
 
-    /** Format of the load duration, which has no counterpart in the XML block. */
+    /** Format of the load duration, which has no counterpart in the paste block. */
     private static final String FORMAT_LOAD_SECONDS = "%.3f";
 
     private final List<ModelMeasurement> measurements;
@@ -62,12 +62,13 @@ public final class CalibrationReport {
     }
 
     /**
-     * Renders one paste-ready {@code <calibration>} XML block per measured model, each preceded by a
-     * comment naming the model key, in calibration order.
+     * Renders one paste-ready YAML {@code calibration:} block per measured model, each preceded by a
+     * comment naming the model key, in calibration order; the block goes into the model's entry under
+     * {@code aiDefinitions}.
      *
      * @return the rendered blocks, or an empty string when no model was measured
      */
-    public String renderXml() {
+    public String renderPasteBlock() {
         final StringBuilder out = new StringBuilder();
         for (final ModelMeasurement entry : measurements) {
             appendPasteBlock(out, entry.modelKey(), entry.measurement());
@@ -79,11 +80,11 @@ public final class CalibrationReport {
      * Renders the report as JSON.
      *
      * <p>Hand-rolled rather than delegated to Jackson on purpose: this module is framework-free and
-     * carries no JSON dependency (only {@code srcmorph-cli} does), and {@link #renderXml()} sets the
-     * same precedent. The document is small and fully determined by six numbers and a key.</p>
+     * keeps it independent of a mapper's settings, and {@link #renderPasteBlock()} sets the same
+     * precedent. The document is small and fully determined by six numbers and a key.</p>
      *
-     * <p>The three figures that also appear in the {@code <calibration>} block are formatted
-     * identically, so the JSON and the paste-ready XML can never disagree about what was measured.</p>
+     * <p>The three figures that also appear in the {@code calibration:} block are formatted
+     * identically, so the JSON and the paste block can never disagree about what was measured.</p>
      *
      * @return the JSON document; a {@code models} array that is empty when no model was measured
      */
@@ -228,7 +229,7 @@ public final class CalibrationReport {
     }
 
     /**
-     * Appends a copy-pasteable {@code <calibration>} block (with a comment naming the model) to the buffer.
+     * Appends a copy-pasteable {@code calibration:} block (with a comment naming the model) to the buffer.
      *
      * @param out      the buffer
      * @param modelKey the model key (for the comment)
@@ -236,42 +237,37 @@ public final class CalibrationReport {
      */
     private static void appendPasteBlock(
             final StringBuilder out, final String modelKey, final AiCalibrationMeasurement m) {
-        out.append("<!-- calibration for aiDefinition '").append(modelKey).append("' (this machine) -->\n");
-        out.append("<calibration>\n");
-        appendXmlNumber(
+        out.append("# calibration of the aiDefinitions entry ")
+                .append(quote(modelKey))
+                .append(" (this machine)\n");
+        out.append("calibration:\n");
+        appendPasteLine(
                 out,
                 "prefillTokensPerSecond",
                 String.format(Locale.ROOT, FORMAT_TOKENS_PER_SECOND, m.prefillTokensPerSecond()));
-        appendXmlNumber(
+        appendPasteLine(
                 out,
                 "decodeTokensPerSecond",
                 String.format(Locale.ROOT, FORMAT_TOKENS_PER_SECOND, m.decodeTokensPerSecond()));
-        appendXmlNumber(out, "charsPerToken", String.format(Locale.ROOT, FORMAT_CHARS_PER_TOKEN, m.charsPerToken()));
-        out.append("</calibration>\n");
+        appendPasteLine(out, "charsPerToken", String.format(Locale.ROOT, FORMAT_CHARS_PER_TOKEN, m.charsPerToken()));
     }
 
     /**
-     * Appends one indented {@code <tag>value</tag>} line of the paste block, ending in {@code \n}.
+     * Appends one indented {@code key: value} line of the paste block, ending in {@code \n}.
      *
      * <p>The line separator is a literal here and never part of a {@link String#format} pattern:
      * SpotBugs reports {@code VA_FORMAT_STRING_USES_NEWLINE} for a pattern containing {@code \n} and
      * wants {@code %n}, which is exactly the platform-dependent separator this block must not carry
-     * (see the {@code renderXml()} contract and {@code CalibrationReportTest}). Keeping the newline
+     * (see the {@code renderPasteBlock()} contract and {@code CalibrationReportTest}). Keeping the newline
      * out of the pattern satisfies both. The value arrives already rendered for the same reason as in
      * {@link #appendJsonNumber(StringBuilder, String, String)}.</p>
      *
      * @param out    the buffer
-     * @param tag    the XML element name
+     * @param key    the YAML key
      * @param value  the already-formatted value
      */
-    private static void appendXmlNumber(final StringBuilder out, final String tag, final String value) {
-        out.append("    <")
-                .append(tag)
-                .append('>')
-                .append(value)
-                .append("</")
-                .append(tag)
-                .append(">\n");
+    private static void appendPasteLine(final StringBuilder out, final String key, final String value) {
+        out.append("  ").append(key).append(": ").append(value).append('\n');
     }
 
     /** One model's key paired with its {@link AiCalibrationMeasurement}. */

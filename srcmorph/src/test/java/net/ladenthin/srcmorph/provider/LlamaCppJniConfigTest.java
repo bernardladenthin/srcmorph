@@ -100,10 +100,8 @@ public class LlamaCppJniConfigTest {
 
     /**
      * The builder's whole point: a value the caller never named is the matching
-     * {@code AiGenerationConfig.DEFAULT_*}, not Java's zero. This is the single test standing between
-     * {@code LlamaCppJniConfigFactory.fromFallbackParameters} -- which no longer restates any default --
-     * and a knob silently arriving as {@code 0}/{@code false}/{@code null} instead of what
-     * {@code AiGenerationConfig} says it should be.
+     * {@code AiGenerationConfig.DEFAULT_*}, not Java's zero: a knob must never arrive as
+     * {@code 0}/{@code false}/{@code null} instead of what {@code AiGenerationConfig} says it should be.
      */
     @Test
     public void builder_leavesEveryUnsetValueAtItsAiGenerationConfigDefault() {

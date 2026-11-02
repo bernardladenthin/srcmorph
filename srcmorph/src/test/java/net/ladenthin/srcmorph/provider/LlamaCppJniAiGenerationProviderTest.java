@@ -4,8 +4,8 @@
 package net.ladenthin.srcmorph.provider;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Paths;
 import net.ladenthin.srcmorph.CommonTestFixtures;
@@ -45,7 +45,7 @@ public class LlamaCppJniAiGenerationProviderTest {
 
     // <editor-fold defaultstate="collapsed" desc="generate">
     @Test
-    public void generate_realProvider_returnsNonEmptyResponse() throws Exception {
+    public void generate_realProviderAtATinyBudget_refusesTheCutOffAnswerWithWhatItWrote() throws Exception {
         NativeLlamaAvailability.assumeAvailable();
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final String source = """
@@ -59,11 +59,14 @@ public class LlamaCppJniAiGenerationProviderTest {
                 }
                 """;
 
+        // At an 8-token budget the test model never finishes: generate refuses the cut-off answer and
+        // hands over what was written, so a real run never stores it as a summary.
         try (LlamaCppJniAiGenerationProvider provider =
-                new LlamaCppJniAiGenerationProvider(config(32768, 128), promptSupport)) {
-            final String body = provider.generate(request(source));
-            assertThat(body, is(notNullValue()));
-            assertThat(body.trim().isEmpty(), is(false));
+                new LlamaCppJniAiGenerationProvider(config(32768, 8), promptSupport)) {
+            final AiIncompleteAnswerException thrown =
+                    assertThrows(AiIncompleteAnswerException.class, () -> provider.generate(request(source)));
+            assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+            assertThat(thrown.partialText().trim().isEmpty(), is(false));
         }
     }
     // </editor-fold>
@@ -101,6 +104,24 @@ public class LlamaCppJniAiGenerationProviderTest {
             // paid on faith alone.
             assertThat(big.cachedPromptTokens() > 0, is(true));
             assertThat(big.totalPromptTokens() > big.promptTokens(), is(true));
+        }
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="promptTokens">
+    @Test
+    public void promptTokens_realProvider_areTheTokensTheCallsPrefillReads() throws Exception {
+        NativeLlamaAvailability.assumeAvailable();
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final AiGenerationRequest request = request("SELECT 1, 2, 3 FROM dual WHERE x = 'a,b;c';\n");
+
+        try (LlamaCppJniAiGenerationProvider provider =
+                new LlamaCppJniAiGenerationProvider(config(4096, 16), promptSupport)) {
+            final int counted = provider.promptTokens(request).getAsInt();
+            final AiGenerationTimings generated = provider.generateWithTimings(request);
+
+            // the count is the prompt the call reads, chat template included, before any call is made
+            assertThat(counted, is(generated.totalPromptTokens()));
         }
     }
     // </editor-fold>

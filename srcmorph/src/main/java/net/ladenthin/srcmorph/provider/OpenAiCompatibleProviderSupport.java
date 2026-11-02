@@ -11,14 +11,28 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.llama.value.ChatResponse;
@@ -73,6 +87,61 @@ final class OpenAiCompatibleProviderSupport {
     /** How many characters of an error body go into the exception message. */
     static final int ERROR_BODY_EXCERPT = 500;
 
+    /** {@code 400 Bad Request}: refused as malformed, or, with the wording, as too long for the context. */
+    static final int HTTP_BAD_REQUEST = 400;
+
+    /** {@code 408 Request Timeout}. */
+    static final int HTTP_REQUEST_TIMEOUT = 408;
+
+    /** {@code 413 Payload Too Large}: OpenRouter's answer to a prompt longer than the model's context. */
+    static final int HTTP_PAYLOAD_TOO_LARGE = 413;
+
+    /** {@code 429 Too Many Requests}. */
+    static final int HTTP_TOO_MANY_REQUESTS = 429;
+
+    /** First server-error status. */
+    static final int HTTP_SERVER_ERROR_FIRST = 500;
+
+    /** One past the last server-error status. */
+    static final int HTTP_SERVER_ERROR_END = 600;
+
+    /** How servers word a refused prompt that is longer than the context, in any case. */
+    private static final Pattern CONTEXT_OVERFLOW_WORDING = Pattern.compile(
+            "context[ _]length|maximum context|context window|too many tokens|prompt is too long"
+                    + "|reduce the length|exceeds? the (?:available )?context|input token count"
+                    + "|maximum number of tokens",
+            Pattern.CASE_INSENSITIVE);
+
+    /** The backoff before the first retry when the server sends no {@code Retry-After}. */
+    static final long RETRY_BASE_DELAY_MILLIS = 1_000L;
+
+    /** The longest backoff between two attempts. */
+    static final long MAX_RETRY_BACKOFF_MILLIS = 60_000L;
+
+    /** The longest {@code Retry-After} honoured; a server asking for more waits this long. */
+    static final long MAX_RETRY_AFTER_MILLIS = 300_000L;
+
+    /** Up to this fraction of the backoff is added as jitter. */
+    static final double RETRY_JITTER_FRACTION = 0.25d;
+
+    /**
+     * A 429 that no wait cures: the account's quota or credit is used up (OpenAI's {@code insufficient_quota},
+     * OpenRouter's credits), or Gemini's daily quota. Gemini words a per-minute limit as "exceeded your
+     * current quota" too, which a wait does cure, so that wording counts only with a per-day quota id.
+     */
+    private static final Pattern QUOTA_EXHAUSTED = Pattern.compile(
+            "insufficient_quota|insufficient credits|exceeded your current quota(?=[\\s\\S]*PerDay)",
+            Pattern.CASE_INSENSITIVE);
+
+    /** A 5xx that sending again cannot change: not implemented, HTTP version not supported. */
+    private static final int HTTP_NOT_IMPLEMENTED = 501;
+
+    /** See {@link #HTTP_NOT_IMPLEMENTED}. */
+    private static final int HTTP_VERSION_NOT_SUPPORTED = 505;
+
+    /** Milliseconds per second. */
+    private static final long MILLIS_PER_SECOND = 1_000L;
+
     /** Lowest HTTP status that counts as success. */
     private static final int HTTP_OK_FIRST = 200;
 
@@ -85,8 +154,8 @@ final class OpenAiCompatibleProviderSupport {
     /** The HTTPS scheme prefix a {@code baseUrl} may start with. */
     static final String HTTPS_SCHEME = "https://";
 
-    /** Host name of the loopback interface. */
-    private static final String LOOPBACK_HOST_NAME = "localhost";
+    /** Host name of the loopback interface, in any case. */
+    private static final Pattern LOOPBACK_HOST_NAME = Pattern.compile("localhost", Pattern.CASE_INSENSITIVE);
 
     /**
      * An IPv4 loopback literal ({@code 127.0.0.0/8}). A literal, not a prefix: {@code 127.evil.com}
@@ -94,8 +163,8 @@ final class OpenAiCompatibleProviderSupport {
      */
     private static final Pattern IPV4_LOOPBACK = Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}");
 
-    /** The IPv6 loopback address as {@link URL#getHost()} returns it, in brackets. */
-    private static final String IPV6_LOOPBACK = "[::1]";
+    /** A bracketed IPv6 literal as {@link URL#getHost()} returns it: hex digits and colons only. */
+    private static final Pattern IPV6_LITERAL = Pattern.compile("\\[[0-9A-Fa-f:]{2,39}]");
 
     /** Appended to an error body cut at {@link #ERROR_BODY_EXCERPT}. */
     private static final String ELLIPSIS = "...";
@@ -130,6 +199,38 @@ final class OpenAiCompatibleProviderSupport {
     private static final String NO_FINISH_REASON = "";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * The date and time of the obsolete rfc850-date form of an HTTP date ({@code 06-Nov-94 08:49:37 GMT}
+     * behind {@code Sunday, }), which RFC 9110 section 5.6.7 has a recipient accept; its two-digit year is
+     * read in 2000 to 2099 first, the weekday checked after the century is settled.
+     */
+    private static final DateTimeFormatter RFC_850_DATE = new DateTimeFormatterBuilder()
+            .appendPattern("dd-MMM-")
+            .appendValueReduced(ChronoField.YEAR, 2, 2, 2000)
+            .appendPattern(" HH:mm:ss 'GMT'")
+            .toFormatter(Locale.ENGLISH)
+            .withZone(ZoneOffset.UTC);
+
+    /** An rfc850-date: its weekday, then the rest for {@link #RFC_850_DATE}. */
+    private static final Pattern RFC_850_WEEKDAY = Pattern.compile("([A-Za-z]+), (.+)");
+
+    /**
+     * The obsolete asctime-date form of an HTTP date ({@code Sun Nov  6 08:49:37 1994}), in UTC, which RFC 9110
+     * section 5.6.7 has a recipient accept.
+     */
+    private static final DateTimeFormatter ASCTIME_DATE = DateTimeFormatter.ofPattern(
+                    "EEE MMM ppd HH:mm:ss yyyy", Locale.ENGLISH)
+            .withZone(ZoneOffset.UTC);
+
+    /**
+     * How far ahead an rfc850-date's two-digit year may put it; one further ahead is read a century earlier
+     * (RFC 9110 section 5.6.7).
+     */
+    private static final int RFC_850_MAX_YEARS_AHEAD = 50;
+
+    /** The years an rfc850-date read too far ahead is moved back. */
+    private static final int YEARS_PER_CENTURY = 100;
 
     private final LlamaCppJniConfig config;
 
@@ -422,7 +523,7 @@ final class OpenAiCompatibleProviderSupport {
         if (compatibilityHelper.isBlank(config.apiKeyEnv())) {
             return null;
         }
-        final String key = environment.apply(config.apiKeyEnv());
+        final String key = environment.apply(config.apiKeyEnv().trim());
         if (key == null || compatibilityHelper.isBlank(key)) {
             return null;
         }
@@ -462,10 +563,59 @@ final class OpenAiCompatibleProviderSupport {
      * Whether a host names the local machine's loopback interface.
      *
      * @param host the host part of a URL, as {@link URL#getHost()} returns it
-     * @return {@code true} for {@code localhost} (exactly, lower case), {@code 127.x.x.x} and {@code [::1]}
+     * @return {@code true} for {@code localhost} in any case, {@code 127.x.x.x} and the IPv6 loopback in
+     *         any of its written forms ({@code [::1]}, {@code [0:0:0:0:0:0:0:1]})
      */
     static boolean isLoopbackHost(final String host) {
-        return LOOPBACK_HOST_NAME.equals(host) || IPV4_LOOPBACK.matcher(host).matches() || IPV6_LOOPBACK.equals(host);
+        if (LOOPBACK_HOST_NAME.matcher(host).matches()
+                || IPV4_LOOPBACK.matcher(host).matches()) {
+            return true;
+        }
+        if (!IPV6_LITERAL.matcher(host).matches()) {
+            return false;
+        }
+        try {
+            // an IPv6 literal (hex digits and colons only): getByName checks its format, it looks nothing up
+            return InetAddress.getByName(host.substring(1, host.length() - 1)).isLoopbackAddress();
+        } catch (final UnknownHostException e) {
+            return false;
+        }
+    }
+
+    /**
+     * What would fail the first request of a model, found before any request is made: an
+     * {@code apiKeyEnv} whose variable is not set, or a key that would go in cleartext to another
+     * machine (a plain {@code http} {@code baseUrl} that is not loopback).
+     *
+     * @param baseUrl     the model's {@code baseUrl}, an {@code http(s)} URL
+     * @param apiKeyEnv   the model's {@code apiKeyEnv}
+     * @param environment looks up an environment variable by name, {@code null} when unset
+     * @return the problem, or {@code null} when there is none
+     */
+    static @Nullable String keyProblem(
+            final String baseUrl, final String apiKeyEnv, final Function<String, @Nullable String> environment) {
+        final String name = apiKeyEnv.trim();
+        if (name.isEmpty()) {
+            return null;
+        }
+        final String key = environment.apply(name);
+        if (key == null || key.trim().isEmpty()) {
+            return "its apiKeyEnv names " + name + ", which is not set in this process's environment";
+        }
+        final String base = baseUrl.trim();
+        if (!base.startsWith(HTTP_SCHEME)) {
+            return null;
+        }
+        final String host;
+        try {
+            host = new URL(base).getHost();
+        } catch (final MalformedURLException e) {
+            return "its baseUrl is not a URL: '" + base + "'";
+        }
+        return isLoopbackHost(host)
+                ? null
+                : "its key from " + name + " would go in cleartext to " + host
+                        + "; use an https baseUrl, a loopback server, or an empty apiKeyEnv";
     }
 
     /**
@@ -479,6 +629,152 @@ final class OpenAiCompatibleProviderSupport {
     }
 
     /**
+     * Whether a request that failed with this status may succeed when sent again: a timeout of the
+     * server ({@code 408}), a rate limit ({@code 429}, unless its body says the quota or credit is used
+     * up) or a server error ({@code 5xx}, but not {@code 501} and {@code 505}, which no retry changes).
+     *
+     * @param status the HTTP status
+     * @param body   the error body
+     * @return {@code true} for 408, a 429 of a rate limit, and 500 to 599 except 501 and 505
+     */
+    static boolean isRetryable(final int status, final String body) {
+        if (status == HTTP_TOO_MANY_REQUESTS) {
+            return !QUOTA_EXHAUSTED.matcher(body).find();
+        }
+        return status == HTTP_REQUEST_TIMEOUT
+                || (status >= HTTP_SERVER_ERROR_FIRST
+                        && status < HTTP_SERVER_ERROR_END
+                        && status != HTTP_NOT_IMPLEMENTED
+                        && status != HTTP_VERSION_NOT_SUPPORTED);
+    }
+
+    /**
+     * Whether a failed answer says the prompt is longer than the model's context: a {@code 413}, or a
+     * {@code 400} whose body says so in one of the wordings servers use.
+     *
+     * @param status the HTTP status
+     * @param body   the error body
+     * @return {@code true} for a context overflow
+     */
+    static boolean isContextOverflow(final int status, final String body) {
+        if (status == HTTP_PAYLOAD_TOO_LARGE) {
+            return true;
+        }
+        return status == HTTP_BAD_REQUEST
+                && CONTEXT_OVERFLOW_WORDING.matcher(body).find();
+    }
+
+    /**
+     * How long to wait before retry number {@code retry}: the server's {@code Retry-After} in seconds
+     * when it sends one (at most {@link #MAX_RETRY_AFTER_MILLIS}), otherwise an exponential backoff from
+     * {@link #RETRY_BASE_DELAY_MILLIS}, at most {@link #MAX_RETRY_BACKOFF_MILLIS}, plus up to a quarter
+     * of it as jitter so that clients that failed together do not retry together.
+     *
+     * @param retryAfter the {@code Retry-After} header, or {@code null}; seconds of any length are capped,
+     *                   a date instead of seconds is ignored
+     * @param retry      the retry about to be made, from {@code 1}
+     * @param jitter     a random number in {@code [0, 1)}
+     * @return the delay in milliseconds
+     */
+    static long retryDelayMillis(
+            final @Nullable String retryAfter, final int retry, final double jitter, final long nowMillis) {
+        final String value = retryAfter == null ? "" : retryAfter.trim();
+        long asked = retryAfterMillis(value);
+        if (asked < 0) {
+            asked = retryAtMillis(value, nowMillis);
+        }
+        if (asked >= 0) {
+            return asked;
+        }
+        final long backoff = Math.min(MAX_RETRY_BACKOFF_MILLIS, RETRY_BASE_DELAY_MILLIS << Math.min(retry - 1, 30));
+        return backoff + (long) (backoff * RETRY_JITTER_FRACTION * jitter);
+    }
+
+    /**
+     * The wait until a {@code Retry-After} given as an HTTP date (RFC 9110 allows a date as well as seconds),
+     * at most {@link #MAX_RETRY_AFTER_MILLIS}; a date in the past waits nothing.
+     *
+     * @param date      the trimmed header value
+     * @param nowMillis the current time
+     * @return the milliseconds, or {@code -1} when the value is no HTTP date
+     */
+    private static long retryAtMillis(final String date, final long nowMillis) {
+        final ZonedDateTime at = httpDate(date, Instant.ofEpochMilli(nowMillis).atZone(ZoneOffset.UTC));
+        if (at == null) {
+            return -1;
+        }
+        return Math.min(MAX_RETRY_AFTER_MILLIS, Math.max(0L, at.toInstant().toEpochMilli() - nowMillis));
+    }
+
+    /**
+     * Reads an HTTP date in any of its three forms: IMF-fixdate, asctime-date, rfc850-date.
+     *
+     * @param date the trimmed header value
+     * @param now  the current time, which settles an rfc850-date's century
+     * @return the date, or {@code null} when the value is none of them
+     */
+    private static @Nullable ZonedDateTime httpDate(final String date, final ZonedDateTime now) {
+        final ZonedDateTime imf = parsedDate(date, DateTimeFormatter.RFC_1123_DATE_TIME);
+        if (imf != null) {
+            return imf;
+        }
+        final ZonedDateTime asctime = parsedDate(date, ASCTIME_DATE);
+        if (asctime != null) {
+            return asctime;
+        }
+        final Matcher rfc850 = RFC_850_WEEKDAY.matcher(date);
+        if (!rfc850.matches()) {
+            return null;
+        }
+        // both groups take part in every match; valueOf only satisfies the nullness checker
+        final ZonedDateTime read = parsedDate(String.valueOf(rfc850.group(2)), RFC_850_DATE);
+        if (read == null) {
+            return null;
+        }
+        final ZonedDateTime at =
+                read.isAfter(now.plusYears(RFC_850_MAX_YEARS_AHEAD)) ? read.minusYears(YEARS_PER_CENTURY) : read;
+        final String weekday = at.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        return weekday.equals(rfc850.group(1)) ? at : null;
+    }
+
+    /**
+     * Parses a date with one formatter.
+     *
+     * @param text      the text
+     * @param formatter the form
+     * @return the date, or {@code null} when the text is not of that form
+     */
+    private static @Nullable ZonedDateTime parsedDate(final String text, final DateTimeFormatter formatter) {
+        try {
+            return ZonedDateTime.parse(text, formatter);
+        } catch (final DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The {@code Retry-After} seconds as milliseconds, at most {@link #MAX_RETRY_AFTER_MILLIS}, read digit
+     * by digit so that no length overflows.
+     *
+     * @param seconds the trimmed header value
+     * @return the milliseconds, or {@code -1} when the value is not a number of seconds
+     */
+    private static long retryAfterMillis(final String seconds) {
+        if (seconds.isEmpty()) {
+            return -1;
+        }
+        long millis = 0;
+        for (int i = 0; i < seconds.length(); i++) {
+            final char c = seconds.charAt(i);
+            if (c < '0' || c > '9') {
+                return -1;
+            }
+            millis = Math.min(MAX_RETRY_AFTER_MILLIS, millis * 10 + (c - '0') * MILLIS_PER_SECOND);
+        }
+        return millis;
+    }
+
+    /**
      * The message of the exception a non-2xx answer fails with: endpoint, status and the start of
      * the body (a server's error JSON says what was wrong, e.g. an unknown model or a missing key).
      *
@@ -489,6 +785,19 @@ final class OpenAiCompatibleProviderSupport {
      */
     static String errorMessage(final String endpoint, final int status, final String body) {
         return endpoint + " answered HTTP " + status + ": " + excerpt(body);
+    }
+
+    /**
+     * The message of the exception a 2xx answer without a choice fails with: endpoint, file and the start
+     * of the body, which shows whether it was a proxy's HTML page, an error object or something else.
+     *
+     * @param endpoint   the URL that was called
+     * @param sourceFile the file the answer was for
+     * @param body       the response body
+     * @return the message
+     */
+    static String noChoiceMessage(final String endpoint, final Path sourceFile, final String body) {
+        return endpoint + " answered without a completion for " + sourceFile + ": " + excerpt(body);
     }
 
     private static String excerpt(final String body) {

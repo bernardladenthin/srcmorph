@@ -164,4 +164,28 @@ public class AiPromptPreparationSupportTest {
         assertThat(support.trimSourceAtLineBreak("\nabc", 3), is(equalTo("\n")));
     }
     // </editor-fold>
+
+    @Test
+    public void trim_newlineAtTarget_keepsAtMostTargetCharacters() {
+        final AiPromptPreparationSupport support = new AiPromptPreparationSupport(createPromptSupport());
+        // the line break at index 2 would keep three characters for a target of two
+        assertThat(support.trimSourceAtLineBreak("ab\ncd", 2), is(equalTo("ab")));
+        assertThat(support.trimSourceAtLineBreak("a\n\ncd", 2), is(equalTo("a\n")));
+    }
+
+    @Test
+    public void preparePrompt_aTrimmedPrompt_isNeverLongerThanItsWindow() {
+        final AiPromptPreparationSupport support = new AiPromptPreparationSupport(createPromptSupport());
+        final StringBuilder source = new StringBuilder();
+        for (int i = 0; i < 400; i++) {
+            source.append("line ").append(i).append('\n');
+        }
+        for (int window = 300; window < 1_500; window += 7) {
+            final AiPreparedPrompt prepared = support.preparePrompt(
+                    new AiGenerationRequest("file-summary", Paths.get("A.java"), source.toString(), buildHeader()),
+                    window);
+            assertThat(prepared.trimmed(), is(true));
+            assertThat(prepared.prompt().length() <= window, is(true));
+        }
+    }
 }

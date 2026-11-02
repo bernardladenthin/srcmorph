@@ -5,31 +5,47 @@ package net.ladenthin.srcmorph.config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Validates the SQL fact counters of the current profile ({@code profiles/v2/sql-facts.tsv}, read
+ * Validates the SQL fact counters of the current profile ({@code profiles/v3/sql-facts.tsv}, read
  * through {@link ProfileFactPatterns}, so the shipped file is what is tested) on PostgreSQL, MySQL and
  * T-SQL shapes, in the real {@link java.util.regex} engine {@code AiFactExtractor} uses. Each counter
  * gets the forms it has to see and the near misses it must not count; the approximate one ("VALUES
- * rows (approx)") gets its known over- and undercount pinned, so a change to it is a decision.
+ * rows (approx)") gets its known over- and undercount pinned, so a change to it is a decision. The
+ * {@code [ignore]} line reads the file as a lexer does; the last tests pin its regions and that a
+ * long blanked region stays linear.
  */
 public class SqlFactPatternsTest {
 
-    private static final Map<String, String> PATTERNS = ProfileFactPatterns.load("sql-facts");
+    private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("sql-facts");
+
+    /** Lines of the long inputs of the run-time tests. */
+    private static final int LONG_INPUT_LINES = 40_000;
+
+    /** What a long input may take; the quadratic patterns these tests replaced took about 44 s. */
+    private static final Duration LONG_INPUT_LIMIT = Duration.ofSeconds(10);
 
     private static int count(final String label, final String sql) {
-        return ProfileFactPatterns.count(ProfileFactPatterns.pattern(PATTERNS, label), sql);
+        final Map<String, Integer> counts = ProfileFactPatterns.counts(COUNTERS, sql);
+        final Integer count = counts.get(label);
+        if (count == null) {
+            throw new IllegalStateException("no counter '" + label + "' in " + counts.keySet());
+        }
+        return count;
     }
 
     @Test
     public void profile_hasTheseCountersInThisOrder() {
         assertThat(
-                new ArrayList<>(PATTERNS.keySet()),
+                new ArrayList<>(ProfileFactPatterns.counts(COUNTERS, "").keySet()),
                 is(Arrays.asList(
                         "INSERT statements",
                         "VALUES rows (approx)",
@@ -39,7 +55,11 @@ public class SqlFactPatternsTest {
                         "functions/procedures",
                         "triggers",
                         "types",
-                        "ALTER TABLE")));
+                        "ALTER TABLE",
+                        "sequences",
+                        "extensions",
+                        "schemas and databases",
+                        "packages and package bodies")));
     }
 
     // <editor-fold defaultstate="collapsed" desc="INSERT statements">
@@ -64,6 +84,153 @@ public class SqlFactPatternsTest {
                                 + "WHEN NOT MATCHED THEN INSERT (id) VALUES (s.id);\n"
                                 + "SELECT 'INSERT INTO x' AS text;\n"),
                 is(0));
+    }
+
+    @Test
+    public void insertStatements_mySqlIgnoreAndReplaceForms_count() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT IGNORE INTO t VALUES (1);\nREPLACE INTO t VALUES (1);\n"
+                                + "INSERT LOW_PRIORITY INTO t VALUES (1);\n"),
+                is(3));
+    }
+
+    @Test
+    public void insertStatements_insideABlockComment_doNotCount() {
+        assertThat(
+                count("INSERT statements", "/*\nINSERT INTO old VALUES (1);\n*/\nINSERT INTO t VALUES (1);\n"), is(1));
+    }
+
+    @Test
+    public void insertStatements_afterAnInlineBlockComment_count() {
+        assertThat(count("INSERT statements", "/* seed */ INSERT INTO t VALUES (1);\n"), is(1));
+    }
+
+    @Test
+    public void insertStatements_withoutInto_count() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT t VALUES (1);\nINSERT IGNORE t VALUES (1);\nINSERT dbo.T (a) VALUES (1);\n"
+                                + "INSERT #tmp SELECT 1;\nINSERT @tab VALUES (1);\nINSERT [dbo].[T] VALUES (1);\n"),
+                is(6));
+    }
+
+    @Test
+    public void insertStatements_oracleHintInsertAllAndInsertFirst_count() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT /*+ APPEND */ INTO t SELECT * FROM s;\n"
+                                + "INSERT /*+ APPEND PARALLEL(t, 4) */ INTO t SELECT * FROM s;\n"
+                                + "INSERT ALL\n  INTO a VALUES (1)\n  INTO b VALUES (2)\nSELECT * FROM dual;\n"
+                                + "INSERT FIRST\n  WHEN x > 1 THEN INTO a VALUES (x)\n  ELSE INTO b VALUES (x)\n"
+                                + "SELECT x FROM s;\n"),
+                is(4));
+    }
+
+    @Test
+    public void insertStatements_mergeBranchAndTriggerEventListOnTheirOwnLine_doNotCount() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "MERGE t USING s ON t.id = s.id\nWHEN NOT MATCHED THEN\n    INSERT (id) VALUES (s.id);\n"
+                                + "CREATE TRIGGER trg BEFORE\n  INSERT OR UPDATE ON t\n  FOR EACH ROW EXECUTE FUNCTION f();\n"
+                                + "CREATE TRIGGER trg2 AFTER\n  INSERT ON t\n  FOR EACH ROW EXECUTE FUNCTION f();\n"),
+                is(0));
+    }
+
+    @Test
+    public void insertStatements_withoutIntoInAStringOrAComment_doNotCount() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "SELECT 'INSERT t VALUES (1)' AS s;\n-- INSERT t VALUES (2)\nINSERT t VALUES (3);\n"),
+                is(1));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="comments and string literals">
+    @Test
+    public void ignore_blockCommentOpenerInAStringLiteral_opensNothing() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT INTO t VALUES ('/*');\nINSERT INTO t VALUES (2);\nINSERT INTO t VALUES (3);\n"
+                                + "/* real */\n"),
+                is(3));
+    }
+
+    @Test
+    public void ignore_blockCommentOpenerInADashComment_opensNothing() {
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "-- TODO /* fix\nINSERT INTO t VALUES (1);\nINSERT INTO t VALUES (2);\n/* real */\n"),
+                is(2));
+    }
+
+    @Test
+    public void ignore_doubledAndBackslashEscapedQuotes_stayInsideTheLiteral() {
+        final String sql = "INSERT INTO t VALUES ('O\\'Brien /* x'),('b');\nINSERT INTO t VALUES ('it''s */ ok');\n";
+        assertThat(count("INSERT statements", sql), is(2));
+        assertThat(count("VALUES rows (approx)", sql), is(3));
+    }
+
+    @Test
+    public void ignore_dashesInAStringLiteral_areNoComment() {
+        assertThat(
+                count("INSERT statements", "INSERT INTO t VALUES ('a -- b'), ('c');\nINSERT INTO t VALUES ('d');\n"),
+                is(2));
+    }
+
+    @Test
+    public void ignore_unclosedBlockComment_commentsOutTheRest() {
+        assertThat(
+                count("INSERT statements", "INSERT INTO t VALUES (1);\n/* never closed\nINSERT INTO t VALUES (2);\n"),
+                is(1));
+    }
+
+    @Test
+    public void ignore_mySqlVersionCommentAndOracleHint_stay() {
+        final String sql = "/*!40101 SET NAMES utf8 */;\n/*!50001 CREATE VIEW v AS SELECT 1 */;\n"
+                + "/* CREATE TABLE fake (x int); */\nCREATE TABLE real_t (x int);\n";
+        assertThat(count("tables", sql), is(1));
+        // the version comment's view does not start its line, so it is not seen either way
+        assertThat(count("views", sql), is(0));
+    }
+
+    @Test
+    public void ignore_longBlockComment_staysLinear() {
+        final StringBuilder sql = new StringBuilder("/*\n");
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            sql.append("INSERT INTO old VALUES (").append(i).append(");\n");
+        }
+        sql.append("*/\nINSERT INTO t VALUES (1);\n");
+        assertThat(
+                assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("INSERT statements", sql.toString())), is(1));
+    }
+
+    @Test
+    public void ignore_manyBlockCommentOpenersInStringLiterals_stayLinear() {
+        final StringBuilder sql = new StringBuilder();
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            sql.append("INSERT INTO routes (p) VALUES ('/api/*');\n");
+        }
+        assertThat(
+                assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("INSERT statements", sql.toString())),
+                is(LONG_INPUT_LINES));
+    }
+
+    @Test
+    public void statements_afterManyBlankLines_stayLinear() {
+        final StringBuilder sql = new StringBuilder();
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            sql.append('\n');
+        }
+        sql.append("  CREATE TABLE t (x int);\n");
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("tables", sql.toString())), is(1));
     }
     // </editor-fold>
 
@@ -175,8 +342,35 @@ public class SqlFactPatternsTest {
     }
 
     @Test
+    public void views_oracleForceEditionable_counts() {
+        assertThat(
+                count("views", "CREATE OR REPLACE FORCE EDITIONABLE VIEW \"S\".\"V\" AS SELECT 1 FROM dual;\n"), is(1));
+    }
+
+    @Test
     public void views_refreshAndDrop_doNotCount() {
         assertThat(count("views", "REFRESH MATERIALIZED VIEW d;\nDROP VIEW a;\n"), is(0));
+    }
+
+    @Test
+    public void views_mySqlAlgorithmDefinerAndSqlSecurity_count() {
+        assertThat(
+                count(
+                        "views",
+                        "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW v1 AS SELECT 1;\n"
+                                + "CREATE OR REPLACE ALGORITHM = MERGE VIEW v2 AS SELECT 1;\n"
+                                + "CREATE DEFINER=`app`@`%` VIEW v3 AS SELECT 1;\n"
+                                + "CREATE SQL SECURITY INVOKER VIEW v4 AS SELECT 1;\n"),
+                is(4));
+    }
+
+    @Test
+    public void views_materializedViewLog_isNoView() {
+        assertThat(
+                count(
+                        "views",
+                        "CREATE MATERIALIZED VIEW LOG ON t WITH ROWID;\nCREATE MATERIALIZED VIEW mv AS SELECT 1;\n"),
+                is(1));
     }
     // </editor-fold>
 
@@ -204,6 +398,16 @@ public class SqlFactPatternsTest {
     }
 
     @Test
+    public void indexes_fulltextSpatialAndBitmap_count() {
+        assertThat(
+                count(
+                        "indexes",
+                        "CREATE FULLTEXT INDEX a ON t (x);\nCREATE SPATIAL INDEX b ON t (g);\n"
+                                + "CREATE BITMAP INDEX c ON t (y);\n"),
+                is(3));
+    }
+
+    @Test
     public void indexes_inlineKeyOfAMySqlTable_isNotAStatement() {
         assertThat(
                 count("indexes", "CREATE TABLE t (\n  id INT,\n  KEY idx_t_id (id),\n  INDEX idx_t_x (id)\n);\n"),
@@ -224,6 +428,16 @@ public class SqlFactPatternsTest {
                                 + "CREATE PROC dbo.e AS SELECT 1;\n"
                                 + "CREATE OR ALTER PROCEDURE dbo.f AS SELECT 1;\n"),
                 is(6));
+    }
+
+    @Test
+    public void functionsProcedures_oracleEditionableForms_count() {
+        assertThat(
+                count(
+                        "functions/procedures",
+                        "CREATE OR REPLACE EDITIONABLE PROCEDURE p AS BEGIN NULL; END;\n/\n"
+                                + "CREATE OR REPLACE NONEDITIONABLE FUNCTION f RETURN NUMBER AS BEGIN RETURN 1; END;\n/\n"),
+                is(2));
     }
 
     @Test
@@ -286,6 +500,63 @@ public class SqlFactPatternsTest {
     @Test
     public void alterTable_alterOfOtherObjects_doesNotCount() {
         assertThat(count("ALTER TABLE", "ALTER INDEX a RENAME TO b;\nALTER VIEW v RENAME TO w;\n"), is(0));
+    }
+
+    @Test
+    public void types_oracleOrReplaceAndEditionable_countAndTheTypeBodyDoesNot() {
+        assertThat(
+                count(
+                        "types",
+                        "CREATE OR REPLACE TYPE addr_t AS OBJECT (street VARCHAR2(80));\n/\n"
+                                + "CREATE OR REPLACE EDITIONABLE TYPE BODY addr_t AS\nEND;\n/\n"
+                                + "CREATE OR REPLACE NONEDITIONABLE TYPE nums_t AS VARRAY(3) OF NUMBER;\n/\n"
+                                + "CREATE TYPE status AS ENUM ('A');\n"),
+                is(3));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="sequences, extensions, schemas and packages">
+    @Test
+    public void sequences_plainAndTemporary_countAndNextvalDoesNot() {
+        assertThat(
+                count("sequences", "CREATE SEQUENCE s START 1;\nCREATE TEMP SEQUENCE t;\nSELECT nextval('s');\n"),
+                is(2));
+    }
+
+    @Test
+    public void extensions_createExtensionCountsAndDropDoesNot() {
+        assertThat(count("extensions", "CREATE EXTENSION IF NOT EXISTS pgcrypto;\nDROP EXTENSION hstore;\n"), is(1));
+    }
+
+    @Test
+    public void schemasAndDatabases_both_count() {
+        assertThat(
+                count(
+                        "schemas and databases",
+                        "CREATE SCHEMA app;\nCREATE DATABASE x;\nCREATE SCHEMA IF NOT EXISTS s AUTHORIZATION u;\n"),
+                is(3));
+    }
+
+    @Test
+    public void packagesAndPackageBodies_oracleSpecAndBody_count() {
+        assertThat(
+                count(
+                        "packages and package bodies",
+                        "CREATE OR REPLACE PACKAGE emp_pkg AS\nEND;\n/\n"
+                                + "CREATE OR REPLACE EDITIONABLE PACKAGE BODY emp_pkg AS\nEND;\n/\n"),
+                is(2));
+    }
+
+    @Test
+    public void schemasAndDatabases_linkScopedCredentialAuditAndEncryptionKey_doNotCount() {
+        assertThat(
+                count(
+                        "schemas and databases",
+                        "CREATE DATABASE LINK dl CONNECT TO u IDENTIFIED BY p USING 'x';\n"
+                                + "CREATE DATABASE SCOPED CREDENTIAL c WITH IDENTITY = 'x';\n"
+                                + "CREATE DATABASE AUDIT SPECIFICATION s FOR SERVER AUDIT a;\n"
+                                + "CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_256 ENCRYPTION BY SERVER CERTIFICATE c;\n"),
+                is(0));
     }
     // </editor-fold>
 }

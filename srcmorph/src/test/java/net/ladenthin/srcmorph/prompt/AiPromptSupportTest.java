@@ -120,4 +120,54 @@ public class AiPromptSupportTest {
         assertThat(support.systemPrompt("b"), is("B-TPL"));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="composed keys">
+    @Test
+    public void composedKey_joinsTheKeys_orIsTheRuleKeyAlone() {
+        assertThat(AiPromptSupport.composedKey("body", "map"), is("body+map"));
+        assertThat(AiPromptSupport.composedKey("body", null), is("body"));
+        assertThat(AiPromptSupport.composedKey("body", " "), is("body"));
+    }
+
+    @Test
+    public void systemPrompt_ofAComposedKey_isBothTemplatesSeparatedByABlankLine() {
+        final AiPromptSupport support = new AiPromptSupport(Arrays.asList(def("body", "BODY"), def("map", "MAP")));
+
+        assertThat(support.systemPrompt(AiPromptSupport.composedKey("body", "map")), is("BODY\n\nMAP"));
+    }
+
+    @Test
+    public void systemPrompt_ofAComposedKeyWithAnUnknownPart_throws() {
+        final AiPromptSupport support = new AiPromptSupport(Collections.singletonList(def("body", "BODY")));
+
+        assertThrows(IllegalArgumentException.class, () -> support.systemPrompt("body+missing"));
+        assertThrows(IllegalArgumentException.class, () -> support.systemPrompt("missing+body"));
+    }
+
+    @Test
+    public void constructor_aKeyWithTheSeparator_isRefused() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> new AiPromptSupport(Collections.singletonList(def("a+b", "T"))));
+
+        assertThat(thrown.getMessage(), containsString("'a+b' contains '+'"));
+    }
+
+    @Test
+    public void constructor_aKeyStartingWithTheSeparator_isRefused() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> new AiPromptSupport(Collections.singletonList(def("+b", "T"))));
+
+        assertThat(thrown.getMessage(), containsString("'+b' contains '+'"));
+    }
+
+    @Test
+    public void systemPrompt_ofAKeyStartingWithTheSeparator_looksUpAnEmptyRuleKey() {
+        final AiPromptSupport support = new AiPromptSupport(Collections.singletonList(def("body", "BODY")));
+
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> support.systemPrompt("+body"));
+
+        assertThat(thrown.getMessage(), is("Missing prompt template for key: "));
+    }
+    // </editor-fold>
 }

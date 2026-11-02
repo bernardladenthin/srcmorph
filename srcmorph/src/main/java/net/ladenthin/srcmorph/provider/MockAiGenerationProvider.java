@@ -32,6 +32,12 @@ public class MockAiGenerationProvider implements AiGenerationProvider {
      */
     private static final int MOCK_CACHED_PROMPT_TOKENS = 32;
 
+    /** The finish reason of every mock answer. */
+    private static final String MOCK_FINISH_REASON = "stop";
+
+    /** The usage of the last {@link #generate} call. */
+    private AiGenerationUsage lastUsage = AiGenerationUsage.NONE;
+
     /** Creates a new {@link MockAiGenerationProvider}. */
     public MockAiGenerationProvider() {
         // no-op
@@ -42,7 +48,20 @@ public class MockAiGenerationProvider implements AiGenerationProvider {
         final Path file = request.sourceFile();
         final Path fileNamePath = file.getFileName();
         final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
-        return "Mock summary for " + fileName;
+        final String text = "Mock summary for " + fileName;
+        // a fixed, reproducible usage: the prompt and the answer at four characters per token
+        lastUsage = new AiGenerationUsage(
+                1,
+                request.sourceText().length() / MOCK_CHARS_PER_TOKEN,
+                text.length() / MOCK_CHARS_PER_TOKEN,
+                0,
+                MOCK_FINISH_REASON);
+        return text;
+    }
+
+    @Override
+    public AiGenerationUsage lastUsage() {
+        return lastUsage;
     }
 
     @Override

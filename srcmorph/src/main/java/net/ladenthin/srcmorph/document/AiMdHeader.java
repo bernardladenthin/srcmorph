@@ -73,6 +73,8 @@ public final class AiMdHeader {
     private final String a;
     private final String x;
     private final List<String> children;
+    private final String p;
+    private final String n;
 
     /**
      * Creates a new {@link AiMdHeader} with an explicit child-link list.
@@ -117,6 +119,44 @@ public final class AiMdHeader {
         // No separate requireNonNull(children): new ArrayList<>(children) already throws NPE on a
         // null list, so an explicit check would be a redundant, equivalent (un-killable) mutant.
         this.children = Collections.unmodifiableList(new ArrayList<>(children));
+        this.p = "";
+        this.n = "";
+    }
+
+    /**
+     * Creates a copy of {@code header} with the hashes of the prompt and the fact counters it is written
+     * with.
+     *
+     * @param header the header
+     * @param p      the CRC32 of the system prompt, or {@code ""}
+     * @param n      the CRC32 of the fact counters, or {@code ""}
+     */
+    private AiMdHeader(final AiMdHeader header, final String p, final String n) {
+        Objects.requireNonNull(p, "p");
+        Objects.requireNonNull(n, "n");
+        this.title = header.title;
+        this.h = header.h;
+        this.c = header.c;
+        this.d = header.d;
+        this.t = header.t;
+        this.g = header.g;
+        this.a = header.a;
+        this.x = header.x;
+        this.children = header.children;
+        this.p = p;
+        this.n = n;
+    }
+
+    /**
+     * Returns this header with the hashes of the prompt and the fact counters a summary is written with,
+     * so a later run can tell which prompt wrote it.
+     *
+     * @param prompt the CRC32 of the system prompt, or {@code ""}
+     * @param facts  the CRC32 of the fact counters, or {@code ""}
+     * @return the header with both hashes
+     */
+    public AiMdHeader withHashes(final String prompt, final String facts) {
+        return new AiMdHeader(this, prompt, facts);
     }
 
     /**
@@ -216,5 +256,25 @@ public final class AiMdHeader {
      */
     public List<String> children() {
         return children;
+    }
+
+    /**
+     * Returns the CRC32 of the system prompt the summary was written with ({@code ""} when not recorded:
+     * a package or project node, or a file written before the field existed).
+     *
+     * @return the prompt hash, or {@code ""}
+     */
+    public String p() {
+        return p;
+    }
+
+    /**
+     * Returns the CRC32 of the fact counters the summary was written with ({@code ""} without counters,
+     * or when not recorded).
+     *
+     * @return the facts hash, or {@code ""}
+     */
+    public String n() {
+        return n;
     }
 }

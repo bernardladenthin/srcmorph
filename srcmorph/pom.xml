@@ -127,6 +127,11 @@ SPDX-License-Identifier: Apache-2.0
             <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
+            <!-- SrcMorphConfigurationFileLoader: the CLI and the plugin read one YAML configuration file. -->
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+        <dependency>
             <groupId>net.ladenthin</groupId>
             <artifactId>llama</artifactId>
             <version>${llama.version}</version>
@@ -706,8 +711,8 @@ SPDX-License-Identifier: Apache-2.0
                           This paragraph used to justify the exclusion by pointing at a comment in the
                           sibling srcmorph-maven-plugin pom saying mojos are integration-tested rather
                           than mutation-tested. That comment is gone and its claim no longer holds: the
-                          plugin module gates all five mojo classes at threshold 100. The exclusion here
-                          stands on its own reasoning above, not on the sibling's.
+                          plugin module gates all six mojo classes and RuleSection at threshold 100. The
+                          exclusion here stands on its own reasoning above, not on the sibling's.
 
                           ListModelsEngine is gated although it is an engine: it has no multi-step
                           control flow, and its one provider call goes through an injectable lister, so
@@ -728,6 +733,12 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement</param>
                         <param>net.ladenthin.srcmorph.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexPlan</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiIndexTally</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiMapReduceSupport</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiTokenWindow</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiOverflowBackoff</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiRouteEstimator</param>
                         <param>net.ladenthin.srcmorph.document.AiGenerationRequest</param>
                         <param>net.ladenthin.srcmorph.document.AiGenerationResult</param>
                         <param>net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter</param>
@@ -742,13 +753,17 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.prompt.AiPromptSupport</param>
                         <param>net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader</param>
                         <param>net.ladenthin.srcmorph.provider.AiCompletionParser</param>
+                        <param>net.ladenthin.srcmorph.provider.AiContextOverflowException</param>
+                        <param>net.ladenthin.srcmorph.provider.AiIncompleteAnswerException</param>
                         <param>net.ladenthin.srcmorph.provider.GgufModelInfo</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationTimings</param>
+                        <param>net.ladenthin.srcmorph.provider.AiGenerationUsage</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationProvider</param>
                         <param>net.ladenthin.srcmorph.provider.AiGenerationProviderFactory</param>
                         <param>net.ladenthin.srcmorph.provider.MockAiGenerationProvider</param>
                         <param>net.ladenthin.srcmorph.provider.OpenAiCompatibleProviderSupport</param>
                         <param>net.ladenthin.srcmorph.config.AiOversizeStrategy</param>
+                        <param>net.ladenthin.srcmorph.config.AiIncompleteStrategy</param>
                         <param>net.ladenthin.srcmorph.config.AiFactCounter</param>
                         <param>net.ladenthin.srcmorph.config.AiFactDefinition</param>
                         <param>net.ladenthin.srcmorph.config.AiFactDefinitionLoader</param>
@@ -756,6 +771,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.config.AiFactExtractor</param>
                         <param>net.ladenthin.srcmorph.support.AiChecksumSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiDeterministicSummary</param>
+                        <param>net.ladenthin.srcmorph.support.AiSourceLines</param>
                         <param>net.ladenthin.srcmorph.support.AiGenerationTimeEstimator</param>
                         <param>net.ladenthin.srcmorph.support.AiPathSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiProfileFileSupport</param>
@@ -764,10 +780,15 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.support.AiTimeSupport</param>
                         <param>net.ladenthin.srcmorph.support.Java8CompatibilityHelper</param>
                         <param>net.ladenthin.srcmorph.config.SrcMorphConfiguration</param>
+                        <param>net.ladenthin.srcmorph.config.SrcMorphConfigurationFile</param>
+                        <param>net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader</param>
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfig</param>
+                        <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfig$Builder</param>
                         <param>net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory</param>
                                 <param>net.ladenthin.srcmorph.provider.LlamaCppJniProviderSupport</param>
                         <param>net.ladenthin.srcmorph.engine.EngineSupport</param>
+                        <param>net.ladenthin.srcmorph.engine.RunRecord</param>
+                        <param>net.ladenthin.srcmorph.engine.RunRecord$Entry</param>
                         <param>net.ladenthin.srcmorph.engine.GenerateResult</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport$ModelMeasurement</param>

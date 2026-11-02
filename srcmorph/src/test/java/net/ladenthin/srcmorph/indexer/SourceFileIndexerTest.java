@@ -12,13 +12,17 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiCondition;
 import net.ladenthin.srcmorph.config.AiConditionGroup;
+import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiRangeCondition;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -214,10 +218,10 @@ public class SourceFileIndexerTest {
         final AiFieldGenerationSupport support = mockSupport();
 
         // first write
-        final boolean wrote = indexer.indexFile(foo, rule, support);
+        final AiIndexOutcome wrote = indexer.indexFile(foo, rule, support, "", "");
         final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
 
-        assertThat(wrote, is(true));
+        assertThat(wrote, is(AiIndexOutcome.WRITTEN));
         assertThat(Files.exists(aiFile), is(true));
         final AiMdDocument document = documentCodec.read(aiFile);
         assertThat(document, is(notNullValue()));
@@ -225,8 +229,8 @@ public class SourceFileIndexerTest {
         assertThat(document.body().trim().isEmpty(), is(false));
 
         // second write — unchanged source, so it is skipped
-        final boolean wroteAgain = indexer.indexFile(foo, rule, support);
-        assertThat(wroteAgain, is(false));
+        final AiIndexOutcome wroteAgain = indexer.indexFile(foo, rule, support, "", "");
+        assertThat(wroteAgain, is(AiIndexOutcome.UNCHANGED));
     }
     // </editor-fold>
 
@@ -351,4 +355,106 @@ public class SourceFileIndexerTest {
     }
 
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="incomplete answers">
+    private AiFieldGenerationSupport emptyAnswerSupport() {
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        return new AiFieldGenerationSupport(
+                request -> "",
+                new AiPromptPreparationSupport(promptSupport),
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+    }
+
+    private static AiFieldGenerationConfig ruleWithFacts() {
+        final AiFieldGenerationConfig rule =
+                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("classes");
+        counter.setPattern("\\bclass\\b");
+        rule.setFacts(Collections.singletonList(counter));
+        return rule;
+    }
+
+    @Test
+    public void indexFile_incompleteAnswer_writesNothing() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        writeJava(foo, "package com.example;\nclass Foo {}\n");
+
+        final AiIndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
+                .indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "");
+
+        // the facts line alone is no summary: nothing is written, so the next run tries again
+        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Foo.java.ai.md")), is(false));
+    }
+
+    @Test
+    public void indexFile_incompleteAnswerForAChangedSource_keepsTheOlderSummary() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        writeJava(foo, "package com.example;\nclass Foo {}\n");
+        final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
+        final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
+        assertThat(indexer.indexFile(foo, ruleWithFacts(), mockSupport(), "", ""), is(AiIndexOutcome.WRITTEN));
+        final byte[] older = Files.readAllBytes(aiFile);
+
+        writeJava(foo, "package com.example;\nclass Foo { int x; }\n");
+        final AiIndexOutcome outcome = indexer.indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "");
+
+        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(Arrays.equals(Files.readAllBytes(aiFile), older), is(true));
+    }
+    // </editor-fold>
+
+    @Test
+    public void targetFile_isTheSourcePathBelowSrcPlusAiMd() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
+
+        assertThat(
+                indexer.targetFile(temp.resolve("src/main/java/com/example/Foo.java")),
+                is(equalTo(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))));
+    }
+
+    @Test
+    public void indexFile_crLfSource_reachesTheModelAndTheChunksWithLineFeedsOnly() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path big = temp.resolve("src/main/java/com/example/Big.java");
+        final StringBuilder source = new StringBuilder();
+        for (int i = 0; i < 400; i++) {
+            source.append("int field").append(i).append(" = ").append(i).append(";\r\n");
+        }
+        writeJava(big, source.toString());
+        final AiModelDefinition small = new AiModelDefinition();
+        small.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        small.setModelPath("mock.gguf");
+        small.setCharsPerToken(1);
+        small.setContextSize(4_000);
+        final List<String> sent = new ArrayList<>();
+        final AiFieldGenerationSupport recording = new AiFieldGenerationSupport(
+                request -> {
+                    sent.add(request.sourceText());
+                    return "summary";
+                },
+                new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions())),
+                new AiModelDefinitionSupport(Collections.singletonList(small)));
+        final AiFieldGenerationConfig rule = CommonTestFixtures.createFileFieldGeneration();
+        rule.setOnOversize("sampleChunks");
+        rule.setMaxChunks(3);
+
+        final AiIndexOutcome outcome = indexer(
+                        temp, temp.resolve("src/site/ai"), Collections.<String>emptyList(), 0L, 0L)
+                .indexFile(big, rule, recording, "", "");
+
+        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        // three chunks and one reduce
+        assertThat(sent.size(), is(4));
+        for (final String text : sent) {
+            assertThat(text.indexOf('\r'), is(-1));
+        }
+    }
 }

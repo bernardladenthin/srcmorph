@@ -73,6 +73,8 @@ public class CliEndToEndTest {
         rule.setAiDefinitionKey("mock-model");
         rule.setFallback(true);
         configuration.srcMorph.setFieldGenerations(Collections.singletonList(rule));
+        // the package phase takes exactly one rule of its own; the project phase runs without one
+        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("file-body"));
 
         return configuration;
     }
@@ -93,6 +95,39 @@ public class CliEndToEndTest {
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(true));
         // Phase 3: the single project-level index.
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(true));
+    }
+
+    @Test
+    public void run_allCommand_planOnly_writesNothing() throws Exception {
+        // arrange: a run left a file summary, whose package and project summaries are gone; a package or
+        // project phase that ran would write them again
+        new Main(buildAllCommandConfiguration()).run();
+        final Path outputRoot = tempDir.resolve("out");
+        final Path leafPackage = outputRoot.resolve("main/java/com/example/" + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME);
+        Files.delete(leafPackage);
+        Files.delete(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.srcMorph.setPlanOnly(true);
+
+        // act
+        new Main(configuration).run();
+
+        // assert: no package and no project summary
+        assertThat(Files.exists(leafPackage), is(false));
+        assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
+    }
+
+    @Test
+    public void run_allCommand_planOnly_onAnEmptyOutput_writesNothing() throws Exception {
+        // arrange
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.srcMorph.setPlanOnly(true);
+
+        // act
+        new Main(configuration).run();
+
+        // assert: no file, no package and no project summary
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     /**
@@ -273,6 +308,79 @@ public class CliEndToEndTest {
         assertThat(causeChain(thrown), containsString("no-such-prompt"));
     }
 
+    /**
+     * The file rules never reach the package phase: without {@code packageFieldGenerations} it fails,
+     * naming the key, after the file phase completed.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void run_allCommand_withoutAPackageRule_failsInThePackagePhase() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.packageFieldGenerations = null;
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("aggregate-packages takes exactly one rule"));
+        assertThat(causeChain(thrown), containsString("packageFieldGenerations"));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+    }
+
+    /**
+     * Without {@code projectFieldGenerations} the project index is written without an overview; the
+     * file rule no longer becomes the overview's prompt.
+     *
+     * @throws Exception if the run fails
+     */
+    @Test
+    public void run_allCommand_withoutAProjectRule_writesTheProjectIndexWithoutAnOverview() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+
+        new Main(configuration).run();
+
+        final String project = new String(
+                Files.readAllBytes(tempDir.resolve("out").resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)),
+                StandardCharsets.UTF_8);
+        assertThat(project.contains("#### Overview"), is(false));
+    }
+
+    @Test
+    public void run_checkCommand_checksAllThreePhasesAndWritesNothing() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.Check;
+
+        new Main(configuration).run();
+
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    @Test
+    public void run_checkCommand_aPackageRuleWithAnUnknownModel_fails() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.Check;
+        final AiFieldGenerationConfig rule = phaseRule("file-body");
+        rule.setAiDefinitionKey("no-such-model");
+        configuration.packageFieldGenerations = Collections.singletonList(rule);
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("no-such-model"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    @Test
+    public void run_checkCommand_aProjectRuleWithAnUnknownModel_fails() throws Exception {
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.command = CCommand.Check;
+        final AiFieldGenerationConfig rule = phaseRule("file-body");
+        rule.setAiDefinitionKey("no-overview-model");
+        configuration.projectFieldGenerations = Collections.singletonList(rule);
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
+
+        assertThat(causeChain(thrown), containsString("no-overview-model"));
+    }
+
     @Test
     public void run_planCommand_forcesPlanOnlyAndWritesNothing() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
@@ -403,7 +511,7 @@ public class CliEndToEndTest {
 
     /**
      * The {@code Calibrate} arm deliberately uses {@code System.out} rather than the logger: the
-     * rendered block is a paste-ready {@code <calibration>} snippet the user copies into their POM,
+     * rendered block is a paste-ready {@code calibration:} block the user copies into the configuration file,
      * so it must not carry a logger's timestamp/level prefix. That distinction is the whole point of
      * the line, and nothing asserted it — removing the {@code println} left every test green.
      *
@@ -427,8 +535,8 @@ public class CliEndToEndTest {
 
         // assert -- the block reached stdout, and it is the real report, not an empty render
         final String stdout = captured.toString(StandardCharsets.UTF_8.name());
-        assertThat(stdout.contains("<calibration>"), is(true));
-        assertThat(stdout.contains("</calibration>"), is(true));
+        assertThat(stdout.contains("\ncalibration:\n"), is(true));
+        assertThat(stdout.contains("  prefillTokensPerSecond: "), is(true));
         assertThat(stdout.contains("mock-model"), is(true));
     }
 

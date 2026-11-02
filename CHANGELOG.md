@@ -12,49 +12,237 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ## [Unreleased]
 
 ### Added
+- **The plan shows the source tokens.** Every routed file has an estimated token count (its
+  characters over its model's `charsPerToken`), every model section the sum, and a section sums them per
+  directory, so the plan says where a run's tokens and cost go before it starts.
+- **A record of every run.** With `runRecordFile` set, the file phase writes a JSON record: per routed
+  file its rule, prompt, model, outcome, calls, prompt / cached / completion tokens, the finish reason
+  of its last call, its wall time and the CRC32 of its prompt and its facts, and the totals
+  (`engine.RunRecord`). The providers report each call's tokens and finish reason
+  (`AiGenerationProvider.lastUsage()`, `provider.AiGenerationUsage`), also for a call that ended
+  incomplete; `AiFieldGenerationSupport.takeUsage()` sums the calls of a file, a map-reduce's
+  included.
+- **`mapReduce` reads every chunk; sampling is `sampleChunks`, and every summary says what it read.**
+  `onOversize: mapReduce` summarizes every chunk and reduces in batches until one summary is left; a
+  `maxChunks` cap used to sample a subset silently, so a 1.6 MB dump was summarized from a third of it
+  while the configuration read as mapReduce. Sampling is the new strategy `sampleChunks` with
+  `maxChunks` (required there, and refused with any other strategy). An over-window summary begins
+  with a coverage line: `**Coverage:** 9 of 9 chunks summarized`, `... 6 of 9 chunks summarized
+  (sampled)`, or under `sample` `**Coverage:** the first N of M characters (sampled head)`. The
+  plan's time estimate of `mapReduce` / `sampleChunks` counts the chunks with the run's budget and
+  overlap and the reduce calls by the fan-in. The self-test and example configurations keep their
+  six-chunk huge-file rules as `sampleChunks`. A rule-set error of `generate` (two fallbacks, a
+  maxChunks without sampleChunks, ...) is a `SrcMorphException`, so the plugin reports it as a
+  configuration error.
+- **The jar smoke test counts what it planned.** `smoke-jar` runs `config_Plan.json` a second time
+  and asserts the plan's one file of the demo tree, so a launch that finds no sources fails. The
+  examples say they need 1.4.0 (`examples/build-your-own-jar/pom.xml`, the root README); stale
+  comments and references in `publish.yml`, the poms and CLAUDE.md (versions, layout, test lists)
+  match the code, and the root pom declares `sonar.organization` once.
+- **The Maven plugin is configured by the CLI's file; `check` goal and command.** The plugin reads
+  one JSON or YAML file, the same one the CLI reads (`<configurationFile>`,
+  `-Dsrcmorph.configurationFile`, default `${project.basedir}/srcmorph.yaml`), through one loader in
+  the core (`SrcMorphConfigurationFileLoader`, `SrcMorphConfigurationFile`). **Breaking:** the XML
+  parameters of the goals are gone (`aiDefinitions`, `fieldGenerations`, `promptDefinitions`,
+  `factDefinitions`, `subtrees`, `excludes`, `fileExtensions`, the size band, `outputDirectory`,
+  `generationProvider`, `modelDirectory`, `profileDirectory`, `aiVersion` and their `srcmorph.*`
+  properties); the POM names the goals, `configurationFile`, the skip switches and the run switches
+  `srcmorph.force` / `srcmorph.planOnly`, which override the file when `true`. What the file leaves
+  unset, Maven fills: `baseDirectory`, `subtrees` (the source directory and the resource directories
+  that exist below the base directory), `projectName`, `pluginVersion`. A `${name}` in a value of the
+  file is a Maven property (the CLI: a system property), filled after parsing, so a Windows path needs
+  no escaping. Each goal takes its section: `generate` and `calibrate` the file rules,
+  `aggregate-packages` the `packageFieldGenerations`, `aggregate-project` the
+  `projectFieldGenerations`. The self-test profile
+  is `srcmorph-maven-plugin/srcmorph-selftest.yaml` (its `-Dai.*` still work), with the repository
+  root as base, so its two subtrees lie inside it. Relative paths of the file, for the CLI too,
+  resolve against the file's directory instead of the working directory (the root README's quickstart
+  from `examples/build-your-own-jar` works now); an unset CLI `baseDirectory` is that directory.
+  `srcmorph:check` and the CLI's `Check` check the plan, the profile files and every model of the
+  three phases (file and GGUF header, `baseUrl`, `apiKeyEnv`) without loading one
+  (`GenerateEngine.check()`, `AggregatePackagesEngine.check()`, `AggregateProjectEngine.check()`). A
+  rule naming a model no `aiDefinition` defines fails as a configuration error naming the rule, not
+  as an `IllegalArgumentException`. The CLI prints its usage with `--help` / `-h` and fails with it
+  on a wrong argument count (it used to log and exit 0); an unknown `command` names the commands. The
+  plugin descriptor states Maven 3.6.3 and Java 1.8 (it said 3.10.0 and Java 11).
+- **A source is read once, with `\n` line endings.** The checksum, the plan's window check, the
+  prompt, the facts and the map-reduce chunks see the same text, whether the working copy has
+  `\r\n` (Windows with `core.autocrlf`), `\r` or `\n`: a CRLF checkout no longer has another
+  checksum than an LF one, and no `\r` reaches the model. The checksum is now taken over that text
+  instead of the file's bytes, so a summary written from a CRLF working copy is regenerated once.
+  The line count of a `lines` condition and the deterministic body count `\r\n` and `\r` as line
+  endings too (`AiSourceLines`); the deterministic body no longer carries `\r` into its fenced lines.
+  The pure parts of the field generation moved to classes on the PIT gate: the time estimate of the
+  plan and of a run (`AiRouteEstimator`, one code path instead of two copies), the map-reduce sizing
+  and reduce batches (`AiMapReduceSupport`), and the smaller window after a context overflow
+  (`AiOverflowBackoff`, which also recognizes a remote `AiContextOverflowException` in a cause
+  chain). A reduce round whose partials are too long to combine now goes straight to the last-resort
+  single reduce instead of first summarizing every batch for nothing. `LlamaCppJniConfig$Builder`
+  and `AiIndexPlan$Entry` are on the gate; `AiChecksumSupport.calculateCrc32Hex(Path)` is gone.
+- **One rule per aggregation phase; the `llama*` fallback parameters are gone.** `aggregate-packages`
+  takes exactly one rule (its prompt and model) and `aggregate-project` none or one; more fail the
+  goal before anything is written, as does a missing package rule. Before, the package phase
+  generated every package once per rule and kept the last answer, loaded the provider of the first
+  rule's model whatever the others named, and the project overview took the first rule, so the file
+  rules of a CLI run reached both phases unnoticed. The CLI's `packageFieldGenerations` /
+  `projectFieldGenerations` no longer fall back to `srcMorph.fieldGenerations`: without them the
+  package phase fails and the project index has no overview (`examples/config_All.json` sets both).
+  The aggregation phases check their model before the run like `generate` does (model file, key,
+  `baseUrl`). With a rule required, the run-level model parameters were dead: `llamaModelPath`,
+  `llamaContextSize`, `llamaMaxOutputTokens`, `llamaTemperature`, `llamaThreads` (`srcmorph.llama.*`)
+  are removed from the plugin and from `SrcMorphConfiguration`, a CLI configuration naming one fails
+  to bind, and `LlamaCppJniConfigFactory.fromFallbackParameters` is gone; every model parameter is a
+  field of an `aiDefinition`. `AiFieldGenerationSupport.processFieldGenerations(List, …)` is
+  `generate(rule, …)`. The indexers keep their rule as a full copy (`AiFieldGenerationConfig.copy()`);
+  the project overview used to copy only the prompt, the model and `onIncomplete`, so it ignored its
+  rule's `onOversize` and facts.
+- **The engine plans and runs alike, and checks its configuration before the run.** The source budget
+  is computed for every file from the prompt with that file's name, as the plan computes it; before, it
+  was cached from the first file of a model group, so a later file with a shorter name could be
+  trimmed although the plan said it fits, and `onOversize: fail` was not enforced at run time (it is
+  now, as a failed file). A configured subtree that does not exist or lies outside `baseDirectory`
+  (another drive included) fails the run instead of being skipped with a warning, which silently
+  indexed the default tree; two sources summarized into one `.ai.md` and a prompt that leaves its
+  model's window no room for the source fail before the run. Extensions match with their dot and in
+  any case (`md` no longer matches `README.cmd`). The incremental check no longer compares the
+  source's modification time or the plugin version, and a package's checksum no longer includes its
+  children's times: a fresh clone, a touched file or a new srcmorph release regenerate nothing whose
+  content is the same.
+- **Retries and a context overflow for the `openai-compatible` provider (`maxRetries`).** A request
+  that failed with `408`, `429`, a `5xx` status or a read timeout is sent again up to `maxRetries`
+  times (default 3), after the server's `Retry-After` in seconds or an exponential backoff from 1 s with
+  jitter; other failures are final at once. A prompt the server refuses as longer than the context
+  (`413`, or `400` saying so) is an `AiContextOverflowException`, and the window is shrunk and the
+  prompt asked again, as for a local model. One file or package whose request still fails no longer
+  ends the run: it is counted, the others are indexed, and the run fails at its end. A named
+  `apiKeyEnv` that is not set, or a key that would go over plain `http` to another machine, fails the
+  run before any request; `apiKeyEnv` is trimmed, and `localhost` and the IPv6 loopback count as
+  loopback in any written form.
+- **An incomplete answer is never a summary (`onIncomplete`).** A model answer that is empty (also a
+  reasoning-only one), cut off at the output budget, or a response without an answer (no choice, an
+  HTML page or an `{"error": ...}` object with status 200) is refused by the provider
+  (`AiIncompleteAnswerException`) instead of being written as the file's summary. Nothing is written
+  for that file, package or project overview, so an older summary stays and the next run tries again;
+  every other file is still indexed, and the run fails at its end naming the count. Per rule,
+  `onIncomplete` is `fail` (default), `retryOnce` (ask once more) or `keep` (write a cut-off answer
+  that has text, the behaviour before). Before, the facts line alone or the package's `Contents`
+  list was written in place of the missing summary and counted as up to date, so an incremental run
+  never tried it again. A leading `<think> ... </think>` block is stripped like Gemma's, and an
+  unclosed one is a cut-off answer. `AggregatePackagesEngine` returns the packages written (no longer
+  the unchanged ones too); `SourceFileIndexer.indexFile`, `PackageIndexer.aggregate` and
+  `ProjectIndexer.aggregate` return an `AiIndexOutcome` / `AiIndexTally`.
 - **Profiles: prompts and fact counters as files, named by key (`profileDirectory`).** A profile is
   one directory with a file per prompt (`<key>.md`, the system prompt verbatim) and per group of
   exact fact counters (`<key>.tsv`: `label<TAB>regex` per line, `#` comments). With
-  `profileDirectory` set (CLI and library: relative to the working directory; plugin:
-  `srcmorph.profileDirectory`, relative to `${basedir}`; absolute always as it is), a rule's
-  `promptKey` and `factsKey` that no definition has are read from there, so a configuration names
-  keys only and repeats no prompt text and no regex. A key found nowhere fails the run before a model
+  `profileDirectory` set (in the configuration file: relative to the file's directory; in a
+  `SrcMorphConfiguration` built in code: relative to the working directory; absolute always as it
+  is), a rule's `promptKey` and `factsKey` that no definition has are read from there, so a
+  configuration names keys only and repeats no prompt text and no regex. A key found nowhere fails the run before a model
   loads, naming the file it looked for; a pattern that does not compile fails it with file and line.
   A definition still works and wins over a file of the same key: a prompt is a `template` or a
   `templateFile`, a fact group `facts` or the new `factsFile` (both files relative to
   `profileDirectory`). Every file is read as UTF-8, a leading byte order mark dropped; an empty file is
   an error. In the library: `AiPromptTemplateLoader`, `AiFactDefinitionLoader`, `AiProfileFileSupport`.
+- **Fact counters can leave regions out (`[ignore]`).** A counter whose label starts with `[ignore]`
+  in a facts file (in a configuration: `ignore: true`) is not reported: its matches are blanked out
+  of the source, every character except the line breaks, before the other counters count. A sub
+  named in Perl's POD, a function or a `set -e` inside a shell heredoc, a commented-out POM dependency
+  or an `INSERT` in a SQL block comment then no longer counts, while `^` anchors see the same lines.
+  `AiFactExtractor.counts` returns the counts by label. A configuration's `facts` and a facts file pass
+  one validation, `AiFactExtractor.validate(where, counters)`: every counter present, with a label and
+  a compiling pattern, no label twice or starting with `[`, and not only ignore counters; the
+  `[ignore]` prefix is read in any case, another `[...]` marker is refused.
+  Several ignore lines blank in file order, so the profile's files have one per language, an
+  alternation of all its regions where the one that starts first wins, as in a lexer (a `<!--` inside
+  CDATA, POD inside a Perl heredoc or a `/*` inside a SQL string opens nothing), and their counters
+  anchor with `^[ \t]*`, not `^\s*`, which is quadratic over the line breaks a long blanked region
+  leaves (a 40 000-line SQL comment: 44 s before, 0.05 s now).
+- **Fact files for shell, Perl and XML: `shell-facts`, `perl-facts`, `xml-facts`, `pom-facts`.** Bash,
+  POSIX sh and ksh93 (functions, getopts loops and their option letters, dash-option case arms,
+  named positional parameters, exported and readonly variables by name, defaulted variables,
+  script-level assignments, sourced files, traps, `set -e`, exit statuses, ksh `typeset` and
+  discipline functions), Perl (packages, subs, modules
+  used and required, `use constant`, `our` and file-scope `my`, `%ENV` keys, `GetOptions`, `die` /
+  `croak` / `confess`), XML (elements, namespaces, `id` / `name` attributes, XSD types, XSLT
+  templates, Spring beans) and Maven POMs (dependencies, managed sections, plugins, modules,
+  profiles, test scope), each with its comments, heredocs, POD or CDATA ignored. SQL `INSERT`
+  counts without `INTO`, after an Oracle hint and as `INSERT ALL` / `FIRST`; MySQL's `DEFINER=`
+  views and Oracle's `CREATE OR REPLACE TYPE` count, a `TYPE BODY`, `MATERIALIZED VIEW LOG` and
+  `DATABASE LINK` do not. Shell comments after code are blanked, a function body may be any compound
+  command, `source` counts after `&&` / `then` / `;`, an environment prefix (`LC_ALL=C sort`) is no
+  assignment, and `declare` counts with `typeset` (label `typeset and declare declarations`). Perl
+  counts 5.38 `class` / `method` and `use parent` / `base`, and `%ENV` reads without its
+  assignments. XML blanks the DOCTYPE; POMs blank every plugin body, so a plugin's dependencies and
+  configuration do not count, and `managed plugin sections` is new. Routing takes `.zsh`, `.bats`,
+  `.t`, `.cgi`, `.psgi`, `.wsdl` and `.xhtml` too, and a POM above 275 KB keeps the Maven counters
+  in the Granite tiers (`huge-pom`, `big-pom`).
+  `ShellFactPatternsTest`, `PerlFactPatternsTest` and `XmlFactPatternsTest` pin every counter. The
+  self-test profile and `examples/build-your-own-jar/srcmorph.yaml` route `.sh` / `.bash` / `.ksh`,
+  `.pl` / `.pm`, `**/*pom.xml` and `.xml` / `.xsd` / `.xsl` / `.xslt` to them, and big XML files take
+  the Granite size tiers Java and SQL have.
+- **Prompts for shell, Perl and XML: `file-body-shell`, `file-body-perl`, `file-body-xml`.** Up to
+  now these files took `file-body-fallback`. The shell prompt asks for every argument by its
+  variable, every option as typed with its parser, every top-level variable as `name=value` (the
+  lower-case and derived ones too), every function and the tables or hosts of its heredocs; the
+  Perl prompt for subs, `Getopt::Long` options, `%ENV` keys, constants and imports; the XML prompt
+  for what the file defines by kind (POM, Spring context, XSD, XSLT, other data). On the
+  benchmark's language corpus gpt-oss-20b went from 95.7 to 97.7 % over six runs (99.1 % without
+  one empty answer of the provider), GPT-6 Luna from 99.6 to 99.9 %; on the other two corpora
+  gpt-oss lost a few names of unchanged Java and SQL prompts, which three runs cannot tell from
+  variation (`profiles/README.md`, model card finding 7). The self-test's `shell`, `perl`, `pom`
+  and `xml` rules and the example configuration use them. The Granite tiers for big XML,
+  `big-xml` (H-Tiny) and `huge-xml` (H-1B), take `file-body-xml` too: on an 870 KB catalog H-Tiny
+  named 7 of 8 names with the XML prompt and 4 with the generic one; on a 1.15 MB catalog, sampled
+  as `huge-xml` samples it, H-1B wrote a short summary with the XML prompt and failed the file with
+  the generic one, in each of three runs (`docs/ai-index-benchmark/remeasure-2026-11-02/`).
+- **Benchmark: a language corpus, a large-file corpus and the fact counters in `run.py`.**
+  `docs/ai-index-benchmark/corpus-languages/` holds nine files written for it (Perl, Bash, ksh93,
+  POSIX sh, a POM, a Spring context, an XSD, an XSLT), with their expected names in
+  `modelcard/facts-languages.json`; `modelcard/large.py` writes a reproducible SQL dump, XML catalog
+  and Java enum far beyond a small window, with their facts. `run.py` takes `--facts` (every rule
+  names its counters), `--oversize` / `--max-chunks`, a corpus without one of its kinds, and gives a
+  language with a prompt of its own in the profile (`file-body-shell`, `-perl`, `-xml`) a rule;
+  `models.json` has the two Granite presets of the self-test for the large corpus;
+  `--chars-per-token` replaces every model's estimate, for data that tokenizes denser than code.
 - **CLI: rules per aggregation phase, `packageFieldGenerations` and `projectFieldGenerations`.**
-  Top-level keys beside `srcMorph`: the package phase (`AggregatePackages`, and the package step of
-  `All`) and the project phase run with these rules when set, as the Maven plugin's
-  `aggregate-packages` / `aggregate-project` executions have `<fieldGenerations>` of their own.
+  Top-level keys beside `srcMorph`, read by the CLI's package phase (`AggregatePackages`, and the
+  package step of `All`) and project phase and by the plugin's `aggregate-packages` /
+  `aggregate-project`: the package phase takes exactly one rule, the project phase none or one.
   Before, both phases took the first file rule, so `All` summarized packages with a file prompt and
-  model. Unset, nothing changes.
+  model.
 - **`examples/build-your-own-jar/srcmorph.yaml` is the plugin's self-test profile as a CLI
   configuration**, nearly 1:1: gpt-oss-20b (native MXFP4, 96K window) for every file, package and the
-  project overview, Granite 4.0 H-Tiny (384K window, one pass) for ~275 KB .. 1 MB and Granite 4.0
-  H-1B (16K window, map-reduce over 6 sampled chunks) beyond, with the exact whole-file counts of
-  the profile's `java-facts` and `sql-facts` (Java: types, methods, fields, ...; SQL: INSERT
-  statements and rows, tables, views, indexes, routines, triggers, types) on every Java and SQL
-  summary, so a sampled summary of a multi-MB SQL dump still states what the data holds. It replaces the one-model, one-placeholder-prompt example; a test compares it
-  with the pom.
-- **The plugin's `srcmorph-selftest` profile carries two models only**: gpt-oss-20b
+  project overview, Granite 4.0 H-Tiny (64K window, `mapReduce`) for ~275 KB .. 1 MB and Granite 4.0
+  H-1B (16K window, `sampleChunks` with `maxChunks: 6`) beyond, with the exact whole-file counts of
+  the profile's fact files (Java: types, methods, fields, ...; SQL: INSERT statements and rows,
+  tables, views, indexes, routines, triggers, types; and the shell, Perl, XML and POM counters) on
+  every summary of those kinds, so a sampled summary of a multi-MB SQL dump still states what the
+  data holds. It replaces the one-model, one-placeholder-prompt example; a test compares it with
+  `srcmorph-maven-plugin/srcmorph-selftest.yaml`.
+- **The plugin's `srcmorph-selftest` profile carries three model definitions only**: gpt-oss-20b
   (`gpt-oss-20B-mxfp4`) and the two Granite presets. The other model definitions (Mistral, Llama,
   Codestral, Qwen, Gemma, Ministral, the `EXP-*` benchmark keys, the other gpt-oss quantizations and
   windows) are gone; their measurements stay in `docs/ai-index-benchmark`.
-- **`profiles/`: the production prompts and fact counters once in the repository, now v2.**
-  `profiles/v2/` holds the five prompts and the `java-facts` / `sql-facts` counters, which the plugin
-  pom and the example configuration no longer write out; `SqlFactPatternsTest` and
-  `JavaStructureFactPatternsTest` read these files instead of copies. The prompts are v1, which the October 2026 model card measured, with targeted additions (the type's
+- **`profiles/`: the production prompts and fact counters once in the repository, now v3.**
+  `profiles/v3/` holds the prompts (`file-body-java`, `-sql`, `-shell`, `-perl`, `-xml`, `-fallback`,
+  `package-body`, `project-body`) and the fact counters (`java-facts`, `sql-facts`, `shell-facts`,
+  `perl-facts`, `xml-facts`, `pom-facts`), which the self-test and the example configurations no
+  longer write out; `SqlFactPatternsTest` and `JavaStructureFactPatternsTest` read these files
+  instead of copies. The prompts are v1, which the October 2026 model card measured, with targeted additions (the type's
   own name; getters and setters named one by one; SQL constraint and index names and row counts per
   table; constants, configuration variables, helpers and library calls of other files). Three runs
   each on OpenRouter: GPT-6 Luna 100 % in all three (v1 93.6 to 99.0 %), gpt-oss-20b 99.0 % (v1
-  96.8 %), search unchanged within its noise (model card, finding 5). v1, the June v2 experiment and
-  v1 as the June benchmark ran it are in the history (`profiles/README.md`). The plugin's
-  `srcmorph-selftest` profile, the model-card benchmark (`run.py --profile <name>`, default v2, replacing
+  96.8 %), search unchanged within its noise (model card, finding 5). v3 adds what gpt-oss-20b still
+  lost on a second corpus: a table's row total over several `INSERT`s as an addition, extensions
+  and types by name, every index as its own bullet, the entry point `main`, command-line commands
+  and options by the name a user types, and a script's arguments by their variable; gpt-oss-20b
+  100 % in three runs on the benchmark corpus and 99.8 % on the second (v2: 99.0 % on both), GPT-6
+  Luna 100 % on both (finding 6). v1, v2, the June v2 experiment and v1 as the June benchmark ran
+  it are in the history (`profiles/README.md`). The plugin's
+  `srcmorph-selftest` profile, the model-card benchmark (`run.py --profile <name>`, default v3, replacing
   `modelcard/prompts.json`), the examples (which had one-line placeholder prompts) and the plugin's
-  integration-test fixture all read these files, so the CI smoke of the user-built jar and the
-  plugin IT exercise `templateFile` as well.
+  integration-test fixture all read these files by key from the profile directory, so the CI smoke
+  of the user-built jar and the plugin IT read the profile as well (the IT also a `templateFile`).
 - **`openai-compatible` provider: a model can run on any OpenAI-compatible API.** OpenRouter (the
   default `baseUrl`), a llama.cpp `llama-server`, jllama's `NativeServer` or any server answering
   `POST <baseUrl>/chat/completions`. Four new per-model settings: `provider` (overrides the run's
@@ -92,9 +280,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   Gemma 4 26B-A4B (93.2 %) and LFM 2.5 24B-A2B (87.0 %, always reasons).
 - **`openai-compatible` provider: `requestsPerMinute`.** At most this many requests to a model's
   server start within any minute; a request beyond it waits until the oldest of the last minute is
-  a minute old, instead of being answered with `429` (the provider does not retry). Models of one
-  server with the same key and limit share the window, across the phases of a run. Default `0`, no
-  limit. The Copilot API Gateway example sets 25 against the gateway's `rateLimitPerMinute` 30;
+  a minute old, instead of being answered with `429`. Models of one server with the same key and
+  limit share the window, across the phases of a run. Default `0`, no limit. The Copilot API Gateway example sets 25 against the gateway's `rateLimitPerMinute` 30;
   `ListModels` copies it into every template entry.
 - **CLI command `ListModels`**: asks every OpenAI-compatible server the `aiDefinitions` name which
   models it serves (`GET <baseUrl>/models`, with the definition's key and the same refusal to send
@@ -123,15 +310,94 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `.github/release-assets.json` names no files beyond the Maven artifacts.
 
 ### Changed
+
+- **The prompts lose what models copied or tripped over** (the prompt review of the same round). No
+  prompt quotes an example lead any more ("Calculates VAT for invoices" came back as Granite's lead of
+  an enum and as an invented class in a reduce), and each says not to copy wording from the
+  instructions or to write about them; the closing paragraph says that the user message starts with
+  the file name, not a path; headings are named plainly (`'#', '##', '###'`); Java and SQL no longer
+  ask to recount before finalizing (a reasoning model spends its budget on it). `map-chunk` and
+  `reduce-parts` drop their own `##` headings, say that they replace what the rule's prompt says about
+  the user message, name the sample and half labels and the overlap, keep part summaries short, and
+  merge format-neutrally (the project overview has no lead line or sections): the merged lead is
+  about the whole input, a family stays a family, getters and setters stay apart, the facts line's
+  counts are used without copying the line, a total added up from overlapping parts is "about N", an
+  addition the rule's prompt asks for is written as its total. A reduce over sampled chunks reads a
+  note saying so (`AiMapReduceSupport.sampleNote`), and states the sample's counts as the sample's.
+- **A local model's windows are measured in tokens, not estimated.** `charsPerToken` is an integer
+  estimate, and source code, SQL and data tokenize denser than it assumes: Granite's 64K and 16K
+  windows overflowed on every chunk of the large corpus's dump at `charsPerToken: 3`, and each retry
+  cut a quarter of its chunk away. `AiGenerationProvider.promptTokens` counts a prompt as the chat
+  template renders it, with the model's own tokenizer (`llamacpp-jni`: `applyTemplate` and `encode`;
+  a remote API cannot, so it keeps the estimate and the overflow retry). With a count, a source over
+  the estimated window is counted whole: it goes in one call when it fits after all, and is otherwise
+  chunked by its measured density; and every call is counted before it is sent, so a prompt over
+  `contextSize - maxOutputTokens` is not sent but its window shrinks by the density
+  (`indexer.AiTokenWindow`). The plan still estimates, since it loads no model.
+- **Map and reduce calls say what their input is: `mapPromptKey` and `reducePromptKey`.** Every map
+  and reduce call of `mapReduce` and `sampleChunks` took the rule's prompt, which describes a whole
+  file: gpt-oss-20b indexed a chunk of INSERT rows of the large corpus's dump as a file and invented
+  three tables, a procedure and a trigger, and Granite 4.0 H-Tiny answered the reduce of the catalog
+  with the prompt's own example, a `VatCalculator` class, repeated under `Part 8:` .. `Part 18:`
+  until its output budget ended. A rule's `mapPromptKey` and `reducePromptKey` name prompts appended
+  to its prompt in those calls (`AiPromptSupport.composedKey`, rendered as the two templates and a
+  blank line between); the profile's `map-chunk` and `reduce-parts` say to index only the chunk, and
+  to merge the parts keeping every name a part states. Every map call's input starts with
+  `Chunk i of n:` (`AiMapReduceSupport.chunkLabel`). The keys apply only to the two chunked
+  strategies; a prompt key may not contain `+`. The self-test, the CLI example and `run.py` name them
+  in every chunked rule and the package and project rules; the header's `- P:` covers them. Every
+  reduce call also reads the exact facts line of the whole input in front of the parts, and
+  `reduce-parts` says to state its counts as given: gpt-oss-20b spent the whole 4096-token budget of
+  the dump's final reduce reasoning, adding up the row counts of nine parts, and answered nothing.
+- **The self-test's ~275 KB .. 1 MB tier map-reduces with Granite 4.0 H-Tiny over a 64K window**
+  instead of one pass over 384K: in one pass over the large corpus's 870 KB catalog H-Tiny copied the
+  XML into a code fence with invented values (every price 972.00, every stock 0) until its output
+  budget ended. The definition is `granite-4.0-h-tiny-mapreduce` (was `granite-4.0-h-tiny-bigwindow`),
+  its rules `big-java`, `big-sql`, `big-xml` and `big-pom` (were `big-window-*`) with
+  `onOversize: mapReduce`; `models.json` keeps the old preset for the earlier measurements.
+- **The family rule of the prompts names no analysis channel.** `file-body-java` told the model to
+  count a family of near-identical members "in the analysis channel", which only gpt-oss has; it now
+  asks for the exact total and the index range only (a clause that also had the model name every
+  member breaking the pattern was dropped again: GPT-6 Luna then reasoned at length over one Java
+  file in three of six runs, against none of three before; Granite 4.0 H-1B had listed 6 000 enum
+  constants one by one until its output budget ended, in five of eleven chunks). `file-body-sql`, `-xml`
+  and `-fallback` get a family rule for the long runs of the large corpus's dump and catalog: rows,
+  records and numbered constants. In `file-body-sql`
+  more than five INSERTs into one table are a family too: the number of INSERTs and the total rows,
+  not each count as an addition.
+- **The package and project rules default to `onOversize: mapReduce`.** Their input is the summaries
+  below them; with the general default `fail` a package over its window failed on every run and its
+  parent lost the subtree, `sample` would drop the children behind its head. A rule that sets
+  `onOversize` keeps it.
+- **A file summary's header records the prompt and facts it was written with**: `- P:` (the CRC32 of
+  the system prompt) and `- N:` (of the fact counters), written only when set, so package and project
+  headers and older summaries stay as they are. The run record takes both from the header for an
+  unchanged file, so after a prompt change it shows which summaries the old prompt wrote
+  (`AiMdHeader.withHashes`, `p()`, `n()`; `AiFactExtractor.factsHash` replaces the engine's own).
+
+- **Calibrate prints a YAML `calibration:` block** for the model's entry under `aiDefinitions` of the
+  configuration file, not an XML `<calibration>` element no configuration reads any more
+  (`CalibrationReport.renderPasteBlock()` replaces `renderXml()`).
+- **Unset, `modelDirectory` and `profileDirectory` are the configuration file's directory**, so a
+  relative `modelPath`, `templateFile` or `factsFile` resolves against the file's directory like every
+  other relative path of the file, never against the working directory.
 - **The SQL fact counters count what their labels say.** `INSERT rows` counted `INSERT INTO`
   statements, so a multi-row `INSERT` of 28 rows read as 1; it is `INSERT statements` now, and the
   new `VALUES rows (approx)` counts the row tuples of `VALUES` lists. `views` also counts
   `MATERIALIZED` and `OR ALTER` views, `tables` `TEMP`/`UNLOGGED` tables, `indexes` T-SQL's
   `CLUSTERED`/`NONCLUSTERED`, `functions/procedures` `CREATE PROC`, `OR ALTER` and MySQL's
-  `DEFINER=`; `triggers`, `types` and `ALTER TABLE` are new.
+  `DEFINER=`; `triggers`, `types` and `ALTER TABLE` are new. Then, after the forms a research pass
+  found missing: `INSERT statements` counts MySQL's `INSERT IGNORE` / `LOW_PRIORITY` and
+  `REPLACE INTO`, views, routines and triggers Oracle's `EDITIONABLE` / `FORCE`, `indexes`
+  `FULLTEXT` / `SPATIAL` / `BITMAP`; `sequences`, `extensions`, `schemas and databases` and
+  `packages and package bodies` are new, and `--` comments, string literals and `/* ... */` block
+  comments are ignored in one pass (MySQL's `/*! */` and Oracle's `/*+ */` are not, they hold SQL;
+  an unclosed `/*` comments out the rest of the file).
 - **Dependencies and build plugins:** logback-classic 1.6.6 (test scope), NullAway 0.14.3,
   maven-surefire-plugin 3.6.1, jacoco-maven-plugin 0.8.16, palantir-java-format 2.103.0 (no formatting
-  change) and `anthropics/claude-code-action` v1.0.264.
+  change) and `anthropics/claude-code-action` v1.0.264. The core depends on `jackson-databind` and
+  `jackson-dataformat-yaml` (with it SnakeYAML) for `SrcMorphConfigurationFileLoader`; up to 1.3.0
+  only the CLI did.
 - **The GPG signing-key preflight runs only when something is published.** The two jobs
   `verify-signing-key` and `verify-signing-key-gradle` ran on every trigger: red on every pull request,
   because the `maven-central` environment admits only `main` and `v*` tags, and on a push to `main`
@@ -153,6 +419,123 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   The example pom is therefore under test on every pull request.
 
 ### Fixed
+
+- **The plan sizes a map-reduce's chunks as the run does**: next to the longer of the rule's map and
+  reduce prompts with a chunk's label reserve, not next to the rule's prompt alone, so its call count
+  and time follow the run (`AiRouteEstimator.estimateRouteSeconds` with a chunk prompt length).
+- **Benchmark: cut-off answers and unwritten files are counted, numbers with separators found.**
+  `run.py` looked for a provider line srcmorph no longer writes, so every meta's `cutOff` was empty; it
+  reads srcmorph's warnings and the run record's finish reasons now. A file phase that leaves some
+  files unwritten (exit 1) no longer skips the package and project phases, which made one lost file
+  cost a run 14 points of its format share. `score.py` counts `20,000` and `20 000` as 20000 and a
+  number before a sentence's period, and scores the large corpus's middle names (`middleFound`, a name
+  or the prefix of one: `LEDGER_LOCK` in `LEDGER_LOCK_02701`). A relative `--work` / `--out` / `--meta`
+  resolves against the working directory, and a NaN `--chars-per-token` is refused.
+- **The map-reduce drops, cuts and resends nothing behind the summary's back** (seven reviews of the
+  branch). When no two part summaries fitted one reduce batch, all of them went into one call cut from
+  the head, and the final answer read 2 of 22 parts under a coverage line that said 22 of 22; now each
+  part is shortened at a line end so two fit, and the line says how many (`3 part summaries shortened
+  to fit the reduce`). A chunk denser than its window was sized for is read in two halves instead of
+  losing its tail, split at the line end nearest the middle that leaves each half a quarter of the
+  chunk (not after a blank line at its very start). A window that leaves fewer than 1000 characters for a chunk next to the map and
+  reduce prompts fails the file with that number, instead of cutting every chunk. The answer to a
+  single chunk is the final one and has to be complete. A part cut at the output budget is kept at
+  once, without the line the cut ended in and marked with `...` so the reduce sees it stops early, also under `retryOnce`, and counted under `keep` too; a call cut to a smaller window counts
+  once. In a round that is not the last, a batch of one part passes it on unchanged. A facts line
+  longer than a quarter of a batch is cut for the reduce at a counter. A trimmed prompt is never longer
+  than its window (the EOF marker took room from it, and a line break at the cut kept one character
+  more); the token pre-check aims 2 % below the limit, leaves room for the 4 beginning and end tokens
+  a count does not see, has its own budget of four smaller windows and then refuses the prompt instead
+  of sending it. The density is measured on a head of four estimated windows, not on the whole file.
+  A chunk's overlap starts at a line start. Window arithmetic no longer overflows above 28 M
+  characters. A blank `mapPromptKey` / `reducePromptKey` is unset, and the prompt hash tags the map and
+  reduce prompts by role.
+- **A request the server may already be billing is never sent twice.** A read timeout while the
+  answer body was read still resent the POST, and the JDK itself resends a buffered POST once after a
+  connection reset (`sun.net.http.retryPost`); a POST now goes in streaming mode with a fixed length,
+  and a 401, whose body that mode cannot read, says that the key was refused or none was sent. A
+  timeout that ends the retries is the file's failure, not an interrupt of the run (a
+  `SocketTimeoutException` is an `InterruptedIOException`; the run ends only when the thread is
+  interrupted). Gemini's per-minute 429 waits and retries (its message reads "exceeded your current
+  quota" too; only the daily quota is final), and a `Retry-After` given as an HTTP date is honoured, in all three forms RFC 9110 has a
+  recipient accept (IMF-fixdate, rfc850-date with its two-digit year, asctime-date). A
+  source with a NUL character is not counted by the local tokenizer, which would stop at it.
+- **A run leaves the configuration as it was given.** `check()` followed by `execute()`, or two
+  `execute()` calls, failed on a rule with `factsKey` ("names its facts twice"), since the run resolved
+  the facts into the caller's rules; it works on copies now. A map or reduce prompt without a template
+  fails before a model loads, not in every file of the rule after it. An empty list item in the
+  configuration file (`- ` in YAML) is refused naming the list instead of reaching the run as a null.
+  `planOnly` stops the package and project phases too, so the plugin's aggregate goals load no model
+  under it. `SourceFileIndexer.indexFile` without the hashes is gone (it wrote headers without `P` and
+  `N`), and `RunRecord` keeps no value equality over its growing list of entries (CodeQL).
+- **A part summary cut at the output budget no longer fails its file.** A small model that lists a
+  long run of entries one by one (Granite 4.0 H-1B on a 6 000-constant enum: every constant as its
+  own line until the 1536 tokens ran out) had its map answer refused as incomplete, and the whole file
+  failed at the first such chunk. A part summary is an intermediate the reduce reads, so a cut one is
+  kept now, with a WARN, and the coverage line counts it (`5 part summaries cut at the output budget`);
+  the final answer still has to be complete.
+- **A part that comes back without text is read again in two halves.** A reasoning model can spend
+  the whole output budget thinking about one chunk and answer nothing: hosted gpt-oss-20b did on
+  chunks of the large corpus's 1.6 MB SQL dump (4093 of 4096 tokens reasoning, on fp4 and bf16
+  providers alike, and more often with a larger budget), and the whole file failed. A map answer
+  that is empty or cut before any text now has its chunk read again as two halves at a line end
+  near the middle, as a chunk too dense for its window is; a piece below twice the minimum chunk
+  still fails the file. Measured: the dump is written in three of three runs, 93.0 % against 75.2 %
+  on the large corpus (`docs/ai-index-benchmark/remeasure-2026-11-02/`).
+
+- **A read timeout of a request is not sent again.** The `openai-compatible` provider resent a
+  `POST` that got no answer within 600 s up to `maxRetries` times, each one possibly generated and
+  billed; it now fails the file after the first (a connect timeout, before anything was sent, is still
+  retried). A `501`, a `505` and a `429` whose body says the quota or credit is used up are no
+  longer retried; a `Retry-After` of any number of seconds waits (capped at 300 s) instead of falling
+  back to the short backoff; llama-server's "exceeds the available context size" and Gemini's "input
+  token count ... exceeds the maximum number of tokens" count as a context overflow.
+- **An edit of a file that is not UTF-8 is noticed.** The checksum was taken over the decoded text, so
+  two Latin-1 files that differ only in an umlaut decoded alike and the edit counted as unchanged; it
+  is taken over the bytes with only the line endings normalized (for valid UTF-8 the same value as
+  before, so no summary is regenerated by the change).
+
+- **The package and project rules are checked like file rules.** Their `onOversize`, `onIncomplete`
+  and `maxChunks` were never validated (a `maxChunks` under `mapReduce` was dropped silently, a typo
+  failed after the model had loaded), and their `factsKey` was never resolved although the overview
+  honours its rule's facts; `check` and the run now refuse such a rule, and a `skip` rule, naming the
+  phase, and resolve the facts. The rule is checked before the missing-output early return, so a
+  wrong one fails on a fresh tree too.
+- **A rule with both `facts` and `factsKey` is refused** instead of losing the inline facts.
+- **An unknown provider name fails before the run**, in `check` as well, instead of at its model's
+  group after the earlier groups have generated.
+- **`All` with `planOnly: true` only plans**: the package and project phases no longer run.
+- **A key set to nothing keeps its default.** `srcMorph:` with no value ended in a bare
+  `NullPointerException`, and `pluginVersion:` put `null` into a non-null field; both mappers now
+  skip null values (`Nulls.SKIP`).
+- **The echoed configuration reads back.** `getOversizeStrategy()` was a bean getter, so the echo
+  carried `oversizeStrategy`, which the strict reader refuses; it is `oversizeStrategy()` now, like
+  `incompleteStrategy()`.
+
+- **One failed file never ends the run, and the run record survives an abort.** The per-file catch
+  took `IOException` only, while the llama.cpp binding throws unchecked exceptions, so one native
+  error ended the whole run; an unchecked error now fails its file like a failed request (an
+  interrupt still ends the run), and the log names the exception's class. The run record is written
+  however the run ends; a failed write is added to the run's own failure instead of replacing it.
+
+- **A line longer than the chunk budget no longer multiplies the chunks.** Behind such a line (a dump
+  with one `INSERT` per line, minified code) the chunker cut at the previous line end again and moved
+  on by one character, so a 50-line header before an 80 000-character line made 504 chunks, 499 of
+  them the same overlap, each one a model call; it now cuts such a line hard (6 chunks).
+- **A context overflow no longer cuts a source behind the rule's back.** A source that fits by the
+  character estimate but not in tokens was cut by the overflow retry and written as a complete
+  summary, also under `onOversize: fail`. Now the rule's `onOversize` decides, as for an oversized
+  file: `fail` refuses it, `sample` says in its coverage line how much of the head the last call read,
+  `mapReduce` / `sampleChunks` / `deterministic` take their path. A map-reduce whose calls had to be
+  cut says so too: `**Coverage:** 9 of 9 chunks summarized (2 calls cut to fit the window)`
+  (`AiMapReduceSupport.chunkCoverage(summarized, total, cutCalls, cutParts, shortened)`).
+- **The benchmark's `score.py` took the facts line for the model's text.** With `--facts` a summary
+  starts with srcmorph's exact counts, so the lead line was reported missing and the counts were
+  scored as the model's. Every measure is now taken on the body without that line; the model
+  card's runs had no facts lines, their scores do not change.
+- **The self-test's ~275 KB .. 1 MB rules (then `big-window-java` / `big-window-sql`, now `big-java`
+  / `big-sql`) wrote no facts line**, although the smaller and the larger files had one; they name `java-facts` / `sql-facts` now,
+  in `srcmorph-maven-plugin/srcmorph-selftest.yaml` and in `examples/build-your-own-jar/srcmorph.yaml`.
 - **A local model reasoned with thinking switched off.** The llama.cpp provider sent
   `reasoningEffort` (default `low`, meant for gpt-oss) to every chat template as the
   `reasoning_effort` kwarg, also with `chatTemplateEnableThinking: false`. A template that reads it

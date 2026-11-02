@@ -4,13 +4,16 @@
 package net.ladenthin.srcmorph.cli;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,13 +40,115 @@ public class MainTest {
     private static final String MINIMAL_YAML_STRING = "command: Plan\n";
 
     @Test
-    public void main_noArgumentGiven_returnsWithoutException() {
-        assertDoesNotThrow(() -> Main.main(new String[0]));
+    public void main_noArgumentGiven_failsWithTheUsage() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> Main.main(new String[0]));
+
+        assertThat(thrown.getMessage(), containsString("Expected one argument, got 0."));
+        assertThat(thrown.getMessage(), containsString("usage: java -jar srcmorph.jar"));
     }
 
     @Test
-    public void main_tooManyArgumentsGiven_returnsWithoutException() {
-        assertDoesNotThrow(() -> Main.main(new String[] {"one", "two"}));
+    public void main_tooManyArgumentsGiven_failsWithTheUsage() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> Main.main(new String[] {"one", "two"}));
+
+        assertThat(thrown.getMessage(), containsString("Expected one argument, got 2."));
+    }
+
+    @Test
+    public void main_help_printsTheUsageAndRunsNothing() {
+        final PrintStream original = System.out;
+        final ByteArrayOutputStream printed = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(printed, true));
+            assertDoesNotThrow(() -> Main.main(new String[] {"--help"}));
+            assertDoesNotThrow(() -> Main.main(new String[] {"-h"}));
+        } finally {
+            System.setOut(original);
+        }
+
+        final String usage = new String(printed.toByteArray(), StandardCharsets.UTF_8);
+        assertThat(usage, containsString("usage: java -jar srcmorph.jar <configuration.json|.js|.yaml|.yml>"));
+        // every command with its summary, twice (once per call)
+        for (final CCommand command : CCommand.values()) {
+            assertThat(usage, containsString(command.name()));
+            assertThat(usage, containsString(command.summary()));
+        }
+        assertThat(usage.indexOf("usage:") != usage.lastIndexOf("usage:"), is(true));
+    }
+
+    @Test
+    public void everyCommand_hasASummaryOfItsOwn() {
+        for (final CCommand command : CCommand.values()) {
+            assertThat(command.name() + " has a summary", command.summary().length() > 20, is(true));
+        }
+        assertThat(CCommand.Check.summary(), containsString("no model loaded"));
+    }
+
+    @Test
+    public void usage_listsEveryCommandOnItsOwnLine() {
+        final String usage = Main.usage();
+
+        for (final CCommand command : CCommand.values()) {
+            assertThat(usage, containsString("  " + command.name() + " "));
+        }
+        assertThat(
+                usage,
+                containsString("Relative paths in the configuration resolve against the directory of its file."));
+    }
+
+    @Test
+    public void fromYaml_unknownCommand_namesTheCommands() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> Main.fromYaml("command: Plann\n"));
+
+        assertThat(thrown.getMessage(), containsString("Unknown command 'Plann'; one of [Plan, Check,"));
+    }
+
+    @Test
+    public void fromYaml_noCommand_isPlan() throws IOException {
+        assertThat(Main.fromYaml("modelFilter: grok\n").command, is(CCommand.Plan));
+        assertThat(Main.fromYaml("modelFilter: grok\n").modelFilter, is("grok"));
+    }
+
+    @Test
+    public void loadConfiguration_relativePaths_resolveAgainstTheFilesDirectory() throws IOException {
+        final Path directory = Files.createDirectories(tempDir.resolve("project/config"));
+        final Path file = directory.resolve("srcmorph.yaml");
+        Files.write(
+                file,
+                ("srcMorph:\n  outputDirectory: \"out\"\n  profileDirectory: \"../profiles\"\n"
+                                + "  modelDirectory: \"models\"\n")
+                        .getBytes(StandardCharsets.UTF_8));
+
+        final CConfiguration configuration = Main.loadConfiguration(file);
+
+        // no baseDirectory: the file's directory
+        assertThat(
+                configuration.srcMorph.getBaseDirectory(),
+                is(directory.toAbsolutePath().toFile()));
+        assertThat(
+                configuration.srcMorph.getOutputDirectory(),
+                is(directory.resolve("out").toAbsolutePath().toFile()));
+        assertThat(
+                configuration.srcMorph.getProfileDirectory(),
+                is(tempDir.resolve("project/profiles").toAbsolutePath().toFile()));
+        assertThat(
+                configuration.srcMorph.getModelDirectory(),
+                is(directory.resolve("models").toAbsolutePath().toFile()));
+    }
+
+    @Test
+    public void loadConfiguration_systemPropertiesFillTheFile() throws IOException {
+        final Path file = tempDir.resolve("srcmorph.yaml");
+        Files.write(file, "modelFilter: \"${srcmorph.test.filter}\"\n".getBytes(StandardCharsets.UTF_8));
+        System.setProperty("srcmorph.test.filter", "granite");
+        try {
+            assertThat(Main.loadConfiguration(file).modelFilter, is("granite"));
+        } finally {
+            System.clearProperty("srcmorph.test.filter");
+        }
     }
 
     @Test

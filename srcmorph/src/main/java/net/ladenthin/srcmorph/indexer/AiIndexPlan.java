@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
@@ -31,6 +32,7 @@ public final class AiIndexPlan {
         private final boolean windowChecked;
         private final long sourceChars;
         private final long availableSourceChars;
+        private final long sourceTokens;
 
         /**
          * Creates a plan entry.
@@ -41,6 +43,7 @@ public final class AiIndexPlan {
          * @param windowChecked        whether the context-window fit was computed for this entry
          * @param sourceChars          the source length in characters fed to the model (when checked)
          * @param availableSourceChars the source-character budget of the routed model+prompt (when checked)
+         * @param sourceTokens         the estimated tokens of the source (when checked)
          */
         public Entry(
                 final Path file,
@@ -48,13 +51,25 @@ public final class AiIndexPlan {
                 final long estimatedSeconds,
                 final boolean windowChecked,
                 final long sourceChars,
-                final long availableSourceChars) {
+                final long availableSourceChars,
+                final long sourceTokens) {
             this.file = file;
             this.rule = rule;
             this.estimatedSeconds = estimatedSeconds;
             this.windowChecked = windowChecked;
             this.sourceChars = sourceChars;
             this.availableSourceChars = availableSourceChars;
+            this.sourceTokens = sourceTokens;
+        }
+
+        /**
+         * Returns the estimated tokens of the source (meaningful only when {@link #windowChecked()} is
+         * {@code true}): its characters over the routed model's {@code charsPerToken}.
+         *
+         * @return the estimated source tokens
+         */
+        public long sourceTokens() {
+            return sourceTokens;
         }
 
         /**
@@ -147,7 +162,7 @@ public final class AiIndexPlan {
             final long estimatedSeconds) {
         routesByModel
                 .computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>())
-                .add(new Entry(file, rule, estimatedSeconds, false, 0L, 0L));
+                .add(new Entry(file, rule, estimatedSeconds, false, 0L, 0L, 0L));
     }
 
     /**
@@ -167,9 +182,49 @@ public final class AiIndexPlan {
             final long estimatedSeconds,
             final long sourceChars,
             final long availableSourceChars) {
+        addRoute(
+                aiDefinitionKey,
+                file,
+                rule,
+                estimatedSeconds,
+                sourceChars,
+                availableSourceChars,
+                estimatedTokens(sourceChars, AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN));
+    }
+
+    /**
+     * Records a routed file under its model id together with its context-window fit and its tokens.
+     *
+     * @param aiDefinitionKey      the model id (rule's {@code aiDefinitionKey})
+     * @param file                 the source file
+     * @param rule                 the routing rule
+     * @param estimatedSeconds     the rough estimated generation time in seconds
+     * @param sourceChars          the source length in characters fed to the model
+     * @param availableSourceChars the source-character budget of the routed model+prompt
+     * @param sourceTokens         the estimated tokens of the source
+     */
+    public void addRoute(
+            final String aiDefinitionKey,
+            final Path file,
+            final AiFieldGenerationConfig rule,
+            final long estimatedSeconds,
+            final long sourceChars,
+            final long availableSourceChars,
+            final long sourceTokens) {
         routesByModel
                 .computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>())
-                .add(new Entry(file, rule, estimatedSeconds, true, sourceChars, availableSourceChars));
+                .add(new Entry(file, rule, estimatedSeconds, true, sourceChars, availableSourceChars, sourceTokens));
+    }
+
+    /**
+     * Returns the estimated tokens of a source: its characters over the characters per token, rounded up.
+     *
+     * @param sourceChars   the characters
+     * @param charsPerToken the characters per token, above 0
+     * @return the tokens
+     */
+    public static long estimatedTokens(final long sourceChars, final double charsPerToken) {
+        return (long) Math.ceil(sourceChars / charsPerToken);
     }
 
     /**
@@ -275,7 +330,7 @@ public final class AiIndexPlan {
      * @return the parsed oversize strategy
      */
     private static AiOversizeStrategy strategyOf(final Entry entry) {
-        return entry.rule().getOversizeStrategy();
+        return entry.rule().oversizeStrategy();
     }
 
     /**
@@ -339,9 +394,11 @@ public final class AiIndexPlan {
                     .append(group.getKey())
                     .append("` - ")
                     .append(entries.size())
-                    .append(" file(s), est. ")
+                    .append(" file(s), ~")
+                    .append(tokens(entries))
+                    .append(" source tokens, est. ")
                     .append(estimator.formatDuration(modelSeconds(entries)))
-                    .append("\n\n| File | Rule | Prompt | Window | Est. |\n|---|---|---|---|---|\n");
+                    .append("\n\n| File | Rule | Prompt | Window | Tokens | Est. |\n|---|---|---|---|---|---|\n");
             for (final Entry entry : entries) {
                 sb.append("| ")
                         .append(relativize(baseDir, entry.file()))
@@ -352,10 +409,13 @@ public final class AiIndexPlan {
                         .append(" | ")
                         .append(windowCell(entry))
                         .append(" | ")
+                        .append(entry.windowChecked() ? "~" + entry.sourceTokens() : "-")
+                        .append(" | ")
                         .append(estimator.formatDuration(entry.estimatedSeconds()))
                         .append(" |\n");
             }
         }
+        appendTokensByDirectory(sb, baseDir);
         if (!skipped.isEmpty()) {
             sb.append("\n### Skipped (").append(skipped.size()).append(")\n\n");
             for (final Path file : skipped) {
@@ -372,6 +432,59 @@ public final class AiIndexPlan {
         }
         appendWindowExceededSection(sb, baseDir);
         return sb.toString();
+    }
+
+    /**
+     * Returns the estimated source tokens of the window-checked entries.
+     *
+     * @param entries the entries
+     * @return the summed tokens
+     */
+    private static long tokens(final List<Entry> entries) {
+        long sum = 0;
+        for (final Entry entry : entries) {
+            if (entry.windowChecked()) {
+                sum += entry.sourceTokens();
+            }
+        }
+        return sum;
+    }
+
+    /**
+     * Appends the estimated source tokens per directory of the routed, window-checked files, by path:
+     * where a run's tokens (and cost) go.
+     *
+     * @param sb      the buffer to append to
+     * @param baseDir the base directory for relativizing paths
+     */
+    private void appendTokensByDirectory(final StringBuilder sb, final Path baseDir) {
+        final Map<String, Integer> files = new TreeMap<>();
+        final Map<String, Long> tokens = new TreeMap<>();
+        for (final List<Entry> entries : routesByModel.values()) {
+            for (final Entry entry : entries) {
+                if (!entry.windowChecked()) {
+                    continue;
+                }
+                final Path parent = entry.file().getParent();
+                final String relative = parent == null ? "" : relativize(baseDir, parent);
+                final String directory = relative.isEmpty() ? "." : relative;
+                files.merge(directory, 1, Integer::sum);
+                tokens.merge(directory, entry.sourceTokens(), Long::sum);
+            }
+        }
+        if (files.isEmpty()) {
+            return;
+        }
+        sb.append("\n### Source tokens by directory\n\n| Directory | Files | Tokens |\n|---|---|---|\n");
+        for (final Map.Entry<String, Integer> directory : files.entrySet()) {
+            sb.append("| ")
+                    .append(directory.getKey())
+                    .append(" | ")
+                    .append(directory.getValue())
+                    .append(" | ~")
+                    .append(tokens.get(directory.getKey()))
+                    .append(" |\n");
+        }
     }
 
     /**

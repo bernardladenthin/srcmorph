@@ -13,9 +13,6 @@ package net.ladenthin.srcmorph.support;
  */
 public final class AiDeterministicSummary {
 
-    /** Newline used to split and count lines. */
-    private static final char NEWLINE = '\n';
-
     /** Utility class; not instantiable. */
     private AiDeterministicSummary() {
         // no-op
@@ -32,7 +29,7 @@ public final class AiDeterministicSummary {
      */
     public static String body(final String source, final String contextName, final int sampleLines) {
         final int chars = source.length();
-        final int lines = countLines(source);
+        final int lines = AiSourceLines.count(source);
         final StringBuilder sb = new StringBuilder(256);
         sb.append("> Large file summarized deterministically (no AI): `")
                 .append(contextName)
@@ -44,7 +41,7 @@ public final class AiDeterministicSummary {
         if (sampleLines <= 0 || lines == 0) {
             return sb.toString();
         }
-        final String[] all = source.split("\n", -1);
+        final String[] all = AiSourceLines.split(source);
         if (lines <= sampleLines * 2) {
             appendFenced(sb, "Content", all, 0, all.length);
         } else {
@@ -70,25 +67,5 @@ public final class AiDeterministicSummary {
             sb.append(lines[i]).append('\n');
         }
         sb.append("```\n");
-    }
-
-    /**
-     * Counts lines: zero for empty input, otherwise the number of newlines plus one when the text does not
-     * end with a newline.
-     *
-     * @param source the text
-     * @return the line count
-     */
-    private static int countLines(final String source) {
-        if (source.isEmpty()) {
-            return 0;
-        }
-        int newlines = 0;
-        for (int i = 0; i < source.length(); i++) {
-            if (source.charAt(i) == NEWLINE) {
-                newlines++;
-            }
-        }
-        return source.charAt(source.length() - 1) == NEWLINE ? newlines : newlines + 1;
     }
 }

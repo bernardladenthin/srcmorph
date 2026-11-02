@@ -7,6 +7,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -384,6 +385,61 @@ public class LlamaCppJniProviderSupportTest {
         } finally {
             detachAppender(appender);
         }
+    }
+
+    // requireCompleteAnswer: what generate refuses to return as a summary
+    @Test
+    public void requireCompleteAnswer_finishedAnswerWithText_passes() throws Exception {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+
+        provider.requireCompleteAnswer(request("class A {}"), responseWith("stop", new Usage(1, 1)), "A summary.");
+    }
+
+    @Test
+    public void requireCompleteAnswer_noChoice_isNoAnswer() {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+        final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
+
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider.requireCompleteAnswer(request("class A {}"), empty, ""));
+
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.NO_ANSWER));
+        assertThat(thrown.getMessage(), is("The response for Test.java has no answer (no choice)"));
+    }
+
+    @Test
+    public void requireCompleteAnswer_cutOffAtTheBudget_isTruncatedWithTheBudgetAndTheText() {
+        final LlamaCppJniProviderSupport provider = providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf")
+                .maxOutputTokens(128)
+                .build());
+
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider.requireCompleteAnswer(
+                        request("class A {}"), responseWith("length", new Usage(1, 1)), "half a sum"));
+
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(thrown.getMessage(), containsString("Test.java was cut off at the 128-token output budget"));
+        assertThat(thrown.partialText(), is("half a sum"));
+    }
+
+    @Test
+    public void requireCompleteAnswer_finishedButBlank_isEmpty() {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider.requireCompleteAnswer(
+                        request("class A {}"), responseWith("stop", new Usage(1, 1)), " \n"));
+
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.EMPTY));
+        assertThat(
+                thrown.getMessage(),
+                is("The model answered nothing for Test.java (an empty or reasoning-only answer)"));
     }
 
     /** The cache line reports all three counts, so a transposition of two of them is visible. */

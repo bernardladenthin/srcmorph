@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.provider;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import lombok.ToString;
 import net.ladenthin.llama.LlamaModel;
 import net.ladenthin.llama.args.FlashAttn;
@@ -41,6 +42,9 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     // only loaded when generation actually happens.
     @ToString.Exclude
     private @Nullable LlamaModel model;
+
+    /** The usage of the last {@link #generate} call. */
+    private AiGenerationUsage lastUsage = AiGenerationUsage.NONE;
 
     private final AiPromptSupport promptSupport;
 
@@ -173,10 +177,13 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
+        lastUsage = AiGenerationUsage.NONE;
         final ChatResponse response = chatResponse(request);
-        support.warnOnTruncatedAnswer(request, response);
+        lastUsage = AiGenerationUsage.of(response);
         support.logPromptCacheReuse(request, response);
-        return completionParser.parseCompletion(response.getFirstContent());
+        final String text = completionParser.parseCompletion(response.getFirstContent());
+        support.requireCompleteAnswer(request, response, text);
+        return text;
     }
 
     /**
@@ -192,6 +199,26 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
      */
     private ChatResponse chatResponse(final AiGenerationRequest request) {
         return chatResponseParser.parseResponse(model().chatComplete(support.buildInferenceParameters(request)));
+    }
+
+    @Override
+    public AiGenerationUsage lastUsage() {
+        return lastUsage;
+    }
+
+    // Narrows away the interface's checked IOException, as generateWithTimings does: the template and the
+    // tokenizer throw only unchecked exceptions (BED).
+    @Override
+    public OptionalInt promptTokens(final AiGenerationRequest request) {
+        // the binding hands the text to the tokenizer as a C string, which ends at the first NUL: a source
+        // with one (a UTF-16 export, binary data) would count as hardly more than its system prompt
+        if (request.sourceText().indexOf('\u0000') >= 0) {
+            return OptionalInt.empty();
+        }
+        // the prompt as the chat template renders it, system and user message and the generation prompt,
+        // counted by the model's tokenizer: what the call's prefill reads
+        final LlamaModel loaded = model();
+        return OptionalInt.of(loaded.encode(loaded.applyTemplate(support.buildInferenceParameters(request))).length);
     }
 
     // Narrows away the interface's checked IOException: the chat path (chatComplete + parse) throws only

@@ -18,9 +18,12 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  *   <li>{@link #SAMPLE} — feed only the head of the file (trimmed to the window) in one call; fast,
  *       bounded, good for repetitive data where the head represents the whole.</li>
- *   <li>{@link #MAP_REDUCE} — split the file into window-sized chunks at line boundaries, summarize each,
- *       then combine the partial summaries in one final call; processes far more of the file than a
- *       single window, with a {@code maxChunks} cap to bound the time.</li>
+ *   <li>{@link #MAP_REDUCE} — split the file into window-sized chunks at line boundaries, summarize
+ *       <em>every</em> chunk, then combine the partial summaries in batches until one is left; no part of
+ *       the file goes unread, and the calls grow linearly with its size.</li>
+ *   <li>{@link #SAMPLE_CHUNKS} — the same over a representative subset of {@code maxChunks} chunks (the
+ *       first, the last, evenly spaced between), to bound the time of very large files; the summary
+ *       says how many chunks it read.</li>
  *   <li>{@link #DETERMINISTIC} — no model at all: emit a deterministic body (size, line count, head/tail
  *       sample); instant, for pure data where no AI analysis is needed.</li>
  * </ul>
@@ -33,8 +36,11 @@ public enum AiOversizeStrategy {
     /** Trim the source to the window and summarize the head in a single call. */
     SAMPLE("sample"),
 
-    /** Chunk at line boundaries, summarize each chunk, then combine the partial summaries. */
+    /** Chunk at line boundaries, summarize every chunk, then combine the partial summaries. */
     MAP_REDUCE("mapReduce"),
+
+    /** Like {@link #MAP_REDUCE} over {@code maxChunks} representative chunks. */
+    SAMPLE_CHUNKS("sampleChunks"),
 
     /** Emit a model-free deterministic body (metadata + head/tail sample). */
     DETERMINISTIC("deterministic");
@@ -79,7 +85,7 @@ public enum AiOversizeStrategy {
                 return strategy;
             }
         }
-        throw new IllegalArgumentException(
-                "Unknown onOversize strategy: '" + value + "' (expected one of fail/sample/mapReduce/deterministic)");
+        throw new IllegalArgumentException("Unknown onOversize strategy: '" + value
+                + "' (expected one of fail/sample/mapReduce/sampleChunks/deterministic)");
     }
 }

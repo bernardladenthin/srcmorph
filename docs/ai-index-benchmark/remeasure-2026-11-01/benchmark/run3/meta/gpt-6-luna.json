@@ -1,0 +1,72 @@
+{
+ "key": "gpt-6-luna",
+ "name": "GPT-6 Luna",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gpt-6-luna",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "openai/gpt-6-luna"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "corpus": "srcmorph",
+ "profile": "v3",
+ "facts": false,
+ "oversize": null,
+ "maxChunks": null,
+ "profileHashes": {
+  "file-body-fallback.md": "5fc532a3fb06f783e1627e4bf38dc645c24ac279409c9aa0c17ffff04023b3d1",
+  "file-body-java.md": "092d60359d65fb4e731a0678be71b757562ea5d3aa79e0ee8fc7d39ee4a603bd",
+  "file-body-perl.md": "e209e66b826d3eafb928757af8b898748a8a6c74dec8848a1642e59a3a20aa46",
+  "file-body-shell.md": "710a7e75ecf11de000a9941219423bd922d14c32814020f36b72192050fc56b2",
+  "file-body-sql.md": "1190a39656301f465b7e3bdf243287b3b9b357a00f57d2d5243f4879ec96d536",
+  "file-body-xml.md": "b9ad0d2a3ac1817c44ff0a1606c350d1d7919ceca9cee338b8273908976fe779",
+  "package-body.md": "666395bd98a0f6727ca58399a9204f8e9850f7785886ddda6ef6d59a87509d77",
+  "project-body.md": "f642a9df0444d128587dc10fad02b497aa51ca99d1641b726297afef7defb330"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.4.0-SNAPSHOT.jar",
+  "sha256": "608b6a6bcfa4d74fd15e4756cabe07f278788c3babdf09771cd69389af94fdc8"
+ },
+ "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS",
+ "startedAt": "2026-11-01T14:58:33Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 232.5,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 75.9,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 4.0,
+   "cutOff": []
+  }
+ },
+ "finishedAt": "2026-11-01T15:03:45Z",
+ "fileTokens": {
+  "files": 24,
+  "written": 24,
+  "unchanged": 0,
+  "failed": 0,
+  "calls": 24,
+  "promptTokens": 80331,
+  "cachedPromptTokens": 80259,
+  "completionTokens": 19978,
+  "seconds": 231.0551333
+ },
+ "finishReasons": {
+  "stop": 24
+ },
+ "tokenCostUsd": 0.010799,
+ "costUsd": 0.017035,
+ "files": 37
+}

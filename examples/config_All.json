@@ -1,5 +1,17 @@
 {
   "command": "All",
+  "packageFieldGenerations": [
+    {
+      "promptKey": "package-body",
+      "aiDefinitionKey": "mock-model"
+    }
+  ],
+  "projectFieldGenerations": [
+    {
+      "promptKey": "project-body",
+      "aiDefinitionKey": "mock-model"
+    }
+  ],
   "srcMorph": {
     "baseDirectory": ".",
     "outputDirectory": "target/srcmorph-ai",
@@ -14,12 +26,12 @@
     ],
     "generationProvider": "mock",
     "projectName": "my-project",
-    "profileDirectory": "../profiles/v2",
+    "profileDirectory": "../profiles/v3",
     "aiDefinitions": [
       {
         "key": "mock-model",
         "modelPath": "unused-with-mock-provider.gguf",
-        "contextSize": 2048,
+        "contextSize": 4096,
         "maxOutputTokens": 64,
         "temperature": 0.15,
         "threads": 2

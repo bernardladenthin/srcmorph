@@ -497,7 +497,11 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void isLoopbackHost_onlyLoopbackLiteralsAndLocalhost() {
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("localhost"), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("LocalHost"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("LocalHost"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[0:0:0:0:0:0:0:1]"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[::2]"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[1:2:3]"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[::1:::]"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("127.0.0.1"), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("127.255.0.9"), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[::1]"), is(true));
@@ -505,6 +509,154 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("128.0.0.1"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("localhost.example"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("llama-server"), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="keyProblem">
+    private static final Function<String, @Nullable String> KEY_SET =
+            name -> "OPENROUTER_API_KEY".equals(name) ? "k" : null;
+
+    @Test
+    public void keyProblem_noApiKeyEnv_isNone() {
+        assertThat(OpenAiCompatibleProviderSupport.keyProblem("http://example.org/v1", " ", KEY_SET), is(nullValue()));
+    }
+
+    @Test
+    public void keyProblem_unsetOrBlankVariable_isNamed() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("https://openrouter.ai/api/v1", " OTHER_KEY ", KEY_SET),
+                is("its apiKeyEnv names OTHER_KEY, which is not set in this process's environment"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("https://openrouter.ai/api/v1", "BLANK", name -> " "),
+                is("its apiKeyEnv names BLANK, which is not set in this process's environment"));
+    }
+
+    @Test
+    public void keyProblem_setKeyOverHttpsOrToLoopback_isNone() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem(
+                        "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is(nullValue()));
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("http://127.0.0.1:8080/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is(nullValue()));
+    }
+
+    @Test
+    public void keyProblem_setKeyInCleartextToAnotherHost_isNamed() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("http://example.org:8080/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is("its key from OPENROUTER_API_KEY would go in cleartext to example.org; use an https baseUrl,"
+                        + " a loopback server, or an empty apiKeyEnv"));
+    }
+
+    @Test
+    public void keyProblem_httpBaseUrlThatIsNoUrl_isNamed() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem("http://[bad/v1", "OPENROUTER_API_KEY", KEY_SET),
+                is("its baseUrl is not a URL: 'http://[bad/v1'"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="retries and context overflow">
+    @Test
+    public void isRetryable_timeoutRateLimitAndServerErrors() {
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(408, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":\"rate limited\"}"), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(500, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(502, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(504, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(599, ""), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(499, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(600, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(400, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(401, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(413, ""), is(false));
+    }
+
+    @Test
+    public void isRetryable_notWhatNoRetryChanges() {
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(501, ""), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(505, ""), is(false));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":{\"code\":\"insufficient_quota\"}}"),
+                is(false));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isRetryable(
+                        429,
+                        "You exceeded your current quota, please check your plan; \"code\":\"insufficient_quota\""),
+                is(false));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":{\"message\":\"Insufficient credits\"}}"),
+                is(false));
+    }
+
+    @Test
+    public void isRetryable_geminisQuota_perMinuteWaits_perDayDoesNot() {
+        final String perMinute = "You exceeded your current quota, please check your plan. quotaId:"
+                + " GenerateRequestsPerMinutePerProjectPerModel";
+        final String perDay = "You exceeded your current quota, please check your plan. quotaId:"
+                + " GenerateRequestsPerDayPerProjectPerModel";
+
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, perMinute), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, perDay), is(false));
+    }
+
+    @Test
+    public void isContextOverflow_payloadTooLargeOrABadRequestThatSaysSo() {
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(413, ""), is(true));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isContextOverflow(
+                        400, "{\"error\":\"This model's Maximum Context length is 131072\"}"),
+                is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(400, "exceed the context window"), is(true));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isContextOverflow(
+                        400, "the request exceeds the available context size, try increasing it"),
+                is(true));
+        assertThat(
+                OpenAiCompatibleProviderSupport.isContextOverflow(
+                        400, "The input token count (1200000) exceeds the maximum number of tokens allowed"),
+                is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(400, "unknown model"), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(500, "context length"), is(false));
+    }
+
+    @Test
+    public void retryDelayMillis_retryAfterSecondsIsHonouredUpToItsCap() {
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(" 2 ", 1, 0.9d, 0L), is(2_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("0", 3, 0.0d, 0L), is(0L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("100000", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("299", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS - 1_000L));
+        // a number of seconds of any length is a long wait, not the short backoff
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("99999999999999999999", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+    }
+
+    @Test
+    public void retryDelayMillis_aRetryAfterThatIsNoNumber_takesTheBackoff() {
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("", 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("-1", 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("1.5", 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("9a", 1, 0.0d, 0L), is(1_000L));
+    }
+
+    @Test
+    public void retryDelayMillis_withoutRetryAfter_doublesUpToItsCapPlusJitter() {
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 1, 0.0d, 0L), is(1_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 2, 0.0d, 0L), is(2_000L));
+        assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 3, 0.5d, 0L), is(4_500L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("not a date", 7, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_BACKOFF_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(null, 99, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_BACKOFF_MILLIS));
     }
     // </editor-fold>
 
@@ -534,6 +686,15 @@ public class OpenAiCompatibleProviderSupportTest {
                 OpenAiCompatibleProviderSupport.errorMessage("http://h", 500, body),
                 is("http://h answered HTTP 500: " + repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT)
                         + "..."));
+    }
+
+    @Test
+    public void noChoiceMessage_namesEndpointFileAndTheStartOfTheBody() {
+        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT + 1);
+        assertThat(
+                OpenAiCompatibleProviderSupport.noChoiceMessage("http://h", java.nio.file.Paths.get("A.java"), body),
+                is("http://h answered without a completion for A.java: "
+                        + repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT) + "..."));
     }
 
     private static String repeat(final char c, final int count) {
@@ -722,4 +883,90 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(timings.decodeTokensPerSecond(), is(0.0d));
     }
     // </editor-fold>
+
+    @Test
+    public void retryDelayMillis_aRetryAfterDate_waitsUntilThen() {
+        final long at = java.time.ZonedDateTime.parse(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+                .toInstant()
+                .toEpochMilli();
+
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", 1, 0.0d, at - 30_000L),
+                is(30_000L));
+        // a date in the past waits nothing, one far ahead the longest honoured wait
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed, 21 Oct 2026 07:28:00 GMT", 1, 0.0d, at + 1L),
+                is(0L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed, 21 Oct 2026 07:28:00 GMT", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(
+                        "Wed, 21 Oct 2026 07:28:00 GMT",
+                        1,
+                        0.0d,
+                        at - OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+    }
+
+    @Test
+    public void retryDelayMillis_theObsoleteHttpDateForms_areRead() {
+        // arrange: the same instant as an rfc850-date and an asctime-date
+        final long at = java.time.ZonedDateTime.parse(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+                .toInstant()
+                .toEpochMilli();
+
+        // act / assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis(
+                        "Wednesday, 21-Oct-26 07:28:00 GMT", 1, 0.0d, at - 30_000L),
+                is(30_000L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed Oct 21 07:28:00 2026", 1, 0.0d, at - 30_000L),
+                is(30_000L));
+        // a one-digit day is padded with a space
+        final long sixth = at - 15L * 24 * 3_600_000L;
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Tue Oct  6 07:28:00 2026", 1, 0.0d, sixth - 1_000L),
+                is(1_000L));
+    }
+
+    @Test
+    public void retryDelayMillis_anRfc850YearMoreThanFiftyYearsAhead_isOfThePastCentury() {
+        // arrange: now is 2026-10-21 07:28:00 UTC
+        final long now = java.time.ZonedDateTime.parse(
+                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+                .toInstant()
+                .toEpochMilli();
+
+        // act / assert: 94 is 1994, in the past, so the retry waits nothing
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Sunday, 06-Nov-94 08:49:37 GMT", 1, 0.0d, now),
+                is(0L));
+        // exactly fifty years ahead stays ahead, and waits the cap
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wednesday, 21-Oct-76 07:28:00 GMT", 1, 0.0d, now),
+                is(OpenAiCompatibleProviderSupport.MAX_RETRY_AFTER_MILLIS));
+        // a second later is of the past century, whose weekday it is checked against: 1976-10-21 was a Thursday
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Thursday, 21-Oct-76 07:28:01 GMT", 1, 0.0d, now),
+                is(0L));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wednesday, 21-Oct-76 07:28:01 GMT", 1, 0.0d, now),
+                is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
+    }
+
+    @Test
+    public void retryDelayMillis_aDateOfNoForm_isTheBackoff() {
+        // a wrong weekday or a two-digit year in the asctime form is no HTTP date
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Monday, 21-Oct-26 07:28:00 GMT", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
+        assertThat(
+                OpenAiCompatibleProviderSupport.retryDelayMillis("Wed Oct 21 07:28:00 26", 1, 0.0d, 0L),
+                is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
+    }
 }

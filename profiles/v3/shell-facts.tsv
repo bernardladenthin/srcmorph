@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Shell fact counters (Bash, POSIX sh, ksh93): one per line, label TAB pattern (Java regex), counted
+# over the whole file. The [ignore] line runs first and reads the file as the shell does, leftmost
+# region first: it blanks comments (a whole line, or from a # after a blank to the end of the line)
+# and heredoc bodies, keeping the line breaks, so a function or a "set -e" quoted for a remote shell
+# does not count as this script's, and a heredoc marker inside a comment opens nothing. A heredoc may
+# end at any word, quoted or not (<<EOF, <<'END-OF-SQL', <<!); its end marker stands alone on its
+# line, after tabs only for <<-. A function body may be any compound command ({, (, if, for, while,
+# until, case, select, [[). "exported variables" and "readonly variables" count every name of a line
+# (export A=1 B=2 is two), not functions (export -f); "script-level assignments" leaves out the
+# environment prefix of a command (LC_ALL=C sort). Counts are regex heuristics: a function defined
+# inside a string, an option arm written on one line with others, the second of two heredocs started
+# on one line, a blank and # inside a quoted string (read as a comment), and a value with more than
+# one level of $( ) are not read as the shell reads them. ShellFactPatternsTest pins every case.
+[ignore] comments and heredoc bodies	(?ms)^[ \t]*#[^\n]*|(?<=[ \t])#[^\n]*|(?<!<)<<-[ \t]*(?:(["'])([^\n]+?)\1|\\?([^\s<>|&;()'"`]+))[^\n]*\n.*?^\t*(?:\2|\3)$|(?<!<)<<[ \t]*(?:(["'])([^\n]+?)\4|\\?([^\s<>|&;()'"`-][^\s<>|&;()'"`]*))[^\n]*\n.*?^(?:\5|\6)$
+functions	(?m)^[ \t]*(?:function[ \t]+[A-Za-z_][\w.:-]*[ \t]*(?:\([ \t]*\))?|[A-Za-z_][\w.:-]*[ \t]*\([ \t]*\))[ \t]*(?:\{|\(|$|\[\[|(?:if|for|while|until|case|select)\b)
+getopts loops	\bgetopts[ \t]+
+getopts option letters	(?:\bgetopts[ \t]+["']?:?|\G(?<=[:A-Za-z0-9]):?)[A-Za-z0-9]
+dash-option case arms	(?m)^[ \t]*\(?[ \t]*(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?(?:[ \t]*\|[ \t]*(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?)*[ \t]*\)
+named positional parameters	(?m)^[ \t]*(?:(?:local|readonly|declare|typeset|export)(?:[ \t]+-\w+)*[ \t]+)?[A-Za-z_]\w*=["']?\$(?:\{[1-9][0-9]*(?:[:?=+#%-][^}]*)?\}|[1-9])
+exported variables	(?m)(?:^[ \t]*(?:export|(?:declare|typeset|local)[ \t]+-(?=[a-zA-Z]*x)(?![a-zA-Z]*[fFn])[a-zA-Z]+)(?:[ \t]+-[a-eg-mo-zA-Z]+)*(?![ \t]+-)|\G(?<=[^\n])(?:=(?:"[^"\n]*+"|'[^'\n]*+'|\$\([^)\n]*+\)|\$\{[^}\n]*+\}|[^\s;&|"'$()]++|\$)*+)?)[ \t]+[A-Za-z_]\w*
+readonly variables	(?m)(?:^[ \t]*(?:readonly|(?:declare|typeset|local)[ \t]+-(?=[a-zA-Z]*r)(?![a-zA-Z]*[fFn])[a-zA-Z]+)(?:[ \t]+-[a-eg-mo-zA-Z]+)*(?![ \t]+-)|\G(?<=[^\n])(?:=(?:"[^"\n]*+"|'[^'\n]*+'|\$\([^)\n]*+\)|\$\{[^}\n]*+\}|[^\s;&|"'$()]++|\$)*+)?)[ \t]+[A-Za-z_]\w*
+defaulted variables	\$\{[A-Za-z_]\w*:?[-=]
+script-level assignments	(?m)^[A-Za-z_]\w*(?:\[[^\]\n]*\])?\+?=(?!(?:"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|\\.|\$\((?:[^()\n]|\([^()\n]*\))*\)|\((?:[^()\n]|\([^()\n]*\))*\)|[^\s"'\\;&|#()])*+[ \t]+(?:[A-Za-z_]\w*(?:\[[^\]\n]*\])?\+?=(?:"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|\\.|\$\((?:[^()\n]|\([^()\n]*\))*\)|\((?:[^()\n]|\([^()\n]*\))*\)|[^\s"'\\;&|#()])*+[ \t]+)*[^\s=;&|#\\][^\s=;&|#]*(?:[ \t]|$|[;&|]))
+sourced files	(?m)(?:^|[;&|{(]|\b(?:then|else|do)\b)[ \t]*(?:source|\.)[ \t]+[^\s;&|]+
+traps	(?m)^[ \t]*trap[ \t]+(?!-[lp]\b)
+set -e	(?m)^[ \t]*set(?:[ \t]+(?:-o[ \t]+\w+|[-+][a-zA-Z]+))*?[ \t]+(?:-[a-zA-Z]*e[a-zA-Z]*\b|-o[ \t]+errexit\b)
+exit statements with a status	\bexit[ \t]+[0-9]+
+typeset and declare declarations	(?m)^[ \t]*(?:typeset|declare)\b
+ksh discipline functions	(?m)^[ \t]*function[ \t]+[A-Za-z_.][\w.]*\.(?:getn?|set|unset|append)\b

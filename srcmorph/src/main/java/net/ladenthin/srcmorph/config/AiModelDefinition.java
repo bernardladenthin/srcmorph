@@ -76,6 +76,7 @@ public class AiModelDefinition {
     private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
     private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
     private int requestsPerMinute = AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE;
+    private int maxRetries = AiGenerationConfig.DEFAULT_MAX_RETRIES;
     private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
     private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
     private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -85,7 +86,7 @@ public class AiModelDefinition {
     private @Nullable List<String> drySequenceBreakers;
     private @Nullable List<String> stopStrings;
 
-    /** Optional per-machine timing calibration ({@code <calibration>}), measured by {@code srcmorph:calibrate}. */
+    /** Optional per-machine timing calibration ({@code calibration:}), measured by {@code srcmorph:calibrate}. */
     private @Nullable AiCalibration calibration;
 
     /**
@@ -795,6 +796,27 @@ public class AiModelDefinition {
      */
     public void setRequestsPerMinute(final int requestsPerMinute) {
         this.requestsPerMinute = requestsPerMinute;
+    }
+
+    /**
+     * Returns how often the {@code openai-compatible} provider sends a failed request to this model's
+     * server again.
+     *
+     * @return the retries; {@code 0} or less for none; defaults to
+     *         {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}
+     */
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
+    /**
+     * Sets how often the {@code openai-compatible} provider sends a failed request to this model's server
+     * again; see {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}.
+     *
+     * @param maxRetries the retries; {@code 0} or less for none
+     */
+    public void setMaxRetries(final int maxRetries) {
+        this.maxRetries = maxRetries;
     }
 
     /**

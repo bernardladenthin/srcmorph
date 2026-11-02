@@ -7,15 +7,13 @@ import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Pure mapping from a resolved {@link AiGenerationConfig} (or a small set of fallback parameters) to an
- * immutable {@link LlamaCppJniConfig}.
+ * Pure mapping from a resolved {@link AiGenerationConfig} to an immutable {@link LlamaCppJniConfig}.
  *
  * <p>Extracted from what was {@code AbstractAiIndexMojo.buildLlamaCppJniConfig} in the
- * {@code llamacpp-ai-index-maven-plugin} module: that method's model-lookup and
- * fieldGenerations-vs-fallback branching now lives in the {@code engine} package's
- * {@code EngineSupport}, which calls the two static methods here to do the actual field-by-field
- * translation. Both methods are pure — no I/O, no lookups, no thrown exceptions — so they are fully
- * unit-testable and are the project's PIT mutation-coverage target for this translation.</p>
+ * {@code llamacpp-ai-index-maven-plugin} module: the model lookup lives in the {@code engine}
+ * package's {@code EngineSupport}, which calls the method here to do the field-by-field translation.
+ * It is pure (no I/O, no lookups, no thrown exceptions), so it is fully unit-testable and the
+ * project's PIT mutation-coverage target for this translation.</p>
  */
 public final class LlamaCppJniConfigFactory {
 
@@ -71,6 +69,7 @@ public final class LlamaCppJniConfigFactory {
                 .apiKeyEnv(config.getApiKeyEnv())
                 .stream(config.isStream())
                 .requestsPerMinute(config.getRequestsPerMinute())
+                .maxRetries(config.getMaxRetries())
                 .reasoningEffort(config.getReasoningEffort())
                 .reasoningBudgetTokens(config.getReasoningBudgetTokens())
                 .dryMultiplier(config.getDryMultiplier())
@@ -79,35 +78,6 @@ public final class LlamaCppJniConfigFactory {
                 .dryPenaltyLastN(config.getDryPenaltyLastN())
                 .drySequenceBreakers(config.getDrySequenceBreakers())
                 .stopStrings(config.getStopStrings())
-                .build();
-    }
-
-    /**
-     * Builds a {@link LlamaCppJniConfig} from the small set of individual fallback parameters (used when
-     * no {@code fieldGenerations}/routing rule is configured), applying every other
-     * {@link AiGenerationConfig} default (sampling, DRY, GPU, …) unchanged.
-     *
-     * @param modelPath       path to the GGUF model file
-     * @param contextSize     context window size in tokens
-     * @param maxOutputTokens maximum number of output tokens per call
-     * @param temperature     sampling temperature
-     * @param threads         number of CPU threads
-     * @return the fully populated llama.cpp configuration
-     */
-    public static LlamaCppJniConfig fromFallbackParameters(
-            final String modelPath,
-            final int contextSize,
-            final int maxOutputTokens,
-            final float temperature,
-            final int threads) {
-        // Every other value is left at the builder's default, which IS the matching
-        // AiGenerationConfig.DEFAULT_* -- restating them here is what used to make this method thirty
-        // lines long and let a new knob silently default differently than the config class says.
-        return LlamaCppJniConfig.builder(modelPath)
-                .contextSize(contextSize)
-                .maxOutputTokens(maxOutputTokens)
-                .temperature(temperature)
-                .threads(threads)
                 .build();
     }
 }

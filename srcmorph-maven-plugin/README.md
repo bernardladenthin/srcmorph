@@ -14,14 +14,14 @@ retrieval.
 > `<distributionManagement><relocation>` pointing here) and the redirect verified working — see the
 > root README's migration note. Internally, the plugin depends on
 > [`net.ladenthin:srcmorph`](../srcmorph/README.md) (a sibling reactor module) for all of
-> its engine/indexing logic — the 5 Mojo classes in this module are thin wrappers that map their
-> `@Parameter` fields onto a shared `SrcMorphConfiguration` and delegate to one of `srcmorph`'s
-> `engine.*` classes. That split is an internal implementation detail; nothing below changes for a
-> user of this plugin.
+> its engine/indexing logic — the five goal mojos in this module read the configuration file through
+> the core's `SrcMorphConfigurationFileLoader`, fill what it leaves unset from the Maven project, and
+> delegate to one of `srcmorph`'s `engine.*` classes. That split is an internal implementation
+> detail; nothing below changes for a user of this plugin.
 
 ## Features
 - Generate AI summaries for source files
-- Per-language prompts — Java, SQL schema, and a generic fallback — selected by file extension
+- Per-language prompts — Java, SQL schema, shell, Perl, XML and a generic fallback — selected by file extension
 - Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
 - Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
@@ -42,11 +42,12 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - Traverses generated `.ai.md` files
 - Builds hierarchical package summaries
 - Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
+- Takes exactly one rule, `packageFieldGenerations` of the configuration file (the package prompt and its model); none or more fail the goal
 ### 3. Project Index (aggregate-project)
 - Harvests the one-line lead from every `package.ai.md` — the per-package listing is deterministic, no AI call
 - Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
 - A compact, always-loadable table of contents an agent reads first to navigate down
-- **Optional** (opt-in): configure a `<fieldGeneration>` on this goal and it makes *one* extra AI call to
+- **Optional** (opt-in): configure one rule in `projectFieldGenerations` (more fail the goal) and it makes *one* extra AI call to
   write a short `#### Overview` paragraph from the package leads. The deterministic per-package listing is
   unchanged; with no field generation the goal stays purely deterministic and calls no model.
 ## Example Output
@@ -59,6 +60,8 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - G: 1.0.0
 - A: 0.0.0
 - X: file
+- P: 3F2A91C0
+- N: 7D04E5B1
 ---
 > Immutable value type pairing a deterministic metadata header with the AI-generated markdown body of one .ai.md document.
 
@@ -72,49 +75,15 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - `header() -> AiMdHeader` — the document's metadata header.
 - `body() -> String` — the AI-generated markdown body.
 ```
+
+`P` and `N` are the CRC32 of the system prompt (with the rule's map and reduce prompts, when it names
+them) and of the fact counters the summary was written with
+(file summaries only, and only when set): a run record names them for an unchanged file, so a changed
+prompt shows which summaries it has not rewritten yet.
 ## Requirements
-- Java 8+ (production code targets Java 8; CI builds on Java 8 via temurin)
+- Java 8+ (the plugin and the core are Java 8 bytecode; the descriptor states Java 1.8)
 - Maven 3.6.3+
-- Local GGUF model (llama.cpp compatible)
-
-### Running under Java 8: override `checker-qual`
-
-The plugin itself is compiled to Java 8 bytecode, but it pulls in
-[`org.checkerframework:checker-qual`](https://central.sonatype.com/artifact/org.checkerframework/checker-qual)
-transitively, and the version it builds against (`4.2.1`) ships its classes as **Java 11
-bytecode** (class-file major version 55). On a **Java 8** JVM, loading those annotation
-classes fails with `UnsupportedClassVersionError`.
-
-If you run the plugin under a Java 8 Maven/JVM, **override `checker-qual` to `3.55.1`** — the
-**last release whose runtime classes are Java 8 bytecode** (major 52). The `checker-qual` line
-switched to Java 11 bytecode in `4.0.0`; every `3.x` release (`3.42.0` … `3.55.1`) is Java 8
-loadable, and `3.55.1` is the newest of them. (`checker-qual` `3.43.0`–`3.55.1` additionally
-carry a root `module-info.class`, which a Java 8 classpath simply ignores; if you want a jar
-with no `module-info.class` at all, `3.42.0` is the last such release.)
-
-Because this is a *plugin* dependency, the override goes inside the plugin's own
-`<dependencies>` block (a project-level `<dependencyManagement>` does **not** affect a plugin's
-classpath):
-
-```xml
-<plugin>
-    <groupId>net.ladenthin</groupId>
-    <artifactId>srcmorph-maven-plugin</artifactId>
-    <!-- ... version + configuration ... -->
-    <dependencies>
-        <!-- Java 8 execution: pin the last Java-8-bytecode checker-qual.
-             The plugin builds against 4.2.1, which is Java 11 bytecode and
-             cannot be loaded by a Java 8 JVM. -->
-        <dependency>
-            <groupId>org.checkerframework</groupId>
-            <artifactId>checker-qual</artifactId>
-            <version>3.55.1</version>
-        </dependency>
-    </dependencies>
-</plugin>
-```
-
-Running the plugin under Java 11 or newer needs no override.
+- Local GGUF model (llama.cpp compatible), or a remote OpenAI-compatible model per definition
 
 ## Dependency
 
@@ -134,264 +103,288 @@ platform (macOS: Metal), so the plugin runs anywhere out of the box:
 </dependency>
 ```
 ## Configuration
-The plugin is configured from three building blocks, declared on the plugin inside
-`<build><plugins>`:
+Since 1.4.0 the plugin is configured by **one file**, the same JSON or YAML file the CLI reads
+([`srcmorph-cli/README.md`](../srcmorph-cli/README.md)): `srcmorph.yaml` in the project directory, or
+wherever `<configurationFile>` (`-Dsrcmorph.configurationFile`) points. The POM names the goals and
+nothing else. What the file leaves unset, Maven fills from the project:
 
-1. **`<aiDefinitions>`** — define each GGUF model once (path + sampling parameters), each with a `<key>`.
-2. **`<profileDirectory>`** — the profile: one directory with a file per prompt
-   (`<key>.md`) and per group of exact fact counters (`<key>.tsv`), named by key from the rules, so no
-   prompt text and no regex is written into the pom. A prompt is the **system prompt** and takes **no
+| Key | Unset in the file |
+|---|---|
+| `baseDirectory` | `${project.basedir}` |
+| `subtrees` | the project's source directory and resource directories that exist below the base directory (a resource's includes and excludes are not applied) |
+| `outputDirectory` | `src/site/ai` below the base directory |
+| `projectName` | `${project.name}` |
+| `pluginVersion` | `${project.version}` |
+
+Relative paths in the file resolve against the file's directory: the directories, `runRecordFile`,
+and a `modelPath`, `templateFile` or `factsFile` through `modelDirectory` / `profileDirectory`,
+which are the file's directory when unset. A `${name}` in a value is a Maven property (the command
+line's `-D`, then the project's, then the system's), so `gpuLayers: ${ai.gpuLayers}` takes
+`-Dai.gpuLayers=12`; an unknown one stays as it is. Every goal takes its section of the file:
+
+| Goal | Rules |
+|---|---|
+| `generate`, `calibrate` | `srcMorph.fieldGenerations`, the file rules |
+| `aggregate-packages` | `packageFieldGenerations`, exactly one rule |
+| `aggregate-project` | `projectFieldGenerations`, none (a deterministic index) or one (with an overview) |
+| `check` | all three |
+
+The file has three building blocks:
+
+1. **`aiDefinitions`** — define each model once (path + sampling parameters), each with a `key`.
+2. **`profileDirectory`** — the profile: one directory with a file per prompt (`<key>.md`) and per
+   group of exact fact counters (`<key>.tsv`), named by key from the rules, so no prompt text and no
+   regex is written into the configuration. A prompt is the **system prompt** and takes **no
    placeholders**: the file/package name and the source (for packages, the child summaries; for the
    optional project overview, the per-package leads) are sent as a separate user message
    (`AiPromptSupport`). A `%s` in a prompt reaches the model literally. The measured profile of this
-   repository is [`profiles/v2/`](../profiles/README.md); copy it into your project or point at a
-   checkout. A `<promptDefinitions>` entry with an inline `<template>` (or its own `<templateFile>`)
-   still works and wins over a file of the same key, as does a `<factDefinitions>` entry for facts.
-3. **`<fieldGenerations>`** — per goal, the routing **rules**. Each rule maps a `<promptKey>` to an
-   `<aiDefinitionKey>` (model id, which carries the full parameter set) and selects files with a
-   composable **`<condition>`** tree: `<and>`/`<or>`/`<not>` over the leaves `<extensions>`, `<size>`
-   (`<min>`/`<max>` bytes), `<lines>` (`<min>`/`<max>`), `<modifiedAfter>`/`<modifiedBefore>` (ISO-8601
-   instant vs the file's last-modified time), and `<pathGlob>` (base-relative glob). When several rules
-   match, the highest `<priority>` wins (ties by declaration order). A rule may instead be
-   `<skip>true</skip>` (ignore matching files — a high-priority skip beats routes and the fallback), and
-   **exactly one** `<fallback>true</fallback>` (no condition) catches the rest. A file that
-   matches no rule and no fallback **fails the build**. So one `generate` run can index different file
-   kinds/sizes with **different models *and* prompts**; it loads each model once. Run with
-   `-Dsrcmorph.planOnly=true` to print the routing plan (a copy-pasteable Markdown table: file → rule id →
-   prompt → context-window fit → rough time estimate, summed per model and overall) and stop before
-   loading any model. The plan also checks each file against its routed model's **context window**: a
-   file too large for the window would lose content if trimmed. What happens then is **configuration
-   only** — the plugin never picks a model for you — and is chosen per rule with `<onOversize>`:
-   - **`fail`** *(default)* — abort the build (a hard fail). The fix is to add a `<fieldGeneration>` rule
-     with a size `<condition>` that routes oversized files to a model with a large enough window (see the
-     `granite-4.0-h-tiny-bigwindow` definition + the `big-window-java` / `big-window-sql` rules in the
-     POM — IBM Granite 4.0-H-Tiny, Apache-2.0, a hybrid Mamba model whose KV cache grows only linearly,
-     configured at a 384K window to cover files up to ~1 MB; verified summarizing a ~995 KB / ~268K-token
-     file on an 8 GB GPU with no OOM).
+   repository is [`profiles/v3/`](../profiles/README.md); copy it into your project or point at a
+   checkout. A `promptDefinitions` entry with an inline `template` (or its own `templateFile`) still
+   works and wins over a file of the same key, as does a `factDefinitions` entry for facts.
+3. **`fieldGenerations`** — the routing **rules** of the file phase. Each rule maps a `promptKey` to an
+   `aiDefinitionKey` (model id, which carries the full parameter set) and selects files with a
+   composable **`condition`** tree: `and`/`or`/`not` over the leaves `extensions`, `size`
+   (`min`/`max` bytes), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
+   the file's last-modified time), and `pathGlob` (base-relative glob). When several rules match, the
+   highest `priority` wins (ties by declaration order). A rule may instead be `skip: true` (ignore
+   matching files — a high-priority skip beats routes and the fallback), and **exactly one**
+   `fallback: true` (no condition) catches the rest. A file that matches no rule and no fallback
+   **fails the build**. So one `generate` run can index different file kinds/sizes with **different
+   models *and* prompts**; it loads each model once. Run with `-Dsrcmorph.planOnly=true` to print the
+   routing plan (a copy-pasteable Markdown table: file → rule id → prompt → context-window fit →
+   estimated source tokens → rough time estimate; the tokens summed per model and per directory, the
+   time per model and overall) and stop before loading any model. The plan also checks each file
+   against its routed model's **context window**: a file too large for the window would lose content
+   if trimmed. What happens then is **configuration only** — the plugin never picks a model for
+   you — and is chosen per rule with `onOversize`:
+   - **`fail`** *(default)* — abort the build (a hard fail). The fix is a rule with a size `condition`
+     that routes oversized files to a model with a large enough window or to one of the strategies
+     below (see the `granite-4.0-h-tiny-mapreduce` definition + the `big-java` / `big-sql` rules of
+     [`srcmorph-selftest.yaml`](srcmorph-selftest.yaml) — IBM Granite 4.0-H-Tiny, Apache-2.0,
+     map-reducing files up to ~1 MB over a 64K window). A large window alone is not enough: H-Tiny, a
+     hybrid Mamba model whose KV cache grows only linearly, fits a 384K window on an 8 GB GPU (a
+     ~995 KB / ~268K-token file ran without OOM), but over an 870 KB XML catalog in one pass it copied
+     records with invented values instead of summarizing them.
    - **`sample`** — feed only the head of the file (trimmed to the window) in a single call. Fast and
      bounded; good for repetitive data where the head represents the whole.
    - **`mapReduce`** — split the file into window-sized chunks at line boundaries (with overlap so
-     records are never torn mid-syntax), summarize each chunk, then combine the partial summaries in one
-     final call. A `<maxChunks>` cap bounds the time (a representative subset — always head + tail,
-     evenly spaced — is summarized when the file would exceed the cap), so an arbitrarily large file
-     (e.g. 7 MB) stays within a chosen per-file budget. **Route oversized files to a *small*, fast model
-     for this — not the big-window one.** Prefill is `O(n²)` in prompt length, so chunks should be small:
-     many cheap small-window passes are far faster than a few giant ones (one 384K-token pass alone can
-     dwarf a whole run). E.g. a 16K-window model with `maxChunks=6` is ~7 calls (~1 h order on a
-     reference CPU; less on GPU) and samples a representative slice — the right trade-off for repetitive
-     data. mapReduce *on* a big window is the slowest possible combination; avoid it.
+     records are never torn mid-syntax), summarize **every** chunk, then combine the partial summaries
+     in batches until one is left. No part of the file goes unread; the calls grow linearly with its
+     size. **Size the chunks moderately.** Prefill is `O(n²)` in prompt length, so many cheap passes are
+     far faster than a few giant ones (one 384K-token pass alone can dwarf a whole run): the self-test
+     map-reduces with H-Tiny over 64K and samples with H-1B over 16K; map-reduce over a 384K-class window
+     is the slowest combination. A local model sizes the chunks by the source's density in tokens; a
+     chunk denser than that is read in two halves.
+   - **`sampleChunks`** — the same over `maxChunks` representative chunks (always the first and the last,
+     evenly spaced between), to bound the time of an arbitrarily large file (e.g. 7 MB): a 16K-window
+     model with `maxChunks: 6` is ~7 calls (~1 h order on a reference CPU; less on GPU) — the right
+     trade-off for repetitive data. `maxChunks` applies only here; with another strategy it fails the
+     rule set.
+
+     Both chunked strategies tell the model what its input is: `mapPromptKey` names a prompt appended
+     to the rule's prompt in every map call (whose user message starts with `Chunk i of n:`), and
+     `reducePromptKey` one appended in every reduce call (whose input is the part summaries, `Part n:`).
+     The profile's `map-chunk` says to index only what the chunk shows, `reduce-parts` to merge the
+     parts into one summary and keep every name a part states. Without them every call takes the
+     rule's prompt alone, which describes a whole file: a model then indexed a chunk of INSERT rows as
+     a file and invented its schema, and answered a reduce with the prompt's own example repeated
+     under `Part 8:`, `Part 9:`, ... until its output budget ended. Both keys apply only to `mapReduce`
+     and `sampleChunks`.
    - **`deterministic`** — no model at all: emit a deterministic body (size, line count, head/tail
      sample). Instant; for pure data where no AI analysis is needed.
 
    Quality from a real model is best within Granite's validated 128K (~500 KB) and degrades gradually
-   beyond it — a whole-file (or chunked) summary still beats a trimmed one.
+   beyond it — a whole-file (or chunked) summary still beats a trimmed one. Every summary of an
+   over-window file begins with what it read: `**Coverage:** 9 of 9 chunks summarized`,
+   `**Coverage:** 6 of 9 chunks summarized (sampled)`, or for `sample`
+   `**Coverage:** the first 12000 of 90000 characters (sampled head)`.
 
-   **Exact counts with `<factsKey>` (optional, every file — not just oversize).** A sampled/chunked AI
+   **Exact counts with `factsKey` (optional, every file — not just oversize).** A sampled/chunked AI
    summary can't reliably *count* things (no single call sees the whole file — it will guess "25 rows").
-   A rule's `<factsKey>` names a group of counters, `<profileDirectory>/<key>.tsv` (one
-   `label<TAB>regex` per line, `#` comments), and each reports its regex match count over the
-   **whole** source, prepended to the body of every file the rule matches as an exact facts line — so
-   downstream agents get authoritative structural counts in every summary. It's fully generic — the
-   meaning is in the regex, so the same mechanism counts SQL rows or Java `\bboolean\b` fields;
-   multi-line matching is opt-in via the inline `(?m)` flag. Keep patterns robust (a fact that miscounts
-   is worse than none); the profile's `java-facts` and `sql-facts` are pinned by tests. Example:
+   A rule's `factsKey` names a group of counters, `<profileDirectory>/<key>.tsv` (one `label<TAB>regex`
+   per line, `#` comments, an `[ignore]` label for a region blanked before counting), and each reports
+   its regex match count over the **whole** source, prepended to the body of every file the rule
+   matches as an exact facts line — so downstream agents get authoritative structural counts in every
+   summary. It's fully generic — the meaning is in the regex, so the same mechanism counts SQL rows or
+   Java `\bboolean\b` fields; multi-line matching is opt-in via the inline `(?m)` flag. Keep patterns
+   robust (a fact that miscounts is worse than none); the profile's Java, SQL, shell, Perl and XML
+   counters are pinned by tests. Example:
    `**Facts (exact, whole file):** INSERT statements: 5; VALUES rows (approx): 33; tables: 2`. A rule
-   can also list its counters inline in `<facts>`, as in the example below.
+   can also list its counters inline in `facts`.
+
+The POM:
 
 ```xml
 <plugin>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph-maven-plugin</artifactId>
-    <version>1.3.0</version>
-
-    <configuration>
-        <!-- outputDirectory defaults to ${project.basedir}/src/site/ai -->
-        <subtrees>
-            <subtree>src/main/java/com/example</subtree>
-        </subtrees>
-        <!-- provider defaults to "mock"; use "llamacpp-jni" to run a real GGUF model -->
-        <generationProvider>llamacpp-jni</generationProvider>
-
-        <!-- 1) Models: define once, reference by key. -->
-        <aiDefinitions>
-            <aiDefinition>
-                <key>coder</key>
-                <modelPath>/path/to/model.gguf</modelPath>
-                <contextSize>32768</contextSize>
-                <maxOutputTokens>1536</maxOutputTokens>
-                <temperature>0.7</temperature>
-                <threads>8</threads>
-            </aiDefinition>
-        </aiDefinitions>
-
-        <!-- 2) The profile: srcmorph's profiles/v2/ copied into your project (or a checkout of
-                it). Every promptKey and factsKey below is a file there: file-body-java.md,
-                file-body-fallback.md, package-body.md, java-facts.tsv. The one definition below
-                shows an inline prompt instead of a file. -->
-        <profileDirectory>${project.basedir}/src/srcmorph/profile</profileDirectory>
-        <promptDefinitions>
-            <!-- Only needed when the aggregate-project goal opts into the AI overview below. -->
-            <promptDefinition>
-                <key>project-body</key>
-                <template><![CDATA[Write a short overview of the whole project from its per-package leads.]]></template>
-            </promptDefinition>
-        </promptDefinitions>
-    </configuration>
-
-    <!-- 3) Bind each goal to a phase and map prompt -> model per goal. -->
+    <version>1.4.0</version>
+    <!-- configured by ${project.basedir}/srcmorph.yaml; another file: <configuration>
+         <configurationFile>...</configurationFile></configuration> -->
     <executions>
         <execution>
             <id>ai-generate</id>
             <phase>generate-resources</phase>
             <goals><goal>generate</goal></goals>
-            <configuration>
-                <!-- A .java rule (matched by its <condition>) and the explicit fallback for
-                     everything else. See "Routing rules" below for size/lines/modified/glob
-                     conditions, priority, and skip. -->
-                <fieldGenerations>
-                    <fieldGeneration>
-                        <id>java</id>
-                        <promptKey>file-body-java</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                        <factsKey>java-facts</factsKey>
-                        <condition>
-                            <extensions><extension>.java</extension></extensions>
-                        </condition>
-                    </fieldGeneration>
-                    <fieldGeneration>
-                        <id>fallback</id>
-                        <fallback>true</fallback>
-                        <promptKey>file-body-fallback</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                    </fieldGeneration>
-                </fieldGenerations>
-            </configuration>
         </execution>
+        <!-- Phase 2 reads the tree phase 1 wrote, phase 3 the package summaries. -->
         <execution>
             <id>ai-aggregate-packages</id>
             <phase>process-resources</phase>
             <goals><goal>aggregate-packages</goal></goals>
-            <configuration>
-                <fieldGenerations>
-                    <fieldGeneration>
-                        <promptKey>package-body</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                    </fieldGeneration>
-                </fieldGenerations>
-            </configuration>
         </execution>
-        <!-- Phase 3: project index. The per-package listing is deterministic (no model needed).
-             Add the optional <configuration> below to also write a short #### Overview paragraph
-             from the package leads (one extra AI call); omit it for a purely deterministic index. -->
         <execution>
             <id>ai-aggregate-project</id>
             <phase>prepare-package</phase>
             <goals><goal>aggregate-project</goal></goals>
-            <configuration>
-                <fieldGenerations>
-                    <fieldGeneration>
-                        <promptKey>project-body</promptKey>
-                        <aiDefinitionKey>coder</aiDefinitionKey>
-                    </fieldGeneration>
-                </fieldGenerations>
-            </configuration>
         </execution>
     </executions>
 </plugin>
 ```
 
+and `srcmorph.yaml` next to it:
+
+```yaml
+# provider defaults to "mock"; llamacpp-jni runs a real GGUF model
+packageFieldGenerations:            # aggregate-packages: exactly one rule
+  - promptKey: package-body
+    aiDefinitionKey: coder
+projectFieldGenerations:            # aggregate-project: leave it out for a purely deterministic index
+  - promptKey: project-body
+    aiDefinitionKey: coder
+
+srcMorph:
+  generationProvider: llamacpp-jni
+  # 1) Models: define once, reference by key.
+  aiDefinitions:
+    - key: coder
+      modelPath: /path/to/model.gguf
+      contextSize: 32768
+      maxOutputTokens: 1536
+      temperature: 0.7
+      threads: 8
+  # 2) The profile: srcmorph's profiles/v3/ copied into your project (or a checkout of it). Every
+  #    promptKey and factsKey here is a file there: file-body-java.md, file-body-fallback.md,
+  #    package-body.md, project-body.md, java-facts.tsv.
+  profileDirectory: src/srcmorph/profile
+  # 3) The file rules: a .java rule (matched by its condition) and the fallback for everything else.
+  #    See "Routing rules" below for size/lines/modified/glob conditions, priority, and skip.
+  fieldGenerations:
+    - id: java
+      promptKey: file-body-java
+      aiDefinitionKey: coder
+      factsKey: java-facts
+      condition:
+        extensions: [".java"]
+    - id: fallback
+      fallback: true
+      promptKey: file-body-fallback
+      aiDefinitionKey: coder
+```
+
+[`srcmorph-selftest.yaml`](srcmorph-selftest.yaml) is the full configuration this module indexes
+itself with (`-P srcmorph-selftest`), three models and the rules of every language;
+[`.github/plugin-it/`](../.github/plugin-it/) is the fixture the integration test runs, a
+configuration of the same shape on the `mock` provider.
+
 ### Routing rules (conditions, priority, skip, plan)
 Within one `generate` run you can route files to different models **and** prompts by size, language,
-age or path. Example — Java files to three context windows of gpt-oss-20b (three `<aiDefinition>`s with
-the same model and different `<contextSize>`), a map-reduce over a small fast Granite window for huge
+age or path. Example — Java files to three context windows of gpt-oss-20b (three `aiDefinitions` with
+the same model and different `contextSize`), a map-reduce over a small fast Granite window for huge
 files, skip generated sources, and a fallback for everything else:
 
-```xml
-<fieldGenerations>
-  <fieldGeneration>                                  <!-- skip wins by priority -->
-    <id>skip-generated</id><skip>true</skip><priority>100</priority>
-    <condition><pathGlob>**/generated/**</pathGlob></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>java-small</id><promptKey>file-body-java-terse</promptKey><aiDefinitionKey>gpt-oss-16k</aiDefinitionKey>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><max>16384</max></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>java-mid</id><promptKey>file-body-java</promptKey><aiDefinitionKey>gpt-oss-48k</aiDefinitionKey>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><min>16384</min><max>49152</max></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>java-large</id><promptKey>file-body-java-detailed</promptKey><aiDefinitionKey>gpt-oss-20B-mxfp4</aiDefinitionKey>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><min>49152</min></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>                                  <!-- huge files: chunk over a SMALL fast window + combine -->
-    <id>java-huge</id><promptKey>file-body-java</promptKey><aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
-    <onOversize>mapReduce</onOversize><maxChunks>6</maxChunks>   <!-- ~7 cheap calls; bounds time to ~1 h/file -->
-    <facts>                                          <!-- exact whole-file counts, prepended to the body -->
-      <fact><label>boolean fields</label><pattern>\bboolean\b</pattern></fact>
-      <fact><label>methods</label><pattern>(?m)^\s+(public|private|protected).*\(</pattern></fact>
-    </facts>
-    <condition><and><conditions>
-      <condition><extensions><extension>.java</extension></extensions></condition>
-      <condition><size><min>1048576</min></size></condition>
-    </conditions></and></condition>
-  </fieldGeneration>
-  <fieldGeneration>
-    <id>fallback</id><fallback>true</fallback>
-    <promptKey>file-body-fallback</promptKey><aiDefinitionKey>gpt-oss-20B-mxfp4</aiDefinitionKey>
-  </fieldGeneration>
-</fieldGenerations>
+```yaml
+  fieldGenerations:
+    - id: skip-generated                             # skip wins by priority
+      skip: true
+      priority: 100
+      condition: {pathGlob: "**/generated/**"}
+    - id: java-small
+      promptKey: file-body-java-terse
+      aiDefinitionKey: gpt-oss-16k
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {max: 16384}
+    - id: java-mid
+      promptKey: file-body-java
+      aiDefinitionKey: gpt-oss-48k
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {min: 16384, max: 49152}
+    - id: java-large
+      promptKey: file-body-java-detailed
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {min: 49152}
+    - id: java-huge                                  # huge files: chunk over a SMALL fast window + combine
+      promptKey: file-body-java
+      aiDefinitionKey: granite-4.0-h-1b-fastchunk
+      onOversize: sampleChunks
+      maxChunks: 6                                   # ~7 cheap calls; bounds time to ~1 h/file
+      mapPromptKey: map-chunk                        # appended in a map call: the input is one chunk
+      reducePromptKey: reduce-parts                  # appended in a reduce call: merge the parts
+      facts:                                         # exact whole-file counts, prepended to the body
+        - {label: boolean fields, pattern: '\bboolean\b'}
+        - {label: methods, pattern: '(?m)^\s+(public|private|protected).*\('}
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            - size: {min: 1048576}
+    - id: fallback
+      fallback: true
+      promptKey: file-body-fallback
+      aiDefinitionKey: gpt-oss-20B-mxfp4
 ```
 
 Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
-`<lines>` works the same way; `<modifiedAfter>2026-01-01T00:00:00Z</modifiedAfter>` only (re)indexes
-recently changed files. `<onOversize>` (`fail` *(default)* / `sample` / `mapReduce` / `deterministic` —
+`lines` works the same way; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
+recently changed files. `onOversize` (`fail` *(default)* / `sample` / `mapReduce` / `sampleChunks` / `deterministic` —
 see the context-window note above) chooses what a rule does when a file is still larger than its routed
-model's window; `<maxChunks>` caps how many chunks `mapReduce` summarizes. Preview the mapping without
-running a model:
+model's window; `maxChunks` is how many chunks `sampleChunks` summarizes, `mapPromptKey` and
+`reducePromptKey` the prompts a map and a reduce call append to the rule's. The package and project
+rules default to `mapReduce`: their input is the summaries below them, and leaving a part out would
+drop a whole subtree. `onIncomplete` chooses
+what a rule does when the model's answer is no summary -- empty (for example a reasoning-only answer),
+cut off at the output budget, or a response without an answer: `fail` *(default)* counts the file as
+failed, `retryOnce` asks once more first, `keep` writes a cut-off answer that has text. Such an answer
+is never written otherwise: the file keeps its older summary, or none, every other file is still
+indexed, the goal fails at its end naming the count, and the next run tries the file again. Preview
+the mapping without running a model:
 
 ```
 mvn srcmorph:generate -Dsrcmorph.planOnly=true
 ```
 
 ## Usage
-Run AI index generation:
 ```
-mvn clean install -Psrcmorph-selftest
+mvn generate-resources            # the file phase, bound as in the example
+mvn prepare-package               # all three phases
+mvn srcmorph:check                # the configuration as a run would see it: plan, profile files and
+                                  # every model (file, GGUF header, baseUrl, apiKeyEnv); loads no model
+mvn srcmorph:generate -Dsrcmorph.planOnly=true    # the routing plan only
+```
+This module indexes two of the core library's packages with its own configuration (needs the GGUF
+files; `-Dai.modelDir` names their directory):
+```
+mvn -pl srcmorph-maven-plugin -P srcmorph-selftest prepare-package -Dai.modelDir=/path/to/models
 ```
 ## Plugin Configuration
-Run-level parameters (set in `<configuration>`):
-- `outputDirectory` — target directory for `.ai.md` files (default: `${project.basedir}/src/site/ai`)
-- `subtrees` — source directories to index, relative to the project base dir (default: `src/main/java`)
-- `fileExtensions` — file extensions to index (default: `.java`)
-- `excludes` — glob patterns for source files to skip, matched against each file's path relative to
-  the base dir with `/` separators, e.g. `**/package-info.java`, `**/generated/**` (default: none).
-  `*` stays within one path segment, `**` spans directories, `?` is a single character.
-- `generationProvider` — AI backend: `mock` (default), `llamacpp-jni` or `openai-compatible`; a
-  model's own `provider` (below) overrides it for that model
-- `modelDirectory` (`srcmorph.modelDirectory`) — the directory a relative `modelPath` is resolved
-  against; an absolute `modelPath` is used as it is, so models can live in one directory and still
-  one of them elsewhere. Unset (default), a relative `modelPath` is relative to the working directory.
-  A relative `modelDirectory` itself is relative to the module's `${basedir}`, as Maven resolves every
-  `File` parameter.
-- `profileDirectory` (`srcmorph.profileDirectory`) — the profile: a rule's `promptKey` that no
-  `promptDefinitions` entry has is read from `<profileDirectory>/<key>.md`, its `factsKey` that no
-  `factDefinitions` entry has from `<profileDirectory>/<key>.tsv`; a key found in neither fails the goal
-  before any model loads, naming the file it looked for. A relative `templateFile` or `factsFile`
-  resolves against it too, like `modelDirectory` for model paths; an absolute one is used as it is.
-  Unset (default), nothing is looked up by key and a relative file is relative to the working
-  directory. A relative `profileDirectory` itself is relative to the module's `${basedir}`.
-- `force` — regenerate even when a body already exists (default: `false`)
-- `skip` — global switch: skip **every** phase (default: `false`)
+The POM sets only these; everything else is the configuration file (above).
+- `configurationFile` (`srcmorph.configurationFile`) — the configuration file, JSON or YAML (default:
+  `${project.basedir}/srcmorph.yaml`). A missing file fails the goal, naming where it looked
+- `force` (`srcmorph.force`) — regenerate every summary although it is up to date (default: `false`);
+  `true` overrides the file's `force`
+- `planOnly` (`srcmorph.planOnly`, goal `generate`) — print the routing plan and stop before loading any
+  model (default: `false`); `true` overrides the file's `planOnly`
+- `skip` (`srcmorph.skip`) — global switch: skip **every** goal (default: `false`)
 - Per-phase switches — turn any of the three phases on/off independently (each default `false`).
   Named after the three index levels (`file` / `package` / `project`, the `x` node types):
   - `srcmorph.file.skip` — skip the **file** phase (the `generate` goal)
@@ -399,33 +392,34 @@ Run-level parameters (set in `<configuration>`):
   - `srcmorph.project.skip` — skip the **project** phase (the `aggregate-project` goal)
 
   So `-Dsrcmorph.package.skip=true` runs file + project only, `-Dsrcmorph.skip=true` runs
-  nothing, and the defaults run all three.
-- `aiDefinitions` / `promptDefinitions` — named models / prompt templates, referenced by key; a
-  prompt has a `key` and either a `template` (the text) or a `templateFile` (a UTF-8 file holding it,
-  read verbatim, a leading byte order mark dropped). Both at once, or a file that is empty or cannot
-  be read, fail the goal as a configuration error. Prompts of the profile need no entry here.
-- `factDefinitions` (goal `generate`) — named groups of fact counters, referenced by a rule's
-  `factsKey`: a `key` and either `facts` (`label` + `pattern` each) or a `factsFile` (the profile's
-  `.tsv` format). Groups of the profile need no entry here.
-- `fieldGenerations` — per goal: which `promptKey` runs with which `aiDefinitionKey` (**required**)
+  nothing, and the defaults run all three. `calibrate` and `check` are diagnostic goals that only the
+  global switch skips.
 
-### Per-model `<aiDefinition>` parameters
+The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirectory`, `fileExtensions`,
+`excludes`, `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
+`profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
+`force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are described in
+[`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
+A configured subtree that does not exist, or lies outside the base directory, fails the goal; file
+extensions match with their dot and in any case.
 
-Every model knob lives inside its `<aiDefinition>` (referenced by `aiDefinitionKey`), not as a top-level
-plugin parameter. Only `key` and `modelPath` are required (`modelPath` not for an `openai-compatible`
+### Per-model `aiDefinitions` parameters
+
+Every model knob lives inside its entry of `aiDefinitions` (referenced by `aiDefinitionKey`). Only `key` and `modelPath` are required (`modelPath` not for an `openai-compatible`
 model); everything else has a default. The defaults below are the shipped values
 (`AiGenerationConfig.DEFAULT_*`).
 
-| Element | Default | Description |
+| Key | Default | Description |
 |---|---|---|
 | `key` | *(required)* | Identifier referenced by a rule's `aiDefinitionKey` |
-| `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the working directory). Not used by an `openai-compatible` model |
+| `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the configuration file's directory). Not used by an `openai-compatible` model |
 | `provider` | *(empty)* | The backend of this model: `llamacpp-jni`, `openai-compatible` or `mock`; empty uses the run's `generationProvider`. Lets one run send some files to a local GGUF and others to a remote model |
 | `remoteModel` | *(empty)* | `openai-compatible` only: the model id requested (the `model` field, e.g. `openai/gpt-6-luna` on OpenRouter); empty sends none, which a single-model `llama-server` or `NativeServer` accepts |
 | `baseUrl` | `https://openrouter.ai/api/v1` | `openai-compatible` only: the API base; `<baseUrl>/chat/completions` is called. A local server is `http://127.0.0.1:<port>/v1`. Must be `http(s)`, checked before the run starts |
-| `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default), or a variable that is unset or empty, sends no key: a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
+| `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default) sends no key. A named variable that is unset or empty fails the run before any request, as does a key that would go over plain `http` to another machine: a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
 | `stream` | `false` | `openai-compatible` only: request the answer as Server-Sent Events (`stream: true`, `stream_options.include_usage: true`) and assemble it into the same chat response, so the summary does not change. A stream without the closing `data: [DONE]` or with an `error` chunk fails the file. Required for the GitHub Copilot API Gateway, whose non-streaming path adds and runs VS Code's own tools (see [docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md)); it also moves the read timeout from the whole answer to the gap between two events |
-| `requestsPerMinute` | `0` | `openai-compatible` only: at most this many requests to the model's server start within any minute; a request beyond it waits until the oldest of the last minute is a minute old, instead of being answered with `429` (nothing is retried). Every model of one server with the same `apiKeyEnv` and limit counts in one window, across the phases of a run in one process. Set it below the server's own limit, e.g. 25 for the Copilot API Gateway's `rateLimitPerMinute` 30. `0` or less: no limit |
+| `requestsPerMinute` | `0` | `openai-compatible` only: at most this many requests to the model's server start within any minute; a request beyond it waits until the oldest of the last minute is a minute old, instead of being answered with `429`. Every model of one server with the same `apiKeyEnv` and limit counts in one window, across the phases of a run in one process. Set it below the server's own limit, e.g. 25 for the Copilot API Gateway's `rateLimitPerMinute` 30. `0` or less: no limit |
+| `maxRetries` | `3` | `openai-compatible` only: how often a request is sent again after a `408`, a `429` (not one that says the quota or credit is used up), a `5xx` other than `501` / `505` or a connect timeout, after the server's `Retry-After` (in seconds, at most 5 minutes) or an exponential backoff from 1 s (at most 60 s, plus up to a quarter as jitter). Any other failure is final at once; a prompt the server refuses as longer than the model's context (`413`, or `400` saying so) is shrunk and asked again, as for a local model. `0` sends every request once. A request that got no answer within the read timeout, or whose answer stopped while it was read, is not sent again: the server may already be generating and billing it (a `POST` goes in streaming mode, so the JDK does not resend it either). A request that still fails counts its file as failed; the other files are indexed and the goal fails at its end |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
 | `threads` | `4` (fewer on a machine with fewer cores) | CPU threads for inference. Never set more than the machine has cores: ggml's threads wait on each other, and an oversubscribed run is orders of magnitude slower |
@@ -436,7 +430,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
 | `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
 | `repeatLastN` | `-1` | Window the `repeatPenalty` above acts on (`--repeat-last-n`); `-1` = leave llama.cpp's own window (64 tokens), `0` = disable the penalty entirely. Configuring a penalty without its range leaves the strength adjustable but the reach fixed, which is why the two belong together |
-| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field). Use a value at or below your model's real ratio so the budget stays conservative |
+| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: one over it is counted whole, goes in one call when it fits after all, and is otherwise chunked by its measured density; a prompt over `contextSize - maxOutputTokens` (less 4 tokens a count does not see) is not sent: its window shrinks by the measured density, up to four times, and a prompt still over the limit then fails its file |
 | `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
 | `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
 | `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |
@@ -470,38 +464,39 @@ that is OpenRouter, i.e. a third party. It sends the same system prompt and user
 local provider and only the portable sampling knobs: `maxOutputTokens`, `temperature`, `topP`,
 `topK` and `minP` (when positive), `repeatPenalty`, `seed` (when set), `stopStrings` and
 `reasoningEffort`. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
-caching) are ignored. A non-2xx answer fails the file with the status and the server's error text;
-nothing is retried. With `stream` set, the answer arrives as Server-Sent Events and is assembled
+caching) are ignored. A `408`, a `429` (not one saying the quota is used up), a `5xx` other than `501` /
+`505` or a connect timeout is retried (`maxRetries`); a read timeout after the request was sent, and any
+other non-2xx answer, fail the file with the status and the server's error text. With `stream` set, the answer arrives as Server-Sent Events and is assembled
 before it is parsed. For the models of a GitHub Copilot subscription through a local gateway, see
 [docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md).
 
-```xml
-<aiDefinition>
-  <key>luna</key>
-  <provider>openai-compatible</provider>
-  <remoteModel>openai/gpt-6-luna</remoteModel>
-  <apiKeyEnv>OPENROUTER_API_KEY</apiKeyEnv>
-  <maxOutputTokens>1024</maxOutputTokens>
-</aiDefinition>
+```yaml
+  aiDefinitions:
+    - key: luna
+      provider: openai-compatible
+      remoteModel: openai/gpt-6-luna
+      apiKeyEnv: OPENROUTER_API_KEY
+      maxOutputTokens: 1024
 ```
 
 ## Prompt System
-Prompts are referenced by key from `<fieldGenerations>` and read from the profile
-(`<profileDirectory>`). The self-test profile uses five, each a file of
-[`profiles/v2/`](../profiles/README.md), and its Java and SQL rules the `java-facts` and `sql-facts`
-counters there; the benchmark and the examples read the same files, so each prompt and each counter
-exists once in the repository:
+Prompts are referenced by key from the rules and read from the profile (`profileDirectory`). The
+self-test configuration uses the ten prompt files and the six fact-counter files of
+[`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
+prompt and each counter exists once in the repository:
 - `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
   the tables it reads vs writes, and relationships)
+- `file-body-shell`, `file-body-perl`, `file-body-xml` — the same for shell scripts, Perl and XML
 - `file-body-fallback` — generic multi-language summary for any other source file
 - `package-body` — synthesizes a package summary from the already-generated file summaries
 - `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
+- `map-chunk`, `reduce-parts` — not prompts of their own: a chunked rule's `mapPromptKey` /
+  `reducePromptKey` appends them to its prompt in the map and the reduce calls (one chunk of the input;
+  the part summaries to merge)
 
-For the `generate` goal the file-level prompt is selected per file by extension: the first field
-generation whose `<fileExtensions>` matches the file name wins; otherwise the first entry without a
-`<fileExtensions>` filter is the fallback. A single field generation with no filter (the historical
-shape) keeps working — it is simply the fallback for every file.
+For the `generate` goal the rule, and with it the prompt, is chosen per file by the routing rules
+above: the matching rule with the highest `priority`, otherwise the one `fallback`.
 
 Each summary begins with a one-sentence blockquote lead, followed by structured `####` sections.
 Prompts are optimized to avoid code blocks, formatter artifacts, and empty outputs, and to produce structured markdown.
@@ -529,8 +524,9 @@ Both carry one entry per measured model — `modelKey`, `loadSeconds`,
 `prefillTokensPerSecond`, `decodeTokensPerSecond`, `charsPerToken`,
 `midPrefillTokensPerSecond`, `cachedPromptTokens` — so a calibration run can be diffed
 across machines or committed as a baseline, instead of existing only as console output.
-The three figures that also appear in the paste-ready `<calibration>` block are formatted
-identically, so the two can never disagree about what was measured.
+The three figures that also appear in the paste-ready YAML `calibration:` block (for the model's
+entry under `aiDefinitions`) are formatted identically, so the two can never disagree about what
+was measured.
 
 ## Design Principles
 - Deterministic metadata (hash-based change detection)
@@ -542,19 +538,17 @@ identically, so the two can never disagree about what was measured.
 - Large models increase runtime
 - Output quality depends on chosen model
 
-## TODO
-- **Expand PIT mutation-testing scope.** `srcmorph/pom.xml`'s `<targetClasses>` lists an explicit subset of classes verified at 100% mutation parity; this plugin module has no PIT gate of its own yet. Generic PIT setup and invocation: see the [PIT policy](../../workspace/policies/pit-mutation-testing.md).
 ## Recommended Models
 Based on an 8-model × 2-prompt benchmark run against this codebase — full results, per-model
 pros/cons, a source-faithfulness deep-dive, and reproduction steps in
 [docs/ai-index-benchmark](../docs/ai-index-benchmark/COMPARISON.md):
 
 > **On the `-Dai.*` flags below** (`ai.model`, `ai.gpuLayers`, `ai.mainGpu`, `ai.devices`, …): these are
-> **this repo's own Maven build properties** (defined in `srcmorph-maven-plugin/pom.xml` and wired into
-> the gpt-oss profile executions), overridable per run with `-D` when you build *this* repo. They are
-> **not** plugin `@Parameter`s — a downstream build of the published plugin instead sets the same knobs as
-> `<configuration>`/model-definition elements (`<gpuLayers>`, `<mainGpu>`, `<devices>`, `<aiDefinitionKey>`).
-> The published mojo parameters are the separate `srcmorph.*` set.
+> **this repo's own Maven build properties** (defined in `srcmorph-maven-plugin/pom.xml` and named as
+> `${ai.*}` in `srcmorph-selftest.yaml`), overridable per run with `-D` when you build *this* repo. They
+> are **not** plugin `@Parameter`s — a downstream build sets the same knobs in its own configuration file
+> (`gpuLayers`, `mainGpu`, `devices`, `aiDefinitionKey`), with `${...}` for its own properties. The
+> published mojo parameters are the separate `srcmorph.*` set.
 
 - **`gpt-oss-20B-mxfp4` — the production default** (switch with `-Dai.model=<key>`). The native MXFP4
   quant at a 96K window; it inherits the benchmark's accuracy lead (gpt-oss-20b was most *accurate* per
@@ -575,7 +569,7 @@ pros/cons, a source-faithfulness deep-dive, and reproduction steps in
 `gpt-oss` is a *reasoning* model whose analysis tokens share the output budget, so use
 `reasoningEffort=low` for code summaries (best quality here) and size the budget to the file. The
 self-test profile carries gpt-oss-20b once, `gpt-oss-20B-mxfp4` at a 96K window, plus the two Granite
-presets for larger files (`granite-4.0-h-tiny-bigwindow`, `granite-4.0-h-1b-fastchunk`). What a window
+presets for larger files (`granite-4.0-h-tiny-mapreduce`, `granite-4.0-h-1b-fastchunk`). What a window
 covers, measured on CPU (full rationale in [COMPARISON.md §11](../docs/ai-index-benchmark/COMPARISON.md)):
 
 | `contextSize` | covers up to | ~ time (CPU) |
@@ -628,15 +622,18 @@ runs on the CPU:
 ```
 
 ```
-mvn srcmorph:generate -Dsrcmorph.generationProvider=llamacpp-jni      # + the GPU runtime on PATH (see below)
+mvn srcmorph:generate      # srcmorph.yaml sets generationProvider: llamacpp-jni; + the GPU runtime on PATH (see below)
 ```
+
+The provider is set in the configuration file: `generationProvider: llamacpp-jni` under `srcMorph`,
+or a model's own `provider`. The plugin has no property for it.
 
 **Alternative — a natives directory (no POM change).** Unpack the CPU natives jar's directory and
 copy the GPU module jar's files into it, then point `net.ladenthin.llama.lib.path` at that directory;
 it is tried before the natives jars (the binding's README, "Natives outside Maven"):
 
 ```
-mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native -Dsrcmorph.generationProvider=llamacpp-jni
+mvn srcmorph:generate -Dnet.ladenthin.llama.lib.path=C:\path\to\gpu-native
 ```
 
 > [!NOTE]
@@ -654,18 +651,18 @@ In both cases:
   `ggml-cuda.dll`, not the CUDA runtime.
 - **Vulkan** needs only the GPU driver (it brings `vulkan-1.dll`). A CLI jar built with exactly
   the CPU and Vulkan natives of a Windows machine is in [docs/windows-intel-core-ultra.md](../docs/windows-intel-core-ultra.md).
-- **GPU layer offload** — set `<gpuLayers>` inside your `<aiDefinition>` (see "Per-model
-  `<aiDefinition>` parameters" above): `-1` (default) does **not** pin a layer count, so llama.cpp
+- **GPU layer offload** — set `gpuLayers` in your `aiDefinitions` entry (see "Per-model
+  `aiDefinitions` parameters" above): `-1` (default) does **not** pin a layer count, so llama.cpp
   **auto-fits** as many layers as fit the card's free VRAM — the robust "runs on any card" setting (it
   never over-commits, so no OOM on a 6 GB card, and uses more layers on a bigger one). Pin a positive
   number only to force a specific **partial** split (a fixed count disables auto-fit), or `0` to force
   CPU. Measured on an 8 GB RTX 3070, auto-fit gpt-oss-20b ≈ 29 decode t/s (vs ≈ 8 on CPU); a card with
   ≥ 16 GB fits all layers and is far faster. *(In this repo's own gpt-oss presets the same knob is wired
   to the `-Dai.gpuLayers` build property — see the note under "Recommended Models" above.)*
-- **Picking a GPU on a multi-GPU host** — set `<mainGpu>` / `<devices>` inside your `<aiDefinition>`: a
+- **Picking a GPU on a multi-GPU host** — set `mainGpu` / `devices` in your `aiDefinitions` entry: a
   **CUDA** build only enumerates NVIDIA devices, so a single-NVIDIA host needs nothing. A **Vulkan**
   build enumerates *every* GPU (an integrated GPU is often device `0`), so the default may pick the
-  slower one — set `<mainGpu>1</mainGpu>` to select the discrete GPU, or `<devices>Vulkan1</devices>`
+  slower one — set `mainGpu: 1` to select the discrete GPU, or `devices: Vulkan1`
   for explicit device names (these map to the binding's `--main-gpu` / `--device`). *(In this repo's own
   gpt-oss presets these are wired to the `-Dai.mainGpu` / `-Dai.devices` build properties.)*
 

@@ -1,0 +1,106 @@
+{
+ "key": "gpt-oss-20b-proxy",
+ "name": "gpt-oss-20b (8i proxy)",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gpt-oss-20b-proxy",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "http://127.0.0.1:8765/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "openai/gpt-oss-20b",
+  "charsPerToken": 2.0
+ },
+ "javaCommit": null,
+ "corpus": "large-corpus",
+ "profile": "v3",
+ "facts": true,
+ "oversize": "mapReduce",
+ "maxChunks": null,
+ "profileHashes": {
+  "file-body-fallback.md": "ff9d8b8c71cedc242bfb320e6e73d29991d9383a7a147d20294b70117581d282",
+  "file-body-java.md": "8b30608f9c2ecfe877bff7a83a76cf0dc97dcea7a490b00747a3e4b8161b64cf",
+  "file-body-perl.md": "9b84924a6532edc3f24f6ebef89e1d150cb40b1dc7ea144c0fabd9921fcd5130",
+  "file-body-shell.md": "8045487dfb20e1eec55bbf394319b19a42fbd46cfd95258d41c6f13d2c147014",
+  "file-body-sql.md": "4889a4c990acb5a5fde52e8aeb72cadab1b5e39ed8b5760e9e4c5e6ca8e00e0e",
+  "file-body-xml.md": "71bec870c608e83dd81ad5307f2836d395b2eb91770351a1723f874c8631cc57",
+  "java-facts.tsv": "0125740aa1a020482b1adca9690ff9033942ff73e0bdedb37823f2178a6955d9",
+  "map-chunk.md": "ebc4aa4592de553fb7616b66f1e727fd94da30828c8c1d76986a8ee4e885aec3",
+  "package-body.md": "e4398dd0c0e4a01648166b2db2decf78a42b63e5298c04739568a98e8b5406e4",
+  "perl-facts.tsv": "b03326076d564d3bb2c935474bfc15302ddb93c7592cbe0938f0d466b0944aa3",
+  "pom-facts.tsv": "a478acce942ea5e3d23646900c59bf1a87ed9a5287c89c9e419b7bdf9e06f77a",
+  "project-body.md": "2ccf5e75f1fb1140f98cfa1033a9b88bb3c1e7eb222cbef0387a6b0136b86241",
+  "reduce-parts.md": "067474a90b6a35bc6092fccc5b9c929daccf18506fad638c0d4eee98316032b7",
+  "shell-facts.tsv": "ef2db12994b1b1f1849b3d2de3c9bedbaf3ad958e08fbad38f8ff875ef1f69da",
+  "sql-facts.tsv": "758a4073153452b9ef190d082bf8b1df2fff4a10787937119ea3d52d10569bd0",
+  "xml-facts.tsv": "f2e6d089887efaa7e3405a21cce2d0f709ecdbc0d341681165aa81cd9bfc8cf9"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.4.0-SNAPSHOT.jar",
+  "sha256": "103d68c2b440a400bfdda51fcf8133b601e62126468990dda84316b38e23632c"
+ },
+ "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS",
+ "startedAt": "2026-11-02T08:06:02Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 1,
+   "seconds": 555.9,
+   "cutOff": [
+    "sql/ledger/ledger_dump.sql"
+   ],
+   "errorTail": [
+    "[main] INFO net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport -   mapReduce chunk 5/5 summarized (117101 chars)",
+    "[main] INFO net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport -   mapReduce reduce round 1: 5 -> 1 partial(s)",
+    "[main] INFO net.ladenthin.srcmorph.indexer.SourceFileIndexer - Wrote AI index file: <run>\\out\\gpt-oss-20b-proxy\\other\\catalog\\catalog.xml.ai.md",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - [####################] 100% 3/3 files - est. ~1378 min/~1378 min done, ~0 s left (estimate) | ~9 min elapsed (actual)",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Run record written: <run>\\logs\\gpt-oss-20b-proxy\\run-record.json",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Generated AI files: 2 written, 0 unchanged, 0 skipped, 1 failed",
+    "[main] ERROR net.ladenthin.srcmorph.cli.Main - Fatal error during Main.run.",
+    "net.ladenthin.srcmorph.engine.SrcMorphException: 1 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:357)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:107)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:282)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:232)",
+    "Exception in thread \"main\" java.lang.IllegalStateException: Main.run() failed on thread main",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:328)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:232)",
+    "Caused by: net.ladenthin.srcmorph.engine.SrcMorphException: 1 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:357)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:107)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:282)",
+    "\t... 1 more"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 50.2,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 3.2,
+   "cutOff": []
+  }
+ },
+ "finishedAt": "2026-11-02T08:16:12Z",
+ "fileTokens": {
+  "files": 3,
+  "written": 2,
+  "unchanged": 0,
+  "failed": 1,
+  "calls": 14,
+  "promptTokens": 896718,
+  "cachedPromptTokens": 4937,
+  "completionTokens": 13620,
+  "seconds": 555.2244047
+ },
+ "finishReasons": {
+  "length": 1,
+  "stop": 2
+ },
+ "tokenCostUsd": 0.028672,
+ "costUsd": 0.023867,
+ "files": 8
+}

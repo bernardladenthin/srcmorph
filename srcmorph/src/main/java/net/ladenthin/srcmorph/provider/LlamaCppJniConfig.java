@@ -63,6 +63,7 @@ public final class LlamaCppJniConfig {
     private final String apiKeyEnv;
     private final boolean stream;
     private final int requestsPerMinute;
+    private final int maxRetries;
     private final String reasoningEffort;
     private final int reasoningBudgetTokens;
     private final float dryMultiplier;
@@ -121,6 +122,7 @@ public final class LlamaCppJniConfig {
         this.apiKeyEnv = builder.apiKeyEnv;
         this.stream = builder.stream;
         this.requestsPerMinute = builder.requestsPerMinute;
+        this.maxRetries = builder.maxRetries;
         this.reasoningEffort = builder.reasoningEffort;
         this.reasoningBudgetTokens = builder.reasoningBudgetTokens;
         this.dryMultiplier = builder.dryMultiplier;
@@ -466,6 +468,15 @@ public final class LlamaCppJniConfig {
     }
 
     /**
+     * Returns how often the {@code openai-compatible} provider sends a failed request again.
+     *
+     * @return the retries; {@code 0} or less for none
+     */
+    public int maxRetries() {
+        return maxRetries;
+    }
+
+    /**
      * Returns the gpt-oss reasoning-effort kwarg value.
      *
      * @return reasoning effort ("low"/"medium"/"high"), or empty to omit the kwarg
@@ -585,6 +596,7 @@ public final class LlamaCppJniConfig {
         private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
         private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
         private int requestsPerMinute = AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE;
+        private int maxRetries = AiGenerationConfig.DEFAULT_MAX_RETRIES;
         private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
         private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
         private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
@@ -972,6 +984,18 @@ public final class LlamaCppJniConfig {
          */
         public Builder requestsPerMinute(final int requestsPerMinute) {
             this.requestsPerMinute = requestsPerMinute;
+            return this;
+        }
+
+        /**
+         * Sets how often the {@code openai-compatible} provider sends a failed request again; see
+         * {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}.
+         *
+         * @param maxRetries the retries; {@code 0} or less for none
+         * @return this builder
+         */
+        public Builder maxRetries(final int maxRetries) {
+            this.maxRetries = maxRetries;
             return this;
         }
 

@@ -44,6 +44,48 @@ public class AiMdHeaderCodecTest {
     }
 
     @Test
+    public void write_theHashesAWriteRecords_roundTripAsPAndN() {
+        // arrange
+        final AiMdHeader original = new AiMdHeader(
+                        "A.java",
+                        AiMdHeaderCodec.HEADER_VERSION_1_0,
+                        "D56BA12A",
+                        "2026-03-15T18:33:40Z",
+                        "2026-03-15T18:34:26Z",
+                        "1.0.0",
+                        "0.0.0",
+                        AiMdHeaderCodec.NODE_TYPE_FILE)
+                .withHashes("0A1B2C3D", "4E5F6071");
+
+        // act
+        final String encoded = headerCodec.write(original);
+        final AiMdHeader decoded = headerCodec.read(Arrays.asList(encoded.split("\\R")));
+
+        // assert
+        assertThat(encoded, org.hamcrest.CoreMatchers.containsString("- X: file\n- P: 0A1B2C3D\n- N: 4E5F6071\n"));
+        assertThat(decoded, is(equalTo(original)));
+        assertThat(decoded.p(), is("0A1B2C3D"));
+        assertThat(decoded.n(), is("4E5F6071"));
+    }
+
+    @Test
+    public void write_withoutHashes_writesNoPOrNLine() {
+        final AiMdHeader header = new AiMdHeader(
+                        "A.java", "1.0", "C", "D", "T", "G", "A", AiMdHeaderCodec.NODE_TYPE_FILE)
+                .withHashes("", "4E5F6071");
+
+        final String encoded = headerCodec.write(header);
+
+        assertThat(encoded.contains("- P:"), is(false));
+        assertThat(encoded, org.hamcrest.CoreMatchers.endsWith("- X: file\n- N: 4E5F6071\n"));
+        assertThat(
+                headerCodec
+                        .write(new AiMdHeader("A.java", "1.0", "C", "D", "T", "G", "A", "file"))
+                        .contains("- N:"),
+                is(false));
+    }
+
+    @Test
     public void write_packageNodeHeader_decodedFieldsMatchOriginal() {
         // arrange
         final AiMdHeader original = new AiMdHeader(

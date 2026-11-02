@@ -30,6 +30,14 @@ public class AiFactCounterTest {
     }
 
     @Test
+    public void ignore_defaultsFalseAndRoundTrips() {
+        final AiFactCounter c = new AiFactCounter();
+        assertThat(c.isIgnore(), is(false));
+        c.setIgnore(true);
+        assertThat(c.isIgnore(), is(true));
+    }
+
+    @Test
     public void toString_includesBothFields() {
         final AiFactCounter c = new AiFactCounter();
         c.setLabel("tables");
@@ -37,5 +45,6 @@ public class AiFactCounterTest {
         final String text = c.toString();
         assertThat(text, containsString("tables"));
         assertThat(text, containsString("(?m)^CREATE TABLE"));
+        assertThat(text, containsString("ignore=false"));
     }
 }

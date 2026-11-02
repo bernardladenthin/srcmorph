@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# The configuration of the plugin integration-test fixture (.github/plugin-it.sh), at the default
+# place the plugin looks (${project.basedir}/srcmorph.yaml). It mirrors the worked example of
+# srcmorph-maven-plugin/README.md, on the mock provider: no GGUF, no GPU, no network. Two values are
+# ${...} Maven properties of the fixture pom, so a -D on the command line is observable:
+# it.model (the model every rule runs on) and it.aiVersion (in every header).
+
+packageFieldGenerations:
+  - promptKey: package-body
+    aiDefinitionKey: "${it.model}"
+projectFieldGenerations:
+  - promptKey: project-body
+    aiDefinitionKey: "${it.model}"
+
+srcMorph:
+  # No baseDirectory and no subtrees: Maven fills them, with the project directory and its source and
+  # resource directories (the fixture pom adds src/extra/java as a resource directory, the only way
+  # Extra.java is reached).
+  outputDirectory: "target/ai"
+  # package-info.java exists for exactly this pattern: one that can never fire makes it invisible.
+  excludes:
+    - "**/package-info.java"
+  aiVersion: "${it.aiVersion}"
+
+  aiDefinitions:
+    - key: fixture-model
+      modelPath: unused-with-the-mock-provider.gguf
+      contextSize: 4096    # the profile's Java prompt and a fixture file fit with room
+      maxOutputTokens: 64
+      temperature: 0.15
+      threads: 2
+
+  # The repository's profile: the java and fallback prompts, the package prompt and the java-facts
+  # counters are files there, named only by the rules' promptKey / factsKey. project-body comes from a
+  # templateFile of this fixture, read relative to the profile directory.
+  profileDirectory: "../../profiles/v3"
+  promptDefinitions:
+    - key: project-body
+      templateFile: "../../.github/plugin-it/project-body.md"
+
+  fieldGenerations:
+    # Extra.java: inline facts with an ignore counter, kept out of the facts line and out of the count.
+    - id: extra
+      promptKey: file-body-java
+      aiDefinitionKey: "${it.model}"
+      priority: 10
+      facts:
+        - label: comments
+          pattern: '(?s)/\*.*?\*/|//[^\n]*'
+          ignore: true
+        - label: class keywords
+          pattern: '\bclass\b'
+      condition:
+        pathGlob: "**/extra/**"
+    # Names.java is skipped by a rule that outranks the java rule; a condition tree of an and-group
+    # with a size range makes the tree observable.
+    - id: skip-names
+      skip: true
+      priority: 20
+      condition:
+        and:
+          conditions:
+            - pathGlob: "**/Names.java"
+            - size: {max: 100000}
+    - id: java
+      promptKey: file-body-java
+      aiDefinitionKey: "${it.model}"
+      factsKey: java-facts
+      condition:
+        extensions: [".java"]
+    - id: fallback
+      fallback: true
+      promptKey: file-body-fallback
+      aiDefinitionKey: "${it.model}"

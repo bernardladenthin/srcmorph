@@ -22,6 +22,9 @@ public class AiPathSupport {
     /** Leading path segment stripped from a relativised source path. */
     private static final String SRC_DIRECTORY_NAME = "src";
 
+    /** The dot an extension starts with. */
+    private static final String EXTENSION_DOT = ".";
+
     /**
      * Relativises {@code path} against {@code baseDirectory} and strips a leading
      * {@code src} segment when present.
@@ -56,6 +59,25 @@ public class AiPathSupport {
             return path;
         }
         return new File(directory, path).getPath();
+    }
+
+    /**
+     * Whether a file name has an extension: it ends with the extension, which is read with its leading
+     * dot ({@code "java"} as {@code ".java"}, so {@code "md"} does not match {@code README.cmd}) and
+     * in any case ({@code Foo.JAVA} is a {@code .java} file). A blank extension matches nothing.
+     *
+     * @param fileName  the file name
+     * @param extension the configured extension
+     * @return {@code true} when the file name ends with it
+     */
+    public static boolean hasExtension(final String fileName, final String extension) {
+        final String trimmed = extension.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        final String dotted = trimmed.startsWith(EXTENSION_DOT) ? trimmed : EXTENSION_DOT + trimmed;
+        final int length = dotted.length();
+        return fileName.regionMatches(true, fileName.length() - length, dotted, 0, length);
     }
 
     /**

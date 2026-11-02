@@ -86,10 +86,12 @@ public class CalibrateEngineTest {
         assertThat(measurement.measurement().prefillTokensPerSecond(), is(1000.0d));
         assertThat(measurement.measurement().decodeTokensPerSecond(), is(100.0d));
 
-        final String xml = report.renderXml();
+        final String block = report.renderPasteBlock();
         assertThat(
-                xml, containsString("calibration for aiDefinition '" + CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT));
-        assertThat(xml, containsString("<prefillTokensPerSecond>1000.0</prefillTokensPerSecond>"));
+                block,
+                containsString(
+                        "calibration of the aiDefinitions entry \"" + CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT));
+        assertThat(block, containsString("  prefillTokensPerSecond: 1000.0\n"));
     }
 
     @Test

@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.function.Function;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.AbsolutePathRequirement;
 import org.jspecify.annotations.Nullable;
@@ -29,8 +28,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * The absolute-path requirement ({@link AbsolutePathRequirement}) for every path a configuration
- * resolves against a directory, through the engines' own entry points: a model's {@code modelPath},
- * the fallback {@code llamaModelPath} (both against {@code modelDirectory}) and a prompt's
+ * resolves against a directory, through the engines' own entry points: a model's {@code modelPath}
+ * (against {@code modelDirectory}) and a prompt's
  * {@code templateFile} (against {@code profileDirectory}). Each case runs once per kind of directory:
  * unset, relative, absolute, and absolute but missing. An absolute path must win in all of them, and
  * an absolute directory must make a relative path below it absolute.
@@ -90,21 +89,6 @@ public class ConfiguredPathResolutionTest {
                 Collections.singletonList(model(absolute)), directory.apply(tempDir));
 
         assertThat(support.getConfig("model").getModelPath(), is(absolute));
-    }
-
-    @ParameterizedTest
-    @MethodSource("directories")
-    public void llamaModelPath_absolute_isUsedAsItIs(final Function<Path, @Nullable File> directory) throws Exception {
-        final String absolute =
-                tempDir.resolve("elsewhere").resolve("fallback.gguf").toString();
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
-        config.setLlamaModelPath(absolute);
-        config.setModelDirectory(directory.apply(tempDir));
-
-        final AiModelDefinitionSupport support =
-                EngineSupport.buildAiModelDefinitionSupport(null, config.getModelDirectory());
-
-        assertThat(EngineSupport.resolveLlamaCppJniConfig(config, support).modelPath(), is(absolute));
     }
 
     @ParameterizedTest

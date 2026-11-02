@@ -10,16 +10,14 @@ import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Root mutable JavaBean holding every parameter a {@code srcmorph} run needs, independent of how it is
- * bound: today from Maven {@code @Parameter} fields (the {@code srcmorph-maven-plugin} module's
- * mojos each build one of these from their own annotated fields), tomorrow from a JSON/YAML config file
- * (a future CLI) or from plain Java code constructing one directly.
+ * Root mutable JavaBean holding every parameter a {@code srcmorph} run needs: the {@code srcMorph}
+ * section of the configuration file the CLI and the Maven plugin read
+ * ({@link SrcMorphConfigurationFileLoader}), or built in plain Java code. Its field names are the keys
+ * of that file.
  *
- * <p><strong>Field names intentionally mirror today's Maven {@code @Parameter} field names</strong> (e.g.
- * {@link #outputDirectory}, {@link #fieldGenerations}, {@link #llamaContextSize}) so that a future
- * JSON/YAML config's keys read the same as the existing plugin XML — this class is the single shared
- * config object bindable from every surface. See {@code net.ladenthin.maven.srcmorph.mojo}'s
- * mojo classes (in the sibling plugin module) for the exact provenance of every field.</p>
+ * <p>The plugin fills what the file leaves unset from the Maven project ({@code baseDirectory},
+ * {@code subtrees}, {@code projectName}, {@code pluginVersion}); see the plugin module's
+ * {@code AbstractAiIndexMojo}.</p>
  *
  * <p>Deliberately excluded: the per-goal {@code skip}/{@code skipFile}/{@code skipPackage}/
  * {@code skipProject} flags. Those are a Maven lifecycle concern (whether an execution runs at all) and
@@ -38,18 +36,6 @@ public class SrcMorphConfiguration {
 
     /** Default AI generation provider name when none is configured. */
     public static final String DEFAULT_GENERATION_PROVIDER = "mock";
-
-    /** Default llama.cpp context window size when none is configured. */
-    public static final int DEFAULT_LLAMA_CONTEXT_SIZE = 2048;
-
-    /** Default maximum number of llama.cpp output tokens per call when none is configured. */
-    public static final int DEFAULT_LLAMA_MAX_OUTPUT_TOKENS = 128;
-
-    /** Default llama.cpp sampling temperature when none is configured. */
-    public static final float DEFAULT_LLAMA_TEMPERATURE = 0.15f;
-
-    /** Default number of llama.cpp CPU threads when none is configured: the same as a model definition's. */
-    public static final int DEFAULT_LLAMA_THREADS = AiGenerationConfig.DEFAULT_THREADS;
 
     /** Default AI summarisation logic version when none is configured. */
     public static final String DEFAULT_AI_VERSION = "0.0.0";
@@ -73,13 +59,9 @@ public class SrcMorphConfiguration {
     private @Nullable List<AiModelDefinition> aiDefinitions;
     private @Nullable File modelDirectory;
     private @Nullable File profileDirectory;
+    private @Nullable File runRecordFile;
     private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
     private @Nullable List<AiFactDefinition> factDefinitions;
-    private @Nullable String llamaModelPath;
-    private int llamaContextSize = DEFAULT_LLAMA_CONTEXT_SIZE;
-    private int llamaMaxOutputTokens = DEFAULT_LLAMA_MAX_OUTPUT_TOKENS;
-    private float llamaTemperature = DEFAULT_LLAMA_TEMPERATURE;
-    private int llamaThreads = DEFAULT_LLAMA_THREADS;
     private String pluginVersion = "";
     private String aiVersion = DEFAULT_AI_VERSION;
     private @Nullable String projectName;
@@ -307,7 +289,7 @@ public class SrcMorphConfiguration {
 
     /**
      * Returns the directory a relative model path is resolved against: every {@code modelPath} of
-     * {@link #aiDefinitions} and {@link #llamaModelPath}. An absolute model path is used as it is, so
+     * {@link #aiDefinitions}. An absolute model path is used as it is, so
      * models outside this directory stay possible. Without it, a relative model path is relative to
      * the working directory of the JVM, as before.
      *
@@ -350,6 +332,27 @@ public class SrcMorphConfiguration {
     }
 
     /**
+     * Returns the file the {@code generate} run writes its record to (one entry per routed file: rule,
+     * prompt, model, outcome, calls, tokens, finish reason, seconds, prompt and facts hashes; see
+     * {@code net.ladenthin.srcmorph.engine.RunRecord}), or {@code null} for no record. A relative path
+     * resolves against the configuration file's directory.
+     *
+     * @return the record file, or {@code null}
+     */
+    public @Nullable File getRunRecordFile() {
+        return runRecordFile;
+    }
+
+    /**
+     * Sets the file the {@code generate} run writes its record to.
+     *
+     * @param runRecordFile the record file, or {@code null} for no record
+     */
+    public void setRunRecordFile(final @Nullable File runRecordFile) {
+        this.runRecordFile = runRecordFile;
+    }
+
+    /**
      * Returns the per-field AI generation configurations (routing rules) controlling which prompt and AI
      * definition each matched file uses.
      *
@@ -385,98 +388,6 @@ public class SrcMorphConfiguration {
      */
     public void setFactDefinitions(final @Nullable List<AiFactDefinition> factDefinitions) {
         this.factDefinitions = factDefinitions;
-    }
-
-    /**
-     * Returns the path to the GGUF model file used as the llama.cpp JNI provider fallback (only used
-     * when {@link #fieldGenerations} is empty).
-     *
-     * @return the model path, or {@code null} if not set
-     */
-    public @Nullable String getLlamaModelPath() {
-        return llamaModelPath;
-    }
-
-    /**
-     * Sets the path to the GGUF model file used as the llama.cpp JNI provider fallback.
-     *
-     * @param llamaModelPath the model path
-     */
-    public void setLlamaModelPath(final @Nullable String llamaModelPath) {
-        this.llamaModelPath = llamaModelPath;
-    }
-
-    /**
-     * Returns the llama.cpp context window size used as the fallback (only used when
-     * {@link #fieldGenerations} is empty).
-     *
-     * @return the context window size; defaults to {@link #DEFAULT_LLAMA_CONTEXT_SIZE}
-     */
-    public int getLlamaContextSize() {
-        return llamaContextSize;
-    }
-
-    /**
-     * Sets the llama.cpp context window size used as the fallback.
-     *
-     * @param llamaContextSize the context window size
-     */
-    public void setLlamaContextSize(final int llamaContextSize) {
-        this.llamaContextSize = llamaContextSize;
-    }
-
-    /**
-     * Returns the maximum number of llama.cpp output tokens per call, used as the fallback.
-     *
-     * @return the maximum output tokens; defaults to {@link #DEFAULT_LLAMA_MAX_OUTPUT_TOKENS}
-     */
-    public int getLlamaMaxOutputTokens() {
-        return llamaMaxOutputTokens;
-    }
-
-    /**
-     * Sets the maximum number of llama.cpp output tokens per call, used as the fallback.
-     *
-     * @param llamaMaxOutputTokens the maximum output tokens
-     */
-    public void setLlamaMaxOutputTokens(final int llamaMaxOutputTokens) {
-        this.llamaMaxOutputTokens = llamaMaxOutputTokens;
-    }
-
-    /**
-     * Returns the llama.cpp sampling temperature, used as the fallback.
-     *
-     * @return the sampling temperature; defaults to {@link #DEFAULT_LLAMA_TEMPERATURE}
-     */
-    public float getLlamaTemperature() {
-        return llamaTemperature;
-    }
-
-    /**
-     * Sets the llama.cpp sampling temperature, used as the fallback.
-     *
-     * @param llamaTemperature the sampling temperature
-     */
-    public void setLlamaTemperature(final float llamaTemperature) {
-        this.llamaTemperature = llamaTemperature;
-    }
-
-    /**
-     * Returns the number of CPU threads for llama.cpp inference, used as the fallback.
-     *
-     * @return the thread count; defaults to {@link #DEFAULT_LLAMA_THREADS}
-     */
-    public int getLlamaThreads() {
-        return llamaThreads;
-    }
-
-    /**
-     * Sets the number of CPU threads for llama.cpp inference, used as the fallback.
-     *
-     * @param llamaThreads the thread count
-     */
-    public void setLlamaThreads(final int llamaThreads) {
-        this.llamaThreads = llamaThreads;
     }
 
     /**

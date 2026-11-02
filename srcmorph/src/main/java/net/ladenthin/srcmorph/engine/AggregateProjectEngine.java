@@ -5,11 +5,12 @@ package net.ladenthin.srcmorph.engine;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Collections;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
 import net.ladenthin.srcmorph.indexer.ProjectIndexer;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
@@ -25,8 +26,8 @@ import org.slf4j.LoggerFactory;
  * <p>Extracted from what was {@code AggregateProjectMojo.execute()} in the
  * {@code llamacpp-ai-index-maven-plugin} module. By default this is fully deterministic (a per-package
  * lead/link table of contents, no model call); when
- * {@link SrcMorphConfiguration#getFieldGenerations()} carries at least one entry, its first entry is used
- * as the <em>optional</em> AI overview generation (one extra call synthesising a short project overview
+ * {@link SrcMorphConfiguration#getFieldGenerations()} holds a rule (at most one), it is the
+ * <em>optional</em> AI overview generation (one extra call synthesising a short project overview
  * paragraph from the per-package leads) — see {@link ProjectIndexer}.</p>
  */
 @ToString
@@ -36,6 +37,12 @@ public final class AggregateProjectEngine {
 
     /** Title used for the project index when {@link SrcMorphConfiguration#getProjectName()} is absent or blank. */
     private static final String DEFAULT_PROJECT_TITLE = "project";
+
+    /** The goal, named in a configuration error. */
+    private static final String PHASE = "aggregate-project";
+
+    /** The CLI's key for the phase's rule, named in a configuration error. */
+    private static final String CLI_KEY = "projectFieldGenerations";
 
     private final SrcMorphConfiguration config;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
@@ -52,12 +59,20 @@ public final class AggregateProjectEngine {
     /**
      * Aggregates the project index beneath the configured output directory.
      *
-     * @return {@code 1} if the project index was written or refreshed, {@code 0} otherwise (no package
-     *         index files yet, the output directory does not exist, or the existing file is up to date)
-     * @throws SrcMorphException if the overview's prompt/model definitions are misconfigured
+     * @return {@code 1} if the project index was written, {@code 0} otherwise (no package index files
+     *         yet, the output directory does not exist, the existing file is up to date, or the run is
+     *         {@link SrcMorphConfiguration#isPlanOnly() planOnly})
+     * @throws SrcMorphException if more than one rule is given, the overview's prompt/model definitions are
+     *                           misconfigured, or the
+     *                           overview's answer was incomplete and the project index was not written
      * @throws IOException       if the output tree cannot be read or the project index cannot be written
      */
     public int execute() throws SrcMorphException, IOException {
+        if (config.isPlanOnly()) {
+            // planOnly plans the file phase and loads no model; this phase would write, so it does not run
+            LOGGER.info("planOnly: the project phase does not run.");
+            return 0;
+        }
         final Path outputPath =
                 config.getOutputDirectory().toPath().toAbsolutePath().normalize();
 
@@ -65,6 +80,12 @@ public final class AggregateProjectEngine {
         LOGGER.info("Output directory: {}", outputPath);
         LOGGER.info("Force           : {}", config.isForce());
 
+        // the rule is checked before anything else, so a wrong one fails on a fresh tree too
+        final AiFieldGenerationConfig overview =
+                EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        if (overview != null) {
+            EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
+        }
         if (!outputPath.toFile().exists()) {
             LOGGER.info("AI output directory does not exist, skipping project index: {}", outputPath);
             return 0;
@@ -74,20 +95,53 @@ public final class AggregateProjectEngine {
         final String title =
                 projectName == null || compatibilityHelper.isBlank(projectName) ? DEFAULT_PROJECT_TITLE : projectName;
 
-        final int written;
-        final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
-        if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
-            written = aggregateWithOverview(outputPath, title, fieldGenerations.get(0));
+        final AiIndexOutcome outcome;
+        if (overview != null) {
+            outcome = aggregateWithOverview(outputPath, title, overview);
         } else {
-            LOGGER.info("Project overview generation: disabled (no fieldGenerations configured)");
+            LOGGER.info("Project overview generation: disabled (no rule configured)");
             final ProjectIndexer indexer =
                     new ProjectIndexer(title, config.getPluginVersion(), config.getAiVersion(), config.isForce());
-            written = indexer.aggregate(outputPath);
+            outcome = indexer.aggregate(outputPath);
         }
+        if (outcome == AiIndexOutcome.FAILED) {
+            throw new SrcMorphException("The project overview for " + outputPath + " got an incomplete answer"
+                    + " and the project index was not written; the WARN line says why, and the next run tries it"
+                    + " again");
+        }
+        final int written = outcome == AiIndexOutcome.WRITTEN ? 1 : 0;
         LOGGER.info("Project index files written: {}", written);
 
         LOGGER.info("AI project index aggregation finished.");
         return written;
+    }
+
+    /**
+     * Checks the phase as a run would, without loading a model or writing anything: at most one rule,
+     * and with one its profile files and its model (a local model's file and GGUF header, a remote
+     * model's {@code baseUrl} and {@code apiKeyEnv}).
+     *
+     * @throws SrcMorphException naming the first problem found
+     */
+    public void check() throws SrcMorphException {
+        final AiFieldGenerationConfig overview =
+                EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        if (overview == null) {
+            LOGGER.info("Check passed: the project index has no overview rule and calls no model.");
+            return;
+        }
+        EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
+        EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+        EngineSupport.validateRoutedModelPaths(
+                config.getGenerationProvider(),
+                EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),
+                Collections.singletonList(overview));
+        LOGGER.info(
+                "Check passed: the overview rule (prompt '{}', model '{}'), its profile files and its model are in"
+                        + " order.",
+                overview.getPromptKey(),
+                overview.getAiDefinitionKey());
     }
 
     /**
@@ -98,21 +152,27 @@ public final class AggregateProjectEngine {
      * @param outputPath the resolved output directory holding the {@code .ai.md} tree
      * @param title      the resolved project title
      * @param overview   the overview field generation (prompt + model)
-     * @return {@code 1} if the project index was written or refreshed, {@code 0} otherwise
+     * @return what the project index pass did
      * @throws SrcMorphException if the provider or model definitions are misconfigured
      * @throws IOException       if the output tree cannot be read or written
      */
-    private int aggregateWithOverview(final Path outputPath, final String title, final AiFieldGenerationConfig overview)
+    private AiIndexOutcome aggregateWithOverview(
+            final Path outputPath, final String title, final AiFieldGenerationConfig overview)
             throws SrcMorphException, IOException {
         final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
         final AiModelDefinitionSupport modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
-        LOGGER.info("Project overview generation: enabled (prompt '{}')", overview.getPromptKey());
+        EngineSupport.validateRoutedModelPaths(
+                config.getGenerationProvider(), modelDefinitionSupport, Collections.singletonList(overview));
+        LOGGER.info(
+                "Project overview generation: enabled (prompt '{}', model '{}')",
+                overview.getPromptKey(),
+                overview.getAiDefinitionKey());
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(config, modelDefinitionSupport),
+                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, overview.getAiDefinitionKey()),
                 promptSupport)) {
             final ProjectIndexer indexer = new ProjectIndexer(
                     title,

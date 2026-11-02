@@ -11,10 +11,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
@@ -36,7 +32,6 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 /**
  * Drives the provider against an in-process stub server ({@code com.sun.net.httpserver}) that
@@ -83,6 +78,22 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
     private HttpServer server;
     private int status;
+
+    /** Statuses answered before {@link #status}, one per request; empty after they are used up. */
+    private final java.util.Deque<Integer> firstStatuses = new java.util.ArrayDeque<>();
+
+    /** The {@code Retry-After} header sent with a status of {@link #firstStatuses}, or {@code null}. */
+    private @Nullable String retryAfter;
+
+    /** How many requests the server received. */
+    private int requests;
+
+    /** Milliseconds the server waits before it answers at all. */
+    private int stallBeforeAnswer;
+
+    /** Milliseconds the server waits after the first part of its answer. */
+    private int stallInAnswer;
+
     private String answer;
     private String requestMethod;
     private String requestPath;
@@ -137,6 +148,34 @@ public class OpenAiCompatibleAiGenerationProviderTest {
                 }
                 return;
             }
+            requests++;
+            if (stallBeforeAnswer > 0) {
+                sleep(stallBeforeAnswer);
+            }
+            if (stallInAnswer > 0) {
+                // the headers and the first bytes go out, then the answer stops
+                exchange.sendResponseHeaders(status, 0);
+                try (OutputStream out = exchange.getResponseBody()) {
+                    out.write("{\"choices\":".getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                    sleep(stallInAnswer);
+                } catch (final IOException e) {
+                    // the client gave up and closed the connection
+                }
+                return;
+            }
+            final Integer first = firstStatuses.poll();
+            if (first != null) {
+                if (retryAfter != null) {
+                    exchange.getResponseHeaders().set("Retry-After", retryAfter);
+                }
+                final byte[] error = "{\"error\":\"busy\"}".getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(first, error.length);
+                try (OutputStream out = exchange.getResponseBody()) {
+                    out.write(error);
+                }
+                return;
+            }
             final byte[] bytes = answer.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(status, bytes.length == 0 ? -1 : bytes.length);
             try (OutputStream out = exchange.getResponseBody()) {
@@ -151,14 +190,95 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         server.stop(0);
     }
 
+    private static void sleep(final int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** A provider whose reads wait {@link #SHORT_READ_TIMEOUT} at most. */
+    private OpenAiCompatibleAiGenerationProvider impatientProvider(final LlamaCppJniConfig.Builder builder) {
+        return new OpenAiCompatibleAiGenerationProvider(
+                builder.baseUrl(baseUrl()).build(), PROMPT_SUPPORT, NO_ENVIRONMENT, waits::add, SHORT_READ_TIMEOUT);
+    }
+
+    /** A read timeout a test can wait for. */
+    private static final int SHORT_READ_TIMEOUT = 200;
+
+    /** Longer than {@link #SHORT_READ_TIMEOUT}: the server stalls past it. */
+    private static final int STALL = 1_500;
+
+    // <editor-fold defaultstate="collapsed" desc="timeouts">
+    @Test
+    public void generate_noAnswerWithinTheReadTimeout_isNotSentAgain() {
+        // arrange: the request was sent and may be billed; the server does not answer in time
+        stallBeforeAnswer = STALL;
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> impatientProvider(LlamaCppJniConfig.builder("").maxRetries(3))
+                        .generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("the request is not sent again"));
+        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
+        assertThat(requests, is(1));
+        assertThat(waits.isEmpty(), is(true));
+    }
+
+    @Test
+    public void generate_anAnswerThatStopsWhileRead_isNotSentAgain() {
+        // arrange: the answer starts, then stalls
+        stallInAnswer = STALL;
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> impatientProvider(LlamaCppJniConfig.builder("").maxRetries(3))
+                        .generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("stopped answering"));
+        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
+        assertThat(requests, is(1));
+        // no wait for a second attempt: the one-threaded stub could not count one in time
+        assertThat(waits.isEmpty(), is(true));
+    }
+
+    @Test
+    public void listModels_aTimeout_isRetried_andEndsAsAPlainIOException() {
+        // arrange: a GET may be sent again; every attempt times out
+        stallBeforeAnswer = STALL;
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> impatientProvider(LlamaCppJniConfig.builder("").maxRetries(1))
+                        .listModels());
+
+        // assert: two attempts, one wait, and no InterruptedIOException that would end a whole run (the
+        // one-threaded stub is still asleep in the first exchange when the second attempt gives up, so the
+        // attempts are counted by the provider's message, not by the server)
+        assertThat(thrown.getMessage(), containsString("timed out 2 times"));
+        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
+        assertThat(waits.size(), is(1));
+    }
+    // </editor-fold>
+
     private String baseUrl() {
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/";
     }
 
+    /** The waits a provider made between attempts; a test waits for nothing. */
+    private final java.util.List<Long> waits = new java.util.ArrayList<>();
+
     private OpenAiCompatibleAiGenerationProvider provider(
             final LlamaCppJniConfig.Builder builder, final Function<String, @Nullable String> environment) {
         return new OpenAiCompatibleAiGenerationProvider(
-                builder.baseUrl(baseUrl()).build(), PROMPT_SUPPORT, environment);
+                builder.baseUrl(baseUrl()).build(), PROMPT_SUPPORT, environment, waits::add);
     }
 
     private @Nullable String header(final String name) {
@@ -213,6 +333,22 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void generate_errorStatus_throwsWithStatusAndBody() {
         // arrange
+        status = 403;
+        answer = "{\"error\":{\"message\":\"No auth credentials found\",\"code\":403}}";
+
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 403"));
+        assertThat(thrown.getMessage(), containsString("No auth credentials found"));
+    }
+
+    @Test
+    public void generate_unauthorized_namesTheKey() {
+        // arrange: a POST goes in streaming mode, where a 401's body cannot be read
         status = 401;
         answer = "{\"error\":{\"message\":\"No auth credentials found\",\"code\":401}}";
 
@@ -223,7 +359,63 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
         // assert
         assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 401"));
-        assertThat(thrown.getMessage(), containsString("No auth credentials found"));
+        assertThat(thrown.getMessage(), containsString("the key was refused, or none was sent"));
+        assertThat(requests, is(1));
+    }
+
+    @Test
+    public void generate_rateLimitedTwice_retriesAfterTheServersRetryAfterAndSucceeds() throws Exception {
+        firstStatuses.add(429);
+        firstStatuses.add(503);
+        retryAfter = "2";
+
+        final String text =
+                provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST);
+
+        assertThat(text, is("A tiny test class."));
+        assertThat(requests, is(3));
+        assertThat(waits, is(java.util.Arrays.asList(2_000L, 2_000L)));
+    }
+
+    @Test
+    public void generate_serverErrorBeyondMaxRetries_failsWithTheLastAnswer() {
+        firstStatuses.add(502);
+        firstStatuses.add(502);
+
+        final IOException thrown = assertThrows(
+                IOException.class,
+                () -> provider(LlamaCppJniConfig.builder("").maxRetries(1), NO_ENVIRONMENT)
+                        .generate(REQUEST));
+
+        assertThat(thrown.getMessage(), containsString("answered HTTP 502"));
+        assertThat(requests, is(2));
+        assertThat(waits.size(), is(1));
+    }
+
+    @Test
+    public void generate_clientError_isNotRetried() {
+        status = 401;
+        answer = "{\"error\":\"no key\"}";
+
+        assertThrows(
+                IOException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        assertThat(requests, is(1));
+        assertThat(waits.isEmpty(), is(true));
+    }
+
+    @Test
+    public void generate_promptLongerThanTheContext_isAContextOverflow() {
+        status = 400;
+        answer = "{\"error\":{\"message\":\"This endpoint's maximum context length is 131072 tokens\"}}";
+
+        final AiContextOverflowException thrown = assertThrows(
+                AiContextOverflowException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        assertThat(thrown.getMessage(), containsString("answered HTTP 400"));
+        assertThat(requests, is(1));
     }
 
     @Test
@@ -232,30 +424,56 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         answer = "";
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(LlamaCppJniConfig.builder("").maxRetries(0), NO_ENVIRONMENT)
+                        .generate(REQUEST));
         assertThat(thrown.getMessage(), containsString("answered HTTP 503: "));
     }
 
     @Test
-    public void generate_truncatedAnswer_warnsLikeTheJniProvider() throws Exception {
+    public void generate_truncatedAnswer_isRefusedWithWhatWasWritten() {
         // arrange
         answer = completion("cut off", "length");
-        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        final Logger logger = (Logger) LoggerFactory.getLogger(LlamaCppJniProviderSupport.class);
-        logger.setLevel(Level.WARN);
-        logger.addAppender(appender);
-        try {
-            // act
-            provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST);
 
-            // assert
-            assertThat(appender.list.size(), is(1));
-            assertThat(appender.list.get(0).getFormattedMessage(), containsString("Test.java"));
-        } finally {
-            logger.detachAppender(appender);
-            appender.stop();
-        }
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(thrown.getMessage(), containsString("Test.java"));
+        assertThat(thrown.partialText(), is("cut off"));
+    }
+
+    @Test
+    public void generate_emptyAnswer_isRefused() {
+        // arrange
+        answer = completion("", "stop");
+
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.EMPTY));
+        assertThat(thrown.partialText(), is(""));
+    }
+
+    @Test
+    public void generate_successWithoutAChoice_isRefusedWithTheBody() {
+        // arrange: a 2xx answer carrying an error object instead of a completion
+        answer = "{\"error\":{\"message\":\"upstream overloaded\"}}";
+
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.NO_ANSWER));
+        assertThat(thrown.getMessage(), containsString("answered without a completion for "));
+        assertThat(thrown.getMessage(), containsString("upstream overloaded"));
     }
     // </editor-fold>
 
@@ -306,25 +524,19 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     }
 
     @Test
-    public void generate_streamCutOff_warnsLikeTheJniProvider() throws Exception {
+    public void generate_streamCutOff_isRefusedWithWhatWasWritten() {
         // arrange
         events = streamed("cut ", "off", "length");
-        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        final Logger logger = (Logger) LoggerFactory.getLogger(LlamaCppJniProviderSupport.class);
-        logger.setLevel(Level.WARN);
-        logger.addAppender(appender);
-        try {
-            // act
-            provider(LlamaCppJniConfig.builder("").stream(true), NO_ENVIRONMENT).generate(REQUEST);
 
-            // assert
-            assertThat(appender.list.size(), is(1));
-            assertThat(appender.list.get(0).getFormattedMessage(), containsString("Test.java"));
-        } finally {
-            logger.detachAppender(appender);
-            appender.stop();
-        }
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder("").stream(true), NO_ENVIRONMENT)
+                        .generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(thrown.partialText(), is("cut off"));
     }
 
     @Test
@@ -425,5 +637,26 @@ public class OpenAiCompatibleAiGenerationProviderTest {
                 LlamaCppJniConfig.builder("").build(), PROMPT_SUPPORT);
         provider.close();
         assertThat(provider.toString(), containsString("OpenAiCompatibleAiGenerationProvider"));
+    }
+
+    @Test
+    public void lastUsage_isTheUsageOfTheLastAnswer() throws Exception {
+        final OpenAiCompatibleAiGenerationProvider provider = provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT);
+        assertThat(provider.lastUsage(), is(AiGenerationUsage.NONE));
+
+        provider.generate(REQUEST);
+
+        assertThat(provider.lastUsage(), is(new AiGenerationUsage(1, 42, 7, 40, "stop")));
+    }
+
+    @Test
+    public void lastUsage_ofACutOffAnswer_isKeptAlthoughTheCallThrows() throws Exception {
+        answer = completion("half an answ", "length");
+        final OpenAiCompatibleAiGenerationProvider provider = provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT);
+
+        org.junit.jupiter.api.Assertions.assertThrows(java.io.IOException.class, () -> provider.generate(REQUEST));
+
+        assertThat(provider.lastUsage().finishReason(), is("length"));
+        assertThat(provider.lastUsage().completionTokens(), is(7L));
     }
 }

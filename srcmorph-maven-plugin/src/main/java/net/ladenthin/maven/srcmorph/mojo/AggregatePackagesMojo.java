@@ -4,7 +4,6 @@
 package net.ladenthin.maven.srcmorph.mojo;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.AggregatePackagesEngine;
@@ -14,11 +13,12 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 /**
- * Maven goal {@code srcmorph:aggregate-packages}: aggregates per-package
- * {@code .ai.md} index files and fills in their AI-generated summary and keyword fields.
+ * Maven goal {@code srcmorph:aggregate-packages}: summarizes every package of the {@code .ai.md} tree
+ * into its {@code package.ai.md}, with the one package rule ({@code packageFieldGenerations}) of the
+ * configuration file.
  *
- * <p>Thin wrapper: builds a {@link SrcMorphConfiguration} from its {@code @Parameter} fields and
- * delegates the whole run to {@link AggregatePackagesEngine}.</p>
+ * <p>Thin wrapper: builds the configuration and delegates the whole run to
+ * {@link AggregatePackagesEngine}.</p>
  */
 // @Parameter fields are populated by the Maven plugin framework via reflection after
 // construction. NullAway is configured via ExcludedFieldAnnotations to skip them; Checker
@@ -40,50 +40,9 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
     @Parameter(property = "srcmorph.package.skip", defaultValue = "false")
     private boolean skipPackage;
 
-    @Parameter(defaultValue = "${project.version}", readonly = true)
-    private String pluginVersion;
-
-    @Parameter(property = "srcmorph.aiVersion", defaultValue = "0.0.0")
-    private String aiVersion;
-
-    /** llama.cpp context window size; smaller default suits the fast aggregate pass. */
-    @Parameter(property = "srcmorph.llama.contextSize", defaultValue = "2048")
-    private int llamaContextSize;
-
-    /** CPU threads for llama.cpp inference during package aggregation. */
-    @Parameter(property = "srcmorph.llama.threads")
-    private int llamaThreads = SrcMorphConfiguration.DEFAULT_LLAMA_THREADS;
-
-    @Override
-    protected int getLlamaContextSize() {
-        return llamaContextSize;
-    }
-
-    @Override
-    protected int getLlamaThreads() {
-        return llamaThreads;
-    }
-
     @Override
     protected boolean isPhaseSkipped() {
         return skipPackage;
-    }
-
-    /**
-     * Maps this goal's own {@code @Parameter} fields onto the shared configuration built by
-     * {@link AbstractAiIndexMojo#buildConfiguration()}.
-     *
-     * <p>Package-private rather than private so a same-package test can assert the mapping without
-     * reflection. Its failure mode is silent: a field forgotten here, or two transposed, ignores
-     * what the user configured and breaks nothing visible.</p>
-     *
-     * @return the configuration for this goal
-     */
-    SrcMorphConfiguration buildAggregatePackagesConfiguration() {
-        final SrcMorphConfiguration config = buildConfiguration();
-        config.setPluginVersion(pluginVersion);
-        config.setAiVersion(aiVersion);
-        return config;
     }
 
     @Override
@@ -92,14 +51,13 @@ public class AggregatePackagesMojo extends AbstractAiIndexMojo {
             getLog().info("AI package aggregation skipped.");
             return;
         }
-
-        final Path outputPath = outputDirectory.toPath().toAbsolutePath().normalize();
+        final SrcMorphConfiguration config = buildConfiguration(RuleSection.PACKAGE);
         try {
-            new AggregatePackagesEngine(buildAggregatePackagesConfiguration()).execute();
+            new AggregatePackagesEngine(config).execute();
         } catch (SrcMorphException e) {
             throw new MojoExecutionException(messageOf(e), e);
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to aggregate package AI index files under " + outputPath, e);
+            throw new MojoExecutionException(ioMessage("aggregate the package index files", config, e), e);
         }
     }
 }

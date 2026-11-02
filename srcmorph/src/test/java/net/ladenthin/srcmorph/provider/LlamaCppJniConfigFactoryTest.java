@@ -55,6 +55,7 @@ public class LlamaCppJniConfigFactoryTest {
         config.setApiKeyEnv("MY_KEY");
         config.setStream(true);
         config.setRequestsPerMinute(25);
+        config.setMaxRetries(5);
         config.setReasoningEffort("high");
         config.setReasoningBudgetTokens(512);
         config.setDryMultiplier(0.5f);
@@ -106,6 +107,7 @@ public class LlamaCppJniConfigFactoryTest {
         assertThat(result.apiKeyEnv(), is("MY_KEY"));
         assertThat(result.stream(), is(true));
         assertThat(result.requestsPerMinute(), is(25));
+        assertThat(result.maxRetries(), is(5));
         assertThat(result.reasoningEffort(), is("high"));
         assertThat(result.reasoningBudgetTokens(), is(512));
         assertThat(result.dryMultiplier(), is(0.5f));
@@ -131,63 +133,6 @@ public class LlamaCppJniConfigFactoryTest {
 
         assertThat(result.stopStrings(), is(Collections.<String>emptyList()));
         assertThat(result.drySequenceBreakers(), is(Collections.<String>emptyList()));
-    }
-
-    @Test
-    public void fromFallbackParameters_threadsFallbackArgumentsThrough() {
-        final LlamaCppJniConfig result =
-                LlamaCppJniConfigFactory.fromFallbackParameters("fallback.gguf", 4096, 256, 0.42f, 6);
-
-        assertThat(result.modelPath(), is("fallback.gguf"));
-        assertThat(result.contextSize(), is(4096));
-        assertThat(result.maxOutputTokens(), is(256));
-        assertThat(result.temperature(), is(0.42f));
-        assertThat(result.threads(), is(6));
-    }
-
-    @Test
-    public void fromFallbackParameters_appliesEveryAiGenerationConfigDefault() {
-        final LlamaCppJniConfig result =
-                LlamaCppJniConfigFactory.fromFallbackParameters("fallback.gguf", 4096, 256, 0.42f, 6);
-
-        assertThat(result.topP(), is(AiGenerationConfig.DEFAULT_TOP_P));
-        assertThat(result.topK(), is(AiGenerationConfig.DEFAULT_TOP_K));
-        assertThat(result.minP(), is(AiGenerationConfig.DEFAULT_MIN_P));
-        assertThat(result.topNSigma(), is(AiGenerationConfig.DEFAULT_TOP_N_SIGMA));
-        assertThat(result.repeatPenalty(), is(AiGenerationConfig.DEFAULT_REPEAT_PENALTY));
-        assertThat(result.chatTemplateEnableThinking(), is(AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
-        assertThat(result.cachePrompt(), is(AiGenerationConfig.DEFAULT_CACHE_PROMPT));
-        assertThat(result.swaFull(), is(AiGenerationConfig.DEFAULT_SWA_FULL));
-        assertThat(result.cacheReuse(), is(AiGenerationConfig.DEFAULT_CACHE_REUSE));
-        assertThat(result.gpuLayers(), is(AiGenerationConfig.DEFAULT_GPU_LAYERS));
-        assertThat(result.seed(), is(AiGenerationConfig.DEFAULT_SEED));
-        assertThat(result.cpuMoeLayers(), is(AiGenerationConfig.DEFAULT_CPU_MOE_LAYERS));
-        assertThat(result.cpuFfnLayers(), is(AiGenerationConfig.DEFAULT_CPU_FFN_LAYERS));
-        assertThat(result.kvUnifiedPerSlot(), is(AiGenerationConfig.DEFAULT_KV_UNIFIED_PER_SLOT));
-        assertThat(result.lazyMode(), is(AiGenerationConfig.DEFAULT_LAZY_MODE));
-        assertThat(result.repeatLastN(), is(AiGenerationConfig.DEFAULT_REPEAT_LAST_N));
-        assertThat(result.cacheTypeK(), is(AiGenerationConfig.DEFAULT_CACHE_TYPE_K));
-        assertThat(result.cacheTypeV(), is(AiGenerationConfig.DEFAULT_CACHE_TYPE_V));
-        assertThat(result.flashAttn(), is(AiGenerationConfig.DEFAULT_FLASH_ATTN));
-        assertThat(result.batchSize(), is(AiGenerationConfig.DEFAULT_BATCH_SIZE));
-        assertThat(result.ubatchSize(), is(AiGenerationConfig.DEFAULT_UBATCH_SIZE));
-        assertThat(result.threadsBatch(), is(AiGenerationConfig.DEFAULT_THREADS_BATCH));
-        assertThat(result.mainGpu(), is(AiGenerationConfig.DEFAULT_MAIN_GPU));
-        assertThat(result.devices(), is(AiGenerationConfig.DEFAULT_DEVICES));
-        assertThat(result.provider(), is(AiGenerationConfig.DEFAULT_PROVIDER));
-        assertThat(result.remoteModel(), is(AiGenerationConfig.DEFAULT_REMOTE_MODEL));
-        assertThat(result.baseUrl(), is(AiGenerationConfig.DEFAULT_BASE_URL));
-        assertThat(result.apiKeyEnv(), is(AiGenerationConfig.DEFAULT_API_KEY_ENV));
-        assertThat(result.stream(), is(AiGenerationConfig.DEFAULT_STREAM));
-        assertThat(result.requestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));
-        assertThat(result.reasoningEffort(), is(AiGenerationConfig.DEFAULT_REASONING_EFFORT));
-        assertThat(result.reasoningBudgetTokens(), is(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS));
-        assertThat(result.dryMultiplier(), is(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER));
-        assertThat(result.dryBase(), is(AiGenerationConfig.DEFAULT_DRY_BASE));
-        assertThat(result.dryAllowedLength(), is(AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH));
-        assertThat(result.dryPenaltyLastN(), is(AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N));
-        assertThat(result.drySequenceBreakers(), is(Collections.<String>emptyList()));
-        assertThat(result.stopStrings(), is(Collections.<String>emptyList()));
     }
 
     @Test

@@ -24,10 +24,6 @@ public class SrcMorphConfigurationTest {
         assertThat(c.isForce(), is(false));
         assertThat(c.isPlanOnly(), is(false));
         assertThat(c.getGenerationProvider(), is(SrcMorphConfiguration.DEFAULT_GENERATION_PROVIDER));
-        assertThat(c.getLlamaContextSize(), is(SrcMorphConfiguration.DEFAULT_LLAMA_CONTEXT_SIZE));
-        assertThat(c.getLlamaMaxOutputTokens(), is(SrcMorphConfiguration.DEFAULT_LLAMA_MAX_OUTPUT_TOKENS));
-        assertThat(c.getLlamaTemperature(), is(SrcMorphConfiguration.DEFAULT_LLAMA_TEMPERATURE));
-        assertThat(c.getLlamaThreads(), is(SrcMorphConfiguration.DEFAULT_LLAMA_THREADS));
         assertThat(c.getAiVersion(), is(SrcMorphConfiguration.DEFAULT_AI_VERSION));
         assertThat(c.getMinFileSizeBytes(), is(0L));
         assertThat(c.getMaxFileSizeBytes(), is(0L));
@@ -45,7 +41,6 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getAiDefinitions(), is(nullValue()));
         assertThat(c.getFieldGenerations(), is(nullValue()));
         assertThat(c.getFactDefinitions(), is(nullValue()));
-        assertThat(c.getLlamaModelPath(), is(nullValue()));
         assertThat(c.getModelDirectory(), is(nullValue()));
         assertThat(c.getProfileDirectory(), is(nullValue()));
         assertThat(c.getProjectName(), is(nullValue()));
@@ -177,41 +172,6 @@ public class SrcMorphConfigurationTest {
     }
 
     @Test
-    public void llamaModelPathRoundTrips() {
-        final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        c.setLlamaModelPath("model.gguf");
-        assertThat(c.getLlamaModelPath(), is("model.gguf"));
-    }
-
-    @Test
-    public void llamaContextSizeRoundTrips() {
-        final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        c.setLlamaContextSize(8192);
-        assertThat(c.getLlamaContextSize(), is(8192));
-    }
-
-    @Test
-    public void llamaMaxOutputTokensRoundTrips() {
-        final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        c.setLlamaMaxOutputTokens(4096);
-        assertThat(c.getLlamaMaxOutputTokens(), is(4096));
-    }
-
-    @Test
-    public void llamaTemperatureRoundTrips() {
-        final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        c.setLlamaTemperature(0.9f);
-        assertThat(c.getLlamaTemperature(), is(0.9f));
-    }
-
-    @Test
-    public void llamaThreadsRoundTrips() {
-        final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        c.setLlamaThreads(16);
-        assertThat(c.getLlamaThreads(), is(16));
-    }
-
-    @Test
     public void pluginVersionRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
         c.setPluginVersion("1.2.3");
@@ -237,5 +197,14 @@ public class SrcMorphConfigurationTest {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
         c.setGenerationProvider("llamacpp-jni");
         assertThat(c.toString(), org.hamcrest.CoreMatchers.containsString("llamacpp-jni"));
+    }
+
+    @Test
+    public void runRecordFile_defaultsNullAndRoundTrips() {
+        final SrcMorphConfiguration c = new SrcMorphConfiguration();
+        org.hamcrest.MatcherAssert.assertThat(c.getRunRecordFile(), org.hamcrest.CoreMatchers.nullValue());
+        c.setRunRecordFile(new java.io.File("run.json"));
+        org.hamcrest.MatcherAssert.assertThat(
+                c.getRunRecordFile(), org.hamcrest.CoreMatchers.is(new java.io.File("run.json")));
     }
 }

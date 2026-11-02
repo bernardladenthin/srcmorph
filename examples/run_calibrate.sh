@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Runs the srcmorph CLI against config_Calibrate.json: loads each distinct routed model once and
-# prints a paste-ready <calibration> block per model. With the mock provider (as shipped) this is
+# prints a paste-ready YAML calibration: block per model. With the mock provider (as shipped) this is
 # a no-op smoke check; swap generationProvider to "llamacpp-jni" and set a real modelPath to
 # calibrate an actual GGUF model on this machine.
 #

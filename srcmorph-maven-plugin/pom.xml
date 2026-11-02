@@ -47,22 +47,20 @@ SPDX-License-Identifier: Apache-2.0
              gpu-cuda / gpu-vulkan profiles that add a GPU natives jar live on srcmorph/pom.xml,
              since the natives are resolved at srcmorph's own build. -->
         <!-- ====================================================================================
-             `ai.*` properties (ai.model / ai.gpuLayers / ai.mainGpu / ai.devices / ai.cachePrompt /
-             ai.index.output.directory, plus the commented-out exp.* experiment knobs) are THIS
-             repo's own Maven BUILD properties for the self-test / benchmark executions — NOT plugin
-             @Parameters. They are wired into the local gpt-oss profile executions below (e.g.
-             <gpuLayers>${ai.gpuLayers}</gpuLayers>, <aiDefinitionKey>${ai.model}</aiDefinitionKey>)
-             and are overridable per run with -Dai.<name>=<value>. Downstream consumers of the
-             PUBLISHED plugin do NOT inherit these; they set the same knobs as
-             <configuration>/model-definition elements (<gpuLayers>, <mainGpu>, <devices>,
-             <aiDefinitionKey>). The published mojo parameters are the separate `srcmorph.*` set
-             (see AbstractAiIndexMojo). Do NOT "fix" the docs' `-Dai.*` examples to `srcmorph.*` —
-             the two namespaces are intentionally different (repo build knobs vs. published params).
+             `ai.*` properties (ai.model / ai.gpuLayers / ai.mainGpu / ai.devices / ai.modelDir /
+             ai.profileDir / ai.index.output.directory) are THIS repo's own Maven BUILD properties for
+             the self-test profile, NOT plugin @Parameters. srcmorph-selftest.yaml names them as
+             ${ai.*}, which the plugin fills from the Maven properties, so each is overridable per run
+             with -Dai.<name>=<value>. Downstream consumers of the PUBLISHED plugin do NOT inherit these;
+             their own configuration file sets the same knobs (gpuLayers, mainGpu, devices,
+             aiDefinitionKey) and may use ${...} for their own properties. The published mojo
+             parameters are the separate `srcmorph.*` set (see AbstractAiIndexMojo). Do NOT "fix" the
+             docs' `-Dai.*` examples to `srcmorph.*`: the two namespaces are intentionally different.
              ==================================================================================== -->
         <!-- Default AI model definition (key) used by the gpt-oss profile's generate/aggregate executions.
              gpt-oss-20B-mxfp4 is the native MXFP4 format: same ~12 GB size and decode speed as the Q4/Q5/Q8
              variants (the MoE experts are MXFP4 regardless), but no double-quantization of the experts ->
-             best quality. Override with -Dai.model=<another key in <aiDefinitions>>. -->
+             best quality. Override with -Dai.model=<another key of the aiDefinitions>. -->
         <ai.model>gpt-oss-20B-mxfp4</ai.model>
         <!-- GPU layer offload for the gpt-oss presets (the gpu-layers / n_gpu_layers flag). -1 (default) =
              do NOT pin a count, so llama.cpp AUTO-FITS as many layers as fit the card's free VRAM. This is
@@ -102,30 +100,16 @@ SPDX-License-Identifier: Apache-2.0
 
         <ai.index.output.directory>${project.basedir}/src/site/ai</ai.index.output.directory>
 
-        <!-- The srcmorph-selftest profile's <modelDirectory>: every <modelPath> there is a file
+        <!-- The srcmorph-selftest profile's modelDirectory: every modelPath there is a file
              name relative to it, so the profile runs on another machine with
              -Dai.modelDir=/path/to/models, and a moved model drive is a one-line change here. A
-             model kept somewhere else gets an absolute <modelPath>, which is used as it is. The
+             model kept somewhere else gets an absolute modelPath, which is used as it is. The
              default is the owner's model drive. -->
         <ai.modelDir>M:/Modelle</ai.modelDir>
 
-        <!-- The srcmorph-selftest profile's <profileDirectory>: the prompt and fact-counter set
+        <!-- The srcmorph-selftest profile's profileDirectory: the prompt and fact-counter set
              its rules name by key (profiles/README.md). -->
-        <ai.profileDir>${project.basedir}/../profiles/v2</ai.profileDir>
-
-        <!-- Prompt-cache toggle (default on). Reuses the shared prompt-template prefix KV across
-             files. Override per run for benchmarking, e.g. -Dai.cachePrompt=false. -->
-        <ai.cachePrompt>true</ai.cachePrompt>
-
-        <!-- EXPERIMENT KNOBS (commented out, kept for re-runs). Re-enable these and switch
-             the executions' aiDefinitionKey/promptKey back to ${exp.model}/${exp.filePrompt}/
-             ${exp.pkgPrompt} to drive model + prompt per run via -D for benchmarking, e.g.:
-             -Dexp.model=granite-4.0-h-tiny-bigwindow -Dexp.filePrompt=file-body-java
-             -Dexp.pkgPrompt=package-body -Dai.index.output.directory=.../src/site/ai__run1
-        <exp.model>gpt-oss-20B-mxfp4</exp.model>
-        <exp.filePrompt>file-body-java</exp.filePrompt>
-        <exp.pkgPrompt>package-body</exp.pkgPrompt>
-        -->
+        <ai.profileDir>${project.basedir}/../profiles/v3</ai.profileDir>
 
         <project.build.outputTimestamp>2026-10-26T20:11:27Z</project.build.outputTimestamp>
 
@@ -635,6 +619,11 @@ SPDX-License-Identifier: Apache-2.0
                 <artifactId>maven-plugin-plugin</artifactId>
                 <configuration>
                     <goalPrefix>srcmorph</goalPrefix>
+                    <!-- The floor the plugin is built and tested for, stated in plugin.xml (Maven 4
+                         enforces it). Without these the descriptor took the maven-plugin-api version
+                         (3.10.0) and Java 11; plugin-it asserts both lines. -->
+                    <requiredMavenVersion>3.6.3</requiredMavenVersion>
+                    <requiredJavaVersion>1.8</requiredJavaVersion>
                 </configuration>
                 <executions>
                     <execution>
@@ -755,6 +744,8 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.maven.srcmorph.mojo.AggregatePackagesMojo</param>
                         <param>net.ladenthin.maven.srcmorph.mojo.AggregateProjectMojo</param>
                         <param>net.ladenthin.maven.srcmorph.mojo.CalibrateMojo</param>
+                        <param>net.ladenthin.maven.srcmorph.mojo.CheckMojo</param>
+                        <param>net.ladenthin.maven.srcmorph.mojo.RuleSection*</param>
                     </targetClasses>
                     <targetTests>
                         <param>net.ladenthin.maven.srcmorph.*</param>
@@ -793,224 +784,11 @@ SPDX-License-Identifier: Apache-2.0
                         <groupId>${project.groupId}</groupId>
                         <artifactId>${project.artifactId}</artifactId>
                         <version>${project.version}</version>
-
+                        <!-- Models, rules, profile and paths are srcmorph-selftest.yaml, the same file
+                             format as the CLI's; its ${ai.*} come from the properties above and -D. -->
                         <configuration>
-                            <outputDirectory>${ai.index.output.directory}</outputDirectory>
-                            <!-- EXPERIMENT SCOPE (claude2026_06_26_00): config + provider only,
-                                 a diverse 12-file mix for fast model/prompt comparison. Restore the
-                                 single aiindex subtree for a full self-index.
-                                 UPDATED (srcmorph core-module extraction, step 4): config and
-                                 provider now live in the sibling srcmorph module, not under this
-                                 module's own basedir, so the subtrees below reach across the
-                                 reactor via a relative ".." path (AbstractAiIndexMojo resolves
-                                 subtrees with basePath.resolve(subtree).normalize(), which permits
-                                 ".." segments). This profile still runs `mvn srcmorph:generate -P
-                                 srcmorph-selftest` from THIS module (it invokes this plugin's own
-                                 goals), it just indexes source that now lives one directory up. -->
-                            <subtrees>
-                                <subtree>../srcmorph/src/main/java/net/ladenthin/srcmorph/config</subtree>
-                                <subtree>../srcmorph/src/main/java/net/ladenthin/srcmorph/provider</subtree>
-                            </subtrees>
-
-                            <!-- EXPERIMENT FILTERING (claude2026_06_26_00): drop package-info/module-info;
-                                 they carry no public API and only add padded near-empty summaries. -->
-                            <excludes>
-                                <exclude>**/package-info.java</exclude>
-                                <exclude>**/module-info.java</exclude>
-                            </excludes>
-
-                            <generationProvider>llamacpp-jni</generationProvider>
-
-                            <!-- Relative <modelPath> entries below resolve against this directory;
-                                 an absolute <modelPath> is used as it is (see ai.modelDir above). -->
-                            <modelDirectory>${ai.modelDir}</modelDirectory>
-
-                            <!--
-                                AI model definitions: define each model once and reference it by key.
-                                No Maven profiles or properties are needed for model configuration.
-                                maxInputChars is calculated automatically from contextSize,
-                                maxOutputTokens, charsPerToken, and the prompt template length.
-                            -->
-                            <aiDefinitions>
-                                <!--
-                                  Two models and nothing else, as in examples/build-your-own-jar/srcmorph.yaml:
-                                    - gpt-oss-20b (native MXFP4) for every file, package and the project overview;
-                                    - IBM Granite 4.0 for the files too large for its window: H-Tiny with a 384K window
-                                      summarizes ~275 KB .. ~1 MB in one pass, H-1B with a 16K window map-reduces a few
-                                      sampled chunks of anything larger, next to the exact whole-file facts.
-                                  The other models this profile used to carry (Mistral, Llama, Codestral, Qwen, Gemma,
-                                  Ministral, the EXP-* benchmark keys, the other gpt-oss quantizations and windows) are in
-                                  the history; their measurements are in docs/ai-index-benchmark.
-                                -->
-                                <!-- ============================================================
-                                     gpt-oss-20b, native MXFP4, 96K window (the ai.model default).
-                                     ============================================================
-                                     reasoningEffort=low: the benchmark (docs/ai-index-benchmark/COMPARISON.md section 11)
-                                     shows low is best for dense code summaries - fastest, and the whole output budget goes
-                                     to the summary instead of in-band reasoning. Raise the effort only together with
-                                     maxOutputTokens, or the final answer is truncated.
-
-                                     Why the widest practical window: a measured A/B (COMPARISON.md section 11) proved that a
-                                     larger contextSize costs ONLY KV RAM, not per-file time - 16K vs 96K had identical
-                                     prefill/decode/wall time for the same small file; only RAM grew (~+400 MiB per +16K).
-                                     96K covers every file up to ~260 KB with no trimming (model ~12 GB + KV ~11 GB at a full
-                                     96K window; lower contextSize to save RAM on a small machine).
-
-                                     charsPerToken 3 is a conservative pre-trim ratio (real Java is ~4.8 chars/token), so a
-                                     big file is never over-fed past the token window. Sampling temp 0.7, top-p 1.0, top-k 0,
-                                     min-p 0.05 is a deliberate deviation from the model card's temp 1.0: temp 1.0 loses
-                                     faithfulness, greedy triggers reasoning loops (docs/ai-index-benchmark/gpt-oss-tuning.md D1).
-                                     MXFP4 is the native format: every quantization of gpt-oss keeps its experts in MXFP4, so
-                                     Q4_K_M .. F16 add no quality (gpt-oss-tuning.md E5). The GPU knobs ${ai.gpuLayers} /
-                                     ${ai.mainGpu} / ${ai.devices} default to auto-fit.
-                                     ============================================================ -->
-                                <aiDefinition>
-                                    <key>gpt-oss-20B-mxfp4</key>
-                                    <modelPath>gpt-oss-20b-mxfp4.gguf</modelPath>
-                                    <contextSize>98304</contextSize>
-                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
-                                    <mainGpu>${ai.mainGpu}</mainGpu>
-                                    <devices>${ai.devices}</devices>
-                                    <maxOutputTokens>6144</maxOutputTokens>
-                                    <temperature>0.7</temperature>
-                                    <threads>8</threads>
-                                    <charsPerToken>3</charsPerToken>
-                                    <warnOnTrim>true</warnOnTrim>
-                                    <topP>1.0</topP>
-                                    <topK>0</topK>
-                                    <minP>0.05</minP>
-                                    <repeatPenalty>1.0</repeatPenalty>
-                                    <reasoningEffort>low</reasoningEffort>
-                                </aiDefinition>
-
-                                <!-- ============================================================
-                                     BIG-WINDOW FALLBACK for oversized files (covers up to ~1 MB).
-                                     ============================================================
-                                     A source larger than the default model's window (~275 KB for the 96K
-                                     gpt-oss presets at charsPerToken 3) hard-fails the build; the plugin
-                                     never auto-picks a model, so YOU route such files here via the
-                                     big-window rule below. IBM Granite 4.0-H-Tiny is the chosen fallback:
-                                       - Apache-2.0 (same license family as gpt-oss), IBM (not China).
-                                       - Hybrid Mamba-2/Transformer (9:1, NoPE): the KV cache grows only
-                                         LINEARLY with context, so a huge file fits ungekuerzt even on an
-                                         8 GB GPU (a classic transformer's KV would blow up at this size).
-                                       - Trained to 512K tokens (IBM validates quality to 128K), 7B/~1B-active MoE.
-                                     contextSize is set to 384K (393216) to cover files up to ~1 MB. Verified
-                                     on this machine (RTX 3070, 8 GB, CUDA, build 11): it allocated the full
-                                     393216 ctx with NO OOM (it even allocates 512K) and summarized a
-                                     ~995 KB / ~268K-token Java file (prefill ~1150 t/s, ~4 min one-time;
-                                     decode ~45 t/s). Quality is best within Granite's validated 128K (~500 KB)
-                                     and degrades gradually beyond it, but a whole-file summary beats a trimmed
-                                     one. charsPerToken 3 is deliberately CONSERVATIVE (real Java is ~3.8, so
-                                     the window check over-counts tokens and never lets a file overflow the
-                                     window at run time); the cpt-3 check admits up to ~1.16 MB. reasoningEffort
-                                     is empty: Granite has no gpt-oss harmony channels, so no reasoning kwarg is
-                                     sent. The size-routing rules that target this key live in the ai-generate
-                                     <fieldGenerations> below (ids big-window-java and big-window-sql), for the
-                                     ~275 KB .. ~1 MB band (one pass). Files > ~1 MB are NOT summarized in one
-                                     giant pass here (O(n^2) prefill makes that far too slow); they route to the
-                                     small-window granite-4.0-h-1b-fastchunk preset via the huge-java/huge-sql
-                                     rules and are map-reduced (cheap small chunks, maxChunks-bounded). -->
-                                <aiDefinition>
-                                    <key>granite-4.0-h-tiny-bigwindow</key>
-                                    <modelPath>granite-4.0-h-tiny-Q4_K_M.gguf</modelPath>
-                                    <contextSize>393216</contextSize>
-                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
-                                    <mainGpu>${ai.mainGpu}</mainGpu>
-                                    <devices>${ai.devices}</devices>
-                                    <maxOutputTokens>4096</maxOutputTokens>
-                                    <temperature>0.2</temperature>
-                                    <threads>8</threads>
-                                    <charsPerToken>3</charsPerToken>
-                                    <warnOnTrim>true</warnOnTrim>
-                                    <topP>1.0</topP>
-                                    <topK>0</topK>
-                                    <minP>0.05</minP>
-                                    <repeatPenalty>1.0</repeatPenalty>
-                                    <reasoningEffort></reasoningEffort>
-                                </aiDefinition>
-
-                                <!-- Small/fast window for the map-reduce of VERY large files (multi-MB data),
-                                     the default fallback for oversized sources. Uses the SMALLEST Granite 4.0
-                                     hybrid (H-1B, ~1.5B, Apache-2.0, IBM) at a SMALL 16K window on purpose.
-                                     Rationale: prefill cost is O(n^2) in prompt length, so one big 384K pass is
-                                     far slower than many small 16K passes; and a tiny 1.5B model roughly doubles
-                                     CPU throughput vs the 7B/3B siblings. Chunking at ~48 KB (16K*cpt3 minus the
-                                     prompt) and capping <maxChunks> keeps a file of ANY size to a handful of cheap
-                                     calls, sampling a representative head/tail/spread - the right trade-off for
-                                     repetitive data where no precise whole-file read is needed.
-
-                                     MEASURED on this machine (CPU-only, 16 threads, Q4_K_M): ~175 tok/s prefill,
-                                     ~85 s per full 16K chunk, so a maxChunks=6 run is ~8.5 min PER FILE regardless
-                                     of file size (1 MB or 1 GB - you sample 6 windows). On GPU the same run is
-                                     ~40 s. H-1B loads on the existing llama 5.0.3 native (granitehybrid arch, no
-                                     rebuild). Note: reading EVERY byte of a GB-scale file is not minutes on any
-                                     CPU (~135 h at this rate); raise <maxChunks> to read more (~85 s/chunk added)
-                                     or use onOversize=deterministic/sample for the repetitive bulk. Routed via the
-                                     huge-java / huge-sql rules below (priority above big-window). -->
-                                <aiDefinition>
-                                    <key>granite-4.0-h-1b-fastchunk</key>
-                                    <modelPath>granite-4.0-h-1b-Q4_K_M.gguf</modelPath>
-                                    <contextSize>16384</contextSize>
-                                    <gpuLayers>${ai.gpuLayers}</gpuLayers>
-                                    <mainGpu>${ai.mainGpu}</mainGpu>
-                                    <devices>${ai.devices}</devices>
-                                    <maxOutputTokens>1536</maxOutputTokens>
-                                    <temperature>0.2</temperature>
-                                    <threads>8</threads>
-                                    <charsPerToken>3</charsPerToken>
-                                    <warnOnTrim>true</warnOnTrim>
-                                    <topP>1.0</topP>
-                                    <topK>0</topK>
-                                    <minP>0.05</minP>
-                                    <repeatPenalty>1.0</repeatPenalty>
-                                    <reasoningEffort></reasoningEffort>
-                                </aiDefinition>
-                            </aiDefinitions>
-
-                            <!--
-                                The profile: the prompts and fact counters of the measured set, one file per
-                                key in the repository's profiles/ directory (profiles/README.md). A rule's
-                                <promptKey> names profiles/v2/<key>.md and its <factsKey>
-                                profiles/v2/<key>.tsv, so no prompt text and no regex is repeated here. Another
-                                set: -Dai.profileDir=/path/to/set.
-                            -->
-                            <profileDirectory>${ai.profileDir}</profileDirectory>
-
+                            <configurationFile>${project.basedir}/srcmorph-selftest.yaml</configurationFile>
                         </configuration>
-
-                        <!--
-                            BENCHMARK MODE (example, disabled).
-                            The executions below use concrete production values
-                            (${ai.model} + file-body-java / package-body). To sweep
-                            models/prompts per run instead, re-enable the
-                            commented exp.* properties near the top of <properties> and swap the
-                            execution values for these parameterized forms, then drive each run with
-                            -Dexp.model / -Dexp.filePrompt / -Dexp.pkgPrompt:
-
-                                <fieldGeneration>
-                                    <promptKey>${exp.filePrompt}</promptKey>
-                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
-                                    <fileExtensions>
-                                        <fileExtension>.java</fileExtension>
-                                    </fileExtensions>
-                                </fieldGeneration>
-                                ... (sql + fallback fieldGenerations: aiDefinitionKey ${exp.model})
-
-                                ai-aggregate-packages:
-                                    <promptKey>${exp.pkgPrompt}</promptKey>
-                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
-
-                                ai-aggregate-project:
-                                    <aiDefinitionKey>${exp.model}</aiDefinitionKey>
-
-                            Example invocation:
-                                mvn prepare-package -P srcmorph-selftest -DskipTests \
-                                  -Dexp.model=granite-4.0-h-tiny-bigwindow \
-                                  -Dexp.filePrompt=file-body-java \
-                                  -Dexp.pkgPrompt=package-body \
-                                  -Dai.index.output.directory=.../src/site/ai__run1
-                        -->
                         <executions>
                             <execution>
                                 <id>ai-generate</id>
@@ -1018,207 +796,22 @@ SPDX-License-Identifier: Apache-2.0
                                 <goals>
                                     <goal>generate</goal>
                                 </goals>
-                                <configuration>
-                                    <!--
-                                        Walk both .java and .sql sources. The per-file prompt is then
-                                        chosen by extension in fieldGenerations below: .java -> the
-                                        Java-focused prompt, .sql -> the SQL-schema prompt, everything
-                                        else -> the generic fallback. (This repo is Java-only, so the
-                                        .sql/fallback entries document the capability without firing.)
-                                    -->
-                                    <fileExtensions>
-                                        <fileExtension>.java</fileExtension>
-                                        <fileExtension>.sql</fileExtension>
-                                    </fileExtensions>
-                                    <fieldGenerations>
-                                        <!-- Size-tiered routing for large files. THREE bands per source kind, by
-                                             ascending priority so the most specific (largest) wins:
-
-                                               plain java/sql (no priority)  files up to ~275 KB  -> ${ai.model}, one pass
-                                               big-window-*   (priority 100) ~275 KB .. ~1 MB     -> granite bigwindow, ONE 384K pass
-                                               huge-*         (priority 200) > ~1 MB              -> granite fastchunk, mapReduce
-
-                                             Why a separate huge band instead of just map-reducing on the big window?
-                                             Prefill is O(n^2) in prompt length, so ONE big 384K pass over a multi-MB file
-                                             is catastrophically slow, and map-reducing AT the big window (6 x 384K passes)
-                                             is worse still. The fast path is the opposite: chunk with a SMALL window
-                                             (granite-4.0-h-1b-fastchunk, 16K) so each prefill is cheap, and cap
-                                             <maxChunks> so a 7 MB file stays a handful of calls (~1 h order on the
-                                             reference CPU; less on GPU) - sampling a representative head/tail/spread, which
-                                             is the right trade-off for repetitive data needing no precise whole-file read.
-
-                                             Each band has its own prompt (file-body-java / file-body-sql). Without the
-                                             big-window/huge rules a file larger than ${ai.model}'s window hard-fails the
-                                             build (the plugin never auto-selects a model) - these rules are how YOU satisfy
-                                             that check. Default onOversize=fail still aborts any rule that does not opt into
-                                             sample/mapReduce/deterministic. Thresholds are conservative; tune to your models. -->
-                                        <fieldGeneration>
-                                            <id>huge-java</id>
-                                            <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
-                                            <priority>200</priority>
-                                            <!-- Map-reduce on a SMALL fast window: chunk at line boundaries, summarize each,
-                                                 then combine. maxChunks bounds the run time to ~60-90 min/file by sampling a
-                                                 representative subset (head + tail + evenly spaced). Alternatives for pure
-                                                 data: sample (head only, one call) or deterministic (no model, instant). -->
-                                            <onOversize>mapReduce</onOversize>
-                                            <maxChunks>6</maxChunks>
-                                            <factsKey>java-facts</factsKey>
-                                            <condition>
-                                                <and>
-                                                    <conditions>
-                                                        <condition>
-                                                            <extensions><extension>.java</extension></extensions>
-                                                        </condition>
-                                                        <condition>
-                                                            <size><min>1000000</min></size>
-                                                        </condition>
-                                                    </conditions>
-                                                </and>
-                                            </condition>
-                                        </fieldGeneration>
-                                        <fieldGeneration>
-                                            <id>huge-sql</id>
-                                            <promptKey>file-body-sql</promptKey>
-                                            <aiDefinitionKey>granite-4.0-h-1b-fastchunk</aiDefinitionKey>
-                                            <priority>200</priority>
-                                            <onOversize>mapReduce</onOversize>
-                                            <maxChunks>6</maxChunks>
-                                            <!-- Deterministic, EXACT whole-file counts prepended to the AI body. The
-                                                 sampled map-reduce prose can't count reliably (no call sees the whole
-                                                 file), so each counter of profiles/v2/sql-facts.tsv reports its regex
-                                                 match count over the FULL source. Fully generic/language-agnostic - the
-                                                 meaning is in the regex, so the same mechanism counts SQL rows here or
-                                                 `\bboolean\b` fields in Java. -->
-                                            <factsKey>sql-facts</factsKey>
-                                            <condition>
-                                                <and>
-                                                    <conditions>
-                                                        <condition>
-                                                            <extensions><extension>.sql</extension></extensions>
-                                                        </condition>
-                                                        <condition>
-                                                            <size><min>1000000</min></size>
-                                                        </condition>
-                                                    </conditions>
-                                                </and>
-                                            </condition>
-                                        </fieldGeneration>
-                                        <fieldGeneration>
-                                            <id>big-window-java</id>
-                                            <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
-                                            <priority>100</priority>
-                                            <!-- ~275 KB .. ~1 MB: fits Granite's 384K window, summarized in ONE pass
-                                                 (fast on GPU). Files > ~1 MB are caught by huge-java above (priority 200),
-                                                 so this rule never needs to handle the oversize case; default
-                                                 onOversize=fail is the safe floor if the huge rule is removed. -->
-                                            <condition>
-                                                <and>
-                                                    <conditions>
-                                                        <condition>
-                                                            <extensions><extension>.java</extension></extensions>
-                                                        </condition>
-                                                        <condition>
-                                                            <size><min>275000</min></size>
-                                                        </condition>
-                                                    </conditions>
-                                                </and>
-                                            </condition>
-                                        </fieldGeneration>
-                                        <fieldGeneration>
-                                            <id>big-window-sql</id>
-                                            <promptKey>file-body-sql</promptKey>
-                                            <aiDefinitionKey>granite-4.0-h-tiny-bigwindow</aiDefinitionKey>
-                                            <priority>100</priority>
-                                            <condition>
-                                                <and>
-                                                    <conditions>
-                                                        <condition>
-                                                            <extensions><extension>.sql</extension></extensions>
-                                                        </condition>
-                                                        <condition>
-                                                            <size><min>275000</min></size>
-                                                        </condition>
-                                                    </conditions>
-                                                </and>
-                                            </condition>
-                                        </fieldGeneration>
-                                        <fieldGeneration>
-                                            <id>java</id>
-                                            <promptKey>file-body-java</promptKey>
-                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
-                                            <!-- Exact, whole-file structural counts prepended to EVERY Java summary (not just
-                                                 oversize files), giving downstream agents authoritative numbers the prose need
-                                                 not restate. The counters are profiles/v2/java-facts.tsv, named by key here
-                                                 (and by huge-java) instead of repeating them inline. -->
-                                            <factsKey>java-facts</factsKey>
-                                            <condition>
-                                                <extensions><extension>.java</extension></extensions>
-                                            </condition>
-                                        </fieldGeneration>
-                                        <fieldGeneration>
-                                            <id>sql</id>
-                                            <promptKey>file-body-sql</promptKey>
-                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
-                                            <factsKey>sql-facts</factsKey>
-                                            <condition>
-                                                <extensions><extension>.sql</extension></extensions>
-                                            </condition>
-                                        </fieldGeneration>
-                                        <!-- Explicit fallback: applies to any file no rule above matched.
-                                             Exactly one fallback is allowed; without it an unmatched file
-                                             fails the build (see AiFieldGenerationSelector). -->
-                                        <fieldGeneration>
-                                            <id>fallback</id>
-                                            <promptKey>file-body-fallback</promptKey>
-                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
-                                            <fallback>true</fallback>
-                                        </fieldGeneration>
-                                    </fieldGenerations>
-                                </configuration>
                             </execution>
-
+                            <!-- Phase 2 reads the .ai.md tree phase 1 wrote, phase 3 the package
+                                 summaries, so each is bound to a later lifecycle phase. -->
                             <execution>
                                 <id>ai-aggregate-packages</id>
                                 <phase>process-resources</phase>
                                 <goals>
                                     <goal>aggregate-packages</goal>
                                 </goals>
-                                <configuration>
-                                    <fieldGenerations>
-                                        <fieldGeneration>
-                                            <promptKey>package-body</promptKey>
-                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
-                                        </fieldGeneration>
-                                    </fieldGenerations>
-                                </configuration>
                             </execution>
-
-                            <!--
-                                Phase 3 - project index. Harvests the per-package lead already produced by
-                                aggregate-packages into a single project.ai.md. Bound to prepare-package so it
-                                runs after process-resources (aggregate-packages).
-
-                                The per-package listing is deterministic (no model). The optional project
-                                overview paragraph below is opt-in: the single <fieldGeneration> enables ONE
-                                extra AI call that writes a short #### Overview from the package leads. Remove
-                                the <configuration> block to fall back to the purely deterministic index.
-                            -->
                             <execution>
                                 <id>ai-aggregate-project</id>
                                 <phase>prepare-package</phase>
                                 <goals>
                                     <goal>aggregate-project</goal>
                                 </goals>
-                                <configuration>
-                                    <fieldGenerations>
-                                        <fieldGeneration>
-                                            <promptKey>project-body</promptKey>
-                                            <aiDefinitionKey>${ai.model}</aiDefinitionKey>
-                                        </fieldGeneration>
-                                    </fieldGenerations>
-                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

@@ -26,31 +26,33 @@ public final class AiPromptSupport {
      */
     private static final String SYSTEM_USER_SEPARATOR = "\n\n";
 
+    /**
+     * Joins a rule's prompt key and the key of a prompt appended to it into one key
+     * ({@link #composedKey(String, String)}); a registered key cannot contain it.
+     */
+    public static final char COMPOSED_KEY_SEPARATOR = '+';
+
+    /** Separator between the two templates of a composed key in its system prompt. */
+    private static final String COMPOSED_TEMPLATE_SEPARATOR = "\n\n";
+
     private final Map<String, String> templates;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
      * Creates a new {@link AiPromptSupport} pre-populated with the given definitions.
      *
-     * <p>Every entry in {@code promptDefinitions} must have both a non-null
-     * {@code key} and a non-null {@code template}; a null in either field
-     * throws {@link NullPointerException} naming the list index and dumping
-     * the offending entry. This is the contract enforcement boundary that
-     * makes misconfigured POM {@code <promptDefinitions>} fail at build
-     * configuration time rather than silently dropping the entry and
-     * surfacing as a "Missing prompt template for key" failure deeper in
-     * the goal. Callers (e.g. the llamacpp-ai-index-maven-plugin module's Mojos) wrap
-     * construction in {@link NullPointerException}
-     * &rarr; {@code org.apache.maven.plugin.MojoExecutionException} so the
-     * Maven framework reports it as a user configuration error rather
-     * than a plugin bug. This library itself has no Maven dependency, so that type is
-     * referenced here only in prose.
+     * <p>Every entry in {@code promptDefinitions} must have both a non-null {@code key} and a non-null
+     * {@code template}, and no key may contain {@link #COMPOSED_KEY_SEPARATOR}. This is the contract
+     * enforcement boundary: a misconfigured {@code promptDefinitions} entry of the configuration file fails
+     * here, naming the list index and the entry, instead of surfacing as a "Missing prompt template for key"
+     * failure deeper in the run. The callers ({@code EngineSupport}) wrap it into a {@code SrcMorphException},
+     * so the CLI and the plugin report it as a configuration error.
      *
-     * @param promptDefinitions prompt definitions to register; may be
-     *                          {@code null} (treated as no definitions);
-     *                          individual entries must be well-formed
-     * @throws NullPointerException if any entry has a {@code null} {@code key}
-     *                              or {@code null} {@code template}
+     * @param promptDefinitions prompt definitions to register; may be {@code null} (treated as no
+     *                          definitions); individual entries must be well-formed
+     * @throws NullPointerException     if any entry has a {@code null} {@code key} or {@code null}
+     *                                  {@code template}
+     * @throws IllegalArgumentException if a key contains {@link #COMPOSED_KEY_SEPARATOR}
      */
     public AiPromptSupport(final @Nullable List<AiPromptDefinition> promptDefinitions) {
         if (promptDefinitions == null) {
@@ -67,6 +69,10 @@ public final class AiPromptSupport {
             Objects.requireNonNull(
                     definition.getKey(),
                     () -> "promptDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
+            if (definition.getKey().indexOf(COMPOSED_KEY_SEPARATOR) >= 0) {
+                throw new IllegalArgumentException("promptDefinitions[" + index + "].key '" + definition.getKey()
+                        + "' contains '" + COMPOSED_KEY_SEPARATOR + "', which joins the keys of a composed prompt");
+            }
             final String template = definition.getTemplate();
             if (template == null) {
                 // A template file was read by AiPromptTemplateLoader before; here every template is inline.
@@ -107,15 +113,50 @@ public final class AiPromptSupport {
     }
 
     /**
+     * Returns the key of a prompt composed of a rule's prompt and a prompt appended to it, e.g. the
+     * map or reduce prompt of a map-reduce: {@link #systemPrompt(String)} renders it as the rule's
+     * template, a blank line, then the appended one.
+     *
+     * @param promptKey   the rule's prompt key
+     * @param appendedKey the key of the prompt appended to it, or {@code null} / blank for none
+     * @return {@code promptKey+appendedKey}, or {@code promptKey} when nothing is appended
+     */
+    public static String composedKey(final String promptKey, final @Nullable String appendedKey) {
+        if (appendedKey == null || appendedKey.trim().isEmpty()) {
+            return promptKey;
+        }
+        return promptKey + COMPOSED_KEY_SEPARATOR + appendedKey;
+    }
+
+    /**
      * Returns the static system-instruction prompt (the registered template, verbatim) for the
-     * given key. The template carries no placeholders; the variable file name and content are
+     * given key; for a {@link #composedKey(String, String) composed key} the two templates, joined by
+     * a blank line. The template carries no placeholders; the variable file name and content are
      * delivered separately via {@link #userMessage(java.nio.file.Path, String)}.
      *
-     * @param promptKey the key identifying the prompt template
+     * @param promptKey the key identifying the prompt template, or a composed key
      * @return the system instructions registered for {@code promptKey}
-     * @throws IllegalArgumentException if no (non-blank) template is registered for {@code promptKey}
+     * @throws IllegalArgumentException if no (non-blank) template is registered for {@code promptKey}, or
+     *                                  for one of the two keys of a composed key
      */
     public String systemPrompt(final String promptKey) {
+        final int separator = promptKey.indexOf(COMPOSED_KEY_SEPARATOR);
+        if (separator >= 0) {
+            return template(promptKey.substring(0, separator))
+                    + COMPOSED_TEMPLATE_SEPARATOR
+                    + template(promptKey.substring(separator + 1));
+        }
+        return template(promptKey);
+    }
+
+    /**
+     * Returns the template registered for one key.
+     *
+     * @param promptKey the key
+     * @return the template
+     * @throws IllegalArgumentException if no (non-blank) template is registered for {@code promptKey}
+     */
+    private String template(final String promptKey) {
         final String template = templates.get(promptKey);
         if (template == null || compatibilityHelper.isBlank(template)) {
             throw new IllegalArgumentException("Missing prompt template for key: " + promptKey);

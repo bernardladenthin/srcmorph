@@ -22,7 +22,18 @@
       {
         "promptKey": "file-body",
         "aiDefinitionKey": "mock-model",
-        "fallback": true
+        "fallback": true,
+        "facts": [
+          {
+            "label": "comments",
+            "pattern": "//.*",
+            "ignore": true
+          },
+          {
+            "label": "lines",
+            "pattern": "(?m)^"
+          }
+        ]
       }
     ]
   }

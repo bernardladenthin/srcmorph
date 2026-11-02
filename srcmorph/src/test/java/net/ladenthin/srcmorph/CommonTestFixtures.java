@@ -64,7 +64,16 @@ public class CommonTestFixtures {
      * @return list with one field generation config for the body
      */
     public static List<AiFieldGenerationConfig> createFileFieldGenerations() {
-        return Arrays.asList(createFieldConfig(PROMPT_KEY_FILE_BODY));
+        return Arrays.asList(createFileFieldGeneration());
+    }
+
+    /**
+     * Creates the one file-level rule of {@link #createFileFieldGenerations()}.
+     *
+     * @return the {@code file-body} rule on the default model
+     */
+    public static AiFieldGenerationConfig createFileFieldGeneration() {
+        return createFieldConfig(PROMPT_KEY_FILE_BODY);
     }
 
     /**
@@ -95,7 +104,16 @@ public class CommonTestFixtures {
      * @return list with one field generation config for the body
      */
     public static List<AiFieldGenerationConfig> createPackageFieldGenerations() {
-        return Arrays.asList(createFieldConfig(PROMPT_KEY_PACKAGE_BODY));
+        return Arrays.asList(createPackageFieldGeneration());
+    }
+
+    /**
+     * Creates the one package-level rule of {@link #createPackageFieldGenerations()}.
+     *
+     * @return the {@code package-body} rule on the default model
+     */
+    public static AiFieldGenerationConfig createPackageFieldGeneration() {
+        return createFieldConfig(PROMPT_KEY_PACKAGE_BODY);
     }
 
     /**

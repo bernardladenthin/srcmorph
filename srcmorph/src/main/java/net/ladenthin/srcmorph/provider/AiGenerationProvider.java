@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.provider;
 
 import java.io.IOException;
+import java.util.OptionalInt;
 import net.ladenthin.srcmorph.document.AiGenerationRequest;
 
 /**
@@ -32,6 +33,31 @@ public interface AiGenerationProvider extends AutoCloseable {
      */
     default AiGenerationTimings generateWithTimings(final AiGenerationRequest request) throws IOException {
         return new AiGenerationTimings(generate(request), 0, 0, 0.0d, 0, 0.0d);
+    }
+
+    /**
+     * Returns the tokens and the finish reason of this provider's last {@link #generate} call, also when it
+     * threw (an incomplete answer still cost its tokens); {@link AiGenerationUsage#NONE} when the provider
+     * does not know them. A provider serves one thread at a time, so "last" is the caller's own call.
+     *
+     * @return one call's usage, or {@link AiGenerationUsage#NONE}
+     */
+    default AiGenerationUsage lastUsage() {
+        return AiGenerationUsage.NONE;
+    }
+
+    /**
+     * Returns how many tokens the prompt of {@code request} takes in the model, as its chat template renders
+     * it, counted by the model's own tokenizer without generating; empty when the provider cannot count
+     * them (the default; a remote API answers the count only after the call). A caller sizes its windows
+     * by the count instead of the {@code charsPerToken} estimate when there is one.
+     *
+     * @param request the request whose prompt is counted
+     * @return the prompt's tokens, or empty
+     * @throws IOException if the underlying provider fails
+     */
+    default OptionalInt promptTokens(final AiGenerationRequest request) throws IOException {
+        return OptionalInt.empty();
     }
 
     @Override

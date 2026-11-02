@@ -100,12 +100,26 @@ public class AiFactDefinitionSupportTest {
     }
 
     @Test
-    public void resolveFactsKeys_factsKeyOverridesInlineFacts() {
+    public void resolveFactsKeys_inlineFactsAndAFactsKey_areRefusedInsteadOfOneSilentlyLost() {
         final List<AiFactCounter> shared = Collections.singletonList(counter("rows", "(?m)^INSERT"));
         final AiFactDefinitionSupport support =
                 new AiFactDefinitionSupport(Collections.singletonList(definition("sql-facts", shared)));
         final AiFieldGenerationConfig rule = ruleWithFactsKey("sql-facts");
         rule.setFacts(Collections.singletonList(counter("inline", "z")));
+
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> support.resolveFactsKeys(Collections.singletonList(rule)));
+
+        assertThat(thrown.getMessage(), org.hamcrest.CoreMatchers.containsString("names its facts twice"));
+    }
+
+    @Test
+    public void resolveFactsKeys_aFactsKeyAndAnEmptyFactsList_takeTheShared() {
+        final List<AiFactCounter> shared = Collections.singletonList(counter("rows", "(?m)^INSERT"));
+        final AiFactDefinitionSupport support =
+                new AiFactDefinitionSupport(Collections.singletonList(definition("sql-facts", shared)));
+        final AiFieldGenerationConfig rule = ruleWithFactsKey("sql-facts");
+        rule.setFacts(Collections.<AiFactCounter>emptyList());
 
         support.resolveFactsKeys(Collections.singletonList(rule));
 

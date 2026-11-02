@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.config;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -169,10 +170,50 @@ public class AiFieldGenerationSelectorTest {
     }
 
     @Test
+    public void validate_invalidOnIncomplete_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnIncomplete("retry");
+        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
     public void validate_validOnOversize_passes() {
         final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
         r.setOnOversize("mapReduce");
         assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_sampleChunksWithMaxChunks_passes() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("sampleChunks");
+        r.setMaxChunks(6);
+        assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
+
+    @Test
+    public void validate_sampleChunksWithoutMaxChunks_throws() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setOnOversize("sampleChunks");
+
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+
+        assertThat(thrown.getMessage(), containsString("onOversize: sampleChunks needs a maxChunks above 0"));
+    }
+
+    @Test
+    public void validate_maxChunksWithAnotherStrategy_throws() {
+        for (final String strategy : new String[] {"mapReduce", "sample", "fail", "deterministic", ""}) {
+            final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+            r.setOnOversize(strategy);
+            r.setMaxChunks(1);
+
+            final IllegalArgumentException thrown =
+                    assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+
+            assertThat(thrown.getMessage(), containsString("maxChunks applies only to onOversize: sampleChunks"));
+        }
     }
 
     @Test
@@ -217,7 +258,24 @@ public class AiFieldGenerationSelectorTest {
         bad.setLabel("broken");
         bad.setPattern("[");
         r.setFacts(Collections.singletonList(bad));
-        assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+        // a rule without an id is named by its prompt key
+        assertThat(thrown.getMessage().startsWith("the facts of rule 'java': invalid fact pattern"), is(true));
+    }
+
+    @Test
+    public void validate_onlyIgnoreFacts_isRefusedNamingTheRuleById() {
+        final AiFieldGenerationConfig r = route("java", extCond(".java"), 0);
+        r.setId("big-java");
+        final AiFactCounter ignore = new AiFactCounter();
+        ignore.setLabel("comments");
+        ignore.setPattern("//.*");
+        ignore.setIgnore(true);
+        r.setFacts(Collections.singletonList(ignore));
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> selector.validate(Collections.singletonList(r)));
+        assertThat(thrown.getMessage(), is("the facts of rule 'big-java': no counter, only ignore patterns"));
     }
 
     @Test
@@ -228,6 +286,56 @@ public class AiFieldGenerationSelectorTest {
         ok.setPattern("(?m)^INSERT");
         r.setFacts(Collections.singletonList(ok));
         assertDoesNotThrow(() -> selector.validate(Collections.singletonList(r)));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="map and reduce prompts">
+    @Test
+    public void validateRule_aMapOrReducePromptWithoutChunks_throws() {
+        for (final String strategy : new String[] {"sample", "fail", "deterministic", ""}) {
+            final AiFieldGenerationConfig map = route("java", extCond(".java"), 0);
+            map.setOnOversize(strategy);
+            map.setMapPromptKey("map-chunk");
+            final AiFieldGenerationConfig reduce = route("java", extCond(".java"), 0);
+            reduce.setOnOversize(strategy);
+            reduce.setReducePromptKey("reduce-parts");
+
+            for (final AiFieldGenerationConfig rule : Arrays.asList(map, reduce)) {
+                final IllegalArgumentException thrown =
+                        assertThrows(IllegalArgumentException.class, () -> selector.validateRule(rule));
+                assertThat(
+                        thrown.getMessage(),
+                        containsString("mapPromptKey and reducePromptKey apply only to onOversize: mapReduce"));
+            }
+        }
+    }
+
+    @Test
+    public void validateRule_mapAndReducePromptsWithChunks_pass() {
+        final AiFieldGenerationConfig mapReduce = route("java", extCond(".java"), 0);
+        mapReduce.setOnOversize("mapReduce");
+        mapReduce.setMapPromptKey("map-chunk");
+        mapReduce.setReducePromptKey("reduce-parts");
+        final AiFieldGenerationConfig sampled = route("java", extCond(".java"), 0);
+        sampled.setOnOversize("sampleChunks");
+        sampled.setMaxChunks(2);
+        sampled.setMapPromptKey("map-chunk");
+        sampled.setReducePromptKey("reduce-parts");
+
+        assertDoesNotThrow(() -> selector.validateRule(mapReduce));
+        assertDoesNotThrow(() -> selector.validateRule(sampled));
+    }
+
+    @Test
+    public void copy_keepsTheMapAndReducePrompts() {
+        final AiFieldGenerationConfig rule = route("java", extCond(".java"), 0);
+        rule.setMapPromptKey("map-chunk");
+        rule.setReducePromptKey("reduce-parts");
+
+        final AiFieldGenerationConfig copy = rule.copy();
+
+        assertThat(copy.getMapPromptKey(), is("map-chunk"));
+        assertThat(copy.getReducePromptKey(), is("reduce-parts"));
     }
     // </editor-fold>
 }

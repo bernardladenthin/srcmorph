@@ -283,6 +283,14 @@ public class AiGenerationConfigTest {
     }
 
     @Test
+    public void maxRetriesDefaultsToThreeAndRoundTrips() {
+        final AiGenerationConfig c = new AiGenerationConfig();
+        assertThat(c.getMaxRetries(), is(3));
+        c.setMaxRetries(7);
+        assertThat(c.getMaxRetries(), is(7));
+    }
+
+    @Test
     public void requestsPerMinuteDefaultsToNoLimitAndRoundTrips() {
         AiGenerationConfig c = new AiGenerationConfig();
         assertThat(c.getRequestsPerMinute(), is(0));

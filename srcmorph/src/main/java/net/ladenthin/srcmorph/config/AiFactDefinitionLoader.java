@@ -40,6 +40,9 @@ public final class AiFactDefinitionLoader {
     /** Comment marker at the start of a line of a facts file. */
     private static final String COMMENT = "#";
 
+    /** Label prefix of an ignore counter: its matches are blanked before the other counters count. */
+    static final String IGNORE_PREFIX = "[ignore]";
+
     /** Separator between a counter's label and its pattern. */
     private static final char SEPARATOR = '\t';
 
@@ -120,9 +123,12 @@ public final class AiFactDefinitionLoader {
      *
      * @param where the file, for the messages
      * @param text  the file's text
-     * @return one counter per non-comment line, in file order
-     * @throws IllegalArgumentException if a line has no tab, an empty label or pattern, or a pattern
-     *                                  that does not compile
+     * @return one counter per non-comment line, in file order; a label starting with
+     *     {@value #IGNORE_PREFIX}, in any case, makes an {@link AiFactCounter#isIgnore() ignore} counter of
+     *     the rest of it
+     * @throws IllegalArgumentException if a line has no tab, an empty label or pattern, a pattern that
+     *                                  does not compile or a marker other than {@value #IGNORE_PREFIX}, or
+     *                                  if the counters break {@link AiFactExtractor#validate(String, List)}
      */
     static List<AiFactCounter> parse(final String where, final String text) {
         final List<AiFactCounter> counters = new ArrayList<>();
@@ -137,7 +143,14 @@ public final class AiFactDefinitionLoader {
             if (tab < 0) {
                 throw new IllegalArgumentException(lineLabel + ": expected label<TAB>pattern, found no tab");
             }
-            final String label = line.substring(0, tab).trim();
+            final String column = line.substring(0, tab).trim();
+            final boolean ignore = column.regionMatches(true, 0, IGNORE_PREFIX, 0, IGNORE_PREFIX.length());
+            if (!ignore && column.startsWith(AiFactExtractor.LABEL_MARKER_START)) {
+                throw new IllegalArgumentException(
+                        lineLabel + ": unknown marker in '" + column + "'; the only one is " + IGNORE_PREFIX);
+            }
+            final String label =
+                    ignore ? column.substring(IGNORE_PREFIX.length()).trim() : column;
             final String pattern = line.substring(tab + 1);
             if (label.isEmpty() || pattern.trim().isEmpty()) {
                 throw new IllegalArgumentException(lineLabel + ": the label and the pattern must not be empty");
@@ -151,11 +164,13 @@ public final class AiFactDefinitionLoader {
             final AiFactCounter counter = new AiFactCounter();
             counter.setLabel(label);
             counter.setPattern(pattern);
+            counter.setIgnore(ignore);
             counters.add(counter);
         }
         if (counters.isEmpty()) {
             throw new IllegalArgumentException(where + ": no counter, only comments");
         }
+        AiFactExtractor.validate(where, counters);
         return counters;
     }
 

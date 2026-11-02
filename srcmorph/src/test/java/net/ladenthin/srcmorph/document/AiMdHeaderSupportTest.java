@@ -154,7 +154,7 @@ public class AiMdHeaderSupportTest {
     }
 
     @Test
-    public void shouldWrite_generatorVersionChanged_returnsTrue() throws IOException {
+    public void shouldWrite_generatorVersionChanged_returnsFalse() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader original = buildHeader(FIXED_CHECKSUM, FIXED_G);
@@ -166,8 +166,8 @@ public class AiMdHeaderSupportTest {
         // act
         final boolean result = headerSupport.shouldWrite(false, target, changed);
 
-        // assert
-        assertThat(result, is(true));
+        // assert -- a new srcmorph release regenerates nothing whose content is the same
+        assertThat(result, is(false));
     }
 
     @Test
@@ -260,6 +260,27 @@ public class AiMdHeaderSupportTest {
                                 FIXED_A,
                                 AiMdHeaderCodec.NODE_TYPE_FILE)),
                 Arguments.of(
+                        "a",
+                        new AiMdHeader(
+                                FIXED_TITLE,
+                                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                                FIXED_CHECKSUM,
+                                FIXED_D,
+                                FIXED_T,
+                                FIXED_G,
+                                "9.9.9",
+                                AiMdHeaderCodec.NODE_TYPE_FILE)));
+    }
+
+    /**
+     * The header fields a rewrite does not depend on: the source's modification time and the plugin
+     * version.
+     *
+     * @return one case per field
+     */
+    private static Stream<Arguments> ignoredHeaderFields() {
+        return Stream.of(
+                Arguments.of(
                         "d",
                         new AiMdHeader(
                                 FIXED_TITLE,
@@ -280,18 +301,20 @@ public class AiMdHeaderSupportTest {
                                 FIXED_T,
                                 "9.9.9",
                                 FIXED_A,
-                                AiMdHeaderCodec.NODE_TYPE_FILE)),
-                Arguments.of(
-                        "a",
-                        new AiMdHeader(
-                                FIXED_TITLE,
-                                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                                FIXED_CHECKSUM,
-                                FIXED_D,
-                                FIXED_T,
-                                FIXED_G,
-                                "9.9.9",
                                 AiMdHeaderCodec.NODE_TYPE_FILE)));
+    }
+
+    @ParameterizedTest(name = "field {0} changed alone does not force a rewrite")
+    @MethodSource("ignoredHeaderFields")
+    public void shouldWrite_onlyTheModificationTimeOrThePluginVersionChanged_returnsFalse(
+            final String fieldName, final AiMdHeader expectedHeader) throws IOException {
+        final Path target = folder.resolve("test.ai.md");
+        documentCodec.write(target, new AiMdDocument(storedHeader(), EXISTING_BODY));
+
+        assertThat(
+                "a changed " + fieldName + " alone must not force a rewrite",
+                headerSupport.shouldWrite(false, target, expectedHeader),
+                is(false));
     }
 
     /**

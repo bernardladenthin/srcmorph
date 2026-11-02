@@ -1,0 +1,90 @@
+{
+ "key": "granite-4.0-h-1b-fastchunk",
+ "name": "Granite 4.0 H-1B (Q4_K_M, 16K window)",
+ "backend": "local",
+ "definition": {
+  "key": "granite-4.0-h-1b-fastchunk",
+  "maxOutputTokens": 1536,
+  "temperature": 0.2,
+  "provider": "llamacpp-jni",
+  "contextSize": 16384,
+  "threads": 8,
+  "seed": 42,
+  "modelPath": "granite-4.0-h-1b-Q4_K_M.gguf",
+  "charsPerToken": 3
+ },
+ "javaCommit": null,
+ "corpus": "large-corpus",
+ "profile": "v3",
+ "facts": true,
+ "oversize": "mapReduce",
+ "maxChunks": null,
+ "profileHashes": {
+  "file-body-fallback.md": "5fc532a3fb06f783e1627e4bf38dc645c24ac279409c9aa0c17ffff04023b3d1",
+  "file-body-java.md": "092d60359d65fb4e731a0678be71b757562ea5d3aa79e0ee8fc7d39ee4a603bd",
+  "file-body-perl.md": "e209e66b826d3eafb928757af8b898748a8a6c74dec8848a1642e59a3a20aa46",
+  "file-body-shell.md": "710a7e75ecf11de000a9941219423bd922d14c32814020f36b72192050fc56b2",
+  "file-body-sql.md": "1190a39656301f465b7e3bdf243287b3b9b357a00f57d2d5243f4879ec96d536",
+  "file-body-xml.md": "b9ad0d2a3ac1817c44ff0a1606c350d1d7919ceca9cee338b8273908976fe779",
+  "java-facts.tsv": "0125740aa1a020482b1adca9690ff9033942ff73e0bdedb37823f2178a6955d9",
+  "package-body.md": "666395bd98a0f6727ca58399a9204f8e9850f7785886ddda6ef6d59a87509d77",
+  "perl-facts.tsv": "b03326076d564d3bb2c935474bfc15302ddb93c7592cbe0938f0d466b0944aa3",
+  "pom-facts.tsv": "a478acce942ea5e3d23646900c59bf1a87ed9a5287c89c9e419b7bdf9e06f77a",
+  "project-body.md": "f642a9df0444d128587dc10fad02b497aa51ca99d1641b726297afef7defb330",
+  "shell-facts.tsv": "ef2db12994b1b1f1849b3d2de3c9bedbaf3ad958e08fbad38f8ff875ef1f69da",
+  "sql-facts.tsv": "758a4073153452b9ef190d082bf8b1df2fff4a10787937119ea3d52d10569bd0",
+  "xml-facts.tsv": "f2e6d089887efaa7e3405a21cce2d0f709ecdbc0d341681165aa81cd9bfc8cf9"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.4.0-SNAPSHOT.jar",
+  "sha256": "608b6a6bcfa4d74fd15e4756cabe07f278788c3babdf09771cd69389af94fdc8"
+ },
+ "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS",
+ "startedAt": "2026-11-01T14:35:29Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 1,
+   "seconds": 425.2,
+   "cutOff": [],
+   "errorTail": [
+    "[main] INFO net.ladenthin.llama.timings - prompt: 357 tok in 163.7 ms (2181.2 tok/s) | gen: 19 tok in 160.7 ms (112.0 tok/s) | cache: 690",
+    "[main] INFO net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport -   mapReduce reduce round 2: 2 -> 1 partial(s)",
+    "[main] INFO net.ladenthin.srcmorph.indexer.SourceFileIndexer - Wrote AI index file: <run>\\out\\granite-4.0-h-1b-fastchunk\\other\\catalog\\catalog.xml.ai.md",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - [####################] 100% 3/3 files - est. ~861 min/~861 min done, ~0 s left (estimate) | ~7 min elapsed (actual)",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Run record written: <run>\\logs\\granite-4.0-h-1b-fastchunk\\run-record.json",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Generated AI files: 1 written, 0 unchanged, 0 skipped, 2 failed",
+    "[main] ERROR net.ladenthin.srcmorph.cli.Main - Fatal error during Main.run.",
+    "net.ladenthin.srcmorph.engine.SrcMorphException: 2 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:311)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:89)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:282)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:232)",
+    "Exception in thread \"main\" java.lang.IllegalStateException: Main.run() failed on thread main",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:323)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:232)",
+    "Caused by: net.ladenthin.srcmorph.engine.SrcMorphException: 2 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:311)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:89)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:282)",
+    "\t... 1 more"
+   ]
+  }
+ },
+ "finishedAt": "2026-11-01T14:42:34Z",
+ "fileTokens": {
+  "files": 3,
+  "written": 1,
+  "unchanged": 0,
+  "failed": 2,
+  "calls": 140,
+  "promptTokens": 1134082,
+  "cachedPromptTokens": 68051,
+  "completionTokens": 27213,
+  "seconds": 422.856829
+ },
+ "finishReasons": {
+  "length": 2,
+  "stop": 1
+ },
+ "files": 1
+}

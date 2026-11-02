@@ -66,6 +66,22 @@ path = [
     "docs/ai-index-benchmark/prompt-v2-2026-10/*/meta/*.json",
     "docs/ai-index-benchmark/prompt-v2-2026-10/*/search.json",
     "docs/ai-index-benchmark/prompt-v2-2026-10/*/search.tsv",
+    "docs/ai-index-benchmark/prompt-v3-2026-10/*/meta/*.json",
+    "docs/ai-index-benchmark/prompt-v3-2026-10/*/search.json",
+    "docs/ai-index-benchmark/prompt-v3-2026-10/*/search.tsv",
+    "docs/ai-index-benchmark/languages-2026-11/*/*/meta/*.json",
+    "docs/ai-index-benchmark/languages-2026-11/*/*/*/meta/*.json",
+    "docs/ai-index-benchmark/languages-2026-11/*/*/search.json",
+    "docs/ai-index-benchmark/languages-2026-11/*/*/search.tsv",
+    "docs/ai-index-benchmark/remeasure-2026-11-01/*/*/meta/*.json",
+    "docs/ai-index-benchmark/remeasure-2026-11-01/*/*/search.json",
+    "docs/ai-index-benchmark/remeasure-2026-11-01/*/*/search.tsv",
+    "docs/ai-index-benchmark/remeasure-2026-11-02/*/*/meta/*.json",
+    "docs/ai-index-benchmark/remeasure-2026-11-02/*/*/*/meta/*.json",
+    "docs/ai-index-benchmark/remeasure-2026-11-02/*/*/search.json",
+    "docs/ai-index-benchmark/remeasure-2026-11-02/*/*/search.tsv",
+    "docs/ai-index-benchmark/remeasure-2026-11-02/*/*.jsonl",
+    "docs/ai-index-benchmark/remeasure-2026-11-02/*/*/*/variant.json",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"

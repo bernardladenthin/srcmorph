@@ -6,13 +6,18 @@ package net.ladenthin.srcmorph.provider;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
+import java.net.HttpRetryException;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Function;
 import lombok.ToString;
 import net.ladenthin.llama.json.ChatResponseParser;
@@ -20,6 +25,8 @@ import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link AiGenerationProvider} over an OpenAI-compatible chat-completions API: OpenRouter (the
@@ -35,7 +42,11 @@ import org.jspecify.annotations.Nullable;
  * <p>The API key is read from the environment variable {@code apiKeyEnv} names and sent as
  * {@code Authorization: Bearer}; it never sits in a configuration file. No variable, or an empty
  * one, sends no key, which a local server without {@code --api-key} accepts. An answer outside 2xx
- * fails the call with the status and the start of the body; there is no automatic retry.</p>
+ * fails the call with the status and the start of the body. A {@code 408}, {@code 429}, {@code 5xx}
+ * or a read timeout is sent again up to {@code maxRetries} times, after the server's
+ * {@code Retry-After} or an exponential backoff with jitter; a prompt the server refuses as longer
+ * than the model's context fails with {@link AiContextOverflowException}, so the caller can shrink
+ * it.</p>
  *
  * <p>With {@code stream} set, the answer is requested as Server-Sent Events, read to the end and
  * assembled into the same chat response (see {@link OpenAiCompatibleProviderSupport#assembleStream});
@@ -56,11 +67,47 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     /** Read timeout, in milliseconds: a long file on a slow model can take minutes to answer. */
     public static final int READ_TIMEOUT_MILLIS = 600_000;
 
+    /** Milliseconds per second, for the read timeout in a message. */
+    private static final int MILLIS_PER_SECOND = 1_000;
+
     /** The {@code X-Title} header, which OpenRouter shows as the application of these requests. */
     public static final String APPLICATION_TITLE = "srcmorph";
 
     /** Size of the buffer a response is read with. */
     private static final int READ_BUFFER_SIZE = 8192;
+
+    /** What a 401 without a readable body means: the key went with the request. */
+    private static final String UNAUTHORIZED_HINT =
+            "the key was refused, or none was sent (apiKeyEnv names the variable that holds it)";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenAiCompatibleAiGenerationProvider.class);
+
+    /** Waits the given milliseconds between two attempts of a request. */
+    @FunctionalInterface
+    interface RetryWaiter {
+        /**
+         * Waits.
+         *
+         * @param millis how long
+         * @throws InterruptedIOException if the thread is interrupted while it waits
+         */
+        void await(long millis) throws InterruptedIOException;
+    }
+
+    /**
+     * The waiter of a real run: parks the thread until the delay is over, again after a spurious wake-up
+     * (srcmorph does not sleep threads, see the {@code noThreadSleep} architecture rule).
+     */
+    private static final RetryWaiter PARKING_WAITER = millis -> {
+        final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(millis);
+        for (long left = deadline - System.nanoTime(); left > 0; left = deadline - System.nanoTime()) {
+            LockSupport.parkNanos(left);
+            if (Thread.interrupted()) {
+                Thread.currentThread().interrupt();
+                throw new InterruptedIOException("interrupted while waiting to retry a request");
+            }
+        }
+    };
 
     private final OpenAiCompatibleProviderSupport support;
 
@@ -70,8 +117,20 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     @ToString.Exclude
     private final LlamaCppJniProviderSupport truncationSupport;
 
+    @ToString.Exclude
+    private final RetryWaiter waiter;
+
+    /** The usage of the last {@link #generate} call. */
+    private AiGenerationUsage lastUsage = AiGenerationUsage.NONE;
+
+    /** How often a request that failed with a retryable status or a timeout is sent again. */
+    private final int maxRetries;
+
     private final AiCompletionParser completionParser = new AiCompletionParser();
     private final ChatResponseParser chatResponseParser = new ChatResponseParser();
+
+    /** How long a read of the answer may wait ({@link #READ_TIMEOUT_MILLIS}, shorter in tests). */
+    private final int readTimeoutMillis;
 
     /**
      * Creates a provider that reads the API key from the process environment.
@@ -95,10 +154,48 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             final LlamaCppJniConfig config,
             final AiPromptSupport promptSupport,
             final Function<String, @Nullable String> environment) {
+        this(config, promptSupport, environment, PARKING_WAITER);
+    }
+
+    /**
+     * Creates a provider with an explicit environment lookup and retry waiter (tests).
+     *
+     * @param config        the model configuration
+     * @param promptSupport the prompt definitions
+     * @param environment   looks up an environment variable by name, {@code null} when unset
+     * @param waiter        waits between two attempts of a request
+     */
+    OpenAiCompatibleAiGenerationProvider(
+            final LlamaCppJniConfig config,
+            final AiPromptSupport promptSupport,
+            final Function<String, @Nullable String> environment,
+            final RetryWaiter waiter) {
+        this(config, promptSupport, environment, waiter, READ_TIMEOUT_MILLIS);
+    }
+
+    /**
+     * Creates a provider with an explicit environment lookup, retry waiter and read timeout (tests: a stub
+     * server that stalls shows what a timeout does without waiting ten minutes).
+     *
+     * @param config            the model configuration
+     * @param promptSupport     the prompt definitions
+     * @param environment       looks up an environment variable by name, {@code null} when unset
+     * @param waiter            waits between two attempts of a request
+     * @param readTimeoutMillis how long a read of the answer may wait
+     */
+    OpenAiCompatibleAiGenerationProvider(
+            final LlamaCppJniConfig config,
+            final AiPromptSupport promptSupport,
+            final Function<String, @Nullable String> environment,
+            final RetryWaiter waiter,
+            final int readTimeoutMillis) {
         Objects.requireNonNull(config, "config");
+        this.readTimeoutMillis = readTimeoutMillis;
         Objects.requireNonNull(promptSupport, "promptSupport");
         this.support = new OpenAiCompatibleProviderSupport(config, promptSupport, environment);
         this.truncationSupport = new LlamaCppJniProviderSupport(config, promptSupport);
+        this.waiter = Objects.requireNonNull(waiter, "waiter");
+        this.maxRetries = Math.max(0, config.maxRetries());
         this.limiter = config.requestsPerMinute() > 0
                 ? RequestRateLimiter.shared(support.serverKey(), config.requestsPerMinute())
                 : null;
@@ -106,9 +203,17 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
 
     @Override
     public String generate(final AiGenerationRequest request) throws IOException {
+        lastUsage = AiGenerationUsage.NONE;
         final ChatResponse response = chatResponse(request);
-        truncationSupport.warnOnTruncatedAnswer(request, response);
-        return completionParser.parseCompletion(response.getFirstContent());
+        lastUsage = AiGenerationUsage.of(response);
+        final String text = completionParser.parseCompletion(response.getFirstContent());
+        truncationSupport.requireCompleteAnswer(request, response, text);
+        return text;
+    }
+
+    @Override
+    public AiGenerationUsage lastUsage() {
+        return lastUsage;
     }
 
     @Override
@@ -134,9 +239,31 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
                 exchange(support.modelsEndpoint(), OpenAiCompatibleProviderSupport.ACCEPT_JSON, null));
     }
 
+    /**
+     * What would fail the first request of a model, found before any request is made: an
+     * {@code apiKeyEnv} whose variable is not set in the process environment, or a key that would go in
+     * cleartext to another machine.
+     *
+     * @param baseUrl   the model's {@code baseUrl}, an {@code http(s)} URL
+     * @param apiKeyEnv the model's {@code apiKeyEnv}
+     * @return the problem, or {@code null} when there is none
+     */
+    public static @Nullable String keyProblem(final String baseUrl, final String apiKeyEnv) {
+        return OpenAiCompatibleProviderSupport.keyProblem(baseUrl, apiKeyEnv, System::getenv);
+    }
+
     private ChatResponse chatResponse(final AiGenerationRequest request) throws IOException {
-        return chatResponseParser.parseResponse(
-                support.completionJson(exchange(support.endpoint(), support.accept(), support.requestBody(request))));
+        final String json =
+                support.completionJson(exchange(support.endpoint(), support.accept(), support.requestBody(request)));
+        final ChatResponse response = chatResponseParser.parseResponse(json);
+        if (response.getChoices().isEmpty()) {
+            // A 2xx answer without a choice: an HTML page of a proxy, an {"error": ...} object, or no
+            // completion at all. The body says which.
+            throw new AiIncompleteAnswerException(
+                    AiIncompleteAnswerException.Reason.NO_ANSWER,
+                    OpenAiCompatibleProviderSupport.noChoiceMessage(support.endpoint(), request.sourceFile(), json));
+        }
+        return response;
     }
 
     /**
@@ -150,6 +277,63 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
      */
     private String exchange(final String endpoint, final String accept, final @Nullable String body)
             throws IOException {
+        for (int retry = 1; ; retry++) {
+            final @Nullable String retryAfter;
+            final IOException failure;
+            try {
+                return exchangeOnce(endpoint, accept, body);
+            } catch (final RetryableAnswerException e) {
+                retryAfter = e.retryAfter;
+                failure = e;
+            } catch (final SocketTimeoutException e) {
+                retryAfter = null;
+                failure = e;
+            }
+            if (retry > maxRetries) {
+                // a timeout that ends the retries is this request's failure, not an interrupt of the run: the
+                // caller treats an InterruptedIOException (a SocketTimeoutException is one) as an interrupt
+                throw failure instanceof SocketTimeoutException
+                        ? new IOException(endpoint + " timed out " + retry + " times: " + failure.getMessage(), failure)
+                        : failure;
+            }
+            final long delay = OpenAiCompatibleProviderSupport.retryDelayMillis(
+                    retryAfter, retry, ThreadLocalRandom.current().nextDouble(), System.currentTimeMillis());
+            LOGGER.warn(
+                    "{} failed ({}); retry {}/{} in {} ms",
+                    endpoint,
+                    String.valueOf(failure.getMessage()),
+                    retry,
+                    maxRetries,
+                    delay);
+            waiter.await(delay);
+        }
+    }
+
+    /** A failed answer that may succeed when sent again, with the server's {@code Retry-After}. */
+    private static final class RetryableAnswerException extends IOException {
+
+        private static final long serialVersionUID = 1L;
+
+        private final @Nullable String retryAfter;
+
+        RetryableAnswerException(final String message, final @Nullable String retryAfter) {
+            super(message);
+            this.retryAfter = retryAfter;
+        }
+    }
+
+    /**
+     * One attempt of a request.
+     *
+     * @param endpoint the URL
+     * @param accept   the {@code Accept} header
+     * @param body     the JSON body, {@code null} for a {@code GET}
+     * @return the response body of a 2xx answer
+     * @throws AiContextOverflowException if the server refuses the prompt as longer than the context
+     * @throws IOException                if the request fails or the answer is outside 2xx
+     */
+    private String exchangeOnce(final String endpoint, final String accept, final @Nullable String body)
+            throws IOException {
         // Resolved before the connection is opened: a key that must not go to this endpoint fails here.
         final String key = support.apiKeyFor(endpoint);
         if (limiter != null) {
@@ -159,7 +343,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
         try {
             connection.setRequestMethod(body == null ? "GET" : "POST");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
-            connection.setReadTimeout(READ_TIMEOUT_MILLIS);
+            connection.setReadTimeout(readTimeoutMillis);
             connection.setRequestProperty("Accept", accept);
             connection.setRequestProperty("X-Title", APPLICATION_TITLE);
             if (key != null) {
@@ -168,20 +352,63 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
             if (body != null) {
                 connection.setDoOutput(true);
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-                // No setFixedLengthStreamingMode: in streaming mode HttpURLConnection treats a 401 as an
-                // authentication challenge it cannot retry and drops the error body, which is exactly the
-                // body that says why (a missing or wrong key). Buffered, it still sends a Content-Length.
+                // Streaming with a fixed length: a buffered POST is sent again by the JDK itself after a
+                // connection reset before the answer (sun.net.http.retryPost, true by default and read once per
+                // JVM), and a request the server may already be generating and billing must never go twice. The
+                // price: a 401 then cannot be read, only named (below).
+                final byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+                connection.setFixedLengthStreamingMode(bytes.length);
                 try (OutputStream out = connection.getOutputStream()) {
-                    out.write(body.getBytes(StandardCharsets.UTF_8));
+                    out.write(bytes);
                 }
             }
-            final int status = connection.getResponseCode();
+            final int status;
+            try {
+                status = connection.getResponseCode();
+            } catch (final HttpRetryException e) {
+                // in streaming mode a 401 is an authentication the connection cannot retry, and its body is gone;
+                // the key went with the request, so the server refused it or none was configured
+                throw new IOException(
+                        OpenAiCompatibleProviderSupport.errorMessage(endpoint, e.responseCode(), UNAUTHORIZED_HINT), e);
+            } catch (final SocketTimeoutException e) {
+                if (body == null) {
+                    throw e;
+                }
+                // the request was sent: the server may still be generating it and bill it, so it is not
+                // sent again (a connect timeout, before anything was sent, is retried)
+                throw new IOException(
+                        endpoint + " sent no answer within " + readTimeoutMillis / MILLIS_PER_SECOND
+                                + " s; the request is not sent again",
+                        e);
+            }
             if (!OpenAiCompatibleProviderSupport.isSuccess(status)) {
                 final InputStream error = connection.getErrorStream();
                 final String text = error == null ? "" : read(error);
-                throw new IOException(OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, text));
+                final String message = status == HttpURLConnection.HTTP_UNAUTHORIZED && text.isEmpty()
+                        // a POST goes in streaming mode, where a 401's body cannot be read
+                        ? OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, UNAUTHORIZED_HINT)
+                        : OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, text);
+                if (OpenAiCompatibleProviderSupport.isContextOverflow(status, text)) {
+                    throw new AiContextOverflowException(message);
+                }
+                if (OpenAiCompatibleProviderSupport.isRetryable(status, text)) {
+                    throw new RetryableAnswerException(message, connection.getHeaderField("Retry-After"));
+                }
+                throw new IOException(message);
             }
-            return read(connection.getInputStream());
+            try {
+                return read(connection.getInputStream());
+            } catch (final SocketTimeoutException e) {
+                if (body == null) {
+                    throw e;
+                }
+                // the answer stopped while it was read: the request was generated (and billed), it is not sent
+                // again
+                throw new IOException(
+                        endpoint + " stopped answering for " + readTimeoutMillis / MILLIS_PER_SECOND
+                                + " s; the request is not sent again",
+                        e);
+            }
         } finally {
             connection.disconnect();
         }

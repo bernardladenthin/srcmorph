@@ -1,0 +1,1 @@
+{"_name": "bf16", "provider": {"quantizations": ["bf16"], "allow_fallbacks": false}}

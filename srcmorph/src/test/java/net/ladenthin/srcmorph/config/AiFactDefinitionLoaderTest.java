@@ -151,6 +151,69 @@ public class AiFactDefinitionLoaderTest {
 
         assertThat(thrown.getMessage(), is("f: no counter, only comments"));
     }
+
+    @Test
+    public void parse_ignorePrefix_marksAnIgnoreCounterUnderTheRestOfTheLabel() {
+        final List<AiFactCounter> counters =
+                AiFactDefinitionLoader.parse("f", "[ignore] POD\t(?ms)^=pod.*?^=cut\nsubs\tx\n");
+
+        assertThat(counters.get(0).isIgnore(), is(true));
+        assertThat(counters.get(0).getLabel(), is("POD"));
+        assertThat(counters.get(0).getPattern(), is("(?ms)^=pod.*?^=cut"));
+        assertThat(counters.get(1).isIgnore(), is(false));
+        assertThat(counters.get(1).getLabel(), is("subs"));
+    }
+
+    @Test
+    public void parse_ignorePrefixWithoutAName_isRefused() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[ignore] \tx\n"));
+
+        assertThat(thrown.getMessage(), is("f line 1: the label and the pattern must not be empty"));
+    }
+
+    @Test
+    public void parse_labelContainingThePrefixLater_isAnOrdinaryCounter() {
+        final List<AiFactCounter> counters = AiFactDefinitionLoader.parse("f", "rows [ignore] x\ty\n");
+
+        assertThat(counters.get(0).isIgnore(), is(false));
+        assertThat(counters.get(0).getLabel(), is("rows [ignore] x"));
+    }
+
+    @Test
+    public void parse_onlyIgnoreCounters_isRefused() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[ignore] a\tx\n"));
+
+        assertThat(thrown.getMessage(), is("f: no counter, only ignore patterns"));
+    }
+
+    @Test
+    public void parse_ignorePrefixInAnyCase_marksAnIgnoreCounter() {
+        final List<AiFactCounter> counters =
+                AiFactDefinitionLoader.parse("f", "[IGNORE] POD\tx\n[Ignore] c\ty\nsubs\tz\n");
+
+        assertThat(counters.get(0).isIgnore(), is(true));
+        assertThat(counters.get(0).getLabel(), is("POD"));
+        assertThat(counters.get(1).isIgnore(), is(true));
+        assertThat(counters.get(1).getLabel(), is("c"));
+    }
+
+    @Test
+    public void parse_unknownMarker_isRefusedWithItsLineNumber() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "subs\tx\n[skip] POD\ty\n"));
+
+        assertThat(thrown.getMessage(), is("f line 2: unknown marker in '[skip] POD'; the only one is [ignore]"));
+    }
+
+    @Test
+    public void parse_labelUsedTwice_isRefused() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "subs\tx\n[ignore] subs\ty\n"));
+
+        assertThat(thrown.getMessage(), is("f: the label 'subs' is used twice"));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="load: factsFile">

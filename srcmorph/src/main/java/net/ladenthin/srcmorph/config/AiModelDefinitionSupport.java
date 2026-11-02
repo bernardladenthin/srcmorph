@@ -128,8 +128,7 @@ public final class AiModelDefinitionSupport {
      * @param modelPath      the configured path, or {@code null}
      * @return the path to load, or {@code null} when {@code modelPath} is {@code null}
      */
-    public static @Nullable String resolveModelPath(
-            final @Nullable File modelDirectory, final @Nullable String modelPath) {
+    static @Nullable String resolveModelPath(final @Nullable File modelDirectory, final @Nullable String modelPath) {
         return AiPathSupport.resolveAgainst(modelDirectory, modelPath);
     }
 
@@ -186,6 +185,7 @@ public final class AiModelDefinitionSupport {
         config.setApiKeyEnv(definition.getApiKeyEnv());
         config.setStream(definition.isStream());
         config.setRequestsPerMinute(definition.getRequestsPerMinute());
+        config.setMaxRetries(definition.getMaxRetries());
         config.setReasoningEffort(definition.getReasoningEffort());
         config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
         config.setDryMultiplier(definition.getDryMultiplier());

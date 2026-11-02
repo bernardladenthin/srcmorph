@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.config;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.ToString;
 import org.jspecify.annotations.Nullable;
@@ -79,17 +80,40 @@ public class AiFieldGenerationConfig {
     /**
      * What to do when a matched file is larger than its routed model's context window. One of
      * {@code fail} (default — abort the build), {@code sample} (trim to the window, summarize the head),
-     * {@code mapReduce} (chunk + summarize each + combine), {@code deterministic} (model-free metadata
-     * body). Parsed by {@link AiOversizeStrategy#fromConfig(String)}; {@code null}/blank = {@code fail}.
+     * {@code mapReduce} (chunk + summarize every chunk + combine), {@code sampleChunks} (the same over
+     * {@link #maxChunks} representative chunks), {@code deterministic} (model-free metadata body). Parsed by {@link AiOversizeStrategy#fromConfig(String)}; {@code null}/blank = {@code fail} for a file rule, while the package
+     * and project phases' rule defaults to {@code mapReduce} (their input is the summaries below them).
      */
     private @Nullable String onOversize;
 
     /**
-     * For {@link AiOversizeStrategy#MAP_REDUCE}: the maximum number of chunks to summarize. {@code 0}
-     * (default) = unbounded (process every chunk). A positive value bounds the run time by sampling that
-     * many representative chunks (head + evenly spaced + tail) across the file.
+     * What to do when the model's answer is no summary (empty, cut off at the output budget, or no answer
+     * at all): {@code fail} (default; the file is counted as failed and the run fails at its end) or
+     * {@code retryOnce} (ask once more first). Such an answer is never written. Parsed by
+     * {@link AiIncompleteStrategy#fromConfig(String)}.
+     */
+    private @Nullable String onIncomplete;
+
+    /**
+     * For {@link AiOversizeStrategy#SAMPLE_CHUNKS} only, and required there: how many representative
+     * chunks (the first, the last, evenly spaced between) are summarized. {@code 0} (default) for every
+     * other strategy; a positive value with another one fails the rule set.
      */
     private int maxChunks;
+
+    /**
+     * For {@link AiOversizeStrategy#MAP_REDUCE} and {@link AiOversizeStrategy#SAMPLE_CHUNKS} only: the key of
+     * the prompt appended to {@link #promptKey} in every map call, which says that the input is one chunk
+     * of the source ({@code Chunk i of n} in the user message). {@code null} = the rule's prompt alone.
+     */
+    private @Nullable String mapPromptKey;
+
+    /**
+     * For {@link AiOversizeStrategy#MAP_REDUCE} and {@link AiOversizeStrategy#SAMPLE_CHUNKS} only: the key of
+     * the prompt appended to {@link #promptKey} in every reduce call, which says that the input is the part
+     * summaries of one source, to be merged into one. {@code null} = the rule's prompt alone.
+     */
+    private @Nullable String reducePromptKey;
 
     /**
      * Optional deterministic "fact" counters ({@code <facts>}). When set, each counter's
@@ -255,13 +279,43 @@ public class AiFieldGenerationConfig {
     }
 
     /**
-     * Returns the parsed oversize strategy ({@link AiOversizeStrategy#FAIL} when unset/blank).
+     * Returns the parsed oversize strategy ({@link AiOversizeStrategy#FAIL} when unset/blank). Not a bean
+     * getter, so a serialized configuration carries only the token.
      *
      * @return the oversize strategy
      * @throws IllegalArgumentException if {@code onOversize} is non-blank and matches no strategy
      */
-    public AiOversizeStrategy getOversizeStrategy() {
+    public AiOversizeStrategy oversizeStrategy() {
         return AiOversizeStrategy.fromConfig(onOversize);
+    }
+
+    /**
+     * Returns the raw {@code onIncomplete} config token, or {@code null} when not set.
+     *
+     * @return the incomplete-answer strategy token, or {@code null}
+     */
+    public @Nullable String getOnIncomplete() {
+        return onIncomplete;
+    }
+
+    /**
+     * Sets the {@code onIncomplete} config token ({@code fail} or {@code retryOnce}).
+     *
+     * @param onIncomplete the incomplete-answer strategy token
+     */
+    public void setOnIncomplete(final @Nullable String onIncomplete) {
+        this.onIncomplete = onIncomplete;
+    }
+
+    /**
+     * Returns the parsed incomplete-answer strategy ({@link AiIncompleteStrategy#FAIL} when unset/blank).
+     * Not a bean getter, so a serialized configuration carries only the token.
+     *
+     * @return the incomplete-answer strategy
+     * @throws IllegalArgumentException if {@code onIncomplete} is non-blank and matches no strategy
+     */
+    public AiIncompleteStrategy incompleteStrategy() {
+        return AiIncompleteStrategy.fromConfig(onIncomplete);
     }
 
     /**
@@ -301,6 +355,44 @@ public class AiFieldGenerationConfig {
     }
 
     /**
+     * Returns the key of the prompt appended to the rule's prompt in a map call, or {@code null}.
+     *
+     * @return the map prompt key, or {@code null}
+     */
+    public @Nullable String getMapPromptKey() {
+        return mapPromptKey;
+    }
+
+    /**
+     * Sets the key of the prompt appended to the rule's prompt in a map call.
+     *
+     * @param mapPromptKey the map prompt key
+     */
+    public void setMapPromptKey(final @Nullable String mapPromptKey) {
+        // blank is unset, as composedKey reads it, so validation and loading see the same
+        this.mapPromptKey = mapPromptKey == null || mapPromptKey.trim().isEmpty() ? null : mapPromptKey;
+    }
+
+    /**
+     * Returns the key of the prompt appended to the rule's prompt in a reduce call, or {@code null}.
+     *
+     * @return the reduce prompt key, or {@code null}
+     */
+    public @Nullable String getReducePromptKey() {
+        return reducePromptKey;
+    }
+
+    /**
+     * Sets the key of the prompt appended to the rule's prompt in a reduce call.
+     *
+     * @param reducePromptKey the reduce prompt key
+     */
+    public void setReducePromptKey(final @Nullable String reducePromptKey) {
+        // blank is unset, as composedKey reads it, so validation and loading see the same
+        this.reducePromptKey = reducePromptKey == null || reducePromptKey.trim().isEmpty() ? null : reducePromptKey;
+    }
+
+    /**
      * Returns the shared fact-definition reference key, or {@code null} when not set.
      *
      * @return the facts key, or {@code null}
@@ -316,5 +408,32 @@ public class AiFieldGenerationConfig {
      */
     public void setFactsKey(final @Nullable String factsKey) {
         this.factsKey = factsKey;
+    }
+
+    /**
+     * Returns an independent copy of this rule with every field; the {@link #facts} list is copied, its
+     * counters and the {@link #condition} tree are shared. An indexer keeps its rule as a copy, so the
+     * caller's bean can change after construction without changing a run.
+     *
+     * @return the copy
+     */
+    public AiFieldGenerationConfig copy() {
+        final AiFieldGenerationConfig copy = new AiFieldGenerationConfig();
+        copy.id = id;
+        copy.promptKey = promptKey;
+        copy.aiDefinitionKey = aiDefinitionKey;
+        copy.condition = condition;
+        copy.priority = priority;
+        copy.fallback = fallback;
+        copy.skip = skip;
+        copy.onOversize = onOversize;
+        copy.onIncomplete = onIncomplete;
+        copy.maxChunks = maxChunks;
+        copy.mapPromptKey = mapPromptKey;
+        copy.reducePromptKey = reducePromptKey;
+        final List<AiFactCounter> ownFacts = facts;
+        copy.facts = ownFacts == null ? null : new ArrayList<>(ownFacts);
+        copy.factsKey = factsKey;
+        return copy;
     }
 }

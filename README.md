@@ -33,7 +33,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/srcmorph/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/srcmorph?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/srcmorph/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/srcmorph)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/srcmorph?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/srcmorph)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(47%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(78%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_srcmorph&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_srcmorph)  
@@ -98,7 +98,7 @@ diagrams, or even source-to-source transformations.
 
 | Module | Artifact | What it is |
 |---|---|---|
-| [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` engines. Use this to embed srcmorph in your own tooling. |
+| [`srcmorph/`](srcmorph/README.md) | `net.ladenthin:srcmorph` | The core library: a framework-free Java API (no Maven dependency) — the shared `SrcMorphConfiguration` plus the `generate`/`aggregate-packages`/`aggregate-project`/`calibrate`/list-models engines. Use this to embed srcmorph in your own tooling. |
 | [`srcmorph-cli/`](srcmorph-cli/README.md) | `net.ladenthin:srcmorph-cli` | A standalone CLI driven by one JSON or YAML configuration file. You build the runnable jar for your machine with one `mvn package` ([`examples/build-your-own-jar/`](examples/build-your-own-jar/)). |
 | [`srcmorph-maven-plugin/`](srcmorph-maven-plugin/README.md) | `net.ladenthin:srcmorph-maven-plugin` | The Maven plugin, a thin wrapper around `srcmorph` — **renamed** from `net.ladenthin:llamacpp-ai-index-maven-plugin` (goal prefix `srcmorph`, was `ai-index`; properties `srcmorph.*`, were `aiIndex.*`). |
 
@@ -112,36 +112,43 @@ Maven Central regardless; see `CLAUDE.md`.)
 
 ### 1. Maven plugin
 
+The plugin and the CLI read the same configuration file. In the POM, the goals:
+
 ```xml
 <plugin>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph-maven-plugin</artifactId>
-    <version>1.3.0</version>
-    <configuration>
-        <generationProvider>mock</generationProvider>
-        <!-- the profile: srcmorph's profiles/v2/ copied into the project. A promptKey names
-             <key>.md there, the system prompt; srcmorph sends the file name and source
-             separately. -->
-        <profileDirectory>${project.basedir}/src/srcmorph/profile</profileDirectory>
-        <fieldGenerations>
-            <fieldGeneration>
-                <promptKey>file-body-fallback</promptKey>
-                <aiDefinitionKey>coder</aiDefinitionKey>
-                <fallback>true</fallback>
-            </fieldGeneration>
-        </fieldGenerations>
-        <aiDefinitions>
-            <aiDefinition>
-                <key>coder</key>
-                <modelPath>/path/to/model.gguf</modelPath>
-            </aiDefinition>
-        </aiDefinitions>
-    </configuration>
+    <version>1.4.0</version>
+    <executions>
+        <execution>
+            <goals><goal>generate</goal></goals>
+        </execution>
+    </executions>
 </plugin>
 ```
 
-Run with `mvn srcmorph:generate`. Full goal/parameter reference, routing rules, GPU acceleration, and
-model recommendations: [`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin/README.md).
+and next to it `srcmorph.yaml`; Maven fills the base directory, the source and resource directories,
+the project name and version:
+
+```yaml
+srcMorph:
+  generationProvider: mock
+  # the profile: srcmorph's profiles/v3/ copied into the project. A promptKey names <key>.md there,
+  # the system prompt; srcmorph sends the file name and source separately.
+  profileDirectory: src/srcmorph/profile
+  aiDefinitions:
+    - key: coder
+      modelPath: /path/to/model.gguf
+  fieldGenerations:
+    - promptKey: file-body-fallback
+      aiDefinitionKey: coder
+      fallback: true
+```
+
+Run with `mvn srcmorph:generate`, check the configuration first with `mvn srcmorph:check`. Full goal
+reference, routing rules, GPU acceleration, and model recommendations:
+[`srcmorph-maven-plugin/README.md`](srcmorph-maven-plugin/README.md). Up to 1.3.0 the plugin was
+configured in the POM's XML instead.
 
 <details>
 <summary>Deprecated: old <code>net.ladenthin:llamacpp-ai-index-maven-plugin</code> coordinates (auto-relocates)</summary>
@@ -173,8 +180,10 @@ cd examples/build-your-own-jar
 java -jar target/srcmorph.jar ../config_All.json
 ```
 
-Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider (no GGUF
-model required) — see [`examples/`](examples/) for the full set plus paired `run_*.sh`/`run_*.bat`
+The examples follow this repository and need srcmorph 1.4.0: until it is released, `mvn install` the
+reactor and build the jar with `-Dsrcmorph.version=1.4.0-SNAPSHOT` (for 1.3.0, take the examples of the
+`v1.3.0` tag). Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider
+(no GGUF model required) — see [`examples/`](examples/) for the full set plus paired `run_*.sh`/`run_*.bat`
 launcher scripts, and [`srcmorph-cli/README.md`](srcmorph-cli/README.md) for the config-file
 reference. A walkthrough for a Windows laptop with Vulkan is in
 [`docs/windows-intel-core-ultra.md`](docs/windows-intel-core-ultra.md).
@@ -191,7 +200,7 @@ Maven is the supported path; JBang is a shortcut.
 <dependency>
     <groupId>net.ladenthin</groupId>
     <artifactId>srcmorph</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -202,7 +211,7 @@ config.setBaseDirectory(new File("."));
 new GenerateEngine(config).execute();
 ```
 
-See [`srcmorph/README.md`](srcmorph/README.md) for the full API tour (the four engines, exception
+See [`srcmorph/README.md`](srcmorph/README.md) for the full API tour (the five engines, exception
 types, and a complete embedding example).
 
 ## How It Works

@@ -252,12 +252,9 @@ SPDX-License-Identifier: Apache-2.0
                             requires clause is honored correctly (jackson-databind/-dataformat-yaml/
                             org.slf4j/net.ladenthin.srcmorph are all declared), but Surefire also
                             places net.ladenthin.srcmorph itself onto the real module path as a
-                            strict named module dependency — and that module's OWN module-info.java
-                            does not declare `requires org.slf4j` (a pre-existing gap in the
-                            srcmorph core module, out of this module's scope to fix; see
-                            CliEndToEndTest). Under a genuine module-path run this surfaces as
-                            IllegalAccessError the moment GenerateEngine's static SLF4J logger field
-                            initializes. Classpath execution is also the more representative test
+                            strict named module dependency, and then every test-only dependency
+                            would have to be readable from it, which module-info.java intentionally
+                            does not declare. Classpath execution is also the more representative test
                             environment anyway: this project ships Java 8 bytecode
                             (maven.compiler.release=8), where module-info.class is inert and every
                             real consumer loads it via the plain classpath, exactly as this setting

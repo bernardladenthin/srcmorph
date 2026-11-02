@@ -9,10 +9,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import net.ladenthin.srcmorph.config.AiFactDefinitionLoader;
+import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
@@ -22,6 +26,7 @@ import net.ladenthin.srcmorph.provider.GgufModelInfo;
 import net.ladenthin.srcmorph.provider.GgufModelInspector;
 import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
 import net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory;
+import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,27 +50,33 @@ final class EngineSupport {
     }
 
     /**
-     * Resolves the configured subtree strings against {@code basePath}, filtering out any paths that do
-     * not exist on disk. Used by {@link GenerateEngine} and {@link AggregatePackagesEngine}.
+     * Resolves the configured subtree strings against {@code basePath}. Used by {@link GenerateEngine} and
+     * {@link AggregatePackagesEngine}.
      *
      * @param basePath absolute, normalised project base directory
      * @param subtrees configured subtree strings, or {@code null}/empty for none
-     * @return list of resolved, existing subtree paths; empty if none configured or none exist
+     * @return list of resolved subtree paths; empty if none are configured
+     * @throws SrcMorphException if a subtree does not exist, or lies outside {@code basePath} (another
+     *                           drive included), where its output would leave the output directory
      */
-    static List<Path> resolveSubtrees(final Path basePath, final @Nullable List<String> subtrees) {
-        final List<Path> resolved = new ArrayList<>();
-
+    static List<Path> resolveSubtrees(final Path basePath, final @Nullable List<String> subtrees)
+            throws SrcMorphException {
         if (subtrees == null || subtrees.isEmpty()) {
-            return resolved;
+            return new ArrayList<>();
         }
+
+        final List<Path> resolved = new ArrayList<>(subtrees.size());
 
         for (final String subtree : subtrees) {
             final Path path = basePath.resolve(subtree).normalize();
-            if (path.toFile().exists()) {
-                resolved.add(path);
-            } else {
-                LOGGER.warn("Skipping missing subtree: {}", path);
+            if (!path.startsWith(basePath)) {
+                throw new SrcMorphException("Subtree '" + subtree + "' resolves to " + path
+                        + ", outside the base directory " + basePath + "; a subtree must lie inside it");
             }
+            if (!path.toFile().isDirectory()) {
+                throw new SrcMorphException("Subtree '" + subtree + "' does not exist: " + path);
+            }
+            resolved.add(path);
         }
 
         return resolved;
@@ -83,8 +94,8 @@ final class EngineSupport {
      * @param profileDirectory  directory relative template files and the prompts named by key are
      *                          resolved against, or {@code null} for the working directory and no lookup
      *                          by key
-     * @param fieldGenerations  the rules whose prompt keys are looked up in the profile directory when no
-     *                          definition has them, or {@code null} for none
+     * @param fieldGenerations  the rules whose prompt keys (and map and reduce prompt keys) are looked up in
+     *                          the profile directory when no definition has them, or {@code null} for none
      * @return prompt support instance backed by the configured definitions
      * @throws SrcMorphException if any prompt definition is misconfigured or its file cannot be read
      */
@@ -96,7 +107,10 @@ final class EngineSupport {
         final List<@Nullable String> usedKeys = new ArrayList<>();
         if (fieldGenerations != null) {
             for (final AiFieldGenerationConfig rule : fieldGenerations) {
+                // a null key (a skip rule's prompt, an unset map or reduce prompt) is ignored by the loader
                 usedKeys.add(rule.getPromptKey());
+                usedKeys.add(rule.getMapPromptKey());
+                usedKeys.add(rule.getReducePromptKey());
             }
         }
         try {
@@ -127,43 +141,105 @@ final class EngineSupport {
     }
 
     /**
-     * Resolves the {@link LlamaCppJniConfig} for a run with no specific routed model in mind: when
-     * {@link SrcMorphConfiguration#getFieldGenerations()} is non-empty, all model parameters come from the
-     * {@link AiModelDefinition} referenced by the <em>first</em> entry's
-     * {@link AiFieldGenerationConfig#getAiDefinitionKey()}; otherwise the configuration's individual
-     * {@code llama*} fallback fields are used. Used by {@link AggregatePackagesEngine} and
-     * {@link AggregateProjectEngine}, which drive a single provider for the whole run.
+     * Returns the one rule of the package phase: its prompt and model. A condition, priority or fallback
+     * flag means nothing here, with no files to route.
      *
-     * @param config                 the run configuration
-     * @param modelDefinitionSupport model lookup built from {@link SrcMorphConfiguration#getAiDefinitions()}
-     * @return the fully populated llama.cpp configuration
-     * @throws IllegalArgumentException if the first field generation's {@code aiDefinitionKey} matches no
-     *                                   registered definition
+     * @param phase            the goal, named in the error
+     * @param cliKey           the CLI's key for the phase's rules, named in the error
+     * @param fieldGenerations the phase's rules
+     * @return the rule
+     * @throws SrcMorphException if not exactly one rule is given, or it names no prompt or no model
      */
-    static LlamaCppJniConfig resolveLlamaCppJniConfig(
-            final SrcMorphConfiguration config, final AiModelDefinitionSupport modelDefinitionSupport) {
-        final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
-        if (fieldGenerations != null && !fieldGenerations.isEmpty()) {
-            return resolveLlamaCppJniConfig(
-                    modelDefinitionSupport, fieldGenerations.get(0).getAiDefinitionKey());
+    static AiFieldGenerationConfig requiredPhaseRule(
+            final String phase, final String cliKey, final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
+            throws SrcMorphException {
+        return checkedPhaseRule(phase, cliKey, fieldGenerations, "exactly one rule");
+    }
+
+    /**
+     * Returns the rule of the project phase, which runs without one (a deterministic index, no
+     * overview) or with one.
+     *
+     * @param phase            the goal, named in the error
+     * @param cliKey           the CLI's key for the phase's rules, named in the error
+     * @param fieldGenerations the phase's rules
+     * @return the rule, or {@code null} when none is given
+     * @throws SrcMorphException if more than one rule is given, or it names no prompt or no model
+     */
+    static @Nullable AiFieldGenerationConfig optionalPhaseRule(
+            final String phase, final String cliKey, final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
+            throws SrcMorphException {
+        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
+            return null;
         }
-        final String modelPath =
-                AiModelDefinitionSupport.resolveModelPath(config.getModelDirectory(), config.getLlamaModelPath());
-        if (modelPath == null) {
-            throw new NullPointerException("llamaModelPath");
+        return checkedPhaseRule(phase, cliKey, fieldGenerations, "at most one rule");
+    }
+
+    private static AiFieldGenerationConfig checkedPhaseRule(
+            final String phase,
+            final String cliKey,
+            final @Nullable List<AiFieldGenerationConfig> fieldGenerations,
+            final String takes)
+            throws SrcMorphException {
+        if (fieldGenerations == null || fieldGenerations.size() != 1) {
+            throw new SrcMorphException(phase + " takes " + takes + " (its prompt and model), "
+                    + (fieldGenerations == null ? 0 : fieldGenerations.size()) + " given; give the phase its own: the"
+                    + " fieldGenerations of its plugin execution, " + cliKey + " in the CLI");
         }
-        return LlamaCppJniConfigFactory.fromFallbackParameters(
-                modelPath,
-                config.getLlamaContextSize(),
-                config.getLlamaMaxOutputTokens(),
-                config.getLlamaTemperature(),
-                config.getLlamaThreads());
+        final AiFieldGenerationConfig rule = fieldGenerations.get(0);
+        if (rule == null || isBlank(rule.getPromptKey()) || isBlank(rule.getAiDefinitionKey())) {
+            throw new SrcMorphException("The rule of " + phase + " needs a promptKey and an aiDefinitionKey");
+        }
+        if (rule.isSkip()) {
+            throw new SrcMorphException("The rule of " + phase + " cannot be a skip rule: " + rule);
+        }
+        // Unset, a phase reads all of an input over its window: the input is the child summaries, and a
+        // part left out (or a failure) would drop a whole subtree from the summary above. A copy, so the
+        // configuration stays as it was given.
+        final AiFieldGenerationConfig effective = rule.copy();
+        if (isBlank(effective.getOnOversize())) {
+            effective.setOnOversize(AiOversizeStrategy.MAP_REDUCE.configValue());
+        }
+        try {
+            new AiFieldGenerationSelector().validateRule(effective);
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException("Invalid rule of " + phase + ": " + e.getMessage(), e);
+        }
+        return effective;
+    }
+
+    /**
+     * Resolves each rule's {@code factsKey} to its group (a definition or {@code <profileDirectory>/<key>.tsv}),
+     * copying the counters onto the rule's facts, for the file rules and the phases' rule alike.
+     *
+     * @param config the run configuration (its fact definitions and profile directory)
+     * @param rules  the rules, changed in place
+     * @throws SrcMorphException if a key is found nowhere, a group is malformed, or a rule names its facts
+     *                           twice
+     */
+    static void resolveFactsKeys(final SrcMorphConfiguration config, final List<AiFieldGenerationConfig> rules)
+            throws SrcMorphException {
+        try {
+            final List<@Nullable String> usedKeys = new ArrayList<>(rules.size());
+            for (final AiFieldGenerationConfig rule : rules) {
+                usedKeys.add(rule.getFactsKey());
+            }
+            new AiFactDefinitionSupport(new AiFactDefinitionLoader(config.getProfileDirectory())
+                            .load(config.getFactDefinitions(), usedKeys))
+                    .resolveFactsKeys(rules);
+        } catch (final IllegalArgumentException | NullPointerException | IOException e) {
+            throw new SrcMorphException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
+        }
+    }
+
+    private static boolean isBlank(final @Nullable String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     /**
      * Resolves the {@link LlamaCppJniConfig} for one specific {@link AiModelDefinition}, identified by its
-     * key. Used by {@link GenerateEngine} (one provider per routing group) and {@link CalibrateEngine}
-     * (one provider per calibrated model).
+     * key. Used by {@link GenerateEngine} (one provider per routing group), {@link CalibrateEngine}
+     * (one provider per calibrated model) and the aggregation engines (the model of their one rule).
      *
      * <p>Takes no {@link SrcMorphConfiguration}: everything this needs comes from the named model
      * definition. The run configuration used to contribute the (never-read) native library path; with
@@ -216,23 +292,72 @@ final class EngineSupport {
             if (aiDefinitionKey == null) {
                 continue;
             }
-            final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(aiDefinitionKey);
+            final AiGenerationConfig modelConfig = definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
             final String provider =
                     AiGenerationProviderFactory.effectiveProvider(generationProvider, modelConfig.getProvider());
             if (AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)) {
                 validateRemoteModel(aiDefinitionKey, modelConfig);
             } else if (AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
                 validateLocalModel(aiDefinitionKey, modelConfig);
+            } else if (provider != null
+                    && !isBlank(provider)
+                    && !AiGenerationProviderFactory.PROVIDER_MOCK.equals(provider)) {
+                // otherwise the run would fail at this model's group, after the earlier groups generated
+                throw new SrcMorphException("Model '" + aiDefinitionKey + "' has the unknown provider '" + provider
+                        + "'; a provider is " + AiGenerationProviderFactory.PROVIDER_MOCK + ", "
+                        + AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI + " or "
+                        + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
             }
         }
     }
 
     /**
-     * Checks an {@code openai-compatible} model: its {@code baseUrl} must be an {@code http(s)} URL.
+     * Fails when a rule names a model no {@code <aiDefinition>} defines, naming the rule and the key; the
+     * lookup itself would end the run with an {@link IllegalArgumentException} the surfaces do not
+     * report as a configuration error.
+     *
+     * @param modelDefinitionSupport model lookup built from the configured {@code <aiDefinitions>}
+     * @param fieldGenerations       the rules
+     * @throws SrcMorphException if a rule (other than a skip rule) names an undefined model
+     */
+    static void requireDefinedModels(
+            final AiModelDefinitionSupport modelDefinitionSupport, final List<AiFieldGenerationConfig> fieldGenerations)
+            throws SrcMorphException {
+        for (final AiFieldGenerationConfig rule : fieldGenerations) {
+            if (rule == null || rule.isSkip()) {
+                continue;
+            }
+            final String aiDefinitionKey = rule.getAiDefinitionKey();
+            if (aiDefinitionKey != null) {
+                definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
+            }
+        }
+    }
+
+    private static AiGenerationConfig definedModel(
+            final AiModelDefinitionSupport modelDefinitionSupport,
+            final AiFieldGenerationConfig rule,
+            final String aiDefinitionKey)
+            throws SrcMorphException {
+        try {
+            return modelDefinitionSupport.getConfig(aiDefinitionKey);
+        } catch (final IllegalArgumentException e) {
+            final String id = rule.getId();
+            throw new SrcMorphException(
+                    "The rule '" + (id != null ? id : rule.getPromptKey()) + "' names the model '" + aiDefinitionKey
+                            + "', which no aiDefinition defines",
+                    e);
+        }
+    }
+
+    /**
+     * Checks an {@code openai-compatible} model: its {@code baseUrl} must be an {@code http(s)} URL, a
+     * named {@code apiKeyEnv} must be set, and its key must not go in cleartext to another machine.
      *
      * @param aiDefinitionKey the definition's key, named in the error
      * @param modelConfig     the definition's resolved configuration
-     * @throws SrcMorphException if the URL is not {@code http(s)}
+     * @throws SrcMorphException if the URL is not {@code http(s)}, or the key is missing or would go out
+     *                           in cleartext
      */
     private static void validateRemoteModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
             throws SrcMorphException {
@@ -241,6 +366,11 @@ final class EngineSupport {
             throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
                     + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
                     + " provider but its baseUrl is not an http(s) URL: '" + baseUrl + "'");
+        }
+        final String keyProblem = OpenAiCompatibleAiGenerationProvider.keyProblem(baseUrl, modelConfig.getApiKeyEnv());
+        if (keyProblem != null) {
+            throw new SrcMorphException(
+                    "aiDefinition '" + aiDefinitionKey + "': " + keyProblem + " (checked before any request is sent)");
         }
     }
 
