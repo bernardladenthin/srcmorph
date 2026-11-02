@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     <parent>
         <groupId>net.ladenthin</groupId>
         <artifactId>srcmorph-parent</artifactId>
-        <version>1.4.0</version>
+        <version>1.5.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -111,7 +111,7 @@ SPDX-License-Identifier: Apache-2.0
              its rules name by key (profiles/README.md). -->
         <ai.profileDir>${project.basedir}/../profiles/v3</ai.profileDir>
 
-        <project.build.outputTimestamp>2026-11-02T17:45:12Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-11-02T19:31:44Z</project.build.outputTimestamp>
 
     </properties>
 
