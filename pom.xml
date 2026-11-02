@@ -249,6 +249,16 @@ SPDX-License-Identifier: Apache-2.0
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>3.11.0</version>
                 </plugin>
+                <!--
+                    The modules pin PIT themselves; this POM is part of the reactor too, so the documented
+                    `mvn test-compile org.pitest:pitest-maven:mutationCoverage` from the root needs a version
+                    here as well, or Maven asks the remote metadata for one and fails offline.
+                -->
+                <plugin>
+                    <groupId>org.pitest</groupId>
+                    <artifactId>pitest-maven</artifactId>
+                    <version>1.30.1</version>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
