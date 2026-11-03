@@ -17,14 +17,17 @@
 # them.
 command: Plan
 
-# The package maps and the project overview, from the file summaries.
+# The package maps and the project overview, from the file summaries. A package whose summaries do
+# not fit the window is read in parts too (the default, fail, would stop the run).
 packageFieldGenerations:
   - promptKey: package-body
+    onOversize: mapReduce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: luna
 projectFieldGenerations:
   - promptKey: project-body
+    onOversize: mapReduce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: luna

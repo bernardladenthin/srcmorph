@@ -91,8 +91,9 @@ aiDefinitions:
 is the full form with one model: GPT-6 Luna (`remoteModel: gpt-6-luna`, `contextSize: 120000` as in
 the measured run below) for every file, package and the project, a rule per kind of source with
 its prompt and exact fact counters (Java, SQL, shell, Perl, POM, XML; every other file takes the
-fallback rule, for which profile v3 has no counters), and `onOversize: mapReduce`, so a file larger
-than the window is read chunk by chunk, one request per chunk. It indexes the whole project
+fallback rule, for which profile v3 has no counters), and `onOversize: mapReduce` on every rule, the
+package and project rules too, so an input larger than the window is read chunk by chunk, one
+request per chunk, never sampled. It indexes the whole project
 (`subtrees: "."`, without `target/`) and runs all three phases with `command: All`.
 
 Set `baseDirectory` and `outputDirectory`, then run it with the jar of

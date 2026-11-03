@@ -147,8 +147,9 @@ public class ExamplesConfigBindingTest {
     /**
      * {@code examples/copilot-api-gateway/srcmorph-luna.yaml} runs the whole profile through one gateway
      * model: every file, package and the project goes to GPT-6 Luna, every rule but the fallback counts
-     * the facts of its kind, and every rule reads a file larger than the window chunk by chunk. A rule
-     * routed elsewhere, a facts or chunk prompt file that moved, or a lost {@code stream} fails here.
+     * the facts of its kind, and every rule, the package and project rules too, reads an input larger
+     * than the window chunk by chunk instead of sampling it or failing. A rule routed elsewhere, a
+     * facts or chunk prompt file that moved, or a lost {@code stream} fails here.
      *
      * @throws IOException if the example file cannot be read
      */
@@ -174,13 +175,13 @@ public class ExamplesConfigBindingTest {
         for (final AiFieldGenerationConfig rule : rules) {
             final String label = "rule " + rule.getPromptKey();
             assertThat(label, rule.getAiDefinitionKey(), is(equalTo(model.getKey())));
+            assertThat(label + " reads every chunk", rule.getOnOversize(), is(equalTo("mapReduce")));
             assertThat(label, Files.isRegularFile(profileDirectory.resolve(rule.getMapPromptKey() + ".md")), is(true));
             assertThat(
                     label, Files.isRegularFile(profileDirectory.resolve(rule.getReducePromptKey() + ".md")), is(true));
         }
         for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
             final String label = "rule " + rule.getId();
-            assertThat(label, rule.getOnOversize(), is(equalTo("mapReduce")));
             if (!rule.isFallback()) {
                 assertThat(
                         label + " counts the facts of its kind",

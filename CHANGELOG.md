@@ -15,8 +15,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 - **`examples/copilot-api-gateway/srcmorph-luna.yaml`:** GPT-6 Luna through the GitHub Copilot API
   Gateway for every file, package and the project, with the whole profile v3: a rule per kind of
-  source with its prompt and exact fact counters, and `onOversize: mapReduce` for files larger than
-  the window. `ExamplesConfigBindingTest` pins the routing, the facts and the chunk prompts.
+  source with its prompt and exact fact counters, and `onOversize: mapReduce` on every rule, the
+  package and project rules too: an input larger than the window is read chunk by chunk, never
+  sampled. `ExamplesConfigBindingTest` pins the routing, the facts, the strategy and the chunk prompts.
 
 ### Fixed
 
