@@ -67,7 +67,7 @@ def deck_html(text):
 <html><head><meta charset="utf-8"><title>{title}</title><base href="{HERE.as_uri()}/">
 <style>
 @page {{ size: 1280px 720px; margin: 0; }}
-html, body {{ margin: 0; padding: 0; }}
+html, body {{ margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }}
 section {{ width: 1280px; height: 720px; overflow: hidden; box-sizing: border-box;
           position: relative; break-after: page; }}
 section:last-child {{ break-after: auto; }}
@@ -86,6 +86,12 @@ def main():
 
     html, slides = deck_html(DECK.read_text(encoding="utf-8").replace("\r\n", "\n"))
     browser = find_browser(args.browser)
+    # A stale PDF must not pass the page check when the browser cannot write, e.g. while a viewer
+    # holds the file open.
+    try:
+        PDF.unlink(missing_ok=True)
+    except OSError as error:
+        sys.exit(f"{PDF.name}: cannot replace ({error.strerror}); is it open in a viewer?")
     with tempfile.TemporaryDirectory() as tmp:
         page = Path(tmp) / "deck.html"
         page.write_text(html, encoding="utf-8")
@@ -96,6 +102,8 @@ def main():
              "--no-pdf-header-footer", f"--user-data-dir={Path(tmp) / 'profile'}",
              f"--print-to-pdf={PDF}", page.as_uri()],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if not PDF.is_file():
+        sys.exit(f"{PDF.name}: the browser wrote no PDF")
     pages = len(re.findall(rb"/Type\s*/Page[^s]", PDF.read_bytes()))
     if pages != slides:
         sys.exit(f"{PDF.name}: {pages} pages for {slides} slides")
