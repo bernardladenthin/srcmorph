@@ -11,6 +11,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Added
+
+- **`examples/copilot-api-gateway/srcmorph-luna.yaml`:** GPT-6 Luna through the GitHub Copilot API
+  Gateway for every file, package and the project, with the whole profile v3: a rule per kind of
+  source with its prompt and exact fact counters, and `onOversize: mapReduce` for files larger than
+  the window. `ExamplesConfigBindingTest` pins the routing, the facts and the chunk prompts.
+
+### Fixed
+
+- **`docs/copilot-api-gateway.md`** showed `maxOutputTokens: 2048` for the example, which has 4096.
+
 ## [1.4.0] - 2026-11-02
 
 ### Upgrading from 1.3.0

@@ -83,9 +83,17 @@ aiDefinitions:
     stream: true
     requestsPerMinute: 25
     contextSize: 32768
-    maxOutputTokens: 2048
+    maxOutputTokens: 4096
     temperature: 0.2
 ```
+
+[`examples/copilot-api-gateway/srcmorph-luna.yaml`](../examples/copilot-api-gateway/srcmorph-luna.yaml)
+is the full form with one model: GPT-6 Luna (`remoteModel: gpt-6-luna`, `contextSize: 120000` as in
+the measured run below) for every file, package and the project, a rule per kind of source with
+its prompt and exact fact counters (Java, SQL, shell, Perl, POM, XML; every other file takes the
+fallback rule, for which profile v3 has no counters), and `onOversize: mapReduce`, so a file larger
+than the window is read chunk by chunk, one request per chunk. It indexes the whole project
+(`subtrees: "."`, without `target/`) and runs all three phases with `command: All`.
 
 Set `baseDirectory` and `outputDirectory`, then run it with the jar of
 [`examples/build-your-own-jar`](../examples/build-your-own-jar): first as it is (`command: Plan`,

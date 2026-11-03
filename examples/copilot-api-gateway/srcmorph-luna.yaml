@@ -1,0 +1,148 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# GPT-6 Luna of a GitHub Copilot subscription for every file, package and the project, through the
+# GitHub Copilot API Gateway VS Code extension at 127.0.0.1:3030 (docs/copilot-api-gateway.md), with
+# the whole profile v3: a prompt and exact fact counters per kind of source. srcmorph.yaml next to
+# this file is the minimal form: one model, one rule, Java only.
+# Every model call is one request of the plan's quota: one per file, one per chunk of a file larger
+# than the window, one per package and one for the project.
+#
+# command:
+#   Plan               prints which file gets which rule, prompt and facts; sends nothing, writes nothing
+#   Check              the plan, plus every prompt and fact file of the profile; sends nothing
+#   All                GenerateFileIndex, then AggregatePackages, then AggregateProject
+# Start with Plan, then switch to All. A second run only redoes changed files and the packages above
+# them.
+command: Plan
+
+# The package maps and the project overview, from the file summaries.
+packageFieldGenerations:
+  - promptKey: package-body
+    mapPromptKey: map-chunk
+    reducePromptKey: reduce-parts
+    aiDefinitionKey: luna
+projectFieldGenerations:
+  - promptKey: project-body
+    mapPromptKey: map-chunk
+    reducePromptKey: reduce-parts
+    aiDefinitionKey: luna
+
+srcMorph:
+  # On Windows use forward slashes ("C:/path/to/project"): in a double-quoted YAML string, "C:\x" is
+  # an escape.
+  baseDirectory: "/path/to/project"
+  outputDirectory: "/path/to/project/target/srcmorph-ai"
+  subtrees:
+    - "."                                    # the whole project, the root pom.xml too
+  # A kind without an extension here is not indexed. C, Python, JavaScript and every other kind
+  # without a prompt of its own take the fallback rule.
+  fileExtensions:
+    - ".java"
+    - ".sql"
+    - ".sh"
+    - ".bash"
+    - ".ksh"
+    - ".pl"
+    - ".pm"
+    - ".xml"
+    - ".xsd"
+    - ".xsl"
+    - ".xslt"
+    - ".py"
+    - ".c"
+    - ".h"
+  excludes:
+    - "**/package-info.java"
+    - "**/module-info.java"
+    - "**/target/**"                         # build output, the index included
+
+  generationProvider: openai-compatible
+
+  # The profile (profiles/README.md), relative to this file's directory: a rule's promptKey names
+  # <profileDirectory>/<key>.md, its factsKey <profileDirectory>/<key>.tsv. Copied elsewhere, point
+  # it at a copy of profiles/v3 or give an absolute path.
+  profileDirectory: "../../profiles/v3"
+
+  aiDefinitions:
+    # The settings of the model-card runs through this gateway (2026-10-30: 97.6 %, 7.9 s per file).
+    - key: luna
+      provider: openai-compatible
+      baseUrl: "http://127.0.0.1:3030/v1"   # plain http carries the key to a loopback host only
+      remoteModel: gpt-6-luna                # an id from GET /v1/models of the gateway
+      apiKeyEnv: COPILOT_GATEWAY_API_KEY     # the NAME of the variable holding the gateway's apiKey
+      stream: true                           # required: the gateway's non-streaming path adds and runs VS Code tools
+      requestsPerMinute: 25                  # below the gateway's rateLimitPerMinute (30): wait instead of a 429
+      contextSize: 120000                    # the gateway reports 871,793 input tokens; a larger window means
+                                             # fewer chunks, so fewer requests, for a large file
+      maxOutputTokens: 4096
+      temperature: 0.2
+
+  # One rule per kind, each with its prompt and its exact fact counters. The counters cost no model
+  # call; a single-shot call does not read them, a reduce call does. A file larger than the window is
+  # read chunk by chunk (mapReduce): Luna named every name planted in the middle of a 1.6 MB SQL dump,
+  # an 870 KB XML catalog and a 283 KB Java enum in three of three runs (MODEL-CARD finding 7).
+  fieldGenerations:
+    - id: java
+      promptKey: file-body-java
+      aiDefinitionKey: luna
+      factsKey: java-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".java"]
+    - id: sql
+      promptKey: file-body-sql
+      aiDefinitionKey: luna
+      factsKey: sql-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".sql"]
+    - id: shell
+      promptKey: file-body-shell
+      aiDefinitionKey: luna
+      factsKey: shell-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".sh", ".bash", ".ksh"]
+    - id: perl
+      promptKey: file-body-perl
+      aiDefinitionKey: luna
+      factsKey: perl-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".pl", ".pm"]
+    - id: pom                                # matches xml too; the priority gives a POM the Maven counters
+      promptKey: file-body-xml
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: pom-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        pathGlob: "**/*pom.xml"
+    - id: xml
+      promptKey: file-body-xml
+      aiDefinitionKey: luna
+      factsKey: xml-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".xml", ".xsd", ".xsl", ".xslt"]
+    - id: fallback                           # every other file; profile v3 has no counters for it
+      promptKey: file-body-fallback
+      aiDefinitionKey: luna
+      fallback: true
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
