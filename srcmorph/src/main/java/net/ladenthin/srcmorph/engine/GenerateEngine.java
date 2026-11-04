@@ -544,7 +544,8 @@ public final class GenerateEngine {
      * @param resolvedSubtrees   the subtrees
      * @param resolvedExtensions the file extensions
      * @return the indexer
-     * @throws SrcMorphException if an exclude or a file name is not a valid glob
+     * @throws SrcMorphException if an exclude or a file name is not a valid glob, an interpreter is blank
+     *                           or a path, or {@code contentHeadChars} is below 1
      */
     private SourceFileIndexer newFileIndexer(
             final Path basePath,
@@ -558,6 +559,7 @@ public final class GenerateEngine {
                     outputPath,
                     resolvedExtensions,
                     config.getFileNames(),
+                    config.getFileInterpreters(),
                     config.getPluginVersion(),
                     config.getAiVersion(),
                     resolvedSubtrees,
@@ -565,9 +567,11 @@ public final class GenerateEngine {
                     config.getMinFileSizeBytes(),
                     config.getMaxFileSizeBytes(),
                     config.isForce(),
-                    config.isRegenerateOnProfileChange());
+                    config.isRegenerateOnProfileChange(),
+                    config.getContentHeadChars());
         } catch (final IllegalArgumentException e) {
-            throw new SrcMorphException("Invalid excludes or fileNames: " + e.getMessage(), e);
+            throw new SrcMorphException(
+                    "Invalid excludes, fileNames, fileInterpreters or contentHeadChars: " + e.getMessage(), e);
         }
     }
 

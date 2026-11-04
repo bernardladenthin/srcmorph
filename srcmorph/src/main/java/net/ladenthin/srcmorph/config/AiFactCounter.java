@@ -22,6 +22,12 @@ import lombok.ToString;
  * Perl POD, a shell heredoc or an XML comment does not count as code while the line structure, and with
  * it every {@code ^} anchor, stays as it was.</p>
  *
+ * <p>A {@link #raw} counter counts the source as written, before any ignore counter blanked it, so a
+ * marker that lives in comments (a {@code TODO}) is counted next to counters that skip comments. A
+ * {@link #distinct} counter counts the different texts it matched instead of the matches: the first
+ * group of the pattern where it took part in the match, the whole match otherwise, so twelve
+ * {@code @Inject Clock} are one name.</p>
+ *
  * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters because the
  * configuration file is bound through them (a rule's {@code facts} list, a fact definition's
  * {@code facts}).</p>
@@ -49,6 +55,12 @@ public class AiFactCounter {
 
     /** Whether the matches are blanked out before counting instead of being counted and reported. */
     private boolean ignore;
+
+    /** Whether the counter counts the source as written, before the ignore counters blank it. */
+    private boolean raw;
+
+    /** Whether the counter counts the different texts it matched (its first group) instead of the matches. */
+    private boolean distinct;
 
     /**
      * Returns the human-readable label.
@@ -102,5 +114,41 @@ public class AiFactCounter {
      */
     public void setIgnore(final boolean ignore) {
         this.ignore = ignore;
+    }
+
+    /**
+     * Returns whether this counter counts the source before the ignore counters blank it.
+     *
+     * @return {@code true} for a raw counter
+     */
+    public boolean isRaw() {
+        return raw;
+    }
+
+    /**
+     * Sets whether this counter counts the source before the ignore counters blank it.
+     *
+     * @param raw {@code true} for a raw counter
+     */
+    public void setRaw(final boolean raw) {
+        this.raw = raw;
+    }
+
+    /**
+     * Returns whether this counter counts the different texts it matched instead of the matches.
+     *
+     * @return {@code true} for a distinct counter
+     */
+    public boolean isDistinct() {
+        return distinct;
+    }
+
+    /**
+     * Sets whether this counter counts the different texts it matched instead of the matches.
+     *
+     * @param distinct {@code true} for a distinct counter
+     */
+    public void setDistinct(final boolean distinct) {
+        this.distinct = distinct;
     }
 }

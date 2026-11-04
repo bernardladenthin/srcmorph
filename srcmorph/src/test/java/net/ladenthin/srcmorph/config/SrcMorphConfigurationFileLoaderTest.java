@@ -178,6 +178,18 @@ public class SrcMorphConfigurationFileLoaderTest {
     }
 
     @Test
+    public void load_fileInterpretersAndContentHeadChars_bindFromTheFile() throws IOException {
+        final Path file =
+                write("scripts.yaml", "srcMorph:\n  fileInterpreters: [bash, perl]\n  contentHeadChars: 65536\n");
+
+        final SrcMorphConfiguration loaded = SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES)
+                .getSrcMorph();
+
+        assertThat(loaded.getFileInterpreters(), is(java.util.Arrays.asList("bash", "perl")));
+        assertThat(loaded.getContentHeadChars(), is(65_536));
+    }
+
+    @Test
     public void load_regenerateOnProfileChange_isTrueUnlessTheFileSaysFalse() throws IOException {
         final Path unset = write("unset.yaml", "srcMorph:\n  force: false\n");
         final Path off = write("off.yaml", "srcMorph:\n  regenerateOnProfileChange: false\n");

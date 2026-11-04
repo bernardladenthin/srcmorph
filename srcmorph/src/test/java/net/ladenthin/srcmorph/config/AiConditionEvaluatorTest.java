@@ -398,6 +398,74 @@ public class AiConditionEvaluatorTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="interpreters">
+    private static AiCondition interpreters(final String... names) {
+        final AiCondition c = new AiCondition();
+        c.setInterpreters(Arrays.asList(names));
+        return c;
+    }
+
+    @Test
+    public void matches_interpreters_readsTheShebangLineOfTheHead() {
+        final AiCondition shell = interpreters("bash", "sh");
+        assertThat(evaluator.matches(shell, headCtx("#!/usr/bin/env bash\nset -e\n")), is(true));
+        assertThat(evaluator.matches(shell, headCtx("#!/bin/sh\n")), is(true));
+        assertThat(evaluator.matches(shell, headCtx("#!/usr/bin/perl\n")), is(false));
+        assertThat(evaluator.matches(shell, headCtx("echo '#!/bin/bash'\n")), is(false));
+        assertThat(evaluator.matches(shell, headCtx("")), is(false));
+        assertThat(evaluator.matches(interpreters("python"), headCtx("#!/usr/bin/python3.12\n")), is(true));
+    }
+
+    @Test
+    public void validate_interpreters_emptyBlankOrAPath_isRefused() {
+        assertDoesNotThrow(() -> evaluator.validate(interpreters("bash", "python3")));
+        assertThat(
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(interpreters()))
+                        .getMessage(),
+                is("an interpreters condition must list at least one interpreter"));
+        assertThat(
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(interpreters("bash", " ")))
+                        .getMessage(),
+                is("an interpreters condition must not list a blank interpreter"));
+        final AiCondition withNull = new AiCondition();
+        withNull.setInterpreters(Arrays.asList("bash", null));
+        assertThat(
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(withNull))
+                        .getMessage(),
+                is("an interpreters condition must not list a blank interpreter"));
+        assertThat(
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(interpreters("/bin/sh")))
+                        .getMessage(),
+                is("an interpreter is named without its directory (bash, not /bin/bash): '/bin/sh'"));
+    }
+
+    @Test
+    public void validate_interpretersNextToAnotherLeaf_throws() {
+        final AiCondition c = interpreters("bash");
+        c.setExtensions(Arrays.asList(".sh"));
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(c));
+        assertThat(thrown.getMessage().contains("/contentMatches/interpreters: "), is(true));
+    }
+
+    @Test
+    public void usesContent_interpretersReadTheHead() {
+        assertThat(evaluator.usesContent(interpreters("bash")), is(true));
+        assertThat(evaluator.usesContent(or(ext(".sh"), interpreters("bash"))), is(true));
+    }
+
+    @Test
+    public void setInterpreters_copiesTheListAndKeepsNull() {
+        final java.util.List<String> names = new java.util.ArrayList<>(Arrays.asList("bash"));
+        final AiCondition c = new AiCondition();
+        c.setInterpreters(names);
+        names.add("perl");
+        assertThat(c.getInterpreters(), is(Arrays.asList("bash")));
+        c.setInterpreters(null);
+        assertThat(c.getInterpreters() == null, is(true));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="pathGlob alternatives">
     @Test
     public void matches_pathGlob_alternatives() {

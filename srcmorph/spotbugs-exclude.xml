@@ -518,6 +518,18 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        CRLF_INJECTION_LOGS on AiFactExtractor.stopped, the warning that a fact pattern ran out of its
+        time limit. It names the counter's label, which comes from the operator's own facts file or
+        configuration on their machine - the same trust boundary as the suppressions above. The
+        warning is useless without saying which counter was stopped. Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Method name="stopped"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!--
         PATH_TRAVERSAL_IN on EngineSupport.validateLocalModel (the llamacpp-jni branch of
         validateRoutedModelPaths, split out of it). find-sec-bugs flags the
         `new File(modelPath)` because the path is not a compile-time constant. Reading a configured

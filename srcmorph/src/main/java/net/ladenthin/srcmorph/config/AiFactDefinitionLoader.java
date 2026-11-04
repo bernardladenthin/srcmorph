@@ -41,6 +41,11 @@ import org.jspecify.annotations.Nullable;
  * descriptors over XML, EE annotations over Java) adds its own counters without copying the shared
  * ones. An included file may include others; a file that includes itself, also through others, is
  * refused, as is a label that two of the files use.</p>
+ *
+ * <p>Two more markers may open a label, in any order and case: {@code [raw]} counts the source as
+ * written, before the {@code [ignore]} lines blank it ({@link AiFactCounter#isRaw()}), and
+ * {@code [distinct]} counts the different texts the pattern matched, its first group where it has
+ * one ({@link AiFactCounter#isDistinct()}).</p>
  */
 @ToString
 public final class AiFactDefinitionLoader {
@@ -50,6 +55,12 @@ public final class AiFactDefinitionLoader {
 
     /** Label prefix of an ignore counter: its matches are blanked before the other counters count. */
     static final String IGNORE_PREFIX = "[ignore]";
+
+    /** Label prefix of a counter that counts the source before the ignore counters blank it. */
+    static final String RAW_PREFIX = "[raw]";
+
+    /** Label prefix of a counter that counts the different texts it matched. */
+    static final String DISTINCT_PREFIX = "[distinct]";
 
     /** Marker of a line that puts the counters of another facts file, named by its key, at its place. */
     static final String INCLUDE_MARKER = "[include]";
@@ -173,9 +184,9 @@ public final class AiFactDefinitionLoader {
      * @param text  the file's text
      * @return one counter per non-comment line, in file order; a label starting with
      *     {@value #IGNORE_PREFIX}, in any case, makes an {@link AiFactCounter#isIgnore() ignore} counter of
-     *     the rest of it
+     *     the rest of it, {@value #RAW_PREFIX} a raw and {@value #DISTINCT_PREFIX} a distinct one
      * @throws IllegalArgumentException if a line has no tab, an empty label or pattern, a pattern that
-     *                                  does not compile, a marker other than {@value #IGNORE_PREFIX}, or
+     *                                  does not compile, a marker other than those three, or
      *                                  {@value #INCLUDE_MARKER} (which needs a directory to read from), or
      *                                  if the counters break {@link AiFactExtractor#validate(String, List)}
      */
@@ -242,13 +253,26 @@ public final class AiFactDefinitionLoader {
                 counters.addAll(includes.counters(key));
                 continue;
             }
-            final boolean ignore = column.regionMatches(true, 0, IGNORE_PREFIX, 0, IGNORE_PREFIX.length());
-            if (!ignore && column.startsWith(AiFactExtractor.LABEL_MARKER_START)) {
-                throw new IllegalArgumentException(lineLabel + ": unknown marker in '" + column
-                        + "'; the only ones are " + IGNORE_PREFIX + " and " + INCLUDE_MARKER);
+            boolean ignore = false;
+            boolean raw = false;
+            boolean distinct = false;
+            String label = column;
+            while (label.startsWith(AiFactExtractor.LABEL_MARKER_START)) {
+                if (startsWith(label, IGNORE_PREFIX)) {
+                    ignore = true;
+                    label = label.substring(IGNORE_PREFIX.length()).trim();
+                } else if (startsWith(label, RAW_PREFIX)) {
+                    raw = true;
+                    label = label.substring(RAW_PREFIX.length()).trim();
+                } else if (startsWith(label, DISTINCT_PREFIX)) {
+                    distinct = true;
+                    label = label.substring(DISTINCT_PREFIX.length()).trim();
+                } else {
+                    throw new IllegalArgumentException(lineLabel + ": unknown marker in '" + column
+                            + "'; the only ones are " + IGNORE_PREFIX + ", " + RAW_PREFIX + ", " + DISTINCT_PREFIX
+                            + " and " + INCLUDE_MARKER);
+                }
             }
-            final String label =
-                    ignore ? column.substring(IGNORE_PREFIX.length()).trim() : column;
             final String pattern = line.substring(tab + 1);
             if (label.isEmpty() || pattern.trim().isEmpty()) {
                 throw new IllegalArgumentException(lineLabel + ": the label and the pattern must not be empty");
@@ -263,6 +287,8 @@ public final class AiFactDefinitionLoader {
             counter.setLabel(label);
             counter.setPattern(pattern);
             counter.setIgnore(ignore);
+            counter.setRaw(raw);
+            counter.setDistinct(distinct);
             counters.add(counter);
         }
         if (counters.isEmpty()) {
@@ -270,6 +296,17 @@ public final class AiFactDefinitionLoader {
         }
         AiFactExtractor.validate(where, counters);
         return counters;
+    }
+
+    /**
+     * Returns whether a label starts with a marker, in any case.
+     *
+     * @param label  the label
+     * @param marker the marker
+     * @return {@code true} when it does
+     */
+    private static boolean startsWith(final String label, final String marker) {
+        return label.regionMatches(true, 0, marker, 0, marker.length());
     }
 
     private static AiFactDefinition group(final String key, final List<AiFactCounter> facts) {

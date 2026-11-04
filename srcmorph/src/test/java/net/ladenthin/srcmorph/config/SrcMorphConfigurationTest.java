@@ -86,6 +86,17 @@ public class SrcMorphConfigurationTest {
     }
 
     @Test
+    public void fileInterpretersAndContentHeadChars_defaultAndRoundTrip() {
+        final SrcMorphConfiguration c = new SrcMorphConfiguration();
+        assertThat(c.getFileInterpreters() == null, is(true));
+        assertThat(c.getContentHeadChars(), is(AiConditionEvaluator.CONTENT_HEAD_CHARS));
+        c.setFileInterpreters(java.util.Arrays.asList("bash", "perl"));
+        c.setContentHeadChars(65_536);
+        assertThat(c.getFileInterpreters(), is(java.util.Arrays.asList("bash", "perl")));
+        assertThat(c.getContentHeadChars(), is(65_536));
+    }
+
+    @Test
     public void regenerateOnProfileChange_isOnByDefaultAndRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
         assertThat(c.isRegenerateOnProfileChange(), is(true));

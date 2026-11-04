@@ -115,8 +115,48 @@ public class GenerateEngineTest {
         final SrcMorphException byExclude =
                 assertThrows(SrcMorphException.class, () -> new GenerateEngine(excludes).execute());
 
-        assertThat(byName.getMessage(), containsString("Invalid excludes or fileNames: the glob 'Dockerfile.{dev'"));
-        assertThat(byExclude.getMessage(), containsString("Invalid excludes or fileNames: the glob '**/{target/**'"));
+        assertThat(
+                byName.getMessage(),
+                containsString("Invalid excludes, fileNames, fileInterpreters or contentHeadChars: the glob"
+                        + " 'Dockerfile.{dev'"));
+        assertThat(
+                byExclude.getMessage(),
+                containsString("Invalid excludes, fileNames, fileInterpreters or contentHeadChars: the glob"
+                        + " '**/{target/**'"));
+    }
+
+    @Test
+    public void execute_invalidInterpreterOrContentHeadChars_throwsSrcMorphException() throws IOException {
+        final SrcMorphConfiguration interpreter = baseConfig();
+        interpreter.setFileInterpreters(Collections.singletonList("/bin/bash"));
+        final SrcMorphConfiguration head = baseConfig();
+        head.setContentHeadChars(0);
+
+        final SrcMorphException byInterpreter =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(interpreter).execute());
+        final SrcMorphException byHead =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(head).execute());
+
+        assertThat(byInterpreter.getMessage(), containsString("(bash, not /bin/bash): '/bin/bash'"));
+        assertThat(byHead.getMessage(), containsString("contentHeadChars must be at least 1, not 0"));
+    }
+
+    @Test
+    public void execute_fileInterpretersIndexAScriptWithoutAnExtension() throws Exception {
+        final SrcMorphConfiguration config = baseConfig();
+        final Path script = tempDir.resolve("src/main/java/com/example/deploy");
+        Files.write(script, "#!/usr/bin/env bash\necho deploy\n".getBytes(StandardCharsets.UTF_8));
+        config.setFileInterpreters(Collections.singletonList("bash"));
+        final AiFieldGenerationConfig fallback = new AiFieldGenerationConfig();
+        fallback.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
+        fallback.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        fallback.setFallback(true);
+        config.setFieldGenerations(Arrays.asList(javaFileRule(), fallback));
+
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        assertThat(result.written(), is(2));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/deploy.ai.md")), is(true));
     }
 
     @Test
@@ -925,9 +965,22 @@ public class GenerateEngineTest {
         counter.setLabel("views");
         final String otherLabel =
                 net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+        counter.setRaw(true);
+        final String raw = net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+        counter.setRaw(false);
+        counter.setDistinct(true);
+        final String distinct =
+                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
 
         assertThat(plain.matches("[0-9A-F]{8}"), is(true));
-        assertThat(new java.util.HashSet<>(Arrays.asList(plain, ignored, otherPattern, otherLabel)).size(), is(4));
+        assertThat(
+                new java.util.HashSet<>(Arrays.asList(plain, ignored, otherPattern, otherLabel, raw, distinct)).size(),
+                is(6));
+        // a counter without raw and distinct hashes as before they existed: its summaries stay current
+        assertThat(
+                plain,
+                is(new net.ladenthin.srcmorph.support.AiChecksumSupport()
+                        .calculateCrc32Hex("tables\tCREATE TABLE\tfalse\n")));
         assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(null), is(""));
         assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.emptyList()), is(""));
     }

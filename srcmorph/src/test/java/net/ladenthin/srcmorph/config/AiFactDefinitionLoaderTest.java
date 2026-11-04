@@ -206,7 +206,37 @@ public class AiFactDefinitionLoaderTest {
 
         assertThat(
                 thrown.getMessage(),
-                is("f line 2: unknown marker in '[skip] POD'; the only ones are [ignore] and [include]"));
+                is("f line 2: unknown marker in '[skip] POD'; the only ones are [ignore], [raw], [distinct] and"
+                        + " [include]"));
+    }
+
+    @Test
+    public void parse_rawAndDistinctMarkers_markTheCounterUnderTheRestOfTheLabel() {
+        final List<AiFactCounter> counters = AiFactDefinitionLoader.parse(
+                "f", "[raw] TODO\tx\n[distinct] names\ty\n[Distinct] [RAW] both\tz\nplain\tw\n");
+
+        assertThat(counters.get(0).getLabel(), is("TODO"));
+        assertThat(counters.get(0).isRaw(), is(true));
+        assertThat(counters.get(0).isDistinct(), is(false));
+        assertThat(counters.get(1).getLabel(), is("names"));
+        assertThat(counters.get(1).isRaw(), is(false));
+        assertThat(counters.get(1).isDistinct(), is(true));
+        assertThat(counters.get(2).getLabel(), is("both"));
+        assertThat(counters.get(2).isRaw(), is(true));
+        assertThat(counters.get(2).isDistinct(), is(true));
+        assertThat(counters.get(3).isRaw(), is(false));
+        assertThat(counters.get(3).isDistinct(), is(false));
+        assertThat(counters.get(3).isIgnore(), is(false));
+    }
+
+    @Test
+    public void parse_ignoreMarkerWithRaw_isRefused() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[ignore] [raw] c\tx\nn\ty\n"));
+
+        assertThat(
+                thrown.getMessage(),
+                is("f counter 1 ('c') is an ignore counter, which counts nothing; raw and distinct apply to counters"));
     }
 
     @Test
@@ -541,13 +571,14 @@ public class AiFactDefinitionLoaderTest {
     }
 
     @Test
-    public void parse_unknownMarker_namesBothMarkers() {
+    public void parse_unknownMarker_namesEveryMarker() {
         final IllegalArgumentException thrown =
                 assertThrows(IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[count]\ta\n"));
 
         assertThat(
                 thrown.getMessage(),
-                is("f line 1: unknown marker in '[count]'; the only ones are [ignore] and [include]"));
+                is("f line 1: unknown marker in '[count]'; the only ones are [ignore], [raw], [distinct] and"
+                        + " [include]"));
     }
     // </editor-fold>
 

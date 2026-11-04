@@ -243,5 +243,171 @@ public class AiFactExtractorTest {
     public void validate_onlyIgnoreCounters_isRefused() {
         assertThat(refusal(ignore("POD", POD), ignore("comments", "#.*")), is("g: no counter, only ignore patterns"));
     }
+
+    @Test
+    public void validate_ignoreCounterThatIsRawOrDistinct_isRefused() {
+        final AiFactCounter raw = ignore("comments", "#.*");
+        raw.setRaw(true);
+        final AiFactCounter distinct = ignore("comments", "#.*");
+        distinct.setDistinct(true);
+
+        assertThat(
+                refusal(counter("subs", SUBS), raw),
+                is("g counter 2 ('comments') is an ignore counter, which counts nothing; raw and distinct apply to"
+                        + " counters"));
+        assertThat(
+                refusal(counter("subs", SUBS), distinct),
+                is("g counter 2 ('comments') is an ignore counter, which counts nothing; raw and distinct apply to"
+                        + " counters"));
+    }
+
+    @Test
+    public void validate_rawAndDistinctCounters_doNotThrow() {
+        final AiFactCounter both = counter("names", "(\\w+)");
+        both.setRaw(true);
+        both.setDistinct(true);
+
+        assertDoesNotThrow(() -> AiFactExtractor.validate("g", Arrays.asList(ignore("comments", "#.*"), both)));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="raw and distinct counters">
+    private static AiFactCounter raw(final String label, final String pattern) {
+        final AiFactCounter c = counter(label, pattern);
+        c.setRaw(true);
+        return c;
+    }
+
+    private static AiFactCounter distinct(final String label, final String pattern) {
+        final AiFactCounter c = counter(label, pattern);
+        c.setDistinct(true);
+        return c;
+    }
+
+    @Test
+    public void counts_rawCounter_countsTheSourceBeforeTheIgnoreCountersBlankIt() {
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(
+                        ignore("comments", "//[^\\n]*"),
+                        raw("TODO raw", "\\bTODO\\b"),
+                        counter("TODO blanked", "\\bTODO\\b")),
+                "int a; // TODO one\nint b; // TODO two\n");
+
+        assertThat(counts.get("TODO raw"), is(2));
+        assertThat(counts.get("TODO blanked"), is(0));
+    }
+
+    @Test
+    public void counts_distinctCounter_countsTheDifferentFirstGroups() {
+        final String source = "@Inject Clock a;\n@Inject Clock b;\n@Inject Bus c;\n";
+
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(
+                        distinct("injected types", "@Inject (\\w+) \\w+"),
+                        counter("injection points", "@Inject (\\w+) \\w+")),
+                source);
+
+        assertThat(counts.get("injected types"), is(2));
+        assertThat(counts.get("injection points"), is(3));
+    }
+
+    @Test
+    public void counts_distinctCounterWithoutAGroup_countsTheDifferentMatches() {
+        final Map<String, Integer> counts =
+                AiFactExtractor.counts(Collections.singletonList(distinct("types", "\\b[A-Z]\\w*")), "Foo Foo Bar a");
+
+        assertThat(counts.get("types"), is(2));
+    }
+
+    @Test
+    public void counts_distinctCounterWhoseGroupDidNotTakePart_countsTheWholeMatch() {
+        final Map<String, Integer> counts =
+                AiFactExtractor.counts(Collections.singletonList(distinct("names", "a(b)?")), "a ab ab");
+
+        // "a" (the group did not take part) and "b"
+        assertThat(counts.get("names"), is(2));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="time limit">
+    /** An unclosed comment opener per line: the lazy pattern rescans to the end from each one. */
+    private static final String UNCLOSED_COMMENTS = repeat("<!-- x\n", 16_000);
+
+    /** Quadratic over {@link #UNCLOSED_COMMENTS}. */
+    private static final String QUADRATIC = "(?s)<!--.*?-->";
+
+    private static String repeat(final String line, final int times) {
+        final StringBuilder text = new StringBuilder(line.length() * times);
+        for (int i = 0; i < times; i++) {
+            text.append(line);
+        }
+        return text.toString();
+    }
+
+    @Test
+    public void readBudget_isTwoThousandCharactersPerCharacterPlusAMillion() {
+        assertThat(AiFactExtractor.readBudget(0), is(1_000_000L));
+        assertThat(AiFactExtractor.readBudget(10), is(1_020_000L));
+    }
+
+    @Test
+    public void readBudget_letsTheMatcherReadItsBudgetAndStopsItAfter() {
+        final AiFactExtractor.ReadBudget text = new AiFactExtractor.ReadBudget("abcd", 3);
+
+        assertThat(text.charAt(0), is('a'));
+        assertThat(text.charAt(1), is('b'));
+        assertThat(text.charAt(3), is('d'));
+        assertThrows(AiFactExtractor.ReadBudget.Exhausted.class, () -> text.charAt(2));
+    }
+
+    @Test
+    public void readBudget_readsAsTheTextItWraps() {
+        final AiFactExtractor.ReadBudget text = new AiFactExtractor.ReadBudget("abcd", 0);
+
+        assertThat(text.length(), is(4));
+        assertThat(text.subSequence(1, 3).toString(), is("bc"));
+        assertThat(text.toString(), is("abcd"));
+    }
+
+    @Test
+    public void counts_counterPastItsTimeLimit_isLeftOut() {
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(counter("comments", QUADRATIC), counter("lines", "(?m)^<")), UNCLOSED_COMMENTS);
+
+        assertThat(counts.containsKey("comments"), is(false));
+        assertThat(counts.get("lines"), is(16_000));
+    }
+
+    @Test
+    public void counts_distinctCounterPastItsTimeLimit_isLeftOut() {
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(distinct("comments", QUADRATIC), counter("lines", "(?m)^<")), UNCLOSED_COMMENTS);
+
+        assertThat(counts.containsKey("comments"), is(false));
+    }
+
+    @Test
+    public void counts_ignoreCounterPastItsTimeLimit_blanksNothing() {
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(ignore("comments", QUADRATIC), counter("x", "\\bx\\b")), UNCLOSED_COMMENTS);
+
+        assertThat(counts.get("x"), is(16_000));
+    }
+
+    @Test
+    public void factsBlock_counterPastItsTimeLimit_isLeftOutOfTheLine() {
+        final String block = AiFactExtractor.factsBlock(
+                Arrays.asList(counter("comments", QUADRATIC), counter("lines", "(?m)^<")), UNCLOSED_COMMENTS);
+
+        assertThat(block, is(AiFactExtractor.FACTS_HEADER + "lines: 16000" + AiFactExtractor.FACTS_SUFFIX));
+    }
+
+    @Test
+    public void factsBlock_everyCounterPastItsTimeLimit_returnsEmpty() {
+        assertThat(
+                AiFactExtractor.factsBlock(
+                        Collections.singletonList(counter("comments", QUADRATIC)), UNCLOSED_COMMENTS),
+                is(""));
+    }
     // </editor-fold>
 }

@@ -53,6 +53,8 @@ public class SrcMorphConfiguration {
     private @Nullable List<String> excludes;
     private @Nullable List<String> fileExtensions;
     private @Nullable List<String> fileNames;
+    private @Nullable List<String> fileInterpreters;
+    private int contentHeadChars = AiConditionEvaluator.CONTENT_HEAD_CHARS;
     private long minFileSizeBytes;
     private long maxFileSizeBytes;
     private boolean planOnly;
@@ -216,6 +218,47 @@ public class SrcMorphConfiguration {
      */
     public void setFileNames(final @Nullable List<String> fileNames) {
         this.fileNames = fileNames;
+    }
+
+    /**
+     * Returns the interpreters whose scripts are indexed although they have no extension: a file
+     * without one whose {@code #!} line names one of them, or a version of one
+     * ({@link net.ladenthin.srcmorph.support.AiShebang}).
+     *
+     * @return the interpreter names (e.g. {@code bash}, {@code perl}), or {@code null} for none
+     */
+    public @Nullable List<String> getFileInterpreters() {
+        return fileInterpreters;
+    }
+
+    /**
+     * Sets the interpreters whose scripts without an extension are indexed.
+     *
+     * @param fileInterpreters the interpreter names, or {@code null} for none
+     */
+    public void setFileInterpreters(final @Nullable List<String> fileInterpreters) {
+        this.fileInterpreters = fileInterpreters;
+    }
+
+    /**
+     * Returns how many characters of a file the {@code contentMatches} and {@code interpreters}
+     * conditions read.
+     *
+     * @return the characters; {@link AiConditionEvaluator#CONTENT_HEAD_CHARS} by default
+     */
+    public int getContentHeadChars() {
+        return contentHeadChars;
+    }
+
+    /**
+     * Sets how many characters of a file the {@code contentMatches} and {@code interpreters} conditions
+     * read: more for a file whose marker comes after a long license header, at the cost of reading more
+     * of every file while planning.
+     *
+     * @param contentHeadChars the characters, at least 1
+     */
+    public void setContentHeadChars(final int contentHeadChars) {
+        this.contentHeadChars = contentHeadChars;
     }
 
     /**

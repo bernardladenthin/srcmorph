@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import net.ladenthin.srcmorph.support.AiGlob;
 import net.ladenthin.srcmorph.support.AiPathSupport;
+import net.ladenthin.srcmorph.support.AiShebang;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
 import org.jspecify.annotations.Nullable;
 
@@ -22,20 +23,22 @@ import org.jspecify.annotations.Nullable;
  * misconfigured node (not exactly one branch set, empty combinator, unbounded range, unparseable
  * date, blank or unclosed glob, invalid regular expression); {@link #usesLines} and {@link #usesContent}
  * report whether any node needs the line count or the start of the text, so the indexer only reads
- * file contents when a {@code lines} or {@code contentMatches} condition is actually used.</p>
+ * file contents when a {@code lines}, {@code contentMatches} or {@code interpreters} condition is
+ * actually used.</p>
  */
 public final class AiConditionEvaluator {
 
     /**
-     * How many characters of a file a {@code contentMatches} condition reads: enough for the header of a
-     * Kubernetes manifest, an OpenAPI document or a Camel route, and cheap for a large file.
+     * How many characters of a file a {@code contentMatches} condition reads unless the configuration's
+     * {@code contentHeadChars} says otherwise: enough for the header of a Kubernetes manifest, an OpenAPI
+     * document or a Camel route, and cheap for a large file.
      */
     public static final int CONTENT_HEAD_CHARS = 16_384;
 
     /** Message when a node does not set exactly one branch/leaf. */
     private static final String ERROR_ONE_BRANCH =
             "a condition node must set exactly one of and/or/not/extensions/size/lines/"
-                    + "modifiedAfter/modifiedBefore/pathGlob/fileNames/contentMatches: ";
+                    + "modifiedAfter/modifiedBefore/pathGlob/fileNames/contentMatches/interpreters: ";
 
     /** Creates a new {@link AiConditionEvaluator}. */
     public AiConditionEvaluator() {
@@ -111,6 +114,11 @@ public final class AiConditionEvaluator {
         if (contentMatches != null) {
             return Pattern.compile(contentMatches).matcher(context.head()).find();
         }
+        final List<String> interpreters = condition.getInterpreters();
+        if (interpreters != null) {
+            final String interpreter = AiShebang.interpreter(context.head());
+            return interpreter != null && AiShebang.matches(interpreter, interpreters);
+        }
         throw new IllegalStateException(ERROR_ONE_BRANCH + condition);
     }
 
@@ -135,6 +143,7 @@ public final class AiConditionEvaluator {
         final String pathGlob = condition.getPathGlob();
         final List<String> fileNames = condition.getFileNames();
         final String contentMatches = condition.getContentMatches();
+        final List<String> interpreters = condition.getInterpreters();
         if (and != null) {
             validateGroup(and, "and");
         } else if (or != null) {
@@ -166,6 +175,30 @@ public final class AiConditionEvaluator {
             validateFileNames(fileNames);
         } else if (contentMatches != null) {
             validateContentMatches(contentMatches);
+        } else if (interpreters != null) {
+            validateInterpreters(interpreters);
+        }
+    }
+
+    /**
+     * Validates the names of an {@code interpreters} condition: at least one, none blank, each a name
+     * without its directory.
+     *
+     * @param interpreters the names
+     * @throws IllegalArgumentException if a name is blank or a path
+     */
+    public static void validateInterpreters(final List<String> interpreters) {
+        if (interpreters.isEmpty()) {
+            throw new IllegalArgumentException("an interpreters condition must list at least one interpreter");
+        }
+        for (final @Nullable String name : interpreters) {
+            if (name == null || name.trim().isEmpty()) {
+                throw new IllegalArgumentException("an interpreters condition must not list a blank interpreter");
+            }
+            if (name.indexOf('/') >= 0) {
+                throw new IllegalArgumentException(
+                        "an interpreter is named without its directory (bash, not /bin/bash): '" + name + "'");
+            }
         }
     }
 
@@ -209,14 +242,15 @@ public final class AiConditionEvaluator {
     }
 
     /**
-     * Returns whether any node in the tree is a {@code contentMatches} condition, so the indexer knows
-     * whether it must read the start of each file.
+     * Returns whether any node in the tree is a {@code contentMatches} or {@code interpreters} condition,
+     * so the indexer knows whether it must read the start of each file.
      *
      * @param condition the condition tree
-     * @return {@code true} if a {@code contentMatches} condition is present anywhere
+     * @return {@code true} if a {@code contentMatches} or {@code interpreters} condition is present
+     *     anywhere
      */
     public boolean usesContent(final AiCondition condition) {
-        return uses(condition, node -> node.getContentMatches() != null);
+        return uses(condition, node -> node.getContentMatches() != null || node.getInterpreters() != null);
     }
 
     private boolean uses(final AiCondition condition, final Predicate<AiCondition> leaf) {
@@ -306,6 +340,9 @@ public final class AiConditionEvaluator {
             count++;
         }
         if (c.getContentMatches() != null) {
+            count++;
+        }
+        if (c.getInterpreters() != null) {
             count++;
         }
         return count;

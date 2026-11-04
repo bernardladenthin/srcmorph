@@ -8,6 +8,8 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -58,6 +60,7 @@ public class SourceFileIndexerTest {
                 outputRoot,
                 Arrays.asList(".java"),
                 Collections.<String>emptyList(),
+                Collections.<String>emptyList(),
                 "1.0.0",
                 "0.0.0",
                 Collections.<Path>emptyList(),
@@ -65,7 +68,8 @@ public class SourceFileIndexerTest {
                 minSizeBytes,
                 maxSizeBytes,
                 false,
-                regenerateOnProfileChange);
+                regenerateOnProfileChange,
+                AiConditionEvaluator.CONTENT_HEAD_CHARS);
     }
 
     private AiFieldGenerationSupport mockSupport() {
@@ -425,19 +429,31 @@ public class SourceFileIndexerTest {
 
     // <editor-fold defaultstate="collapsed" desc="fileNames, contentMatches and byte order marks">
     private static SourceFileIndexer indexerWithNames(final Path baseDirectory, final List<String> fileNames) {
+        return indexer(
+                baseDirectory, fileNames, Collections.<String>emptyList(), AiConditionEvaluator.CONTENT_HEAD_CHARS, 0L);
+    }
+
+    private static SourceFileIndexer indexer(
+            final Path baseDirectory,
+            final List<String> fileNames,
+            final List<String> fileInterpreters,
+            final int contentHeadChars,
+            final long maxSizeBytes) {
         return new SourceFileIndexer(
                 baseDirectory,
                 baseDirectory.resolve("out"),
                 Arrays.asList(".java"),
                 fileNames,
+                fileInterpreters,
                 "1.0.0",
                 "0.0.0",
                 Collections.<Path>emptyList(),
-                Collections.<String>emptyList(),
+                Collections.singletonList("**/excluded/**"),
                 0L,
-                0L,
+                maxSizeBytes,
                 false,
-                true);
+                true,
+                contentHeadChars);
     }
 
     private static AiFieldGenerationConfig contentRule(final String promptKey, final String regex) {
@@ -488,6 +504,7 @@ public class SourceFileIndexerTest {
                 temp.resolve("out"),
                 Arrays.asList(".java"),
                 null,
+                null,
                 "1.0.0",
                 "0.0.0",
                 Collections.<Path>emptyList(),
@@ -495,9 +512,130 @@ public class SourceFileIndexerTest {
                 0L,
                 0L,
                 false,
-                true);
+                true,
+                AiConditionEvaluator.CONTENT_HEAD_CHARS);
 
         assertThat(withNull.collectCandidates(temp).size(), is(1));
+    }
+
+    @Test
+    public void collectCandidates_fileInterpreters_selectAScriptWithoutAnExtensionByItsFirstLine() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("bin/deploy"), "#!/usr/bin/env bash\nset -e\n");
+        writeJava(temp.resolve("bin/report"), "#!/usr/bin/python3.12 -u\nprint(1)\n");
+        writeJava(temp.resolve("bin/.profile"), "#!/bin/sh\n");
+        writeJava(temp.resolve("bin/notes"), "deploy on Fridays\n");
+        writeJava(temp.resolve("bin/run.txt"), "#!/bin/bash\n");
+        writeJava(temp.resolve("bin/tcl"), "#!/usr/bin/tclsh\n");
+        writeJava(temp.resolve("bin/excluded/hook"), "#!/bin/bash\n");
+        writeJava(temp.resolve("src/A.java"), "class A {}\n");
+
+        // act
+        final List<String> selected =
+                names(indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash", "python", " sh "), 16, 0L)
+                        .collectCandidates(temp));
+        final List<String> none =
+                names(indexerWithNames(temp, Collections.<String>emptyList()).collectCandidates(temp));
+
+        // assert
+        assertThat(selected, is(equalTo(Arrays.asList(".profile", "A.java", "deploy", "report"))));
+        assertThat(none, is(equalTo(Arrays.asList("A.java"))));
+    }
+
+    @Test
+    public void collectCandidates_fileInterpreters_keepTheSizeBand() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("bin/small"), "#!/bin/bash\n");
+        writeJava(temp.resolve("bin/large"), "#!/bin/bash\n" + "x".repeat(200));
+
+        final List<String> selected =
+                names(indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 16, 100L)
+                        .collectCandidates(temp));
+
+        assertThat(selected, is(equalTo(Arrays.asList("small"))));
+    }
+
+    @Test
+    public void classify_interpretersRule_routesAScriptByItsFirstLine() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path script = temp.resolve("bin/deploy");
+        final Path other = temp.resolve("bin/report");
+        writeJava(script, "#!/bin/ksh\nprint ok\n");
+        writeJava(other, "#!/usr/bin/env perl\n");
+        final AiFieldGenerationConfig shell = rule("shell", null, false, false);
+        final AiCondition condition = new AiCondition();
+        condition.setInterpreters(Arrays.asList("bash", "ksh"));
+        shell.setCondition(condition);
+        final List<AiFieldGenerationConfig> rules = Arrays.asList(shell, rule("fallback", null, false, true));
+
+        // act
+        final AiIndexPlan plan = indexer(temp, Collections.<String>emptyList(), Arrays.asList("ksh", "perl"), 16, 0L)
+                .classify(Arrays.asList(script, other), rules);
+
+        // assert
+        assertThat(promptKeyOf(plan, script), is(equalTo("shell")));
+        assertThat(promptKeyOf(plan, other), is(equalTo("fallback")));
+    }
+
+    @Test
+    public void classify_contentHeadChars_setsHowMuchContentMatchesReads() throws Exception {
+        // arrange: MARK ends at character 100
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path file = temp.resolve("src/Late.java");
+        writeJava(file, "x".repeat(96) + "MARK" + "y".repeat(100));
+        final List<AiFieldGenerationConfig> contentOnly =
+                Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
+        final List<AiFieldGenerationConfig> withLines = Arrays.asList(
+                contentRule("marked", "MARK"),
+                lineRangeRule("never", 900L, 1000L),
+                rule("fallback", null, false, true));
+        final SourceFileIndexer reach =
+                indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 100, 0L);
+        final SourceFileIndexer shortOne =
+                indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 99, 0L);
+
+        // act and assert: the start alone, and the whole source a lines rule reads
+        assertThat(promptKeyOf(reach.classify(Arrays.asList(file), contentOnly), file), is(equalTo("marked")));
+        assertThat(promptKeyOf(shortOne.classify(Arrays.asList(file), contentOnly), file), is(equalTo("fallback")));
+        assertThat(promptKeyOf(reach.classify(Arrays.asList(file), withLines), file), is(equalTo("marked")));
+        assertThat(promptKeyOf(shortOne.classify(Arrays.asList(file), withLines), file), is(equalTo("fallback")));
+    }
+
+    @Test
+    public void constructor_contentHeadCharsBelowOne_isRefused() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 0, 0L));
+
+        assertThat(thrown.getMessage(), is(equalTo("contentHeadChars must be at least 1, not 0")));
+        assertDoesNotThrow(
+                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 1, 0L));
+    }
+
+    @Test
+    public void constructor_interpreterWithItsDirectory_isRefused() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> indexer(temp, Collections.<String>emptyList(), Arrays.asList("/bin/bash"), 16, 0L));
+
+        assertThat(
+                thrown.getMessage(),
+                is(equalTo("an interpreter is named without its directory (bash, not /bin/bash): '/bin/bash'")));
+    }
+
+    private static List<String> names(final List<Path> files) {
+        final List<String> names = new java.util.ArrayList<>();
+        for (final Path file : files) {
+            names.add(String.valueOf(file.getFileName()));
+        }
+        java.util.Collections.sort(names);
+        return names;
     }
 
     @Test

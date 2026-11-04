@@ -23,8 +23,11 @@ import org.jspecify.annotations.Nullable;
  *       (ISO-8601 instant compared to the file's last-modified time), {@code pathGlob} (glob over the
  *       base-relative path, same syntax as {@code excludes}), {@code fileNames} (globs over the file
  *       name alone, in any case: {@code Dockerfile}, {@code Jenkinsfile}, {@code *.gradle.kts}),
- *       {@code contentMatches} (a Java regular expression found in the first
- *       {@value AiConditionEvaluator#CONTENT_HEAD_CHARS} characters of the file).</li>
+ *       {@code contentMatches} (a Java regular expression found in the first characters of the file,
+ *       {@code contentHeadChars} of the configuration, {@value AiConditionEvaluator#CONTENT_HEAD_CHARS}
+ *       by default), {@code interpreters} (the interpreter the file's {@code #!} line names, or a
+ *       version of it: {@code bash}, {@code perl}, {@code python}; see
+ *       {@link net.ladenthin.srcmorph.support.AiShebang}).</li>
  * </ul>
  *
  * <p>Because every variant is a distinctly named field, the configuration file binds the tree
@@ -46,6 +49,7 @@ public class AiCondition {
     private @Nullable String pathGlob;
     private @Nullable List<String> fileNames;
     private @Nullable String contentMatches;
+    private @Nullable List<String> interpreters;
 
     /** Creates a new {@link AiCondition}. */
     public AiCondition() {
@@ -243,12 +247,31 @@ public class AiCondition {
     }
 
     /**
-     * Sets the content pattern: the node matches a file in whose first
-     * {@value AiConditionEvaluator#CONTENT_HEAD_CHARS} characters the Java regular expression is found.
+     * Sets the content pattern: the node matches a file in whose first characters (the configuration's
+     * {@code contentHeadChars}) the Java regular expression is found.
      *
      * @param contentMatches the regular expression (e.g. {@code (?m)^apiVersion:})
      */
     public void setContentMatches(final @Nullable String contentMatches) {
         this.contentMatches = contentMatches;
+    }
+
+    /**
+     * Returns the interpreter names, or {@code null} when this is not an interpreters node.
+     *
+     * @return the names, or {@code null}
+     */
+    public @Nullable List<String> getInterpreters() {
+        return interpreters;
+    }
+
+    /**
+     * Sets the interpreter names: the node matches a file whose {@code #!} line names one of them or a
+     * version of one.
+     *
+     * @param interpreters the names (e.g. {@code bash}, {@code sh}, {@code python})
+     */
+    public void setInterpreters(final @Nullable Collection<String> interpreters) {
+        this.interpreters = interpreters != null ? new ArrayList<>(interpreters) : null;
     }
 }
