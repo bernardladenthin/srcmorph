@@ -53,7 +53,8 @@ public class AiRegenerateOn {
     }
 
     /**
-     * Sets whether a changed source ({@code C}) rewrites a summary; {@code false} freezes the index.
+     * Sets whether a changed source ({@code C}) rewrites a summary; {@code false} freezes the index against
+     * changed sources (a kept file summary keeps its {@code C}, so its package sees no change either).
      *
      * @param source {@code false} to keep the summaries of changed sources
      */

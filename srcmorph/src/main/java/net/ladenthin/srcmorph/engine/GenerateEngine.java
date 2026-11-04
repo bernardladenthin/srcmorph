@@ -521,7 +521,7 @@ public final class GenerateEngine {
      * @param resolvedExtensions the file extensions
      * @return the indexer
      * @throws SrcMorphException if an exclude or a file name is not a valid glob, an interpreter is blank
-     *                           or a path, or {@code contentHeadChars} is below 1
+     *                           or a path, or {@code contentHeadChars} is below 256
      */
     private SourceFileIndexer newFileIndexer(
             final Path basePath,

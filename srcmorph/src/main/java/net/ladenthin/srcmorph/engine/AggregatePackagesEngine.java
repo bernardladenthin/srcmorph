@@ -100,6 +100,7 @@ public final class AggregatePackagesEngine {
         LOGGER.info("Output directory: {}", outputPath);
         LOGGER.info("Subtrees        : {}", resolvedSubtrees);
         LOGGER.info("Force           : {}", config.isForce());
+        LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
 
         // the rule is checked before anything else, so a wrong one fails on a fresh tree too

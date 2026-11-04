@@ -87,7 +87,7 @@ default (a summary that does not record a field differs too):
 
 | Switch | Field | Changes with |
 |---|---|---|
-| `source` | `C` | the file's source; a package's files; the packages the project lists |
+| `source` | `C` | the file's source; a package's files; the packages the project lists and their checksums |
 | `prompt` | `P` | the rule's prompts |
 | `facts` | `N` | the rule's fact counters |
 | `model` | `M` | the rule's model definition, or the model it names |

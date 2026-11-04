@@ -79,6 +79,7 @@ public final class AggregateProjectEngine {
         LOGGER.info("Starting AI project index aggregation");
         LOGGER.info("Output directory: {}", outputPath);
         LOGGER.info("Force           : {}", config.isForce());
+        LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
 
         // the rule is checked before anything else, so a wrong one fails on a fresh tree too
         final AiFieldGenerationConfig overview =

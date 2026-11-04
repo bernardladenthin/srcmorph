@@ -11,6 +11,24 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Upgrading from 1.4.0
+
+The entries below hold the details; what a 1.4.0 user changes:
+
+- **A rule naming `promptKey: file-body-java` names `file-body-oop`:** profile v3 has no
+  `file-body-java` any more.
+- **The first run rewrites every summary**, one model call each: a summary of 1.4.0 records no `M`
+  and no `K`, the project's `C` is built differently, and every file prompt of profile v3 changed (the
+  secrets rule). To keep the old summaries instead, set all five `regenerateOn` switches to `false`
+  and keep them there: a field is recorded only when its summary is written, so a run with the
+  switches on later still finds it missing and rewrites then. `force: true` rewrites everything at once.
+- **Java callers of the library** (the CLI and the plugin need nothing): `AiMdHeader.withHashes`
+  takes `(prompt, facts, model, children)`; the `PackageIndexer` and both `ProjectIndexer`
+  constructors take an `AiRegenerateOn` after `force`; the `SourceFileIndexer` constructor takes
+  `fileNames` and `fileInterpreters` (after `fileExtensions`), an `AiRegenerateOn` (after `force`)
+  and `contentHeadChars` (last); `SourceFileIndexer.indexFile` takes a `modelHash` (last);
+  `AiMdHeaderSupport` takes the five switches as booleans (without arguments, all on).
+
 ### Added
 
 - **`examples/copilot-api-gateway/srcmorph-luna.yaml`:** GPT-6 Luna through the GitHub Copilot API
@@ -124,8 +142,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
-- **`SourceFileIndexer` is final**, and its public constructor takes `fileInterpreters` (after
-  `fileNames`) and `contentHeadChars` (last). The file phase's log lines name a file by its path below
+- **`SourceFileIndexer` is final**, and its public constructor takes `fileNames`,
+  `fileInterpreters`, `regenerateOn` and `contentHeadChars` (Upgrading from 1.4.0). The file phase's log lines name a file by its path below
   the base directory (as the model reads it), with the system's separators, where they named the
   absolute path.
 - **Java takes `file-body-oop`; `file-body-java` is gone from profile v3.** A rule naming
@@ -145,10 +163,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   recorded `P` and `N` without acting on them), so a summary of an older prompt or model stayed; and
   a package was never rewritten when its files were re-summarized over unchanged sources, since its
   checksum is built from theirs, nor when its own prompt changed: packages and the project now
-  record `P`, `M` and `K` too (the project's checksum is its packages, no longer folded with the
-  overview's prompt key and model). A field a summary does not record counts as changed, so the
-  first run after the upgrade rewrites every summary, one model call each; set the switches to
-  `false` for that run to keep them. `AiMdHeaderSupportTest` pins every switch on and off,
+  record `P`, `M` and `K` too (the project's checksum is built from its packages and their
+  checksums, as a package's from its children, no longer folded with the overview's prompt key and
+  model). `P` reads a prompt's line endings as `\n`, so a profile checked out with CRLF on one machine
+  and LF on another hashes the same. A field a summary does not record counts as changed, so the
+  first run after the upgrade rewrites every summary, one model call each (Upgrading from 1.4.0 says
+  how to keep them). `AiMdHeaderSupportTest` pins every switch on and off,
   `PackageIndexerTest` and `ProjectIndexerTest` the children and overview hashes; the plugin README's
   header section says what rewrites a summary, and every example configuration shows the switches.
 - **`java-facts` counts code only**: an `[ignore]` line blanks comments, Javadoc, text blocks,
