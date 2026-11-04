@@ -130,14 +130,15 @@ Package root: `net.ladenthin.srcmorph`.
   The measured profile (prompts + fact counters) lives once in the repo-root `profiles/v3/`
   (`profiles/README.md`); the plugin's self-test profile, the model-card benchmark, the examples and
   the plugin-it fixture all name only keys and read it from there, so do not paste a prompt text or
-  a regex into a configuration again. `SqlFactPatternsTest`, `JavaStructureFactPatternsTest`,
-  `ShellFactPatternsTest`, `PerlFactPatternsTest` and `XmlFactPatternsTest` read the shipped `.tsv`
+  a regex into a configuration again. The `*FactPatternsTest` classes (`Sql`, `JavaStructure`,
+  `Shell`, `Perl`, `Xml`, `EnterpriseXml`, `Jvm`, `View`, `Contract`, `Ops`) read the shipped `.tsv`
   files, never copies, and count through `AiFactExtractor.counts`, so the `[ignore]` lines (regions
-  blanked before counting: POD, heredocs, comments) apply as in production.
-  `ProfileFactPatternsLinearityTest` runs every pattern of every `.tsv` of the profile over repeated
-  adversarial lines and counts the characters the matcher reads: four times the input may read at
-  most six times as many, so a quadratic pattern fails it on any machine. A new facts file is
-  measured without a change to it.
+  blanked before counting: POD, heredocs, comments) and the `[raw]` and `[distinct]` counters apply
+  as in production. `ProfileFactPatternsLinearityTest` runs every pattern of every `.tsv` of the
+  profile over repeated adversarial lines and counts the characters the matcher reads: four times
+  the input may read at most six times as many, so a quadratic pattern fails it on any machine, and
+  none may reach the time limit `AiFactExtractor` gives a pattern (`READS_PER_CHAR` per character
+  plus `READ_ALLOWANCE`). A new facts file is measured without a change to it.
 - **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
   `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,
@@ -155,6 +156,7 @@ Package root: `net.ladenthin.srcmorph`.
   `AiTimeSupport`, `AiPathSupport`, `AiSourceExcludeFilter`, `AiProgressBar`, `AiSourceChunker`,
   `AiSourceLines` (a source is read once with `\n` line endings: checksum, plan, prompt and chunks see
   the same text),
+  `AiShebang` (the interpreter a `#!` line names: `fileInterpreters` and the `interpreters` condition),
   `AiDeterministicSummary`, `AiGenerationTimeEstimator`, `Java8CompatibilityHelper`, `ConvertToRecord`,
   `ReplaceWithLibrary` (marks a copy of a library class whose release is not out yet;
   `ReplaceWithLibraryTest` fails once the library class is on the classpath, see `TODO.md`).
@@ -176,7 +178,7 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 79 entries (nested classes counted) across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 81 entries (nested classes counted) across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (24/24) and `srcmorph-maven-plugin` (80/80) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom

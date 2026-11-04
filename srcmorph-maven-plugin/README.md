@@ -153,12 +153,14 @@ The file has three building blocks:
    `aiDefinitionKey` (model id, which carries the full parameter set) and selects files with a
    composable **`condition`** tree: `and`/`or`/`not` over the leaves `extensions`, `size`
    (`min`/`max` bytes), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
-   the file's last-modified time), `pathGlob` (base-relative glob), `fileNames` (globs over the name
-   without its directory, in any case: `Dockerfile`, `Jenkinsfile`, `Dockerfile.*`) and
-   `contentMatches` (a Java regular expression found in the first 16,384 characters of the file, so
-   a Kubernetes manifest and an OpenAPI document of the same extension take different rules:
-   `(?m)^apiVersion:`). A glob takes `*`, `**`, `?` and `{a,b}` alternatives
-   (`**/*.{yml,yaml}`). When several rules match, the
+   the file's last-modified time), `pathGlob` (base-relative glob, in the case written, so it
+   matches the same on every system), `fileNames` (globs over the name without its directory, in any
+   case: `Dockerfile`, `Jenkinsfile`, `Dockerfile.*`), `contentMatches` (a Java regular expression
+   found in the first `contentHeadChars` characters of the file, 16,384 by default, so a Kubernetes
+   manifest and an OpenAPI document of the same extension take different rules:
+   `(?m)^apiVersion:`) and `interpreters` (the interpreter the file's `#!` line names, a version of
+   it too: `[bash, sh]`, `[python]` matches `#!/usr/bin/env python3`). A glob takes `*`, `**`, `?`
+   and `{a,b}` alternatives (`**/*.{yml,yaml}`). When several rules match, the
    highest `priority` wins (ties by declaration order). A rule may instead be `skip: true` (ignore
    matching files — a high-priority skip beats routes and the fallback), and **exactly one**
    `fallback: true` (no condition) catches the rest. A file that matches no rule and no fallback
@@ -215,7 +217,9 @@ The file has three building blocks:
    **Exact counts with `factsKey` (optional, every file — not just oversize).** A sampled/chunked AI
    summary can't reliably *count* things (no single call sees the whole file — it will guess "25 rows").
    A rule's `factsKey` names a group of counters, `<profileDirectory>/<key>.tsv` (one `label<TAB>regex`
-   per line, `#` comments, an `[ignore]` label for a region blanked before counting), and each reports
+   per line, `#` comments, an `[ignore]` label for a region blanked before counting, `[raw]` for a
+   counter that counts before the blanking, `[distinct]` for one that counts different names; see
+   [`profiles/README.md`](../profiles/README.md)), and each reports
    its regex match count over the **whole** source, prepended to the body of every file the rule
    matches as an exact facts line — so downstream agents get authoritative structural counts in every
    summary. It's fully generic — the meaning is in the regex, so the same mechanism counts SQL rows or
@@ -409,14 +413,20 @@ The POM sets only these; everything else is the configuration file (above).
   global switch skips.
 
 The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirectory`, `fileExtensions`,
-`fileNames`, `excludes`, `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
+`fileNames`, `fileInterpreters`, `contentHeadChars`, `excludes`, `minFileSizeBytes` /
+`maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
 `profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
 `force`, `regenerateOnProfileChange`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are
 described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
 A configured subtree that does not exist, or lies outside the base directory, fails the goal; file
 extensions match with their dot and in any case. `fileNames` adds files by name, for those without an
-extension (`Dockerfile`, `Jenkinsfile`, `Makefile`): globs over the name, in any case. A source file
+extension (`Dockerfile`, `Jenkinsfile`, `Makefile`): globs over the name, in any case.
+`fileInterpreters` adds the scripts without an extension whose `#!` line names one of the
+interpreters (`[bash, sh, perl, python]`: `bin/deploy`, a Git hook); that line is read only for a
+file the subtrees, the excludes and the size band let through. `contentHeadChars` (default 16,384)
+is how much of a file `contentMatches` and `interpreters` read while planning: raise it when the
+marker of a kind comes after a long license header. A source file
 is read as UTF-8, or as UTF-16 when it starts with that byte order mark; a byte order mark is not
 part of the text the model and the fact counters see.
 

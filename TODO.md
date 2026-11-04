@@ -12,52 +12,32 @@ everything below is genuinely still open.
 
 ### Enterprise kinds of profile v3 (2026-11-04)
 
-Branch `feat/profiles-v3-kinds-and-safety`, in this order:
+Branch `feat/profiles-v3-kinds-and-safety` (PR #269), in this order. Done on it since the runs of
+`docs/ai-index-benchmark/remeasure-2026-11-04/`, without a model run: scripts selected by their `#!`
+line, `contentHeadChars`, the `[raw]` and `[distinct]` counters, the time limit of a fact pattern,
+the `[ignore]` line of `java-facts`, fourteen new facts files (DMN, Scala, the contracts, the ops
+kinds, Gradle, properties, PowerShell, batch), the EE routing of fully qualified annotations, and the
+decision that `pathGlob` keeps matching in the case written.
 
-- **PR #269** (this branch): CI green, then the owner merges. Java takes `file-body-oop` since the
-  runs of `docs/ai-index-benchmark/remeasure-2026-11-04/`.
-- **What the enterprise runs left out** (same README): the ops prompt does not ask for a
-  workflow's or pipeline's name (gpt-oss never named `release-backoffice`), and `file-body-oop`
-  asks for the public API only, so private helpers and constants (`nextNumber`, `PREFIX`, a
-  `refund` call) are named by chance; one sentence each, then measured again.
-- **gpt-oss-20b on the language corpus** went from 99.1 to 98.7 % with the secrets rule and the XML
-  definitions (`systemctl` of the deploy script missing in two of three runs): within the noise of
-  three runs, but worth six more to tell.
+- **Prompt changes, then one measurement for all of them:**
+  - the ops prompt asks for a workflow's or pipeline's name (gpt-oss never named
+    `release-backoffice` in the enterprise runs) and gets a Gradle bullet (plugins, dependencies by
+    configuration, tasks, repositories), since Gradle scripts take it now;
+  - `file-body-oop` asks for the private helpers and constants too (`nextNumber`, `PREFIX`, the
+    `refund` call were named by chance: the prompt asks for the public API);
+  - the user message of a file holds its path below the base directory, not its name alone, so two
+    `web.xml` of different modules read apart.
+- **The measurement**, sequential on OpenRouter, gpt-oss-20b and GPT-6 Luna: three runs each on the
+  card, language and enterprise corpora with the changed prompts, and six more of gpt-oss on the
+  language corpus (99.1 % before the secrets rule, 98.7 % after, `systemctl` of the deploy script
+  missing in two of three runs: noise or not). Written up like `remeasure-2026-11-04/`.
+- **PR #269**: CI green, then the owner merges.
 
-Then, each its own step:
+Then:
 
-- **Files selected by their content:** a script without an extension that only its shebang
-  identifies (`#!/bin/bash`, `#!/usr/bin/env perl`) is never selected: `fileExtensions` and
-  `fileNames` select, `contentMatches` only routes what they selected. A selection condition (a
-  `#!` line read like the 16 KB head), or a `contentMatches` that also selects, would close it.
-- **Fact counters for the kinds that have a prompt but none:** Scala (`scala-facts`, in the shape of
-  `kotlin-facts`), Protobuf / AsyncAPI / Avro / GraphQL (`proto-facts`, `asyncapi-facts`, ...),
-  Terraform, Ansible and Compose (`terraform-facts`, ...), and Camel's YAML DSL (the `camel-yaml`
-  rule of the Luna example takes the ops prompt without counters; `integration-facts` reads XML
-  only).
-- **DMN** is counted by `bpmn-facts` (decisions, rules); a `dmn-facts` of its own (inputs, outputs,
-  hit policy) would count a decision table in full.
-- **Gradle, `.properties`, `.bat`, `.ps1`** take the fallback prompt without counters. `.gradle`
-  is in the Luna example's extensions now (fallback); a Groovy build script could take
-  `file-body-ops` or `groovy-facts`.
-- **`pathGlob` matches in the case written**, also on Windows, so a pattern counts the same on every
-  system; `fileNames` and `extensions` match in any case. Decide whether `pathGlob` should too.
-- **`java-facts` has no `[ignore]` line:** its "TODO/FIXME" counter lives in comments, so blanking
-  comments would zero it, and a `public` or `class` in a comment or string counts. Splitting the
-  counter (TODOs counted before the blanking) or an ignore line for strings and text blocks only
-  would fix the rest.
-- From the reviews of 2026-11-03, not proposed yet: a counter counts occurrences, never distinct
-  names (12 `@Inject` of one type are 12); a fact pattern has no time limit, which the linearity
-  test now stands in for, but a user's own pattern is not measured; the user message of a file
-  holds its name, not its path, so two `web.xml` of different modules read alike to the model.
 - The plugin's self-test profile routes only the measured kinds; the new ones are routed in
   `examples/copilot-api-gateway/srcmorph-luna.yaml`. Once measured on a corpus of real projects
   (the enterprise corpus is written for the benchmark), the self-test can take them too.
-- The `java-ee` rule finds Jakarta EE through the imports; a class that names its annotations
-  fully qualified without an import (`@jakarta.ejb.Stateless`) takes the plain Java rule and its
-  counters.
-- `contentMatches` reads the first 16,384 characters; a YAML file whose `kind:` or `openapi:` comes
-  later (a long license header) takes the generic rule.
 
 ### After the release of 1.4.0
 

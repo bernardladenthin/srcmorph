@@ -80,7 +80,8 @@ public class CConfiguration {
   command means no model load and nothing written. An unknown one fails, naming the eight.
 - **`srcMorph`** — the run: `baseDirectory` (unset: the directory of the file), `outputDirectory`
   (unset: `src/site/ai` below the base directory), `subtrees`, `excludes`, `fileExtensions`,
-  `fileNames` (globs over the file name, for files without an extension),
+  `fileNames` (globs over the file name, for files without an extension), `fileInterpreters`
+  (scripts without an extension, by their `#!` line), `contentHeadChars`,
   `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
   `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations` (the file rules),
   `factDefinitions`, `force`, `regenerateOnProfileChange`, `planOnly`, `aiVersion`, `projectName`,

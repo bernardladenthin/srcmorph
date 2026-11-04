@@ -30,13 +30,17 @@ handed on as a whole.
 | [`v3/perl-facts.tsv`](v3/perl-facts.tsv) | `factsKey: perl-facts` | the same for Perl scripts and modules |
 | [`v3/xml-facts.tsv`](v3/xml-facts.tsv) | `factsKey: xml-facts` | the same for XML, XSD and XSLT files |
 | [`v3/pom-facts.tsv`](v3/pom-facts.tsv) | `factsKey: pom-facts` | the same for Maven POMs (a rule matching `**/*pom.xml`) |
-| [`v3/kotlin-facts.tsv`](v3/kotlin-facts.tsv), [`v3/groovy-facts.tsv`](v3/groovy-facts.tsv) | `factsKey: kotlin-facts`, `groovy-facts` | Kotlin; Groovy and Spock specifications (with `file-body-oop`) |
+| [`v3/kotlin-facts.tsv`](v3/kotlin-facts.tsv), [`v3/groovy-facts.tsv`](v3/groovy-facts.tsv), [`v3/scala-facts.tsv`](v3/scala-facts.tsv) | `factsKey: kotlin-facts`, `groovy-facts`, `scala-facts` | Kotlin; Groovy and Spock specifications; Scala 2 and 3 (with `file-body-oop`) |
 | [`v3/java-ee-facts.tsv`](v3/java-ee-facts.tsv) | `factsKey: java-ee-facts` | `java-facts` plus the EJB, JPA, CDI, JAX-RS, JAX-WS, Servlet, JTA and security annotations |
 | [`v3/jee-facts.tsv`](v3/jee-facts.tsv), [`v3/persistence-facts.tsv`](v3/persistence-facts.tsv), [`v3/mybatis-facts.tsv`](v3/mybatis-facts.tsv) | `factsKey: jee-facts`, `persistence-facts`, `mybatis-facts` | `web.xml`, `ejb-jar.xml`, `application.xml`; `persistence.xml`, `orm.xml`, `*.hbm.xml`; MyBatis mappers |
-| [`v3/integration-facts.tsv`](v3/integration-facts.tsv), [`v3/bpmn-facts.tsv`](v3/bpmn-facts.tsv), [`v3/wsdl-facts.tsv`](v3/wsdl-facts.tsv) | `factsKey: integration-facts`, `bpmn-facts`, `wsdl-facts` | Camel, Spring Integration, Mule and Synapse routes; BPMN and DMN; WSDL |
+| [`v3/integration-facts.tsv`](v3/integration-facts.tsv), [`v3/bpmn-facts.tsv`](v3/bpmn-facts.tsv), [`v3/dmn-facts.tsv`](v3/dmn-facts.tsv), [`v3/wsdl-facts.tsv`](v3/wsdl-facts.tsv) | `factsKey: integration-facts`, `bpmn-facts`, `dmn-facts`, `wsdl-facts` | Camel, Spring Integration, Mule and Synapse routes; BPMN processes; DMN decisions (inputs, outputs, rules, hit policies); WSDL |
 | [`v3/jsp-facts.tsv`](v3/jsp-facts.tsv), [`v3/facelets-facts.tsv`](v3/facelets-facts.tsv) | `factsKey: jsp-facts`, `facelets-facts` | JSP and tag files; Facelets views (with `file-body-view`) |
-| [`v3/openapi-facts.tsv`](v3/openapi-facts.tsv) | `factsKey: openapi-facts` | OpenAPI and Swagger, YAML or JSON (with `file-body-contract`) |
+| [`v3/openapi-facts.tsv`](v3/openapi-facts.tsv), [`v3/asyncapi-facts.tsv`](v3/asyncapi-facts.tsv) | `factsKey: openapi-facts`, `asyncapi-facts` | OpenAPI and Swagger; AsyncAPI 2 and 3; YAML or JSON (with `file-body-contract`) |
+| [`v3/proto-facts.tsv`](v3/proto-facts.tsv), [`v3/avro-facts.tsv`](v3/avro-facts.tsv), [`v3/graphql-facts.tsv`](v3/graphql-facts.tsv) | `factsKey: proto-facts`, `avro-facts`, `graphql-facts` | Protocol Buffers; Avro schemas (`.avsc`); GraphQL schemas and operations (with `file-body-contract`) |
 | [`v3/k8s-facts.tsv`](v3/k8s-facts.tsv), [`v3/actions-facts.tsv`](v3/actions-facts.tsv), [`v3/dockerfile-facts.tsv`](v3/dockerfile-facts.tsv) | `factsKey: k8s-facts`, `actions-facts`, `dockerfile-facts` | Kubernetes and Helm; GitHub Actions; Dockerfiles (with `file-body-ops`) |
+| [`v3/compose-facts.tsv`](v3/compose-facts.tsv), [`v3/ansible-facts.tsv`](v3/ansible-facts.tsv), [`v3/terraform-facts.tsv`](v3/terraform-facts.tsv), [`v3/camel-yaml-facts.tsv`](v3/camel-yaml-facts.tsv) | `factsKey: compose-facts`, `ansible-facts`, `terraform-facts`, `camel-yaml-facts` | Docker Compose; Ansible playbooks and roles; Terraform, OpenTofu and Terragrunt; Camel's YAML DSL (with `file-body-ops`) |
+| [`v3/gradle-facts.tsv`](v3/gradle-facts.tsv), [`v3/properties-facts.tsv`](v3/properties-facts.tsv) | `factsKey: gradle-facts`, `properties-facts` | Gradle build and settings scripts, Groovy and Kotlin DSL; Java `.properties` files (with `file-body-ops`) |
+| [`v3/powershell-facts.tsv`](v3/powershell-facts.tsv), [`v3/batch-facts.tsv`](v3/batch-facts.tsv) | `factsKey: powershell-facts`, `batch-facts` | PowerShell scripts and modules; Windows batch files (with `file-body-fallback`: no prompt of their own) |
 
 ## Prompt files
 
@@ -84,6 +88,25 @@ with `ignore: true`, and its label must not start with `[`. A configuration's `f
 are held to the same rules: a label and a pattern on every counter, no label twice, and at least one
 counter that is not an ignore counter.
 
+Two more markers open a counter's label, in any order and case. `[raw]` counts the source as written,
+before any ignore line blanked it: a marker that lives in comments, `java-facts`' `TODO/FIXME` and
+PowerShell's `#Requires`, counts next to counters that skip comments. `[distinct]` counts the
+different texts a pattern matched instead of its matches: the first group of the pattern where it
+took part, the whole match otherwise, so twelve `@Inject Clock` fields are one injected type where a
+plain counter counts twelve injection points. In a configuration they are `raw: true` and
+`distinct: true`; an ignore counter is neither (it counts nothing). A summary written before these
+markers existed keeps its facts hash: they enter it only where set.
+
+Every pattern has a time limit, counted in characters the matcher reads rather than in seconds, so
+it holds the same on every machine: 2,000 per character of the source plus 1,000,000. The patterns
+here read at most about 830 per character, `java-facts`' field initializer (read up to 10,000
+characters) over a file of nothing but `public a b=` lines, most of them a few
+(`ProfileFactPatternsLinearityTest` asserts that none reaches the limit), so it stops only a
+pattern that backtracks without end, a nested quantifier or a lazy scan for a closer that never
+comes, in a counter of your own: that counter is left out of
+the facts line, an ignore counter blanks nothing, and the run logs a warning naming it. A
+backtracking pattern therefore costs at most that many reads per file instead of hanging the run.
+
 Several ignore lines blank in file order, each over the text the one before left, so a region that
 can hold another one's opener (a `<!--` inside CDATA, POD or `__END__` inside a Perl heredoc, a `/*`
 inside a SQL string) would be cut at the wrong place. The files here therefore have one ignore line
@@ -98,7 +121,7 @@ again from every later opener. A shell or Perl `<<` that is a shift or sits in a
 Perl, now at most 0.2 s), and the Java parameter list is read possessively, one level of parentheses
 deep (the 6 000 constants of the large corpus's enum took 8 s, now 0.1 s); `ShellFactPatternsTest`, `PerlFactPatternsTest` and
 `JavaStructureFactPatternsTest` pin these. `ProfileFactPatternsLinearityTest` measures all of it for
-every pattern of every file here: it repeats about 80 adversarial lines (unclosed openers and tags,
+every pattern of every file here: it repeats 110 adversarial lines (unclosed openers and tags,
 heredoc markers, unbalanced parentheses, runs of one character) and counts the characters the
 matcher reads, which may grow at most six times for four times the input. It found six quadratic
 patterns in the 1.4.0 files (the XML and POM regions, the XSD counter, the Java type arguments and
@@ -190,7 +213,12 @@ and no summary copied the password the corpus holds. The runs are under
 [`remeasure-2026-11-04/`](../docs/ai-index-benchmark/remeasure-2026-11-04/README.md). Measured are
 therefore Java, SQL, shell, Perl, XML and the fallback on the card and language corpora, and the
 kinds of the enterprise corpus on that corpus alone; Scala, the contract formats other than OpenAPI,
-Terraform, Ansible and Compose ran in no measurement.
+Terraform, Ansible and Compose ran in no measurement. Their counters (`scala-facts`, `proto-facts`,
+`avro-facts`, `graphql-facts`, `asyncapi-facts`, `terraform-facts`, `ansible-facts`,
+`compose-facts`, `camel-yaml-facts`, and `dmn-facts`, `gradle-facts`, `properties-facts`,
+`powershell-facts`, `batch-facts`) are pinned by their tests, not by a model run: a facts line is
+written in front of every summary of its rule but reaches the model only in a reduce call, and the
+scores read names, not counts.
 
 ## Shell, Perl and XML prompts
 
