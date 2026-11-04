@@ -20,7 +20,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   sampled. It takes every extension of the self-test profile and leaves out `target/`, `.git/`,
   `.idea/`, `.vscode/`, `.gradle/`, `node_modules/` and `.claude/` (agent worktrees, a second copy
   of the sources). `ExamplesConfigBindingTest` pins the routing, the facts, the strategy and the
-  chunk prompts.
+  chunk prompts. It routes every kind profile v3 knows (below): Java with Jakarta EE imports
+  (`contentMatches`) to the EE counters, Kotlin, Groovy and Scala to the shared OOP prompt, the EE
+  descriptors and mappings by name (`fileNames`), MyBatis mappers and integration routes by their
+  DTD or namespace, BPMN, WSDL, JSP, Facelets, OpenAPI by its `openapi:` key, GitHub Actions by path,
+  Kubernetes by `kind:`, Camel's YAML DSL by its `- route:` / `- from:`, Dockerfiles and
+  Jenkinsfiles by name, and other YAML and Terraform to the ops prompt; Gradle build scripts are
+  indexed with the fallback prompt. `ExamplesConfigBindingTest` routes one file of each.
+- **Benchmark: the enterprise corpus** ([`docs/ai-index-benchmark/corpus-enterprise/`](docs/ai-index-benchmark/corpus-enterprise/README.md)),
+  seventeen files of those kinds around one shop backoffice, with `modelcard/facts-enterprise.json`.
+  `run.py` routes the new kinds as the Luna example does and takes `--java-prompt`, so the Java
+  prompt and the shared OOP prompt run side by side on the card corpus; `score.py` reports
+  `secretsLeaked`, the summaries that copy a value the facts mark as a secret.
 - **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
   profile reads linearly**, the `[ignore]` lines included, over 79 adversarial lines (unclosed
   openers and tags, heredoc markers, unbalanced parentheses, runs of one character). It counts the
@@ -84,7 +95,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   which also rewrites once every summary from before 1.4.0 (no `P`). `regenerateOnProfileChange:
   false` restores the old behavior: the hashes are recorded only. `AiMdHeaderSupportTest` and
   `SourceFileIndexerTest` pin both settings; the plugin README's header section says what rewrites a
-  summary.
+  summary. Every file prompt of profile v3 changed in this release (the secrets rule), so with the
+  default the first run after the upgrade rewrites every file summary, one model call each; set
+  `regenerateOnProfileChange: false` for that run to keep them.
 - **A `{` in a glob opens an alternative**; it matched itself before. An exclude or a `pathGlob`
   with a literal brace pair now means its alternatives.
 - **A source file with a byte order mark is read without it**, and one with the UTF-16 mark as

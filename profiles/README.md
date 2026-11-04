@@ -67,7 +67,7 @@ and writes them as one line before the AI summary, for example
 sampled or chunked summary cannot count reliably, these lines can. Every pattern is compiled when the
 run starts, so a broken one fails it with the file and line.
 
-A line `[include]<TAB><key>` puts the counters of `<key>.tsv` of the same directory at its place,
+A line `[include]<TAB><key>` puts the counters of `<key>.tsv` of the profile directory at its place,
 its `[ignore]` lines included: `jee-facts` is `xml-facts` plus the descriptor counters,
 `java-ee-facts` is `java-facts` plus the annotations, so a kind that extends another adds its own
 counters and copies none. An included file may include others; one that includes itself, also
@@ -75,8 +75,9 @@ through others, fails the run naming the chain, and so does a label that two of 
 label must not start with `#`, which makes the line a comment.
 
 A label starting with `[ignore]` marks a region instead of a counter: its matches are blanked out
-before the other counters count, every character except the line breaks, so `^` anchors and line
-counts see the same lines as before. That is how a sub named in Perl's POD, a function or a `set -e`
+before the other counters count: a region over several lines keeps only its line breaks, so `^`
+anchors and line counts see the same lines as before, and a region within one line becomes one
+space, so the words around it stay apart. That is how a sub named in Perl's POD, a function or a `set -e`
 in a shell heredoc, a commented-out POM dependency or an `INSERT` inside a SQL block comment stays
 out of the counts. An ignore line is not reported. The prefix may be written in any case; any other
 label starting with `[` is refused as an unknown marker. In a configuration the same is a counter
@@ -88,7 +89,7 @@ Several ignore lines blank in file order, each over the text the one before left
 can hold another one's opener (a `<!--` inside CDATA, POD or `__END__` inside a Perl heredoc, a `/*`
 inside a SQL string) would be cut at the wrong place. The files here therefore have one ignore line
 per language, an alternation of all its regions: the region that starts first wins, as in a lexer.
-Blanking removes the characters, so `INSERT/* x */INTO` reads as `INSERTINTO`. A counter anchored at
+Blanking leaves a space within a line, so `INSERT/* x */INTO` reads as `INSERT INTO`. A counter anchored at
 a line start allows spaces and tabs there (`^[ \t]*`), never `\s*`: a blanked region leaves a run of
 line breaks, and `^\s*` over one is quadratic (a 40 000-line block comment took 44 s, now 0.05 s;
 `SqlFactPatternsTest` pins it). For the same reason a region whose end never comes runs to the end

@@ -203,7 +203,7 @@ public class ExamplesConfigBindingTest {
             }
         }
         // the kinds profile v3 has no counters for
-        assertThat(withoutFacts, is(List.of("scala", "contract", "ops", "fallback")));
+        assertThat(withoutFacts, is(List.of("scala", "contract", "camel-yaml", "ops", "fallback")));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
     }
 
@@ -290,6 +290,9 @@ public class ExamplesConfigBindingTest {
             {"proto/order.proto", "syntax = \"proto3\";\n", "contract"},
             {".github/workflows/ci.yml", "on: push\n", "actions"},
             {"k8s/deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n", "k8s"},
+            {"camel/orders.yaml", "- route:\n    id: orders\n    from:\n      uri: jms:queue:orders\n", "camel-yaml"},
+            {"camel/timer.yaml", "- from:\n    uri: timer:tick\n", "camel-yaml"},
+            {"build.gradle", "plugins { id 'java' }\n", "fallback"},
             {"docker/Dockerfile", "FROM alpine\n", "dockerfile"},
             {"Jenkinsfile", "pipeline {}\n", "ops"},
             {"config/application.yml", "server:\n  port: 8080\n", "ops"},

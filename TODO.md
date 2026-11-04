@@ -10,6 +10,56 @@ everything below is genuinely still open.
 
 ## Open
 
+### Enterprise kinds of profile v3 (2026-11-04)
+
+Branch `feat/profiles-v3-kinds-and-safety`, in this order:
+
+- **Measurement** (runs of 2026-11-04 under `docs/ai-index-benchmark/remeasure-2026-11-04/`): score
+  them, write the README there with the numbers next to those of 2026-11-02, and say in
+  `profiles/README.md` which kinds are measured.
+- **Java on the shared prompt:** when the card corpus shows `file-body-oop` no worse than
+  `file-body-java` for gpt-oss-20b and GPT-6 Luna, route Java to `file-body-oop` everywhere (the
+  self-test and its `build-your-own-jar` twin, the examples, `config_All.json`, the plugin-it fixture
+  and `.github/plugin-it.sh`, `run.py`'s default `--java-prompt`, the plugin README) and delete
+  `file-body-java.md`, so one prompt serves every class-based language. If it is worse, find which
+  sentence costs it before switching.
+- **Push and open the pull request** for the branch.
+
+Then, each its own step:
+
+- **Files selected by their content:** a script without an extension that only its shebang
+  identifies (`#!/bin/bash`, `#!/usr/bin/env perl`) is never selected: `fileExtensions` and
+  `fileNames` select, `contentMatches` only routes what they selected. A selection condition (a
+  `#!` line read like the 16 KB head), or a `contentMatches` that also selects, would close it.
+- **Fact counters for the kinds that have a prompt but none:** Scala (`scala-facts`, in the shape of
+  `kotlin-facts`), Protobuf / AsyncAPI / Avro / GraphQL (`proto-facts`, `asyncapi-facts`, ...),
+  Terraform, Ansible and Compose (`terraform-facts`, ...), and Camel's YAML DSL (the `camel-yaml`
+  rule of the Luna example takes the ops prompt without counters; `integration-facts` reads XML
+  only).
+- **DMN** is counted by `bpmn-facts` (decisions, rules); a `dmn-facts` of its own (inputs, outputs,
+  hit policy) would count a decision table in full.
+- **Gradle, `.properties`, `.bat`, `.ps1`** take the fallback prompt without counters. `.gradle`
+  is in the Luna example's extensions now (fallback); a Groovy build script could take
+  `file-body-ops` or `groovy-facts`.
+- **`pathGlob` matches in the case written**, also on Windows, so a pattern counts the same on every
+  system; `fileNames` and `extensions` match in any case. Decide whether `pathGlob` should too.
+- **`java-facts` has no `[ignore]` line:** its "TODO/FIXME" counter lives in comments, so blanking
+  comments would zero it, and a `public` or `class` in a comment or string counts. Splitting the
+  counter (TODOs counted before the blanking) or an ignore line for strings and text blocks only
+  would fix the rest.
+- From the reviews of 2026-11-03, not proposed yet: a counter counts occurrences, never distinct
+  names (12 `@Inject` of one type are 12); a fact pattern has no time limit, which the linearity
+  test now stands in for, but a user's own pattern is not measured; the user message of a file
+  holds its name, not its path, so two `web.xml` of different modules read alike to the model.
+- The plugin's self-test profile routes only the measured kinds; the new ones are routed in
+  `examples/copilot-api-gateway/srcmorph-luna.yaml`. Once measured on a corpus of real projects
+  (the enterprise corpus is written for the benchmark), the self-test can take them too.
+- The `java-ee` rule finds Jakarta EE through the imports; a class that names its annotations
+  fully qualified without an import (`@jakarta.ejb.Stateless`) takes the plain Java rule and its
+  counters.
+- `contentMatches` reads the first 16,384 characters; a YAML file whose `kind:` or `openapi:` comes
+  later (a long license header) takes the generic rule.
+
 ### After the release of 1.4.0
 
 - `java-facts` `type declarations` counts private and protected nested types and `@interface`s since

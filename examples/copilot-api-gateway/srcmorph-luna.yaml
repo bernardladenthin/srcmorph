@@ -64,6 +64,7 @@ srcMorph:
     - ".kts"
     - ".groovy"
     - ".gvy"
+    - ".gradle"                              # Groovy build scripts: no rule of their own, the fallback
     - ".scala"
     - ".jsp"
     - ".jspf"
@@ -369,6 +370,18 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         pathGlob: "**/.github/{workflows,actions}/**/*.{yml,yaml}"
+    - id: camel-yaml                         # Camel routes in the YAML DSL; no counters yet
+      promptKey: file-body-ops
+      aiDefinitionKey: luna
+      priority: 10
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - contentMatches: '(?m)^-[ \t]+(?:route|routeTemplate|from|rest)[ \t]*:'
     - id: k8s                                # Kubernetes manifests and Helm templates
       promptKey: file-body-ops
       aiDefinitionKey: luna
