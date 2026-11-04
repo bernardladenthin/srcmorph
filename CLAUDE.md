@@ -134,6 +134,10 @@ Package root: `net.ladenthin.srcmorph`.
   `ShellFactPatternsTest`, `PerlFactPatternsTest` and `XmlFactPatternsTest` read the shipped `.tsv`
   files, never copies, and count through `AiFactExtractor.counts`, so the `[ignore]` lines (regions
   blanked before counting: POD, heredocs, comments) apply as in production.
+  `ProfileFactPatternsLinearityTest` runs every pattern of every `.tsv` of the profile over repeated
+  adversarial lines and counts the characters the matcher reads: four times the input may read at
+  most six times as many, so a quadratic pattern fails it on any machine. A new facts file is
+  measured without a change to it.
 - **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
   `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,

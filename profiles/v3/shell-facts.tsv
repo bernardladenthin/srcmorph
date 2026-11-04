@@ -17,12 +17,13 @@
 # environment prefix of a command (LC_ALL=C sort). Counts are regex heuristics: a function defined
 # inside a string, an option arm written on one line with others, the second of two heredocs started
 # on one line, a blank and # inside a quoted string (read as a comment), and a value with more than
-# one level of $( ) are not read as the shell reads them. ShellFactPatternsTest pins every case.
+# one level of $( ) are not read as the shell reads them. ShellFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern of the profile reads linearly.
 [ignore] comments and heredoc bodies	(?ms)^[ \t]*#[^\n]*|(?<=[ \t])#[^\n]*|(?=<<)(?<!<|\(\([^)\n]{0,120}|\(\([^()\n]{0,40}\([^()\n]{0,40}\)[^)\n]{0,40}|\$\[[^\]\n]{0,120})<<(?:-[ \t]*(?:(["'])((?:(?!\1)[^\n])+)\1|\\?([^\s<>|&;()'"`]++))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^\t*(?:\2|\3)$|.*)|[ \t]*(?:(["'])((?:(?!\4)[^\n])+)\4|\\?([^\s<>|&;()'"`-][^\s<>|&;()'"`]*+))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^(?:\5|\6)$|.*))
 functions	(?m)^[ \t]*(?:function[ \t]+[A-Za-z_][\w.:-]*[ \t]*(?:\([ \t]*\))?|[A-Za-z_][\w.:-]*[ \t]*\([ \t]*\))[ \t]*(?:\{|\(|$|\[\[|(?:if|for|while|until|case|select)\b)
 getopts loops	\bgetopts[ \t]+
 getopts option letters	(?:\bgetopts[ \t]+["']?:?|\G(?<=[:A-Za-z0-9]):?)[A-Za-z0-9]
-dash-option case arms	(?m)^[ \t]*\(?[ \t]*(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?(?:[ \t]*\|[ \t]*(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?)*[ \t]*\)
+dash-option case arms	(?m)^[ \t]*+\(?[ \t]*+(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?(?:[ \t]*+\|[ \t]*+(?:-[A-Za-z0-9]|--[A-Za-z0-9][\w-]*)(?:=\*)?)*[ \t]*+\)
 named positional parameters	(?m)^[ \t]*(?:(?:local|readonly|declare|typeset|export)(?:[ \t]+-\w+)*[ \t]+)?[A-Za-z_]\w*=["']?\$(?:\{[1-9][0-9]*(?:[:?=+#%-][^}]*)?\}|[1-9])
 exported variables	(?m)(?:^[ \t]*(?:export|(?:declare|typeset|local)[ \t]+-(?=[a-zA-Z]*x)(?![a-zA-Z]*[fFn])[a-zA-Z]+)(?:[ \t]+-[a-eg-mo-zA-Z]+)*(?![ \t]+-)|\G(?<=[^\n])(?:=(?:"[^"\n]*+"|'[^'\n]*+'|\$\([^)\n]*+\)|\$\{[^}\n]*+\}|[^\s;&|"'$()]++|\$)*+)?)[ \t]+[A-Za-z_]\w*
 readonly variables	(?m)(?:^[ \t]*(?:readonly|(?:declare|typeset|local)[ \t]+-(?=[a-zA-Z]*r)(?![a-zA-Z]*[fFn])[a-zA-Z]+)(?:[ \t]+-[a-eg-mo-zA-Z]+)*(?![ \t]+-)|\G(?<=[^\n])(?:=(?:"[^"\n]*+"|'[^'\n]*+'|\$\([^)\n]*+\)|\$\{[^}\n]*+\}|[^\s;&|"'$()]++|\$)*+)?)[ \t]+[A-Za-z_]\w*

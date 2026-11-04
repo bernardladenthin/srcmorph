@@ -9,11 +9,15 @@
 # (final-only and package-private fields are not counted, to skip final local variables). A parameter
 # list may hold one level of parentheses (@Size(max = 3) String s), read possessively, so the
 # constants of a long enum stay linear; "type declarations" counts nested and private types, records
-# and @interface too. JavaStructureFactPatternsTest pins the accepted false-positive/negative boundary.
+# and @interface too. Type arguments are read within one line and a field initializer up to 10,000
+# characters, so a file of declarations without their ">" or ";" stays linear: a generic type split
+# over lines, or a longer initializer, is not counted. JavaStructureFactPatternsTest pins the accepted
+# false-positive/negative boundary; ProfileFactPatternsLinearityTest measures that every pattern of the
+# profile reads linearly.
 type declarations	(?m)^[ \t]*(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed|strictfp)[ \t]+)*(?:class|interface|@interface|enum|record)[ \t]+[A-Za-z_$]
 public declarations	\bpublic\b
 TODO/FIXME	\b(?:TODO|FIXME)\b
 @Override	@Override\b
-methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]
+methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>\n]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]
 constructors	(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{
-field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]*)?;
+field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]{0,10000}+)?;

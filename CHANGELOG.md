@@ -45,6 +45,23 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   file, as in `sql-facts.tsv`, a type tag ends at the next `<`, and a nested plugin body at the next
   plugin tag. Well-formed files count as before (the corpus counts are unchanged); 11 new
   `XmlFactPatternsTest` cases pin the unclosed regions and the run time of each pattern.
+- **Three more fact counters were quadratic**, found by the new linearity test: in `java-facts.tsv`
+  the type arguments of "methods (approx)" and "field declarations" and the field initializer read
+  across lines to the end of the file from every declaration without its `>` or `;`, and in
+  `shell-facts.tsv` "dash-option case arms" backtracked over a long run of blanks. Type arguments are
+  now read within one line, an initializer up to 10,000 characters (a generic type split over lines,
+  or a longer initializer, is no longer counted; `JavaStructureFactPatternsTest` pins both), and the
+  blanks possessively.
+
+### Added (tests)
+
+- **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
+  profile reads linearly**, the `[ignore]` lines included, over 55 adversarial lines (unclosed
+  openers and tags, heredoc markers, unbalanced parentheses, runs of one character). It counts the
+  characters the matcher reads instead of timing it: four times the input may read at most six
+  times as many (linear reads four times, quadratic sixteen), so the result is the same on any
+  machine. A facts file added to the profile is measured without a change to the test. Against the
+  facts files of 1.4.0 it reports six quadratic patterns, all fixed above.
 
 ## [1.4.0] - 2026-11-02
 

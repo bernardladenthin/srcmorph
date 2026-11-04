@@ -148,6 +148,38 @@ public class JavaStructureFactPatternsTest {
     }
 
     @Test
+    public void field_initializerOverManyLines_counts() {
+        assertThat(
+                count(FIELD_PATTERN, "    private static final int[] A = {\n        1,\n        2,\n    };\n"), is(1));
+        assertThat(
+                count(
+                        FIELD_PATTERN,
+                        "    private final Runnable r = new Runnable() {\n        public void run() {\n"
+                                + "            go();\n        }\n    };\n"),
+                is(1));
+    }
+
+    @Test
+    public void field_initializerLongerThanTenThousandCharacters_doesNotCount() {
+        // the initializer is read up to 10,000 characters, which keeps the pattern linear over a file
+        // of declarations without their semicolons
+        final String table = "    static final String T = \"" + "x".repeat(10_000) + "\";\n";
+        assertThat(count(FIELD_PATTERN, table), is(0));
+        assertThat(count(FIELD_PATTERN, "    static final String T = \"" + "x".repeat(9_000) + "\";\n"), is(1));
+    }
+
+    @Test
+    public void field_genericTypeOverTwoLines_doesNotCount() {
+        // type arguments are read within one line, so a declaration without its ">" cannot rescan the file
+        assertThat(count(FIELD_PATTERN, "    private Map<String,\n        Integer> m;\n"), is(0));
+    }
+
+    @Test
+    public void method_typeParametersOverTwoLines_doNotCount() {
+        assertThat(count(METHOD_PATTERN, "    public <K,\n        V> void put(K k, V v) {\n"), is(0));
+    }
+
+    @Test
     public void field_transientArray_counts() {
         assertThat(count(FIELD_PATTERN, "    transient Object[] elementData;"), is(1));
     }
