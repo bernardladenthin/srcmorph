@@ -6,8 +6,8 @@
 # Agentic reaction-time bench for local GGUF models via llama-server (tool-calling).
 # Usage: agentic_bench.sh <out.tsv> <model1.gguf> [model2.gguf ...]
 set -uo pipefail
-LS="/c/Users/berna/AppData/Local/Microsoft/WinGet/Packages/ggml.llamacpp_Microsoft.Winget.Source_8wekyb3d8bbwe/llama-server.exe"
-MODELDIR="M:/Modelle"
+LS="${LLAMA_SERVER:-llama-server}"   # llama-server: on the PATH unless LLAMA_SERVER names it
+MODELDIR="${MODELDIR:-M:/Modelle}"
 PORT=8090
 HERE="$(dirname "$0")"
 OUT="$1"; shift
