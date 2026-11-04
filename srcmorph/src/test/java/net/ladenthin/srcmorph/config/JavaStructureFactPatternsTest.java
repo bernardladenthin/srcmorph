@@ -255,4 +255,59 @@ public class JavaStructureFactPatternsTest {
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(TYPE_PATTERN, source)), is(1));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="the whole file: [ignore] and [raw]">
+    /** A class whose comments, Javadoc, strings, text block and char literal name declarations. */
+    private static final String COMMENTED_CLASS = "/** A public class Example: {@code public void run()} */\n"
+            + "public class A {\n"
+            + "    // TODO public later\n"
+            + "    private static final String S = \"public class X // not a comment\";\n"
+            + "    private static final String T = \"\"\"\n"
+            + "        public class Y \" \\\"\"\" still the block\n"
+            + "        \"\"\";\n"
+            + "    /* FIXME */ public void run() {\n"
+            + "    }\n"
+            + "    char c = '\"';\n"
+            + "    char d = '\\'';\n"
+            + "    public int x = 1;\n"
+            + "}\n";
+
+    @Test
+    public void wholeFile_commentsStringsAndTextBlocks_doNotCount() {
+        final Map<String, Integer> counts =
+                ProfileFactPatterns.counts(ProfileFactPatterns.counters("java-facts"), COMMENTED_CLASS);
+
+        assertThat(counts.get("type declarations"), is(1));
+        assertThat(counts.get("public declarations"), is(3));
+        assertThat(counts.get("methods (approx)"), is(1));
+        assertThat(counts.get("field declarations (w/ modifier)"), is(3));
+    }
+
+    @Test
+    public void wholeFile_todosInComments_count() {
+        final Map<String, Integer> counts =
+                ProfileFactPatterns.counts(ProfileFactPatterns.counters("java-facts"), COMMENTED_CLASS);
+
+        assertThat(counts.get("TODO/FIXME"), is(2));
+    }
+
+    @Test
+    public void wholeFile_unclosedBlockCommentAndTextBlock_runToTheEnd() {
+        final Map<String, Integer> comment =
+                ProfileFactPatterns.counts(ProfileFactPatterns.counters("java-facts"), "public class A {\n/* public\n");
+        final Map<String, Integer> textBlock = ProfileFactPatterns.counts(
+                ProfileFactPatterns.counters("java-facts"), "public class A {\nString s = \"\"\"\npublic\n");
+
+        assertThat(comment.get("public declarations"), is(1));
+        assertThat(textBlock.get("public declarations"), is(1));
+    }
+
+    @Test
+    public void wholeFile_stringNotClosedOnItsLine_isNotBlanked() {
+        final Map<String, Integer> counts = ProfileFactPatterns.counts(
+                ProfileFactPatterns.counters("java-facts"), "String s = \"public\npublic class A {\n");
+
+        assertThat(counts.get("public declarations"), is(2));
+    }
+    // </editor-fold>
 }

@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# PowerShell counters (.ps1, .psm1), for a rule with the prompt file-body-fallback: one per line,
+# label TAB pattern (Java regex), keywords in any case as PowerShell reads them. "requirements" is
+# [raw]: #Requires is a comment to the parser. The [ignore] line then blanks, leftmost region first,
+# block comments (<# ... #>), here-strings (@" or @' at the end of a line up to "@ or '@ first on a
+# line), # comments and string literals, so a "function" in a help comment or a string does not
+# count; a block comment or a here-string that is never closed runs to the end of the file.
+# "Verb-Noun command calls (approx)" counts every name of the Verb-Noun shape written with capitals,
+# the script's own functions too. OpsFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[raw] requirements	(?im)^#Requires\b
+[ignore] comments, here-strings and strings	(?ims)<#.*?(?:#>|\z)|@(["'])[ \t]*+\n(?:.*?^\1@|.*+)|(?<![\w`$])#[^\n]*+|"(?:[^"`\n]|`.)*+"|'(?:[^'\n]|'')*+'
+functions	(?im)^[ \t]*+(?:function|filter|workflow)[ \t]++[\w-]
+advanced functions	(?i)\[CmdletBinding\b
+parameter blocks	(?i)\bparam[ \t]*+\(
+mandatory parameters	(?i)\bMandatory\b
+classes	(?im)^[ \t]*+class[ \t]++\w
+modules imported	(?im)^[ \t]*+(?:Import-Module|using[ \t]++module)\b
+dot-sourced scripts	(?m)^[ \t]*+\.[ \t]++[^\s]
+try blocks	(?i)\btry[ \t\n]*+\{
+errors raised	(?i)\b(?:throw|Write-Error)\b
+Verb-Noun command calls (approx)	\b[A-Z][a-z]++-[A-Z][A-Za-z]++\b

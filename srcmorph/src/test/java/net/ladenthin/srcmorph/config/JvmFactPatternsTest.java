@@ -30,6 +30,8 @@ public class JvmFactPatternsTest {
 
     private static final List<AiFactCounter> JAVA = ProfileFactPatterns.counters("java-facts");
 
+    private static final List<AiFactCounter> SCALA = ProfileFactPatterns.counters("scala-facts");
+
     private static int count(final List<AiFactCounter> counters, final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
         final Integer count = counts.get(label);
@@ -293,6 +295,60 @@ public class JvmFactPatternsTest {
         assertThat(count(JAVA_EE, "transaction annotations", JAVA_EE_SOURCE), is(1));
         assertThat(count(JAVA_EE, "EJB timers", JAVA_EE_SOURCE), is(1));
         assertThat(count(JAVA_EE, "security annotations", JAVA_EE_SOURCE), is(1));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="scala-facts">
+    private static final String SCALA_SOURCE = "package shop\n"
+            + "import scala.concurrent.Future\n"
+            + "import shop.model.{Order, Line}\n"
+            + "/** A class Fake in the Scaladoc; def fake() = 1 */\n"
+            + "sealed trait Event\n"
+            + "final case class Placed(id: String) extends Event\n"
+            + "case object Cancelled extends Event\n"
+            + "/* class Old {\n   /* nested */ def gone() = 0\n} */\n"
+            + "@deprecated(\"use Orders\") private[shop] class OrderService(repo: Repo) {\n"
+            + "  private val Prefix = \"def notAMethod = 1\"\n"
+            + "  lazy val cache = Map.empty[String, Order]\n"
+            + "  type Id = String\n"
+            + "  override def toString: String = s\"OrderService(${repo})\"\n"
+            + "  def place(order: Order)(implicit ec: ExecutionContext): Future[Order] = {\n"
+            + "    val symbol = 'placed\n"
+            + "    val quote = '\"'\n"
+            + "    def local(x: Int) = x + 1\n"
+            + "    repo.save(order)\n"
+            + "  }\n"
+            + "  def +(other: OrderService): OrderService = this\n"
+            + "}\n"
+            + "object OrderService {\n"
+            + "  implicit val ordering: Ordering[Order] = Ordering.by(_.id)\n"
+            + "  given Conversion[String, Order] = Order(_)\n"
+            + "}\n"
+            + "enum Status:\n"
+            + "  case New, Paid\n"
+            + "extension (o: Order)\n"
+            + "  def total: BigDecimal = o.lines.map(_.price).sum\n"
+            + "opaque type Money = BigDecimal\n";
+
+    @Test
+    public void scala_countsDeclarationsAndNotCommentsOrStrings() {
+        // Event, Placed, Cancelled, OrderService, OrderService (companion), Status
+        assertThat(count(SCALA, "type declarations", SCALA_SOURCE), is(6));
+        assertThat(count(SCALA, "case classes and case objects", SCALA_SOURCE), is(2));
+        assertThat(count(SCALA, "traits", SCALA_SOURCE), is(1));
+        // toString, place, local, +, total
+        assertThat(count(SCALA, "methods (approx)", SCALA_SOURCE), is(5));
+        assertThat(count(SCALA, "extension methods", SCALA_SOURCE), is(1));
+        assertThat(count(SCALA, "givens and implicits", SCALA_SOURCE), is(2));
+        // Prefix, cache, symbol, quote, ordering
+        assertThat(count(SCALA, "vals and vars at the start of a line (members and locals)", SCALA_SOURCE), is(5));
+        assertThat(count(SCALA, "type aliases", SCALA_SOURCE), is(2));
+        assertThat(count(SCALA, "imports", SCALA_SOURCE), is(2));
+    }
+
+    @Test
+    public void scala_anUnclosedNestedCommentRunsToTheEnd() {
+        assertThat(count(SCALA, "type declarations", "class A\n/* /* nested */ still open\nclass B\n"), is(1));
     }
     // </editor-fold>
 }

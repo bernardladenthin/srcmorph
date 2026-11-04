@@ -203,7 +203,7 @@ public class ExamplesConfigBindingTest {
             }
         }
         // the kinds profile v3 has no counters for
-        assertThat(withoutFacts, is(List.of("scala", "contract", "camel-yaml", "ops", "fallback")));
+        assertThat(withoutFacts, is(List.of("ops", "fallback")));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
     }
 
@@ -264,8 +264,12 @@ public class ExamplesConfigBindingTest {
             {"src/main/java/shop/Order.java", "package shop;\nclass Order {}\n", "java"},
             {"src/main/java/shop/OrderBean.java", "package shop;\nimport jakarta.ejb.Stateless;\n", "java-ee"},
             {"src/main/java/shop/Legacy.java", "import javax.persistence.Entity;\n", "java-ee"},
+            {"src/main/java/shop/Audit.java", "import static jakarta.transaction.Transactional.TxType.*;\n", "java-ee"},
+            {"src/main/java/shop/Timer.java", "package shop;\n@jakarta.ejb.Singleton\nclass Timer {}\n", "java-ee"},
+            {"src/main/java/shop/Notes.java", "// see jakarta.ejb.Stateless\nclass Notes {}\n", "java"},
             {"src/main/kotlin/Invoice.kt", "class Invoice\n", "kotlin"},
-            {"build.gradle.kts", "plugins {}\n", "kotlin"},
+            {"build.gradle.kts", "plugins {}\n", "gradle"},
+            {"src/main/kotlin/Build.kts", "println(1)\n", "kotlin"},
             {"src/test/groovy/OrderSpec.groovy", "class OrderSpec {}\n", "groovy"},
             {"src/main/scala/Order.scala", "case class Order()\n", "scala"},
             {"src/main/webapp/WEB-INF/web.xml", "<web-app/>\n", "jee"},
@@ -280,6 +284,7 @@ public class ExamplesConfigBindingTest {
                 "integration"
             },
             {"process/order.bpmn", "<definitions/>\n", "bpmn"},
+            {"rules/discount.dmn", "<definitions/>\n", "dmn"},
             {"wsdl/Stock.wsdl", "<definitions/>\n", "wsdl"},
             {"pom.xml", "<project/>\n", "pom"},
             {"conf/context.xml", "<beans/>\n", "xml"},
@@ -287,16 +292,32 @@ public class ExamplesConfigBindingTest {
             {"webapp/checkout.xhtml", "<ui:composition/>\n", "facelets"},
             {"api/orders.yaml", "openapi: 3.0.3\n", "openapi"},
             {"api/openapi.json", "{\"openapi\":\"3.0.3\"}", "openapi"},
-            {"proto/order.proto", "syntax = \"proto3\";\n", "contract"},
+            {"proto/order.proto", "syntax = \"proto3\";\n", "proto"},
+            {"avro/order.avsc", "{\"type\": \"record\"}\n", "avro"},
+            {"graphql/schema.graphqls", "type Query { x: Int }\n", "graphql"},
+            {"api/events.yaml", "asyncapi: 3.0.0\n", "asyncapi"},
+            {"api/asyncapi.json", "{\"asyncapi\":\"3.0.0\"}", "asyncapi"},
+            {"docker-compose.yml", "services:\n  db:\n    image: postgres\n", "compose"},
+            {"deploy/compose.override.yaml", "services: {}\n", "compose"},
+            {"ansible/site.yml", "- name: Shop\n  hosts: web\n", "ansible"},
+            {"ansible/roles/web/tasks/main.yml", "- name: Copy\n  copy: {}\n", "ansible"},
+            {"infra/terragrunt.hcl", "include \"root\" {}\n", "terraform"},
+            {"settings.gradle", "include 'core'\n", "gradle"},
+            {"src/main/resources/application.properties", "server.port=8080\n", "properties"},
+            {"tools/deploy.ps1", "param()\n", "powershell"},
+            {"tools/build.cmd", "@echo off\n", "batch"},
+            {"bin/deploy", "#!/usr/bin/env bash\nset -e\n", "shell"},
+            {"bin/report", "#!/usr/bin/perl -w\n", "perl"},
+            {"bin/tool", "#!/usr/bin/env python3\n", "fallback"},
             {".github/workflows/ci.yml", "on: push\n", "actions"},
             {"k8s/deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n", "k8s"},
             {"camel/orders.yaml", "- route:\n    id: orders\n    from:\n      uri: jms:queue:orders\n", "camel-yaml"},
             {"camel/timer.yaml", "- from:\n    uri: timer:tick\n", "camel-yaml"},
-            {"build.gradle", "plugins { id 'java' }\n", "fallback"},
+            {"build.gradle", "plugins { id 'java' }\n", "gradle"},
             {"docker/Dockerfile", "FROM alpine\n", "dockerfile"},
             {"Jenkinsfile", "pipeline {}\n", "ops"},
             {"config/application.yml", "server:\n  port: 8080\n", "ops"},
-            {"infra/main.tf", "resource \"x\" \"y\" {}\n", "ops"},
+            {"infra/main.tf", "resource \"x\" \"y\" {}\n", "terraform"},
             {"scripts/tool.py", "print(1)\n", "fallback"},
             {"config/.env", "TOKEN=x\n", "secrets"},
         };

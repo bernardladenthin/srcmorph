@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Terraform, OpenTofu and Terragrunt counters (.tf, .hcl), for a rule with the prompt file-body-ops:
+# one per line, label TAB pattern (Java regex). The [ignore] line blanks, leftmost region first, #
+# and // comments, block comments, heredocs (<<EOF and <<-EOF up to the marker alone on its line) and
+# string literals, so a "resource" in a description, a policy document or a comment does not count;
+# a block comment or a heredoc that is never closed runs to the end of the file. A string with an
+# interpolation that holds a quote ("${x == "a"}") ends at that quote, as a regex reads it. A block
+# counts by its keyword at the start of a line, not an attribute of that name (provider = aws.west);
+# "count and for_each" counts both meta-arguments; "refactoring blocks" moved, import and removed.
+# OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
+# reads linearly.
+[ignore] comments, heredocs and strings	(?ms)#[^\n]*+|//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|<<-?([A-Za-z_]\w*+)[ \t]*+\n(?:.*?^[ \t]*+\1[ \t]*+$|.*+)|"(?:[^"\\\n]|\\.)*+"
+resources	(?m)^[ \t]*+resource\b(?![ \t]*+=)
+data sources	(?m)^[ \t]*+data\b(?![ \t]*+=)
+modules	(?m)^[ \t]*+module\b(?![ \t]*+=)
+variables	(?m)^[ \t]*+variable\b(?![ \t]*+=)
+outputs	(?m)^[ \t]*+output\b(?![ \t]*+=)
+locals blocks	(?m)^[ \t]*+locals[ \t]*+\{
+providers	(?m)^[ \t]*+provider\b(?![ \t]*+=)
+backends	(?m)^[ \t]*+backend\b(?![ \t]*+=)
+dynamic blocks	(?m)^[ \t]*+dynamic\b(?![ \t]*+=)
+count and for_each	(?m)^[ \t]*+(?:count|for_each)[ \t]*+=
+refactoring blocks	(?m)^[ \t]*+(?:moved|import|removed)[ \t]*+\{
+sensitive values	(?m)^[ \t]*+sensitive[ \t]*+=[ \t]*+true\b
+Terragrunt includes and dependencies	(?m)^[ \t]*+(?:include|dependency|dependencies)\b(?![ \t]*+=)

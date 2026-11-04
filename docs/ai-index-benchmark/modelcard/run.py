@@ -93,7 +93,7 @@ JAVA_FILES = [
 ]
 EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh", ".pl", ".pm", ".xml", ".xsd", ".xsl", ".xslt",
               ".wsdl", ".kt", ".kts", ".groovy", ".scala", ".jsp", ".jspf", ".tag", ".xhtml", ".bpmn", ".dmn",
-              ".yml", ".yaml", ".proto"]
+              ".yml", ".yaml", ".proto", ".avsc", ".graphql", ".graphqls", ".tf", ".hcl", ".gradle", ".properties"]
 # Files without an extension the runs index by name.
 FILE_NAMES = ["Dockerfile", "Containerfile"]
 # A language gets a rule of its own when the profile has its prompt (file-body-<prompt>.md) or when
@@ -102,8 +102,8 @@ FILE_NAMES = ["Dockerfile", "Containerfile"]
 XML_EXTENSIONS = [".xml", ".xsd", ".xsl", ".xslt"]
 # The enterprise kinds (corpus-enterprise/) take a prompt a kind shares (None: the Java rule's), the more
 # specific ones by name or by content at priority 10 over their extension's rule.
-EE_IMPORTS = (r"(?m)^import[ \t]+(?:javax|jakarta)\.(?:ejb|persistence|ws\.rs|servlet|jws|xml\.ws|inject"
-              r"|transaction|enterprise|annotation\.security)\.")
+EE_IMPORTS = (r"(?m)(?:^import[ \t]+(?:static[ \t]+)?|@)(?:javax|jakarta)\.(?:ejb|persistence|ws\.rs|servlet|jws"
+              r"|xml\.ws|inject|transaction|enterprise|annotation\.security)\.")
 YAML_EXTENSIONS = [".yml", ".yaml"]
 
 
@@ -125,16 +125,23 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("integration", _and({"extensions": [".xml"]}, {"contentMatches": r"camel\.apache\.org/schema|"
                                   r"springframework\.org/schema/integration|mulesoft\.org/schema/mule|"
                                   r"ws\.apache\.org/ns/synapse"}), "xml", 10),
-             ("bpmn", {"extensions": [".bpmn", ".dmn"]}, "xml", 10),
+             ("bpmn", {"extensions": [".bpmn"]}, "xml", 10),
+             ("dmn", {"extensions": [".dmn"]}, "xml", 10),
              ("wsdl", {"extensions": [".wsdl"]}, "xml", 10),
              ("jsp", {"extensions": [".jsp", ".jspf", ".tag"]}, "view", 0),
              ("facelets", {"extensions": [".xhtml"]}, "view", 0),
              ("openapi", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^[\"']?(?:openapi|swagger)[\"']?[ \t]*:"}),
               "contract", 10),
-             ("contract", {"extensions": [".proto"]}, "contract", 0),
+             ("proto", {"extensions": [".proto"]}, "contract", 0),
+             ("avro", {"extensions": [".avsc"]}, "contract", 0),
+             ("graphql", {"extensions": [".graphql", ".graphqls"]}, "contract", 0),
              ("actions", {"pathGlob": "**/.github/workflows/*.{yml,yaml}"}, "ops", 10),
              ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[A-Z]"}), "ops", 5),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
+             ("compose", {"fileNames": ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]}, "ops", 10),
+             ("terraform", {"extensions": [".tf", ".hcl"]}, "ops", 0),
+             ("gradle", {"extensions": [".gradle"]}, "ops", 10),
+             ("properties", {"extensions": [".properties"]}, "ops", 0),
              ("ops", {"extensions": YAML_EXTENSIONS}, "ops", 0))
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 WORK_MARKER = ".srcmorph-benchmark-work"

@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Apache Avro schema counters (.avsc, JSON), for a rule with the prompt file-body-contract: one per
+# line, label TAB pattern (Java regex). JSON has no comments, so nothing is blanked. A type counts by
+# its "type" key, with any white space around the colon: "records", "enums" and "fixed" are the named
+# types, "arrays" and "maps" the containers; "unions" counts a "type" whose value is a list
+# (["null", "string"]), "named elements" every "name" key, which records, enums, fixed types and the
+# fields of a record carry. ContractFactPatternsTest pins every case; ProfileFactPatternsLinearityTest
+# measures that every pattern reads linearly.
+records	"type"[ \t\r\n]*+:[ \t\r\n]*+"record"
+enums	"type"[ \t\r\n]*+:[ \t\r\n]*+"enum"
+fixed types	"type"[ \t\r\n]*+:[ \t\r\n]*+"fixed"
+arrays	"type"[ \t\r\n]*+:[ \t\r\n]*+"array"
+maps	"type"[ \t\r\n]*+:[ \t\r\n]*+"map"
+unions	"type"[ \t\r\n]*+:[ \t\r\n]*+\[
+named elements (types and fields)	"name"[ \t\r\n]*+:
+field lists	"fields"[ \t\r\n]*+:
+defaults	"default"[ \t\r\n]*+:
+logical types	"logicalType"[ \t\r\n]*+:
+namespaces	"namespace"[ \t\r\n]*+:

@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Apache Camel YAML DSL counters (routes, route templates, REST and beans in YAML; Camel 3 and 4,
+# Camel K, Kaoto), for a rule with the prompt file-body-ops: one per line, label TAB pattern (Java
+# regex). The [ignore] line blanks YAML comments and the body of a block scalar (the lines below a |
+# or >, as deep as its first line; the key stays), so a script or a simple expression written over
+# lines does not count. A route counts by its - route: or - from: at column 0; an EIP counts as a
+# key, a list item or not ("- to:" and "to:"). "endpoint URIs" counts a uri: key; the short form "-
+# to: jms:queue:x" is a producer without one. OpsFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+routes	(?m)^-[ \t]++(?:route|from)[ \t]*+:
+route templates	(?m)^-[ \t]++(?:routeTemplate|templatedRoute)[ \t]*+:
+consumers (from)	(?m)^[ \t]*+(?:-[ \t]++)?from[ \t]*+:
+producers (to, toD, wireTap, enrich, pollEnrich)	(?m)^[ \t]*+(?:-[ \t]++)?(?:to|toD|wireTap|enrich|pollEnrich)[ \t]*+:
+endpoint URIs	(?m)^[ \t]*+(?:-[ \t]++)?uri[ \t]*+:
+content-based routers (choice)	(?m)^[ \t]*+(?:-[ \t]++)?choice[ \t]*+:
+splitters, aggregators and other routing EIPs	(?m)^[ \t]*+(?:-[ \t]++)?(?:split|aggregate|multicast|recipientList|routingSlip|dynamicRouter|loadBalance|circuitBreaker|filter|loop)[ \t]*+:
+processors and transformations	(?m)^[ \t]*+(?:-[ \t]++)?(?:process|bean|setBody|setHeader|setProperty|transform|marshal|unmarshal|convertBodyTo|log)[ \t]*+:
+error handling	(?m)^[ \t]*+(?:-[ \t]++)?(?:errorHandler|onException|doTry|doCatch|doFinally)[ \t]*+:
+REST definitions	(?m)^-[ \t]++rest[ \t]*+:
+REST operations	(?m)^[ \t]++(?:-[ \t]++)?(?:get|post|put|delete|patch|head)[ \t]*+:
+bean declarations	(?m)^-[ \t]++beans[ \t]*+:

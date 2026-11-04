@@ -305,14 +305,76 @@ public class EnterpriseXmlFactPatternsTest {
     }
 
     @Test
-    public void bpmn_dmnDecisionsAndRules_andAnUnclosedDiagramRunsToTheEnd() {
-        final String dmn = "<definitions xmlns=\"https://www.omg.org/spec/DMN/20191111/MODEL/\">"
-                + "<decision id=\"d\" name=\"Discount\"><decisionTable hitPolicy=\"FIRST\"><input id=\"i\"/>"
-                + "<output id=\"o\"/><rule id=\"r1\"/><rule id=\"r2\"/></decisionTable></decision>"
-                + "<dmndi:DMNDI><dmndi:DMNDiagram/></dmndi:DMNDI></definitions>\n";
-        assertThat(count(BPMN, "decisions", dmn), is(1));
-        assertThat(count(BPMN, "decision rules", dmn), is(2));
+    public void bpmn_anUnclosedDiagramRunsToTheEnd() {
         assertThat(count(BPMN, "processes", "<process id=\"a\"/>\n<bpmndi:BPMNDiagram>\n<process id=\"b\"/>\n"), is(1));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="dmn-facts">
+    private static final List<AiFactCounter> DMN = ProfileFactPatterns.counters("dmn-facts");
+
+    /** The diagram interchange of {@link #DECISIONS}: shapes and edges, which must not count. */
+    private static final String DMN_DIAGRAM = "<dmndi:DMNDI><dmndi:DMNDiagram>\n"
+            + "<dmndi:DMNShape dmnElementRef=\"discount\"><dc:Bounds x=\"1\" y=\"2\"/></dmndi:DMNShape>\n"
+            + "<dmndi:DMNEdge dmnElementRef=\"r\"><di:waypoint x=\"1\" y=\"2\"/></dmndi:DMNEdge>\n"
+            + "</dmndi:DMNDiagram></dmndi:DMNDI>\n";
+
+    /** A decision requirements graph with two decision tables, one of them FIRST, and a literal decision. */
+    private static final String DECISIONS = "<definitions xmlns=\"https://www.omg.org/spec/DMN/20191111/MODEL/\">\n"
+            + "<inputData id=\"customer\" name=\"Customer\"/>\n"
+            + "<businessKnowledgeModel id=\"rate\" name=\"Rate\"/>\n"
+            + "<knowledgeSource id=\"policy\" name=\"Pricing policy\"/>\n"
+            + "<decision id=\"discount\" name=\"Discount\">\n"
+            + "  <informationRequirement><requiredInput href=\"#customer\"/></informationRequirement>\n"
+            + "  <knowledgeRequirement><requiredKnowledge href=\"#rate\"/></knowledgeRequirement>\n"
+            + "  <authorityRequirement><requiredAuthority href=\"#policy\"/></authorityRequirement>\n"
+            + "  <decisionTable id=\"t1\" hitPolicy=\"FIRST\">\n"
+            + "    <input id=\"i1\" label=\"Type\"><inputExpression><text>type</text></inputExpression></input>\n"
+            + "    <input id=\"i2\" label=\"Total\"><inputExpression><text>total</text></inputExpression></input>\n"
+            + "    <output id=\"o1\" name=\"discount\"/>\n"
+            + "    <rule id=\"r1\"><inputEntry><text>\"gold\"</text></inputEntry><inputEntry><text>-</text>"
+            + "</inputEntry><outputEntry><text>0.1</text></outputEntry></rule>\n"
+            + "    <rule id=\"r2\"><inputEntry><text>-</text></inputEntry><inputEntry><text>&gt; 100</text>"
+            + "</inputEntry><outputEntry><text>0.05</text></outputEntry></rule>\n"
+            + "    <!-- <rule id=\"old\"/> -->\n"
+            + "  </decisionTable>\n"
+            + "</decision>\n"
+            + "<decision id=\"shipping\" name=\"Shipping\">\n"
+            + "  <decisionTable id=\"t2\" hitPolicy=\"UNIQUE\"><input id=\"i3\"/><output id=\"o2\"/>"
+            + "<rule id=\"r3\"/></decisionTable>\n"
+            + "</decision>\n"
+            + "<decision id=\"label\"><literalExpression><text>\"x\"</text></literalExpression></decision>\n"
+            + "<decision id=\"boxed\"><context><contextEntry/></context></decision>\n"
+            + DMN_DIAGRAM
+            + "</definitions>\n";
+
+    @Test
+    public void dmn_countsTheDecisionsAndNotTheDiagram() {
+        assertThat(count(DMN, "decisions", DECISIONS), is(4));
+        assertThat(count(DMN, "decision tables", DECISIONS), is(2));
+        assertThat(count(DMN, "decision tables with a hit policy other than UNIQUE", DECISIONS), is(1));
+        assertThat(count(DMN, "inputs", DECISIONS), is(3));
+        assertThat(count(DMN, "outputs", DECISIONS), is(2));
+        assertThat(count(DMN, "rules", DECISIONS), is(3));
+        assertThat(count(DMN, "input data", DECISIONS), is(1));
+        assertThat(count(DMN, "business knowledge models", DECISIONS), is(1));
+        assertThat(count(DMN, "knowledge sources", DECISIONS), is(1));
+        assertThat(count(DMN, "requirements", DECISIONS), is(3));
+        assertThat(count(DMN, "literal expressions", DECISIONS), is(1));
+        assertThat(count(DMN, "boxed contexts, invocations, relations and functions", DECISIONS), is(1));
+        // the diagram's shapes and edges are blanked, so the elements are those of the decisions alone
+        assertThat(count(DMN, "elements", DECISIONS), is(count(DMN, "elements", DECISIONS.replace(DMN_DIAGRAM, ""))));
+    }
+
+    @Test
+    public void dmn_hitPolicyWithAPrefixOrSpacesAndAnUnclosedDiagram() {
+        assertThat(
+                count(
+                        DMN,
+                        "decision tables with a hit policy other than UNIQUE",
+                        "<dmn:decisionTable\n  id=\"t\" hitPolicy = 'COLLECT' aggregation=\"SUM\">\n"),
+                is(1));
+        assertThat(count(DMN, "decisions", "<decision id=\"a\"/>\n<dmndi:DMNDI>\n<decision id=\"b\"/>\n"), is(1));
     }
     // </editor-fold>
 

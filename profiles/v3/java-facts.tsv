@@ -14,9 +14,15 @@
 # over lines, or a longer initializer, is not counted. JavaStructureFactPatternsTest pins the accepted
 # false-positive/negative boundary; ProfileFactPatternsLinearityTest measures that every pattern of the
 # profile reads linearly.
+# The [ignore] line blanks what the compiler does not read as code, leftmost region first: line and
+# block comments (Javadoc too), text blocks ("""..."""), string and character literals; a comment or
+# text block that is never closed runs to the end of the file, a quote not closed on its line is no
+# string. So a "public" or "class" in a comment, a Javadoc example or a string does not count.
+# "TODO/FIXME" is [raw]: it counts the file as written, since the markers live in comments.
+[ignore] comments, text blocks and literals	(?s)//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|"""(?:[^"\\]++|\\.|"(?!""))*+(?:"""|\z)|"(?:[^"\\\n]++|\\.)*+"|'(?:[^'\\\n]++|\\.)*+'
 type declarations	(?m)^[ \t]*(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed|strictfp)[ \t]+)*(?:class|interface|@interface|enum|record)[ \t]+[A-Za-z_$]
 public declarations	\bpublic\b
-TODO/FIXME	\b(?:TODO|FIXME)\b
+[raw] TODO/FIXME	\b(?:TODO|FIXME)\b
 @Override	@Override\b
 methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>\n]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]
 constructors	(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{

@@ -64,7 +64,7 @@ srcMorph:
     - ".kts"
     - ".groovy"
     - ".gvy"
-    - ".gradle"                              # Groovy build scripts: no rule of their own, the fallback
+    - ".gradle"
     - ".scala"
     - ".jsp"
     - ".jspf"
@@ -79,8 +79,14 @@ srcMorph:
     - ".avsc"
     - ".graphql"
     - ".graphqls"
+    - ".gql"
     - ".tf"
     - ".hcl"
+    - ".properties"
+    - ".ps1"
+    - ".psm1"
+    - ".bat"
+    - ".cmd"
     - ".py"
     - ".c"
     - ".h"
@@ -93,6 +99,17 @@ srcMorph:
     - "Jenkinsfile"
     - "openapi*.json"
     - "swagger*.json"
+    - "asyncapi*.json"
+  # Scripts without an extension (bin/deploy, a Git hook), by the interpreter their #! line names; a
+  # name also matches its versions (python matches python3 and python3.12).
+  fileInterpreters:
+    - "bash"
+    - "sh"
+    - "ksh"
+    - "zsh"
+    - "dash"
+    - "perl"
+    - "python"
   # Globs against the path below baseDirectory, "/" as separator; "**/" matches no directory too, so
   # "**/target/**" excludes target/ at the root and the target/ of every module.
   excludes:
@@ -184,7 +201,10 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
+        or:
+          conditions:
+            - extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
+            - interpreters: ["bash", "sh", "ksh", "zsh", "dash"]
     - id: perl
       promptKey: file-body-perl
       aiDefinitionKey: luna
@@ -193,7 +213,10 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
+        or:
+          conditions:
+            - extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
+            - interpreters: ["perl"]
     - id: pom                                # matches xml too; the priority gives a POM the Maven counters
       promptKey: file-body-xml
       aiDefinitionKey: luna
@@ -213,7 +236,7 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         extensions: [".xml", ".xsd", ".xsl", ".xslt"]          # .wsdl and .xhtml have rules of their own
-    - id: java-ee                            # Java with Jakarta EE imports: the EE counters too
+    - id: java-ee                            # Java using Jakarta EE: the EE counters too
       promptKey: file-body-oop
       aiDefinitionKey: luna
       priority: 10
@@ -225,7 +248,8 @@ srcMorph:
         and:
           conditions:
             - extensions: [".java"]
-            - contentMatches: '(?m)^import[ \t]+(?:javax|jakarta)\.(?:ejb|persistence|ws\.rs|servlet|jws|xml\.ws|inject|transaction|enterprise|annotation\.security)\.'
+            # an import, or an annotation written with its package and no import
+            - contentMatches: '(?m)(?:^import[ \t]+(?:static[ \t]+)?|@)(?:javax|jakarta)\.(?:ejb|persistence|ws\.rs|servlet|jws|xml\.ws|inject|transaction|enterprise|annotation\.security)\.'
     - id: kotlin                             # the prompt Java, Kotlin, Groovy, Scala share
       promptKey: file-body-oop
       aiDefinitionKey: luna
@@ -244,9 +268,10 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         extensions: [".groovy", ".gvy"]
-    - id: scala                              # no counters for Scala yet
+    - id: scala
       promptKey: file-body-oop
       aiDefinitionKey: luna
+      factsKey: scala-facts
       onOversize: mapReduce
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
@@ -307,7 +332,17 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".bpmn", ".dmn"]
+        extensions: [".bpmn"]
+    - id: dmn
+      promptKey: file-body-xml
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: dmn-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".dmn"]
     - id: wsdl
       promptKey: file-body-xml
       aiDefinitionKey: luna
@@ -352,14 +387,49 @@ srcMorph:
                   - extensions: [".yml", ".yaml"]
                   - contentMatches: '(?m)^["'']?(?:openapi|swagger)["'']?[ \t]*:'
             - fileNames: ["openapi*.json", "swagger*.json"]
-    - id: contract
+    - id: asyncapi
       promptKey: file-body-contract
       aiDefinitionKey: luna
+      priority: 10
+      factsKey: asyncapi-facts
       onOversize: mapReduce
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".proto", ".avsc", ".graphql", ".graphqls"]
+        or:
+          conditions:
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^["'']?asyncapi["'']?[ \t]*:'
+            - fileNames: ["asyncapi*.json"]
+    - id: proto
+      promptKey: file-body-contract
+      aiDefinitionKey: luna
+      factsKey: proto-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".proto"]
+    - id: avro
+      promptKey: file-body-contract
+      aiDefinitionKey: luna
+      factsKey: avro-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".avsc"]
+    - id: graphql
+      promptKey: file-body-contract
+      aiDefinitionKey: luna
+      factsKey: graphql-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".graphql", ".graphqls", ".gql"]
     - id: actions
       promptKey: file-body-ops
       aiDefinitionKey: luna
@@ -370,10 +440,11 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         pathGlob: "**/.github/{workflows,actions}/**/*.{yml,yaml}"
-    - id: camel-yaml                         # Camel routes in the YAML DSL; no counters yet
+    - id: camel-yaml                         # Camel routes in the YAML DSL
       promptKey: file-body-ops
       aiDefinitionKey: luna
       priority: 10
+      factsKey: camel-yaml-facts
       onOversize: mapReduce
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
@@ -404,7 +475,82 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         fileNames: ["Dockerfile", "Dockerfile.*", "*.dockerfile", "Containerfile"]
-    - id: ops                                # every other YAML, Terraform, Jenkinsfile
+    - id: compose
+      promptKey: file-body-ops
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: compose-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]
+    - id: ansible                            # playbooks and the YAML of a role
+      promptKey: file-body-ops
+      aiDefinitionKey: luna
+      priority: 5
+      factsKey: ansible-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - pathGlob: "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^-[ \t]++(?:name[ \t]*+:[^\n]*+\n[ \t]++)?hosts[ \t]*+:'
+    - id: terraform
+      promptKey: file-body-ops
+      aiDefinitionKey: luna
+      factsKey: terraform-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".tf", ".hcl"]
+    - id: gradle                             # build scripts of both DSLs; .gradle.kts over the Kotlin rule
+      promptKey: file-body-ops
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: gradle-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - extensions: [".gradle"]
+            - fileNames: ["*.gradle.kts"]
+    - id: properties
+      promptKey: file-body-ops
+      aiDefinitionKey: luna
+      factsKey: properties-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".properties"]
+    - id: powershell                         # no prompt of its own: the fallback prompt with counters
+      promptKey: file-body-fallback
+      aiDefinitionKey: luna
+      factsKey: powershell-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".ps1", ".psm1"]
+    - id: batch
+      promptKey: file-body-fallback
+      aiDefinitionKey: luna
+      factsKey: batch-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".bat", ".cmd"]
+    - id: ops                                # every other YAML, Jenkinsfile
       promptKey: file-body-ops
       aiDefinitionKey: luna
       onOversize: mapReduce
@@ -413,7 +559,7 @@ srcMorph:
       condition:
         or:
           conditions:
-            - extensions: [".yml", ".yaml", ".tf", ".hcl"]
+            - extensions: [".yml", ".yaml"]
             - fileNames: ["Jenkinsfile", ".gitlab-ci.yml"]
     - id: fallback                           # every other file; profile v3 has no counters for it
       promptKey: file-body-fallback

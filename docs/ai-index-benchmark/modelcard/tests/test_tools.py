@@ -111,9 +111,11 @@ class RulesTest(unittest.TestCase):
         self.assertEqual((rules["jsp"]["promptKey"], rules["jsp"]["factsKey"]), ("file-body-view", "jsp-facts"))
         self.assertEqual(rules["openapi"]["promptKey"], "file-body-contract")
         self.assertEqual(rules["dockerfile"]["factsKey"], "dockerfile-facts")
+        self.assertEqual((rules["scala"]["promptKey"], rules["scala"]["factsKey"]), ("file-body-oop", "scala-facts"))
+        self.assertEqual((rules["proto"]["promptKey"], rules["proto"]["factsKey"]), ("file-body-contract", "proto-facts"))
+        self.assertEqual((rules["gradle"]["promptKey"], rules["gradle"]["priority"]), ("file-body-ops", 10))
         # a kind without a facts file of its own counts nothing
-        self.assertNotIn("factsKey", rules["scala"])
-        self.assertNotIn("factsKey", rules["contract"])
+        self.assertNotIn("factsKey", rules["ops"])
 
     def test_aProfileWithoutAKindsPromptOrFacts_hasNoRuleForIt(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -126,10 +126,44 @@ public class ProfileFactPatternsLinearityTest {
             "kind: \n",
             "    get:\n",
             "  /a/b\n",
-            // integration, BPMN, Dockerfile
+            // integration, BPMN, DMN, Dockerfile
             "<bpmndi:BPMNDiagram x\n",
+            "<dmndi:DMNDI x\n",
+            "<decisionTable a=\"b\" \n",
             "<endpoint a=\"b\" \n",
             "FROM \n",
+            // Scala, Protobuf, Avro, GraphQL, AsyncAPI
+            "object A extends B {\n",
+            "def f[A](x: \n",
+            "'a\n",
+            "message A {\n",
+            "rpc A(stream \n",
+            "rpc A(B) returns (\n",
+            "\"type\": \n",
+            "type A {\n",
+            "  f(a: \n",
+            "@a @b \n",
+            "  publish:\n",
+            // Terraform, Ansible, Compose, Camel YAML, Gradle, properties
+            "resource \"a\" \"b\" {\n",
+            "x = <<EOF\n",
+            "x = <<-EOF\n",
+            "- name: x\n",
+            "  image: \n",
+            "- route:\n",
+            "implementation(\"\n",
+            "id 'a\n",
+            "a.b.c = \n",
+            "${a.b\n",
+            // PowerShell and batch
+            "<# x\n",
+            "$x = @\"\n",
+            "@'\n",
+            "function Get-X {\n",
+            "rem x\n",
+            ":: x\n",
+            "set /a x=\n",
+            "for /f \"x\n",
             // single characters, without a line break
             "x",
             " ",
@@ -187,6 +221,13 @@ public class ProfileFactPatternsLinearityTest {
                             + longReads + " for " + GROWTH + " times the input",
                     longReads,
                     lessThanOrEqualTo(MAX_GROWTH * Math.max(shortReads, 1L)));
+            // the time limit of the facts line never stops a pattern of the profile
+            final int longLength = line.length() * SHORT_REPETITIONS * GROWTH;
+            assertThat(
+                    key + " '" + label + "' over the line " + quoted(line) + ": " + longReads + " reads of "
+                            + longLength + " characters",
+                    longReads,
+                    lessThanOrEqualTo(AiFactExtractor.readBudget(longLength)));
         }
     }
 

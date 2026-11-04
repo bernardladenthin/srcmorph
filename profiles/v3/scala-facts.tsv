@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Scala fact counters (.scala, .sc; Scala 2 and 3), for a rule with the shared prompt file-body-oop: one
+# per line, label TAB pattern (Java regex), counted over the whole file. The [ignore] line runs first
+# and reads the file as the Scala lexer does, leftmost region first: it blanks line comments, block
+# comments (nested, as Scala nests them), triple-quoted strings ("""...""", interpolated or not),
+# string literals and character literals, so a "def" or "class" in a Scaladoc, a string or a
+# commented-out block does not count. A region that is never closed runs to the end of the file; a
+# symbol literal ('name) is no character literal and stays. "type declarations" counts every class,
+# trait, object and enum declared at the start of a line, case classes and companions too; "methods
+# (approx)" every def at the start of a line (members, local and extension methods); "givens and
+# implicits" a given instance or an implicit val, def, object or class. Counts are regex heuristics:
+# a declaration after another on the same line is not counted. JvmFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*/]++|\*(?!/)|/(?!\*)|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z))*+(?:\*/|\z)|""".*?(?:"""|\z)|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)'
+type declarations	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:private|protected|final|sealed|abstract|implicit|case|open|transparent|inline|opaque)(?:\[[\w.]*+\])?[ \t]++)*+(?:class|trait|object|enum)[ \t]++[A-Za-z_`]
+case classes and case objects	\bcase[ \t]++(?:class|object)[ \t]++[A-Za-z_`]
+traits	(?m)^[ \t]*+(?:(?:private|protected|sealed|transparent)(?:\[[\w.]*+\])?[ \t]++)*+trait[ \t]++[A-Za-z_`]
+methods (approx)	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:private|protected|final|override|implicit|inline|transparent|abstract)(?:\[[\w.]*+\])?[ \t]++)*+def[ \t]++[A-Za-z_`+\-*/<>=!~^&|%:?]
+extension methods	(?m)^[ \t]*+extension\b[ \t]*+[(\[]
+givens and implicits	(?m)^[ \t]*+(?:(?:private|protected|final|override|inline)(?:\[[\w.]*+\])?[ \t]++)*+(?:given\b|implicit[ \t]++(?:lazy[ \t]++)?(?:val|def|object|class|var)\b)
+vals and vars at the start of a line (members and locals)	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:private|protected|final|override|implicit|lazy)(?:\[[\w.]*+\])?[ \t]++)*+(?:val|var)[ \t]++[A-Za-z_`(]
+type aliases	(?m)^[ \t]*+(?:(?:private|protected|opaque|override)(?:\[[\w.]*+\])?[ \t]++)*+type[ \t]++[A-Za-z_`]
+imports	(?m)^[ \t]*+import[ \t]++

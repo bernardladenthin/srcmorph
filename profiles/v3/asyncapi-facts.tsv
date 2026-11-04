@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# AsyncAPI 2.x and 3.x counters, YAML or JSON, for a rule with the prompt file-body-contract: one
+# per line, label TAB pattern (Java regex). The [ignore] line blanks YAML comments (a whole line, or
+# from a # after a blank) and the body of a block scalar (the lines below a | or >, as deep as its
+# first line, which sets the block's indentation as YAML reads it; its key stays), so a description
+# that quotes a channel or a "type: object" does not count. A key counts with or without JSON
+# quotes. "channel addresses" counts the address of a 3.x channel; "operations" a 2.x publish or
+# subscribe that opens a mapping and a 3.x action send or receive; "payloads" the payload of every
+# message. OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
+# pattern reads linearly.
+[ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+channel addresses (3.x)	["']?\baddress["']?[ \t]*:
+operations	(?m)(?:^[ \t]+|[{,][ \t]*)["']?(?:publish|subscribe)["']?[ \t]*:[ \t]*+(?:\{|$)|["']?\baction["']?[ \t]*:[ \t]*["']?(?:send|receive)\b
+operationIds	["']?\boperationId["']?[ \t]*:
+payloads	["']?\bpayload["']?[ \t]*:
+server protocols	["']?\bprotocol["']?[ \t]*:
+bindings	["']?\bbindings["']?[ \t]*:
+correlation ids	["']?\bcorrelationId["']?[ \t]*:
+$ref references	["']?\$ref["']?[ \t]*:
+object schemas	["']?\btype["']?[ \t]*:[ \t]*["']?object\b
+security schemes	["']?\btype["']?[ \t]*:[ \t]*["']?(?:userPassword|apiKey|X509|symmetricEncryption|asymmetricEncryption|httpApiKey|http|oauth2|openIdConnect|plain|scramSha256|scramSha512|gssapi)\b

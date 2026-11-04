@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Docker Compose counters (compose.yaml, docker-compose.yml and their overrides), for a rule with
+# the prompt file-body-ops: one per line, label TAB pattern (Java regex). The [ignore] line blanks
+# YAML comments and the body of a block scalar (the lines below a | or >, as deep as its first line;
+# the key stays), so a key quoted in a command does not count. A service counts by the image: or
+# build: it runs, so "services with an image" and "services built here" together are the services
+# (one with both counts in each); the other keys count wherever they stand (a service's volumes: and
+# the top-level volumes: alike). "variable substitutions" counts every ${NAME}. OpsFactPatternsTest
+# pins every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+services with an image	(?m)^[ \t]++image[ \t]*+:
+services built here	(?m)^[ \t]++build[ \t]*+:
+port lists	(?m)^[ \t]++ports[ \t]*+:
+dependencies between services	(?m)^[ \t]++depends_on[ \t]*+:
+healthchecks	(?m)^[ \t]++healthcheck[ \t]*+:
+environment blocks and files	(?m)^[ \t]++(?:environment|env_file)[ \t]*+:
+volume lists	(?m)^[ \t]*+volumes[ \t]*+:
+network lists	(?m)^[ \t]*+networks[ \t]*+:
+secret lists	(?m)^[ \t]*+secrets[ \t]*+:
+restart policies	(?m)^[ \t]++restart[ \t]*+:
+profiles	(?m)^[ \t]++profiles[ \t]*+:
+deploy sections	(?m)^[ \t]++deploy[ \t]*+:
+variable substitutions	\$\{[A-Za-z_]\w*+

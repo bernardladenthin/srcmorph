@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Gradle build script counters (build.gradle and settings.gradle in the Groovy DSL, build.gradle.kts
+# and settings.gradle.kts in the Kotlin DSL), for a rule with the prompt file-body-ops: one per line,
+# label TAB pattern (Java regex). The [ignore] line blanks, leftmost region first, line and block
+# comments and string literals (Groovy's single, double and triple quotes, Kotlin's raw strings), so
+# a commented-out dependency does not count; a comment or a triple-quoted string that is never closed
+# runs to the end of the file. A declaration counts by its keyword at the start of a line, not an
+# assignment or a property of that name (implementation.extendsFrom, id = ...). "plugins" counts
+# id, alias, kotlin(...), a backquoted plugin id and apply plugin; "dependency declarations" a
+# dependency in one of the standard configurations of the java, kotlin and annotation-processor
+# plugins; "project dependencies" project(...) and Kotlin's projects.name accessors.
+# OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
+# reads linearly.
+[ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|""".*?(?:"""|\z)|'''.*?(?:'''|\z)|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)*+'
+plugins	(?m)^[ \t]*+(?:id\b(?![ \t]*+[=.])|alias[ \t]*+\(|apply[ \t]*+\(?[ \t]*+plugin\b|kotlin[ \t]*+\(|`[\w.-]++`[ \t]*+$)
+dependency declarations	(?m)^[ \t]*+(?:implementation|api|compileOnly|compileOnlyApi|runtimeOnly|testImplementation|testRuntimeOnly|testCompileOnly|annotationProcessor|testAnnotationProcessor|kapt|ksp|developmentOnly|testFixturesImplementation|testFixturesApi|compile|runtime|testCompile|testRuntime|classpath)\b(?![ \t]*+[=.{])
+project dependencies	\bproject[ \t]*+\(|\bprojects\.[A-Za-z_]
+platforms and BOMs	\b(?:platform|enforcedPlatform)[ \t]*+\(
+repositories	(?m)^[ \t]*+(?:mavenCentral|google|gradlePluginPortal|mavenLocal|jcenter)[ \t]*+\(|^[ \t]*+(?:maven|ivy)[ \t]*+[({]
+tasks registered, created or configured	(?m)\btasks\.(?:register|create|named|withType)\b|^[ \t]*+task[ \t]++[A-Za-z_]
+included projects and builds	(?m)^[ \t]*+include(?:Build)?\b(?![ \t]*+[=.])
+version catalog references	\blibs\.[A-Za-z_][\w.]*+
