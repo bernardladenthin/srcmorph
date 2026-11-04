@@ -5,7 +5,9 @@ package net.ladenthin.srcmorph.config;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,10 +17,18 @@ import org.junit.jupiter.api.Test;
 /**
  * Validates the XML fact counters of the current profile ({@code profiles/v3/xml-facts.tsv} for any XML,
  * XSD and XSLT file, {@code profiles/v3/pom-facts.tsv} for Maven POMs), counted the way the facts line
- * counts them: the {@code [ignore]} counters blank comments and CDATA sections first. The last tests pin
- * the counts of the benchmark's language corpus.
+ * counts them: the {@code [ignore]} counters blank comments and CDATA sections first. The run-time tests
+ * repeat an unclosed opener or tag over a long input, where the lazy patterns these replaced were
+ * quadratic (about 8 s at 100 KB) or worse. The last tests pin the counts of the benchmark's language
+ * corpus.
  */
 public class XmlFactPatternsTest {
+
+    /** What a long input may take; a linear pattern needs well under a second. */
+    private static final Duration LONG_INPUT_LIMIT = Duration.ofSeconds(10);
+
+    /** Lines of the generated inputs of the run-time tests. */
+    private static final int LONG_INPUT_LINES = 20_000;
 
     private static final List<AiFactCounter> XML = ProfileFactPatterns.counters("xml-facts");
 
@@ -31,6 +41,19 @@ public class XmlFactPatternsTest {
             throw new IllegalStateException("no counter '" + label + "' in " + counts.keySet());
         }
         return count;
+    }
+
+    /** Repeats {@code line} {@value #LONG_INPUT_LINES} times behind {@code head}. */
+    private static String headThenLines(final String head, final String line) {
+        final StringBuilder source = new StringBuilder(head);
+        for (int i = 0; i < LONG_INPUT_LINES; i++) {
+            source.append(line).append('\n');
+        }
+        return source.toString();
+    }
+
+    private static int countLong(final List<AiFactCounter> counters, final String label, final String source) {
+        return assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(counters, label, source));
     }
 
     @Test
@@ -159,6 +182,49 @@ public class XmlFactPatternsTest {
                                 + "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n<html><body/></html>\n"),
                 is(2));
     }
+
+    @Test
+    public void elements_unclosedComment_isBlankedToTheEnd() {
+        assertThat(count(XML, "elements", "<a/>\n<!-- <b/>\n<c/>\n"), is(1));
+    }
+
+    @Test
+    public void elements_unclosedCdataAndProcessingInstruction_areBlankedToTheEnd() {
+        assertThat(count(XML, "elements", "<a/>\n<![CDATA[ <b/>\n<c/>\n"), is(1));
+        assertThat(count(XML, "elements", "<a/>\n<?pi <b/>\n<c/>\n"), is(1));
+    }
+
+    @Test
+    public void elements_unclosedDoctype_isBlankedToTheEnd() {
+        assertThat(count(XML, "elements", "<!DOCTYPE r [\n<!ELEMENT r ANY>\n<r/>\n"), is(0));
+        assertThat(count(XML, "elements", "<!DOCTYPE r [ <!ELEMENT r ANY> ]\n<r/>\n"), is(0));
+    }
+
+    @Test
+    public void ignore_manyUnclosedComments_stayLinear() {
+        assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<!-- x")), is(1));
+    }
+
+    @Test
+    public void ignore_manyUnclosedCdataSections_stayLinear() {
+        assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<![CDATA[ x")), is(1));
+    }
+
+    @Test
+    public void ignore_manyUnclosedProcessingInstructions_stayLinear() {
+        assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<? x")), is(1));
+    }
+
+    @Test
+    public void ignore_manyUnclosedDoctypes_stayLinear() {
+        assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<!DOCTYPE r [ x")), is(1));
+        assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<!DOCTYPE r [ ] x")), is(1));
+    }
+
+    @Test
+    public void xsdTypeDefinitions_manyUnclosedTypeTags_stayLinear() {
+        assertThat(countLong(XML, "XSD type definitions", headThenLines("", "<xs:complexType a=\"b\"")), is(0));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="pom-facts">
@@ -246,6 +312,23 @@ public class XmlFactPatternsTest {
                         "dependencies",
                         "<description><![CDATA[<dependency/>]]></description>\n<!-- <plugin> -->\n<dependency/>\n"),
                 is(1));
+    }
+
+    @Test
+    public void dependencies_afterAnUnclosedComment_areNone() {
+        assertThat(count(POM, "dependencies", "<dependency/>\n<!-- <dependency/>\n<dependency/>\n"), is(1));
+    }
+
+    @Test
+    public void ignore_manyUnclosedComments_inAPom_stayLinear() {
+        assertThat(countLong(POM, "dependencies", headThenLines("<dependency/>\n", "<!-- x")), is(1));
+        assertThat(countLong(POM, "dependencies", headThenLines("<dependency/>\n", "<![CDATA[ x")), is(1));
+    }
+
+    @Test
+    public void ignore_manyUnclosedPlugins_stayLinear() {
+        assertThat(countLong(POM, "plugins", headThenLines("", "<plugin>")), is(LONG_INPUT_LINES));
+        assertThat(countLong(POM, "plugins", headThenLines("", "<plugin><plugin>x")), is(2 * LONG_INPUT_LINES));
     }
     // </editor-fold>
 

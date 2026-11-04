@@ -8,9 +8,10 @@
 # plugin configuration (SpotBugs detectors, assembly modules) do not count. "dependencies" counts every
 # <dependency> of the dependencies, dependencyManagement and profile sections; "plugins" every plugin
 # of build, pluginManagement, reporting and profiles; the two "managed ... sections" say whether there
-# are any. A plugin opener other than <plugin>, or plugins nested more than one level deep, are not
-# read. XmlFactPatternsTest pins every case.
-[ignore] comments, CDATA and plugin bodies	(?s)<!--.*?-->|<!\[CDATA\[.*?\]\]>|(?<=<plugin>)(?:[^<]++|<(?!/plugin>|plugin>)|<plugin>(?:[^<]++|<(?!/plugin>))*+</plugin>)*+
+# are any. A comment or CDATA section that is never closed runs to the end of the file. A plugin opener
+# other than <plugin>, or plugins nested more than one level deep, are not read. Every pattern stays
+# linear in the length of the file; XmlFactPatternsTest pins every case.
+[ignore] comments, CDATA and plugin bodies	(?s)<!--(?:.*?-->|.*+)|<!\[CDATA\[(?:.*?\]\]>|.*+)|(?<=<plugin>)(?:[^<]++|<(?!/plugin>|plugin>)|<plugin>(?:[^<]++|<(?!/?plugin>))*+</plugin>)*+
 dependencies	<dependency[ \t\r\n/>]
 managed dependency sections	<dependencyManagement[ \t\r\n/>]
 plugins	<plugin[ \t\r\n/>]

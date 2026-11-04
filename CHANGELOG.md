@@ -25,6 +25,15 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 ### Fixed
 
 - **`docs/copilot-api-gateway.md`** showed `maxOutputTokens: 2048` for the example, which has 4096.
+- **The XML and POM fact counters of profile v3 were quadratic over unclosed markup.** In
+  `xml-facts.tsv` the `[ignore]` line scanned to the end of the file again from every `<!--`,
+  `<![CDATA[`, `<?` or `<!DOCTYPE` that is never closed (100 KB of unclosed `<?` took 8.4 s; a
+  `<!DOCTYPE r [ ]` without `>` repeated ran for minutes), and so did the XSD counter from every
+  unclosed `<complexType`/`<simpleType`; in `pom-facts.tsv` the comment and CDATA patterns and the
+  plugin-body pattern from every unclosed `<plugin>`. An unclosed region now runs to the end of the
+  file, as in `sql-facts.tsv`, a type tag ends at the next `<`, and a nested plugin body at the next
+  plugin tag. Well-formed files count as before (the corpus counts are unchanged); 11 new
+  `XmlFactPatternsTest` cases pin the unclosed regions and the run time of each pattern.
 
 ## [1.4.0] - 2026-11-02
 

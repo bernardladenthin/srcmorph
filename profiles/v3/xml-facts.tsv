@@ -6,14 +6,16 @@
 # counted over the whole file. The [ignore] line runs first and reads the file as a parser does,
 # leftmost region first: it blanks comments, CDATA sections, processing instructions and the DOCTYPE
 # with its internal subset (keeping the line breaks), so a commented-out element or the markup of an
-# entity does not count and a "<!--" inside CDATA opens nothing. Element and attribute counts are
-# regex heuristics over the text, not a parse: a ">" inside an attribute value, or a "]" inside an
-# attribute value of the internal subset, is not seen. XmlFactPatternsTest pins every case; pom-facts
-# adds the Maven counters.
-[ignore] comments, CDATA, processing instructions and the DOCTYPE	(?s)<!--.*?-->|<!\[CDATA\[.*?\]\]>|<\?.*?\?>|<!DOCTYPE[^\[>]*(?:\[.*?\][^>]*)?>
+# entity does not count and a "<!--" inside CDATA opens nothing. A region that is never closed runs to
+# the end of the file, as a parser reads it until it fails there; every pattern stays linear in the
+# length of the file, also over unclosed openers and tags. Element and attribute counts are regex
+# heuristics over the text, not a parse: a ">" inside an attribute value, or a "]" inside an attribute
+# value of the internal subset, is not seen. XmlFactPatternsTest pins every case; pom-facts adds the
+# Maven counters.
+[ignore] comments, CDATA, processing instructions and the DOCTYPE	(?s)<!--(?:.*?-->|.*+)|<!\[CDATA\[(?:.*?\]\]>|.*+)|<\?(?:.*?\?>|.*+)|<!DOCTYPE[^\[>]*+(?:\[(?:.*?\]|.*+))?[^>]*+>?
 elements	<(?![!?/])[A-Za-z_][\w.:-]*
 namespace declarations	\bxmlns(?::[\w.-]+)?[ \t\r\n]*=[ \t\r\n]*["']
 id and name attributes	[ \t\r\n](?!xmlns:)(?:[\w.-]+:)?(?:id|name)[ \t\r\n]*=[ \t\r\n]*["']
-XSD type definitions	<(?:\w+:)?(?:complexType|simpleType)\b[^>]*\bname[ \t\r\n]*=
+XSD type definitions	<(?:\w+:)?(?:complexType|simpleType)\b[^<>]*\bname[ \t\r\n]*=
 XSLT templates	<(?:\w+:)?template[ \t\r\n/>]
 Spring beans	<(?:\w+:)?bean[ \t\r\n/>]
