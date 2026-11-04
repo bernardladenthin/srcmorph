@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -15,6 +17,8 @@ import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiShebang;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Evaluates and validates {@link AiCondition} trees against an {@link AiFileContext}.
@@ -28,6 +32,8 @@ import org.jspecify.annotations.Nullable;
  */
 public final class AiConditionEvaluator {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AiConditionEvaluator.class);
+
     /**
      * How many characters of a file a {@code contentMatches} condition reads unless the configuration's
      * {@code contentHeadChars} says otherwise: enough for the header of a Kubernetes manifest, an OpenAPI
@@ -39,6 +45,12 @@ public final class AiConditionEvaluator {
     private static final String ERROR_ONE_BRANCH =
             "a condition node must set exactly one of and/or/not/extensions/size/lines/"
                     + "modifiedAfter/modifiedBefore/pathGlob/fileNames/contentMatches/interpreters: ";
+
+    /**
+     * The compiled {@code contentMatches} patterns, by their text: a rule's pattern is compiled once, not
+     * for every file it is evaluated against.
+     */
+    private final Map<String, Pattern> contentPatterns = new ConcurrentHashMap<>();
 
     /** Creates a new {@link AiConditionEvaluator}. */
     public AiConditionEvaluator() {
@@ -112,7 +124,7 @@ public final class AiConditionEvaluator {
         }
         final String contentMatches = condition.getContentMatches();
         if (contentMatches != null) {
-            return Pattern.compile(contentMatches).matcher(context.head()).find();
+            return contentMatches(contentMatches, context);
         }
         final List<String> interpreters = condition.getInterpreters();
         if (interpreters != null) {
@@ -120,6 +132,45 @@ public final class AiConditionEvaluator {
             return interpreter != null && AiShebang.matches(interpreter, interpreters);
         }
         throw new IllegalStateException(ERROR_ONE_BRANCH + condition);
+    }
+
+    /**
+     * Returns whether a {@code contentMatches} pattern finds a match in a file's head, under the read budget
+     * of a fact counter ({@link AiFactExtractor#READS_PER_CHAR} per character plus
+     * {@link AiFactExtractor#READ_ALLOWANCE}): a pattern that backtracks past it matches nothing, with a
+     * warning, so it cannot hang the plan.
+     *
+     * @param contentMatches the pattern
+     * @param context        the file
+     * @return {@code true} when the pattern finds a match within its budget
+     */
+    private boolean contentMatches(final String contentMatches, final AiFileContext context) {
+        final String head = context.head();
+        final Pattern pattern = contentPatterns.computeIfAbsent(contentMatches, Pattern::compile);
+        try {
+            return pattern.matcher(new AiFactExtractor.ReadBudget(head, AiFactExtractor.readBudget(head.length())))
+                    .find();
+        } catch (final AiFactExtractor.ReadBudget.Exhausted e) {
+            stopped(contentMatches, context.relativePath(), head.length());
+            return false;
+        }
+    }
+
+    /**
+     * Logs that a {@code contentMatches} pattern ran out of its read budget.
+     *
+     * @param contentMatches the pattern
+     * @param relativePath   the file
+     * @param length         the characters of its head
+     */
+    private static void stopped(final String contentMatches, final String relativePath, final int length) {
+        LOGGER.warn(
+                "contentMatches '{}' stopped after reading {} characters of the {}-character head of {}: the"
+                        + " pattern backtracks too far, so the condition does not match",
+                contentMatches,
+                AiFactExtractor.readBudget(length),
+                length,
+                relativePath);
     }
 
     /**
@@ -210,12 +261,24 @@ public final class AiConditionEvaluator {
             if (name == null || name.trim().isEmpty()) {
                 throw new IllegalArgumentException("a fileNames condition must not list a blank name");
             }
-            if (name.indexOf('/') >= 0) {
-                throw new IllegalArgumentException("a fileNames condition matches the name without its directory, not '"
-                        + name + "'; use pathGlob");
-            }
-            AiGlob.compile(name.trim(), true);
+            compileFileName(name.trim());
         }
+    }
+
+    /**
+     * Compiles one name of a {@code fileNames} list (the selection's or a condition's): a glob over a
+     * file's name, matched in any case, without its directory.
+     *
+     * @param name the name, trimmed and not blank
+     * @return the compiled glob
+     * @throws IllegalArgumentException if the name holds a {@code /} or is no valid glob
+     */
+    public static Pattern compileFileName(final String name) {
+        if (name.indexOf('/') >= 0) {
+            throw new IllegalArgumentException(
+                    "fileNames match a file's name without its directory, not '" + name + "'; use pathGlob");
+        }
+        return AiGlob.compile(name, true);
     }
 
     private static void validateContentMatches(final String contentMatches) {

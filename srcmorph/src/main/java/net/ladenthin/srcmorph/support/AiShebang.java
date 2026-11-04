@@ -20,12 +20,15 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The interpreter is the last path segment of the line's first word; when that is {@code env},
  * the first word after it that is neither an option ({@code -i}) nor an assignment ({@code LANG=C}),
- * the argument of {@code -u} / {@code --unset} and {@code -C} / {@code --chdir} skipped, and the
- * first word of a {@code -S} / {@code --split-string=} string taken as written
- * ({@code -Spython3}, {@code --split-string=python3}).
+ * the argument of an option that takes one skipped (GNU {@code -u} / {@code --unset},
+ * {@code -C} / {@code --chdir}, {@code -a} / {@code --argv0}; BSD {@code -P altpath}, {@code -L} and
+ * {@code -U user}), and the first word of a {@code -S} / {@code --split-string=} string taken as written
+ * ({@code -Spython3}, {@code --split-string=python3}). Combined short options ({@code -iS}) and quotes
+ * are not read.
  * Only the first {@value #MAX_LINE_CHARS} characters of the line count, as Linux reads it. A name
  * matches the interpreter itself and its versions: {@code python} matches {@code python3} and
- * {@code python3.12}, {@code python3} matches {@code python3.12} but not {@code python}.</p>
+ * {@code python3.12}, {@code python3} matches {@code python3.12} but not {@code python} or
+ * {@code python31}, {@code python3.1} not {@code python3.12}.</p>
  */
 public final class AiShebang {
 
@@ -42,8 +45,8 @@ public final class AiShebang {
     private static final String OPTION = "-";
 
     /** The options of {@code env} whose argument is the next word. */
-    private static final Set<String> OPTIONS_WITH_AN_ARGUMENT =
-            Collections.unmodifiableSet(new HashSet<>(Arrays.asList("-u", "--unset", "-C", "--chdir")));
+    private static final Set<String> OPTIONS_WITH_AN_ARGUMENT = Collections.unmodifiableSet(
+            new HashSet<>(Arrays.asList("-u", "--unset", "-C", "--chdir", "-a", "--argv0", "-P", "-L", "-U")));
 
     /** The short option of {@code env} whose argument, written next to it, is the command line. */
     private static final String SPLIT_STRING = "-S";
@@ -130,7 +133,7 @@ public final class AiShebang {
             final String trimmed = name.trim();
             if (!trimmed.isEmpty()
                     && interpreter.startsWith(trimmed)
-                    && isVersion(interpreter.substring(trimmed.length()))) {
+                    && isVersion(trimmed, interpreter.substring(trimmed.length()))) {
                 return true;
             }
         }
@@ -138,12 +141,18 @@ public final class AiShebang {
     }
 
     /**
-     * Returns whether a text is empty or a version: digits and dots.
+     * Returns whether what follows a name is empty or a version of it: digits and dots, after a name that
+     * ends with a digit only from a dot on, so its number does not grow ({@code python3} and {@code 1}).
      *
+     * @param name   the name
      * @param suffix what follows the name
-     * @return {@code true} for {@code ""}, {@code 3}, {@code 3.12}
+     * @return {@code true} for {@code ""}, {@code 3}, {@code 3.12}; after {@code python3} for {@code .12}
+     *     but not {@code 1}
      */
-    private static boolean isVersion(final String suffix) {
+    private static boolean isVersion(final String name, final String suffix) {
+        if (!suffix.isEmpty() && Character.isDigit(name.charAt(name.length() - 1)) && suffix.charAt(0) != '.') {
+            return false;
+        }
         for (int i = 0; i < suffix.length(); i++) {
             final char c = suffix.charAt(i);
             if (c != '.' && (c < '0' || c > '9')) {

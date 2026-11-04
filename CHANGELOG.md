@@ -64,20 +64,24 @@ The entries below hold the details; what a 1.4.0 user changes:
   facts files of 1.4.0 it reports six quadratic patterns, all fixed above.
 - **Files without an extension can be indexed and routed** (`fileNames`, under `srcMorph` and as a
   condition leaf): globs over the file name without its directory, matched in any case
-  (`Dockerfile`, `Jenkinsfile`, `Dockerfile.*`). Up to now only `fileExtensions` selected a file, so
-  a Dockerfile or a Jenkinsfile could not be indexed at all.
+  (`Dockerfile`, `Jenkinsfile`, `Dockerfile.*`); a name with a `/` fails the run in both places (it
+  could never match: use `pathGlob`). Up to now only `fileExtensions` selected a file, so a Dockerfile
+  or a Jenkinsfile could not be indexed at all.
 - **Routing by content** (`contentMatches`, a condition leaf): a Java regular expression found in the
   first `contentHeadChars` characters of the file (under `srcMorph`, 16,384 by default, at least 256
   so the `interpreters` condition sees a whole `#!` line; raise it for a marker behind a long license
   header: the head is never read past the file's end), so a Kubernetes manifest, an OpenAPI document and a Camel
   route, all `.yaml`, take different rules (`(?m)^apiVersion:`). Planning reads only that start of a
-  file unless it reads the whole file anyway; an invalid expression fails the check.
+  file unless it reads the whole file anyway; an invalid expression fails the check. The pattern is
+  compiled once and has the read budget of a fact pattern: one that backtracks past it does not match,
+  with a warning, so it cannot hang the plan.
 - **Scripts without an extension can be indexed and routed by their `#!` line**
   (`fileInterpreters` under `srcMorph`, `interpreters` as a condition leaf): `[bash, sh, perl]`
   selects a `bin/deploy` that starts with `#!/usr/bin/env bash`. The interpreter is the program the
   line names, or what `env` runs (options and assignments skipped); a name matches its versions too
-  (`python` matches `python3.12`), and `env`'s `-u` / `-C` arguments and `-S` command line are read
-  as `env` reads them. The line is read only for a file the subtrees, excludes and size band let
+  (`python` matches `python3.12`; a name ending with a digit only from a dot on: `python3.1` does not
+  match `python3.12`), and the arguments of `env`'s options (GNU `-u`, `-C`, `-a`, BSD `-P`, `-L`,
+  `-U`) and its `-S` command line are read as `env` reads them. The line is read only for a file the subtrees, excludes and size band let
   through; one that cannot be read is skipped with a warning, the run goes on. `support.AiShebang` holds the rule; an interpreter given with its directory
   (`/bin/bash`) fails the run.
 - **Fact counters can count before the blanking and count names** (`[raw]` and `[distinct]` in a

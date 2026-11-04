@@ -31,6 +31,11 @@ public class AiShebangTest {
                 "#!/usr/bin/env --unset LANG perl|perl",
                 "#!/usr/bin/env -C /tmp bash|bash",
                 "#!/usr/bin/env --chdir /tmp bash|bash",
+                "#!/usr/bin/env -P /usr/local/bin bash|bash",
+                "#!/usr/bin/env -a sh bash|bash",
+                "#!/usr/bin/env --argv0 sh bash|bash",
+                "#!/usr/bin/env -U deploy perl|perl",
+                "#!/usr/bin/env -L deploy perl|perl",
                 "#!/usr/bin/env -i bash|bash",
                 "#!/usr/bin/env -Spython3 -u|python3",
                 "#!/usr/bin/env --split-string=/usr/bin/python3 -u|python3",
@@ -84,14 +89,28 @@ public class AiShebangTest {
         "python3.12,python3",
         "sh,' sh '",
         "python3.10,python",
-        "python3.9,python"
+        "python3.9,python",
+        "python3.12,python3.12",
+        "python3.1,python3.1",
+        "python3.1.2,python3.1"
     })
     public void matches_theNameOrAVersionOfIt(final String interpreter, final String name) {
         assertThat(AiShebang.matches(interpreter, Arrays.asList("other", name)), is(true));
     }
 
     @ParameterizedTest(name = "{0} does not match {1}")
-    @CsvSource({"bash,sh", "zsh,sh", "python,python3", "pythonw,python", "bash,''", "bash,'  '", "perl5x,perl"})
+    @CsvSource({
+        "bash,sh",
+        "zsh,sh",
+        "python,python3",
+        "pythonw,python",
+        "bash,''",
+        "bash,'  '",
+        "perl5x,perl",
+        "python3.12,python3.1",
+        "python31,python3",
+        "python3x,python3"
+    })
     public void matches_anotherProgram_isFalse(final String interpreter, final String name) {
         assertThat(AiShebang.matches(interpreter, Collections.singletonList(name)), is(false));
     }

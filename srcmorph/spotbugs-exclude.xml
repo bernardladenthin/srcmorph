@@ -531,6 +531,17 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        CRLF_INJECTION_LOGS on AiConditionEvaluator.stopped, the same warning for a contentMatches
+        pattern: it names the pattern, from the operator's configuration, and the file below the base
+        directory it was evaluated against. Scoped to the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Method name="stopped"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!--
         PATH_TRAVERSAL_IN on EngineSupport.validateLocalModel (the llamacpp-jni branch of
         validateRoutedModelPaths, split out of it). find-sec-bugs flags the
         `new File(modelPath)` because the path is not a compile-time constant. Reading a configured

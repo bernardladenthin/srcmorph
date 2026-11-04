@@ -320,7 +320,7 @@ public class AiConditionEvaluatorTest {
                 assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("app/Dockerfile")));
         assertThat(
                 directory.getMessage(),
-                is("a fileNames condition matches the name without its directory, not 'app/Dockerfile'; use pathGlob"));
+                is("fileNames match a file's name without its directory, not 'app/Dockerfile'; use pathGlob"));
         assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("/Dockerfile")));
         final IllegalArgumentException unclosed =
                 assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("*.{yml")));
@@ -354,6 +354,36 @@ public class AiConditionEvaluatorTest {
                 is(true));
         assertThat(evaluator.matches(kubernetes, headCtx("openapi: 3.0.0\n")), is(false));
         assertThat(evaluator.matches(kubernetes, headCtx("")), is(false));
+    }
+
+    @Test
+    public void matches_contentMatches_aPatternPastItsReadBudget_matchesNothingAndWarns() {
+        // arrange: a lazy comment pattern over unclosed comments reads to the end from every start
+        final String head = "<!-- x\n".repeat(6_000);
+        final ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(AiConditionEvaluator.class);
+        final ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        final boolean matched;
+        try {
+            // act
+            matched = evaluator.matches(content("(?s)<!--.*?-->"), headCtx(head));
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        // assert
+        assertThat(matched, is(false));
+        assertThat(appender.list.size(), is(1));
+        assertThat(
+                appender.list.get(0).getFormattedMessage(),
+                is("contentMatches '(?s)<!--.*?-->' stopped after reading "
+                        + (AiFactExtractor.READS_PER_CHAR * head.length() + AiFactExtractor.READ_ALLOWANCE)
+                        + " characters of the 42000-character head of k8s/deploy.yaml: the pattern backtracks"
+                        + " too far, so the condition does not match"));
+        assertThat(evaluator.matches(content("(?s)<!--.*?x"), headCtx(head)), is(true));
     }
 
     @Test

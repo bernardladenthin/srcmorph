@@ -503,6 +503,22 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void constructor_aFileNameWithADirectory_fails() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> indexerWithNames(temp, Arrays.asList("Jenkinsfile", "docker/Dockerfile")));
+
+        // assert
+        assertThat(
+                thrown.getMessage(),
+                is("fileNames match a file's name without its directory, not 'docker/Dockerfile'; use pathGlob"));
+    }
+
+    @Test
     public void collectCandidates_fileNames_selectFilesWithoutAnExtensionInAnyCase() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");

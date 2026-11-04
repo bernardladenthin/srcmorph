@@ -35,7 +35,6 @@ import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
-import net.ladenthin.srcmorph.support.AiGlob;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiShebang;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
@@ -153,7 +152,7 @@ public final class SourceFileIndexer {
             for (final String name : fileNames) {
                 final String glob = name != null ? name.trim() : "";
                 if (!glob.isEmpty()) {
-                    this.fileNames.add(AiGlob.compile(glob, true));
+                    this.fileNames.add(AiConditionEvaluator.compileFileName(glob));
                 }
             }
         }
