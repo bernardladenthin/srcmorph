@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.1">
+    <persistence-unit name="shop" transaction-type="JTA">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <jta-data-source>java:/jdbc/ShopDS</jta-data-source>
+        <mapping-file>META-INF/order-queries.xml</mapping-file>
+        <class>shop.Order</class>
+        <class>shop.OrderLine</class>
+        <class>shop.Customer</class>
+        <properties>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
+            <property name="hibernate.jdbc.batch_size" value="50"/>
+            <property name="hibernate.connection.username" value="shop_app"/>
+            <property name="hibernate.connection.password" value="Tr0ub4dor-shop-2026"/>
+        </properties>
+    </persistence-unit>
+    <persistence-unit name="reporting" transaction-type="RESOURCE_LOCAL">
+        <non-jta-data-source>java:/jdbc/ReportingDS</non-jta-data-source>
+        <class>shop.reporting.DailyRevenue</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+    </persistence-unit>
+</persistence>

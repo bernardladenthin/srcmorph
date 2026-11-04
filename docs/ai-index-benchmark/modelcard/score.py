@@ -311,6 +311,10 @@ def score_model(model_dir, work, facts, cut_off=frozenset()):
         body = body_of(out.read_text(encoding="utf-8"))
         row = score_file(source, body, ids, numbers,
                          case_insensitive=kind_of(source_path) == "sql", everyday=everyday)
+        secret = (facts.get(rel) or {}).get("secret")
+        if secret:
+            # a value the facts mark as a secret: the summary may name it, never copy it
+            row["secretLeaked"] = secret in body
         middle = (facts.get(rel) or {}).get("middle", [])
         if middle:
             row["middleExpected"] = len(middle)
@@ -359,6 +363,7 @@ def summarize(rows):
             "badHeadings": sum(r["badHeadings"] for r in answered),
             "fences": sum(r["fences"] for r in answered),
             "leaks": sum(r["leaks"] for r in present),
+            "secretsLeaked": sum(1 for r in present if r.get("secretLeaked")),
         }
     return summary
 

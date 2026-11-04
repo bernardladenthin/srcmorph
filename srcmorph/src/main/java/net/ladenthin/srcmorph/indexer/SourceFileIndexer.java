@@ -72,11 +72,11 @@ public class SourceFileIndexer {
      */
     private static final String CONTEXT_TYPE_FILE = "file";
 
-    private final Path baseDirectory;
-    private final Path outputRoot;
     /** Bytes read per character of the content head: a UTF-8 character takes at most four. */
     private static final int HEAD_BYTES_PER_CHAR = 4;
 
+    private final Path baseDirectory;
+    private final Path outputRoot;
     private final List<String> fileExtensions;
     private final List<Pattern> fileNames;
     private final String pluginVersion;
@@ -138,8 +138,9 @@ public class SourceFileIndexer {
         this.fileNames = new ArrayList<>();
         if (fileNames != null) {
             for (final String name : fileNames) {
-                if (name != null && !name.trim().isEmpty()) {
-                    this.fileNames.add(AiGlob.compile(name.trim(), true));
+                final String glob = name != null ? name.trim() : "";
+                if (!glob.isEmpty()) {
+                    this.fileNames.add(AiGlob.compile(glob, true));
                 }
             }
         }

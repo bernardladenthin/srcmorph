@@ -1,0 +1,109 @@
+{
+ "_comment": "Expected facts of the enterprise corpus (../corpus-enterprise: Java EE, Kotlin, Groovy, Jakarta EE descriptors, JPA and Hibernate, MyBatis, Camel, BPMN, WSDL, JSP, Facelets, OpenAPI, Kubernetes, GitHub Actions, Dockerfile), as in facts.json: 'ids' a faithful summary names, 'numbers' values it states, 'words' the ids that count only marked as code. The password in persistence.xml must not be named: 'secret' is the value no summary may copy. Scored with score.py --facts facts-enterprise.json.",
+ "java/shop/OrderResource.java": {
+  "ids": ["OrderResource", "openOrders", "find", "cancel", "purgeCancelled", "PURGE_AFTER_DAYS", "PaymentGateway",
+          "AuditLog", "EntityManager", "Stateless", "Schedule", "RolesAllowed", "/orders", "refund"],
+  "words": ["find", "cancel", "refund"],
+  "numbers": [30]
+ },
+ "other/kotlin/InvoiceService.kt": {
+  "ids": ["InvoiceService", "InvoiceNumber", "InvoiceLine", "InvoiceResult", "Issued", "Rejected", "issue",
+          "taxRate", "nextNumber", "total", "PAYMENT_TERM_DAYS", "REDUCED_TAX_CATEGORIES", "InvoiceRepository",
+          "defaultCurrency", "PREFIX"],
+  "words": ["issue", "total"],
+  "numbers": [14]
+ },
+ "other/groovy/ShippingRulesSpec.groovy": {
+  "ids": ["ShippingRulesSpec", "ShippingRules", "costFor", "FREE_SHIPPING_THRESHOLD", "ParcelTooHeavyException",
+          "maxParcelKg", "carrier", "heavyOrder", "Specification"],
+  "words": ["carrier"],
+  "numbers": []
+ },
+ "other/jee/web.xml": {
+  "ids": ["ReportDownloadServlet", "RequestIdFilter", "StartupAuditListener", "shop.reportDirectory", "/reports/*",
+          "/admin/*", "admin", "jdbc/ShopDS"],
+  "words": ["admin"],
+  "numbers": [20]
+ },
+ "other/jee/ejb-jar.xml": {
+  "ids": ["StockReservationBean", "CheckoutSessionBean", "OrderPlacedListener", "TimingInterceptor",
+          "reservationMinutes", "Stateless", "Stateful", "RequiresNew", "java:/jms/queue/OrderPlaced",
+          "ejb/StockReservation"],
+  "words": [],
+  "numbers": [45]
+ },
+ "other/persistence/persistence.xml": {
+  "ids": ["shop", "reporting", "java:/jdbc/ShopDS", "java:/jdbc/ReportingDS", "Order", "OrderLine", "Customer",
+          "DailyRevenue", "hibernate.dialect", "JTA", "RESOURCE_LOCAL"],
+  "words": ["shop", "reporting"],
+  "numbers": [50],
+  "secret": "Tr0ub4dor-shop-2026"
+ },
+ "other/persistence/Shipment.hbm.xml": {
+  "ids": ["Shipment", "SHIPMENT", "ExpressShipment", "trackingCode", "carrier", "Parcel", "SHIPMENT_SEQ",
+          "Shipment.undelivered", "Shipment.countByCarrier", "ORDER_ID"],
+  "words": ["carrier"],
+  "numbers": []
+ },
+ "other/mybatis/CustomerMapper.xml": {
+  "ids": ["shop.customer.CustomerMapper", "customerResult", "customerColumns", "findByEmail", "search", "insert",
+          "promote", "deleteInactive", "CUSTOMER", "sortColumn"],
+  "words": ["search", "insert", "promote"],
+  "numbers": []
+ },
+ "other/integration/order-routes.xml": {
+  "ids": ["incomingOrders", "toErp", "manualReview", "orderValidator", "invoiceTranslator", "orders.incoming.queue",
+          "orders.review.threshold", "erp.host", "seda:orderAudit", "ErpUnavailableException", "orders.deadletter"],
+  "words": [],
+  "numbers": [5]
+ },
+ "other/bpmn/order-fulfilment.bpmn": {
+  "ids": ["orderFulfilment", "reserveStock", "ReserveStockDelegate", "waitForPayment", "PaymentReceived",
+          "amountCheck", "approveOrder", "shipOrder", "shipping", "createInvoice", "invoicing", "OutOfStock",
+          "backoffice"],
+  "words": ["shipping", "invoicing", "backoffice"],
+  "numbers": [1000]
+ },
+ "other/wsdl/StockService.wsdl": {
+  "ids": ["StockService", "StockPortType", "GetStockLevel", "StockSoapBinding", "StockPort", "UnknownSku",
+          "StockLevelRequest", "StockLevelResponse", "https://erp.shop.example/soap/stock"],
+  "words": [],
+  "numbers": []
+ },
+ "other/jsp/order-list.jsp": {
+  "ids": ["orderFilter", "orders", "customerEmail", "status", "/orders/search", "header.jspf", "footer.jspf",
+          "pageSize", "OrderFilter"],
+  "words": ["orders", "status"],
+  "numbers": [25]
+ },
+ "other/facelets/checkout.xhtml": {
+  "ids": ["checkoutBean", "placeOrder", "recalculate", "shippingMethod", "checkoutForm", "street", "zip",
+          "/WEB-INF/templates/shop.xhtml", "payment-hints.xhtml"],
+  "words": ["street", "zip"],
+  "numbers": []
+ },
+ "other/openapi/orders-api.yaml": {
+  "ids": ["listOrders", "getOrder", "cancelOrder", "/orders", "/orders/{orderId}", "/orders/{orderId}/cancel",
+          "Order", "OrderStatus", "backofficeToken", "couponCode", "orders:write"],
+  "words": [],
+  "numbers": [200, 404, 409]
+ },
+ "other/k8s/orders-deployment.yaml": {
+  "ids": ["orders-backoffice", "registry.shop.example/orders-backoffice:2.1.0", "SHOP_DB_URL", "SHOP_DB_PASSWORD",
+          "orders-db-credentials", "/health/ready", "backoffice.shop.example", "Deployment", "Service", "Ingress"],
+  "words": [],
+  "numbers": [3, 8080]
+ },
+ "other/actions/.github/workflows/release.yml": {
+  "ids": ["release-backoffice", "build", "image", "deploy", "actions/checkout@v4", "actions/setup-java@v4",
+          "docker/login-action@v3", "REGISTRY_USER", "REGISTRY_TOKEN", "deploy-k8s.yml", "production"],
+  "words": ["build", "image", "deploy", "production"],
+  "numbers": []
+ },
+ "other/docker/Dockerfile": {
+  "ids": ["maven:3.9-eclipse-temurin-21", "eclipse-temurin:21-jre-alpine", "APP_VERSION", "JAVA_OPTS",
+          "SHOP_PROFILE", "backoffice", "orders-backoffice.jar", "/health/live", "build"],
+  "words": ["backoffice", "build"],
+  "numbers": [8080]
+ }
+}

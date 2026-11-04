@@ -499,15 +499,37 @@ public class AiFactDefinitionLoaderTest {
     }
 
     @Test
-    public void load_factsFileWithIncludeAndNoProfileDirectory_readsItBesideTheFile() throws IOException {
+    public void load_factsFileWithIncludeAndNoProfileDirectory_isRefused() throws IOException {
         write("own/a.tsv", "a\tx\n");
         final Path b = write("own/b.tsv", "[include]\ta\nb\ty\n");
         final AiFactDefinition definition = fromFile("mine", b.toAbsolutePath().toString());
 
-        final List<AiFactDefinition> loaded =
-                new AiFactDefinitionLoader(null).load(Collections.singletonList(definition), Collections.emptyList());
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> new AiFactDefinitionLoader(null)
+                        .load(Collections.singletonList(definition), Collections.emptyList()));
 
-        assertThat(describe(loaded.get(0)), is(Arrays.asList("a = x", "b = y")));
+        assertThat(
+                thrown.getMessage(), containsString("line 1: [include] a needs a profile directory to read it from"));
+    }
+
+    @Test
+    public void load_includeWithALabelAfterTheMarker_isAnUnknownMarker() throws IOException {
+        write("b.tsv", "[include] more\ta\n");
+
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> load(null, "b"));
+
+        assertThat(thrown.getMessage(), containsString("unknown marker in '[include] more'"));
+    }
+
+    @Test
+    public void load_includedFileUnreadable_throwsTheIoException() throws IOException {
+        write("b.tsv", "[include]\tdir\n");
+        Files.createDirectories(profileDirectory.resolve("dir.tsv"));
+
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> load(null, "b"));
+
+        assertThat(thrown.getMessage(), containsString("factsKey dir is included, but there is no "));
     }
 
     @Test
@@ -515,7 +537,7 @@ public class AiFactDefinitionLoaderTest {
         final IllegalArgumentException thrown =
                 assertThrows(IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[include]\ta\n"));
 
-        assertThat(thrown.getMessage(), is("f line 1: [include] a needs a directory to read it from"));
+        assertThat(thrown.getMessage(), is("f line 1: [include] a needs a profile directory to read it from"));
     }
 
     @Test

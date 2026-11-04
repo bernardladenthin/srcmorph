@@ -187,15 +187,23 @@ public class ExamplesConfigBindingTest {
             assertThat(
                     label, Files.isRegularFile(profileDirectory.resolve(rule.getReducePromptKey() + ".md")), is(true));
         }
+        final List<String> withoutFacts = new ArrayList<>();
         for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
             final String label = "rule " + rule.getId();
-            if (!rule.isFallback() && !rule.isSkip()) {
+            if (rule.isSkip()) {
+                continue;
+            }
+            if (rule.getFactsKey() == null) {
+                withoutFacts.add(rule.getId());
+            } else {
                 assertThat(
                         label + " counts the facts of its kind",
                         Files.isRegularFile(profileDirectory.resolve(rule.getFactsKey() + ".tsv")),
                         is(true));
             }
         }
+        // the kinds profile v3 has no counters for
+        assertThat(withoutFacts, is(List.of("scala", "contract", "ops", "fallback")));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
     }
 
@@ -240,6 +248,61 @@ public class ExamplesConfigBindingTest {
                 final AiFieldGenerationConfig rule = selector.select(rules, context(name));
                 assertThat(config + ": " + name, rule != null && !rule.isSkip(), is(true));
             }
+        }
+    }
+
+    @Test
+    public void lunaExample_routesEveryKindToItsRule() throws Exception {
+        final List<AiFieldGenerationConfig> rules = Main.fromYaml(
+                        Main.readString(EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml")))
+                .srcMorph
+                .getFieldGenerations();
+        final net.ladenthin.srcmorph.config.AiFieldGenerationSelector selector =
+                new net.ladenthin.srcmorph.config.AiFieldGenerationSelector();
+        selector.validate(rules);
+        final String[][] cases = {
+            {"src/main/java/shop/Order.java", "package shop;\nclass Order {}\n", "java"},
+            {"src/main/java/shop/OrderBean.java", "package shop;\nimport jakarta.ejb.Stateless;\n", "java-ee"},
+            {"src/main/java/shop/Legacy.java", "import javax.persistence.Entity;\n", "java-ee"},
+            {"src/main/kotlin/Invoice.kt", "class Invoice\n", "kotlin"},
+            {"build.gradle.kts", "plugins {}\n", "kotlin"},
+            {"src/test/groovy/OrderSpec.groovy", "class OrderSpec {}\n", "groovy"},
+            {"src/main/scala/Order.scala", "case class Order()\n", "scala"},
+            {"src/main/webapp/WEB-INF/web.xml", "<web-app/>\n", "jee"},
+            {"META-INF/ejb-jar.xml", "<ejb-jar/>\n", "jee"},
+            {"META-INF/persistence.xml", "<persistence/>\n", "persistence"},
+            {"mapping/Shipment.hbm.xml", "<hibernate-mapping/>\n", "persistence"},
+            {"mapper/CustomerMapper.xml", "<!DOCTYPE mapper PUBLIC \"-//mybatis.org//DTD Mapper 3.0//EN\">\n", "mybatis"
+            },
+            {
+                "camel/routes.xml",
+                "<beans><camelContext xmlns=\"http://camel.apache.org/schema/spring\"/></beans>\n",
+                "integration"
+            },
+            {"process/order.bpmn", "<definitions/>\n", "bpmn"},
+            {"wsdl/Stock.wsdl", "<definitions/>\n", "wsdl"},
+            {"pom.xml", "<project/>\n", "pom"},
+            {"conf/context.xml", "<beans/>\n", "xml"},
+            {"webapp/list.jsp", "<%@ page %>\n", "jsp"},
+            {"webapp/checkout.xhtml", "<ui:composition/>\n", "facelets"},
+            {"api/orders.yaml", "openapi: 3.0.3\n", "openapi"},
+            {"api/openapi.json", "{\"openapi\":\"3.0.3\"}", "openapi"},
+            {"proto/order.proto", "syntax = \"proto3\";\n", "contract"},
+            {".github/workflows/ci.yml", "on: push\n", "actions"},
+            {"k8s/deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n", "k8s"},
+            {"docker/Dockerfile", "FROM alpine\n", "dockerfile"},
+            {"Jenkinsfile", "pipeline {}\n", "ops"},
+            {"config/application.yml", "server:\n  port: 8080\n", "ops"},
+            {"infra/main.tf", "resource \"x\" \"y\" {}\n", "ops"},
+            {"scripts/tool.py", "print(1)\n", "fallback"},
+            {"config/.env", "TOKEN=x\n", "secrets"},
+        };
+        for (final String[] c : cases) {
+            final String path = c[0];
+            final String name = path.substring(path.lastIndexOf('/') + 1);
+            final AiFieldGenerationConfig rule = selector.select(
+                    rules, new net.ladenthin.srcmorph.config.AiFileContext(name, path, 100L, 3, 0L, c[1]));
+            assertThat(path, rule == null ? null : rule.getId(), is(equalTo(c[2])));
         }
     }
 

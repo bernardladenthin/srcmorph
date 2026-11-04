@@ -18,6 +18,8 @@ Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
   python run.py ... --backend openrouter        (every model of one backend)
 Options: --profile <profile under profiles/> (default v3; it needs the five prompt keys' files),
+         --java-prompt <key> (the Java rule's prompt, default file-body-java; file-body-oop is the one
+         Java, Kotlin, Groovy and Scala share; the Java EE rule takes it too),
          --profile-dir <directory holding the profiles> (default the repository's profiles/; an
          earlier prompt set is restored from the history into a directory of its own, see
          profiles/README.md),
@@ -65,7 +67,9 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 CORPUS = HERE.parent / "corpus"
 PROFILES = REPO / "profiles"
-PROMPT_KEYS = ("file-body-java", "file-body-sql", "file-body-fallback", "package-body", "project-body")
+PROMPT_KEYS = ("file-body-sql", "file-body-fallback", "package-body", "project-body")
+# The prompt of the Java rule (--java-prompt): the Java prompt, or the one class-based languages share.
+JAVA_PROMPT = "file-body-java"
 # The prompts appended to a rule's prompt in a map and a reduce call, when the profile has them.
 CHUNK_PROMPT_KEYS = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts"}
 
@@ -85,15 +89,51 @@ JAVA_FILES = [
     "provider/LlamaCppJniConfig.java",
     "provider/OpenAiCompatibleProviderSupport.java",
 ]
-EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh", ".pl", ".pm", ".xml", ".xsd", ".xsl", ".xslt"]
+EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh", ".pl", ".pm", ".xml", ".xsd", ".xsl", ".xslt",
+              ".wsdl", ".kt", ".kts", ".groovy", ".scala", ".jsp", ".jspf", ".tag", ".xhtml", ".bpmn", ".dmn",
+              ".yml", ".yaml", ".proto"]
+# Files without an extension the runs index by name.
+FILE_NAMES = ["Dockerfile", "Containerfile"]
 # A language gets a rule of its own when the profile has its prompt (file-body-<prompt>.md) or when
 # --facts asks for its counters (<name>-facts.tsv); otherwise the fallback rule summarizes it. A POM
 # matches pom and xml; its priority gives it the Maven counters, with the XML prompt.
 XML_EXTENSIONS = [".xml", ".xsd", ".xsl", ".xslt"]
+# The enterprise kinds (corpus-enterprise/) take a prompt a kind shares (None: the Java rule's), the more
+# specific ones by name or by content at priority 10 over their extension's rule.
+EE_IMPORTS = (r"(?m)^import[ \t]+(?:javax|jakarta)\.(?:ejb|persistence|ws\.rs|servlet|jws|xml\.ws|inject"
+              r"|transaction|enterprise|annotation\.security)\.")
+YAML_EXTENSIONS = [".yml", ".yaml"]
+
+
+def _and(*conditions):
+    return {"and": {"conditions": list(conditions)}}
+
+
 LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("perl", {"extensions": [".pl", ".pm"]}, "perl", 0),
              ("pom", {"pathGlob": "**/*pom.xml"}, "xml", 10),
-             ("xml", {"extensions": XML_EXTENSIONS}, "xml", 0))
+             ("xml", {"extensions": XML_EXTENSIONS + [".wsdl"]}, "xml", 0),
+             ("java-ee", _and({"extensions": [".java"]}, {"contentMatches": EE_IMPORTS}), None, 10),
+             ("kotlin", {"extensions": [".kt", ".kts"]}, "oop", 0),
+             ("groovy", {"extensions": [".groovy"]}, "oop", 0),
+             ("scala", {"extensions": [".scala"]}, "oop", 0),
+             ("jee", {"fileNames": ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]}, "xml", 10),
+             ("persistence", {"fileNames": ["persistence.xml", "orm.xml", "*.hbm.xml"]}, "xml", 10),
+             ("mybatis", _and({"extensions": [".xml"]}, {"contentMatches": r"mybatis\.org//DTD Mapper"}), "xml", 10),
+             ("integration", _and({"extensions": [".xml"]}, {"contentMatches": r"camel\.apache\.org/schema|"
+                                  r"springframework\.org/schema/integration|mulesoft\.org/schema/mule|"
+                                  r"ws\.apache\.org/ns/synapse"}), "xml", 10),
+             ("bpmn", {"extensions": [".bpmn", ".dmn"]}, "xml", 10),
+             ("wsdl", {"extensions": [".wsdl"]}, "xml", 10),
+             ("jsp", {"extensions": [".jsp", ".jspf", ".tag"]}, "view", 0),
+             ("facelets", {"extensions": [".xhtml"]}, "view", 0),
+             ("openapi", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^[\"']?(?:openapi|swagger)[\"']?[ \t]*:"}),
+              "contract", 10),
+             ("contract", {"extensions": [".proto"]}, "contract", 0),
+             ("actions", {"pathGlob": "**/.github/workflows/*.{yml,yaml}"}, "ops", 10),
+             ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[A-Z]"}), "ops", 5),
+             ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
+             ("ops", {"extensions": YAML_EXTENSIONS}, "ops", 0))
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 WORK_MARKER = ".srcmorph-benchmark-work"
 OVERSIZE = ("fail", "sample", "mapReduce", "sampleChunks", "deterministic")
@@ -148,22 +188,24 @@ def chunk_prompts(profile):
     return {field: key for field, key in CHUNK_PROMPT_KEYS.items() if (Path(profile) / f"{key}.md").is_file()}
 
 
-def file_rules(profile, key, facts=False, oversize=None, max_chunks=None):
-    """The GenerateFileIndex rules: java, sql, a rule per language that has a prompt or (with facts)
-    counters of its own, and the fallback. With oversize every rule takes that strategy, and with
-    mapReduce or sampleChunks the profile's map and reduce prompts."""
-    rules = [{"id": "java", "promptKey": "file-body-java", "condition": {"extensions": [".java"]}},
+def file_rules(profile, key, facts=False, oversize=None, max_chunks=None, java_prompt=JAVA_PROMPT):
+    """The GenerateFileIndex rules: java (with java_prompt), sql, a rule per language that has a prompt
+    or (with facts) counters of its own in the profile, and the fallback. With oversize every rule takes
+    that strategy, and with mapReduce or sampleChunks the profile's map and reduce prompts."""
+    rules = [{"id": "java", "promptKey": java_prompt, "condition": {"extensions": [".java"]}},
              {"id": "sql", "promptKey": "file-body-sql", "condition": {"extensions": [".sql"]}}]
     if facts:
         rules[0]["factsKey"], rules[1]["factsKey"] = "java-facts", "sql-facts"
     for name, condition, prompt, priority in LANGUAGES:
-        own_prompt = (Path(profile) / f"file-body-{prompt}.md").is_file()
-        if own_prompt or facts:
-            rule = {"id": name, "promptKey": f"file-body-{prompt}" if own_prompt else "file-body-fallback",
-                    "condition": dict(condition)}
+        prompt_key = java_prompt if prompt is None else f"file-body-{prompt}"
+        own_prompt = (Path(profile) / f"{prompt_key}.md").is_file()
+        own_facts = facts and (Path(profile) / f"{name}-facts.tsv").is_file()
+        if own_prompt or own_facts:
+            rule = {"id": name, "promptKey": prompt_key if own_prompt else "file-body-fallback",
+                    "condition": json.loads(json.dumps(condition))}
             if priority:
                 rule["priority"] = priority
-            if facts:
+            if own_facts:
                 rule["factsKey"] = f"{name}-facts"
             rules.append(rule)
     rules.append({"id": "fallback", "promptKey": "file-body-fallback", "fallback": True})
@@ -179,12 +221,12 @@ def file_rules(profile, key, facts=False, oversize=None, max_chunks=None):
 
 
 def phase_config(phase, work, out_dir, profile, definition, facts=False, oversize=None, max_chunks=None,
-                 run_record=None):
+                 run_record=None, java_prompt=JAVA_PROMPT):
     """The CLI configuration of one phase. The file phase's rules are srcMorph's fieldGenerations; the
     package and project phases take their one rule from packageFieldGenerations and
     projectFieldGenerations, as the CLI reads them."""
     key = definition["key"]
-    rules = file_rules(profile, key, facts, oversize, max_chunks)
+    rules = file_rules(profile, key, facts, oversize, max_chunks, java_prompt)
     config = {
         "command": phase,
         "srcMorph": {
@@ -192,6 +234,7 @@ def phase_config(phase, work, out_dir, profile, definition, facts=False, oversiz
             "outputDirectory": str(out_dir),
             "subtrees": ["java", "sql", "other"],
             "fileExtensions": EXTENSIONS,
+            "fileNames": FILE_NAMES,
             "generationProvider": definition["provider"],
             "projectName": "srcmorph-modelcard",
             "force": True,
@@ -335,7 +378,7 @@ def files_not_written(log_path):
 def run_model(args, models, profile, model):
     key = model["key"]
     definition = ai_definition(models, model, args.model_dir, args.seed, args.chars_per_token)
-    rules = file_rules(profile, key, args.facts, args.oversize or None, args.max_chunks)
+    rules = file_rules(profile, key, args.facts, args.oversize or None, args.max_chunks, args.java_prompt)
     out_dir = Path(args.out) / key
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -354,7 +397,8 @@ def run_model(args, models, profile, model):
                            for k, v in definition.items() if k != "apiKeyEnv"},
             "javaCommit": None if args.corpus else args.commit,
             "corpus": Path(args.corpus).name if args.corpus else "srcmorph",
-            "profile": args.profile, "facts": args.facts, "oversize": args.oversize or None,
+            "profile": args.profile, "javaPrompt": args.java_prompt, "facts": args.facts,
+            "oversize": args.oversize or None,
             "maxChunks": args.max_chunks, "profileHashes": profile_hashes(profile, rules),
             "cli": cli_jar(classpath), "java": java_version(args.java), "startedAt": utc_now(),
             "phases": {}}
@@ -366,7 +410,7 @@ def run_model(args, models, profile, model):
         config_path = log_dir / f"config_{phase}.json"
         config_path.write_text(json.dumps(phase_config(phase, Path(args.work), out_dir, profile, definition,
                                                        args.facts, args.oversize or None, args.max_chunks,
-                                                       run_record),
+                                                       run_record, args.java_prompt),
                                           indent=1), encoding="utf-8")
         start = time.time()
         with open(log_dir / f"{phase}.log", "w", encoding="utf-8") as log:
@@ -442,6 +486,7 @@ def main():
     parser.add_argument("--oversize", default="", choices=("",) + OVERSIZE)
     parser.add_argument("--max-chunks", type=int, default=None)
     parser.add_argument("--chars-per-token", type=float, default=None)
+    parser.add_argument("--java-prompt", default=JAVA_PROMPT)
     args = parser.parse_args()
     # srcmorph resolves a relative path against the configuration file's directory, not the working one
     for name in ("work", "out", "meta"):
@@ -451,7 +496,7 @@ def main():
     validate(parser, args, models)
 
     profile = Path(args.profile_dir).resolve() / args.profile
-    for prompt_key in PROMPT_KEYS:
+    for prompt_key in PROMPT_KEYS + (args.java_prompt,):
         if not (profile / f"{prompt_key}.md").is_file():
             sys.exit(f"profile {args.profile}: {profile / prompt_key}.md is missing")
     wanted = [m for m in models["models"]

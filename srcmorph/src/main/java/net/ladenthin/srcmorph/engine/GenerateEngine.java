@@ -130,20 +130,7 @@ public final class GenerateEngine {
         final List<Path> resolvedSubtrees = EngineSupport.resolveSubtrees(basePath, config.getSubtrees());
         final List<String> resolvedExtensions = resolveFileExtensions();
 
-        LOGGER.info("Starting AI index generation");
-        LOGGER.info("Base directory  : {}", basePath);
-        LOGGER.info("Output directory: {}", outputPath);
-        LOGGER.info("Subtrees        : {}", resolvedSubtrees);
-        if (!resolvedExtensions.isEmpty()) {
-            LOGGER.info("Extensions      : {}", resolvedExtensions);
-        }
-        final List<String> fileNames = config.getFileNames();
-        if (fileNames != null && !fileNames.isEmpty()) {
-            LOGGER.info("File names      : {}", fileNames);
-        }
-        LOGGER.info("Force           : {}", config.isForce());
-        LOGGER.info("Profile change  : {}", config.isRegenerateOnProfileChange() ? "rewrites" : "recorded only");
-        LOGGER.info("Provider        : {}", config.getGenerationProvider());
+        logRun(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
         final List<AiFieldGenerationConfig> configured = config.getFieldGenerations();
         if (configured == null || configured.isEmpty()) {
@@ -174,24 +161,8 @@ public final class GenerateEngine {
         EngineSupport.requireDefinedModels(modelDefinitionSupport, fieldGenerations);
         requirePrompts(promptSupport, fieldGenerations);
 
-        final SourceFileIndexer fileIndexer;
-        try {
-            fileIndexer = new SourceFileIndexer(
-                    basePath,
-                    outputPath,
-                    resolvedExtensions,
-                    config.getFileNames(),
-                    config.getPluginVersion(),
-                    config.getAiVersion(),
-                    resolvedSubtrees,
-                    config.getExcludes(),
-                    config.getMinFileSizeBytes(),
-                    config.getMaxFileSizeBytes(),
-                    config.isForce(),
-                    config.isRegenerateOnProfileChange());
-        } catch (final IllegalArgumentException e) {
-            throw new SrcMorphException("Invalid excludes or fileNames: " + e.getMessage(), e);
-        }
+        final SourceFileIndexer fileIndexer =
+                newFileIndexer(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
         // 1. Collect candidate files across the configured subtrees.
         final List<Path> candidates = new ArrayList<>();
@@ -533,6 +504,70 @@ public final class GenerateEngine {
                             + "); raise its contextSize or lower its maxOutputTokens");
                 }
             }
+        }
+    }
+
+    /**
+     * Logs what the run reads and how.
+     *
+     * @param basePath           the base directory
+     * @param outputPath         the output directory
+     * @param resolvedSubtrees   the subtrees
+     * @param resolvedExtensions the file extensions
+     */
+    private void logRun(
+            final Path basePath,
+            final Path outputPath,
+            final List<Path> resolvedSubtrees,
+            final List<String> resolvedExtensions) {
+        LOGGER.info("Starting AI index generation");
+        LOGGER.info("Base directory  : {}", basePath);
+        LOGGER.info("Output directory: {}", outputPath);
+        LOGGER.info("Subtrees        : {}", resolvedSubtrees);
+        if (!resolvedExtensions.isEmpty()) {
+            LOGGER.info("Extensions      : {}", resolvedExtensions);
+        }
+        final List<String> fileNames = config.getFileNames();
+        if (fileNames != null && !fileNames.isEmpty()) {
+            LOGGER.info("File names      : {}", fileNames);
+        }
+        LOGGER.info("Force           : {}", config.isForce());
+        LOGGER.info("Profile change  : {}", config.isRegenerateOnProfileChange() ? "rewrites" : "recorded only");
+        LOGGER.info("Provider        : {}", config.getGenerationProvider());
+    }
+
+    /**
+     * Builds the file indexer of the run.
+     *
+     * @param basePath           the base directory
+     * @param outputPath         the output directory
+     * @param resolvedSubtrees   the subtrees
+     * @param resolvedExtensions the file extensions
+     * @return the indexer
+     * @throws SrcMorphException if an exclude or a file name is not a valid glob
+     */
+    private SourceFileIndexer newFileIndexer(
+            final Path basePath,
+            final Path outputPath,
+            final List<Path> resolvedSubtrees,
+            final List<String> resolvedExtensions)
+            throws SrcMorphException {
+        try {
+            return new SourceFileIndexer(
+                    basePath,
+                    outputPath,
+                    resolvedExtensions,
+                    config.getFileNames(),
+                    config.getPluginVersion(),
+                    config.getAiVersion(),
+                    resolvedSubtrees,
+                    config.getExcludes(),
+                    config.getMinFileSizeBytes(),
+                    config.getMaxFileSizeBytes(),
+                    config.isForce(),
+                    config.isRegenerateOnProfileChange());
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException("Invalid excludes or fileNames: " + e.getMessage(), e);
         }
     }
 

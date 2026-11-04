@@ -165,6 +165,26 @@ class FailureTest(unittest.TestCase):
         self.assertEqual(summary["java"]["failed"], {"missing": 1})
         self.assertEqual(summary["java"]["cutOff"], 1)
 
+    def test_scoreModel_aSecretTheFactsMark_countsWhenCopied(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "other").mkdir(parents=True)
+            (work / "other" / "a.xml").write_text("<p name='password' value='s3cret-1'/>", encoding="utf-8")
+            (work / "other" / "b.xml").write_text("<p name='password' value='s3cret-2'/>", encoding="utf-8")
+            (out / "other").mkdir(parents=True)
+            (out / "other" / "a.xml.ai.md").write_text("h: 1\n---\n" + body("`password=***`."), encoding="utf-8")
+            (out / "other" / "b.xml.ai.md").write_text("h: 1\n---\n" + body("`password=s3cret-2`."),
+                                                       encoding="utf-8")
+            facts = {"other/a.xml": {"ids": ["password"], "secret": "s3cret-1"},
+                     "other/b.xml": {"ids": ["password"], "secret": "s3cret-2"}}
+
+            rows = score.score_model(out, work, facts)
+
+        by_file = {r["file"]: r for r in rows}
+        self.assertFalse(by_file["other/a.xml"]["secretLeaked"])
+        self.assertTrue(by_file["other/b.xml"]["secretLeaked"])
+        self.assertEqual(score.summarize(rows)["other"]["secretsLeaked"], 1)
+
 
 class JavaNamesTest(unittest.TestCase):
 

@@ -89,6 +89,41 @@ class RulesTest(unittest.TestCase):
                             for r in chunked))
         self.assertTrue(all("mapPromptKey" not in r and "reducePromptKey" not in r for r in sampled))
 
+    def test_javaPrompt_namesTheJavaAndTheJavaEeRule(self):
+        profile = run.PROFILES / "v3"
+        default = {r["id"]: r for r in run.file_rules(profile, "m")}
+        oop = {r["id"]: r for r in run.file_rules(profile, "m", java_prompt="file-body-oop")}
+
+        self.assertEqual(default["java"]["promptKey"], "file-body-java")
+        self.assertEqual(default["java-ee"]["promptKey"], "file-body-java")
+        self.assertEqual(oop["java"]["promptKey"], "file-body-oop")
+        self.assertEqual(oop["java-ee"]["promptKey"], "file-body-oop")
+        self.assertEqual(oop["java-ee"]["priority"], 10)
+
+    def test_enterpriseKinds_takeTheirSharedPromptAndTheirOwnFacts(self):
+        rules = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
+
+        self.assertEqual((rules["kotlin"]["promptKey"], rules["kotlin"]["factsKey"]), ("file-body-oop", "kotlin-facts"))
+        self.assertEqual((rules["jee"]["promptKey"], rules["jee"]["factsKey"]), ("file-body-xml", "jee-facts"))
+        self.assertEqual((rules["jsp"]["promptKey"], rules["jsp"]["factsKey"]), ("file-body-view", "jsp-facts"))
+        self.assertEqual(rules["openapi"]["promptKey"], "file-body-contract")
+        self.assertEqual(rules["dockerfile"]["factsKey"], "dockerfile-facts")
+        # a kind without a facts file of its own counts nothing
+        self.assertNotIn("factsKey", rules["scala"])
+        self.assertNotIn("factsKey", rules["contract"])
+
+    def test_aProfileWithoutAKindsPromptOrFacts_hasNoRuleForIt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rules = {r["id"] for r in run.file_rules(Path(tmp), "m", facts=True)}
+
+        self.assertEqual(rules, {"java", "sql", "fallback"})
+
+    def test_aPhaseConfig_indexesFilesWithoutAnExtensionByName(self):
+        definition = {"key": "m", "provider": "mock"}
+        config = run.phase_config("GenerateFileIndex", Path("w"), Path("o"), run.PROFILES / "v3", definition)
+
+        self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Containerfile"])
+
     def test_chunkPrompts_onlyThoseTheProfileHas(self):
         self.assertEqual(run.chunk_prompts(Path("no-such-profile")), {})
 

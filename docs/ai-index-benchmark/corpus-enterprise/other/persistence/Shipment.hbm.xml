@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping package="shop.shipping">
+    <class name="Shipment" table="SHIPMENT">
+        <id name="id" column="SHIPMENT_ID">
+            <generator class="sequence">
+                <param name="sequence_name">SHIPMENT_SEQ</param>
+            </generator>
+        </id>
+        <property name="trackingCode" column="TRACKING_CODE" length="40" not-null="true"/>
+        <property name="carrier" column="CARRIER" length="12"/>
+        <property name="shippedAt" column="SHIPPED_AT" type="timestamp"/>
+        <many-to-one name="order" class="shop.Order" column="ORDER_ID" not-null="true"/>
+        <set name="parcels" inverse="true" cascade="all-delete-orphan">
+            <key column="SHIPMENT_ID"/>
+            <one-to-many class="Parcel"/>
+        </set>
+        <joined-subclass name="ExpressShipment" table="EXPRESS_SHIPMENT">
+            <key column="SHIPMENT_ID"/>
+            <property name="deliveryWindow" column="DELIVERY_WINDOW"/>
+        </joined-subclass>
+    </class>
+
+    <query name="Shipment.undelivered"><![CDATA[
+        from Shipment s where s.deliveredAt is null and s.shippedAt < :cutoff
+    ]]></query>
+    <sql-query name="Shipment.countByCarrier"><![CDATA[
+        select CARRIER, count(*) from SHIPMENT group by CARRIER
+    ]]></sql-query>
+</hibernate-mapping>
