@@ -144,6 +144,54 @@ public class ExamplesConfigBindingTest {
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph.yaml");
     }
 
+    /**
+     * {@code examples/copilot-api-gateway/srcmorph-luna.yaml} runs the whole profile through one gateway
+     * model: every file, package and the project goes to GPT-6 Luna, every rule but the fallback counts
+     * the facts of its kind, and every rule, the package and project rules too, reads an input larger
+     * than the window chunk by chunk instead of sampling it or failing. A rule routed elsewhere, a
+     * facts or chunk prompt file that moved, or a lost {@code stream} fails here.
+     *
+     * @throws IOException if the example file cannot be read
+     */
+    @Test
+    public void copilotApiGatewayLunaExample_routesEveryRuleToLunaWithFacts() throws IOException {
+        final Path directory = EXAMPLES_DIRECTORY.resolve("copilot-api-gateway");
+        final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph-luna.yaml")));
+
+        assertThat(configuration.command, is(CCommand.Plan));
+        final SrcMorphConfiguration srcMorph = configuration.srcMorph;
+        assertThat(srcMorph.getAiDefinitions().size(), is(1));
+        final AiModelDefinition model = srcMorph.getAiDefinitions().get(0);
+        assertThat(model.getRemoteModel(), is(equalTo("gpt-6-luna")));
+        assertThat(model.getBaseUrl(), is(equalTo("http://127.0.0.1:3030/v1")));
+        assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
+        assertThat(model.isStream(), is(true));
+
+        final Path profileDirectory = directory.resolve(
+                Objects.requireNonNull(srcMorph.getProfileDirectory()).getPath());
+        final List<AiFieldGenerationConfig> rules = new ArrayList<>(srcMorph.getFieldGenerations());
+        rules.addAll(Objects.requireNonNull(configuration.packageFieldGenerations));
+        rules.addAll(Objects.requireNonNull(configuration.projectFieldGenerations));
+        for (final AiFieldGenerationConfig rule : rules) {
+            final String label = "rule " + rule.getPromptKey();
+            assertThat(label, rule.getAiDefinitionKey(), is(equalTo(model.getKey())));
+            assertThat(label + " reads every chunk", rule.getOnOversize(), is(equalTo("mapReduce")));
+            assertThat(label, Files.isRegularFile(profileDirectory.resolve(rule.getMapPromptKey() + ".md")), is(true));
+            assertThat(
+                    label, Files.isRegularFile(profileDirectory.resolve(rule.getReducePromptKey() + ".md")), is(true));
+        }
+        for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
+            final String label = "rule " + rule.getId();
+            if (!rule.isFallback()) {
+                assertThat(
+                        label + " counts the facts of its kind",
+                        Files.isRegularFile(profileDirectory.resolve(rule.getFactsKey() + ".tsv")),
+                        is(true));
+            }
+        }
+        assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
+    }
+
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {
         final String fileName = exampleConfig.getFileName().toString();
         final String content = Main.readString(exampleConfig);
