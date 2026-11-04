@@ -221,6 +221,15 @@ Terraform, Ansible and Compose ran in no measurement. Their counters (`scala-fac
 written in front of every summary of its rule but reaches the model only in a reduce call, and the
 scores read names, not counts.
 
+Three changes followed the same day ([`remeasure-2026-11-04b/`](../docs/ai-index-benchmark/remeasure-2026-11-04b/README.md)):
+the user message of a file starts with its path below the base directory, `file-body-oop` names the
+private functions, constants and fields the logic uses and each call on a dependency, and
+`file-body-ops` names a workflow or pipeline and defines Gradle scripts. The enterprise corpus went
+to 99.7 % (gpt-oss) and 99.9 % (Luna), every name the morning's runs left out found in all six runs;
+the card corpus gave Luna 100 % again and gpt-oss 99.5 % over six runs, its misses those of earlier
+rounds and two runs that named `ringbuf.c`'s headers instead of its functions; nine gpt-oss runs on
+the language corpus gave 99.0 %, so the morning's 98.7 % was variation.
+
 ## Shell, Perl and XML prompts
 
 Up to these three files, shell scripts, Perl and XML went through `file-body-fallback`. The

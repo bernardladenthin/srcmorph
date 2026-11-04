@@ -146,7 +146,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   user message (`billing/src/main/webapp/WEB-INF/web.xml`), so two files of one name in different
   modules read apart; every file prompt of profile v3 says so in its last paragraph. The plan's
   window check counts the same line. A package's and the project's message are unchanged.
-- **Profile v3's file prompts ask for more** (measured below): `file-body-oop` names the private
+- **Profile v3's file prompts ask for more**
+  ([`remeasure-2026-11-04b/`](docs/ai-index-benchmark/remeasure-2026-11-04b/README.md): the enterprise
+  corpus 97.9 to 99.7 % with gpt-oss-20b, 97.3 to 99.9 % with GPT-6 Luna; the card corpus 99.5 % and
+  100 %, the language corpus 99.0 % over nine gpt-oss runs and 99.5 %): `file-body-oop` names the private
   functions, constants and fields the logic uses and each call on a dependency, which the enterprise
   runs found by chance only (`nextNumber`, `PREFIX`, a `refund` call); `file-body-ops` names a CI
   workflow or pipeline by its name (`release-backoffice` was missing in every gpt-oss run) and

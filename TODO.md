@@ -12,32 +12,14 @@ everything below is genuinely still open.
 
 ### Enterprise kinds of profile v3 (2026-11-04)
 
-Branch `feat/profiles-v3-kinds-and-safety` (PR #269), in this order. Done on it since the runs of
-`docs/ai-index-benchmark/remeasure-2026-11-04/`, without a model run: scripts selected by their `#!`
-line, `contentHeadChars`, the `[raw]` and `[distinct]` counters, the time limit of a fact pattern,
-the `[ignore]` line of `java-facts`, fourteen new facts files (DMN, Scala, the contracts, the ops
-kinds, Gradle, properties, PowerShell, batch), the EE routing of fully qualified annotations, and the
-decision that `pathGlob` keeps matching in the case written.
-
-- **Prompt changes, then one measurement for all of them:**
-  - the ops prompt asks for a workflow's or pipeline's name (gpt-oss never named
-    `release-backoffice` in the enterprise runs) and gets a Gradle bullet (plugins, dependencies by
-    configuration, tasks, repositories), since Gradle scripts take it now;
-  - `file-body-oop` asks for the private helpers and constants too (`nextNumber`, `PREFIX`, the
-    `refund` call were named by chance: the prompt asks for the public API);
-  - the user message of a file holds its path below the base directory, not its name alone, so two
-    `web.xml` of different modules read apart.
-- **The measurement**, sequential on OpenRouter, gpt-oss-20b and GPT-6 Luna: three runs each on the
-  card, language and enterprise corpora with the changed prompts, and six more of gpt-oss on the
-  language corpus (99.1 % before the secrets rule, 98.7 % after, `systemctl` of the deploy script
-  missing in two of three runs: noise or not). Written up like `remeasure-2026-11-04/`.
-- **PR #269**: CI green, then the owner merges.
-
-Then:
-
-- The plugin's self-test profile routes only the measured kinds; the new ones are routed in
-  `examples/copilot-api-gateway/srcmorph-luna.yaml`. Once measured on a corpus of real projects
-  (the enterprise corpus is written for the benchmark), the self-test can take them too.
+- **PR #269** (branch `feat/profiles-v3-kinds-and-safety`): CI green, then the owner merges.
+- The plugin's self-test profile routes only the kinds measured on this repository; the new ones are
+  routed in `examples/copilot-api-gateway/srcmorph-luna.yaml` and measured on the enterprise corpus
+  (`docs/ai-index-benchmark/remeasure-2026-11-04b/`), which is written for the benchmark. Once
+  measured on a corpus of real projects, the self-test can take them too.
+- gpt-oss-20b named `ringbuf.c`'s headers instead of `malloc` and `memcpy` in two of six card runs
+  after the path line came into the user message (fallback prompt, none before): watch it in the
+  next round; with three more runs it is variation or a sentence for the fallback prompt.
 
 ### After the release of 1.4.0
 
