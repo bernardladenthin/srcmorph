@@ -205,8 +205,11 @@ public final class AiFactExtractor {
             try {
                 while (matcher.find()) {
                     final String breaks = lineBreaks(matcher.group());
-                    // a region within one line leaves a space, so FROM t/* x */JOIN u still reads as two words
-                    blanked.append(text, last, matcher.start()).append(breaks.isEmpty() ? " " : breaks);
+                    // a region within one line leaves a space, so FROM t/* x */JOIN u still reads as two words,
+                    // but not at the start of a line, so /* x */class A still starts its line with class
+                    final int start = matcher.start();
+                    final boolean lineStart = start == 0 || isLineBreak(text.charAt(start - 1));
+                    blanked.append(text, last, start).append(breaks.isEmpty() && !lineStart ? " " : breaks);
                     last = matcher.end();
                 }
             } catch (final ReadBudget.Exhausted e) {
@@ -228,11 +231,21 @@ public final class AiFactExtractor {
         final StringBuilder breaks = new StringBuilder();
         for (int i = 0; i < text.length(); i++) {
             final char c = text.charAt(i);
-            if (c == '\r' || c == '\n') {
+            if (isLineBreak(c)) {
                 breaks.append(c);
             }
         }
         return breaks.toString();
+    }
+
+    /**
+     * Returns whether a character ends a line.
+     *
+     * @param c the character
+     * @return {@code true} for {@code \r} and {@code \n}
+     */
+    private static boolean isLineBreak(final char c) {
+        return c == '\r' || c == '\n';
     }
 
     /**

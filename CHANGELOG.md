@@ -208,6 +208,11 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
+- **An ignored region at the start of a line left a space there**, so a counter anchored at the line
+  start (`^class`, `^import`, Perl's `^my`) missed the code after it: `/* x */class A {}` counted no
+  type, the same code on two lines one. Such a region now leaves nothing; within a line it still
+  leaves a space, so the words around it stay apart. The facts hash is unchanged (it hashes the
+  counters, not the counts).
 - **A JSON configuration file with a UTF-8 byte order mark did not load**: Windows PowerShell 5.1
   writes one (`Out-File -Encoding utf8`), and Jackson read it as a character before the `{`. The
   loader reads a configuration file as it reads a source, without the mark (YAML too).

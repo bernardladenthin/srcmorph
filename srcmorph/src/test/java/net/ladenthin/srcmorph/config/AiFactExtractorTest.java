@@ -153,6 +153,15 @@ public class AiFactExtractorTest {
     }
 
     @Test
+    public void counts_anIgnoredRegionAtTheStartOfALine_leavesTheLineStartingWithWhatFollows() {
+        // the first region starts the text, the second follows a line feed, the third a carriage return
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(ignore("comments", "(?s)/\\*.*?\\*/"), counter("types", "(?m)^class\\b")),
+                "/* x */class A {}\n/* y */class B {}\r/* z */class C {}\n");
+        assertThat(counts.get("types"), is(3));
+    }
+
+    @Test
     public void counts_twoIgnoreCounters_bothBlank() {
         final Map<String, Integer> counts = AiFactExtractor.counts(
                 Arrays.asList(ignore("a", "x1"), ignore("b", "x2"), counter("x", "x\\d")), "x1 x2 x3");

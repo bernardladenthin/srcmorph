@@ -81,7 +81,8 @@ label must not start with `#`, which makes the line a comment.
 A label starting with `[ignore]` marks a region instead of a counter: its matches are blanked out
 before the other counters count: a region over several lines keeps only its line breaks, so `^`
 anchors and line counts see the same lines as before, and a region within one line becomes one
-space, so the words around it stay apart. That is how a sub named in Perl's POD, a function or a `set -e`
+space, so the words around it stay apart, or nothing at the start of a line, so the line still
+starts with what follows it (`/* x */class A` counts for `^class`). That is how a sub named in Perl's POD, a function or a `set -e`
 in a shell heredoc, a commented-out POM dependency or an `INSERT` inside a SQL block comment stays
 out of the counts. An ignore line is not reported. The prefix may be written in any case; any other
 label starting with `[` is refused as an unknown marker. In a configuration the same is a counter
@@ -112,7 +113,8 @@ Several ignore lines blank in file order, each over the text the one before left
 can hold another one's opener (a `<!--` inside CDATA, POD or `__END__` inside a Perl heredoc, a `/*`
 inside a SQL string) would be cut at the wrong place. The files here therefore have one ignore line
 per language, an alternation of all its regions: the region that starts first wins, as in a lexer.
-Blanking leaves a space within a line, so `INSERT/* x */INTO` reads as `INSERT INTO`. A counter anchored at
+Blanking leaves a space within a line, so `INSERT/* x */INTO` reads as `INSERT INTO`, and nothing at a
+line start. A counter anchored at
 a line start allows spaces and tabs there (`^[ \t]*`), never `\s*`: a blanked region leaves a run of
 line breaks, and `^\s*` over one is quadratic (a 40 000-line block comment took 44 s, now 0.05 s;
 `SqlFactPatternsTest` pins it). For the same reason a region whose end never comes runs to the end
