@@ -4,14 +4,16 @@
 package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiCondition;
@@ -32,6 +34,7 @@ import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
+import net.ladenthin.srcmorph.support.AiGlob;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
 import net.ladenthin.srcmorph.support.AiSourceLines;
@@ -71,7 +74,11 @@ public class SourceFileIndexer {
 
     private final Path baseDirectory;
     private final Path outputRoot;
+    /** Bytes read per character of the content head: a UTF-8 character takes at most four. */
+    private static final int HEAD_BYTES_PER_CHAR = 4;
+
     private final List<String> fileExtensions;
+    private final List<Pattern> fileNames;
     private final String pluginVersion;
     private final String aiVersion;
     private final List<Path> subtrees;
@@ -99,6 +106,8 @@ public class SourceFileIndexer {
      * @param baseDirectory    project base directory
      * @param outputRoot       root directory in which {@code .ai.md} files are written
      * @param fileExtensions   file extensions to index; may be empty (matches no files)
+     * @param fileNames        globs over the file name of further files to index, in any case; may be
+     *                         {@code null} or empty
      * @param pluginVersion    plugin version recorded in headers
      * @param aiVersion        AI summarisation logic version recorded in headers
      * @param subtrees         source subtrees in scope; may be empty
@@ -114,6 +123,7 @@ public class SourceFileIndexer {
             final Path baseDirectory,
             final Path outputRoot,
             final Collection<String> fileExtensions,
+            final @Nullable Collection<String> fileNames,
             final String pluginVersion,
             final String aiVersion,
             final Collection<Path> subtrees,
@@ -125,6 +135,14 @@ public class SourceFileIndexer {
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
         this.fileExtensions = new ArrayList<>(fileExtensions);
+        this.fileNames = new ArrayList<>();
+        if (fileNames != null) {
+            for (final String name : fileNames) {
+                if (name != null && !name.trim().isEmpty()) {
+                    this.fileNames.add(AiGlob.compile(name.trim(), true));
+                }
+            }
+        }
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
         this.subtrees = new ArrayList<>(subtrees);
@@ -209,6 +227,7 @@ public class SourceFileIndexer {
             final @Nullable AiPromptPreparationSupport promptPreparationSupport)
             throws IOException {
         final boolean lineFiltersUsed = anyRuleUsesLines(rules);
+        final boolean contentFiltersUsed = anyRuleUsesContent(rules);
         final AiIndexPlan plan = new AiIndexPlan();
         for (final Path file : candidates) {
             final Path fileNamePath = file.getFileName();
@@ -217,11 +236,19 @@ public class SourceFileIndexer {
             final boolean routed = modelDefinitionSupport != null && promptPreparationSupport != null;
             final String source = lineFiltersUsed || routed ? readSource(file) : "";
             final int lineCount = lineFiltersUsed ? AiSourceLines.count(source) : 0;
+            final String head;
+            if (!contentFiltersUsed) {
+                head = "";
+            } else if (lineFiltersUsed || routed) {
+                head = source.substring(0, Math.min(source.length(), AiConditionEvaluator.CONTENT_HEAD_CHARS));
+            } else {
+                head = readHead(file);
+            }
             final String relativePath =
                     baseDirectory.relativize(file).toString().replace('\\', '/');
             final long lastModified = Files.getLastModifiedTime(file).toMillis();
             final AiFileContext context =
-                    new AiFileContext(fileName, relativePath, fileSizeBytes, lineCount, lastModified);
+                    new AiFileContext(fileName, relativePath, fileSizeBytes, lineCount, lastModified, head);
 
             final AiFieldGenerationConfig rule = fieldGenerationSelector.select(rules, context);
             if (rule == null) {
@@ -351,7 +378,7 @@ public class SourceFileIndexer {
         // read once, with \n line endings: the prompt and the facts see the same text, and the checksum
         // the same bytes, every one of them, also where a file that is not UTF-8 decodes to U+FFFD
         final byte[] sourceBytes = Files.readAllBytes(sourceFile);
-        final String sourceText = AiSourceLines.normalize(new String(sourceBytes, StandardCharsets.UTF_8));
+        final String sourceText = AiSourceLines.normalize(AiSourceLines.decode(sourceBytes));
         final String checksum = checksumSupport.calculateCrc32Hex(AiSourceLines.normalize(sourceBytes));
         final String sourceModified =
                 timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
@@ -406,6 +433,26 @@ public class SourceFileIndexer {
     }
 
     /**
+     * Returns {@code true} when at least one rule's condition uses a {@code contentMatches} leaf, so
+     * planning knows whether it must read the start of each file.
+     *
+     * @param rules the routing rules
+     * @return {@code true} if any rule's condition reads the content
+     */
+    private boolean anyRuleUsesContent(final List<AiFieldGenerationConfig> rules) {
+        for (final AiFieldGenerationConfig rule : rules) {
+            if (rule == null) {
+                continue;
+            }
+            final AiCondition condition = rule.getCondition();
+            if (condition != null && conditionEvaluator.usesContent(condition)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Reads a source file as the run sees it: UTF-8, with every line ending made {@code \n}, so a
      * working copy with {@code \r\n} has the checksum, the window and the prompt of one with {@code \n}.
      *
@@ -414,7 +461,30 @@ public class SourceFileIndexer {
      * @throws IOException if it cannot be read
      */
     private String readSource(final Path file) throws IOException {
-        return AiSourceLines.normalize(compatibilityHelper.readString(file));
+        return AiSourceLines.normalize(AiSourceLines.decode(Files.readAllBytes(file)));
+    }
+
+    /**
+     * Reads the start of a file for a {@code contentMatches} condition: at most four bytes per character
+     * of {@link AiConditionEvaluator#CONTENT_HEAD_CHARS}, decoded as {@link #readSource} decodes the
+     * whole file, so a large file is not read to its end during planning.
+     *
+     * @param file the file
+     * @return its first {@link AiConditionEvaluator#CONTENT_HEAD_CHARS} characters, {@code \n} line endings
+     * @throws IOException if the file cannot be read
+     */
+    private static String readHead(final Path file) throws IOException {
+        final byte[] buffer = new byte[AiConditionEvaluator.CONTENT_HEAD_CHARS * HEAD_BYTES_PER_CHAR];
+        int length = 0;
+        try (InputStream in = Files.newInputStream(file)) {
+            int read = in.read(buffer, length, buffer.length - length);
+            while (read > 0) {
+                length += read;
+                read = in.read(buffer, length, buffer.length - length);
+            }
+        }
+        final String head = AiSourceLines.normalize(AiSourceLines.decode(Arrays.copyOf(buffer, length)));
+        return head.substring(0, Math.min(head.length(), AiConditionEvaluator.CONTENT_HEAD_CHARS));
     }
 
     /**
@@ -457,6 +527,11 @@ public class SourceFileIndexer {
         final String fileName = fileNamePath.toString();
         for (final String extension : fileExtensions) {
             if (AiPathSupport.hasExtension(fileName, extension)) {
+                return true;
+            }
+        }
+        for (final Pattern name : fileNames) {
+            if (name.matcher(fileName).matches()) {
                 return true;
             }
         }

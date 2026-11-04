@@ -21,6 +21,24 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `.idea/`, `.vscode/`, `.gradle/`, `node_modules/` and `.claude/` (agent worktrees, a second copy
   of the sources). `ExamplesConfigBindingTest` pins the routing, the facts, the strategy and the
   chunk prompts.
+- **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
+  profile reads linearly**, the `[ignore]` lines included, over 55 adversarial lines (unclosed
+  openers and tags, heredoc markers, unbalanced parentheses, runs of one character). It counts the
+  characters the matcher reads instead of timing it: four times the input may read at most six
+  times as many (linear reads four times, quadratic sixteen), so the result is the same on any
+  machine. A facts file added to the profile is measured without a change to the test. Against the
+  facts files of 1.4.0 it reports six quadratic patterns, all fixed above.
+- **Files without an extension can be indexed and routed** (`fileNames`, under `srcMorph` and as a
+  condition leaf): globs over the file name without its directory, matched in any case
+  (`Dockerfile`, `Jenkinsfile`, `Dockerfile.*`). Up to now only `fileExtensions` selected a file, so
+  a Dockerfile or a Jenkinsfile could not be indexed at all.
+- **Routing by content** (`contentMatches`, a condition leaf): a Java regular expression found in the
+  first 16,384 characters of the file, so a Kubernetes manifest, an OpenAPI document and a Camel
+  route, all `.yaml`, take different rules (`(?m)^apiVersion:`). Planning reads only that start of a
+  file unless it reads the whole file anyway; an invalid expression fails the check.
+- **`{a,b}` alternatives in every glob** (`excludes`, `pathGlob`, `fileNames`), nested too:
+  `**/*.{yml,yaml}`, `**/{target,build}/**`. The syntax lives once in `support.AiGlob`; a glob that
+  opens a `{` it does not close fails the run, naming it.
 
 ### Changed
 
@@ -32,6 +50,13 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   false` restores the old behavior: the hashes are recorded only. `AiMdHeaderSupportTest` and
   `SourceFileIndexerTest` pin both settings; the plugin README's header section says what rewrites a
   summary.
+- **A `{` in a glob opens an alternative**; it matched itself before. An exclude or a `pathGlob`
+  with a literal brace pair now means its alternatives.
+- **A source file with a byte order mark is read without it**, and one with the UTF-16 mark as
+  UTF-16. Before, a UTF-8 file saved with a mark (as some Windows editors do) began with U+FEFF, so
+  its first line did not start with its first word for the fact counters and the prompt, and a
+  UTF-16 file read as replacement characters. The checksum is still over the bytes, so such a file
+  is not rewritten for this alone.
 
 ### Fixed
 
@@ -52,16 +77,6 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   now read within one line, an initializer up to 10,000 characters (a generic type split over lines,
   or a longer initializer, is no longer counted; `JavaStructureFactPatternsTest` pins both), and the
   blanks possessively.
-
-### Added (tests)
-
-- **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
-  profile reads linearly**, the `[ignore]` lines included, over 55 adversarial lines (unclosed
-  openers and tags, heredoc markers, unbalanced parentheses, runs of one character). It counts the
-  characters the matcher reads instead of timing it: four times the input may read at most six
-  times as many (linear reads four times, quadratic sixteen), so the result is the same on any
-  machine. A facts file added to the profile is measured without a change to the test. Against the
-  facts files of 1.4.0 it reports six quadratic patterns, all fixed above.
 
 ## [1.4.0] - 2026-11-02
 

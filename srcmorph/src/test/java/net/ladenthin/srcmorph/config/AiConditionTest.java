@@ -79,6 +79,21 @@ public class AiConditionTest {
     }
 
     @Test
+    public void fileNamesDefensivelyCopiedAndContentMatchesRoundTrips() {
+        final AiCondition c = new AiCondition();
+        assertThat(c.getFileNames(), is(nullValue()));
+        assertThat(c.getContentMatches(), is(nullValue()));
+        final java.util.List<String> names = new java.util.ArrayList<>(Arrays.asList("Dockerfile", "Jenkinsfile"));
+        c.setFileNames(names);
+        names.clear();
+        assertThat(c.getFileNames(), is(equalTo(Arrays.asList("Dockerfile", "Jenkinsfile"))));
+        c.setFileNames(null);
+        assertThat(c.getFileNames(), is(nullValue()));
+        c.setContentMatches("(?m)^apiVersion:");
+        assertThat(c.getContentMatches(), is(equalTo("(?m)^apiVersion:")));
+    }
+
+    @Test
     public void notRoundTripAndClear() {
         final AiCondition c = new AiCondition();
         final AiCondition child = new AiCondition();

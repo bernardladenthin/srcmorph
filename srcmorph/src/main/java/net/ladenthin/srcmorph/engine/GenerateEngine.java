@@ -137,6 +137,10 @@ public final class GenerateEngine {
         if (!resolvedExtensions.isEmpty()) {
             LOGGER.info("Extensions      : {}", resolvedExtensions);
         }
+        final List<String> fileNames = config.getFileNames();
+        if (fileNames != null && !fileNames.isEmpty()) {
+            LOGGER.info("File names      : {}", fileNames);
+        }
         LOGGER.info("Force           : {}", config.isForce());
         LOGGER.info("Profile change  : {}", config.isRegenerateOnProfileChange() ? "rewrites" : "recorded only");
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
@@ -170,18 +174,24 @@ public final class GenerateEngine {
         EngineSupport.requireDefinedModels(modelDefinitionSupport, fieldGenerations);
         requirePrompts(promptSupport, fieldGenerations);
 
-        final SourceFileIndexer fileIndexer = new SourceFileIndexer(
-                basePath,
-                outputPath,
-                resolvedExtensions,
-                config.getPluginVersion(),
-                config.getAiVersion(),
-                resolvedSubtrees,
-                config.getExcludes(),
-                config.getMinFileSizeBytes(),
-                config.getMaxFileSizeBytes(),
-                config.isForce(),
-                config.isRegenerateOnProfileChange());
+        final SourceFileIndexer fileIndexer;
+        try {
+            fileIndexer = new SourceFileIndexer(
+                    basePath,
+                    outputPath,
+                    resolvedExtensions,
+                    config.getFileNames(),
+                    config.getPluginVersion(),
+                    config.getAiVersion(),
+                    resolvedSubtrees,
+                    config.getExcludes(),
+                    config.getMinFileSizeBytes(),
+                    config.getMaxFileSizeBytes(),
+                    config.isForce(),
+                    config.isRegenerateOnProfileChange());
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException("Invalid excludes or fileNames: " + e.getMessage(), e);
+        }
 
         // 1. Collect candidate files across the configured subtrees.
         final List<Path> candidates = new ArrayList<>();

@@ -16,16 +16,8 @@ import org.jspecify.annotations.Nullable;
  * sources) and keep the index focused on meaningful code.
  *
  * <p>Patterns are matched against the file path <em>relative to the project base directory</em>,
- * always with {@code /} separators, so the same pattern works on Windows and POSIX. The glob syntax
- * is the familiar subset:</p>
- * <ul>
- *   <li>{@code *} — any run of characters except {@code /} (one path segment)</li>
- *   <li>{@code **} — any run of characters including {@code /} (spans directories). When written as
- *       {@code **}{@code /} it also matches zero directories, so {@code **}{@code /package-info.java}
- *       matches the file at the project root as well as nested under any package.</li>
- *   <li>{@code ?} — exactly one character except {@code /}</li>
- *   <li>every other character is a literal</li>
- * </ul>
+ * always with {@code /} separators, so the same pattern works on Windows and POSIX, in the syntax of
+ * {@link AiGlob} ({@code *}, {@code **}, {@code ?} and <code>{a,b}</code>).</p>
  *
  * <p>Matching is case-sensitive and anchored: the whole relative path must match. An empty (or
  * {@code null}) pattern list excludes nothing, preserving the historical "index everything" behaviour.</p>
@@ -40,6 +32,7 @@ public final class AiSourceExcludeFilter {
      *
      * @param globPatterns exclude globs; {@code null} or empty means "exclude nothing". Individual
      *                     {@code null} or blank entries are ignored.
+     * @throws IllegalArgumentException if a pattern opens a <code>{</code> it does not close
      */
     public AiSourceExcludeFilter(final @Nullable Collection<String> globPatterns) {
         final List<Pattern> compiled = new ArrayList<>();
@@ -48,7 +41,7 @@ public final class AiSourceExcludeFilter {
                 if (glob == null || glob.trim().isEmpty()) {
                     continue;
                 }
-                compiled.add(Pattern.compile(globToRegex(glob.trim())));
+                compiled.add(AiGlob.compile(glob.trim(), false));
             }
         }
         this.patterns = compiled;
@@ -68,60 +61,5 @@ public final class AiSourceExcludeFilter {
             }
         }
         return false;
-    }
-
-    /**
-     * Translates a glob pattern into an anchored regular expression. See the class Javadoc for the
-     * supported syntax.
-     *
-     * @param glob the glob pattern (already trimmed and non-empty)
-     * @return the equivalent anchored regex source
-     */
-    private static String globToRegex(final String glob) {
-        final int length = glob.length();
-        final StringBuilder regex = new StringBuilder();
-        regex.append('^');
-        int i = 0;
-        while (i < length) {
-            final char c = glob.charAt(i);
-            if (c == '*' && i + 1 < length && glob.charAt(i + 1) == '*') {
-                // "**" — consume both stars, then fold a directly-following "/" into the same token so
-                // "**/" can match zero directories (matching the file at the root as well as nested).
-                i += 2;
-                if (i < length && glob.charAt(i) == '/') {
-                    regex.append("(?:.*/)?");
-                    i += 1;
-                } else {
-                    regex.append(".*");
-                }
-            } else if (c == '*') {
-                // "*" matches anything within a single path segment.
-                regex.append("[^/]*");
-                i += 1;
-            } else if (c == '?') {
-                regex.append("[^/]");
-                i += 1;
-            } else {
-                if (isRegexMeta(c)) {
-                    regex.append('\\');
-                }
-                regex.append(c);
-                i += 1;
-            }
-        }
-        regex.append('$');
-        return regex.toString();
-    }
-
-    /**
-     * Returns {@code true} when {@code c} is a regular-expression metacharacter that must be escaped
-     * to be matched literally.
-     *
-     * @param c the candidate character
-     * @return {@code true} if {@code c} needs escaping in a regex
-     */
-    private static boolean isRegexMeta(final char c) {
-        return c == '\\' || c == '.' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '+'
-                || c == '^' || c == '$' || c == '|';
     }
 }

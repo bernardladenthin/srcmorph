@@ -19,6 +19,9 @@ public final class AiFileContext {
     private final int lineCount;
     private final long lastModifiedEpochMilli;
 
+    @ToString.Exclude
+    private final String head;
+
     /**
      * Creates a file context.
      *
@@ -34,11 +37,33 @@ public final class AiFileContext {
             final long sizeBytes,
             final int lineCount,
             final long lastModifiedEpochMilli) {
+        this(fileName, relativePath, sizeBytes, lineCount, lastModifiedEpochMilli, "");
+    }
+
+    /**
+     * Creates a file context with the start of the file's text, for a {@code contentMatches} condition.
+     *
+     * @param fileName               the file name (e.g. {@code Foo.java})
+     * @param relativePath           the base-relative path with {@code /} separators
+     * @param sizeBytes              the file size in bytes
+     * @param lineCount              the line count ({@code 0} when not computed)
+     * @param lastModifiedEpochMilli the last-modified time in epoch milliseconds
+     * @param head                   the first {@value AiConditionEvaluator#CONTENT_HEAD_CHARS} characters
+     *                               of the text, or {@code ""} when not read
+     */
+    public AiFileContext(
+            final String fileName,
+            final String relativePath,
+            final long sizeBytes,
+            final int lineCount,
+            final long lastModifiedEpochMilli,
+            final String head) {
         this.fileName = fileName;
         this.relativePath = relativePath;
         this.sizeBytes = sizeBytes;
         this.lineCount = lineCount;
         this.lastModifiedEpochMilli = lastModifiedEpochMilli;
+        this.head = head;
     }
 
     /**
@@ -84,5 +109,15 @@ public final class AiFileContext {
      */
     public long lastModifiedEpochMilli() {
         return lastModifiedEpochMilli;
+    }
+
+    /**
+     * Returns the start of the file's text.
+     *
+     * @return the first {@value AiConditionEvaluator#CONTENT_HEAD_CHARS} characters, or {@code ""} when
+     *         no rule reads the content
+     */
+    public String head() {
+        return head;
     }
 }

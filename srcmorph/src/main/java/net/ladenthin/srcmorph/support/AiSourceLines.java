@@ -5,6 +5,7 @@
 // @formatter:on
 package net.ladenthin.srcmorph.support;
 
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 
 /**
@@ -24,9 +25,54 @@ public final class AiSourceLines {
     /** The line feed as a replacement string. */
     private static final String LINE_FEED_STRING = "\n";
 
+    /** The UTF-8 byte order mark. */
+    private static final byte[] UTF_8_BOM = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+
+    /** The UTF-16 little-endian byte order mark. */
+    private static final byte[] UTF_16LE_BOM = {(byte) 0xFF, (byte) 0xFE};
+
+    /** The UTF-16 big-endian byte order mark. */
+    private static final byte[] UTF_16BE_BOM = {(byte) 0xFE, (byte) 0xFF};
+
     /** Utility class; not instantiable. */
     private AiSourceLines() {
         // no-op
+    }
+
+    /**
+     * Decodes a source file's bytes: UTF-8, or UTF-16 when the file starts with its byte order mark. A
+     * byte order mark is not part of the text, so a UTF-8 file written with one (as some Windows editors
+     * do) reads like the same file without it, and its first line still starts with its first word.
+     *
+     * @param bytes the file's bytes
+     * @return the text, without a byte order mark; a byte that is not valid in the encoding reads as
+     *         U+FFFD
+     */
+    public static String decode(final byte[] bytes) {
+        if (startsWith(bytes, UTF_8_BOM)) {
+            return new String(bytes, UTF_8_BOM.length, bytes.length - UTF_8_BOM.length, StandardCharsets.UTF_8);
+        }
+        if (startsWith(bytes, UTF_16LE_BOM)) {
+            return new String(
+                    bytes, UTF_16LE_BOM.length, bytes.length - UTF_16LE_BOM.length, StandardCharsets.UTF_16LE);
+        }
+        if (startsWith(bytes, UTF_16BE_BOM)) {
+            return new String(
+                    bytes, UTF_16BE_BOM.length, bytes.length - UTF_16BE_BOM.length, StandardCharsets.UTF_16BE);
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    private static boolean startsWith(final byte[] bytes, final byte[] prefix) {
+        if (bytes.length < prefix.length) {
+            return false;
+        }
+        for (int i = 0; i < prefix.length; i++) {
+            if (bytes[i] != prefix[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

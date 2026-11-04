@@ -271,6 +271,150 @@ public class AiConditionEvaluatorTest {
         assertThat(evaluator.usesLines(and(ext(".java"), size(0L, 100L))), is(false));
         assertThat(evaluator.usesLines(or(ext(".java"), size(0L, 100L))), is(false));
         assertThat(evaluator.usesLines(not(ext(".java"))), is(false));
+        assertThat(evaluator.usesLines(content("x")), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="fileNames">
+    private static AiCondition names(final String... names) {
+        final AiCondition c = new AiCondition();
+        c.setFileNames(Arrays.asList(names));
+        return c;
+    }
+
+    @Test
+    public void matches_fileNames_exactNameInAnyCase() {
+        final AiCondition docker = names("Dockerfile", "Jenkinsfile");
+        assertThat(evaluator.matches(docker, ctx("Dockerfile", "app/Dockerfile", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(docker, ctx("dockerfile", "app/dockerfile", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(docker, ctx("Jenkinsfile", "Jenkinsfile", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(docker, ctx("Dockerfile.dev", "Dockerfile.dev", 1L, 0, 0L)), is(false));
+        assertThat(evaluator.matches(docker, ctx("MyDockerfile", "MyDockerfile", 1L, 0, 0L)), is(false));
+    }
+
+    @Test
+    public void matches_fileNames_globsAndAlternatives() {
+        final AiCondition docker = names("Dockerfile.*", "*.{gradle,gradle.kts}");
+        assertThat(evaluator.matches(docker, ctx("Dockerfile.dev", "Dockerfile.dev", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(docker, ctx("build.gradle", "build.gradle", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(docker, ctx("build.gradle.kts", "a/build.gradle.kts", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(docker, ctx("Dockerfile", "Dockerfile", 1L, 0, 0L)), is(false));
+    }
+
+    @Test
+    public void matches_fileNames_nullEntryIsSkippedAndBlanksAroundANameAreNot() {
+        assertThat(evaluator.matches(names(null, " Makefile "), ctx("Makefile", "Makefile", 1L, 0, 0L)), is(true));
+    }
+
+    @Test
+    public void validate_fileNames_validAndInvalid() {
+        assertDoesNotThrow(() -> evaluator.validate(names("Dockerfile", "*.{yml,yaml}")));
+        final IllegalArgumentException empty =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names()));
+        assertThat(empty.getMessage(), is("a fileNames condition must list at least one name"));
+        final IllegalArgumentException blank =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("Dockerfile", " ")));
+        assertThat(blank.getMessage(), is("a fileNames condition must not list a blank name"));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names((String) null)));
+        final IllegalArgumentException directory =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("app/Dockerfile")));
+        assertThat(
+                directory.getMessage(),
+                is("a fileNames condition matches the name without its directory, not 'app/Dockerfile'; use pathGlob"));
+        final IllegalArgumentException unclosed =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("*.{yml")));
+        assertThat(unclosed.getMessage(), is("the glob '*.{yml' opens a '{' it does not close"));
+    }
+
+    @Test
+    public void validate_fileNamesNextToAnotherLeaf_throws() {
+        final AiCondition c = names("Dockerfile");
+        c.setExtensions(Arrays.asList(".java"));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.validate(c));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="contentMatches">
+    private static AiCondition content(final String regex) {
+        final AiCondition c = new AiCondition();
+        c.setContentMatches(regex);
+        return c;
+    }
+
+    private static AiFileContext headCtx(final String head) {
+        return new AiFileContext("deploy.yaml", "k8s/deploy.yaml", 100L, 0, 0L, head);
+    }
+
+    @Test
+    public void matches_contentMatches_findsThePatternInTheHead() {
+        final AiCondition kubernetes = content("(?m)^apiVersion:[ \\t]*apps/v1");
+        assertThat(
+                evaluator.matches(kubernetes, headCtx("# deployment\napiVersion: apps/v1\nkind: Deployment\n")),
+                is(true));
+        assertThat(evaluator.matches(kubernetes, headCtx("openapi: 3.0.0\n")), is(false));
+        assertThat(evaluator.matches(kubernetes, headCtx("")), is(false));
+    }
+
+    @Test
+    public void matches_contentMatches_withoutAHead_matchesNothing() {
+        assertThat(evaluator.matches(content("x"), javaCtx()), is(false));
+        assertThat(evaluator.matches(content("^$"), javaCtx()), is(true));
+    }
+
+    @Test
+    public void validate_contentMatches_validAndInvalid() {
+        assertDoesNotThrow(() -> evaluator.validate(content("(?m)^openapi:")));
+        final IllegalArgumentException empty =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(content("")));
+        assertThat(empty.getMessage(), is("a contentMatches condition must not be empty"));
+        final IllegalArgumentException invalid =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(content("(unclosed")));
+        assertThat(
+                invalid.getMessage().startsWith("a contentMatches condition is no Java regular expression: "),
+                is(true));
+    }
+
+    @Test
+    public void validate_contentMatchesNextToAnotherLeaf_throws() {
+        final AiCondition c = content("x");
+        c.setPathGlob("**/x");
+        assertThrows(IllegalArgumentException.class, () -> evaluator.validate(c));
+    }
+
+    @Test
+    public void usesContent_directNestedAndAbsent() {
+        assertThat(evaluator.usesContent(content("x")), is(true));
+        assertThat(evaluator.usesContent(and(ext(".yaml"), content("x"))), is(true));
+        assertThat(evaluator.usesContent(or(ext(".yaml"), content("x"))), is(true));
+        assertThat(evaluator.usesContent(not(content("x"))), is(true));
+        assertThat(evaluator.usesContent(ext(".yaml")), is(false));
+        assertThat(evaluator.usesContent(and(ext(".yaml"), lines(0L, 10L))), is(false));
+        assertThat(evaluator.usesContent(or(ext(".yaml"), size(0L, 10L))), is(false));
+        assertThat(evaluator.usesContent(not(ext(".yaml"))), is(false));
+        final AiCondition andNull = new AiCondition();
+        andNull.setAnd(new AiConditionGroup());
+        assertThat(evaluator.usesContent(andNull), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="pathGlob alternatives">
+    @Test
+    public void matches_pathGlob_alternatives() {
+        final AiCondition glob = new AiCondition();
+        glob.setPathGlob("**/{k8s,helm}/**/*.{yml,yaml}");
+        assertThat(evaluator.matches(glob, ctx("d.yaml", "deploy/k8s/base/d.yaml", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(glob, ctx("v.yml", "helm/v.yml", 1L, 0, 0L)), is(true));
+        assertThat(evaluator.matches(glob, ctx("d.json", "k8s/d.json", 1L, 0, 0L)), is(false));
+        assertThat(evaluator.matches(glob, ctx("d.yaml", "docs/d.yaml", 1L, 0, 0L)), is(false));
+    }
+
+    @Test
+    public void validate_pathGlobWithAnUnclosedAlternative_throws() {
+        final AiCondition glob = new AiCondition();
+        glob.setPathGlob("**/*.{yml");
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> evaluator.validate(glob));
+        assertThat(thrown.getMessage(), is("the glob '**/*.{yml' opens a '{' it does not close"));
     }
     // </editor-fold>
 }

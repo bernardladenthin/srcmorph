@@ -120,4 +120,45 @@ public class AiSourceLinesTest {
                 is(false));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="decode">
+    private static byte[] bytes(final int... values) {
+        final byte[] out = new byte[values.length];
+        for (int i = 0; i < values.length; i++) {
+            out[i] = (byte) values[i];
+        }
+        return out;
+    }
+
+    @Test
+    public void decode_utf8WithoutAMark_isTheText() {
+        assertThat(
+                AiSourceLines.decode("class Ä {}".getBytes(java.nio.charset.StandardCharsets.UTF_8)), is("class Ä {}"));
+        assertThat(AiSourceLines.decode(new byte[0]), is(""));
+    }
+
+    @Test
+    public void decode_utf8ByteOrderMark_isDropped() {
+        assertThat(AiSourceLines.decode(bytes(0xEF, 0xBB, 0xBF, 'a', 'b')), is("ab"));
+        assertThat(AiSourceLines.decode(bytes(0xEF, 0xBB, 0xBF)), is(""));
+    }
+
+    @Test
+    public void decode_utf16ByteOrderMarks_decodeAsUtf16() {
+        assertThat(AiSourceLines.decode(bytes(0xFF, 0xFE, 'a', 0, 0xC4, 0, '\n', 0)), is("aÄ\n"));
+        assertThat(AiSourceLines.decode(bytes(0xFE, 0xFF, 0, 'a', 0, 0xC4)), is("aÄ"));
+        assertThat(AiSourceLines.decode(bytes(0xFF, 0xFE)), is(""));
+        assertThat(AiSourceLines.decode(bytes(0xFE, 0xFF)), is(""));
+    }
+
+    @Test
+    public void decode_partOfAMark_isUtf8Text() {
+        // two of the three bytes of the UTF-8 mark: invalid UTF-8, read as replacement characters
+        assertThat(AiSourceLines.decode(bytes(0xEF, 0xBB)), is("�"));
+        assertThat(AiSourceLines.decode(bytes(0xEF, 0xBB, 'a')), is("�a"));
+        assertThat(AiSourceLines.decode(bytes(0xFF)), is("�"));
+        assertThat(AiSourceLines.decode(bytes(0xFE, 'a')), is("�a"));
+        assertThat(AiSourceLines.decode(bytes(0xEF, 0xBC, 0xBF)), is("＿"));
+    }
+    // </editor-fold>
 }

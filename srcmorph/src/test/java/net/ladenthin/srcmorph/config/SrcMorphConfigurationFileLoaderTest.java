@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -153,6 +154,27 @@ public class SrcMorphConfigurationFileLoaderTest {
                 SrcMorphConfigurationFileLoader.load(file, defaultBase(), Collections.singletonMap("size", "4096"));
 
         assertThat(content.getSrcMorph().getMaxFileSizeBytes(), is(4096L));
+    }
+
+    @Test
+    public void load_fileNamesAndTheNewConditionLeaves_bind() throws IOException {
+        final Path file = write(
+                "srcmorph.yaml",
+                "srcMorph:\n  fileNames: [\"Dockerfile\", \"Jenkinsfile\"]\n  fieldGenerations:\n"
+                        + "    - promptKey: file-body-ops\n      condition:\n        or:\n          conditions:\n"
+                        + "            - fileNames: [\"Dockerfile.*\"]\n"
+                        + "            - contentMatches: \"(?m)^apiVersion:\"\n"
+                        + "            - pathGlob: \"**/{k8s,helm}/**\"\n");
+
+        final SrcMorphConfiguration srcMorph = SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES)
+                .getSrcMorph();
+
+        assertThat(srcMorph.getFileNames(), is(Arrays.asList("Dockerfile", "Jenkinsfile")));
+        final List<AiCondition> leaves =
+                srcMorph.getFieldGenerations().get(0).getCondition().getOr().getConditions();
+        assertThat(leaves.get(0).getFileNames(), is(Arrays.asList("Dockerfile.*")));
+        assertThat(leaves.get(1).getContentMatches(), is("(?m)^apiVersion:"));
+        assertThat(leaves.get(2).getPathGlob(), is("**/{k8s,helm}/**"));
     }
 
     @Test

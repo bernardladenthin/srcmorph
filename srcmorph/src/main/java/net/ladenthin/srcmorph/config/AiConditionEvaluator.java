@@ -7,6 +7,10 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import net.ladenthin.srcmorph.support.AiGlob;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
 import org.jspecify.annotations.Nullable;
@@ -16,15 +20,22 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>{@link #matches} walks the tree (and/or/not + leaves); {@link #validate} fails fast on a
  * misconfigured node (not exactly one branch set, empty combinator, unbounded range, unparseable
- * date, blank glob); {@link #usesLines} reports whether any node needs the line count, so the indexer
- * only reads file contents when a {@code lines} condition is actually used.</p>
+ * date, blank or unclosed glob, invalid regular expression); {@link #usesLines} and {@link #usesContent}
+ * report whether any node needs the line count or the start of the text, so the indexer only reads
+ * file contents when a {@code lines} or {@code contentMatches} condition is actually used.</p>
  */
 public final class AiConditionEvaluator {
+
+    /**
+     * How many characters of a file a {@code contentMatches} condition reads: enough for the header of a
+     * Kubernetes manifest, an OpenAPI document or a Camel route, and cheap for a large file.
+     */
+    public static final int CONTENT_HEAD_CHARS = 16_384;
 
     /** Message when a node does not set exactly one branch/leaf. */
     private static final String ERROR_ONE_BRANCH =
             "a condition node must set exactly one of and/or/not/extensions/size/lines/"
-                    + "modifiedAfter/modifiedBefore/pathGlob: ";
+                    + "modifiedAfter/modifiedBefore/pathGlob/fileNames/contentMatches: ";
 
     /** Creates a new {@link AiConditionEvaluator}. */
     public AiConditionEvaluator() {
@@ -92,6 +103,14 @@ public final class AiConditionEvaluator {
         if (pathGlob != null) {
             return globMatches(pathGlob, context.relativePath());
         }
+        final List<String> fileNames = condition.getFileNames();
+        if (fileNames != null) {
+            return matchesFileName(fileNames, context.fileName());
+        }
+        final String contentMatches = condition.getContentMatches();
+        if (contentMatches != null) {
+            return Pattern.compile(contentMatches).matcher(context.head()).find();
+        }
         throw new IllegalStateException(ERROR_ONE_BRANCH + condition);
     }
 
@@ -114,6 +133,8 @@ public final class AiConditionEvaluator {
         final String modifiedAfter = condition.getModifiedAfter();
         final String modifiedBefore = condition.getModifiedBefore();
         final String pathGlob = condition.getPathGlob();
+        final List<String> fileNames = condition.getFileNames();
+        final String contentMatches = condition.getContentMatches();
         if (and != null) {
             validateGroup(and, "and");
         } else if (or != null) {
@@ -136,8 +157,43 @@ public final class AiConditionEvaluator {
             parseEpochMilli(modifiedAfter);
         } else if (modifiedBefore != null) {
             parseEpochMilli(modifiedBefore);
-        } else if (pathGlob != null && pathGlob.trim().isEmpty()) {
-            throw new IllegalArgumentException("a pathGlob condition must not be blank");
+        } else if (pathGlob != null) {
+            if (pathGlob.trim().isEmpty()) {
+                throw new IllegalArgumentException("a pathGlob condition must not be blank");
+            }
+            AiGlob.compile(pathGlob.trim(), false);
+        } else if (fileNames != null) {
+            validateFileNames(fileNames);
+        } else if (contentMatches != null) {
+            validateContentMatches(contentMatches);
+        }
+    }
+
+    private static void validateFileNames(final List<String> fileNames) {
+        if (fileNames.isEmpty()) {
+            throw new IllegalArgumentException("a fileNames condition must list at least one name");
+        }
+        for (final @Nullable String name : fileNames) {
+            if (name == null || name.trim().isEmpty()) {
+                throw new IllegalArgumentException("a fileNames condition must not list a blank name");
+            }
+            if (name.indexOf('/') >= 0) {
+                throw new IllegalArgumentException("a fileNames condition matches the name without its directory, not '"
+                        + name + "'; use pathGlob");
+            }
+            AiGlob.compile(name.trim(), true);
+        }
+    }
+
+    private static void validateContentMatches(final String contentMatches) {
+        if (contentMatches.isEmpty()) {
+            throw new IllegalArgumentException("a contentMatches condition must not be empty");
+        }
+        try {
+            Pattern.compile(contentMatches);
+        } catch (final PatternSyntaxException e) {
+            throw new IllegalArgumentException(
+                    "a contentMatches condition is no Java regular expression: " + e.getMessage(), e);
         }
     }
 
@@ -149,30 +205,45 @@ public final class AiConditionEvaluator {
      * @return {@code true} if a {@code lines} condition is present anywhere
      */
     public boolean usesLines(final AiCondition condition) {
-        if (condition.getLines() != null) {
+        return uses(condition, node -> node.getLines() != null);
+    }
+
+    /**
+     * Returns whether any node in the tree is a {@code contentMatches} condition, so the indexer knows
+     * whether it must read the start of each file.
+     *
+     * @param condition the condition tree
+     * @return {@code true} if a {@code contentMatches} condition is present anywhere
+     */
+    public boolean usesContent(final AiCondition condition) {
+        return uses(condition, node -> node.getContentMatches() != null);
+    }
+
+    private boolean uses(final AiCondition condition, final Predicate<AiCondition> leaf) {
+        if (leaf.test(condition)) {
             return true;
         }
         final AiConditionGroup and = condition.getAnd();
         if (and != null) {
-            return anyUsesLines(and.getConditions());
+            return anyUses(and.getConditions(), leaf);
         }
         final AiConditionGroup or = condition.getOr();
         if (or != null) {
-            return anyUsesLines(or.getConditions());
+            return anyUses(or.getConditions(), leaf);
         }
         final AiCondition not = condition.getNot();
         if (not != null) {
-            return usesLines(not);
+            return uses(not, leaf);
         }
         return false;
     }
 
-    private boolean anyUsesLines(final @Nullable List<AiCondition> children) {
+    private boolean anyUses(final @Nullable List<AiCondition> children, final Predicate<AiCondition> leaf) {
         if (children == null) {
             return false;
         }
         for (final AiCondition child : children) {
-            if (usesLines(child)) {
+            if (uses(child, leaf)) {
                 return true;
             }
         }
@@ -231,12 +302,28 @@ public final class AiConditionEvaluator {
         if (c.getPathGlob() != null) {
             count++;
         }
+        if (c.getFileNames() != null) {
+            count++;
+        }
+        if (c.getContentMatches() != null) {
+            count++;
+        }
         return count;
     }
 
     private boolean matchesExtension(final List<String> extensions, final String fileName) {
         for (final @Nullable String extension : extensions) {
             if (extension != null && AiPathSupport.hasExtension(fileName, extension)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesFileName(final List<String> globs, final String fileName) {
+        for (final @Nullable String glob : globs) {
+            if (glob != null
+                    && AiGlob.compile(glob.trim(), true).matcher(fileName).matches()) {
                 return true;
             }
         }

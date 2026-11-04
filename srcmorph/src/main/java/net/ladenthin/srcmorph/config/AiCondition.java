@@ -21,7 +21,10 @@ import org.jspecify.annotations.Nullable;
  *       {@code size} ({@link AiRangeCondition} over file bytes), {@code lines}
  *       ({@link AiRangeCondition} over line count), {@code modifiedAfter} / {@code modifiedBefore}
  *       (ISO-8601 instant compared to the file's last-modified time), {@code pathGlob} (glob over the
- *       base-relative path, same syntax as {@code excludes}).</li>
+ *       base-relative path, same syntax as {@code excludes}), {@code fileNames} (globs over the file
+ *       name alone, in any case: {@code Dockerfile}, {@code Jenkinsfile}, {@code *.gradle.kts}),
+ *       {@code contentMatches} (a Java regular expression found in the first
+ *       {@value AiConditionEvaluator#CONTENT_HEAD_CHARS} characters of the file).</li>
  * </ul>
  *
  * <p>Because every variant is a distinctly named field, the configuration file binds the tree
@@ -41,6 +44,8 @@ public class AiCondition {
     private @Nullable String modifiedAfter;
     private @Nullable String modifiedBefore;
     private @Nullable String pathGlob;
+    private @Nullable List<String> fileNames;
+    private @Nullable String contentMatches;
 
     /** Creates a new {@link AiCondition}. */
     public AiCondition() {
@@ -207,5 +212,43 @@ public class AiCondition {
      */
     public void setPathGlob(final @Nullable String pathGlob) {
         this.pathGlob = pathGlob;
+    }
+
+    /**
+     * Returns the file-name globs, or {@code null} when this is not a fileNames node.
+     *
+     * @return the globs, or {@code null}
+     */
+    public @Nullable List<String> getFileNames() {
+        return fileNames;
+    }
+
+    /**
+     * Sets the file-name globs: the node matches a file whose name, without its directory, matches one
+     * of them in any case.
+     *
+     * @param fileNames the globs (e.g. {@code Dockerfile}, {@code Dockerfile.*})
+     */
+    public void setFileNames(final @Nullable Collection<String> fileNames) {
+        this.fileNames = fileNames != null ? new ArrayList<>(fileNames) : null;
+    }
+
+    /**
+     * Returns the content pattern, or {@code null} when this is not a contentMatches node.
+     *
+     * @return the Java regular expression, or {@code null}
+     */
+    public @Nullable String getContentMatches() {
+        return contentMatches;
+    }
+
+    /**
+     * Sets the content pattern: the node matches a file in whose first
+     * {@value AiConditionEvaluator#CONTENT_HEAD_CHARS} characters the Java regular expression is found.
+     *
+     * @param contentMatches the regular expression (e.g. {@code (?m)^apiVersion:})
+     */
+    public void setContentMatches(final @Nullable String contentMatches) {
+        this.contentMatches = contentMatches;
     }
 }

@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph.support;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -117,9 +118,26 @@ public class AiSourceExcludeFilterTest {
     public void regexMetacharactersAreTreatedLiterally() {
         // Every metacharacter the translator escapes, in one literal pattern. If any were left
         // unescaped the regex would either fail to compile or fail to match itself.
-        final String literal = "a(b)[c]{d}+e^f$g|h.txt";
+        final String literal = "a(b)[c]}d+e^f$g|h.txt";
         final AiSourceExcludeFilter filter = new AiSourceExcludeFilter(Collections.singletonList(literal));
         assertThat(filter.isExcluded(literal), is(true));
+    }
+
+    @Test
+    public void bracesAreAlternatives() {
+        final AiSourceExcludeFilter filter =
+                new AiSourceExcludeFilter(Collections.singletonList("**/{target,build}/**"));
+        assertThat(filter.isExcluded("target/a.java"), is(true));
+        assertThat(filter.isExcluded("m/build/a.java"), is(true));
+        assertThat(filter.isExcluded("m/src/a.java"), is(false));
+        assertThat(filter.isExcluded("{target,build}/a.java"), is(false));
+    }
+
+    @Test
+    public void unclosedBrace_throws() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new AiSourceExcludeFilter(Collections.singletonList("**/{target/**")));
     }
 
     @Test

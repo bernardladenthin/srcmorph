@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiCondition;
+import net.ladenthin.srcmorph.config.AiConditionEvaluator;
 import net.ladenthin.srcmorph.config.AiConditionGroup;
 import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
@@ -56,6 +57,7 @@ public class SourceFileIndexerTest {
                 baseDirectory,
                 outputRoot,
                 Arrays.asList(".java"),
+                Collections.<String>emptyList(),
                 "1.0.0",
                 "0.0.0",
                 Collections.<Path>emptyList(),
@@ -419,6 +421,209 @@ public class SourceFileIndexerTest {
         throw new AssertionError("file was not routed: " + file);
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="fileNames, contentMatches and byte order marks">
+    private static SourceFileIndexer indexerWithNames(final Path baseDirectory, final List<String> fileNames) {
+        return new SourceFileIndexer(
+                baseDirectory,
+                baseDirectory.resolve("out"),
+                Arrays.asList(".java"),
+                fileNames,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
+                0L,
+                0L,
+                false,
+                true);
+    }
+
+    private static AiFieldGenerationConfig contentRule(final String promptKey, final String regex) {
+        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        config.setPromptKey(promptKey);
+        config.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        final AiCondition condition = new AiCondition();
+        condition.setContentMatches(regex);
+        config.setCondition(condition);
+        return config;
+    }
+
+    private static void writeBytes(final Path file, final byte[] bytes) throws Exception {
+        Files.createDirectories(file.getParent());
+        Files.write(file, bytes);
+    }
+
+    @Test
+    public void collectCandidates_fileNames_selectFilesWithoutAnExtensionInAnyCase() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("Foo.java"), "class Foo {}\n");
+        writeJava(temp.resolve("Dockerfile"), "FROM eclipse-temurin:21\n");
+        writeJava(temp.resolve("ci/Jenkinsfile"), "pipeline {}\n");
+        writeJava(temp.resolve("README"), "read me\n");
+
+        // act
+        final List<Path> candidates = indexerWithNames(temp, Arrays.asList("dockerfile", " Jenkinsfile ", " "))
+                .collectCandidates(temp);
+
+        // assert
+        final List<String> names = new ArrayList<>();
+        for (final Path candidate : candidates) {
+            names.add(candidate.getFileName().toString());
+        }
+        Collections.sort(names);
+        assertThat(names, is(equalTo(Arrays.asList("Dockerfile", "Foo.java", "Jenkinsfile"))));
+    }
+
+    @Test
+    public void collectCandidates_withoutFileNames_takesTheExtensionsOnly() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("Foo.java"), "class Foo {}\n");
+        writeJava(temp.resolve("Dockerfile"), "FROM eclipse-temurin:21\n");
+
+        final SourceFileIndexer withNull = new SourceFileIndexer(
+                temp,
+                temp.resolve("out"),
+                Arrays.asList(".java"),
+                null,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                null,
+                0L,
+                0L,
+                false,
+                true);
+
+        assertThat(withNull.collectCandidates(temp).size(), is(1));
+    }
+
+    @Test
+    public void classify_contentMatchesRule_routesByTheStartOfTheFile() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path bean = temp.resolve("src/OrderBean.java");
+        final Path plain = temp.resolve("src/Order.java");
+        writeJava(bean, "import jakarta.ejb.Stateless;\n@Stateless\npublic class OrderBean {}\n");
+        writeJava(plain, "public class Order {}\n");
+        final List<AiFieldGenerationConfig> rules =
+                Arrays.asList(contentRule("ejb", "(?m)^@Stateless\\b"), rule("fallback", null, false, true));
+
+        // act
+        final AiIndexPlan plan =
+                indexerWithNames(temp, Collections.<String>emptyList()).classify(Arrays.asList(bean, plain), rules);
+
+        // assert
+        assertThat(promptKeyOf(plan, bean), is(equalTo("ejb")));
+        assertThat(promptKeyOf(plan, plain), is(equalTo("fallback")));
+    }
+
+    @Test
+    public void classify_contentMatches_readsTheFirst16KibCharactersOnly() throws Exception {
+        // arrange: MARK ends at character 16,384 in one file and one character later in the other
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path inside = temp.resolve("src/Inside.java");
+        final Path outside = temp.resolve("src/Outside.java");
+        final int head = AiConditionEvaluator.CONTENT_HEAD_CHARS;
+        writeJava(inside, "x".repeat(head - 4) + "MARK" + "y".repeat(100));
+        writeJava(outside, "x".repeat(head - 3) + "MARK" + "y".repeat(100));
+        final List<AiFieldGenerationConfig> contentOnly =
+                Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
+        final List<AiFieldGenerationConfig> withLines = Arrays.asList(
+                contentRule("marked", "MARK"),
+                lineRangeRule("never", 900L, 1000L),
+                rule("fallback", null, false, true));
+        final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
+
+        // act: the start alone, and the whole source a lines rule reads
+        final AiIndexPlan headOnly = indexer.classify(Arrays.asList(inside, outside), contentOnly);
+        final AiIndexPlan wholeSource = indexer.classify(Arrays.asList(inside, outside), withLines);
+
+        // assert
+        assertThat(promptKeyOf(headOnly, inside), is(equalTo("marked")));
+        assertThat(promptKeyOf(headOnly, outside), is(equalTo("fallback")));
+        assertThat(promptKeyOf(wholeSource, inside), is(equalTo("marked")));
+        assertThat(promptKeyOf(wholeSource, outside), is(equalTo("fallback")));
+    }
+
+    @Test
+    public void classify_contentMatches_readsAMultiByteHeadWhole() throws Exception {
+        // 16,384 characters of three bytes each are 49,152 bytes: the head reads them all
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path wide = temp.resolve("src/Wide.java");
+        final int head = AiConditionEvaluator.CONTENT_HEAD_CHARS;
+        writeJava(wide, "€".repeat(head - 4) + "MARK" + "€".repeat(head));
+        final List<AiFieldGenerationConfig> rules =
+                Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
+
+        final AiIndexPlan plan =
+                indexerWithNames(temp, Collections.<String>emptyList()).classify(Arrays.asList(wide), rules);
+
+        assertThat(promptKeyOf(plan, wide), is(equalTo("marked")));
+    }
+
+    @Test
+    public void classify_contentMatches_readsAFileAfterItsByteOrderMarkAndWithLfLineEndings() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path bom = temp.resolve("src/Bom.java");
+        final byte[] text = "package a;\r\nclass Bom {}\r\n".getBytes(StandardCharsets.UTF_8);
+        final byte[] withMark = new byte[text.length + 3];
+        withMark[0] = (byte) 0xEF;
+        withMark[1] = (byte) 0xBB;
+        withMark[2] = (byte) 0xBF;
+        System.arraycopy(text, 0, withMark, 3, text.length);
+        writeBytes(bom, withMark);
+        final List<AiFieldGenerationConfig> rules =
+                Arrays.asList(contentRule("first", "\\Apackage a;\\nclass"), rule("fallback", null, false, true));
+        final List<AiFieldGenerationConfig> withLines = Arrays.asList(
+                contentRule("first", "\\Apackage a;\\nclass"),
+                lineRangeRule("never", 900L, 1000L),
+                rule("fallback", null, false, true));
+        final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
+
+        // act
+        final AiIndexPlan headOnly = indexer.classify(Arrays.asList(bom), rules);
+        final AiIndexPlan wholeSource = indexer.classify(Arrays.asList(bom), withLines);
+
+        // assert
+        assertThat(promptKeyOf(headOnly, bom), is(equalTo("first")));
+        assertThat(promptKeyOf(wholeSource, bom), is(equalTo("first")));
+    }
+
+    @Test
+    public void indexFile_sourceWithAByteOrderMark_countsFromItsFirstWord() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        final byte[] text = "package com.example;\nclass Foo {}\n".getBytes(StandardCharsets.UTF_8);
+        final byte[] withMark = new byte[text.length + 3];
+        withMark[0] = (byte) 0xEF;
+        withMark[1] = (byte) 0xBB;
+        withMark[2] = (byte) 0xBF;
+        System.arraycopy(text, 0, withMark, 3, text.length);
+        writeBytes(foo, withMark);
+        final AiFieldGenerationConfig rule =
+                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final AiFactCounter counter = new AiFactCounter();
+        counter.setLabel("starts with package");
+        counter.setPattern("\\Apackage\\b");
+        rule.setFacts(Collections.singletonList(counter));
+
+        // act
+        final AiIndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
+                .indexFile(foo, rule, mockSupport(), "", "");
+
+        // assert
+        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        final String body = documentCodec
+                .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
+                .body();
+        assertThat(body.contains("starts with package: 1"), is(true));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">

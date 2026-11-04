@@ -52,6 +52,7 @@ public class SrcMorphConfiguration {
     private @Nullable List<String> subtrees;
     private @Nullable List<String> excludes;
     private @Nullable List<String> fileExtensions;
+    private @Nullable List<String> fileNames;
     private long minFileSizeBytes;
     private long maxFileSizeBytes;
     private boolean planOnly;
@@ -195,6 +196,26 @@ public class SrcMorphConfiguration {
      */
     public void setFileExtensions(final @Nullable List<String> fileExtensions) {
         this.fileExtensions = fileExtensions;
+    }
+
+    /**
+     * Returns the file names to index besides the extensions: globs over the name without its
+     * directory, matched in any case ({@code Dockerfile}, {@code Jenkinsfile}, {@code Dockerfile.*}), for
+     * files with no extension or one that {@link #getFileExtensions()} does not list.
+     *
+     * @return the globs, or {@code null} for none
+     */
+    public @Nullable List<String> getFileNames() {
+        return fileNames;
+    }
+
+    /**
+     * Sets the file names to index besides the extensions.
+     *
+     * @param fileNames globs over the file name, or {@code null} for none
+     */
+    public void setFileNames(final @Nullable List<String> fileNames) {
+        this.fileNames = fileNames;
     }
 
     /**

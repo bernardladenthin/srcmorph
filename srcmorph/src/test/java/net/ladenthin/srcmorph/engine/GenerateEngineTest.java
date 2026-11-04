@@ -104,6 +104,40 @@ public class GenerateEngineTest {
     }
 
     @Test
+    public void execute_unclosedGlobInFileNamesOrExcludes_throwsSrcMorphException() throws IOException {
+        final SrcMorphConfiguration names = baseConfig();
+        names.setFileNames(Collections.singletonList("Dockerfile.{dev"));
+        final SrcMorphConfiguration excludes = baseConfig();
+        excludes.setExcludes(Collections.singletonList("**/{target/**"));
+
+        final SrcMorphException byName =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(names).execute());
+        final SrcMorphException byExclude =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(excludes).execute());
+
+        assertThat(byName.getMessage(), containsString("Invalid excludes or fileNames: the glob 'Dockerfile.{dev'"));
+        assertThat(byExclude.getMessage(), containsString("Invalid excludes or fileNames: the glob '**/{target/**'"));
+    }
+
+    @Test
+    public void execute_fileNamesIndexAFileWithoutAnExtension() throws Exception {
+        final SrcMorphConfiguration config = baseConfig();
+        final Path dockerfile = tempDir.resolve("src/main/java/com/example/Dockerfile");
+        Files.write(dockerfile, "FROM eclipse-temurin:21\n".getBytes(StandardCharsets.UTF_8));
+        config.setFileNames(Collections.singletonList("Dockerfile"));
+        final AiFieldGenerationConfig fallback = new AiFieldGenerationConfig();
+        fallback.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
+        fallback.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        fallback.setFallback(true);
+        config.setFieldGenerations(Arrays.asList(javaFileRule(), fallback));
+
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        assertThat(result.written(), is(2));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Dockerfile.ai.md")), is(true));
+    }
+
+    @Test
     public void execute_planOnlyStopsBeforeGenerating() throws Exception {
         final SrcMorphConfiguration config = baseConfig();
         config.setPlanOnly(true);
@@ -795,9 +829,11 @@ public class GenerateEngineTest {
     }
 
     @Test
-    public void execute_aChangedPrompt_theRecordOfAnUnchangedFileShowsThePromptThatWroteIt() throws Exception {
+    public void execute_aChangedPromptWithoutRegenerateOnProfileChange_theRecordShowsThePromptThatWroteIt()
+            throws Exception {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
+        config.setRegenerateOnProfileChange(false);
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
         final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -829,6 +865,38 @@ public class GenerateEngineTest {
                 Files.readAllBytes(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")),
                 StandardCharsets.UTF_8);
         assertThat(summary, containsString("- P: " + rewritten + "\n"));
+    }
+
+    @Test
+    public void execute_aChangedPrompt_rewritesTheSummaryWithTheNewPrompt() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        final Path recordFile = tempDir.resolve("run.json");
+        config.setRunRecordFile(recordFile.toFile());
+        final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        new GenerateEngine(config).execute();
+        final String written = json.readTree(recordFile.toFile())
+                .get("files")
+                .get(0)
+                .get("promptHash")
+                .asText();
+
+        // act
+        config.getPromptDefinitions().get(0).setTemplate("Another prompt.\n\nFile: %s\n\nSource:\n%s\n");
+        final GenerateResult result = new GenerateEngine(config).execute();
+        final com.fasterxml.jackson.databind.JsonNode rewritten =
+                json.readTree(recordFile.toFile()).get("files").get(0);
+        final GenerateResult again = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(1));
+        assertThat(rewritten.get("outcome").asText(), is("written"));
+        assertThat(rewritten.get("promptHash").asText().equals(written), is(false));
+        assertThat(again.written(), is(0));
+        final String summary = new String(
+                Files.readAllBytes(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")),
+                StandardCharsets.UTF_8);
+        assertThat(summary, containsString("- P: " + rewritten.get("promptHash").asText() + "\n"));
     }
 
     @Test
