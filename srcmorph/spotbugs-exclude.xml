@@ -74,6 +74,17 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on the AiConditionEvaluator service: its only state is the cache of
+        compiled contentMatches patterns, filled as rules are evaluated. Two evaluators are never
+        compared or kept in a Set or Map; identity is the correct semantics, as for
+        AiModelDefinitionSupport above.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
         IMC_IMMATURE_CLASS_NO_EQUALS on the AiSourceExcludeFilter matcher.
 
         AiSourceExcludeFilter is a stateless matcher: it compiles its @Parameter-derived

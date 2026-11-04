@@ -209,7 +209,7 @@ public final class AiFactExtractor {
                     // but not at the start of a line, so /* x */class A still starts its line with class
                     final int start = matcher.start();
                     final boolean lineStart = start == 0 || isLineBreak(text.charAt(start - 1));
-                    blanked.append(text, last, start).append(breaks.isEmpty() && !lineStart ? " " : breaks);
+                    blanked.append(text, last, start).append(!lineStart && breaks.isEmpty() ? " " : breaks);
                     last = matcher.end();
                 }
             } catch (final ReadBudget.Exhausted e) {

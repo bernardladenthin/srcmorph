@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import lombok.ToString;
 import net.ladenthin.srcmorph.support.AiGlob;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiShebang;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
  * file contents when a {@code lines}, {@code contentMatches} or {@code interpreters} condition is
  * actually used.</p>
  */
+@ToString
 public final class AiConditionEvaluator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AiConditionEvaluator.class);
