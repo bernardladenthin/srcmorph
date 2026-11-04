@@ -18,8 +18,9 @@ Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
   python run.py ... --backend openrouter        (every model of one backend)
 Options: --profile <profile under profiles/> (default v3; it needs the five prompt keys' files),
-         --java-prompt <key> (the Java rule's prompt, default file-body-java; file-body-oop is the one
-         Java, Kotlin, Groovy and Scala share; the Java EE rule takes it too),
+         --java-prompt <key> (the Java rule's prompt, default file-body-oop, the one Java, Kotlin,
+         Groovy and Scala share; the Java EE rule takes it too; file-body-java for a profile of the
+         history before 2026-11-04),
          --profile-dir <directory holding the profiles> (default the repository's profiles/; an
          earlier prompt set is restored from the history into a directory of its own, see
          profiles/README.md),
@@ -68,8 +69,9 @@ REPO = HERE.parents[2]
 CORPUS = HERE.parent / "corpus"
 PROFILES = REPO / "profiles"
 PROMPT_KEYS = ("file-body-sql", "file-body-fallback", "package-body", "project-body")
-# The prompt of the Java rule (--java-prompt): the Java prompt, or the one class-based languages share.
-JAVA_PROMPT = "file-body-java"
+# The prompt of the Java rule (--java-prompt): the one class-based languages share. Up to 2026-11-04 it
+# was file-body-java, which an earlier profile restored from the history still has.
+JAVA_PROMPT = "file-body-oop"
 # The prompts appended to a rule's prompt in a map and a reduce call, when the profile has them.
 CHUNK_PROMPT_KEYS = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts"}
 

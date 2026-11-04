@@ -147,7 +147,7 @@ srcMorph:
           - "vault*.{yml,yaml}"
           - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env}"
     - id: huge-java
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
       mapPromptKey: map-chunk
@@ -176,7 +176,7 @@ srcMorph:
             - extensions: [".sql"]
             - size: {min: 1000000}
     - id: big-java
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
       mapPromptKey: map-chunk
@@ -202,7 +202,7 @@ srcMorph:
             - extensions: [".sql"]
             - size: {min: 275000}
     - id: java
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: "${ai.model}"
       factsKey: java-facts
       condition:

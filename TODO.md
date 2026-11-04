@@ -14,16 +14,15 @@ everything below is genuinely still open.
 
 Branch `feat/profiles-v3-kinds-and-safety`, in this order:
 
-- **Measurement** (runs of 2026-11-04 under `docs/ai-index-benchmark/remeasure-2026-11-04/`): score
-  them, write the README there with the numbers next to those of 2026-11-02, and say in
-  `profiles/README.md` which kinds are measured.
-- **Java on the shared prompt:** when the card corpus shows `file-body-oop` no worse than
-  `file-body-java` for gpt-oss-20b and GPT-6 Luna, route Java to `file-body-oop` everywhere (the
-  self-test and its `build-your-own-jar` twin, the examples, `config_All.json`, the plugin-it fixture
-  and `.github/plugin-it.sh`, `run.py`'s default `--java-prompt`, the plugin README) and delete
-  `file-body-java.md`, so one prompt serves every class-based language. If it is worse, find which
-  sentence costs it before switching.
-- **Push and open the pull request** for the branch.
+- **Push and open the pull request** for the branch (measured and switched: Java takes
+  `file-body-oop`, see `docs/ai-index-benchmark/remeasure-2026-11-04/`).
+- **What the enterprise runs left out** (same README): the ops prompt does not ask for a
+  workflow's or pipeline's name (gpt-oss never named `release-backoffice`), and `file-body-oop`
+  asks for the public API only, so private helpers and constants (`nextNumber`, `PREFIX`, a
+  `refund` call) are named by chance; one sentence each, then measured again.
+- **gpt-oss-20b on the language corpus** went from 99.1 to 98.7 % with the secrets rule and the XML
+  definitions (`systemctl` of the deploy script missing in two of three runs): within the noise of
+  three runs, but worth six more to tell.
 
 Then, each its own step:
 

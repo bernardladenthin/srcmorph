@@ -11,7 +11,6 @@ handed on as a whole.
 
 | File | Key | For |
 |---|---|---|
-| [`v3/file-body-java.md`](v3/file-body-java.md) | `promptKey: file-body-java` | one Java source file |
 | [`v3/file-body-oop.md`](v3/file-body-oop.md) | `promptKey: file-body-oop` | one source file of a class-based language: Java, Kotlin, Groovy, Scala |
 | [`v3/file-body-view.md`](v3/file-body-view.md) | `promptKey: file-body-view` | one server-side view: JSP, JSP fragment, tag file, Facelets |
 | [`v3/file-body-contract.md`](v3/file-body-contract.md) | `promptKey: file-body-contract` | one API contract: OpenAPI, AsyncAPI, JSON Schema, Avro, Protobuf, GraphQL |
@@ -173,6 +172,25 @@ Who reads `v3/`:
   `"../../profiles/v3"` one level deeper), so the CI smoke of the user-built jar reads it too;
 - the plugin's integration-test fixture, [`.github/plugin-it/srcmorph.yaml`](../.github/plugin-it/srcmorph.yaml),
   which also checks that the `java-facts` counts reach the summaries.
+
+## The shared OOP prompt and the enterprise kinds (2026-11-04)
+
+`file-body-oop` replaced `file-body-java`: it keeps the Java prompt's sections and its measured
+sentences, and says them for every class-based language (every type of the file, Kotlin's members
+without a modifier, top-level and extension functions, coroutines, a specification method named by
+a string). Three runs each with both prompts on the model-card corpus gave the same Java recall
+(gpt-oss-20b 99.9 to 100 %, GPT-6 Luna 100 %) and quality 99.8 against 99.9 % (gpt-oss) and 99.7
+against 100 % (Luna) for `file-body-java` and `file-body-oop`; the language corpus, after the
+secrets rule and the XML prompt's new definitions, 98.7 % (gpt-oss, 99.1 % before) and 99.8 % (Luna,
+99.5 %). The enterprise corpus ([`corpus-enterprise/`](../docs/ai-index-benchmark/corpus-enterprise/README.md),
+written for the benchmark) measured the new kinds once: 97.9 % (gpt-oss) and 97.3 % (Luna);
+`web.xml`, the JPA, Hibernate and MyBatis mappings, the Camel routes, the BPMN process, the WSDL,
+the JSP, the OpenAPI contract, the Kubernetes manifest and the Dockerfile complete in all six runs,
+and no summary copied the password the corpus holds. The runs are under
+[`remeasure-2026-11-04/`](../docs/ai-index-benchmark/remeasure-2026-11-04/README.md). Measured are
+therefore Java, SQL, shell, Perl, XML and the fallback on the card and language corpora, and the
+kinds of the enterprise corpus on that corpus alone; Scala, the contract formats other than OpenAPI,
+Terraform, Ansible and Compose ran in no measurement.
 
 ## Shell, Perl and XML prompts
 

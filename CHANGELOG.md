@@ -53,7 +53,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 - **Profile v3 covers the kinds of an enterprise Java code base**, with four prompts and fifteen
   fact files, so one generic prompt serves every language of a kind:
-  - `file-body-oop`: one prompt for the class-based languages (Java, Kotlin, Groovy, Scala), with
+  - `file-body-oop`: one prompt for the class-based languages (Java, Kotlin, Groovy, Scala); it
+    replaces `file-body-java` (below), with
     their facts per language: `kotlin-facts` (types, companion objects, data and sealed types,
     functions, extension and suspend functions, constructor properties, nested comments and string
     templates blanked), `groovy-facts` (types, typed and `def` methods, Spock features and blocks,
@@ -88,6 +89,12 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
+- **Java takes `file-body-oop`; `file-body-java` is gone from profile v3.** A rule naming
+  `promptKey: file-body-java` fails the run (no such file in the profile): name `file-body-oop`.
+  Three runs each with both prompts on the model-card corpus gave the same Java recall, GPT-6 Luna
+  100 % in all three with the shared prompt
+  ([`remeasure-2026-11-04/`](docs/ai-index-benchmark/remeasure-2026-11-04/README.md)). The self-test,
+  the examples, the plugin-it fixture and `run.py` (`--java-prompt`, default `file-body-oop`) name it.
 - **A changed prompt or fact file rewrites the summaries it wrote** (`regenerateOnProfileChange`,
   under `srcMorph`, default `true`). Since 1.4.0 a file summary's header records the prompt (`P`)
   and the fact counters (`N`) it was written with, but only a changed source, `aiVersion` or `force`

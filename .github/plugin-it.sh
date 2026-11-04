@@ -212,7 +212,7 @@ reset
 grep -q "AI index plan" "$LOGS/run4.log" || fail "the plan was not printed"
 # The routing rule is matched BY ID here, which proves the condition tree routed rather than
 # everything falling through to the fallback.
-grep -q "| java | file-body-java |" "$LOGS/run4.log" \
+grep -q "| java | file-body-oop |" "$LOGS/run4.log" \
     || fail "the .java routing rule did not match -- the condition tree did not route"
 # If srcmorph.planOnly is ever renamed, the property stops binding, the run generates for real, and
 # this is the assertion that catches it.
@@ -304,7 +304,7 @@ mvn -B --no-transfer-progress -f "$REPO_ROOT/srcmorph-maven-plugin/pom.xml" -P s
     "net.ladenthin:srcmorph-maven-plugin:$VERSION:generate" -Dsrcmorph.planOnly=true \
     > "$LOGS/run7-selftest.log" 2>&1 \
     || { cat "$LOGS/run7-selftest.log"; fail "the srcmorph-selftest profile did not plan"; }
-grep -q "| java | file-body-java |" "$LOGS/run7-selftest.log" \
+grep -q "| java | file-body-oop |" "$LOGS/run7-selftest.log" \
     || fail "the self-test profile routed no Java file to its java rule"
 echo "ok: the self-test profile planned"
 

@@ -40,7 +40,7 @@
     "fieldGenerations": [
       {
         "id": "java",
-        "promptKey": "file-body-java",
+        "promptKey": "file-body-oop",
         "aiDefinitionKey": "mock-model",
         "condition": {
           "extensions": [

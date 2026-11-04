@@ -44,7 +44,7 @@ srcMorph:
   fieldGenerations:
     # Extra.java: inline facts with an ignore counter, kept out of the facts line and out of the count.
     - id: extra
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: "${it.model}"
       priority: 10
       facts:
@@ -66,7 +66,7 @@ srcMorph:
             - pathGlob: "**/Names.java"
             - size: {max: 100000}
     - id: java
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: "${it.model}"
       factsKey: java-facts
       condition:

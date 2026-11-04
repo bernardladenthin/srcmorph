@@ -277,14 +277,14 @@ srcMorph:
       temperature: 0.7
       threads: 8
   # 2) The profile: srcmorph's profiles/v3/ copied into your project (or a checkout of it). Every
-  #    promptKey and factsKey here is a file there: file-body-java.md, file-body-fallback.md,
+  #    promptKey and factsKey here is a file there: file-body-oop.md, file-body-fallback.md,
   #    package-body.md, project-body.md, java-facts.tsv.
   profileDirectory: src/srcmorph/profile
   # 3) The file rules: a .java rule (matched by its condition) and the fallback for everything else.
   #    See "Routing rules" below for size/lines/modified/glob conditions, priority, and skip.
   fieldGenerations:
     - id: java
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: coder
       factsKey: java-facts
       condition:
@@ -321,7 +321,7 @@ files, skip generated sources, and a fallback for everything else:
             - extensions: [".java"]
             - size: {max: 16384}
     - id: java-mid
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: gpt-oss-48k
       condition:
         and:
@@ -337,7 +337,7 @@ files, skip generated sources, and a fallback for everything else:
             - extensions: [".java"]
             - size: {min: 49152}
     - id: java-huge                                  # huge files: chunk over a SMALL fast window + combine
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       onOversize: sampleChunks
       maxChunks: 6                                   # ~7 cheap calls; bounds time to ~1 h/file
@@ -501,11 +501,14 @@ Prompts are referenced by key from the rules and read from the profile (`profile
 self-test configuration uses the ten prompt files and the six fact-counter files of
 [`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
 prompt and each counter exists once in the repository:
-- `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
+- `file-body-oop` — summarizes a single source file of a class-based language: Java, Kotlin, Groovy, Scala (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
   the tables it reads vs writes, and relationships)
 - `file-body-shell`, `file-body-perl`, `file-body-xml` — the same for shell scripts, Perl and XML
 - `file-body-fallback` — generic multi-language summary for any other source file
+- `file-body-view`, `file-body-contract`, `file-body-ops` — JSP and Facelets views; API contracts
+  (OpenAPI, Protobuf, ...); CI, Docker, Kubernetes and other deploy files. The self-test does not
+  route them; `examples/copilot-api-gateway/srcmorph-luna.yaml` does, with their fact counters
 - `package-body` — synthesizes a package summary from the already-generated file summaries
 - `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
 - `map-chunk`, `reduce-parts` — not prompts of their own: a chunked rule's `mapPromptKey` /

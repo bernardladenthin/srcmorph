@@ -92,13 +92,16 @@ class RulesTest(unittest.TestCase):
     def test_javaPrompt_namesTheJavaAndTheJavaEeRule(self):
         profile = run.PROFILES / "v3"
         default = {r["id"]: r for r in run.file_rules(profile, "m")}
-        oop = {r["id"]: r for r in run.file_rules(profile, "m", java_prompt="file-body-oop")}
+        with tempfile.TemporaryDirectory() as tmp:
+            # a profile of the history before 2026-11-04, with its Java prompt
+            (Path(tmp) / "file-body-java.md").write_text("Java.", encoding="utf-8")
+            older = {r["id"]: r for r in run.file_rules(Path(tmp), "m", java_prompt="file-body-java")}
 
-        self.assertEqual(default["java"]["promptKey"], "file-body-java")
-        self.assertEqual(default["java-ee"]["promptKey"], "file-body-java")
-        self.assertEqual(oop["java"]["promptKey"], "file-body-oop")
-        self.assertEqual(oop["java-ee"]["promptKey"], "file-body-oop")
-        self.assertEqual(oop["java-ee"]["priority"], 10)
+        self.assertEqual(default["java"]["promptKey"], "file-body-oop")
+        self.assertEqual(default["java-ee"]["promptKey"], "file-body-oop")
+        self.assertEqual(default["java-ee"]["priority"], 10)
+        self.assertEqual(older["java"]["promptKey"], "file-body-java")
+        self.assertEqual(older["java-ee"]["promptKey"], "file-body-java")
 
     def test_enterpriseKinds_takeTheirSharedPromptAndTheirOwnFacts(self):
         rules = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
@@ -131,12 +134,12 @@ class RulesTest(unittest.TestCase):
         profile = run.PROFILES / "v3"
         hashes = run.profile_hashes(profile, run.file_rules(profile, "m", facts=True))
 
-        self.assertIn("file-body-java.md", hashes)
+        self.assertIn("file-body-oop.md", hashes)
         self.assertIn("sql-facts.tsv", hashes)
         self.assertIn("package-body.md", hashes)
         self.assertIn("map-chunk.md", hashes)
         self.assertIn("reduce-parts.md", hashes)
-        self.assertEqual(hashes["file-body-java.md"], run.sha256_of(profile / "file-body-java.md"))
+        self.assertEqual(hashes["file-body-oop.md"], run.sha256_of(profile / "file-body-oop.md"))
 
 
 class CostTest(unittest.TestCase):

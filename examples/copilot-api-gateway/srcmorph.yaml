@@ -45,7 +45,7 @@ srcMorph:
       temperature: 0.2
 
   fieldGenerations:
-    - promptKey: file-body-java
+    - promptKey: file-body-oop
       aiDefinitionKey: copilot
       fallback: true                         # the rule for every file no other rule matches
       onOversize: sample                     # default "fail" stops the run on a file larger than the window
