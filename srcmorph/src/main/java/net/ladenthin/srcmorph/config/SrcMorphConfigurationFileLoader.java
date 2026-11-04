@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -23,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.ladenthin.srcmorph.support.AiSourceLines;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -141,7 +141,8 @@ public final class SrcMorphConfigurationFileLoader {
     public static SrcMorphConfigurationFile load(
             final Path file, final File defaultBaseDirectory, final Map<String, String> properties) throws IOException {
         final ObjectMapper mapper = mapperFor(file);
-        final JsonNode parsed = mapper.readTree(new String(Files.readAllBytes(file), StandardCharsets.UTF_8));
+        // a byte order mark (Windows PowerShell 5.1 writes one) is not part of the text
+        final JsonNode parsed = mapper.readTree(AiSourceLines.decode(Files.readAllBytes(file)));
         final JsonNode tree = parsed == null ? null : substituted(parsed, properties);
         // an empty file is a configuration with every default
         final SrcMorphConfigurationFile bound =

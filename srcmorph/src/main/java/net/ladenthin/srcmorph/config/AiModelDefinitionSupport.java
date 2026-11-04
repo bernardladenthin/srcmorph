@@ -91,6 +91,10 @@ public final class AiModelDefinitionSupport {
             Objects.requireNonNull(
                     definition.getKey(),
                     () -> "aiDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
+            if (configs.containsKey(definition.getKey())) {
+                throw new IllegalArgumentException(
+                        "aiDefinitions[" + index + "].key '" + definition.getKey() + "' is defined twice");
+            }
             configs.put(definition.getKey(), toConfig(definition, modelDirectory));
         }
     }

@@ -291,6 +291,24 @@ public class AiModelDefinitionSupportTest {
     }
 
     @Test
+    public void constructor_aKeyDefinedTwice_throwsNamingItsSecondIndex() {
+        // arrange
+        final AiModelDefinition first = new AiModelDefinition();
+        first.setKey("gpt");
+        final AiModelDefinition other = new AiModelDefinition();
+        other.setKey("other");
+        final AiModelDefinition again = new AiModelDefinition();
+        again.setKey("gpt");
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> new AiModelDefinitionSupport(Arrays.asList(first, other, again)));
+
+        // assert
+        assertThat(thrown.getMessage(), is(equalTo("aiDefinitions[2].key 'gpt' is defined twice")));
+    }
+
+    @Test
     public void getConfig_nullDefinitionsList_throwsForAnyKey() {
         // arrange
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(null);

@@ -118,6 +118,14 @@ public class AiPromptSupportTest {
     }
 
     @Test
+    public void aKeyDefinedTwiceThrowsNamingItsSecondIndex() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> new AiPromptSupport(java.util.Arrays.asList(def("summary", "a"), def("summary", "b"))));
+        assertThat(ex.getMessage(), is("promptDefinitions[1].key 'summary' is defined twice"));
+    }
+
+    @Test
     public void nullTemplateInDefinitionThrowsNamedNpe() {
         // Exercises the requireNonNull(template) message supplier lambda.
         NullPointerException ex = assertThrows(

@@ -62,6 +62,10 @@ public final class AiFactDefinitionSupport {
             final List<AiFactCounter> facts = definition.getFacts();
             // Normalize a group that declared no counters to an empty list, so the map value is never null
             // (a group that references no facts is a no-op, same as an empty facts list).
+            if (factsByKey.containsKey(definition.getKey())) {
+                throw new IllegalArgumentException(
+                        "factDefinitions[" + index + "].key '" + definition.getKey() + "' is defined twice");
+            }
             factsByKey.put(definition.getKey(), facts != null ? facts : Collections.emptyList());
         }
     }

@@ -88,6 +88,27 @@ public class SrcMorphConfigurationFileLoaderTest {
         assertThat(thrown.getMessage(), containsString("A configuration file ends with .yaml, .yml, .json or .js"));
     }
 
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"srcmorph.json", "srcmorph.yaml"})
+    public void load_aByteOrderMark_isNotPartOfTheText(final String name) throws IOException {
+        // arrange: what Windows PowerShell 5.1's Out-File -Encoding utf8 writes
+        final String text = name.endsWith(".json") ? "{\"srcMorph\": {\"force\": true}}" : "srcMorph:\n  force: true\n";
+        final byte[] body = text.getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = new byte[body.length + 3];
+        bytes[0] = (byte) 0xEF;
+        bytes[1] = (byte) 0xBB;
+        bytes[2] = (byte) 0xBF;
+        System.arraycopy(body, 0, bytes, 3, body.length);
+        final Path file = Files.write(tempDir.resolve(name), bytes);
+
+        // act
+        final SrcMorphConfigurationFile content =
+                SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES);
+
+        // assert
+        assertThat(content.getSrcMorph().isForce(), is(true));
+    }
+
     @Test
     public void load_anEmptyFile_isEveryDefault() throws IOException {
         final SrcMorphConfigurationFile content =

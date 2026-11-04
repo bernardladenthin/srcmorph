@@ -79,6 +79,10 @@ public final class AiPromptSupport {
                 throw new NullPointerException(
                         "promptDefinitions[" + index + "].template is required (bad entry: " + definition + ")");
             }
+            if (templates.containsKey(definition.getKey())) {
+                throw new IllegalArgumentException(
+                        "promptDefinitions[" + index + "].key '" + definition.getKey() + "' is defined twice");
+            }
             templates.put(definition.getKey(), template);
         }
     }

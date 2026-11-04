@@ -208,6 +208,12 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
+- **A JSON configuration file with a UTF-8 byte order mark did not load**: Windows PowerShell 5.1
+  writes one (`Out-File -Encoding utf8`), and Jackson read it as a character before the `{`. The
+  loader reads a configuration file as it reads a source, without the mark (YAML too).
+- **A key defined twice in `aiDefinitions`, `promptDefinitions` or `factDefinitions` was taken
+  silently, the last one winning**, so a rule could run with another model or prompt than the one
+  read first. It now fails the run, naming the list, the index and the key.
 - **`docs/copilot-api-gateway.md`** showed `maxOutputTokens: 2048` for the example, which has 4096.
 - **The XML and POM fact counters of profile v3 were quadratic over unclosed markup.** In
   `xml-facts.tsv` the `[ignore]` line scanned to the end of the file again from every `<!--`,

@@ -61,6 +61,16 @@ public class AiFactDefinitionSupportTest {
     }
 
     @Test
+    public void constructor_aKeyDefinedTwice_throwsNamingItsSecondIndex() {
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> new AiFactDefinitionSupport(java.util.Arrays.asList(
+                        definition("sql-facts", Collections.emptyList()),
+                        definition("sql-facts", Collections.emptyList()))));
+        assertThat(thrown.getMessage(), is("factDefinitions[1].key 'sql-facts' is defined twice"));
+    }
+
+    @Test
     public void constructor_nullDefinitions_yieldsEmptyRegistry() {
         final AiFactDefinitionSupport support = new AiFactDefinitionSupport(null);
         assertThrows(IllegalArgumentException.class, () -> support.facts("any"));
