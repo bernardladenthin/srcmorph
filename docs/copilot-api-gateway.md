@@ -93,15 +93,17 @@ the measured run below) for every file, package and the project, a rule per kind
 its prompt and exact fact counters (Java, SQL, shell, Perl, POM, XML; every other file takes the
 fallback rule, for which profile v3 has no counters), and `onOversize: mapReduce` on every rule, the
 package and project rules too, so an input larger than the window is read chunk by chunk, one
-request per chunk, never sampled. It indexes the whole project
-(`subtrees: "."`, without `target/`) and runs all three phases with `command: All`.
+request per chunk, never sampled. It indexes the whole project (`subtrees: "."`, without
+`target/`, `.git/`, `.idea/`, `node_modules/` and the other tool directories its `excludes` name).
 
-Set `baseDirectory` and `outputDirectory`, then run it with the jar of
+Set `baseDirectory` and `outputDirectory`, then run either file with the jar of
 [`examples/build-your-own-jar`](../examples/build-your-own-jar): first as it is (`command: Plan`,
-which lists the files and sends nothing), then with `command: GenerateFileIndex`.
+which lists the files and sends nothing), then with `command: GenerateFileIndex` (`srcmorph.yaml`)
+or `command: All` (`srcmorph-luna.yaml`: the files, then the packages, then the project).
 
 ```bash
 java -jar examples/build-your-own-jar/target/srcmorph.jar examples/copilot-api-gateway/srcmorph.yaml
+java -jar examples/build-your-own-jar/target/srcmorph.jar examples/copilot-api-gateway/srcmorph-luna.yaml
 ```
 
 The key goes out over plain `http`, which srcmorph allows only to a loopback host; that is why

@@ -47,19 +47,34 @@ srcMorph:
     - ".sh"
     - ".bash"
     - ".ksh"
+    - ".zsh"
+    - ".bats"
     - ".pl"
     - ".pm"
+    - ".t"
+    - ".cgi"
+    - ".psgi"
     - ".xml"
     - ".xsd"
     - ".xsl"
     - ".xslt"
+    - ".wsdl"
+    - ".xhtml"
     - ".py"
     - ".c"
     - ".h"
+  # Globs against the path below baseDirectory, "/" as separator; "**/" matches no directory too, so
+  # "**/target/**" excludes target/ at the root and the target/ of every module.
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
-    - "**/target/**"                         # build output, the index included
+    - "**/target/**"                         # Maven build output, the index included
+    - "**/.git/**"
+    - "**/.idea/**"
+    - "**/.vscode/**"
+    - "**/.gradle/**"
+    - "**/node_modules/**"
+    - "**/.claude/**"                        # agent worktrees: a second copy of the sources
 
   generationProvider: openai-compatible
 
@@ -113,7 +128,7 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".sh", ".bash", ".ksh"]
+        extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
     - id: perl
       promptKey: file-body-perl
       aiDefinitionKey: luna
@@ -122,7 +137,7 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".pl", ".pm"]
+        extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
     - id: pom                                # matches xml too; the priority gives a POM the Maven counters
       promptKey: file-body-xml
       aiDefinitionKey: luna
@@ -141,7 +156,7 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".xml", ".xsd", ".xsl", ".xslt"]
+        extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
     - id: fallback                           # every other file; profile v3 has no counters for it
       promptKey: file-body-fallback
       aiDefinitionKey: luna
