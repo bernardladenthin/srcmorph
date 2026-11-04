@@ -322,6 +322,28 @@ public class ProjectIndexerTest {
     }
 
     @Test
+    public void aggregate_aChangedPackageChecksum_rewritesTheProjectAlsoWithChildrenOff() throws Exception {
+        // arrange: the same package and lead, the second time over another source checksum
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        final Path packageFile = outputRoot.resolve("main/java/com/example/package.ai.md");
+        writePackageFile(packageFile, "main/java/com/example", "> Example package.\n", "AAAAAAAA");
+        final ProjectIndexer frozenChildren = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, childrenOff());
+        assertThat(frozenChildren.aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+        final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
+        final String firstC = documentCodec.read(projectFile).header().c();
+        final AiIndexOutcome unchanged = frozenChildren.aggregate(outputRoot);
+        writePackageFile(packageFile, "main/java/com/example", "> Example package.\n", "BBBBBBBB");
+
+        // act
+        final AiIndexOutcome rewritten = frozenChildren.aggregate(outputRoot);
+
+        // assert
+        assertThat(unchanged, is(AiIndexOutcome.UNCHANGED));
+        assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
+        assertThat(documentCodec.read(projectFile).header().c().equals(firstC), is(false));
+    }
+
+    @Test
     public void aggregate_overview_recordsItsPromptAndModel_theDeterministicIndexNeither() throws Exception {
         // arrange
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
@@ -386,11 +408,16 @@ public class ProjectIndexerTest {
     }
 
     private void writePackageFile(final Path file, final String title, final String body) throws IOException {
+        writePackageFile(file, title, body, "AAAAAAAA");
+    }
+
+    private void writePackageFile(final Path file, final String title, final String body, final String checksum)
+            throws IOException {
         Files.createDirectories(file.getParent());
         final AiMdHeader header = new AiMdHeader(
                 title,
                 AiMdHeaderCodec.HEADER_VERSION_1_0,
-                "AAAAAAAA",
+                checksum,
                 "2026-03-16T00:00:00Z",
                 "2026-03-16T00:00:10Z",
                 "1.0.0",

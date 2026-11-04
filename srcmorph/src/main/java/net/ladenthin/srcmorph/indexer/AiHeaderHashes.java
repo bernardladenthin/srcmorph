@@ -8,6 +8,7 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
+import net.ladenthin.srcmorph.support.AiSourceLines;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -37,7 +38,9 @@ public final class AiHeaderHashes {
 
     /**
      * Returns the hash of the system prompt a rule's summaries are written with, and of its map and reduce
-     * prompts when it has them, so a change to either shows too.
+     * prompts when it has them, so a change to either shows too. Line endings are read as {@code \n}, as
+     * the source checksum reads them, so a profile checked out with CRLF on one machine and LF on another
+     * hashes the same.
      *
      * @param promptSupport the prompts
      * @param rule          the rule
@@ -47,9 +50,9 @@ public final class AiHeaderHashes {
     public static String prompt(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
         final String mapKey = rule.getMapPromptKey();
         final String reduceKey = rule.getReducePromptKey();
-        return CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey())
+        return CHECKSUMS.calculateCrc32Hex(AiSourceLines.normalize(promptSupport.systemPrompt(rule.getPromptKey())
                 + (mapKey != null ? MAP_PROMPT_TAG + promptSupport.systemPrompt(mapKey) : "")
-                + (reduceKey != null ? REDUCE_PROMPT_TAG + promptSupport.systemPrompt(reduceKey) : ""));
+                + (reduceKey != null ? REDUCE_PROMPT_TAG + promptSupport.systemPrompt(reduceKey) : "")));
     }
 
     /**

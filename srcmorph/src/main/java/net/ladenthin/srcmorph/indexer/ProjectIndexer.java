@@ -16,6 +16,7 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiRegenerateOn;
 import net.ladenthin.srcmorph.document.AiGenerationResult;
+import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
@@ -119,6 +120,7 @@ public class ProjectIndexer {
     private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
     private final AiMdHeaderSupport headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
+    private final AiMdChildEntryLineFormatter childEntryLineFormatter = new AiMdChildEntryLineFormatter();
     private final AiMdLeadExtractor leadExtractor = new AiMdLeadExtractor();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
@@ -244,7 +246,8 @@ public class ProjectIndexer {
             final String displayPath = displayPath(rootDirectory, packageFile);
             final String link = linkPath(rootDirectory, packageFile);
             final String lead = leadExtractor.extractLead(document.body());
-            entries.add(new PackageEntry(displayPath, link, lead));
+            entries.add(
+                    new PackageEntry(displayPath, link, lead, childEntryLineFormatter.format(link, document.header())));
             latestDate = laterDate(latestDate, document.header().d());
         }
         entries.sort(Comparator.comparing(PackageEntry::link));
@@ -258,15 +261,18 @@ public class ProjectIndexer {
         final String packagesSection = buildPackagesSection(entries);
         final String deterministicBody = leadLine + "\n\n" + packagesSection;
 
-        // C: the packages the project lists; K: their leads, which the listing and the overview read; P
-        // and M: the overview's prompts and model (empty without an overview)
+        // C: the packages the project lists and their checksums, so a changed source below shows whatever
+        // regenerateOn.children says; K: their leads, which the listing and the overview read; P and M: the
+        // overview's prompts and model (empty without an overview)
         final AiFieldGenerationConfig overview = this.overviewFieldGeneration;
         final AiFieldGenerationSupport support = this.fieldGenerationSupport;
         final List<String> leads = new ArrayList<>(entries.size());
+        final StringBuilder checksumLines = new StringBuilder();
         for (final PackageEntry entry : entries) {
             leads.add(entry.lead());
+            checksumLines.append(entry.checksumLine());
         }
-        final String checksum = checksumSupport.calculateCrc32Hex(String.join("\n", packageLinks));
+        final String checksum = checksumSupport.calculateCrc32Hex(checksumLines.toString());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
@@ -470,16 +476,21 @@ public class ProjectIndexer {
         return candidate.compareTo(current) > 0 ? candidate : current;
     }
 
-    /** Immutable carrier for one package's display path, relative link, and harvested lead. */
+    /**
+     * Immutable carrier for one package's display path, relative link, harvested lead, and the line it adds
+     * to the project's checksum.
+     */
     private static final class PackageEntry {
         private final String displayPath;
         private final String link;
         private final String lead;
+        private final String checksumLine;
 
-        PackageEntry(final String displayPath, final String link, final String lead) {
+        PackageEntry(final String displayPath, final String link, final String lead, final String checksumLine) {
             this.displayPath = displayPath;
             this.link = link;
             this.lead = lead;
+            this.checksumLine = checksumLine;
         }
 
         String displayPath() {
@@ -492,6 +503,10 @@ public class ProjectIndexer {
 
         String lead() {
             return lead;
+        }
+
+        String checksumLine() {
+            return checksumLine;
         }
     }
 }

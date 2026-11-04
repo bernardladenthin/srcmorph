@@ -8,7 +8,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.Collections;
+import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +25,40 @@ public class AiHeaderHashesTest {
         config.setModelPath(modelPath);
         return config;
     }
+
+    private static String promptHash(final String template) {
+        final AiPromptDefinition definition = new AiPromptDefinition();
+        definition.setKey("p");
+        definition.setTemplate(template);
+        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        rule.setPromptKey("p");
+        return AiHeaderHashes.prompt(new AiPromptSupport(Collections.singletonList(definition)), rule);
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="prompt">
+    @Test
+    public void prompt_crlfOrCrLineEndings_hashAsLineFeeds() {
+        // act
+        final String lf = promptHash("Summarize.\nName the types.\n");
+        final String crlf = promptHash("Summarize.\r\nName the types.\r\n");
+        final String cr = promptHash("Summarize.\rName the types.\r");
+
+        // assert
+        assertThat(crlf, is(lf));
+        assertThat(cr, is(lf));
+        assertThat(lf, is(CHECKSUMS.calculateCrc32Hex("Summarize.\nName the types.\n")));
+    }
+
+    @Test
+    public void prompt_anotherText_changesIt() {
+        // act
+        final String one = promptHash("Summarize.\n");
+        final String other = promptHash("Summarize briefly.\n");
+
+        // assert
+        assertThat(one.equals(other), is(false));
+    }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="model">
     @Test
