@@ -14,8 +14,8 @@ everything below is genuinely still open.
 
 Branch `feat/profiles-v3-kinds-and-safety`, in this order:
 
-- **Push and open the pull request** for the branch (measured and switched: Java takes
-  `file-body-oop`, see `docs/ai-index-benchmark/remeasure-2026-11-04/`).
+- **PR #269** (this branch): CI green, then the owner merges. Java takes `file-body-oop` since the
+  runs of `docs/ai-index-benchmark/remeasure-2026-11-04/`.
 - **What the enterprise runs left out** (same README): the ops prompt does not ask for a
   workflow's or pipeline's name (gpt-oss never named `release-backoffice`), and `file-body-oop`
   asks for the public API only, so private helpers and constants (`nextNumber`, `PREFIX`, a
