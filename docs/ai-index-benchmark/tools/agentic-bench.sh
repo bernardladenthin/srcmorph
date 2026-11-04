@@ -7,7 +7,7 @@
 # Usage: agentic_bench.sh <out.tsv> <model1.gguf> [model2.gguf ...]
 set -uo pipefail
 LS="/c/Users/berna/AppData/Local/Microsoft/WinGet/Packages/ggml.llamacpp_Microsoft.Winget.Source_8wekyb3d8bbwe/llama-server.exe"
-MODELDIR="X:/Modelle"
+MODELDIR="M:/Modelle"
 PORT=8090
 HERE="$(dirname "$0")"
 OUT="$1"; shift

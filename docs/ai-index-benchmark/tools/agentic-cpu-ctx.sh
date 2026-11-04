@@ -8,7 +8,7 @@
 # Usage: agentic_cpu_ctx.sh <out.tsv> <model.gguf:maxctx> [<model.gguf:maxctx> ...]
 set -uo pipefail
 LS="/c/Users/berna/AppData/Local/Microsoft/WinGet/Packages/ggml.llamacpp_Microsoft.Winget.Source_8wekyb3d8bbwe/llama-server.exe"
-MODELDIR="X:/Modelle"; PORT=8090; HERE="$(dirname "$0")"
+MODELDIR="M:/Modelle"; PORT=8090; HERE="$(dirname "$0")"
 OUT="$1"; shift
 EXPECT="run_tests"
 FILL_LEVELS="${FILL_LEVELS:-512 3072 16384}"   # override via env for finer sweeps

@@ -12,7 +12,8 @@ everything below is genuinely still open.
 
 ### Enterprise kinds of profile v3 (2026-11-04)
 
-- **PR #269** (branch `feat/profiles-v3-kinds-and-safety`): CI green, then the owner merges.
+- **PR #269** (branch `feat/profiles-v3-kinds-and-safety`): CI green but the Claude review action;
+  the owner merges, then this line goes.
 - The plugin's self-test profile routes only the kinds measured on this repository; the new ones are
   routed in `examples/copilot-api-gateway/srcmorph-luna.yaml` and measured on the enterprise corpus
   (`docs/ai-index-benchmark/remeasure-2026-11-04b/`), which is written for the benchmark. Once
@@ -20,6 +21,76 @@ everything below is genuinely still open.
 - gpt-oss-20b named `ringbuf.c`'s headers instead of `malloc` and `memcpy` in two of six card runs
   after the path line came into the user message (fallback prompt, none before): watch it in the
   next round; with three more runs it is variation or a sentence for the fallback prompt.
+
+### Reviews of 2026-11-04 (PR #269 at 98c6b77, the delta and the whole repository), open items
+
+Two reviews, verified against the code. Header and rewrite decision:
+
+- The project's `C` is the CRC32 of its package links only (`ProjectIndexer`), not of the packages'
+  `C`: with `regenerateOn.children: false` a changed source rewrites its file and package, the
+  package gets a new lead, and `project.ai.md` keeps the old one (1.4.0 rewrote it). Build `C` from
+  link and `C` of every package; a test for this case.
+- `P` hashes the prompt files as read (`AiHeaderHashes.prompt`), while the source checksum, `.tsv`
+  and `.ai.md` are read line-normalized: a profile checked out with CRLF on Windows and LF in CI
+  rewrites every summary on each change of side. Normalize before hashing; a CRLF test.
+- CHANGELOG (Unreleased): "set the switches to `false` for that run to keep them" only postpones the
+  rewrite, since `M` and `K` are then never recorded; say which switches must stay off to keep the
+  summaries (files `model`; packages `prompt`, `model`, `children`; the project `source`), or record
+  a missing field without a model call.
+- CHANGELOG (Unreleased): the API breaks of 98c6b77 are missing: `AiMdHeader.withHashes` takes four
+  hashes, the `PackageIndexer` and `ProjectIndexer` constructors take `AiRegenerateOn`,
+  `SourceFileIndexer.indexFile` takes `modelHash`; an "Upgrading from 1.4.0" note.
+- Javadoc: `GenerateEngine` (the `contentHeadChars` check) says "below 1", the bound is 256;
+  `AiRegenerateOn` says all switches off "freezes the index", true for files only (`K` still
+  rewrites packages). The aggregate engines do not log `regenerateOn`.
+
+Selection and fact counters:
+
+- `fileNames` under `srcMorph` takes a glob with `/` silently and it never matches; the condition of
+  the same name rejects it. Run the same check (`validateFileNames`) in `SourceFileIndexer`.
+- `AiShebang`: BSD `env -P altpath` is not skipped (`#!/usr/bin/env -P /usr/local/bin bash` reads
+  `bin`), nor combined short options or quotes; `python3.1` also matches `python3.12` (a version
+  must end at a non-digit).
+- `contentMatches` has no read budget (a backtracking pattern of a user's rule hangs the plan) and is
+  compiled per file and rule: reuse `AiFactExtractor.ReadBudget`, cache the pattern.
+- The read budget counts `charAt` calls, which may differ between JDK versions; the linearity test
+  runs on JDK 25 only (not measured).
+
+Configuration (on `main` before the PR):
+
+- A JSON configuration with a UTF-8 byte order mark does not load
+  (`SrcMorphConfigurationFileLoader`); Windows PowerShell 5.1 writes one. Skip a BOM as the source
+  reader does.
+- Duplicate keys in `aiDefinitions`, `promptDefinitions`, `factDefinitions` overwrite each other, the
+  last wins (`AiModelDefinitionSupport`, `AiPromptSupport`, `AiFactDefinitionSupport`): fail instead.
+- In the plugin, `G` records the version of the user's project, not the plugin's
+  (`AbstractAiIndexMojo`); check whether that is meant.
+- `${…}` has no escape; the rate limiter keys a window per server and limit, not per server
+  (uncertain whether meant).
+
+Documentation:
+
+- The root README, `srcmorph-cli/README.md`, `docs/windows-intel-core-ultra.md` and
+  `examples/build-your-own-jar/pom.xml` say the examples need 1.4.0, but they use keys and facts
+  markers 1.4.0 rejects (`regenerateOn`, `fileNames`, `fileInterpreters`, `[raw]`, ...); CI builds
+  them against the reactor, so it cannot see it. Say "the next release, or a reactor build" until
+  it is out.
+- `srcmorph-maven-plugin/README.md`, the routing example: `file-body-java-terse` and
+  `file-body-java-detailed` are not prompt keys of any profile.
+- `CONTRIBUTING.md` describes JUnit 4, Maven `Log` instead of SLF4J, CI on Java 8 and `record`s.
+- `docs/copilot-api-gateway.md` describes the Luna example before the enterprise kinds.
+- The PIT badge says 78 classes (83); `AiMdHeaderCodec`'s Javadoc of the header letters lacks `M`
+  and `K`; `HSMALL-VS-GPTOSS.md` names the goal `ai-index:calibrate`.
+- A one-line `[ignore]` region at the start of a line breaks a counter anchored with `^` (the
+  blanking keeps the line, but not what `^` expects); check the profiles for it.
+- The language-corpus mean of gpt-oss-20b on 2026-11-04 reads 98.7 %; its per-run values average
+  98.6 % (probably a mean of unrounded values; check).
+
+Repository:
+
+- `docs/ai-index-benchmark/tools/agentic-bench.sh` and `agentic-cpu-ctx.sh` name `llama-server.exe`
+  by a local user profile path: take it from a variable (`LLAMA_SERVER`), defaulting to
+  `llama-server` on the `PATH`.
 
 ### After the release of 1.4.0
 
@@ -175,8 +246,10 @@ Unreleased) except:
 
 ### Other open items
 
-- **The Claude Code Review workflow fails on every pull request**: its `claude_code_oauth_token`
-  secret is empty. The owner sets it, or the workflow stays red.
+- **The Claude Code Review workflow fails on every pull request**: it runs with the
+  `anthropic_api_key` secret (`claude_code_oauth_token` is empty) and the model call ends after
+  ~300 ms with `is_error: true`, no turn, no cost: the key is refused or its account has no credit.
+  The owner renews the key or its credit, or the workflow stays red.
 
 - **Use jllama's `ChatStreamAssembler` instead of srcmorph's own stream assembly.** The `stream`
   setting of the `openai-compatible` provider needs a Server-Sent Events body assembled into a chat
