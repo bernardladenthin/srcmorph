@@ -48,20 +48,30 @@ public class AiPromptSupportTest {
 
     // <editor-fold defaultstate="collapsed" desc="userMessage">
     @Test
-    public void userMessagePutsNameThenBlankLineThenBody() {
+    public void userMessage_absolutePath_putsItsNameThenBlankLineThenBody() {
         AiPromptSupport support = new AiPromptSupport(Collections.<AiPromptDefinition>emptyList());
         // Exact form: file name, a blank line, then the body. Kills the separator and the
         // getFileName()-vs-full-path mutants.
-        assertThat(support.userMessage(Paths.get("a", "Foo.java"), "the source"), is("Foo.java\n\nthe source"));
+        final Path absolute = Paths.get("a", "Foo.java").toAbsolutePath();
+        assertThat(support.userMessage(absolute, "the source"), is("Foo.java\n\nthe source"));
     }
 
     @Test
-    public void userMessageUsesFullPathWhenFileNameNull() {
+    public void userMessage_relativePath_putsTheWholePathWithSlashes() {
         AiPromptSupport support = new AiPromptSupport(Collections.<AiPromptDefinition>emptyList());
-        // A root path has a null getFileName() on every OS, so userMessage falls back to the full
-        // path. Derive the expected separator from the same Path so the assertion holds on Windows.
-        Path root = Paths.get("/");
-        assertThat(support.userMessage(root, "x"), is(root + "\n\nx"));
+        // the file phase passes the path below the base directory: two web.xml of two modules read apart
+        assertThat(
+                support.userMessage(Paths.get("billing", "src", "main", "webapp", "WEB-INF", "web.xml"), "x"),
+                is("billing/src/main/webapp/WEB-INF/web.xml\n\nx"));
+        assertThat(support.userMessage(Paths.get("Foo.java"), "x"), is("Foo.java\n\nx"));
+    }
+
+    @Test
+    public void userMessage_rootWithoutAName_putsThePathItself() {
+        AiPromptSupport support = new AiPromptSupport(Collections.<AiPromptDefinition>emptyList());
+        // A root has a null getFileName() on every OS; on Windows "/" is relative to the drive, so it
+        // reads as a relative path, written with "/" either way.
+        assertThat(support.userMessage(Paths.get("/"), "x"), is("/\n\nx"));
     }
     // </editor-fold>
 

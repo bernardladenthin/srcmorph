@@ -26,6 +26,9 @@ public class AiShebangTest {
                 "#!/usr/bin/env bash|bash",
                 "#!/usr/bin/env -S python3 -u|python3",
                 "#!/usr/bin/env LANG=C perl|perl",
+                "#!/usr/bin/env =x perl|perl",
+                "#!/bin/sh\\n#!/bin/bash|sh",
+                "#!/usr/bin/env\\nperl|",
                 "#!/usr/bin/env\tksh93|ksh93",
                 "#!bash|bash",
                 "#!/usr/bin/python3.12\\nimport os|python3.12",
@@ -66,7 +69,15 @@ public class AiShebangTest {
 
     // <editor-fold defaultstate="collapsed" desc="matches">
     @ParameterizedTest(name = "{0} matches {1}")
-    @CsvSource({"bash,bash", "python3,python", "python3.12,python", "python3.12,python3", "sh,' sh '"})
+    @CsvSource({
+        "bash,bash",
+        "python3,python",
+        "python3.12,python",
+        "python3.12,python3",
+        "sh,' sh '",
+        "python3.10,python",
+        "python3.9,python"
+    })
     public void matches_theNameOrAVersionOfIt(final String interpreter, final String name) {
         assertThat(AiShebang.matches(interpreter, Arrays.asList("other", name)), is(true));
     }

@@ -35,13 +35,16 @@ public final class AiShebang {
     private static final String OPTION = "-";
 
     /** Marks an assignment {@code env} sets before it runs the interpreter. */
-    private static final char ASSIGNMENT = '=';
+    private static final String ASSIGNMENT = "=";
 
     /** Separates the segments of the interpreter's path. */
     private static final char SEGMENT = '/';
 
-    /** A word of the line. */
-    private static final Pattern WORD = Pattern.compile("[^ \t]+");
+    /**
+     * The next word of the first line with the blanks before it: {@code \G} continues where the last one
+     * ended, so the words end with the line.
+     */
+    private static final Pattern WORD = Pattern.compile("\\G[ \t]*+[^ \t\n]++");
 
     /** Utility class; not instantiable. */
     private AiShebang() {
@@ -59,18 +62,16 @@ public final class AiShebang {
         if (!head.startsWith(MARKER)) {
             return null;
         }
-        final int newline = head.indexOf('\n');
-        final int end = Math.min(newline < 0 ? head.length() : newline, MAX_LINE_CHARS);
-        final Matcher words = WORD.matcher(head.substring(MARKER.length(), end));
+        final Matcher words = WORD.matcher(head.substring(MARKER.length(), Math.min(head.length(), MAX_LINE_CHARS)));
         if (!words.find()) {
             return null;
         }
-        String name = lastSegment(words.group());
+        String name = lastSegment(words.group().trim());
         if (ENV.equals(name)) {
             name = "";
             while (words.find()) {
-                final String word = words.group();
-                if (!word.startsWith(OPTION) && word.indexOf(ASSIGNMENT) < 0) {
+                final String word = words.group().trim();
+                if (!word.startsWith(OPTION) && !word.contains(ASSIGNMENT)) {
                     name = lastSegment(word);
                     break;
                 }

@@ -142,6 +142,16 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `regenerateOnProfileChange` rewrites the Java summaries that carry facts.
 - **DMN has its own counters**: `bpmn-facts` counts BPMN only (its "decisions" and "decision rules"
   went to `dmn-facts`), and the Luna example and `run.py` route `.dmn` to `dmn-facts`.
+- **The model reads a file's path below the base directory**, not its name alone, at the head of the
+  user message (`billing/src/main/webapp/WEB-INF/web.xml`), so two files of one name in different
+  modules read apart; every file prompt of profile v3 says so in its last paragraph. The plan's
+  window check counts the same line. A package's and the project's message are unchanged.
+- **Profile v3's file prompts ask for more** (measured below): `file-body-oop` names the private
+  functions, constants and fields the logic uses and each call on a dependency, which the enterprise
+  runs found by chance only (`nextNumber`, `PREFIX`, a `refund` call); `file-body-ops` names a CI
+  workflow or pipeline by its name (`release-backoffice` was missing in every gpt-oss run) and
+  defines Gradle build and settings scripts (plugins, dependencies by configuration, repositories,
+  tasks, included projects, the toolchain), which take it now.
 - **`pathGlob` matches in the case written**, also on Windows, so a rule routes the same file on
   every system; `fileNames` and `extensions` match in any case, as names of a kind are written in
   either. Decided and documented, unchanged.

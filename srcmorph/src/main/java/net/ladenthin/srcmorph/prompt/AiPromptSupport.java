@@ -165,18 +165,32 @@ public final class AiPromptSupport {
     }
 
     /**
-     * Builds the user message carrying the variable data: the file (or package/project) name on
-     * the first line, a blank line, then the body (file source, child summaries, or package leads,
-     * depending on the prompt). Falls back to the full path when the file name is {@code null}
-     * (e.g. a filesystem root).
+     * Builds the user message carrying the variable data: the file (or package/project) on the first
+     * line, a blank line, then the body (file source, child summaries, or package leads, depending on
+     * the prompt). A relative path heads it whole, with {@code /} separators: the file phase passes a
+     * source file's path below the base directory, so two {@code web.xml} of different modules read
+     * apart. An absolute path heads it by its name (a package's or the project's index file), or whole
+     * when it has none (a filesystem root).
      *
-     * @param sourceFile the file path whose name heads the message
-     * @param sourceText the body delivered after the name
+     * @param sourceFile the path that heads the message
+     * @param sourceText the body delivered after it
      * @return the user message text
      */
     public String userMessage(final java.nio.file.Path sourceFile, final String sourceText) {
+        return heading(sourceFile) + USER_NAME_BODY_SEPARATOR + sourceText;
+    }
+
+    /**
+     * Returns how a path heads the user message.
+     *
+     * @param sourceFile the path
+     * @return a relative path whole with {@code /} separators, else its name, else the path itself
+     */
+    private static String heading(final java.nio.file.Path sourceFile) {
+        if (!sourceFile.isAbsolute()) {
+            return sourceFile.toString().replace('\\', '/');
+        }
         final java.nio.file.Path fileName = sourceFile.getFileName();
-        final Object nameArg = fileName != null ? fileName : sourceFile;
-        return nameArg + USER_NAME_BODY_SEPARATOR + sourceText;
+        return fileName != null ? fileName.toString() : sourceFile.toString();
     }
 }

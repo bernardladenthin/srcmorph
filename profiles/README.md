@@ -45,8 +45,9 @@ handed on as a whole.
 ## Prompt files
 
 A `.md` file is the **system prompt** of its key, sent verbatim: no placeholders, no license header
-(it would reach the model). srcmorph sends the file or package name and the source (or the child
-summaries) as a separate user message. Each file starts with a domain lead line, then fixed `####`
+(it would reach the model). srcmorph sends the file's path below the base directory (a package's
+name) and the source (or the child summaries) as a separate user message, so two `web.xml` of
+different modules read apart. Each file starts with a domain lead line, then fixed `####`
 sections (Purpose, Type, Input, Output, Core logic, Public API, Dependencies, Exceptions, Concurrency
 for Java; Schema, Reads, Writes, Relationships, Routine logic for SQL; Constants and configuration for
 shell, Perl and other files; Definitions, Configuration and Dependencies for XML), with the rules against code fences, `###` headings and invented names, and the "index

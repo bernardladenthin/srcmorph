@@ -865,4 +865,30 @@ public class SourceFileIndexerTest {
             assertThat(text.indexOf('\r'), is(-1));
         }
     }
+
+    @Test
+    public void indexFile_theModelReadsThePathBelowTheBaseDirectory() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path web = temp.resolve("billing/src/main/webapp/WEB-INF/web.xml");
+        writeJava(web, "<web-app/>");
+        final AiModelDefinition model = new AiModelDefinition();
+        model.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        model.setModelPath("mock.gguf");
+        final AiPromptSupport prompts = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final List<String> heads = new ArrayList<>();
+        final AiFieldGenerationSupport recording = new AiFieldGenerationSupport(
+                request -> {
+                    final String message = prompts.userMessage(request.sourceFile(), request.sourceText());
+                    heads.add(message.substring(0, message.indexOf('\n')));
+                    return "summary";
+                },
+                new AiPromptPreparationSupport(prompts),
+                new AiModelDefinitionSupport(Collections.singletonList(model)));
+
+        final AiIndexOutcome outcome = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+                .indexFile(web, CommonTestFixtures.createFileFieldGeneration(), recording, "", "");
+
+        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        assertThat(heads, is(equalTo(Arrays.asList("billing/src/main/webapp/WEB-INF/web.xml"))));
+    }
 }

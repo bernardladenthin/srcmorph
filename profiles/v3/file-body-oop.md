@@ -19,7 +19,7 @@ What comes in: constructor and method parameters, constructor-declared propertie
 What comes out: return types, produced state, mutated fields and properties, written resources, side effects.
 
 #### Core logic
-The essential steps / algorithm / responsibility as bullets; for a script or a DSL block (a Spock specification, a builder), its steps or blocks in order. This is the most important section.
+The essential steps / algorithm / responsibility as bullets; for a script or a DSL block (a Spock specification, a builder), its steps or blocks in order. Name the private functions, constants and fields the logic uses by their exact names, and each call it makes on a dependency (e.g. `payments.refund(orderId)`). This is the most important section.
 
 #### Public API
 Each member a caller outside the file can reach (public and protected; also Kotlin's members without a modifier, which are public, and internal ones; Groovy's members without a modifier) as `name(params) -> returnType` + a clause (max 6 words) on its purpose; top-level functions too, an extension function as `Receiver.name(params) -> returnType`, a property as `name: Type`. For a FAMILY of near-identical members (e.g. `fooN`), do not list them all: count them exactly and emit only the total and index range, e.g. `foo1..fooN (N total)`. Getters and setters are NOT a family: name every accessor; keep each pair on one short line, e.g. `getFoo()`/`setFoo(int)` -> foo value. A test or specification method is named by its exact name, also when that name is a string.
@@ -46,5 +46,5 @@ Threading, synchronization, coroutines (suspend functions, scopes, dispatchers, 
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, or behavior beyond the shown source.
 
-The file name and its source are provided in the next (user) message: the name on the first
-line, then a blank line, then the source. Index only what is literally present there.
+The file's path below the project directory and its source are provided in the next (user)
+message: the path on the first line, then a blank line, then the source. Index only what is literally present there.

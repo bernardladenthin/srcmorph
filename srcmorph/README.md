@@ -35,7 +35,8 @@ Major field groups:
 Every other `config/` class is a plain, Maven-annotation-free JavaBean too: `AiModelDefinition` (a
 named, complete set of GGUF sampling parameters), `AiPromptDefinition` (a named prompt template —
 its `template` string is the system instructions, used verbatim; `AiPromptSupport` automatically
-appends the file/package name and the source text as a separate user message, so a template needs no
+appends the file's path below the base directory (a package's name) and the source text as a
+separate user message, so a template needs no
 placeholder), `AiFieldGenerationConfig` (one routing rule: a
 `condition` tree, `priority`, and either a route, a `skip`, or the explicit `fallback`),
 `AiCondition`/`AiConditionGroup`/`AiRangeCondition` (the composable and/or/not condition tree over

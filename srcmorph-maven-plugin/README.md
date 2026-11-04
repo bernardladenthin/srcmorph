@@ -143,7 +143,8 @@ The file has three building blocks:
 2. **`profileDirectory`** — the profile: one directory with a file per prompt (`<key>.md`) and per
    group of exact fact counters (`<key>.tsv`), named by key from the rules, so no prompt text and no
    regex is written into the configuration. A prompt is the **system prompt** and takes **no
-   placeholders**: the file/package name and the source (for packages, the child summaries; for the
+   placeholders**: the file's path below the base directory (a package's name) and the source (for
+   packages, the child summaries; for the
    optional project overview, the per-package leads) are sent as a separate user message
    (`AiPromptSupport`). A `%s` in a prompt reaches the model literally. The measured profile of this
    repository is [`profiles/v3/`](../profiles/README.md); copy it into your project or point at a

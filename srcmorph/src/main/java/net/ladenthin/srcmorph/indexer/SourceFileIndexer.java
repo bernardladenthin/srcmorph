@@ -283,7 +283,8 @@ public final class SourceFileIndexer {
                 plan.addSkipped(file);
             } else if (modelDefinitionSupport != null && promptPreparationSupport != null) {
                 final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.getAiDefinitionKey());
-                final int basePromptLength = promptPreparationSupport.getBasePromptLength(rule.getPromptKey(), file);
+                final Path shown = baseDirectory.relativize(file);
+                final int basePromptLength = promptPreparationSupport.getBasePromptLength(rule.getPromptKey(), shown);
                 final long availableSourceChars =
                         AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = source.length();
@@ -294,7 +295,7 @@ public final class SourceFileIndexer {
                         sourceChars,
                         availableSourceChars,
                         basePromptLength,
-                        chunkPromptLength(rule, file, basePromptLength, promptPreparationSupport));
+                        chunkPromptLength(rule, shown, basePromptLength, promptPreparationSupport));
                 final double charsPerToken = modelConfig.getCharsPerToken() > 0
                         ? modelConfig.getCharsPerToken()
                         : AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;
@@ -347,7 +348,7 @@ public final class SourceFileIndexer {
      * the rule's own.
      *
      * @param rule             the routing rule
-     * @param file             the file, whose name heads the prompt
+     * @param file             the file's path below the base directory, which heads the prompt
      * @param basePromptLength the rule's own prompt length
      * @param preparation      the prompts
      * @return the length
@@ -426,7 +427,9 @@ public final class SourceFileIndexer {
             return AiIndexOutcome.UNCHANGED;
         }
 
-        final AiGenerationResult result = support.generate(rule, sourceFile, CONTEXT_TYPE_FILE, sourceText, baseHeader);
+        // the model reads the path below the base directory, so two web.xml of different modules read apart
+        final AiGenerationResult result =
+                support.generate(rule, baseDirectory.relativize(sourceFile), CONTEXT_TYPE_FILE, sourceText, baseHeader);
         if (!result.complete()) {
             return AiIndexOutcome.FAILED;
         }

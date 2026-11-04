@@ -403,6 +403,39 @@ public class AiFactExtractorTest {
     }
 
     @Test
+    public void counts_patternPastItsTimeLimit_warnsNamingTheCounterAndWhatItDoes() {
+        final ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(AiFactExtractor.class);
+        final ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            AiFactExtractor.counts(
+                    Arrays.asList(ignore("comments", QUADRATIC), counter("lazy", QUADRATIC), counter("x", "x")),
+                    UNCLOSED_COMMENTS);
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        final java.util.List<String> warnings = new java.util.ArrayList<>();
+        for (final ch.qos.logback.classic.spi.ILoggingEvent event : appender.list) {
+            if (event.getLevel() == ch.qos.logback.classic.Level.WARN) {
+                warnings.add(event.getFormattedMessage());
+            }
+        }
+        final String characters = UNCLOSED_COMMENTS.length() + "-character source";
+        final String reads = String.valueOf(AiFactExtractor.readBudget(UNCLOSED_COMMENTS.length()));
+        assertThat(
+                warnings,
+                is(Arrays.asList(
+                        "Fact counter 'comments' stopped after reading " + reads + " characters of a " + characters
+                                + ": its pattern backtracks too far, so it is not blanked",
+                        "Fact counter 'lazy' stopped after reading " + reads + " characters of a " + characters
+                                + ": its pattern backtracks too far, so it is left out of the facts")));
+    }
+
+    @Test
     public void factsBlock_everyCounterPastItsTimeLimit_returnsEmpty() {
         assertThat(
                 AiFactExtractor.factsBlock(

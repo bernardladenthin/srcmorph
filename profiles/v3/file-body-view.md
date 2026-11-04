@@ -40,5 +40,5 @@ Tag libraries, imported classes, included files, beans and URLs, as searchable n
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any field, bean, action or behavior beyond the shown source.
 
-The file name and its source are provided in the next (user) message: the name on the first
-line, then a blank line, then the source. Index only what is literally present there.
+The file's path below the project directory and its source are provided in the next (user)
+message: the path on the first line, then a blank line, then the source. Index only what is literally present there.
