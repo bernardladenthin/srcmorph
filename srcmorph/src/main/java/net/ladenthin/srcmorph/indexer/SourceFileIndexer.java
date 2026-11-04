@@ -124,9 +124,11 @@ public final class SourceFileIndexer {
      * @param regenerateOnProfileChange when {@code true}, rewrite a summary whose prompt or fact counters
      *                         changed ({@code P} / {@code N} of its header)
      * @param contentHeadChars characters of a file the {@code contentMatches} and {@code interpreters}
-     *                         conditions read, at least 1
+     *                         conditions read, at least {@value AiShebang#MAX_LINE_CHARS} (a whole
+     *                         {@code #!} line)
      * @throws IllegalArgumentException if a file name or exclude is not a valid glob, an interpreter is
-     *                                  blank or a path, or {@code contentHeadChars} is below 1
+     *                                  blank or a path, or {@code contentHeadChars} is below
+     *                                  {@value AiShebang#MAX_LINE_CHARS}
      */
     public SourceFileIndexer(
             final Path baseDirectory,
@@ -159,8 +161,9 @@ public final class SourceFileIndexer {
         if (!this.fileInterpreters.isEmpty()) {
             AiConditionEvaluator.validateInterpreters(this.fileInterpreters);
         }
-        if (contentHeadChars < 1) {
-            throw new IllegalArgumentException("contentHeadChars must be at least 1, not " + contentHeadChars);
+        if (contentHeadChars < AiShebang.MAX_LINE_CHARS) {
+            throw new IllegalArgumentException("contentHeadChars must be at least " + AiShebang.MAX_LINE_CHARS
+                    + " (a whole #! line), not " + contentHeadChars);
         }
         this.contentHeadChars = contentHeadChars;
         this.pluginVersion = pluginVersion;
@@ -509,21 +512,31 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Returns whether a file's {@code #!} line names one of the interpreters.
+     * Returns whether a file's {@code #!} line names one of the interpreters; a file that cannot be read
+     * does not, with a warning.
      *
      * @param path the file
      * @return {@code true} when it does
-     * @throws IOException if the file cannot be read
      */
-    private boolean namesAnInterpreter(final Path path) throws IOException {
-        final String interpreter = AiShebang.interpreter(readHead(path, AiShebang.MAX_LINE_CHARS));
+    private boolean namesAnInterpreter(final Path path) {
+        final String head;
+        try {
+            head = readHead(path, AiShebang.MAX_LINE_CHARS);
+        } catch (final IOException e) {
+            // a file without an extension may be anything (a socket file, one another process locks):
+            // one that cannot be read is no script of ours, and the walk goes on
+            LOGGER.warn("Cannot read the first line of {}, so it is not indexed: {}", path, e.toString());
+            return false;
+        }
+        final String interpreter = AiShebang.interpreter(head);
         return interpreter != null && AiShebang.matches(interpreter, fileInterpreters);
     }
 
     /**
      * Reads the start of a file for a {@code contentMatches} or {@code interpreters} condition: at most
-     * four bytes per character, decoded as {@link #readSource} decodes the whole file, so a large file is
-     * not read to its end during planning.
+     * four bytes per character, and never more than the file holds, decoded as {@link #readSource}
+     * decodes the whole file, so a large file is not read to its end during planning and a large
+     * {@code contentHeadChars} costs no more than the file.
      *
      * @param file  the file
      * @param chars the characters to read
@@ -531,7 +544,7 @@ public final class SourceFileIndexer {
      * @throws IOException if the file cannot be read
      */
     private static String readHead(final Path file, final int chars) throws IOException {
-        final byte[] buffer = new byte[chars * HEAD_BYTES_PER_CHAR];
+        final byte[] buffer = new byte[(int) Math.min((long) chars * HEAD_BYTES_PER_CHAR, Files.size(file))];
         int length = 0;
         try (InputStream in = Files.newInputStream(file)) {
             int read = in.read(buffer, length, buffer.length - length);

@@ -533,7 +533,7 @@ public class SourceFileIndexerTest {
 
         // act
         final List<String> selected =
-                names(indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash", "python", " sh "), 16, 0L)
+                names(indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash", "python", " sh "), 256, 0L)
                         .collectCandidates(temp));
         final List<String> none =
                 names(indexerWithNames(temp, Collections.<String>emptyList()).collectCandidates(temp));
@@ -550,7 +550,7 @@ public class SourceFileIndexerTest {
         writeJava(temp.resolve("bin/large"), "#!/bin/bash\n" + "x".repeat(200));
 
         final List<String> selected =
-                names(indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 16, 100L)
+                names(indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 256, 100L)
                         .collectCandidates(temp));
 
         assertThat(selected, is(equalTo(Arrays.asList("small"))));
@@ -571,7 +571,7 @@ public class SourceFileIndexerTest {
         final List<AiFieldGenerationConfig> rules = Arrays.asList(shell, rule("fallback", null, false, true));
 
         // act
-        final AiIndexPlan plan = indexer(temp, Collections.<String>emptyList(), Arrays.asList("ksh", "perl"), 16, 0L)
+        final AiIndexPlan plan = indexer(temp, Collections.<String>emptyList(), Arrays.asList("ksh", "perl"), 256, 0L)
                 .classify(Arrays.asList(script, other), rules);
 
         // assert
@@ -581,10 +581,10 @@ public class SourceFileIndexerTest {
 
     @Test
     public void classify_contentHeadChars_setsHowMuchContentMatchesReads() throws Exception {
-        // arrange: MARK ends at character 100
+        // arrange: MARK ends at character 300
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path file = temp.resolve("src/Late.java");
-        writeJava(file, "x".repeat(96) + "MARK" + "y".repeat(100));
+        writeJava(file, "x".repeat(296) + "MARK" + "y".repeat(100));
         final List<AiFieldGenerationConfig> contentOnly =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
         final List<AiFieldGenerationConfig> withLines = Arrays.asList(
@@ -592,9 +592,9 @@ public class SourceFileIndexerTest {
                 lineRangeRule("never", 900L, 1000L),
                 rule("fallback", null, false, true));
         final SourceFileIndexer reach =
-                indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 100, 0L);
+                indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 300, 0L);
         final SourceFileIndexer shortOne =
-                indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 99, 0L);
+                indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 299, 0L);
 
         // act and assert: the start alone, and the whole source a lines rule reads
         assertThat(promptKeyOf(reach.classify(Arrays.asList(file), contentOnly), file), is(equalTo("marked")));
@@ -604,16 +604,64 @@ public class SourceFileIndexerTest {
     }
 
     @Test
-    public void constructor_contentHeadCharsBelowOne_isRefused() throws Exception {
+    public void constructor_contentHeadCharsBelowAShebangLine_isRefused() throws Exception {
         final Path temp = Files.createTempDirectory("ai-index-test");
 
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class,
-                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 0, 0L));
+                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 255, 0L));
 
-        assertThat(thrown.getMessage(), is(equalTo("contentHeadChars must be at least 1, not 0")));
+        assertThat(
+                thrown.getMessage(), is(equalTo("contentHeadChars must be at least 256 (a whole #! line), not 255")));
         assertDoesNotThrow(
-                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 1, 0L));
+                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 256, 0L));
+    }
+
+    @Test
+    public void classify_aContentHeadCharsLargerThanTheFile_readsNoMoreThanTheFile() throws Exception {
+        // Integer.MAX_VALUE characters would be an 8 GB buffer; the file's size bounds it
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path file = temp.resolve("src/Small.java");
+        writeJava(file, "class Small {} // MARK");
+        final List<AiFieldGenerationConfig> rules =
+                Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
+
+        final AiIndexPlan plan = indexer(
+                        temp, Collections.<String>emptyList(), Collections.<String>emptyList(), Integer.MAX_VALUE, 0L)
+                .classify(Arrays.asList(file), rules);
+
+        assertThat(promptKeyOf(plan, file), is(equalTo("marked")));
+    }
+
+    @Test
+    public void collectCandidates_aFileWithoutAnExtensionThatCannotBeRead_isSkippedAndTheWalkGoesOn() throws Exception {
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path locked = temp.resolve("bin/locked");
+        writeJava(locked, "#!/bin/bash\n");
+        writeJava(temp.resolve("bin/deploy"), "#!/bin/bash\n");
+        final SourceFileIndexer indexer =
+                indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 256, 0L);
+
+        final List<String> selected;
+        if (java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            // no read permission (the test does not run as root)
+            Files.setPosixFilePermissions(locked, java.util.Collections.emptySet());
+            try {
+                selected = names(indexer.collectCandidates(temp));
+            } finally {
+                Files.setPosixFilePermissions(
+                        locked, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+            }
+        } else {
+            // Windows refuses a read of a range another handle locks
+            try (java.nio.channels.FileChannel channel =
+                            java.nio.channels.FileChannel.open(locked, java.nio.file.StandardOpenOption.WRITE);
+                    java.nio.channels.FileLock lock = channel.lock()) {
+                selected = names(indexer.collectCandidates(temp));
+            }
+        }
+
+        assertThat(selected, is(equalTo(Arrays.asList("deploy"))));
     }
 
     @Test
@@ -622,7 +670,7 @@ public class SourceFileIndexerTest {
 
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class,
-                () -> indexer(temp, Collections.<String>emptyList(), Arrays.asList("/bin/bash"), 16, 0L));
+                () -> indexer(temp, Collections.<String>emptyList(), Arrays.asList("/bin/bash"), 256, 0L));
 
         assertThat(
                 thrown.getMessage(),

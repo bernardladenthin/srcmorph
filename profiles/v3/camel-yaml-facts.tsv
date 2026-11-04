@@ -21,5 +21,5 @@ splitters, aggregators and other routing EIPs	(?m)^[ \t]*+(?:-[ \t]++)?(?:split|
 processors and transformations	(?m)^[ \t]*+(?:-[ \t]++)?(?:process|bean|setBody|setHeader|setProperty|transform|marshal|unmarshal|convertBodyTo|log)[ \t]*+:
 error handling	(?m)^[ \t]*+(?:-[ \t]++)?(?:errorHandler|onException|doTry|doCatch|doFinally)[ \t]*+:
 REST definitions	(?m)^-[ \t]++rest[ \t]*+:
-REST operations	(?m)^[ \t]++(?:-[ \t]++)?(?:get|post|put|delete|patch|head)[ \t]*+:
+REST verb blocks (get, post, put, delete, patch, head)	(?m)^[ \t]++(?:-[ \t]++)?(?:get|post|put|delete|patch|head)[ \t]*+:
 bean declarations	(?m)^-[ \t]++beans[ \t]*+:

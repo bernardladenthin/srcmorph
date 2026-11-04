@@ -73,6 +73,14 @@ public class AiPromptSupportTest {
         // reads as a relative path, written with "/" either way.
         assertThat(support.userMessage(Paths.get("/"), "x"), is("/\n\nx"));
     }
+
+    @Test
+    public void userMessage_absoluteRoot_putsThePathItself() {
+        AiPromptSupport support = new AiPromptSupport(Collections.<AiPromptDefinition>emptyList());
+        // "/" on Linux, "C:\" on Windows: absolute on both, and without a name
+        final Path root = Paths.get("/").toAbsolutePath();
+        assertThat(support.userMessage(root, "x"), is(root + "\n\nx"));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="buildPrompt">

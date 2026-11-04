@@ -138,7 +138,8 @@ public class GenerateEngineTest {
                 assertThrows(SrcMorphException.class, () -> new GenerateEngine(head).execute());
 
         assertThat(byInterpreter.getMessage(), containsString("(bash, not /bin/bash): '/bin/bash'"));
-        assertThat(byHead.getMessage(), containsString("contentHeadChars must be at least 1, not 0"));
+        assertThat(
+                byHead.getMessage(), containsString("contentHeadChars must be at least 256 (a whole #! line), not 0"));
     }
 
     @Test

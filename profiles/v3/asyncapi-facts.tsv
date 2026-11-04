@@ -7,12 +7,13 @@
 # from a # after a blank) and the body of a block scalar (the lines below a | or >, as deep as its
 # first line, which sets the block's indentation as YAML reads it; its key stays), so a description
 # that quotes a channel or a "type: object" does not count. A key counts with or without JSON
-# quotes. "channel addresses" counts the address of a 3.x channel; "operations" a 2.x publish or
+# quotes. "channel addresses" counts the address of a 3.x (a value on its line, so a schema property
+# named address, which opens a mapping, does not count) channel; "operations" a 2.x publish or
 # subscribe that opens a mapping and a 3.x action send or receive; "payloads" the payload of every
 # message. OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
 # pattern reads linearly.
 [ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
-channel addresses (3.x)	["']?\baddress["']?[ \t]*:
+channel addresses (3.x)	(?m)["']?\baddress["']?[ \t]*:[ \t]*+(?!$|\{|#)
 operations	(?m)(?:^[ \t]+|[{,][ \t]*)["']?(?:publish|subscribe)["']?[ \t]*:[ \t]*+(?:\{|$)|["']?\baction["']?[ \t]*:[ \t]*["']?(?:send|receive)\b
 operationIds	["']?\boperationId["']?[ \t]*:
 payloads	["']?\bpayload["']?[ \t]*:

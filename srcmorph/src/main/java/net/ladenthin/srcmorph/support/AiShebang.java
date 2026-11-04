@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.support;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -15,7 +19,10 @@ import org.jspecify.annotations.Nullable;
  * extension (a {@code bin/deploy}, a Git hook) is selected and routed by what runs it.
  *
  * <p>The interpreter is the last path segment of the line's first word; when that is {@code env},
- * the first word after it that is neither an option ({@code -S}) nor an assignment ({@code LANG=C}).
+ * the first word after it that is neither an option ({@code -i}) nor an assignment ({@code LANG=C}),
+ * the argument of {@code -u} / {@code --unset} and {@code -C} / {@code --chdir} skipped, and the
+ * first word of a {@code -S} / {@code --split-string=} string taken as written
+ * ({@code -Spython3}, {@code --split-string=python3}).
  * Only the first {@value #MAX_LINE_CHARS} characters of the line count, as Linux reads it. A name
  * matches the interpreter itself and its versions: {@code python} matches {@code python3} and
  * {@code python3.12}, {@code python3} matches {@code python3.12} but not {@code python}.</p>
@@ -33,6 +40,16 @@ public final class AiShebang {
 
     /** Opens an option of {@code env}. */
     private static final String OPTION = "-";
+
+    /** The options of {@code env} whose argument is the next word. */
+    private static final Set<String> OPTIONS_WITH_AN_ARGUMENT =
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList("-u", "--unset", "-C", "--chdir")));
+
+    /** The short option of {@code env} whose argument, written next to it, is the command line. */
+    private static final String SPLIT_STRING = "-S";
+
+    /** The long option of {@code env} whose argument after {@code =} is the command line. */
+    private static final String SPLIT_STRING_LONG = "--split-string=";
 
     /** Marks an assignment {@code env} sets before it runs the interpreter. */
     private static final String ASSIGNMENT = "=";
@@ -68,16 +85,34 @@ public final class AiShebang {
         }
         String name = lastSegment(words.group().trim());
         if (ENV.equals(name)) {
-            name = "";
-            while (words.find()) {
-                final String word = words.group().trim();
-                if (!word.startsWith(OPTION) && !word.contains(ASSIGNMENT)) {
-                    name = lastSegment(word);
-                    break;
-                }
-            }
+            name = afterEnv(words);
         }
         return name.isEmpty() ? null : name;
+    }
+
+    /**
+     * Returns the program {@code env} runs: the first word after its options and assignments.
+     *
+     * @param words the words of the line after {@code env}
+     * @return the program's name, or {@code ""} when the line names none
+     */
+    private static String afterEnv(final Matcher words) {
+        boolean argument = false;
+        while (words.find()) {
+            final String word = words.group().trim();
+            if (argument) {
+                argument = false;
+            } else if (OPTIONS_WITH_AN_ARGUMENT.contains(word)) {
+                argument = true;
+            } else if (word.startsWith(SPLIT_STRING_LONG)) {
+                return lastSegment(word.substring(SPLIT_STRING_LONG.length()));
+            } else if (word.startsWith(SPLIT_STRING) && word.length() > SPLIT_STRING.length()) {
+                return lastSegment(word.substring(SPLIT_STRING.length()));
+            } else if (!word.startsWith(OPTION) && !word.contains(ASSIGNMENT)) {
+                return lastSegment(word);
+            }
+        }
+        return "";
     }
 
     /**

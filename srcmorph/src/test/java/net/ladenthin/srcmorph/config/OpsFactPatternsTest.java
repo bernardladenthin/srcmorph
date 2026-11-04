@@ -291,6 +291,23 @@ public class OpsFactPatternsTest {
     }
 
     @Test
+    public void asyncapi_aSchemaPropertyNamedAddress_isNoChannelAddress() {
+        final String schema = "asyncapi: 2.6.0\n"
+                + "components:\n"
+                + "  schemas:\n"
+                + "    Customer:\n"
+                + "      properties:\n"
+                + "        address:\n"
+                + "          type: string\n"
+                + "        billing: {\"address\": {\"type\": \"string\"}}\n";
+
+        assertThat(count(ASYNCAPI, "channel addresses (3.x)", schema), is(0));
+        assertThat(
+                count(ASYNCAPI, "channel addresses (3.x)", "{\"channels\": {\"a\": {\"address\": \"order/a\"}}}"),
+                is(1));
+    }
+
+    @Test
     public void asyncapi_countsVersionThreeChannelsAndActions() {
         final String v3 = "asyncapi: 3.0.0\n"
                 + "channels:\n"
@@ -384,6 +401,22 @@ public class OpsFactPatternsTest {
 
         assertThat(count(TERRAFORM, "Terragrunt includes and dependencies", terragrunt), is(2));
         assertThat(count(TERRAFORM, "resources", unclosed), is(1));
+    }
+
+    @Test
+    public void terraform_referencesOnALineOfTheirOwn_areNoBlocks() {
+        final String references = "resource \"aws_instance\" \"web\" {\n"
+                + "  depends_on = [\n"
+                + "    module.network,\n"
+                + "    data.aws_caller_identity.current,\n"
+                + "    provider.aws,\n"
+                + "  ]\n"
+                + "}\n";
+
+        assertThat(count(TERRAFORM, "resources", references), is(1));
+        assertThat(count(TERRAFORM, "modules", references), is(0));
+        assertThat(count(TERRAFORM, "data sources", references), is(0));
+        assertThat(count(TERRAFORM, "providers", references), is(0));
     }
     // </editor-fold>
 
@@ -550,7 +583,7 @@ public class OpsFactPatternsTest {
         assertThat(count(CAMEL_YAML, "processors and transformations", CAMEL_ROUTES), is(3));
         assertThat(count(CAMEL_YAML, "error handling", CAMEL_ROUTES), is(1));
         assertThat(count(CAMEL_YAML, "REST definitions", CAMEL_ROUTES), is(1));
-        assertThat(count(CAMEL_YAML, "REST operations", CAMEL_ROUTES), is(2));
+        assertThat(count(CAMEL_YAML, "REST verb blocks (get, post, put, delete, patch, head)", CAMEL_ROUTES), is(2));
         assertThat(count(CAMEL_YAML, "bean declarations", CAMEL_ROUTES), is(1));
     }
     // </editor-fold>
@@ -667,7 +700,7 @@ public class OpsFactPatternsTest {
             + "function Here-String { }\n"
             + "\"@\n"
             + "    try {\n"
-            + "        Get-AzStorageAccount -Name $Environment\n"
+            + "        Get-AzStorageAccount -Name $Environment | ForEach-Object { $_ } | ConvertTo-Json\n"
             + "    } catch {\n"
             + "        Write-Error \"failed\"\n"
             + "        throw\n"
@@ -687,8 +720,8 @@ public class OpsFactPatternsTest {
         assertThat(count(POWERSHELL, "dot-sourced scripts", POWERSHELL_SCRIPT), is(1));
         assertThat(count(POWERSHELL, "try blocks", POWERSHELL_SCRIPT), is(1));
         assertThat(count(POWERSHELL, "errors raised", POWERSHELL_SCRIPT), is(2));
-        // Import-Module, Deploy-Shop, Get-AzStorageAccount, Write-Error
-        assertThat(count(POWERSHELL, "Verb-Noun command calls (approx)", POWERSHELL_SCRIPT), is(4));
+        // Import-Module, Deploy-Shop, Get-AzStorageAccount, ForEach-Object, ConvertTo-Json, Write-Error
+        assertThat(count(POWERSHELL, "Verb-Noun command calls (approx)", POWERSHELL_SCRIPT), is(6));
     }
     // </editor-fold>
 
@@ -705,6 +738,7 @@ public class OpsFactPatternsTest {
                 + "if \"%1\"==\"\" goto :usage\n"
                 + "call :build\n"
                 + "for /f \"tokens=*\" %%a in (list.txt) do set /a COUNT+=1\n"
+                + "for /r C:\\src %%f in (*.java) do echo %%f\n"
                 + "if errorlevel 1 exit /b 1\n"
                 + "goto :eof\n"
                 + ":build\n"
@@ -719,7 +753,7 @@ public class OpsFactPatternsTest {
         assertThat(count(BATCH, "gotos", script), is(2));
         assertThat(count(BATCH, "variables set", script), is(3));
         assertThat(count(BATCH, "conditionals (approx)", script), is(2));
-        assertThat(count(BATCH, "for loops", script), is(1));
+        assertThat(count(BATCH, "for loops", script), is(2));
         assertThat(count(BATCH, "local scopes", script), is(1));
         assertThat(count(BATCH, "exits", script), is(3));
         assertThat(count(BATCH, "error level checks", script), is(2));

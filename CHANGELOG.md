@@ -32,7 +32,9 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `ExamplesConfigBindingTest` routes one file of each.
 - **Benchmark: the enterprise corpus** ([`docs/ai-index-benchmark/corpus-enterprise/`](docs/ai-index-benchmark/corpus-enterprise/README.md)),
   seventeen files of those kinds around one shop backoffice, with `modelcard/facts-enterprise.json`.
-  `run.py` routes the new kinds as the Luna example does and takes `--java-prompt`, so the Java
+  `run.py` routes the kinds its corpora hold as the Luna example does (not AsyncAPI, Ansible, Camel
+  YAML, PowerShell, batch or scripts by their `#!` line, which none of them has) and takes
+  `--java-prompt`, so the Java
   prompt and the shared OOP prompt run side by side on the card corpus; `score.py` reports
   `secretsLeaked`, the summaries that copy a value the facts mark as a secret.
 - **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
@@ -47,16 +49,18 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   (`Dockerfile`, `Jenkinsfile`, `Dockerfile.*`). Up to now only `fileExtensions` selected a file, so
   a Dockerfile or a Jenkinsfile could not be indexed at all.
 - **Routing by content** (`contentMatches`, a condition leaf): a Java regular expression found in the
-  first `contentHeadChars` characters of the file (under `srcMorph`, 16,384 by default; raise it for
-  a marker behind a long license header), so a Kubernetes manifest, an OpenAPI document and a Camel
+  first `contentHeadChars` characters of the file (under `srcMorph`, 16,384 by default, at least 256
+  so the `interpreters` condition sees a whole `#!` line; raise it for a marker behind a long license
+  header: the head is never read past the file's end), so a Kubernetes manifest, an OpenAPI document and a Camel
   route, all `.yaml`, take different rules (`(?m)^apiVersion:`). Planning reads only that start of a
   file unless it reads the whole file anyway; an invalid expression fails the check.
 - **Scripts without an extension can be indexed and routed by their `#!` line**
   (`fileInterpreters` under `srcMorph`, `interpreters` as a condition leaf): `[bash, sh, perl]`
   selects a `bin/deploy` that starts with `#!/usr/bin/env bash`. The interpreter is the program the
   line names, or what `env` runs (options and assignments skipped); a name matches its versions too
-  (`python` matches `python3.12`). The line is read only for a file the subtrees, excludes and size
-  band let through. `support.AiShebang` holds the rule; an interpreter given with its directory
+  (`python` matches `python3.12`), and `env`'s `-u` / `-C` arguments and `-S` command line are read
+  as `env` reads them. The line is read only for a file the subtrees, excludes and size band let
+  through; one that cannot be read is skipped with a warning, the run goes on. `support.AiShebang` holds the rule; an interpreter given with its directory
   (`/bin/bash`) fails the run.
 - **Fact counters can count before the blanking and count names** (`[raw]` and `[distinct]` in a
   facts file, `raw` and `distinct` in a configuration): a raw counter counts the source as written,
@@ -73,7 +77,8 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   `ansible-facts`, `compose-facts` and `camel-yaml-facts`; `dmn-facts` for DMN decisions (inputs,
   outputs, rules, hit policies other than UNIQUE, the decision requirements); `gradle-facts` and
   `properties-facts`, and `powershell-facts` and `batch-facts` for the fallback prompt.
-  `ContractFactPatternsTest`, `OpsFactPatternsTest` and `JvmFactPatternsTest` pin each on a sample
+  `ContractFactPatternsTest`, `OpsFactPatternsTest`, `JvmFactPatternsTest` and (DMN)
+  `EnterpriseXmlFactPatternsTest` pin each on a sample
   of its kind with a commented-out or quoted declaration that must not count. The YAML ones blank
   the body of a block scalar from the indentation of its first line, as YAML reads it, and keep its
   key (`ansible.builtin.shell: |` counts).
@@ -119,6 +124,10 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ### Changed
 
+- **`SourceFileIndexer` is final**, and its public constructor takes `fileInterpreters` (after
+  `fileNames`) and `contentHeadChars` (last). The file phase's log lines name a file by its path below
+  the base directory (as the model reads it), with the system's separators, where they named the
+  absolute path.
 - **Java takes `file-body-oop`; `file-body-java` is gone from profile v3.** A rule naming
   `promptKey: file-body-java` fails the run (no such file in the profile): name `file-body-oop`.
   Three runs each with both prompts on the model-card corpus gave the same Java recall, GPT-6 Luna

@@ -255,7 +255,7 @@ public class SrcMorphConfiguration {
      * read: more for a file whose marker comes after a long license header, at the cost of reading more
      * of every file while planning.
      *
-     * @param contentHeadChars the characters, at least 1
+     * @param contentHeadChars the characters, at least 256 (a whole {@code #!} line)
      */
     public void setContentHeadChars(final int contentHeadChars) {
         this.contentHeadChars = contentHeadChars;

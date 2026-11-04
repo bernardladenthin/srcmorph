@@ -425,9 +425,10 @@ extensions match with their dot and in any case. `fileNames` adds files by name,
 extension (`Dockerfile`, `Jenkinsfile`, `Makefile`): globs over the name, in any case.
 `fileInterpreters` adds the scripts without an extension whose `#!` line names one of the
 interpreters (`[bash, sh, perl, python]`: `bin/deploy`, a Git hook); that line is read only for a
-file the subtrees, the excludes and the size band let through. `contentHeadChars` (default 16,384)
-is how much of a file `contentMatches` and `interpreters` read while planning: raise it when the
-marker of a kind comes after a long license header. A source file
+file the subtrees, the excludes and the size band let through, and one that cannot be read is
+skipped with a warning. `contentHeadChars` (default 16,384, at least 256) is how much of a file the
+`contentMatches` and `interpreters` conditions read while planning: raise it when the marker of a kind
+comes after a long license header; the head is never read past the file's end. A source file
 is read as UTF-8, or as UTF-16 when it starts with that byte order mark; a byte order mark is not
 part of the text the model and the fact counters see.
 
