@@ -321,6 +321,7 @@ public class AiConditionEvaluatorTest {
         assertThat(
                 directory.getMessage(),
                 is("a fileNames condition matches the name without its directory, not 'app/Dockerfile'; use pathGlob"));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("/Dockerfile")));
         final IllegalArgumentException unclosed =
                 assertThrows(IllegalArgumentException.class, () -> evaluator.validate(names("*.{yml")));
         assertThat(unclosed.getMessage(), is("the glob '*.{yml' opens a '{' it does not close"));

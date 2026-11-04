@@ -204,7 +204,9 @@ public class AiFactDefinitionLoaderTest {
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "subs\tx\n[skip] POD\ty\n"));
 
-        assertThat(thrown.getMessage(), is("f line 2: unknown marker in '[skip] POD'; the only one is [ignore]"));
+        assertThat(
+                thrown.getMessage(),
+                is("f line 2: unknown marker in '[skip] POD'; the only ones are [ignore] and [include]"));
     }
 
     @Test
@@ -410,6 +412,120 @@ public class AiFactDefinitionLoaderTest {
 
         assertThat(thrown.getMessage(), containsString("factsKey java-facts: file "));
         assertThat(thrown.getMessage(), containsString(" is empty"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="[include]">
+    @Test
+    public void load_include_putsTheIncludedCountersAtItsPlace() throws IOException {
+        write("xml-facts.tsv", "[ignore] comments\t<!--.*?-->\nelements\t<\\w\n");
+        write("jee-facts.tsv", "first\ta\n[include]\txml-facts\nservlets\t<servlet\n");
+
+        final AiFactDefinition jee = load(null, "jee-facts").get(0);
+
+        assertThat(
+                describe(jee),
+                is(Arrays.asList("first = a", "comments = <!--.*?-->", "elements = <\\w", "servlets = <servlet")));
+        assertThat(Objects.requireNonNull(jee.getFacts()).get(1).isIgnore(), is(true));
+    }
+
+    @Test
+    public void load_include_markerInAnyCaseAndKeyWithBlanks_andNested() throws IOException {
+        write("a.tsv", "a\tx\n");
+        write("b.tsv", "[INCLUDE]\t a \nb\ty\n");
+        write("c.tsv", "[Include]\tb\nc\tz\n");
+
+        assertThat(describe(load(null, "c").get(0)), is(Arrays.asList("a = x", "b = y", "c = z")));
+    }
+
+    @Test
+    public void load_include_aloneIsAFile() throws IOException {
+        write("a.tsv", "a\tx\n");
+        write("b.tsv", "# only the counters of a\n[include]\ta\n");
+
+        assertThat(describe(load(null, "b").get(0)), is(Arrays.asList("a = x")));
+    }
+
+    @Test
+    public void load_includeOfItself_isRefusedNamingTheCycle() throws IOException {
+        write("a.tsv", "a\tx\n[include]\tb\n");
+        write("b.tsv", "[include]\ta\nb\ty\n");
+        write("self.tsv", "[include]\tself\n");
+
+        final IllegalArgumentException cycle = assertThrows(IllegalArgumentException.class, () -> load(null, "a"));
+        final IllegalArgumentException self = assertThrows(IllegalArgumentException.class, () -> load(null, "self"));
+
+        assertThat(cycle.getMessage(), is("the facts file a includes itself: a -> b -> a"));
+        assertThat(self.getMessage(), is("the facts file self includes itself: self -> self"));
+    }
+
+    @Test
+    public void load_includeOfTheSameFileTwice_isRefusedForTheLabelUsedTwice() throws IOException {
+        write("a.tsv", "a\tx\n");
+        write("b.tsv", "[include]\ta\n[include]\ta\n");
+
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> load(null, "b"));
+
+        assertThat(thrown.getMessage(), containsString("the label 'a' is used twice"));
+    }
+
+    @Test
+    public void load_includeOfAMissingFile_namesIt() throws IOException {
+        write("b.tsv", "[include]\tnowhere\n");
+
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> load(null, "b"));
+
+        assertThat(thrown.getMessage(), containsString("factsKey nowhere is included, but there is no "));
+        assertThat(thrown.getMessage(), containsString("nowhere.tsv"));
+    }
+
+    @Test
+    public void load_includeWithoutAKey_isRefused() throws IOException {
+        write("b.tsv", "b\ty\n[include]\t \n");
+
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> load(null, "b"));
+
+        assertThat(thrown.getMessage(), containsString("line 2: [include] names no facts key"));
+    }
+
+    @Test
+    public void load_factsFileWithInclude_readsItFromTheProfileDirectory() throws IOException {
+        write("a.tsv", "a\tx\n");
+        write("own/b.tsv", "[include]\ta\nb\ty\n");
+
+        final List<AiFactDefinition> loaded = load(Collections.singletonList(fromFile("mine", "own/b.tsv")));
+
+        assertThat(describe(loaded.get(0)), is(Arrays.asList("a = x", "b = y")));
+    }
+
+    @Test
+    public void load_factsFileWithIncludeAndNoProfileDirectory_readsItBesideTheFile() throws IOException {
+        write("own/a.tsv", "a\tx\n");
+        final Path b = write("own/b.tsv", "[include]\ta\nb\ty\n");
+        final AiFactDefinition definition = fromFile("mine", b.toAbsolutePath().toString());
+
+        final List<AiFactDefinition> loaded =
+                new AiFactDefinitionLoader(null).load(Collections.singletonList(definition), Collections.emptyList());
+
+        assertThat(describe(loaded.get(0)), is(Arrays.asList("a = x", "b = y")));
+    }
+
+    @Test
+    public void parse_includeWithoutADirectory_isRefused() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[include]\ta\n"));
+
+        assertThat(thrown.getMessage(), is("f line 1: [include] a needs a directory to read it from"));
+    }
+
+    @Test
+    public void parse_unknownMarker_namesBothMarkers() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> AiFactDefinitionLoader.parse("f", "[count]\ta\n"));
+
+        assertThat(
+                thrown.getMessage(),
+                is("f line 1: unknown marker in '[count]'; the only ones are [ignore] and [include]"));
     }
     // </editor-fold>
 

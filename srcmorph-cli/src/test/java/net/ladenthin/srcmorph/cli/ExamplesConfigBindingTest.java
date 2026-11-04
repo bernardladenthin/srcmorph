@@ -170,7 +170,13 @@ public class ExamplesConfigBindingTest {
 
         final Path profileDirectory = directory.resolve(
                 Objects.requireNonNull(srcMorph.getProfileDirectory()).getPath());
-        final List<AiFieldGenerationConfig> rules = new ArrayList<>(srcMorph.getFieldGenerations());
+        final List<AiFieldGenerationConfig> rules = new ArrayList<>();
+        final List<AiFieldGenerationConfig> skipped = new ArrayList<>();
+        for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
+            (rule.isSkip() ? skipped : rules).add(rule);
+        }
+        assertThat("the credentials rule", skipped.size(), is(1));
+        assertThat(skipped.get(0).getId(), is(equalTo("secrets")));
         rules.addAll(Objects.requireNonNull(configuration.packageFieldGenerations));
         rules.addAll(Objects.requireNonNull(configuration.projectFieldGenerations));
         for (final AiFieldGenerationConfig rule : rules) {
@@ -183,7 +189,7 @@ public class ExamplesConfigBindingTest {
         }
         for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
             final String label = "rule " + rule.getId();
-            if (!rule.isFallback()) {
+            if (!rule.isFallback() && !rule.isSkip()) {
                 assertThat(
                         label + " counts the facts of its kind",
                         Files.isRegularFile(profileDirectory.resolve(rule.getFactsKey() + ".tsv")),
@@ -191,6 +197,54 @@ public class ExamplesConfigBindingTest {
             }
         }
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
+    }
+
+    @Test
+    public void credentialsRule_skipsFilesWithSecretsInEveryProfileConfig_andNoSource() throws Exception {
+        final List<String> secrets = List.of(
+                ".env",
+                ".env.production",
+                "prod.tfvars",
+                "terraform.tfstate",
+                "settings.xml",
+                "settings-security.xml",
+                "server.pem",
+                "tls.key",
+                "id_rsa",
+                "vault.yml",
+                "db-credentials.yaml",
+                "app-secrets.properties",
+                "Secrets.JSON");
+        final List<String> sources = List.of(
+                "SecretManager.java",
+                "CredentialsProvider.java",
+                "PasswordEncoder.java",
+                "pom.xml",
+                "web.xml",
+                "secrets.sh",
+                "keys.sql",
+                "Settings.java");
+        for (final Path config : List.of(
+                EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml"),
+                EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml"))) {
+            final List<AiFieldGenerationConfig> rules =
+                    Main.fromYaml(Main.readString(config)).srcMorph.getFieldGenerations();
+            final net.ladenthin.srcmorph.config.AiFieldGenerationSelector selector =
+                    new net.ladenthin.srcmorph.config.AiFieldGenerationSelector();
+            selector.validate(rules);
+            for (final String name : secrets) {
+                final AiFieldGenerationConfig rule = selector.select(rules, context(name));
+                assertThat(config + ": " + name, rule != null && rule.isSkip(), is(true));
+            }
+            for (final String name : sources) {
+                final AiFieldGenerationConfig rule = selector.select(rules, context(name));
+                assertThat(config + ": " + name, rule != null && !rule.isSkip(), is(true));
+            }
+        }
+    }
+
+    private static net.ladenthin.srcmorph.config.AiFileContext context(final String name) {
+        return new net.ladenthin.srcmorph.config.AiFileContext(name, "src/" + name, 100L, 3, 0L);
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {

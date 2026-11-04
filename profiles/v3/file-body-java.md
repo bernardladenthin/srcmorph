@@ -36,6 +36,7 @@ Threading, synchronization, immutability, or thread-safety notes, if any.
 ## Rules
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Weave class / type / domain names into the bullets so they are searchable.
+- A secret (a password, private key, token, API key, or credentials inside a URL or connection string) is named, never copied: write its name with `***` for the value (e.g. `DB_PASSWORD=***`).
 - No code fences, no ```markdown / ```java, no XML tags, no formatter comments.
 - COUNT EXACTLY. When you state a count of methods/fields/members, count them precisely from the source. Never round, approximate, or write "similar"/"~".
 - The filename heading is already rendered above your output; still name the type itself in the Type section. Start immediately with the blockquote lead. Never produce empty output.

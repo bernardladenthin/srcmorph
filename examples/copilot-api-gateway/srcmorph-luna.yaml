@@ -107,6 +107,27 @@ srcMorph:
   # read chunk by chunk (mapReduce): Luna named every name planted in the middle of a 1.6 MB SQL dump,
   # an 870 KB XML catalog and a 283 KB Java enum in three of three runs (MODEL-CARD finding 7).
   fieldGenerations:
+    # Files that hold credentials are never sent to a model, whatever their extension: the highest
+    # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
+    # the file out altogether. fileNames match the name in any case.
+    - id: secrets
+      skip: true
+      priority: 1000
+      condition:
+        fileNames:
+          - ".env"
+          - ".env.*"
+          - "*.tfvars"
+          - "*.tfstate"
+          - "*.tfstate.backup"
+          - "settings.xml"                   # Maven: server passwords
+          - "settings-security.xml"
+          - "*.pem"
+          - "*.key"
+          - "id_rsa*"
+          - "id_ed25519*"
+          - "vault*.{yml,yaml}"
+          - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env}"
     - id: java
       promptKey: file-body-java
       aiDefinitionKey: luna

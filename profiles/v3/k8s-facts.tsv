@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Kubernetes manifest and Helm template counters, for a rule with the prompt file-body-ops: one per
+# line, label TAB pattern (Java regex). The [ignore] line blanks YAML comments and Helm comments
+# ({{/* */}}, also with the - trim markers); a Helm comment that is never closed runs to the end of
+# the file. "resources" counts a kind: at column 0 only, so a manifest quoted in a ConfigMap's block
+# scalar does not count; a "Helm control actions" count is approximate, every if, else if, range,
+# with, define, template, include and block action. OpsFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] YAML and template comments	(?ms)\{\{-?[ \t]*+/\*(?:.*?\*/[ \t]*+-?\}\}|.*+)|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+resources	(?m)^kind:[ \t]*+["']?[A-Z]
+workloads	(?m)^kind:[ \t]*+["']?(?:Deployment|StatefulSet|DaemonSet|Job|CronJob|Pod|ReplicaSet|DeploymentConfig)\b
+Services, Ingresses and Routes	(?m)^kind:[ \t]*+["']?(?:Service|Ingress|Route|HTTPRoute|Gateway|VirtualService)\b
+ConfigMaps and Secrets	(?m)^kind:[ \t]*+["']?(?:ConfigMap|Secret|SealedSecret|ExternalSecret)\b
+container images	(?m)^[ \t]*(?:-[ \t]+)?image:[ \t]*+[^\s#]
+container ports	(?m)^[ \t]*(?:-[ \t]+)?containerPort:
+probes	(?m)^[ \t]*(?:liveness|readiness|startup)Probe:
+secret references	(?m)^[ \t]*(?:-[ \t]+)?(?:secretKeyRef|secretRef|secretName):
+Helm control actions (approx)	\{\{-?[ \t]*+(?:if|else[ \t]+if|range|with|define|template|include|block)\b
+.Values references	\.Values\.[A-Za-z_][\w.]*+

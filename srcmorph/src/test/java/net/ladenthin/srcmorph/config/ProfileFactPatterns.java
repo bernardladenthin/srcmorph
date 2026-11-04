@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,15 +36,8 @@ final class ProfileFactPatterns {
      * @return the patterns by label, in file order
      */
     static Map<String, String> load(final String key) {
-        final Path file = PROFILE_DIRECTORY.resolve(key + ".tsv");
-        final String text;
-        try {
-            text = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-        } catch (final IOException e) {
-            throw new UncheckedIOException(e);
-        }
         final Map<String, String> patterns = new LinkedHashMap<>();
-        for (final AiFactCounter counter : AiFactDefinitionLoader.parse(file.toString(), text)) {
+        for (final AiFactCounter counter : counters(key)) {
             patterns.put(counter.getLabel(), counter.getPattern());
         }
         return patterns;
@@ -65,16 +59,22 @@ final class ProfileFactPatterns {
     }
 
     /**
-     * Reads one facts file of the profile as the production loader does, ignore counters included.
+     * Reads one facts file of the profile as the production loader does, ignore counters and included
+     * files included.
      *
      * @param key the facts key, the file name without {@code .tsv}
      * @return the counters in file order
      */
     static List<AiFactCounter> counters(final String key) {
-        final Path file = PROFILE_DIRECTORY.resolve(key + ".tsv");
         try {
-            return AiFactDefinitionLoader.parse(
-                    file.toString(), new String(Files.readAllBytes(file), StandardCharsets.UTF_8));
+            final List<AiFactCounter> facts = new AiFactDefinitionLoader(PROFILE_DIRECTORY.toFile())
+                    .load(null, Collections.singletonList(key))
+                    .get(0)
+                    .getFacts();
+            if (facts == null) {
+                throw new IllegalStateException("no counters in " + key);
+            }
+            return facts;
         } catch (final IOException e) {
             throw new UncheckedIOException(e);
         }

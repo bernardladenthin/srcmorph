@@ -125,6 +125,27 @@ srcMorph:
   # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
   # (~275 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
   fieldGenerations:
+    # Files that hold credentials are never sent to a model, whatever their extension: the highest
+    # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
+    # the file out altogether. fileNames match the name in any case.
+    - id: secrets
+      skip: true
+      priority: 1000
+      condition:
+        fileNames:
+          - ".env"
+          - ".env.*"
+          - "*.tfvars"
+          - "*.tfstate"
+          - "*.tfstate.backup"
+          - "settings.xml"                   # Maven: server passwords
+          - "settings-security.xml"
+          - "*.pem"
+          - "*.key"
+          - "id_rsa*"
+          - "id_ed25519*"
+          - "vault*.{yml,yaml}"
+          - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env}"
     - id: huge-java
       promptKey: file-body-java
       aiDefinitionKey: granite-4.0-h-1b-fastchunk

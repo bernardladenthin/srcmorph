@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Jakarta EE / Java EE fact counters for Java sources: the counters of java-facts, then the
+# component and wiring annotations of EJB, JPA, CDI, JAX-RS, JAX-WS, Servlet, JTA and security, with
+# or without their package (javax. and jakarta.; Spring's @Autowired and @Transactional too). For a
+# rule that routes Java files using these APIs (a contentMatches on their imports) next to the plain
+# Java rule. An annotation counts at the start of a line or after other annotations on it, so an
+# "@Stateless" in Javadoc prose or a comment line does not; a commented-out annotation at the start
+# of a line after "//" does not either. JvmFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[include]	java-facts
+EJB session beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?(?:Stateless|Stateful|Singleton)\b
+message-driven beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?MessageDriven\b
+JPA entities and embeddables	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.persistence\.)?(?:Entity|Embeddable|MappedSuperclass)\b
+JPA named queries	@(?:(?:javax|jakarta)\.persistence\.)?Named(?:Native|StoredProcedure)?Query\(
+injection points	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:(?:javax|jakarta)\.(?:inject|ejb|annotation|persistence)|org\.springframework\.beans\.factory\.annotation)\.)?(?:Inject|EJB|Resource|PersistenceContext|PersistenceUnit|Autowired)\b
+JAX-RS resource paths	@(?:(?:javax|jakarta)\.ws\.rs\.)?Path\(
+HTTP method annotations	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ws\.rs\.)?(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b
+servlets, filters and listeners	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.servlet\.annotation\.)?(?:WebServlet|WebFilter|WebListener)\b
+SOAP endpoints	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.(?:jws|xml\.ws)\.)?(?:WebService|WebServiceProvider)\b
+transaction annotations	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:(?:javax|jakarta)\.(?:transaction|ejb)|org\.springframework\.transaction\.annotation)\.)?(?:Transactional|TransactionAttribute)\b
+EJB timers	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?Schedules?\b
+security annotations	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.annotation\.security\.)?(?:RolesAllowed|PermitAll|DenyAll|RunAs|DeclareRoles)\b

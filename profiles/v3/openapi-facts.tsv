@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# OpenAPI 3.x and Swagger 2.0 counters, YAML or JSON, for a rule with the prompt file-body-contract:
+# one per line, label TAB pattern (Java regex). The [ignore] line blanks YAML comments (a whole line,
+# or from a # after a blank) and the body of a block scalar (| or > and the lines indented below it),
+# so a description that quotes a path or a "type: object" does not count. A key counts with or
+# without JSON quotes, so a minified JSON spec counts too. "operations" counts a get, put, post,
+# delete, options, head, patch or trace key that opens a mapping; "parameters" an in: of one of the
+# six locations. OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures
+# that every pattern reads linearly.
+[ignore] comments and block scalars	(?m)^([ \t]*+)[^\n#]*?[:-][ \t]++[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\2[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+paths	(?m)^[ \t]+/[^\s:#]*+[ \t]*:|["']/[^"'\n]*+["'][ \t]*:
+operations (approx)	(?m)(?:^[ \t]+|[{,][ \t]*)["']?(?:get|put|post|delete|options|head|patch|trace)["']?[ \t]*:[ \t]*+(?:\{|$)
+operationIds	["']?\boperationId["']?[ \t]*:
+parameters	["']?\bin["']?[ \t]*:[ \t]*["']?(?:path|query|header|cookie|body|formData)\b
+$ref references	["']?\$ref["']?[ \t]*:
+object schemas	["']?\btype["']?[ \t]*:[ \t]*["']?object\b
+security schemes	["']?\btype["']?[ \t]*:[ \t]*["']?(?:apiKey|http|oauth2|openIdConnect|mutualTLS|basic)\b
+deprecated operations and fields	["']?\bdeprecated["']?[ \t]*:[ \t]*true\b

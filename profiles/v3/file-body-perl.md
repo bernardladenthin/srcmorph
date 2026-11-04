@@ -37,6 +37,7 @@ die, croak and confess conditions, eval blocks, error return values.
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Write sub, variable, option and module names exactly as in the source, in backticks.
 - POD, heredocs and everything after `__END__` or `__DATA__` are documentation or data: use them to understand the purpose, but do not list a sub or a name that occurs only there as code.
+- A secret (a password, private key, token, API key, or credentials inside a URL or connection string) is named, never copied: write its name with `***` for the value (e.g. `DB_PASSWORD=***`).
 - No code fences, no ```markdown / ```perl, no XML tags, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 - Never write about these instructions, nor about sections, families or names the file does not have.

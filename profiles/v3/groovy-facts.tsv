@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Groovy fact counters (.groovy, .gvy, Spock specifications), for a rule with the shared prompt
+# file-body-oop: one per line, label TAB pattern (Java regex), counted over the whole file. The
+# [ignore] line runs first, leftmost region first: it blanks a shebang line, line and block comments,
+# triple-quoted strings (''' and """), dollar-slashy strings, single- and double-quoted strings and a
+# slashy regex after an operator, so a "def" or "class" in a GroovyDoc or a GString does not count.
+# A region that is never closed runs to the end of the file (a slashy regex only to the end of its
+# line). A Spock feature method is named by a string, "def 'reads an order'()": the string is
+# blanked, so it counts as "def ()". "methods (approx)" counts typed and def methods with a body;
+# "closures with parameters" a closure that names its parameters before "->". Counts are regex
+# heuristics: a script's top-level statements, and a command expression without parentheses, are
+# not methods. JvmFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
+# every pattern reads linearly.
+[ignore] comments and string literals	(?s)\A#![^\n]*+|//[^\n]*+|/\*.*?(?:\*/|\z)|""".*?(?:"""|\z)|'''.*?(?:'''|\z)|\$/.*?(?:/\$|\z)|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)*+'|(?<=[=(,:\[!&|?~][ \t]{0,16})/(?![/*])(?:[^/\\\n]|\\.)++/
+type declarations	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed|strictfp)[ \t]++)*+(?:class|interface|@interface|enum|trait|record)[ \t]++[A-Za-z_$]
+methods (approx)	(?m)^[ \t]*+(?:(?:public|private|protected|static|final|abstract|synchronized|default|def)[ \t]++)*(?:<[^>\n]++>[ \t]*+)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|throw|assert)\b)[A-Za-z_$][\w$.]*+(?:<[^;{}=\n]*+>)?(?:\[\])*+[ \t]++([A-Za-z_$][\w$]*+)[ \t]*+\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*+throws[ \t][\w$., \t]++)?[ \t]*+\{
+Spock feature methods	(?m)^[ \t]*+(?:def|void)[ \t]++\([ \t]*+\)
+Spock blocks	(?m)^[ \t]*+(?:given|when|then|expect|where|setup|cleanup)[ \t]*+:
+closures with parameters (approx)	\{[ \t]*+(?:[A-Za-z_$][\w$]*+[ \t]++)?[A-Za-z_$][\w$]*+(?:[ \t]*+,[ \t]*+(?:[A-Za-z_$][\w$]*+[ \t]++)?[A-Za-z_$][\w$]*+)*+[ \t]*+->
+static type checking	@(?:CompileStatic|TypeChecked)\b
+imports	(?m)^import[ \t]++

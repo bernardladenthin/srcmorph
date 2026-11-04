@@ -12,10 +12,14 @@ handed on as a whole.
 | File | Key | For |
 |---|---|---|
 | [`v3/file-body-java.md`](v3/file-body-java.md) | `promptKey: file-body-java` | one Java source file |
+| [`v3/file-body-oop.md`](v3/file-body-oop.md) | `promptKey: file-body-oop` | one source file of a class-based language: Java, Kotlin, Groovy, Scala |
+| [`v3/file-body-view.md`](v3/file-body-view.md) | `promptKey: file-body-view` | one server-side view: JSP, JSP fragment, tag file, Facelets |
+| [`v3/file-body-contract.md`](v3/file-body-contract.md) | `promptKey: file-body-contract` | one API contract: OpenAPI, AsyncAPI, JSON Schema, Avro, Protobuf, GraphQL |
+| [`v3/file-body-ops.md`](v3/file-body-ops.md) | `promptKey: file-body-ops` | one build, deploy or configuration file: CI, Dockerfile, Compose, Kubernetes, Helm, Ansible, Terraform |
 | [`v3/file-body-sql.md`](v3/file-body-sql.md) | `promptKey: file-body-sql` | one SQL file, as schema |
 | [`v3/file-body-shell.md`](v3/file-body-shell.md) | `promptKey: file-body-shell` | one Bash, POSIX sh or ksh93 script |
 | [`v3/file-body-perl.md`](v3/file-body-perl.md) | `promptKey: file-body-perl` | one Perl script or module |
-| [`v3/file-body-xml.md`](v3/file-body-xml.md) | `promptKey: file-body-xml` | one XML file: a POM, a Spring context, an XSD, an XSLT |
+| [`v3/file-body-xml.md`](v3/file-body-xml.md) | `promptKey: file-body-xml` | one XML file: a POM, a Spring context, a Jakarta EE descriptor, a JPA, Hibernate or MyBatis mapping, an integration route, BPMN or DMN, WSDL, an XSD, an XSLT |
 | [`v3/file-body-fallback.md`](v3/file-body-fallback.md) | `promptKey: file-body-fallback` | any other source file |
 | [`v3/package-body.md`](v3/package-body.md) | `promptKey: package-body` | a package, from its file summaries |
 | [`v3/project-body.md`](v3/project-body.md) | `promptKey: project-body` | the project overview, from the package leads |
@@ -27,6 +31,13 @@ handed on as a whole.
 | [`v3/perl-facts.tsv`](v3/perl-facts.tsv) | `factsKey: perl-facts` | the same for Perl scripts and modules |
 | [`v3/xml-facts.tsv`](v3/xml-facts.tsv) | `factsKey: xml-facts` | the same for XML, XSD and XSLT files |
 | [`v3/pom-facts.tsv`](v3/pom-facts.tsv) | `factsKey: pom-facts` | the same for Maven POMs (a rule matching `**/*pom.xml`) |
+| [`v3/kotlin-facts.tsv`](v3/kotlin-facts.tsv), [`v3/groovy-facts.tsv`](v3/groovy-facts.tsv) | `factsKey: kotlin-facts`, `groovy-facts` | Kotlin; Groovy and Spock specifications (with `file-body-oop`) |
+| [`v3/java-ee-facts.tsv`](v3/java-ee-facts.tsv) | `factsKey: java-ee-facts` | `java-facts` plus the EJB, JPA, CDI, JAX-RS, JAX-WS, Servlet, JTA and security annotations |
+| [`v3/jee-facts.tsv`](v3/jee-facts.tsv), [`v3/persistence-facts.tsv`](v3/persistence-facts.tsv), [`v3/mybatis-facts.tsv`](v3/mybatis-facts.tsv) | `factsKey: jee-facts`, `persistence-facts`, `mybatis-facts` | `web.xml`, `ejb-jar.xml`, `application.xml`; `persistence.xml`, `orm.xml`, `*.hbm.xml`; MyBatis mappers |
+| [`v3/integration-facts.tsv`](v3/integration-facts.tsv), [`v3/bpmn-facts.tsv`](v3/bpmn-facts.tsv), [`v3/wsdl-facts.tsv`](v3/wsdl-facts.tsv) | `factsKey: integration-facts`, `bpmn-facts`, `wsdl-facts` | Camel, Spring Integration, Mule and Synapse routes; BPMN and DMN; WSDL |
+| [`v3/jsp-facts.tsv`](v3/jsp-facts.tsv), [`v3/facelets-facts.tsv`](v3/facelets-facts.tsv) | `factsKey: jsp-facts`, `facelets-facts` | JSP and tag files; Facelets views (with `file-body-view`) |
+| [`v3/openapi-facts.tsv`](v3/openapi-facts.tsv) | `factsKey: openapi-facts` | OpenAPI and Swagger, YAML or JSON (with `file-body-contract`) |
+| [`v3/k8s-facts.tsv`](v3/k8s-facts.tsv), [`v3/actions-facts.tsv`](v3/actions-facts.tsv), [`v3/dockerfile-facts.tsv`](v3/dockerfile-facts.tsv) | `factsKey: k8s-facts`, `actions-facts`, `dockerfile-facts` | Kubernetes and Helm; GitHub Actions; Dockerfiles (with `file-body-ops`) |
 
 ## Prompt files
 
@@ -36,7 +47,11 @@ summaries) as a separate user message. Each file starts with a domain lead line,
 sections (Purpose, Type, Input, Output, Core logic, Public API, Dependencies, Exceptions, Concurrency
 for Java; Schema, Reads, Writes, Relationships, Routine logic for SQL; Constants and configuration for
 shell, Perl and other files; Definitions, Configuration and Dependencies for XML), with the rules against code fences, `###` headings and invented names, and the "index
-only what is literally present" guard for truncated sources.
+only what is literally present" guard for truncated sources. Every file prompt has the same secrets
+rule: a password, private key, token, API key or credentials in a URL is named, its value written as
+`***`. A configuration keeps the files that hold credentials away from the model altogether with a
+`skip` rule; the examples and the self-test carry one (`id: secrets`: `.env`, `*.tfvars`,
+`*.tfstate`, Maven's `settings.xml`, keys, `*secret*` and `*credential*` configuration files).
 
 `map-chunk.md` and `reduce-parts.md` (keys `map-chunk`, `reduce-parts`) are not prompts of their own: a rule's `mapPromptKey` and
 `reducePromptKey` append them to its prompt (after a blank line) in the map and the reduce calls of
@@ -51,6 +66,13 @@ and writes them as one line before the AI summary, for example
 `**Facts (exact, whole file):** INSERT statements: 5; VALUES rows (approx): 33; tables: 2; ...`. A
 sampled or chunked summary cannot count reliably, these lines can. Every pattern is compiled when the
 run starts, so a broken one fails it with the file and line.
+
+A line `[include]<TAB><key>` puts the counters of `<key>.tsv` of the same directory at its place,
+its `[ignore]` lines included: `jee-facts` is `xml-facts` plus the descriptor counters,
+`java-ee-facts` is `java-facts` plus the annotations, so a kind that extends another adds its own
+counters and copies none. An included file may include others; one that includes itself, also
+through others, fails the run naming the chain, and so does a label that two of the files use. A
+label must not start with `#`, which makes the line a comment.
 
 A label starting with `[ignore]` marks a region instead of a counter: its matches are blanked out
 before the other counters count, every character except the line breaks, so `^` anchors and line
@@ -75,7 +97,12 @@ again from every later opener. A shell or Perl `<<` that is a shift or sits in a
 (20 000 lines of shifts, strings or unclosed heredocs took 25 to 207 s in shell and 95 to 223 s in
 Perl, now at most 0.2 s), and the Java parameter list is read possessively, one level of parentheses
 deep (the 6 000 constants of the large corpus's enum took 8 s, now 0.1 s); `ShellFactPatternsTest`, `PerlFactPatternsTest` and
-`JavaStructureFactPatternsTest` pin these.
+`JavaStructureFactPatternsTest` pin these. `ProfileFactPatternsLinearityTest` measures all of it for
+every pattern of every file here: it repeats about 80 adversarial lines (unclosed openers and tags,
+heredoc markers, unbalanced parentheses, runs of one character) and counts the characters the
+matcher reads, which may grow at most six times for four times the input. It found six quadratic
+patterns in the 1.4.0 files (the XML and POM regions, the XSD counter, the Java type arguments and
+field initializer, the shell option arms), all fixed, and measures a new file without a change.
 
 The counters are regex heuristics, and their labels say so where they are approximate. The tests read
 these files, not copies, and count through the production extractor, so the ignore lines apply:

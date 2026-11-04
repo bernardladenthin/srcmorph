@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Dockerfile and Containerfile counters, for a rule with the prompt file-body-ops: one per line,
+# label TAB pattern (Java regex). The [ignore] line blanks comment lines (a # at the start of a line,
+# after blanks; a parser directive such as "# syntax=" is a comment too). An instruction counts at
+# the start of a line, in any case, so a word in a RUN command continued over lines does not.
+# "build stages" counts every FROM; "environment entries" an ENV or ARG instruction, not each name
+# of one. OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
+# every pattern reads linearly.
+[ignore] comments	(?m)^[ \t]*#[^\n]*+
+build stages	(?im)^[ \t]*FROM[ \t]
+RUN instructions	(?im)^[ \t]*RUN[ \t]
+COPY and ADD instructions	(?im)^[ \t]*(?:COPY|ADD)[ \t]
+environment entries	(?im)^[ \t]*(?:ENV|ARG)[ \t]
+exposed ports	(?im)^[ \t]*EXPOSE[ \t]
+users	(?im)^[ \t]*USER[ \t]
+entrypoints and commands	(?im)^[ \t]*(?:ENTRYPOINT|CMD)[ \t]
+healthchecks	(?im)^[ \t]*HEALTHCHECK[ \t]

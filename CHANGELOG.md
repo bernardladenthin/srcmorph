@@ -22,7 +22,7 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   of the sources). `ExamplesConfigBindingTest` pins the routing, the facts, the strategy and the
   chunk prompts.
 - **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
-  profile reads linearly**, the `[ignore]` lines included, over 55 adversarial lines (unclosed
+  profile reads linearly**, the `[ignore]` lines included, over 79 adversarial lines (unclosed
   openers and tags, heredoc markers, unbalanced parentheses, runs of one character). It counts the
   characters the matcher reads instead of timing it: four times the input may read at most six
   times as many (linear reads four times, quadratic sixteen), so the result is the same on any
@@ -39,6 +39,41 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 - **`{a,b}` alternatives in every glob** (`excludes`, `pathGlob`, `fileNames`), nested too:
   `**/*.{yml,yaml}`, `**/{target,build}/**`. The syntax lives once in `support.AiGlob`; a glob that
   opens a `{` it does not close fails the run, naming it.
+
+- **Profile v3 covers the kinds of an enterprise Java code base**, with four prompts and fifteen
+  fact files, so one generic prompt serves every language of a kind:
+  - `file-body-oop`: one prompt for the class-based languages (Java, Kotlin, Groovy, Scala), with
+    their facts per language: `kotlin-facts` (types, companion objects, data and sealed types,
+    functions, extension and suspend functions, constructor properties, nested comments and string
+    templates blanked), `groovy-facts` (types, typed and `def` methods, Spock features and blocks,
+    closures, GStrings and slashy strings blanked) and `java-ee-facts` (`java-facts` plus the EJB,
+    JPA, CDI, JAX-RS, JAX-WS, Servlet, JTA and security annotations).
+  - `file-body-xml` defines Jakarta EE descriptors, JPA and Hibernate mappings, MyBatis mappers,
+    Camel, Spring Integration, Mule and Synapse routes, BPMN and DMN, and WSDL, each counted by its
+    own file: `jee-facts`, `persistence-facts`, `mybatis-facts` (which reads the SQL in CDATA),
+    `integration-facts`, `bpmn-facts` (the diagram blanked) and `wsdl-facts`.
+  - `file-body-view` for JSP, tag files and Facelets (`jsp-facts`, `facelets-facts`): the data a
+    page reads, the actions it sends, its template and its server code.
+  - `file-body-contract` for OpenAPI, AsyncAPI, JSON Schema, Avro, Protobuf and GraphQL
+    (`openapi-facts`, YAML or JSON, block scalars blanked) and `file-body-ops` for CI pipelines,
+    Dockerfiles, Compose, Kubernetes, Helm, Ansible and Terraform (`k8s-facts`, `actions-facts`,
+    `dockerfile-facts`).
+
+  `JvmFactPatternsTest`, `EnterpriseXmlFactPatternsTest`, `ViewFactPatternsTest` and
+  `OpsFactPatternsTest` pin every counter on a sample of its kind with its traps; the linearity
+  test measures every pattern.
+- **A facts file can include another** (`[include]<TAB><key>`): its counters, `[ignore]` lines
+  included, at the place of the line, so `jee-facts` is `xml-facts` plus the descriptor counters and
+  copies none. A cycle fails the run naming the chain; a label two of the files use fails as before.
+- **Secrets stay out of the index.** Every file prompt names a password, private key, token, API key
+  or credentials in a URL without copying it (`DB_PASSWORD=***`): the shell, XML and fallback
+  prompts asked for "every value", so a `<password>` of a data source or a token in a script went
+  into the summary, and the default output directory `src/site/ai` is published with the Maven
+  site. The self-test, `examples/build-your-own-jar/srcmorph.yaml` and the Luna example skip the
+  files that hold credentials (`id: secrets`: `.env`, `*.tfvars`, `*.tfstate`, Maven's
+  `settings.xml`, keys, `*secret*` and `*credential*` configuration files), so they never reach a
+  model; `ExamplesConfigBindingTest` pins which names it skips and that no source file is among
+  them.
 
 ### Changed
 

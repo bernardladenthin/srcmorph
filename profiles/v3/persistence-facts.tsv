@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Persistence mapping counters (JPA persistence.xml and orm.xml, Hibernate *.hbm.xml): the counters
+# of xml-facts, its [ignore] line included (so the HQL or SQL of a query in CDATA does not count),
+# then one per mapping element, with or without a namespace prefix. "entity mappings" counts the
+# JPA <entity> and the Hibernate <class> and subclass elements; "named queries" every named query
+# of either vocabulary; "listed classes" the <class> entries of a persistence unit. A <class> of
+# persistence.xml is a listed class and, in an hbm.xml, a mapping, so each file counts it under the
+# label of its own kind and once under the other. EnterpriseXmlFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[include]	xml-facts
+persistence units	<(?:[\w.-]+:)?persistence-unit[ \t\r\n>]
+JTA data sources	<(?:[\w.-]+:)?jta-data-source[ \t\r\n>]
+non-JTA data sources	<(?:[\w.-]+:)?non-jta-data-source[ \t\r\n>]
+listed classes	<(?:[\w.-]+:)?class>
+entity mappings	<(?:[\w.-]+:)?(?:entity|class|subclass|joined-subclass|union-subclass)[ \t\r\n]
+embeddables and mapped superclasses	<(?:[\w.-]+:)?(?:embeddable|mapped-superclass)[ \t\r\n]
+named queries	<(?:[\w.-]+:)?(?:named-query|named-native-query|named-stored-procedure-query|query|sql-query)[ \t\r\n]
+associations	<(?:[\w.-]+:)?(?:many-to-one|one-to-one|one-to-many|many-to-many|element-collection)[ \t\r\n/>]
+mapping files	<(?:[\w.-]+:)?(?:mapping-file|mapping)[ \t\r\n>]
+properties	<(?:[\w.-]+:)?property[ \t\r\n]

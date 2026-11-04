@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# WSDL 1.1 and 2.0 counters (.wsdl): the counters of xml-facts, its [ignore] line included (an
+# embedded XML Schema counts there, under "XSD type definitions"), then one per WSDL element, without
+# a prefix or with wsdl: or wsdl2:, so the soap:binding and soap:operation of a binding count only
+# under "SOAP bindings". "operations" counts every <operation> of a portType, an interface and a
+# binding, so an operation bound once counts twice. EnterpriseXmlFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[include]	xml-facts
+services	<(?:wsdl2?:)?service[ \t\r\n>]
+ports and endpoints	<(?:wsdl2?:)?(?:port|endpoint)[ \t\r\n>]
+port types and interfaces	<(?:wsdl2?:)?(?:portType|interface)[ \t\r\n>]
+bindings	<(?:wsdl2?:)?binding[ \t\r\n>]
+operations	<(?:wsdl2?:)?operation[ \t\r\n>]
+messages	<(?:wsdl2?:)?message[ \t\r\n>]
+SOAP bindings	<soap(?:12)?:binding\b

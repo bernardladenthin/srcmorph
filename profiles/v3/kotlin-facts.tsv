@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Kotlin fact counters (.kt, .kts), for a rule with the shared prompt file-body-oop: one per line,
+# label TAB pattern (Java regex), counted over the whole file. The [ignore] line runs first and reads
+# the file as the Kotlin lexer does, leftmost region first: it blanks line comments, block comments
+# (nested, as Kotlin nests them), raw strings ("""...""") and string and character literals with their
+# ${...} templates, so a "fun" or "class" in a KDoc, a string or a commented-out block does not count.
+# A region that is never closed runs to the end of the file. "functions (approx)" counts every fun
+# declared at the start of a line (members, top-level, local and extension functions), not a fun
+# interface; "constructor properties" every val or var after "(" or ",", which is a primary
+# constructor's property and, rarely, a lambda's destructuring. Counts are regex heuristics: a
+# declaration that starts after another on the same line, or a string template nested more than one
+# level, is not read as the compiler reads it. JvmFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*/]++|\*(?!/)|/(?!\*)|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z))*+(?:\*/|\z)|""".*?(?:"""|\z)|"(?:[^"\\\n$]|\\.|\$(?!\{)|\$\{(?:[^{}"\n]|"(?:[^"\\\n]|\\.)*+"|\{[^{}\n]*+\})*+\})*+"|'(?:[^'\\\n]|\\.)*+'
+type declarations	(?m)^[ \t]*+(?:@[\w.:]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:public|private|internal|protected|open|abstract|sealed|final|data|enum|annotation|inner|value|inline|expect|actual|external|fun)[ \t]++)*+(?:class|interface|object)\b
+companion objects	(?m)^[ \t]*+(?:(?:public|private|internal|protected)[ \t]++)?companion[ \t]++object\b
+data classes	\bdata[ \t]++class\b
+sealed types	\bsealed[ \t]++(?:class|interface)\b
+functions (approx)	(?m)^[ \t]*+(?:@[\w.:]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:public|private|internal|protected|open|abstract|final|override|suspend|inline|infix|operator|tailrec|external|expect|actual)[ \t]++)*+fun\b(?![ \t]++interface\b)
+extension functions	\bfun[ \t]++(?:<[^>\n]*+>[ \t]*+)?[A-Za-z_][\w.]*(?:<[^>\n]*+>)?\??\.[A-Za-z_`]
+suspend functions	\bsuspend[ \t]++(?:[a-z]++[ \t]++){0,8}?fun\b
+secondary constructors	(?m)^[ \t]*+(?:(?:public|private|internal|protected)[ \t]++)?constructor[ \t]*+\(
+constructor properties (approx)	[(,][ \t\n]*+(?:@[\w.:]++(?:\([^()\n]*+\))?[ \t\n]++)*+(?:(?:public|private|internal|protected|open|override)[ \t]++)*+(?:val|var)[ \t]++[A-Za-z_`]
+const vals	\bconst[ \t]++val\b
+lateinit properties	\blateinit[ \t]++var\b
+imports	(?m)^import[ \t]++

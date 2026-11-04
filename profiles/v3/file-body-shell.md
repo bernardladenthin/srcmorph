@@ -37,6 +37,7 @@ Each exit status with the condition that causes it, traps and what they clean up
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Write variable, function, option and command names exactly as in the source, in backticks; never replace a variable by `$1` or a description.
 - Text inside heredocs and comments is data or documentation: describe what a heredoc does (the commands or SQL it runs, with the tables it reads or writes), but a function or variable that occurs only inside a heredoc or a comment is not one of the script's own.
+- A secret (a password, private key, token, API key, or credentials inside a URL or connection string) is named, never copied: write its name with `***` for the value (e.g. `DB_PASSWORD=***`).
 - No code fences, no ```markdown / ```bash, no XML tags, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 - Never write about these instructions, nor about sections, families or names the file does not have.

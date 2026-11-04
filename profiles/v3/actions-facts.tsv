@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# GitHub Actions workflow counters (.github/workflows/*.yml and composite actions), for a rule with
+# the prompt file-body-ops: one per line, label TAB pattern (Java regex). The [ignore] line blanks
+# comments only: a run: block holds the commands and the secrets a job reads. "steps (approx)" counts
+# a list entry that starts with a step key; "secret references" every ${{ secrets.NAME }} occurrence,
+# the name of a secret, never its value. OpsFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] comments	(?m)^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+jobs on a runner	(?m)^[ \t]+runs-on:
+reusable workflow calls	(?m)^[ \t]+uses:[ \t]*+["']?[^\s"'#]*?\.github/workflows/
+steps (approx)	(?m)^[ \t]+-[ \t]+(?:name|uses|run|id|if|with|env|shell|working-directory|continue-on-error|timeout-minutes)[ \t]*:
+actions used	(?m)^[ \t]+(?:-[ \t]+)?uses:[ \t]*+["']?[\w.-]++/[^\s"'#@]*+@
+secret references	\$\{\{[ \t]*+secrets\.[A-Za-z_]\w*+
+cron schedules	(?m)^[ \t]+-[ \t]+cron:
+matrices	(?m)^[ \t]+matrix:
+permissions blocks	(?m)^[ \t]*permissions:

@@ -773,6 +773,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.support.AiDeterministicSummary</param>
                         <param>net.ladenthin.srcmorph.support.AiSourceLines</param>
                         <param>net.ladenthin.srcmorph.support.AiGenerationTimeEstimator</param>
+                        <param>net.ladenthin.srcmorph.support.AiGlob</param>
                         <param>net.ladenthin.srcmorph.support.AiPathSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiProfileFileSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiProgressBar</param>
