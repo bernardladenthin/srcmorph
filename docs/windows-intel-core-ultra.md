@@ -24,8 +24,10 @@ covers every OS, CPU and GPU. Yours carries only the natives of this machine (32
 below) and the GPU module you choose.
 
 > [!NOTE]
-> This is for **srcmorph 1.4.0** (on `net.ladenthin:llama` 6.0.0); both resolve from Maven Central.
-> For 1.3.0, read this page at the `v1.3.0` tag: its configuration keys differ.
+> The jar's `pom.xml` takes **srcmorph 1.4.0** (on `net.ladenthin:llama` 6.0.0), both from Maven
+> Central; the configuration files on `main` need the next release: until it is out, `mvn install`
+> the reactor and pass `-Dsrcmorph.version=1.5.0-SNAPSHOT`, or read this page at the `v1.4.0` tag.
+> For 1.3.0, read it at the `v1.3.0` tag: its configuration keys differ.
 
 ## Step 1 — pick the GPU module, build the jar
 

@@ -337,7 +337,7 @@ files, skip generated sources, and a fallback for everything else:
       priority: 100
       condition: {pathGlob: "**/generated/**"}
     - id: java-small
-      promptKey: file-body-java-terse
+      promptKey: file-body-oop
       aiDefinitionKey: gpt-oss-16k
       condition:
         and:
@@ -353,7 +353,7 @@ files, skip generated sources, and a fallback for everything else:
             - extensions: [".java"]
             - size: {min: 16384, max: 49152}
     - id: java-large
-      promptKey: file-body-java-detailed
+      promptKey: file-body-oop
       aiDefinitionKey: gpt-oss-20B-mxfp4
       condition:
         and:

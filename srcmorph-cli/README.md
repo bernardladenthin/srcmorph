@@ -20,8 +20,9 @@ cd examples/build-your-own-jar
 java -jar target/srcmorph.jar <path-to-config.json-or-.yaml>
 ```
 
-The examples follow this repository and need srcmorph 1.4.0; against a reactor build, `mvn install` it
-and pass its version as `-Dsrcmorph.version`.
+The examples follow this repository: on `main` they need the next release; until it is out,
+`mvn install` the reactor and pass its version as `-Dsrcmorph.version` (`1.5.0-SNAPSHOT`). For 1.4.0,
+take the examples of the `v1.4.0` tag.
 
 Its `pom.xml` takes `srcmorph-cli` from Maven Central, swaps the CPU natives of every desktop
 platform (`llama-platform`) for the one natives jar of your OS/arch (picked by a Maven profile), and

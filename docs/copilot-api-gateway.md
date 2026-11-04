@@ -90,8 +90,13 @@ aiDefinitions:
 [`examples/copilot-api-gateway/srcmorph-luna.yaml`](../examples/copilot-api-gateway/srcmorph-luna.yaml)
 is the full form with one model: GPT-6 Luna (`remoteModel: gpt-6-luna`, `contextSize: 120000` as in
 the measured run below) for every file, package and the project, a rule per kind of source with
-its prompt and exact fact counters (Java, SQL, shell, Perl, POM, XML; every other file takes the
-fallback rule, for which profile v3 has no counters), and `onOversize: mapReduce` on every rule, the
+its prompt and exact fact counters (Java, SQL, shell, Perl, POM and XML, and the enterprise kinds:
+Jakarta EE code and descriptors, JPA and MyBatis mappings, Camel and other integration routes, BPMN,
+DMN, WSDL, JSP and Facelets views, OpenAPI, AsyncAPI, Protobuf, Avro and GraphQL contracts, Kotlin,
+Groovy and Scala, GitHub Actions, Kubernetes, Docker, Compose, Ansible, Terraform, Gradle,
+properties, PowerShell and batch files; every other YAML takes the ops rule without counters, every
+other file the fallback rule), a rule that skips the files holding credentials, and
+`onOversize: mapReduce` on every rule, the
 package and project rules too, so an input larger than the window is read chunk by chunk, one
 request per chunk, never sampled. It indexes the whole project (`subtrees: "."`, without
 `target/`, `.git/`, `.idea/`, `node_modules/` and the other tool directories its `excludes` name).

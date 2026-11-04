@@ -149,7 +149,8 @@ public class AiMdHeaderCodec {
     /**
      * Parses an {@link AiMdHeader} from the given header lines.
      *
-     * <p>The single-letter scalar keys ({@code H}/{@code C}/{@code D}/{@code T}/{@code G}/{@code A}/{@code X})
+     * <p>The single-letter scalar keys ({@code H}/{@code C}/{@code D}/{@code T}/{@code G}/{@code A}/{@code X}
+     * and the hashes {@code P}/{@code N}/{@code M}/{@code K})
      * map to one value each; the repeatable {@link #FIELD_KEY_F} key is collected, in encounter order, into
      * {@link AiMdHeader#children()}. Callers must pass header lines only (see {@link AiMdDocumentCodec}),
      * so a {@code - F:} line in the document body is never mistaken for a child link.</p>
@@ -205,7 +206,8 @@ public class AiMdHeaderCodec {
     }
 
     /**
-     * Renders the given header to its serialised string form: the scalar fields followed by one
+     * Renders the given header to its serialised string form: the scalar fields (the hashes
+     * {@code P}, {@code N}, {@code M} and {@code K} only when set) followed by one
      * {@link #FIELD_KEY_F} line per {@link AiMdHeader#children() child link}.
      *
      * @param header header to serialise
