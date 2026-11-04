@@ -5,10 +5,10 @@
 # Jakarta EE / Java EE fact counters for Java sources: the counters of java-facts, then the
 # component and wiring annotations of EJB, JPA, CDI, JAX-RS, JAX-WS, Servlet, JTA and security, with
 # or without their package (javax. and jakarta.; Spring's @Autowired and @Transactional too). For a
-# rule that routes Java files using these APIs (a contentMatches on their imports) next to the plain
-# Java rule. An annotation counts at the start of a line or after other annotations on it, so an
-# "@Stateless" in Javadoc prose or a comment line does not; a commented-out annotation at the start
-# of a line after "//" does not either. JvmFactPatternsTest pins every case;
+# rule that routes Java files using these APIs (a contentMatches on their imports, or on an
+# annotation written with its package) next to the plain Java rule. java-facts' [ignore] line blanks
+# comments and strings first, and an annotation counts at the start of a line or after other
+# annotations on it, so an "@Stateless" in Javadoc prose or a commented-out one does not count. JvmFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [include]	java-facts
 EJB session beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?(?:Stateless|Stateful|Singleton)\b
