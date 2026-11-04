@@ -86,6 +86,14 @@ public class SrcMorphConfigurationTest {
     }
 
     @Test
+    public void regenerateOnProfileChange_isOnByDefaultAndRoundTrips() {
+        final SrcMorphConfiguration c = new SrcMorphConfiguration();
+        assertThat(c.isRegenerateOnProfileChange(), is(true));
+        c.setRegenerateOnProfileChange(false);
+        assertThat(c.isRegenerateOnProfileChange(), is(false));
+    }
+
+    @Test
     public void planOnlyRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
         c.setPlanOnly(true);

@@ -77,9 +77,13 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 ```
 
 `P` and `N` are the CRC32 of the system prompt (with the rule's map and reduce prompts, when it names
-them) and of the fact counters the summary was written with
-(file summaries only, and only when set): a run record names them for an unchanged file, so a changed
-prompt shows which summaries it has not rewritten yet.
+them) and of the fact counters the summary was written with (file summaries only, and only when set).
+A file summary is rewritten when its source (`C`), its `aiVersion` (`A`), its node type or title
+changed, and, by default, when its rule's prompt or fact counters changed: `P` or `N` differs (a
+summary without them, written before 1.4.0, differs too). With `regenerateOnProfileChange: false`
+under `srcMorph`, a changed prompt or fact file rewrites nothing and the hashes are recorded only: a
+run record names them for an unchanged file, so it shows which summaries an older prompt wrote.
+`force` rewrites everything either way; `D`, `T` and `G` never cause a rewrite.
 ## Requirements
 - Java 8+ (the plugin and the core are Java 8 bytecode; the descriptor states Java 1.8)
 - Maven 3.6.3+
@@ -402,7 +406,8 @@ The POM sets only these; everything else is the configuration file (above).
 The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirectory`, `fileExtensions`,
 `excludes`, `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
 `profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
-`force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are described in
+`force`, `regenerateOnProfileChange`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are
+described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
 A configured subtree that does not exist, or lies outside the base directory, fails the goal; file
 extensions match with their dot and in any case.

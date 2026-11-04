@@ -83,7 +83,7 @@ public class SourceFileIndexer {
     private final AiPathSupport pathSupport = new AiPathSupport();
     private final AiTimeSupport timeSupport = new AiTimeSupport();
     private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
+    private final AiMdHeaderSupport headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
     private final AiFieldGenerationSelector fieldGenerationSelector = new AiFieldGenerationSelector();
@@ -107,6 +107,8 @@ public class SourceFileIndexer {
      * @param minFileSizeBytes exclusive lower size bound in bytes ({@code <= 0} disables it)
      * @param maxFileSizeBytes inclusive upper size bound in bytes ({@code <= 0} = unlimited)
      * @param force            when {@code true}, regenerate even when fields are populated
+     * @param regenerateOnProfileChange when {@code true}, rewrite a summary whose prompt or fact counters
+     *                         changed ({@code P} / {@code N} of its header)
      */
     public SourceFileIndexer(
             final Path baseDirectory,
@@ -118,7 +120,8 @@ public class SourceFileIndexer {
             final @Nullable Collection<String> excludes,
             final long minFileSizeBytes,
             final long maxFileSizeBytes,
-            final boolean force) {
+            final boolean force,
+            final boolean regenerateOnProfileChange) {
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
         this.fileExtensions = new ArrayList<>(fileExtensions);
@@ -129,6 +132,7 @@ public class SourceFileIndexer {
         this.minFileSizeBytes = minFileSizeBytes;
         this.maxFileSizeBytes = maxFileSizeBytes;
         this.force = force;
+        this.headerSupport = new AiMdHeaderSupport(regenerateOnProfileChange);
     }
 
     /**

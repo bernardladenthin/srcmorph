@@ -48,6 +48,7 @@ public class SrcMorphConfiguration {
     private File baseDirectory;
     private File outputDirectory = new File(DEFAULT_OUTPUT_DIRECTORY);
     private boolean force;
+    private boolean regenerateOnProfileChange = true;
     private @Nullable List<String> subtrees;
     private @Nullable List<String> excludes;
     private @Nullable List<String> fileExtensions;
@@ -118,6 +119,27 @@ public class SrcMorphConfiguration {
      */
     public void setForce(final boolean force) {
         this.force = force;
+    }
+
+    /**
+     * Returns whether a file summary is rewritten when the prompt or the fact counters it was written
+     * with changed: its header's {@code P} or {@code N} differs from the rule's current ones.
+     *
+     * @return {@code true} (the default) to rewrite it; {@code false} to rewrite only on a changed source,
+     *         {@code aiVersion} or {@link #isForce() force}, recording {@code P} and {@code N} only
+     */
+    public boolean isRegenerateOnProfileChange() {
+        return regenerateOnProfileChange;
+    }
+
+    /**
+     * Sets whether a file summary is rewritten when the prompt or the fact counters it was written with
+     * changed.
+     *
+     * @param regenerateOnProfileChange {@code false} to keep summaries of an older prompt or fact file
+     */
+    public void setRegenerateOnProfileChange(final boolean regenerateOnProfileChange) {
+        this.regenerateOnProfileChange = regenerateOnProfileChange;
     }
 
     /**

@@ -397,4 +397,108 @@ public class AiMdHeaderSupportTest {
     }
 
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="shouldWrite: prompt and facts hashes">
+    /** Prompt hash of the stored summary. */
+    private static final String STORED_P = "AAAA0001";
+
+    /** Facts hash of the stored summary. */
+    private static final String STORED_N = "BBBB0002";
+
+    /** A hash neither stored one has. */
+    private static final String OTHER_HASH = "CCCC0003";
+
+    private Path writeStoredWithHashes() throws IOException {
+        final Path target = folder.resolve("test.ai.md");
+        documentCodec.write(target, new AiMdDocument(storedHeader().withHashes(STORED_P, STORED_N), EXISTING_BODY));
+        return target;
+    }
+
+    @Test
+    public void shouldWrite_promptHashChanged_returnsTrue() throws IOException {
+        // arrange
+        final Path target = writeStoredWithHashes();
+
+        // act
+        final boolean result =
+                headerSupport.shouldWrite(false, target, storedHeader().withHashes(OTHER_HASH, STORED_N));
+
+        // assert
+        assertThat(result, is(true));
+    }
+
+    @Test
+    public void shouldWrite_factsHashChanged_returnsTrue() throws IOException {
+        // arrange
+        final Path target = writeStoredWithHashes();
+
+        // act
+        final boolean result =
+                headerSupport.shouldWrite(false, target, storedHeader().withHashes(STORED_P, OTHER_HASH));
+
+        // assert
+        assertThat(result, is(true));
+    }
+
+    @Test
+    public void shouldWrite_sameHashes_returnsFalse() throws IOException {
+        // arrange
+        final Path target = writeStoredWithHashes();
+
+        // act
+        final boolean result =
+                headerSupport.shouldWrite(false, target, storedHeader().withHashes(STORED_P, STORED_N));
+
+        // assert
+        assertThat(result, is(false));
+    }
+
+    @Test
+    public void shouldWrite_headerWithoutHashesAndARuleWithThem_returnsTrue() throws IOException {
+        // arrange: a summary written before 1.4.0 carries no P and N
+        final Path target = folder.resolve("test.ai.md");
+        documentCodec.write(target, new AiMdDocument(storedHeader(), EXISTING_BODY));
+
+        // act
+        final boolean result =
+                headerSupport.shouldWrite(false, target, storedHeader().withHashes(STORED_P, STORED_N));
+
+        // assert
+        assertThat(result, is(true));
+    }
+
+    @Test
+    public void shouldWrite_hashesChangedWithoutRegenerateOnProfileChange_returnsFalse() throws IOException {
+        // arrange
+        final AiMdHeaderSupport recordOnly = new AiMdHeaderSupport(false);
+        final Path target = writeStoredWithHashes();
+
+        // act
+        final boolean promptChanged =
+                recordOnly.shouldWrite(false, target, storedHeader().withHashes(OTHER_HASH, STORED_N));
+        final boolean factsChanged =
+                recordOnly.shouldWrite(false, target, storedHeader().withHashes(STORED_P, OTHER_HASH));
+        final boolean bothChanged =
+                recordOnly.shouldWrite(false, target, storedHeader().withHashes(OTHER_HASH, OTHER_HASH));
+
+        // assert
+        assertThat(promptChanged, is(false));
+        assertThat(factsChanged, is(false));
+        assertThat(bothChanged, is(false));
+    }
+
+    @Test
+    public void shouldWrite_checksumChangedWithoutRegenerateOnProfileChange_returnsTrue() throws IOException {
+        // arrange
+        final AiMdHeaderSupport recordOnly = new AiMdHeaderSupport(false);
+        final Path target = writeStoredWithHashes();
+
+        // act
+        final boolean result = recordOnly.shouldWrite(
+                false, target, buildHeader("87654321", FIXED_G).withHashes(STORED_P, STORED_N));
+
+        // assert
+        assertThat(result, is(true));
+    }
+    // </editor-fold>
 }

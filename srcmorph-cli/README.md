@@ -82,7 +82,8 @@ public class CConfiguration {
   (unset: `src/site/ai` below the base directory), `subtrees`, `excludes`, `fileExtensions`,
   `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
   `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations` (the file rules),
-  `factDefinitions`, `force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile` (below). A
+  `factDefinitions`, `force`, `regenerateOnProfileChange`, `planOnly`, `aiVersion`, `projectName`,
+  `runRecordFile` (below). A
   relative directory or `runRecordFile` resolves
   against the file's directory, a relative `modelPath` against `modelDirectory`, a relative
   `templateFile` or `factsFile` against `profileDirectory`; unset, those two are the file's directory

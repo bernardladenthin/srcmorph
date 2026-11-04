@@ -27,7 +27,7 @@ Major field groups:
 | Group | Fields |
 |---|---|
 | Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `minFileSizeBytes`/`maxFileSizeBytes` |
-| Output | `outputDirectory`, `force`, `planOnly`, `runRecordFile` (the JSON record of a file phase, `engine.RunRecord`) |
+| Output | `outputDirectory`, `force`, `regenerateOnProfileChange` (default `true`: a file summary whose header's `P` or `N` differs from its rule's prompt or fact counters is rewritten; `false` records them only), `planOnly`, `runRecordFile` (the JSON record of a file phase, `engine.RunRecord`) |
 | Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` (`List<AiFactDefinition>`: a `key` and `facts` or a `factsFile`) |
 | AI backend | `generationProvider` (`"mock"`, `"llamacpp-jni"` or `"openai-compatible"`; a model definition's own `provider` overrides it); every model parameter is a field of an `aiDefinitions` entry |
 | Header metadata | `pluginVersion`, `aiVersion`, `projectName` |

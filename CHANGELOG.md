@@ -22,6 +22,17 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   of the sources). `ExamplesConfigBindingTest` pins the routing, the facts, the strategy and the
   chunk prompts.
 
+### Changed
+
+- **A changed prompt or fact file rewrites the summaries it wrote** (`regenerateOnProfileChange`,
+  under `srcMorph`, default `true`). Since 1.4.0 a file summary's header records the prompt (`P`)
+  and the fact counters (`N`) it was written with, but only a changed source, `aiVersion` or `force`
+  rewrote it, so a summary of an older prompt stayed. Now a differing `P` or `N` rewrites it too,
+  which also rewrites once every summary from before 1.4.0 (no `P`). `regenerateOnProfileChange:
+  false` restores the old behavior: the hashes are recorded only. `AiMdHeaderSupportTest` and
+  `SourceFileIndexerTest` pin both settings; the plugin README's header section says what rewrites a
+  summary.
+
 ### Fixed
 
 - **`docs/copilot-api-gateway.md`** showed `maxOutputTokens: 2048` for the example, which has 4096.

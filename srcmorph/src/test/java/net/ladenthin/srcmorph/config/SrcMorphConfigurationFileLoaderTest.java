@@ -155,6 +155,23 @@ public class SrcMorphConfigurationFileLoaderTest {
         assertThat(content.getSrcMorph().getMaxFileSizeBytes(), is(4096L));
     }
 
+    @Test
+    public void load_regenerateOnProfileChange_isTrueUnlessTheFileSaysFalse() throws IOException {
+        final Path unset = write("unset.yaml", "srcMorph:\n  force: false\n");
+        final Path off = write("off.yaml", "srcMorph:\n  regenerateOnProfileChange: false\n");
+
+        assertThat(
+                SrcMorphConfigurationFileLoader.load(unset, defaultBase(), NO_PROPERTIES)
+                        .getSrcMorph()
+                        .isRegenerateOnProfileChange(),
+                is(true));
+        assertThat(
+                SrcMorphConfigurationFileLoader.load(off, defaultBase(), NO_PROPERTIES)
+                        .getSrcMorph()
+                        .isRegenerateOnProfileChange(),
+                is(false));
+    }
+
     @ParameterizedTest(name = "{0}")
     @ValueSource(
             strings = {

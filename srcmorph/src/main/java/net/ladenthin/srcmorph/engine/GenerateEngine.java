@@ -138,6 +138,7 @@ public final class GenerateEngine {
             LOGGER.info("Extensions      : {}", resolvedExtensions);
         }
         LOGGER.info("Force           : {}", config.isForce());
+        LOGGER.info("Profile change  : {}", config.isRegenerateOnProfileChange() ? "rewrites" : "recorded only");
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
 
         final List<AiFieldGenerationConfig> configured = config.getFieldGenerations();
@@ -179,7 +180,8 @@ public final class GenerateEngine {
                 config.getExcludes(),
                 config.getMinFileSizeBytes(),
                 config.getMaxFileSizeBytes(),
-                config.isForce());
+                config.isForce(),
+                config.isRegenerateOnProfileChange());
 
         // 1. Collect candidate files across the configured subtrees.
         final List<Path> candidates = new ArrayList<>();

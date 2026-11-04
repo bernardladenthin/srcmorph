@@ -26,6 +26,7 @@ import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiRangeCondition;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
+import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
@@ -41,6 +42,16 @@ public class SourceFileIndexerTest {
             final List<String> excludes,
             final long minSizeBytes,
             final long maxSizeBytes) {
+        return indexer(baseDirectory, outputRoot, excludes, minSizeBytes, maxSizeBytes, true);
+    }
+
+    private SourceFileIndexer indexer(
+            final Path baseDirectory,
+            final Path outputRoot,
+            final List<String> excludes,
+            final long minSizeBytes,
+            final long maxSizeBytes,
+            final boolean regenerateOnProfileChange) {
         return new SourceFileIndexer(
                 baseDirectory,
                 outputRoot,
@@ -51,7 +62,8 @@ public class SourceFileIndexerTest {
                 excludes,
                 minSizeBytes,
                 maxSizeBytes,
-                false);
+                false,
+                regenerateOnProfileChange);
     }
 
     private AiFieldGenerationSupport mockSupport() {
@@ -231,6 +243,59 @@ public class SourceFileIndexerTest {
         // second write — unchanged source, so it is skipped
         final AiIndexOutcome wroteAgain = indexer.indexFile(foo, rule, support, "", "");
         assertThat(wroteAgain, is(AiIndexOutcome.UNCHANGED));
+    }
+
+    @Test
+    public void indexFile_changedPromptOrFactsHash_rewritesTheSummary() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        writeJava(foo, "package com.example;\nclass Foo {}\n");
+        final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
+        final AiFieldGenerationConfig rule =
+                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final AiFieldGenerationSupport support = mockSupport();
+        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002"), is(AiIndexOutcome.WRITTEN));
+
+        // act
+        final AiIndexOutcome samePrompt = indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002");
+        final AiIndexOutcome newPrompt = indexer.indexFile(foo, rule, support, "CCCC0003", "BBBB0002");
+        final AiIndexOutcome newFacts = indexer.indexFile(foo, rule, support, "CCCC0003", "DDDD0004");
+
+        // assert
+        assertThat(samePrompt, is(AiIndexOutcome.UNCHANGED));
+        assertThat(newPrompt, is(AiIndexOutcome.WRITTEN));
+        assertThat(newFacts, is(AiIndexOutcome.WRITTEN));
+        final AiMdHeader header = documentCodec
+                .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
+                .header();
+        assertThat(header.p(), is("CCCC0003"));
+        assertThat(header.n(), is("DDDD0004"));
+    }
+
+    @Test
+    public void indexFile_changedPromptHashWithoutRegenerateOnProfileChange_keepsTheSummary() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        writeJava(foo, "package com.example;\nclass Foo {}\n");
+        final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L, false);
+        final AiFieldGenerationConfig rule =
+                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final AiFieldGenerationSupport support = mockSupport();
+        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002"), is(AiIndexOutcome.WRITTEN));
+
+        // act
+        final AiIndexOutcome outcome = indexer.indexFile(foo, rule, support, "CCCC0003", "DDDD0004");
+
+        // assert
+        assertThat(outcome, is(AiIndexOutcome.UNCHANGED));
+        final AiMdHeader header = documentCodec
+                .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
+                .header();
+        assertThat(header.p(), is("AAAA0001"));
     }
     // </editor-fold>
 
