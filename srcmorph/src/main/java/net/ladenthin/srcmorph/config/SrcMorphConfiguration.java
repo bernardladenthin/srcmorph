@@ -48,7 +48,7 @@ public class SrcMorphConfiguration {
     private File baseDirectory;
     private File outputDirectory = new File(DEFAULT_OUTPUT_DIRECTORY);
     private boolean force;
-    private boolean regenerateOnProfileChange = true;
+    private AiRegenerateOn regenerateOn = new AiRegenerateOn();
     private @Nullable List<String> subtrees;
     private @Nullable List<String> excludes;
     private @Nullable List<String> fileExtensions;
@@ -107,7 +107,7 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns whether AI fields are regenerated even when they already have a value.
+     * Returns whether every summary is rewritten, whatever {@link #getRegenerateOn()} says.
      *
      * @return {@code true} to always regenerate
      */
@@ -116,7 +116,7 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Sets whether AI fields are regenerated even when they already have a value.
+     * Sets whether every summary is rewritten, whatever {@link #getRegenerateOn()} says.
      *
      * @param force {@code true} to always regenerate
      */
@@ -125,24 +125,22 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns whether a file summary is rewritten when the prompt or the fact counters it was written
-     * with changed: its header's {@code P} or {@code N} differs from the rule's current ones.
+     * Returns which changes rewrite an existing summary, one switch per header field
+     * ({@link AiRegenerateOn}); {@link #isForce() force} rewrites every summary regardless.
      *
-     * @return {@code true} (the default) to rewrite it; {@code false} to rewrite only on a changed source,
-     *         {@code aiVersion} or {@link #isForce() force}, recording {@code P} and {@code N} only
+     * @return the switches, every one on by default
      */
-    public boolean isRegenerateOnProfileChange() {
-        return regenerateOnProfileChange;
+    public AiRegenerateOn getRegenerateOn() {
+        return regenerateOn;
     }
 
     /**
-     * Sets whether a file summary is rewritten when the prompt or the fact counters it was written with
-     * changed.
+     * Sets which changes rewrite an existing summary.
      *
-     * @param regenerateOnProfileChange {@code false} to keep summaries of an older prompt or fact file
+     * @param regenerateOn the switches; {@code null} (an empty {@code regenerateOn:}) turns every one on
      */
-    public void setRegenerateOnProfileChange(final boolean regenerateOnProfileChange) {
-        this.regenerateOnProfileChange = regenerateOnProfileChange;
+    public void setRegenerateOn(final @Nullable AiRegenerateOn regenerateOn) {
+        this.regenerateOn = regenerateOn != null ? regenerateOn : new AiRegenerateOn();
     }
 
     /**

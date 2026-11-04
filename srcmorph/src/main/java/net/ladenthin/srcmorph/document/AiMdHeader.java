@@ -44,12 +44,16 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
  *       stays machine-parseable and the AI body stays free-form. For a {@code package}: one link per
  *       child {@code .ai.md} (files and sub-packages). For a {@code project}: one link per package.
  *       Empty for a leaf {@code file}.</li>
+ *   <li><b>p</b>, <b>n</b>, <b>m</b>, <b>k</b>: the CRC32 of the prompts, the fact counters, the model
+ *       and the child summaries the summary was written with ({@code ""} when not recorded).</li>
  * </ul>
  *
  * <p>Important invariants:</p>
  * <ul>
- *   <li>Header comparison for rewrite decisions is based on all structural fields:
- *       {@code h}, {@code c}, {@code d}, {@code g}, {@code a}, {@code x}, and {@code title}.</li>
+ *   <li>A rewrite is decided by {@code h}, {@code x}, {@code title} and {@code a}, always, and by
+ *       {@code c}, {@code p}, {@code n}, {@code m} and {@code k} as the configuration's
+ *       {@code regenerateOn} switches say ({@link AiMdHeaderSupport}); {@code d}, {@code t} and
+ *       {@code g} are recorded only.</li>
  *   <li>Package aggregation must be deterministic. Child traversal order must therefore be stable,
  *       typically ascending by child file name or relative path.</li>
  *   <li>The generator should preserve the body when the structural state did not change.</li>
@@ -75,6 +79,8 @@ public final class AiMdHeader {
     private final List<String> children;
     private final String p;
     private final String n;
+    private final String m;
+    private final String k;
 
     /**
      * Creates a new {@link AiMdHeader} with an explicit child-link list.
@@ -121,19 +127,24 @@ public final class AiMdHeader {
         this.children = Collections.unmodifiableList(new ArrayList<>(children));
         this.p = "";
         this.n = "";
+        this.m = "";
+        this.k = "";
     }
 
     /**
-     * Creates a copy of {@code header} with the hashes of the prompt and the fact counters it is written
-     * with.
+     * Creates a copy of {@code header} with the hashes it is written with.
      *
      * @param header the header
-     * @param p      the CRC32 of the system prompt, or {@code ""}
+     * @param p      the CRC32 of the prompts, or {@code ""}
      * @param n      the CRC32 of the fact counters, or {@code ""}
+     * @param m      the CRC32 of the model, or {@code ""}
+     * @param k      the CRC32 of the child summaries, or {@code ""}
      */
-    private AiMdHeader(final AiMdHeader header, final String p, final String n) {
+    private AiMdHeader(final AiMdHeader header, final String p, final String n, final String m, final String k) {
         Objects.requireNonNull(p, "p");
         Objects.requireNonNull(n, "n");
+        Objects.requireNonNull(m, "m");
+        Objects.requireNonNull(k, "k");
         this.title = header.title;
         this.h = header.h;
         this.c = header.c;
@@ -145,18 +156,22 @@ public final class AiMdHeader {
         this.children = header.children;
         this.p = p;
         this.n = n;
+        this.m = m;
+        this.k = k;
     }
 
     /**
-     * Returns this header with the hashes of the prompt and the fact counters a summary is written with,
-     * so a later run can tell which prompt wrote it.
+     * Returns this header with the hashes a summary is written with, so a later run can tell what wrote
+     * it.
      *
-     * @param prompt the CRC32 of the system prompt, or {@code ""}
-     * @param facts  the CRC32 of the fact counters, or {@code ""}
-     * @return the header with both hashes
+     * @param prompt   the CRC32 of the prompts, or {@code ""}
+     * @param facts    the CRC32 of the fact counters, or {@code ""}
+     * @param model    the CRC32 of the model, or {@code ""}
+     * @param children the CRC32 of the child summaries a package or the project reads, or {@code ""}
+     * @return the header with the four hashes
      */
-    public AiMdHeader withHashes(final String prompt, final String facts) {
-        return new AiMdHeader(this, prompt, facts);
+    public AiMdHeader withHashes(final String prompt, final String facts, final String model, final String children) {
+        return new AiMdHeader(this, prompt, facts, model, children);
     }
 
     /**
@@ -259,8 +274,8 @@ public final class AiMdHeader {
     }
 
     /**
-     * Returns the CRC32 of the system prompt the summary was written with ({@code ""} when not recorded:
-     * a package or project node, or a file written before the field existed).
+     * Returns the CRC32 of the prompts the summary was written with ({@code ""} when not recorded: a
+     * project without an overview, or a summary written before the field existed).
      *
      * @return the prompt hash, or {@code ""}
      */
@@ -276,5 +291,24 @@ public final class AiMdHeader {
      */
     public String n() {
         return n;
+    }
+
+    /**
+     * Returns the CRC32 of the model the summary was written with ({@code ""} when not recorded).
+     *
+     * @return the model hash, or {@code ""}
+     */
+    public String m() {
+        return m;
+    }
+
+    /**
+     * Returns the CRC32 of the child summaries a package or the project was written from ({@code ""} for
+     * a file, or when not recorded).
+     *
+     * @return the children hash, or {@code ""}
+     */
+    public String k() {
+        return k;
     }
 }

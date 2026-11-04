@@ -733,6 +733,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement</param>
                         <param>net.ladenthin.srcmorph.indexer.AiInputWindowCalculator</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexPlan</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiHeaderHashes</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexTally</param>
                         <param>net.ladenthin.srcmorph.indexer.AiMapReduceSupport</param>
@@ -770,6 +771,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.config.AiFactDefinitionSupport</param>
                         <param>net.ladenthin.srcmorph.config.AiFactExtractor</param>
                         <param>net.ladenthin.srcmorph.config.AiFactExtractor$ReadBudget</param>
+                        <param>net.ladenthin.srcmorph.config.AiRegenerateOn</param>
                         <param>net.ladenthin.srcmorph.support.AiChecksumSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiDeterministicSummary</param>
                         <param>net.ladenthin.srcmorph.support.AiSourceLines</param>

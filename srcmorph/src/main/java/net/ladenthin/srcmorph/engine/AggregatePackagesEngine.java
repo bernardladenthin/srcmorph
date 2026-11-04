@@ -132,6 +132,7 @@ public final class AggregatePackagesEngine {
                     config.getAiVersion(),
                     resolvedSubtrees,
                     config.isForce(),
+                    config.getRegenerateOn(),
                     provider,
                     rule,
                     promptSupport,

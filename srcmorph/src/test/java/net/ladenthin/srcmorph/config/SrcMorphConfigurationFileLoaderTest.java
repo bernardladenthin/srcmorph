@@ -190,20 +190,35 @@ public class SrcMorphConfigurationFileLoaderTest {
     }
 
     @Test
-    public void load_regenerateOnProfileChange_isTrueUnlessTheFileSaysFalse() throws IOException {
+    public void load_regenerateOn_aSwitchTheFileSetsAndTheOthersOn() throws IOException {
         final Path unset = write("unset.yaml", "srcMorph:\n  force: false\n");
-        final Path off = write("off.yaml", "srcMorph:\n  regenerateOnProfileChange: false\n");
+        final Path empty = write("empty.yaml", "srcMorph:\n  regenerateOn:\n");
+        final Path off = write("off.yaml", "srcMorph:\n  regenerateOn:\n    prompt: false\n    children: false\n");
 
-        assertThat(
-                SrcMorphConfigurationFileLoader.load(unset, defaultBase(), NO_PROPERTIES)
-                        .getSrcMorph()
-                        .isRegenerateOnProfileChange(),
-                is(true));
-        assertThat(
-                SrcMorphConfigurationFileLoader.load(off, defaultBase(), NO_PROPERTIES)
-                        .getSrcMorph()
-                        .isRegenerateOnProfileChange(),
-                is(false));
+        final AiRegenerateOn unsetOn = SrcMorphConfigurationFileLoader.load(unset, defaultBase(), NO_PROPERTIES)
+                .getSrcMorph()
+                .getRegenerateOn();
+        final AiRegenerateOn emptyOn = SrcMorphConfigurationFileLoader.load(empty, defaultBase(), NO_PROPERTIES)
+                .getSrcMorph()
+                .getRegenerateOn();
+        final AiRegenerateOn offOn = SrcMorphConfigurationFileLoader.load(off, defaultBase(), NO_PROPERTIES)
+                .getSrcMorph()
+                .getRegenerateOn();
+
+        assertThat(unsetOn.isPrompt(), is(true));
+        assertThat(emptyOn.isPrompt(), is(true));
+        assertThat(offOn.isPrompt(), is(false));
+        assertThat(offOn.isChildren(), is(false));
+        assertThat(offOn.isSource(), is(true));
+        assertThat(offOn.isFacts(), is(true));
+        assertThat(offOn.isModel(), is(true));
+    }
+
+    @Test
+    public void load_regenerateOn_anUnknownSwitch_fails() throws IOException {
+        final Path file = write("typo.yaml", "srcMorph:\n  regenerateOn:\n    prompts: false\n");
+
+        assertThrows(IOException.class, () -> SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES));
     }
 
     @ParameterizedTest(name = "{0}")

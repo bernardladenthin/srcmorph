@@ -123,10 +123,17 @@ srcMorph:
     - "**/node_modules/**"
     - "**/.claude/**"                        # agent worktrees: a second copy of the sources
 
-  # A summary is rewritten when its source changed and, with true (the default), also when its rule's
-  # prompt or fact counters changed (P, N in its header): a prompt edit then costs one request per file
-  # again. false records P and N only and keeps the older summaries.
-  regenerateOnProfileChange: true
+  # When a summary is rewritten. force: true rewrites every one. Otherwise a summary is rewritten when
+  # it is missing or empty, its aiVersion changed, or a change below whose switch is true (each one is
+  # by default); false keeps the summary and records the new value at its next rewrite. Every rewrite
+  # is one request of the plan's quota: after a prompt edit, prompt: false keeps the old summaries.
+  force: false
+  regenerateOn:
+    source: true                             # C: the file's source, a package's files, the project's packages
+    prompt: true                             # P: the rule's prompts, its map and reduce prompts too
+    facts: true                              # N: the rule's fact counters
+    model: true                              # M: the rule's model (definition key, remoteModel, model file)
+    children: true                           # K: the summaries a package or the project is written from
 
   generationProvider: openai-compatible
 

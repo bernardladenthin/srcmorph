@@ -25,6 +25,17 @@ srcMorph:
   fileExtensions:
     - ".java"
 
+  # When a summary is rewritten. force: true rewrites every one. Otherwise a summary is rewritten when
+  # it is missing or empty, its aiVersion changed, or a change below whose switch is true (each one is
+  # by default); false keeps the summary and records the new value at its next rewrite.
+  force: false
+  regenerateOn:
+    source: true                             # C: the file's source, a package's files, the project's packages
+    prompt: true                             # P: the rule's prompts, its map and reduce prompts too
+    facts: true                              # N: the rule's fact counters
+    model: true                              # M: the rule's model (definition key, remoteModel, model file)
+    children: true                           # K: the summaries a package or the project is written from
+
   generationProvider: openai-compatible
 
   # The profile: the measured prompts of this repository (profiles/README.md), one file per key. A

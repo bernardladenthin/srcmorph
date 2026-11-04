@@ -870,11 +870,10 @@ public class GenerateEngineTest {
     }
 
     @Test
-    public void execute_aChangedPromptWithoutRegenerateOnProfileChange_theRecordShowsThePromptThatWroteIt()
-            throws Exception {
+    public void execute_aChangedPromptWithItsSwitchOff_theRecordShowsThePromptThatWroteIt() throws Exception {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
-        config.setRegenerateOnProfileChange(false);
+        config.getRegenerateOn().setPrompt(false);
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
         final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -1009,9 +1008,9 @@ public class GenerateEngineTest {
         reduced.setReducePromptKey("x");
 
         // act
-        final String none = GenerateEngine.promptHash(prompts, plain);
-        final String map = GenerateEngine.promptHash(prompts, mapped);
-        final String reduce = GenerateEngine.promptHash(prompts, reduced);
+        final String none = net.ladenthin.srcmorph.indexer.AiHeaderHashes.prompt(prompts, plain);
+        final String map = net.ladenthin.srcmorph.indexer.AiHeaderHashes.prompt(prompts, mapped);
+        final String reduce = net.ladenthin.srcmorph.indexer.AiHeaderHashes.prompt(prompts, reduced);
 
         // assert
         assertThat(map.equals(reduce), is(false));

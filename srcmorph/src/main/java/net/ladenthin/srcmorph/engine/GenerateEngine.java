@@ -19,6 +19,7 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
+import net.ladenthin.srcmorph.indexer.AiHeaderHashes;
 import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
 import net.ladenthin.srcmorph.indexer.AiIndexPlan;
 import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
@@ -27,7 +28,6 @@ import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.AiGenerationUsage;
-import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.support.AiProgressBar;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
@@ -61,15 +61,6 @@ public final class GenerateEngine {
 
     /** Nanoseconds per second, for converting the measured run elapsed time to whole seconds. */
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
-
-    /** The checksums of the run record's prompt and facts hashes. */
-    private static final AiChecksumSupport CHECKSUMS = new AiChecksumSupport();
-
-    /** The tag in front of a rule's map prompt in the text its prompt hash is taken over. */
-    private static final String MAP_PROMPT_TAG = "\u0000map\u0000";
-
-    /** The tag in front of a rule's reduce prompt in the text its prompt hash is taken over. */
-    private static final String REDUCE_PROMPT_TAG = "\u0000reduce\u0000";
 
     private final SrcMorphConfiguration config;
     private final AiGenerationProviderFactory providerFactory;
@@ -267,8 +258,10 @@ public final class GenerateEngine {
                                     entry.file(),
                                     entry.rule(),
                                     support,
-                                    promptHash(promptSupport, entry.rule()),
-                                    AiFactExtractor.factsHash(entry.rule().getFacts()));
+                                    AiHeaderHashes.prompt(promptSupport, entry.rule()),
+                                    AiFactExtractor.factsHash(entry.rule().getFacts()),
+                                    AiHeaderHashes.model(
+                                            aiDefinitionKey, modelDefinitionSupport.getConfig(aiDefinitionKey)));
                         } catch (final InterruptedIOException e) {
                             // an interrupt ends the run, it is not one file's failure; a timeout is one (a
                             // SocketTimeoutException is an InterruptedIOException as well)
@@ -428,29 +421,12 @@ public final class GenerateEngine {
         for (final AiFieldGenerationConfig rule : rules) {
             if (!rule.isSkip()) {
                 try {
-                    promptHash(promptSupport, rule);
+                    AiHeaderHashes.prompt(promptSupport, rule);
                 } catch (final IllegalArgumentException e) {
                     throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
                 }
             }
         }
-    }
-
-    /**
-     * Returns the CRC32 of the system prompt a rule's summaries are written with, and of its map and reduce
-     * prompts when it has them, so a change to either shows too.
-     *
-     * @param promptSupport the prompts
-     * @param rule          the rule
-     * @return the hash
-     */
-    static String promptHash(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
-        final String mapKey = rule.getMapPromptKey();
-        final String reduceKey = rule.getReducePromptKey();
-        // tagged by role, so a prompt that moves from the map to the reduce changes the hash too
-        return CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey())
-                + (mapKey != null ? MAP_PROMPT_TAG + promptSupport.systemPrompt(mapKey) : "")
-                + (reduceKey != null ? REDUCE_PROMPT_TAG + promptSupport.systemPrompt(reduceKey) : ""));
     }
 
     /**
@@ -475,7 +451,7 @@ public final class GenerateEngine {
             return fileIndexer.recordedHashes(entry.file());
         }
         return new AbstractMap.SimpleImmutableEntry<>(
-                promptHash(promptSupport, entry.rule()),
+                AiHeaderHashes.prompt(promptSupport, entry.rule()),
                 AiFactExtractor.factsHash(entry.rule().getFacts()));
     }
 
@@ -532,7 +508,7 @@ public final class GenerateEngine {
             LOGGER.info("File names      : {}", fileNames);
         }
         LOGGER.info("Force           : {}", config.isForce());
-        LOGGER.info("Profile change  : {}", config.isRegenerateOnProfileChange() ? "rewrites" : "recorded only");
+        LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
     }
 
@@ -567,7 +543,7 @@ public final class GenerateEngine {
                     config.getMinFileSizeBytes(),
                     config.getMaxFileSizeBytes(),
                     config.isForce(),
-                    config.isRegenerateOnProfileChange(),
+                    config.getRegenerateOn(),
                     config.getContentHeadChars());
         } catch (final IllegalArgumentException e) {
             throw new SrcMorphException(

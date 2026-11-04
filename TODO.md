@@ -91,8 +91,8 @@ Unreleased) except:
 - The plan's chunk estimate cannot know a counted window (it loads no model), so for a local model its
   ETA of a dense file stays an estimate.
 - `P` covers the map and reduce prompts also for files that never used them, so with
-  `regenerateOnProfileChange` (the default) a changed map or reduce prompt rewrites every file of
-  the rule, not only its chunked ones.
+  `regenerateOn.prompt` (the default) a changed map or reduce prompt rewrites every file of the rule,
+  not only its chunked ones.
 - The token count of a remote `llama-server` could use its `/tokenize`; OpenRouter has none.
 - Benchmark: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name
   rate is taken inside backticks only and by substring; recall counts names, not faithfulness (a bare

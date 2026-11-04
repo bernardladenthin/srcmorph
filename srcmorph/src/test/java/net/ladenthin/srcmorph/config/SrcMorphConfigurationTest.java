@@ -97,11 +97,30 @@ public class SrcMorphConfigurationTest {
     }
 
     @Test
-    public void regenerateOnProfileChange_isOnByDefaultAndRoundTrips() {
+    public void regenerateOn_everySwitchOnByDefault_andNullTurnsThemOnAgain() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        assertThat(c.isRegenerateOnProfileChange(), is(true));
-        c.setRegenerateOnProfileChange(false);
-        assertThat(c.isRegenerateOnProfileChange(), is(false));
+        final AiRegenerateOn defaults = c.getRegenerateOn();
+        assertThat(defaults.isSource(), is(true));
+        assertThat(defaults.isPrompt(), is(true));
+        assertThat(defaults.isFacts(), is(true));
+        assertThat(defaults.isModel(), is(true));
+        assertThat(defaults.isChildren(), is(true));
+
+        final AiRegenerateOn frozen = new AiRegenerateOn();
+        frozen.setSource(false);
+        frozen.setPrompt(false);
+        frozen.setFacts(false);
+        frozen.setModel(false);
+        frozen.setChildren(false);
+        c.setRegenerateOn(frozen);
+        assertThat(c.getRegenerateOn().isSource(), is(false));
+        assertThat(c.getRegenerateOn().isPrompt(), is(false));
+        assertThat(c.getRegenerateOn().isFacts(), is(false));
+        assertThat(c.getRegenerateOn().isModel(), is(false));
+        assertThat(c.getRegenerateOn().isChildren(), is(false));
+
+        c.setRegenerateOn(null);
+        assertThat(c.getRegenerateOn().isPrompt(), is(true));
     }
 
     @Test

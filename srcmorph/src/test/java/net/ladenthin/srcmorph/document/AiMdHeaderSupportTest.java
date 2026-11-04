@@ -398,46 +398,98 @@ public class AiMdHeaderSupportTest {
 
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="shouldWrite: prompt and facts hashes">
+    // <editor-fold defaultstate="collapsed" desc="shouldWrite: the regenerateOn switches">
     /** Prompt hash of the stored summary. */
     private static final String STORED_P = "AAAA0001";
 
     /** Facts hash of the stored summary. */
     private static final String STORED_N = "BBBB0002";
 
-    /** A hash neither stored one has. */
+    /** Model hash of the stored summary. */
+    private static final String STORED_M = "DDDD0004";
+
+    /** Children hash of the stored summary. */
+    private static final String STORED_K = "EEEE0005";
+
+    /** A value no stored field has. */
     private static final String OTHER_HASH = "CCCC0003";
+
+    /** The five fields a switch governs, in the order of {@link #withField}. */
+    private static final String[] SWITCHED_FIELDS = {"source", "prompt", "facts", "model", "children"};
+
+    private static AiMdHeader storedWithHashes() {
+        return storedHeader().withHashes(STORED_P, STORED_N, STORED_M, STORED_K);
+    }
+
+    /** The stored header with one switched field set to {@link #OTHER_HASH}. */
+    private static AiMdHeader withField(final String field) {
+        final AiMdHeader base = new AiMdHeader(
+                FIXED_TITLE,
+                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                "source".equals(field) ? OTHER_HASH : FIXED_CHECKSUM,
+                FIXED_D,
+                FIXED_T,
+                FIXED_G,
+                FIXED_A,
+                AiMdHeaderCodec.NODE_TYPE_FILE);
+        return base.withHashes(
+                "prompt".equals(field) ? OTHER_HASH : STORED_P,
+                "facts".equals(field) ? OTHER_HASH : STORED_N,
+                "model".equals(field) ? OTHER_HASH : STORED_M,
+                "children".equals(field) ? OTHER_HASH : STORED_K);
+    }
+
+    /** The switches with only {@code off} turned off. */
+    private static AiMdHeaderSupport allBut(final String off) {
+        return new AiMdHeaderSupport(
+                !"source".equals(off),
+                !"prompt".equals(off),
+                !"facts".equals(off),
+                !"model".equals(off),
+                !"children".equals(off));
+    }
 
     private Path writeStoredWithHashes() throws IOException {
         final Path target = folder.resolve("test.ai.md");
-        documentCodec.write(target, new AiMdDocument(storedHeader().withHashes(STORED_P, STORED_N), EXISTING_BODY));
+        documentCodec.write(target, new AiMdDocument(storedWithHashes(), EXISTING_BODY));
         return target;
     }
 
-    @Test
-    public void shouldWrite_promptHashChanged_returnsTrue() throws IOException {
-        // arrange
-        final Path target = writeStoredWithHashes();
-
-        // act
-        final boolean result =
-                headerSupport.shouldWrite(false, target, storedHeader().withHashes(OTHER_HASH, STORED_N));
-
-        // assert
-        assertThat(result, is(true));
+    static Stream<String> switchedFields() {
+        return Stream.of(SWITCHED_FIELDS);
     }
 
-    @Test
-    public void shouldWrite_factsHashChanged_returnsTrue() throws IOException {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("switchedFields")
+    public void shouldWrite_aSwitchedFieldChanged_rewritesOnlyWhileItsSwitchIsOn(final String field)
+            throws IOException {
         // arrange
         final Path target = writeStoredWithHashes();
 
         // act
-        final boolean result =
-                headerSupport.shouldWrite(false, target, storedHeader().withHashes(STORED_P, OTHER_HASH));
+        final boolean everySwitchOn = headerSupport.shouldWrite(false, target, withField(field));
+        final boolean itsSwitchOff = allBut(field).shouldWrite(false, target, withField(field));
+        final boolean forced = allBut(field).shouldWrite(true, target, withField(field));
 
         // assert
-        assertThat(result, is(true));
+        assertThat(everySwitchOn, is(true));
+        assertThat(itsSwitchOff, is(false));
+        assertThat(forced, is(true));
+    }
+
+    @ParameterizedTest(name = "{0} off")
+    @MethodSource("switchedFields")
+    public void shouldWrite_anotherSwitchOff_doesNotHideAChangedField(final String off) throws IOException {
+        // arrange
+        final Path target = writeStoredWithHashes();
+        final AiMdHeaderSupport support = allBut(off);
+
+        // act and assert: every other field still rewrites
+        for (final String field : SWITCHED_FIELDS) {
+            if (!field.equals(off)) {
+                assertThat(off + " off, " + field, support.shouldWrite(false, target, withField(field)), is(true));
+            }
+        }
     }
 
     @Test
@@ -446,8 +498,7 @@ public class AiMdHeaderSupportTest {
         final Path target = writeStoredWithHashes();
 
         // act
-        final boolean result =
-                headerSupport.shouldWrite(false, target, storedHeader().withHashes(STORED_P, STORED_N));
+        final boolean result = headerSupport.shouldWrite(false, target, storedWithHashes());
 
         // assert
         assertThat(result, is(false));
@@ -455,50 +506,36 @@ public class AiMdHeaderSupportTest {
 
     @Test
     public void shouldWrite_headerWithoutHashesAndARuleWithThem_returnsTrue() throws IOException {
-        // arrange: a summary written before 1.4.0 carries no P and N
+        // arrange: a summary written before the fields existed records none of them
         final Path target = folder.resolve("test.ai.md");
         documentCodec.write(target, new AiMdDocument(storedHeader(), EXISTING_BODY));
 
         // act
-        final boolean result =
-                headerSupport.shouldWrite(false, target, storedHeader().withHashes(STORED_P, STORED_N));
+        final boolean result = headerSupport.shouldWrite(false, target, storedWithHashes());
 
         // assert
         assertThat(result, is(true));
     }
 
     @Test
-    public void shouldWrite_hashesChangedWithoutRegenerateOnProfileChange_returnsFalse() throws IOException {
+    public void shouldWrite_everySwitchOff_stillRewritesAnotherAiVersion() throws IOException {
         // arrange
-        final AiMdHeaderSupport recordOnly = new AiMdHeaderSupport(false);
+        final AiMdHeaderSupport frozen = new AiMdHeaderSupport(false, false, false, false, false);
         final Path target = writeStoredWithHashes();
+        final AiMdHeader otherVersion = new AiMdHeader(
+                        FIXED_TITLE,
+                        AiMdHeaderCodec.HEADER_VERSION_1_0,
+                        OTHER_HASH,
+                        FIXED_D,
+                        FIXED_T,
+                        FIXED_G,
+                        "9.9.9",
+                        AiMdHeaderCodec.NODE_TYPE_FILE)
+                .withHashes(OTHER_HASH, OTHER_HASH, OTHER_HASH, OTHER_HASH);
 
-        // act
-        final boolean promptChanged =
-                recordOnly.shouldWrite(false, target, storedHeader().withHashes(OTHER_HASH, STORED_N));
-        final boolean factsChanged =
-                recordOnly.shouldWrite(false, target, storedHeader().withHashes(STORED_P, OTHER_HASH));
-        final boolean bothChanged =
-                recordOnly.shouldWrite(false, target, storedHeader().withHashes(OTHER_HASH, OTHER_HASH));
-
-        // assert
-        assertThat(promptChanged, is(false));
-        assertThat(factsChanged, is(false));
-        assertThat(bothChanged, is(false));
-    }
-
-    @Test
-    public void shouldWrite_checksumChangedWithoutRegenerateOnProfileChange_returnsTrue() throws IOException {
-        // arrange
-        final AiMdHeaderSupport recordOnly = new AiMdHeaderSupport(false);
-        final Path target = writeStoredWithHashes();
-
-        // act
-        final boolean result = recordOnly.shouldWrite(
-                false, target, buildHeader("87654321", FIXED_G).withHashes(STORED_P, STORED_N));
-
-        // assert
-        assertThat(result, is(true));
+        // act and assert
+        assertThat(frozen.shouldWrite(false, target, withField("source")), is(false));
+        assertThat(frozen.shouldWrite(false, target, otherVersion), is(true));
     }
     // </editor-fold>
 }

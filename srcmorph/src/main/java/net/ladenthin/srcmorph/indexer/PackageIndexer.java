@@ -8,12 +8,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
+import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.AiRegenerateOn;
 import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
@@ -101,7 +104,17 @@ public class PackageIndexer {
     private final AiPathSupport pathSupport = new AiPathSupport();
     private final AiTimeSupport timeSupport = new AiTimeSupport();
     private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
+    private final AiMdHeaderSupport headerSupport;
+
+    /** The CRC32 of the rule's prompts ({@code P}). */
+    private final String promptHash;
+
+    /** The CRC32 of the rule's fact counters ({@code N}), {@code ""} without. */
+    private final String factsHash;
+
+    /** The CRC32 of the rule's model ({@code M}). */
+    private final String modelHash;
+
     private final AiMdChildEntryLineFormatter childEntryLineFormatter = new AiMdChildEntryLineFormatter();
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
@@ -117,7 +130,9 @@ public class PackageIndexer {
      * @param pluginVersion          plugin version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
      * @param sourceSubtrees         source subtrees in scope; may be empty
-     * @param force                  when {@code true}, regenerate even when fields are populated
+     * @param force                  when {@code true}, rewrite every package, whatever {@code regenerateOn}
+     *                               says
+     * @param regenerateOn           which changed header fields rewrite a package
      * @param generationProvider     AI provider used to generate fields
      * @param rule                   the package phase's rule: its prompt and model
      * @param promptSupport          prompt lookup
@@ -130,6 +145,7 @@ public class PackageIndexer {
             final String aiVersion,
             final Collection<Path> sourceSubtrees,
             final boolean force,
+            final AiRegenerateOn regenerateOn,
             final AiGenerationProvider generationProvider,
             final AiFieldGenerationConfig rule,
             final AiPromptSupport promptSupport,
@@ -147,7 +163,17 @@ public class PackageIndexer {
         }
         this.aiSubtrees = ai;
         this.force = force;
+        this.headerSupport = new AiMdHeaderSupport(
+                regenerateOn.isSource(),
+                regenerateOn.isPrompt(),
+                regenerateOn.isFacts(),
+                regenerateOn.isModel(),
+                regenerateOn.isChildren());
         this.rule = rule.copy();
+        this.promptHash = AiHeaderHashes.prompt(promptSupport, rule);
+        this.factsHash = AiFactExtractor.factsHash(rule.getFacts());
+        this.modelHash = AiHeaderHashes.model(
+                rule.getAiDefinitionKey(), modelDefinitionSupport.getConfig(rule.getAiDefinitionKey()));
         this.fieldGenerationSupport = new AiFieldGenerationSupport(
                 generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
     }
@@ -238,6 +264,10 @@ public class PackageIndexer {
     private AiIndexOutcome writePackageFile(final Path directory) throws IOException {
         final List<String> contents = collectContents(directory);
         final List<String> childLinks = collectChildLinks(directory);
+        // the child summaries the model reads: their hash (K) tells a file summary rewritten over the same
+        // source, which leaves the package's checksum (C) as it was
+        final StringBuilder summaries = new StringBuilder();
+        final int bodyCount = appendChildSummaries(summaries, directory);
         final Path packageFile = directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME);
 
         final String nodeName = outputRoot.relativize(directory).toString().replace('\\', '/');
@@ -247,22 +277,27 @@ public class PackageIndexer {
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
-                title,
-                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                packageChecksum,
-                packageDate,
-                generatedAt,
-                pluginVersion,
-                aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE,
-                childLinks);
+                        title,
+                        AiMdHeaderCodec.HEADER_VERSION_1_0,
+                        packageChecksum,
+                        packageDate,
+                        generatedAt,
+                        pluginVersion,
+                        aiVersion,
+                        AiMdHeaderCodec.NODE_TYPE_PACKAGE,
+                        childLinks)
+                .withHashes(
+                        promptHash,
+                        factsHash,
+                        modelHash,
+                        AiHeaderHashes.children(Collections.singletonList(summaries.toString())));
 
         if (!headerSupport.shouldWrite(force, packageFile, baseHeader)) {
             LOGGER.info("Unchanged package AI index file: {}", packageFile);
             return AiIndexOutcome.UNCHANGED;
         }
 
-        final String sourceText = buildPackageSourceText(baseHeader, directory, contents);
+        final String sourceText = buildPackageSourceText(baseHeader, contents, summaries, bodyCount);
 
         final AiGenerationResult result =
                 fieldGenerationSupport.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
@@ -376,18 +411,18 @@ public class PackageIndexer {
      * warning — so large packages degrade gracefully without a bespoke truncation scheme.</p>
      *
      * @param header    the package's own header (its title and metadata)
-     * @param directory the package directory whose child {@code .ai.md} bodies are embedded
      * @param contents  pre-collected child entry names, used only for the no-body fallback
+     * @param summaries the child summary blocks ({@code appendChildSummaries})
+     * @param bodyCount how many of them had a body
      * @return the rendered source text for the AI prompt
-     * @throws IOException if a child {@code .ai.md} file cannot be read
      */
     private String buildPackageSourceText(
-            final AiMdHeader header, final Path directory, final Collection<String> contents) throws IOException {
+            final AiMdHeader header,
+            final Collection<String> contents,
+            final CharSequence summaries,
+            final int bodyCount) {
         final StringBuilder builder = new StringBuilder();
         appendPackageHeaderLines(builder, header);
-
-        final StringBuilder summaries = new StringBuilder();
-        final int bodyCount = appendChildSummaries(summaries, directory);
 
         if (bodyCount > 0) {
             builder.append(summaries);

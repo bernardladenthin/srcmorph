@@ -62,6 +62,12 @@ public class AiMdHeaderCodec {
     /** Header field key for the CRC32 of the fact counters a summary was written with; only when set. */
     public static final String FIELD_KEY_N = "N";
 
+    /** Header field key for the CRC32 of the model a summary was written with; only when set. */
+    public static final String FIELD_KEY_M = "M";
+
+    /** Header field key for the CRC32 of the child summaries a package or the project read; only when set. */
+    public static final String FIELD_KEY_K = "K";
+
     /**
      * Field key for a child-link line ({@code F}). Unlike the scalar keys this one may appear
      * multiple times — once per child — and the values are collected into {@link AiMdHeader#children()}.
@@ -191,7 +197,11 @@ public class AiMdHeaderCodec {
                         valueOrEmpty(values, FIELD_KEY_A),
                         valueOrEmpty(values, FIELD_KEY_X),
                         children)
-                .withHashes(valueOrEmpty(values, FIELD_KEY_P), valueOrEmpty(values, FIELD_KEY_N));
+                .withHashes(
+                        valueOrEmpty(values, FIELD_KEY_P),
+                        valueOrEmpty(values, FIELD_KEY_N),
+                        valueOrEmpty(values, FIELD_KEY_M),
+                        valueOrEmpty(values, FIELD_KEY_K));
     }
 
     /**
@@ -211,9 +221,11 @@ public class AiMdHeaderCodec {
                         + "- A: %s\n"
                         + "- X: %s\n",
                 header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x()));
-        // the hashes only when recorded, so a package or project header (and an older file) stays as it was
+        // the hashes only when recorded: a file has no K, a rule without counters no N
         appendWhenSet(builder, FIELD_KEY_P, header.p());
         appendWhenSet(builder, FIELD_KEY_N, header.n());
+        appendWhenSet(builder, FIELD_KEY_M, header.m());
+        appendWhenSet(builder, FIELD_KEY_K, header.k());
         for (final String child : header.children()) {
             builder.append(CHILD_FIELD_LINE_PREFIX).append(child).append('\n');
         }

@@ -134,21 +134,28 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   100 % in all three with the shared prompt
   ([`remeasure-2026-11-04/`](docs/ai-index-benchmark/remeasure-2026-11-04/README.md)). The self-test,
   the examples, the plugin-it fixture and `run.py` (`--java-prompt`, default `file-body-oop`) name it.
-- **A changed prompt or fact file rewrites the summaries it wrote** (`regenerateOnProfileChange`,
-  under `srcMorph`, default `true`). Since 1.4.0 a file summary's header records the prompt (`P`)
-  and the fact counters (`N`) it was written with, but only a changed source, `aiVersion` or `force`
-  rewrote it, so a summary of an older prompt stayed. Now a differing `P` or `N` rewrites it too,
-  which also rewrites once every summary from before 1.4.0 (no `P`). `regenerateOnProfileChange:
-  false` restores the old behavior: the hashes are recorded only. `AiMdHeaderSupportTest` and
-  `SourceFileIndexerTest` pin both settings; the plugin README's header section says what rewrites a
-  summary. Every file prompt of profile v3 changed in this release (the secrets rule), so with the
-  default the first run after the upgrade rewrites every file summary, one model call each; set
-  `regenerateOnProfileChange: false` for that run to keep them.
+- **What rewrites a summary is set per cause** (`regenerateOn` under `srcMorph`: `source`,
+  `prompt`, `facts`, `model`, `children`, each `true` by default), next to `force`, which rewrites
+  every summary whatever the switches say. Each switch compares one header field: `C` (the source; a
+  package's files, the project's packages), `P` (the rule's prompts, map and reduce included), `N`
+  (its fact counters), the new `M` (the model: definition key, `remoteModel`, model file name) and
+  the new `K` (the child summaries a package or the project is written from). A missing or empty
+  summary, another header format, node, title or `aiVersion` rewrite it always; `D`, `T` and `G` are
+  recorded only. Up to now only a changed source, `aiVersion` or `force` rewrote a summary (1.4.0
+  recorded `P` and `N` without acting on them), so a summary of an older prompt or model stayed; and
+  a package was never rewritten when its files were re-summarized over unchanged sources, since its
+  checksum is built from theirs, nor when its own prompt changed: packages and the project now
+  record `P`, `M` and `K` too (the project's checksum is its packages, no longer folded with the
+  overview's prompt key and model). A field a summary does not record counts as changed, so the
+  first run after the upgrade rewrites every summary, one model call each; set the switches to
+  `false` for that run to keep them. `AiMdHeaderSupportTest` pins every switch on and off,
+  `PackageIndexerTest` and `ProjectIndexerTest` the children and overview hashes; the plugin README's
+  header section says what rewrites a summary, and every example configuration shows the switches.
 - **`java-facts` counts code only**: an `[ignore]` line blanks comments, Javadoc, text blocks,
   strings and character literals, so a `public` or `class` in them no longer counts, and
   `TODO/FIXME` is a `[raw]` counter, counted in the comments as before. The facts line of a Java file
   with such text changes (`java-ee-facts` includes it), and so does the facts hash, which with
-  `regenerateOnProfileChange` rewrites the Java summaries that carry facts.
+  `regenerateOn.facts` rewrites the Java summaries that carry facts.
 - **DMN has its own counters**: `bpmn-facts` counts BPMN only (its "decisions" and "decision rules"
   went to `dmn-facts`), and the Luna example and `run.py` route `.dmn` to `dmn-facts`.
 - **The model reads a file's path below the base directory**, not its name alone, at the head of the

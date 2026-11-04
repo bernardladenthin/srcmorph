@@ -34,6 +34,7 @@ SPDX-License-Identifier: Apache-2.0
     <Match>
         <Or>
             <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationConfig"/>
+            <Class name="net.ladenthin.srcmorph.config.AiRegenerateOn"/>
             <Class name="net.ladenthin.srcmorph.prompt.AiPromptDefinition"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
@@ -610,6 +611,17 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniConfig"/>
+        <Method name="equals"/>
+        <Bug pattern="CC_CYCLOMATIC_COMPLEXITY"/>
+    </Match>
+
+    <!--
+        CC_CYCLOMATIC_COMPLEXITY on AiMdHeader.equals, for the reason above: Lombok's @EqualsAndHashCode
+        compares one field per branch, and the header crossed the threshold when it gained the model
+        and children hashes (M, K) next to P and N. Scoped to the one class and method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.document.AiMdHeader"/>
         <Method name="equals"/>
         <Bug pattern="CC_CYCLOMATIC_COMPLEXITY"/>
     </Match>

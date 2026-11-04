@@ -11,8 +11,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
+import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.AiRegenerateOn;
 import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -84,12 +86,6 @@ public class ProjectIndexer {
      */
     private static final String CONTEXT_TYPE_PROJECT = "project";
 
-    /**
-     * Separator joining the overview prompt key and AI definition key into the generation signature
-     * folded into the {@code c} checksum, so a change of overview prompt or model rebuilds the index.
-     */
-    private static final String OVERVIEW_SIGNATURE_SEPARATOR = ":";
-
     /** Prefix of the first line of the overview source, naming the project for the model. */
     private static final String OVERVIEW_SOURCE_TITLE_PREFIX = "Project: ";
 
@@ -110,9 +106,18 @@ public class ProjectIndexer {
     /** AI generation loop used for the overview; {@code null} when the overview is disabled. */
     private final @Nullable AiFieldGenerationSupport fieldGenerationSupport;
 
+    /** The CRC32 of the overview's prompts ({@code P}), {@code ""} without an overview. */
+    private final String overviewPromptHash;
+
+    /** The CRC32 of the overview's fact counters ({@code N}), {@code ""} without. */
+    private final String overviewFactsHash;
+
+    /** The CRC32 of the overview's model ({@code M}), {@code ""} without an overview. */
+    private final String overviewModelHash;
+
     private final AiTimeSupport timeSupport = new AiTimeSupport();
     private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
+    private final AiMdHeaderSupport headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final AiMdLeadExtractor leadExtractor = new AiMdLeadExtractor();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
@@ -124,10 +129,15 @@ public class ProjectIndexer {
      * @param pluginVersion plugin version recorded in the header
      * @param aiVersion     AI summarisation logic version recorded in the header
      * @param force         when {@code true}, rewrite the project index even when it is unchanged
+     * @param regenerateOn  which changed header fields rewrite the project index
      */
     public ProjectIndexer(
-            final String projectTitle, final String pluginVersion, final String aiVersion, final boolean force) {
-        this(projectTitle, pluginVersion, aiVersion, force, null, null, null, null);
+            final String projectTitle,
+            final String pluginVersion,
+            final String aiVersion,
+            final boolean force,
+            final AiRegenerateOn regenerateOn) {
+        this(projectTitle, pluginVersion, aiVersion, force, regenerateOn, null, null, null, null);
     }
 
     /**
@@ -141,6 +151,7 @@ public class ProjectIndexer {
      * @param pluginVersion           plugin version recorded in the header
      * @param aiVersion               AI summarisation logic version recorded in the header
      * @param force                   when {@code true}, rewrite the project index even when unchanged
+     * @param regenerateOn            which changed header fields rewrite the project index
      * @param generationProvider      AI provider for the overview; {@code null} disables it
      * @param overviewFieldGeneration overview prompt + model; {@code null} disables it
      * @param promptSupport           prompt lookup; {@code null} disables the overview
@@ -151,6 +162,7 @@ public class ProjectIndexer {
             final String pluginVersion,
             final String aiVersion,
             final boolean force,
+            final AiRegenerateOn regenerateOn,
             final @Nullable AiGenerationProvider generationProvider,
             final @Nullable AiFieldGenerationConfig overviewFieldGeneration,
             final @Nullable AiPromptSupport promptSupport,
@@ -159,6 +171,12 @@ public class ProjectIndexer {
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
         this.force = force;
+        this.headerSupport = new AiMdHeaderSupport(
+                regenerateOn.isSource(),
+                regenerateOn.isPrompt(),
+                regenerateOn.isFacts(),
+                regenerateOn.isModel(),
+                regenerateOn.isChildren());
         // Defensive copy: the field generation is a mutable configuration JavaBean owned by the caller.
         this.overviewFieldGeneration = copyFieldGeneration(overviewFieldGeneration);
         if (generationProvider != null
@@ -167,8 +185,16 @@ public class ProjectIndexer {
                 && modelDefinitionSupport != null) {
             this.fieldGenerationSupport = new AiFieldGenerationSupport(
                     generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
+            this.overviewPromptHash = AiHeaderHashes.prompt(promptSupport, overviewFieldGeneration);
+            this.overviewFactsHash = AiFactExtractor.factsHash(overviewFieldGeneration.getFacts());
+            this.overviewModelHash = AiHeaderHashes.model(
+                    overviewFieldGeneration.getAiDefinitionKey(),
+                    modelDefinitionSupport.getConfig(overviewFieldGeneration.getAiDefinitionKey()));
         } else {
             this.fieldGenerationSupport = null;
+            this.overviewPromptHash = "";
+            this.overviewFactsHash = "";
+            this.overviewModelHash = "";
         }
     }
 
@@ -232,31 +258,28 @@ public class ProjectIndexer {
         final String packagesSection = buildPackagesSection(entries);
         final String deterministicBody = leadLine + "\n\n" + packagesSection;
 
-        // The overview generation signature (empty when off) is folded into the checksum so the
-        // index rebuilds when the overview prompt/model changes — but the AI output is not, so an
-        // unchanged project is never re-inferred. The same (overview != null && support != null) guard
-        // gates both the signature and the generation below, so the two stay consistent.
+        // C: the packages the project lists; K: their leads, which the listing and the overview read; P
+        // and M: the overview's prompts and model (empty without an overview)
         final AiFieldGenerationConfig overview = this.overviewFieldGeneration;
         final AiFieldGenerationSupport support = this.fieldGenerationSupport;
-        final String signature;
-        if (overview != null && support != null) {
-            signature = overview.getPromptKey() + OVERVIEW_SIGNATURE_SEPARATOR + overview.getAiDefinitionKey();
-        } else {
-            signature = "";
+        final List<String> leads = new ArrayList<>(entries.size());
+        for (final PackageEntry entry : entries) {
+            leads.add(entry.lead());
         }
-        final String checksum = checksumSupport.calculateCrc32Hex(deterministicBody + signature);
+        final String checksum = checksumSupport.calculateCrc32Hex(String.join("\n", packageLinks));
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
-                projectTitle,
-                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                checksum,
-                latestDate,
-                generatedAt,
-                pluginVersion,
-                aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_PROJECT,
-                packageLinks);
+                        projectTitle,
+                        AiMdHeaderCodec.HEADER_VERSION_1_0,
+                        checksum,
+                        latestDate,
+                        generatedAt,
+                        pluginVersion,
+                        aiVersion,
+                        AiMdHeaderCodec.NODE_TYPE_PROJECT,
+                        packageLinks)
+                .withHashes(overviewPromptHash, overviewFactsHash, overviewModelHash, AiHeaderHashes.children(leads));
 
         final Path projectFile = rootDirectory.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
 

@@ -55,24 +55,29 @@ public class AiMdHeaderCodecTest {
                         "1.0.0",
                         "0.0.0",
                         AiMdHeaderCodec.NODE_TYPE_FILE)
-                .withHashes("0A1B2C3D", "4E5F6071");
+                .withHashes("0A1B2C3D", "4E5F6071", "8A9B0C1D", "2E3F4A5B");
 
         // act
         final String encoded = headerCodec.write(original);
         final AiMdHeader decoded = headerCodec.read(Arrays.asList(encoded.split("\\R")));
 
         // assert
-        assertThat(encoded, org.hamcrest.CoreMatchers.containsString("- X: file\n- P: 0A1B2C3D\n- N: 4E5F6071\n"));
+        assertThat(
+                encoded,
+                org.hamcrest.CoreMatchers.containsString(
+                        "- X: file\n- P: 0A1B2C3D\n- N: 4E5F6071\n- M: 8A9B0C1D\n- K: 2E3F4A5B\n"));
         assertThat(decoded, is(equalTo(original)));
         assertThat(decoded.p(), is("0A1B2C3D"));
         assertThat(decoded.n(), is("4E5F6071"));
+        assertThat(decoded.m(), is("8A9B0C1D"));
+        assertThat(decoded.k(), is("2E3F4A5B"));
     }
 
     @Test
     public void write_withoutHashes_writesNoPOrNLine() {
         final AiMdHeader header = new AiMdHeader(
                         "A.java", "1.0", "C", "D", "T", "G", "A", AiMdHeaderCodec.NODE_TYPE_FILE)
-                .withHashes("", "4E5F6071");
+                .withHashes("", "4E5F6071", "", "");
 
         final String encoded = headerCodec.write(header);
 

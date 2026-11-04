@@ -24,6 +24,7 @@ import net.ladenthin.srcmorph.config.AiFileContext;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
+import net.ladenthin.srcmorph.config.AiRegenerateOn;
 import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -55,7 +56,7 @@ import org.slf4j.LoggerFactory;
  *       and goal-level size-band filters.</li>
  *   <li>{@link #classify(Collection, List)} — route each candidate to a rule (prompt + model), a skip,
  *       or unmatched, producing an {@link AiIndexPlan}.</li>
- *   <li>{@link #indexFile(Path, AiFieldGenerationConfig, AiFieldGenerationSupport, String, String)} — write
+ *   <li>{@link #indexFile(Path, AiFieldGenerationConfig, AiFieldGenerationSupport, String, String, String)} — write
  *       one file's {@code .ai.md} with a given rule, using a provider-bearing support (one per model
  *       group).</li>
  * </ol>
@@ -120,9 +121,8 @@ public final class SourceFileIndexer {
      *                         for source files to skip; may be {@code null} or empty
      * @param minFileSizeBytes exclusive lower size bound in bytes ({@code <= 0} disables it)
      * @param maxFileSizeBytes inclusive upper size bound in bytes ({@code <= 0} = unlimited)
-     * @param force            when {@code true}, regenerate even when fields are populated
-     * @param regenerateOnProfileChange when {@code true}, rewrite a summary whose prompt or fact counters
-     *                         changed ({@code P} / {@code N} of its header)
+     * @param force            when {@code true}, rewrite every summary, whatever {@code regenerateOn} says
+     * @param regenerateOn     which changed header fields rewrite a summary
      * @param contentHeadChars characters of a file the {@code contentMatches} and {@code interpreters}
      *                         conditions read, at least {@value AiShebang#MAX_LINE_CHARS} (a whole
      *                         {@code #!} line)
@@ -143,7 +143,7 @@ public final class SourceFileIndexer {
             final long minFileSizeBytes,
             final long maxFileSizeBytes,
             final boolean force,
-            final boolean regenerateOnProfileChange,
+            final AiRegenerateOn regenerateOn,
             final int contentHeadChars) {
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
@@ -173,7 +173,12 @@ public final class SourceFileIndexer {
         this.minFileSizeBytes = minFileSizeBytes;
         this.maxFileSizeBytes = maxFileSizeBytes;
         this.force = force;
-        this.headerSupport = new AiMdHeaderSupport(regenerateOnProfileChange);
+        this.headerSupport = new AiMdHeaderSupport(
+                regenerateOn.isSource(),
+                regenerateOn.isPrompt(),
+                regenerateOn.isFacts(),
+                regenerateOn.isModel(),
+                regenerateOn.isChildren());
     }
 
     /**
@@ -384,6 +389,8 @@ public final class SourceFileIndexer {
      * @param support    the field-generation support holding the model group's provider
      * @param promptHash the CRC32 of the rule's prompts, or {@code ""} to write no {@code P}
      * @param factsHash  the CRC32 of the rule's fact counters, or {@code ""} to write no {@code N}
+     * @param modelHash  the CRC32 of the rule's model ({@link AiHeaderHashes#model}), or {@code ""} to write
+     *                   no {@code M}
      * @return {@link AiIndexOutcome#WRITTEN}, {@link AiIndexOutcome#UNCHANGED} when it was already up to
      *         date, or {@link AiIndexOutcome#FAILED} when the model's answer was incomplete and nothing
      *         was written
@@ -394,7 +401,8 @@ public final class SourceFileIndexer {
             final AiFieldGenerationConfig rule,
             final AiFieldGenerationSupport support,
             final String promptHash,
-            final String factsHash)
+            final String factsHash,
+            final String modelHash)
             throws IOException {
         final Path targetFile = targetFile(sourceFile);
 
@@ -423,7 +431,7 @@ public final class SourceFileIndexer {
                         pluginVersion,
                         aiVersion,
                         AiMdHeaderCodec.NODE_TYPE_FILE)
-                .withHashes(promptHash, factsHash);
+                .withHashes(promptHash, factsHash, modelHash, "");
 
         if (!headerSupport.shouldWrite(force, targetFile, baseHeader)) {
             LOGGER.info("Unchanged AI index file: {}", targetFile);

@@ -62,6 +62,7 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - X: file
 - P: 3F2A91C0
 - N: 7D04E5B1
+- M: 5C1E08A2
 ---
 > Immutable value type pairing a deterministic metadata header with the AI-generated markdown body of one .ai.md document.
 
@@ -76,14 +77,32 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - `body() -> String` — the AI-generated markdown body.
 ```
 
-`P` and `N` are the CRC32 of the system prompt (with the rule's map and reduce prompts, when it names
-them) and of the fact counters the summary was written with (file summaries only, and only when set).
-A file summary is rewritten when its source (`C`), its `aiVersion` (`A`), its node type or title
-changed, and, by default, when its rule's prompt or fact counters changed: `P` or `N` differs (a
-summary without them, written before 1.4.0, differs too). With `regenerateOnProfileChange: false`
-under `srcMorph`, a changed prompt or fact file rewrites nothing and the hashes are recorded only: a
-run record names them for an unchanged file, so it shows which summaries an older prompt wrote.
-`force` rewrites everything either way; `D`, `T` and `G` never cause a rewrite.
+`P`, `N`, `M` and `K` are the CRC32 of what the summary was written with, each only when set: the
+system prompt (with the rule's map and reduce prompts, when it names them), the fact counters, the
+model (the definition's key, its `remoteModel` and the file name of its `modelPath`) and, for a
+package or the project, the child summaries it read. A summary is rewritten when it is missing or
+empty, or its header format (`H`), node type (`X`), title or `aiVersion` (`A`) changed, always; and
+when one of the fields below differs while its switch under `regenerateOn` is `true`, as each is by
+default (a summary that does not record a field differs too):
+
+| Switch | Field | Changes with |
+|---|---|---|
+| `source` | `C` | the file's source; a package's files; the packages the project lists |
+| `prompt` | `P` | the rule's prompts |
+| `facts` | `N` | the rule's fact counters |
+| `model` | `M` | the rule's model definition, or the model it names |
+| `children` | `K` | a summary a package or the project is written from (a file re-summarized over the same source) |
+
+```yaml
+srcMorph:
+  force: false            # true: rewrite every summary, whatever regenerateOn says
+  regenerateOn:
+    prompt: false         # e.g. keep the summaries of the old prompt after a prompt edit
+```
+
+A switch set to `false` keeps the summary and records the new value at its next rewrite: a run
+record names the hashes for an unchanged file, so it shows which summaries an older prompt wrote.
+`D`, `T` and `G` never cause a rewrite; a sampling parameter is in no hash (raise `aiVersion`).
 ## Requirements
 - Java 8+ (the plugin and the core are Java 8 bytecode; the descriptor states Java 1.8)
 - Maven 3.6.3+
@@ -417,7 +436,7 @@ The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirec
 `fileNames`, `fileInterpreters`, `contentHeadChars`, `excludes`, `minFileSizeBytes` /
 `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
 `profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
-`force`, `regenerateOnProfileChange`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are
+`force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are
 described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
 A configured subtree that does not exist, or lies outside the base directory, fails the goal; file

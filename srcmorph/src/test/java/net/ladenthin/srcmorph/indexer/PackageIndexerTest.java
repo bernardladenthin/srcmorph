@@ -64,6 +64,7 @@ public class PackageIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 false,
+                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
                 new MockAiGenerationProvider(),
                 CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
@@ -118,6 +119,7 @@ public class PackageIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 false,
+                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
                 provider,
                 CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
@@ -157,6 +159,7 @@ public class PackageIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 false,
+                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
                 provider,
                 CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
@@ -208,6 +211,7 @@ public class PackageIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 false,
+                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
                 provider,
                 CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
@@ -245,6 +249,7 @@ public class PackageIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 false,
+                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
                 new MockAiGenerationProvider(),
                 CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
@@ -259,6 +264,60 @@ public class PackageIndexerTest {
         assertThat(
                 document.header().children(),
                 is(equalTo(Arrays.asList("[Bar.java](Bar.java.ai.md)", "[Foo.java](Foo.java.ai.md)"))));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="regenerateOn: children">
+    private PackageIndexer indexer(final Path temp, final net.ladenthin.srcmorph.config.AiRegenerateOn regenerateOn) {
+        return new PackageIndexer(
+                temp,
+                temp.resolve("ai"),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                regenerateOn,
+                new MockAiGenerationProvider(),
+                CommonTestFixtures.createPackageFieldGeneration(),
+                new AiPromptSupport(CommonTestFixtures.createPackagePromptDefinitions()),
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+    }
+
+    @Test
+    public void aggregate_aChildSummaryRewrittenOverTheSameSource_rewritesThePackageWhileChildrenIsOn()
+            throws Exception {
+        // arrange: a file summary rewritten for a new prompt keeps its source checksum C
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path packageDirectory = temp.resolve("ai/main/java/com/example");
+        Files.createDirectories(packageDirectory);
+        final Path child = packageDirectory.resolve("Foo.java.ai.md");
+        final Path packageFile = packageDirectory.resolve("package.ai.md");
+        writeChildFile(child, "Foo.java", "> Old summary of Foo.\n");
+        final net.ladenthin.srcmorph.config.AiRegenerateOn childrenOff =
+                new net.ladenthin.srcmorph.config.AiRegenerateOn();
+        childrenOff.setChildren(false);
+        indexer(temp, new net.ladenthin.srcmorph.config.AiRegenerateOn()).aggregate(temp.resolve("ai"));
+        final AiMdHeader first = documentCodec.read(packageFile).header();
+
+        // act
+        final AiIndexTally unchanged = indexer(temp, new net.ladenthin.srcmorph.config.AiRegenerateOn())
+                .aggregate(temp.resolve("ai"));
+        writeChildFile(child, "Foo.java", "> New summary of Foo.\n");
+        final AiIndexTally frozen = indexer(temp, childrenOff).aggregate(temp.resolve("ai"));
+        final AiIndexTally rewritten = indexer(temp, new net.ladenthin.srcmorph.config.AiRegenerateOn())
+                .aggregate(temp.resolve("ai"));
+
+        // assert
+        assertThat(first.p().isEmpty(), is(false));
+        assertThat(first.m().isEmpty(), is(false));
+        assertThat(first.k().isEmpty(), is(false));
+        assertThat(unchanged.written(), is(equalTo(0)));
+        assertThat(frozen.written(), is(equalTo(0)));
+        // only this package: the mock writes its parents the same body again, so they read unchanged children
+        assertThat(rewritten.written(), is(equalTo(1)));
+        final AiMdHeader second = documentCodec.read(packageFile).header();
+        assertThat(second.c(), is(first.c()));
+        assertThat(second.k().equals(first.k()), is(false));
     }
     // </editor-fold>
 
@@ -312,6 +371,7 @@ public class PackageIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 false,
+                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
                 request -> "",
                 CommonTestFixtures.createPackageFieldGeneration(),
                 promptSupport,
@@ -344,6 +404,7 @@ public class PackageIndexerTest {
                 "0.0.0",
                 Collections.<Path>emptyList(),
                 false,
+                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
                 request -> {
                     if (request.sourceFile().startsWith(failing)) {
                         throw new java.io.IOException("server unreachable");

@@ -100,8 +100,12 @@ public final class AggregateProjectEngine {
             outcome = aggregateWithOverview(outputPath, title, overview);
         } else {
             LOGGER.info("Project overview generation: disabled (no rule configured)");
-            final ProjectIndexer indexer =
-                    new ProjectIndexer(title, config.getPluginVersion(), config.getAiVersion(), config.isForce());
+            final ProjectIndexer indexer = new ProjectIndexer(
+                    title,
+                    config.getPluginVersion(),
+                    config.getAiVersion(),
+                    config.isForce(),
+                    config.getRegenerateOn());
             outcome = indexer.aggregate(outputPath);
         }
         if (outcome == AiIndexOutcome.FAILED) {
@@ -179,6 +183,7 @@ public final class AggregateProjectEngine {
                     config.getPluginVersion(),
                     config.getAiVersion(),
                     config.isForce(),
+                    config.getRegenerateOn(),
                     provider,
                     overview,
                     promptSupport,

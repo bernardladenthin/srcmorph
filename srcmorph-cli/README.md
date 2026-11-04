@@ -84,7 +84,7 @@ public class CConfiguration {
   (scripts without an extension, by their `#!` line), `contentHeadChars`,
   `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
   `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations` (the file rules),
-  `factDefinitions`, `force`, `regenerateOnProfileChange`, `planOnly`, `aiVersion`, `projectName`,
+  `factDefinitions`, `force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`,
   `runRecordFile` (below). A
   relative directory or `runRecordFile` resolves
   against the file's directory, a relative `modelPath` against `modelDirectory`, a relative
