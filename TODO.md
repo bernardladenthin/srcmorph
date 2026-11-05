@@ -67,7 +67,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 |---|---|---|---|---|
 | 31 | Split the pure map-reduce logic out of `AiFieldGenerationSupport` onto the PIT gate | Claude | open | Review of 2026-11-02, tests |
 | 32 | Keep the map-reduce part summaries on request; then measure where gpt-oss-20b loses the middle | Claude | open | Audit of 2026-11-01 |
-| 33 | Launch the Vulkan module once on this machine's RTX 3070 | Claude | open | Other open items |
+| 33 | Launch the Vulkan module once on this machine's RTX 3070 | Claude | done 2026-11-05 | — |
 
 **Wave 5: measurements and what waits outside**
 
@@ -213,9 +213,12 @@ Unreleased) except:
   `GenerateFileIndex` with `gpuLayers` set). **`cuda13-windows-x86-64` has had that pass** (2026-10-23,
   `llama 6.0.0-SNAPSHOT`, still as a fat jar): on an RTX 3070 Laptop a real `GenerateFileIndex` through
   the CLI *and* through `srcmorph:generate` ran at 3474 t/s prefill / 86.8 t/s decode with ggml
-  registering `[CUDA, RPC, CPU]`, against 63 / 7.1 with `[RPC, CPU]` on the CPU jar. **Still
-  unlaunched: `rocm`, `sycl`, `openvino` and `vulkan`** — no AMD, Intel or second GPU here. Vulkan is
-  reachable on any NVIDIA box and is the cheapest one to add next.
+  registering `[CUDA, RPC, CPU]`, against 63 / 7.1 with `[RPC, CPU]` on the CPU jar. **`vulkan-windows-x86-64`
+  too** (2026-11-05, `llama 6.0.0`, the user-built jar of `examples/build-your-own-jar`): ggml registers
+  `[RPC, Vulkan, CPU]` with two devices, the laptop's AMD iGPU (`Vulkan0`) and the RTX 3070 Laptop
+  (`Vulkan1`); gemma-3-4b Q4_K_M with `gpuLayers: 99` split over both ran at 64 t/s prefill and 84 t/s
+  decode, with `devices: Vulkan1` at 3491 / 83. **Still unlaunched: `rocm`, `sycl` and `openvino`** — no
+  AMD discrete, Intel or other GPU here.
 
 - **Null-safety refinement.** JSpecify + NullAway are enforced at compile time in strict JSpecify mode in every module (see each module's own `pom.xml`); `@NullMarked` on the package; framework-populated POJOs carry class-level `@SuppressWarnings({"NullAway.Init","initialization.fields.uninitialized"})`. Open follow-up: review remaining unannotated public API surfaces for places where `@Nullable` would be more precise than the implicit non-null default.
 
