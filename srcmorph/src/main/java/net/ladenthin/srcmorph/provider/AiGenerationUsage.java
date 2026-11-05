@@ -13,7 +13,7 @@ import net.ladenthin.llama.value.Usage;
 /**
  * The tokens of generations and how the last one ended: one call as a provider reports it
  * ({@link AiGenerationProvider#lastUsage()}), or the sum of the calls of one file
- * ({@link #add(AiGenerationUsage)}). Immutable.
+ * ({@link #withCall(AiGenerationUsage)}). Immutable.
  */
 @ToString
 @EqualsAndHashCode
@@ -75,12 +75,17 @@ public final class AiGenerationUsage {
 
     /**
      * Returns this usage with one more call counted: its tokens added, its finish reason the last one.
-     * A call whose provider reports nothing ({@link #NONE}) still counts as a call.
+     * A call whose provider reports nothing ({@link #NONE}) still counts as a call: it was made.
      *
-     * @param call the usage of the call
+     * @param call the usage of that one call, {@link #NONE} when the provider knows none
      * @return the sum
+     * @throws IllegalArgumentException if {@code call} is the sum of several calls, which this would count
+     *                                  as one
      */
-    public AiGenerationUsage add(final AiGenerationUsage call) {
+    public AiGenerationUsage withCall(final AiGenerationUsage call) {
+        if (call.calls > 1) {
+            throw new IllegalArgumentException("withCall takes the usage of one call, not of " + call.calls);
+        }
         return new AiGenerationUsage(
                 calls + 1,
                 promptTokens + call.promptTokens,

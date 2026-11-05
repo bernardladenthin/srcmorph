@@ -1002,11 +1002,11 @@ public class AiFieldGenerationSupport {
             lastReadChars = prepared.trimmedSourceLength();
             try {
                 final String text = generationProvider.generate(call);
-                usage = usage.add(generationProvider.lastUsage());
+                usage = usage.withCall(generationProvider.lastUsage());
                 return text;
             } catch (final IOException | RuntimeException e) {
                 // a call that failed still cost its tokens
-                usage = usage.add(generationProvider.lastUsage());
+                usage = usage.withCall(generationProvider.lastUsage());
                 final int reduced = AiOverflowBackoff.isContextOverflow(e)
                         ? AiOverflowBackoff.nextWindow(overflows++, budget)
                         : AiOverflowBackoff.NO_SMALLER_WINDOW;

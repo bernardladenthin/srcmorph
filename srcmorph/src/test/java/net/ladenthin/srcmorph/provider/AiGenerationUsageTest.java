@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.provider;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Collections;
 import net.ladenthin.llama.value.ChatChoice;
@@ -46,17 +47,29 @@ public class AiGenerationUsageTest {
     }
 
     @Test
-    public void add_sumsTheTokens_countsTheCall_keepsTheLastReason() {
+    public void withCall_sumsTheTokens_countsTheCall_keepsTheLastReason() {
         final AiGenerationUsage sum = AiGenerationUsage.NONE
-                .add(new AiGenerationUsage(1, 10, 2, 5, "length"))
-                .add(new AiGenerationUsage(1, 20, 3, 0, "stop"))
-                .add(AiGenerationUsage.NONE);
+                .withCall(new AiGenerationUsage(1, 10, 2, 5, "length"))
+                .withCall(new AiGenerationUsage(1, 20, 3, 0, "stop"))
+                .withCall(AiGenerationUsage.NONE);
 
+        // the third call's provider knew no usage: the call is counted, its tokens are none
         assertThat(sum, is(equalTo(new AiGenerationUsage(3, 30, 5, 5, ""))));
         assertThat(
                 AiGenerationUsage.NONE
-                        .add(new AiGenerationUsage(1, 1, 1, 1, "stop"))
+                        .withCall(new AiGenerationUsage(1, 1, 1, 1, "stop"))
                         .finishReason(),
                 is(equalTo("stop")));
+    }
+
+    /** A sum of two calls would be counted as one, so it is refused. */
+    @Test
+    public void withCall_theSumOfSeveralCalls_isRefused() {
+        final AiGenerationUsage two = new AiGenerationUsage(2, 10, 2, 0, "stop");
+
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> AiGenerationUsage.NONE.withCall(two));
+
+        assertThat(thrown.getMessage(), is(equalTo("withCall takes the usage of one call, not of 2")));
     }
 }
