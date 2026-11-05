@@ -221,7 +221,10 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
         final long start = System.nanoTime();
         final ChatResponse response = chatResponse(request);
         final double seconds = (System.nanoTime() - start) / (double) TimeUnit.SECONDS.toNanos(1);
-        truncationSupport.warnOnTruncatedAnswer(request, response);
+        final @Nullable String truncation = truncationSupport.truncationWarning(request, response);
+        if (truncation != null) {
+            LOGGER.warn("{}", truncation);
+        }
         final String text = completionParser.parseCompletion(response.getFirstContent());
         return OpenAiCompatibleProviderSupport.timings(text, response, seconds);
     }

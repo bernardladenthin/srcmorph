@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.provider;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -296,7 +297,7 @@ public class LlamaCppJniProviderSupportTest {
 
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="warnOnTruncatedAnswer / logPromptCacheReuse">
+    // <editor-fold defaultstate="collapsed" desc="truncationWarning / logPromptCacheReuse">
 
     /** Builds a response carrying just the one field each of these two helpers reads. */
     private static ChatResponse responseWith(final String finishReason, final Usage usage) {
@@ -323,25 +324,22 @@ public class LlamaCppJniProviderSupportTest {
      * mid-sentence, so the {@code .ai.md} it produced is incomplete and the user has to be told.
      */
     @Test
-    public void warnOnTruncatedAnswer_finishReasonLength_warnsAndNamesTheFileAndTheBudget() {
+    public void truncationWarning_finishReasonLength_namesTheFileAndTheBudget() {
         // arrange
-        final ListAppender<ILoggingEvent> appender = attachAppender(Level.WARN);
-        try {
-            final LlamaCppJniProviderSupport provider = providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf")
-                    .maxOutputTokens(128)
-                    .build());
+        final LlamaCppJniProviderSupport provider = providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf")
+                .maxOutputTokens(128)
+                .build());
 
-            // act
-            provider.warnOnTruncatedAnswer(request("class A {}"), responseWith("length", new Usage(1, 1)));
+        // act
+        final String warning =
+                provider.truncationWarning(request("class A {}"), responseWith("length", new Usage(1, 1)));
 
-            // assert
-            assertThat(appender.list.size(), is(1));
-            final String message = appender.list.get(0).getFormattedMessage();
-            assertThat(message, containsString("Test.java"));
-            assertThat(message, containsString("128"));
-        } finally {
-            detachAppender(appender);
-        }
+        // assert
+        assertThat(
+                warning,
+                is("Generated text for Test.java was cut off at the 128-token output budget, not finished by the"
+                        + " model. The .ai.md will end mid-thought; raise maxOutputTokens for this model, or"
+                        + " shorten the prompt."));
     }
 
     /**
@@ -350,64 +348,35 @@ public class LlamaCppJniProviderSupportTest {
      * wrong vocabulary would make the warning fire never or always -- silently, either way.
      */
     @Test
-    public void warnOnTruncatedAnswer_finishReasonStop_saysNothing() {
-        // arrange
-        final ListAppender<ILoggingEvent> appender = attachAppender(Level.WARN);
-        try {
-            final LlamaCppJniProviderSupport provider = providerWith(
-                    LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+    public void truncationWarning_finishReasonStop_isNone() {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
 
-            // act
-            provider.warnOnTruncatedAnswer(request("class A {}"), responseWith("stop", new Usage(1, 1)));
-
-            // assert
-            assertThat(appender.list.isEmpty(), is(true));
-        } finally {
-            detachAppender(appender);
-        }
+        assertThat(
+                provider.truncationWarning(request("class A {}"), responseWith("stop", new Usage(1, 1))),
+                is(nullValue()));
     }
 
     /** The calibration's answer the provider stopped is named with its reason, not as a budget cut. */
     @Test
-    public void warnOnTruncatedAnswer_finishReasonError_warnsAndNamesTheReason() {
-        // arrange
-        final ListAppender<ILoggingEvent> appender = attachAppender(Level.WARN);
-        try {
-            final LlamaCppJniProviderSupport provider = providerWith(
-                    LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+    public void truncationWarning_finishReasonError_namesTheReason() {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
 
-            // act
-            provider.warnOnTruncatedAnswer(request("class A {}"), responseWith("error", new Usage(1, 1)));
-
-            // assert
-            assertThat(appender.list.size(), is(1));
-            assertThat(
-                    appender.list.get(0).getFormattedMessage(),
-                    is("Generated text for Test.java ended with finish reason 'error': the provider stopped it,"
-                            + " not the model."));
-        } finally {
-            detachAppender(appender);
-        }
+        assertThat(
+                provider.truncationWarning(request("class A {}"), responseWith("error", new Usage(1, 1))),
+                is("Generated text for Test.java ended with finish reason 'error': the provider stopped it, not"
+                        + " the model."));
     }
 
     /** No choices means nothing to judge; reading {@code get(0)} anyway would throw. */
     @Test
-    public void warnOnTruncatedAnswer_noChoices_saysNothing() {
-        // arrange
-        final ListAppender<ILoggingEvent> appender = attachAppender(Level.WARN);
-        try {
-            final LlamaCppJniProviderSupport provider = providerWith(
-                    LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
-            final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
+    public void truncationWarning_noChoices_isNone() {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+        final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
 
-            // act
-            provider.warnOnTruncatedAnswer(request("class A {}"), empty);
-
-            // assert
-            assertThat(appender.list.isEmpty(), is(true));
-        } finally {
-            detachAppender(appender);
-        }
+        assertThat(provider.truncationWarning(request("class A {}"), empty), is(nullValue()));
     }
 
     // requireCompleteAnswer: what generate refuses to return as a summary

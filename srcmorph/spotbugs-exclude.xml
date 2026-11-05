@@ -513,19 +513,16 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        CRLF_INJECTION_LOGS on the provider's two per-generation log statements. Both interpolate
+        CRLF_INJECTION_LOGS on the provider's per-generation cache line. It interpolates
         AiGenerationRequest.sourceFile(), a path this tool itself produced by walking the operator's
         configured subtrees on their own machine - the same trust boundary as the PATH_TRAVERSAL_IN
         and FORMAT_STRING_MANIPULATION suppressions elsewhere in this file. Naming the file is the
-        entire point of both messages: "a summary was truncated" and "this much of the prompt was
-        cached" are useless without saying which file they are about. Scoped to the two methods.
+        entire point of the message: "this much of the prompt was cached" is useless without saying
+        which file it is about. Scoped to the one method.
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniProviderSupport"/>
-        <Or>
-            <Method name="warnOnTruncatedAnswer"/>
-            <Method name="logPromptCacheReuse"/>
-        </Or>
+        <Method name="logPromptCacheReuse"/>
         <Bug pattern="CRLF_INJECTION_LOGS"/>
     </Match>
 

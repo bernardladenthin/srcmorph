@@ -243,33 +243,30 @@ final class LlamaCppJniProviderSupport {
     }
 
     /**
-     * Warns when the model stopped because the output budget ran out rather than because it was done, and
-     * when the provider stopped the answer ({@link #stoppedByProvider(String)}).
+     * The warning for an answer the model did not finish: one that stopped at the output budget, or one
+     * the provider stopped ({@link #stoppedByProvider(String)}). The caller logs it under its own logger,
+     * so a remote model's calibration warning names the remote provider.
      *
      * @param request  the request whose source file is named in the warning
      * @param response the completed chat response
+     * @return the warning, or {@code null} when the model finished the answer (or there is none)
      */
-    void warnOnTruncatedAnswer(final AiGenerationRequest request, final ChatResponse response) {
+    @Nullable
+    String truncationWarning(final AiGenerationRequest request, final ChatResponse response) {
         if (response.getChoices().isEmpty()) {
-            return;
+            return null;
         }
         final @Nullable String finishReason = response.getChoices().get(0).getFinishReason();
         if (stoppedByProvider(finishReason)) {
-            LOGGER.warn(
-                    "Generated text for {} ended with finish reason '{}': the provider stopped it, not the model.",
-                    request.sourceFile(),
-                    finishReason);
-            return;
+            return "Generated text for " + request.sourceFile() + " ended with finish reason '" + finishReason
+                    + "': the provider stopped it, not the model.";
         }
         if (!FINISH_REASON_LENGTH.equals(finishReason)) {
-            return;
+            return null;
         }
-        LOGGER.warn(
-                "Generated text for {} was cut off at the {}-token output budget, not finished by the model."
-                        + " The .ai.md will end mid-thought; raise maxOutputTokens for this model, or shorten"
-                        + " the prompt.",
-                request.sourceFile(),
-                config.maxOutputTokens());
+        return "Generated text for " + request.sourceFile() + " was cut off at the " + config.maxOutputTokens()
+                + "-token output budget, not finished by the model. The .ai.md will end mid-thought; raise"
+                + " maxOutputTokens for this model, or shorten the prompt.";
     }
 
     /**

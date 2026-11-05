@@ -39,11 +39,11 @@ for a decision or an action of the owner (the proposal is the default once the o
 
 | # | Item | Who | Status | Details |
 |---|---|---|---|---|
-| 15 | `srcmorph/spotbugs-exclude.xml` names the POM as the source of prompts and model settings | Claude | open | Review of 2026-11-02, core |
-| 16 | The smoke step that counts the planned files runs from `examples/`, not the root | Claude | open | Review of 2026-11-02, tests and gates |
-| 17 | `run.py` deletes `--out/<key>` without a marker check | Claude | open | Review of 2026-11-02 |
-| 18 | `languages-2026-11/README.md`: the score command lacks `--meta` | Claude | open | Review of 2026-11-02, benchmark tooling |
-| 19 | The remote calibration warning is logged under the llama.cpp class | Claude | open | Other open items |
+| 15 | `srcmorph/spotbugs-exclude.xml` names the POM as the source of prompts and model settings | Claude | done 2026-11-05 | — |
+| 16 | The smoke step that counts the planned files runs from `examples/`, not the root | Claude | done 2026-11-05 | — |
+| 17 | `run.py` deletes `--out/<key>` without a marker check | Claude | done 2026-11-05 | — |
+| 18 | `languages-2026-11/README.md`: the score command lacks `--meta` | Claude | done 2026-11-05 | — |
+| 19 | The remote calibration warning is logged under the llama.cpp class | Claude | done 2026-11-05 | — |
 | 20 | A `baseUrl`'s user info is printed as written | Claude | open | Review of 2026-11-02, core |
 | 21 | `AiGenerationUsage.add` counts `NONE` as a call | Claude | open | Review of 2026-11-02, core |
 | 22 | Tests: `check()` with `planOnly` and model files, the interrupt branch, a changed prompt hash, the smaller window after an overflow, the plugin's base directory | Claude | open | Review of 2026-11-02, tests and gates |
@@ -181,8 +181,7 @@ Unreleased) except:
   cannot reach 0.05, and hit@1 is compared unpaired (McNemar fits); every prompt version was tuned on
   the corpus it is scored on; the meta lacks the srcmorph commit, the Python version and a corpus
   hash, and `large.py`'s `random` is not guaranteed across Python versions (pin a golden hash); `score.py`
-  scores files srcmorph does not index and fails on non-UTF-8 sources; `--out/<key>` is deleted
-  without the marker check `--work` has; 21 of 21 mutations of the tools went unnoticed by their tests.
+  scores files srcmorph does not index and fails on non-UTF-8 sources; 21 of 21 mutations of the tools went unnoticed by their tests.
 
 - Tests (the test review): `AiFieldGenerationSupport` holds most of the pure map-reduce logic off the
   PIT gate; split it the way `LlamaCppJniProviderSupport` was. The checksum over bytes has no
@@ -197,8 +196,6 @@ Unreleased) except:
 
 - CodeQL #270 (`RequestRateLimiter`: the return value of `awaitNanos` ignored) is a false positive:
   the loop in `acquire()` re-checks the window after every wake-up; the owner dismisses it.
-- `srcmorph/spotbugs-exclude.xml` still gives the operator's POM (XML) as the source of the prompt
-  templates and the model settings in about five suppressions; it is the configuration file now.
 - The configuration echo of the CLI and the messages that name a `baseUrl` (`ListModelsEngine`,
   `EngineSupport`, the provider's endpoint errors, the rate limiter) print it as written, user info
   included. `HttpURLConnection` does not authenticate with a URL's user info, so a key there does not
@@ -231,8 +228,7 @@ Unreleased) except:
   leak-only; an everyday word in a column or field listing (`email VARCHAR(254)`, 53 misses) does
   not count; `facts.json` words lack `histogram`, `CHECKOUT`, `Since`; a backtick span check can match
   across two spans; thousands separators defeat the numbers check.
-- `languages-2026-11/README.md`: its score command omits `--meta` (the card's cut-offs are used),
-  and the language-corpus scores are two-part means no committed command produces.
+- The language-corpus scores are two-part means no committed command produces (`languages-2026-11/`).
 - Card text (with D2): the correlation −0.46 is from an older population (today −0.18), the BM25 range
   "67 to 86 %" ends at 91 %, the Fisher test with 3 against 3 runs can never reach p < 0.1.
 
@@ -245,8 +241,6 @@ Unreleased) except:
   directory).
 - SpotBugs: `SrcMorphConfigurationFileLoader` sits in a Match that suppresses seven patterns for a
   reason that covers two; a stale `NP_NULL_ON_SOME_PATH` suppression.
-- CI: the smoke step that counts the planned files runs from `examples/`, where the working directory
-  is the file's directory, so it cannot catch a base-directory regression; run it from the root.
 - SonarCloud reports 98 new issues that are not readable without a token.
 
 
@@ -264,10 +258,6 @@ Unreleased) except:
   `OpenAiCompatibleProviderSupportTest`, this item, and, being the last marker, `ReplaceWithLibrary`
   with its test. The stub-server tests in `OpenAiCompatibleAiGenerationProviderTest` stay and prove the
   switch.
-
-- **The OpenAI-compatible provider's calibration warning is logged under the llama.cpp class.**
-  `generateWithTimings` reuses `LlamaCppJniProviderSupport.warnOnTruncatedAnswer`, so a cut-off
-  calibration answer of a remote model is logged under that logger name.
 
 - **No GPU module is launched in CI.** `smoke-jar` builds `examples/build-your-own-jar` with the CPU
   natives only and runs `Plan`; a GitHub-hosted runner has no CUDA/ROCm/SYCL/OpenVINO device, and

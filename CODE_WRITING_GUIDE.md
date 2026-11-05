@@ -340,7 +340,7 @@ serves production as often as tests. Two kinds of package-private members exist,
 to be confused:
 
 - **Production API at package level.** `provider.LlamaCppJniProviderSupport`'s
-  `buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`,
+  `buildChatTemplateKwargs`, `buildInferenceParameters`, `truncationWarning`,
   `logPromptCacheReuse`, `stoppedByProvider` and the static `lazyMode` / `cacheType` are
   package-private because `LlamaCppJniAiGenerationProvider` and `OpenAiCompatibleAiGenerationProvider`
   call them (they live in the support class so the PIT gate reaches them). Their tests ride along.

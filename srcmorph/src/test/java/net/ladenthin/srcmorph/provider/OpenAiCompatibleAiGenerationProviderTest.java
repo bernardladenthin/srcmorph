@@ -529,6 +529,33 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         assertThat(timings.prefillTokensPerSecond(), is(0.0d));
         assertThat(timings.decodeTokensPerSecond(), is(greaterThan(0.0d)));
     }
+
+    /** A calibration answer cut at the budget is warned about under this provider's logger, not llama.cpp's. */
+    @Test
+    public void generateWithTimings_anAnswerCutAtTheBudget_warnsUnderTheRemoteProvidersLogger() throws Exception {
+        // arrange
+        answer = completion("cut off", "length");
+        final ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(OpenAiCompatibleAiGenerationProvider.class);
+        final ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            // act
+            provider(LlamaCppJniConfig.builder("").maxOutputTokens(64), NO_ENVIRONMENT)
+                    .generateWithTimings(REQUEST);
+
+            // assert
+            assertThat(appender.list.size(), is(1));
+            assertThat(
+                    appender.list.get(0).getFormattedMessage(),
+                    startsWith("Generated text for Test.java was cut off at the 64-token output budget"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="stream">
