@@ -445,6 +445,43 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         assertThat(thrown.partialText(), is("cut off"));
     }
 
+    /**
+     * The TypeScript measurement of 2026-11-05: an OpenRouter generation that failed half-way came
+     * back as a 2xx with 694 tokens, finish reason {@code error} and a text ending mid-sentence, and was
+     * written as a finished summary.
+     */
+    @Test
+    public void generate_answerTheProviderStoppedWithAnError_isRefusedWithWhatWasWritten() {
+        // arrange
+        answer = completion("- test paging (", "error");
+
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.ABORTED));
+        assertThat(thrown.getMessage(), containsString("Test.java ended with finish reason 'error'"));
+        assertThat(thrown.partialText(), is("- test paging ("));
+    }
+
+    @Test
+    public void generate_streamTheProviderStoppedWithAnError_isRefused() {
+        // arrange
+        events = streamed("- test ", "paging (", "error");
+
+        // act
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider(LlamaCppJniConfig.builder("").stream(true), NO_ENVIRONMENT)
+                        .generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.ABORTED));
+        assertThat(thrown.partialText(), is("- test paging ("));
+    }
+
     @Test
     public void generate_emptyAnswer_isRefused() {
         // arrange

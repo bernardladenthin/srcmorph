@@ -7,8 +7,8 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * A model answer that is no summary: nothing at all, a text cut off at the output budget, or a
- * response without an answer in it. A provider throws it instead of returning such a text, so the
+ * A model answer that is no summary: nothing at all, a text cut off at the output budget, a text the
+ * provider stopped (an error or its content filter), or a response without an answer in it. A provider throws it instead of returning such a text, so the
  * indexer can leave the file for the next run instead of writing the text as if it were done.
  */
 public final class AiIncompleteAnswerException extends IOException {
@@ -22,7 +22,12 @@ public final class AiIncompleteAnswerException extends IOException {
         /** The model stopped at the output budget, or inside its reasoning, not because it was done. */
         TRUNCATED,
         /** The response carries no answer at all (no choice, an error object or not a completion). */
-        NO_ANSWER
+        NO_ANSWER,
+        /**
+         * The provider stopped the answer, not the model: finish reason {@code error} (it failed in the
+         * middle of the generation) or {@code content_filter}. What came back ends wherever it stopped.
+         */
+        ABORTED
     }
 
     /** Why the answer is incomplete. */

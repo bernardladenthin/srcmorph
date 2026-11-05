@@ -18,6 +18,7 @@ import net.ladenthin.llama.value.Usage;
 import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,15 @@ final class LlamaCppJniProviderSupport {
 
     /** OpenAI finish reason meaning "the token budget ran out", as opposed to {@code "stop"}. */
     private static final String FINISH_REASON_LENGTH = "length";
+
+    /**
+     * Finish reason of an answer the provider stopped because it failed in the middle of the generation
+     * (OpenRouter's normalized reason); the text ends wherever the failure hit it.
+     */
+    private static final String FINISH_REASON_ERROR = "error";
+
+    /** OpenAI finish reason of an answer the provider's content filter stopped. */
+    private static final String FINISH_REASON_CONTENT_FILTER = "content_filter";
 
     /**
      * Fixed llama.cpp server slot every request is pinned to. The model is loaded once and reused
@@ -221,7 +231,20 @@ final class LlamaCppJniProviderSupport {
     }
 
     /**
-     * Warns when the model stopped because the output budget ran out rather than because it was done.
+     * Whether the provider, not the model, ended an answer with this finish reason: {@code error} or
+     * {@code content_filter}. Any other reason ({@code stop}, a server's own word for it, none) is the
+     * model's.
+     *
+     * @param finishReason the first choice's finish reason, may be {@code null}
+     * @return {@code true} when the provider stopped the answer
+     */
+    static boolean stoppedByProvider(final @Nullable String finishReason) {
+        return FINISH_REASON_ERROR.equals(finishReason) || FINISH_REASON_CONTENT_FILTER.equals(finishReason);
+    }
+
+    /**
+     * Warns when the model stopped because the output budget ran out rather than because it was done, and
+     * when the provider stopped the answer ({@link #stoppedByProvider(String)}).
      *
      * @param request  the request whose source file is named in the warning
      * @param response the completed chat response
@@ -230,7 +253,15 @@ final class LlamaCppJniProviderSupport {
         if (response.getChoices().isEmpty()) {
             return;
         }
-        if (!FINISH_REASON_LENGTH.equals(response.getChoices().get(0).getFinishReason())) {
+        final @Nullable String finishReason = response.getChoices().get(0).getFinishReason();
+        if (stoppedByProvider(finishReason)) {
+            LOGGER.warn(
+                    "Generated text for {} ended with finish reason '{}': the provider stopped it, not the model.",
+                    request.sourceFile(),
+                    finishReason);
+            return;
+        }
+        if (!FINISH_REASON_LENGTH.equals(finishReason)) {
             return;
         }
         LOGGER.warn(
@@ -243,7 +274,9 @@ final class LlamaCppJniProviderSupport {
 
     /**
      * Refuses an answer that is no summary, so it is never stored as one: a response without a choice, an
-     * answer the model did not finish (stopped at the output budget) and an empty answer, such as the
+     * answer the model did not finish (stopped at the output budget), an answer the provider stopped
+     * ({@link #stoppedByProvider(String)}: an OpenRouter generation that failed half-way came back with
+     * finish reason {@code error} and a text ending mid-sentence) and an empty answer, such as the
      * reasoning-only answer of a model that spent its budget thinking.
      *
      * @param request  the request whose source file is named in the message
@@ -258,7 +291,15 @@ final class LlamaCppJniProviderSupport {
                     AiIncompleteAnswerException.Reason.NO_ANSWER,
                     "The response for " + request.sourceFile() + " has no answer (no choice)");
         }
-        if (FINISH_REASON_LENGTH.equals(response.getChoices().get(0).getFinishReason())) {
+        final @Nullable String finishReason = response.getChoices().get(0).getFinishReason();
+        if (stoppedByProvider(finishReason)) {
+            throw new AiIncompleteAnswerException(
+                    AiIncompleteAnswerException.Reason.ABORTED,
+                    "The answer for " + request.sourceFile() + " ended with finish reason '" + finishReason
+                            + "': the provider stopped it, not the model",
+                    text);
+        }
+        if (FINISH_REASON_LENGTH.equals(finishReason)) {
             throw new AiIncompleteAnswerException(
                     AiIncompleteAnswerException.Reason.TRUNCATED,
                     "The answer for " + request.sourceFile() + " was cut off at the " + config.maxOutputTokens()

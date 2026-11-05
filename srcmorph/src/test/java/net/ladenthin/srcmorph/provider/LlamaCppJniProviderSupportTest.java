@@ -367,6 +367,29 @@ public class LlamaCppJniProviderSupportTest {
         }
     }
 
+    /** The calibration's answer the provider stopped is named with its reason, not as a budget cut. */
+    @Test
+    public void warnOnTruncatedAnswer_finishReasonError_warnsAndNamesTheReason() {
+        // arrange
+        final ListAppender<ILoggingEvent> appender = attachAppender(Level.WARN);
+        try {
+            final LlamaCppJniProviderSupport provider = providerWith(
+                    LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+
+            // act
+            provider.warnOnTruncatedAnswer(request("class A {}"), responseWith("error", new Usage(1, 1)));
+
+            // assert
+            assertThat(appender.list.size(), is(1));
+            assertThat(
+                    appender.list.get(0).getFormattedMessage(),
+                    is("Generated text for Test.java ended with finish reason 'error': the provider stopped it,"
+                            + " not the model."));
+        } finally {
+            detachAppender(appender);
+        }
+    }
+
     /** No choices means nothing to judge; reading {@code get(0)} anyway would throw. */
     @Test
     public void warnOnTruncatedAnswer_noChoices_saysNothing() {
@@ -424,6 +447,49 @@ public class LlamaCppJniProviderSupportTest {
         assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
         assertThat(thrown.getMessage(), containsString("Test.java was cut off at the 128-token output budget"));
         assertThat(thrown.partialText(), is("half a sum"));
+    }
+
+    @Test
+    public void requireCompleteAnswer_finishReasonError_isAbortedWithTheReasonAndTheText() {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider.requireCompleteAnswer(
+                        request("class A {}"), responseWith("error", new Usage(1, 1)), "- test paging ("));
+
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.ABORTED));
+        assertThat(
+                thrown.getMessage(),
+                is("The answer for Test.java ended with finish reason 'error': the provider stopped it, not the"
+                        + " model"));
+        assertThat(thrown.partialText(), is("- test paging ("));
+    }
+
+    @Test
+    public void requireCompleteAnswer_finishReasonContentFilter_isAborted() {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+
+        final AiIncompleteAnswerException thrown = assertThrows(
+                AiIncompleteAnswerException.class,
+                () -> provider.requireCompleteAnswer(
+                        request("class A {}"), responseWith("content_filter", new Usage(1, 1)), "A summ"));
+
+        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.ABORTED));
+        assertThat(thrown.getMessage(), containsString("finish reason 'content_filter'"));
+    }
+
+    /** A server's own word for a finished answer (TGI's {@code eos_token}) or none at all is the model's. */
+    @Test
+    public void requireCompleteAnswer_anotherOrNoFinishReason_passes() throws Exception {
+        final LlamaCppJniProviderSupport provider =
+                providerWith(LlamaCppJniConfig.builder("/does/not/exist.gguf").build());
+
+        provider.requireCompleteAnswer(request("class A {}"), responseWith("eos_token", new Usage(1, 1)), "A summary.");
+        provider.requireCompleteAnswer(request("class A {}"), responseWith(null, new Usage(1, 1)), "A summary.");
+        assertThat(LlamaCppJniProviderSupport.stoppedByProvider(null), is(false));
     }
 
     @Test
