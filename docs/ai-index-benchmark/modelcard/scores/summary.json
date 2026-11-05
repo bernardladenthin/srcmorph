@@ -9,12 +9,15 @@
    "bodyBytes": 42451,
    "compaction": 3.76,
    "recall": 0.928,
+   "ticked": 997,
+   "invented": 5,
    "inventedPer100": 0.5,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -25,12 +28,15 @@
    "bodyBytes": 13458,
    "compaction": 0.61,
    "recall": 1.0,
+   "ticked": 472,
+   "invented": 8,
    "inventedPer100": 1.7,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -40,13 +46,16 @@
    "srcBytes": 66780,
    "bodyBytes": 17772,
    "compaction": 3.76,
-   "recall": 1.0,
+   "recall": 0.98,
+   "ticked": 619,
+   "invented": 4,
    "inventedPer100": 0.6,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -57,12 +66,15 @@
    "bodyBytes": 39578,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -73,12 +85,15 @@
    "bodyBytes": 2986,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "claude-haiku-5.5-openrouter": {
@@ -91,12 +106,15 @@
    "bodyBytes": 46467,
    "compaction": 3.43,
    "recall": 0.942,
+   "ticked": 777,
+   "invented": 5,
    "inventedPer100": 0.6,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -107,12 +125,15 @@
    "bodyBytes": 14265,
    "compaction": 0.58,
    "recall": 0.88,
+   "ticked": 449,
+   "invented": 6,
    "inventedPer100": 1.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -122,13 +143,16 @@
    "srcBytes": 66780,
    "bodyBytes": 19248,
    "compaction": 3.47,
-   "recall": 1.0,
+   "recall": 0.98,
+   "ticked": 650,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -139,12 +163,15 @@
    "bodyBytes": 46304,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -155,12 +182,15 @@
    "bodyBytes": 3420,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "deepseek-coder-v2-lite": {
@@ -173,12 +203,15 @@
    "bodyBytes": 44389,
    "compaction": 3.6,
    "recall": 0.941,
+   "ticked": 718,
+   "invented": 3,
    "inventedPer100": 0.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -189,12 +222,15 @@
    "bodyBytes": 8438,
    "compaction": 0.98,
    "recall": 0.642,
+   "ticked": 139,
+   "invented": 1,
    "inventedPer100": 0.7,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -204,13 +240,16 @@
    "srcBytes": 66780,
    "bodyBytes": 15561,
    "compaction": 4.29,
-   "recall": 0.913,
+   "recall": 0.892,
+   "ticked": 325,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -221,12 +260,15 @@
    "bodyBytes": 40652,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 18,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -237,12 +279,15 @@
    "bodyBytes": 3301,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gemma-4-12b": {
@@ -255,12 +300,15 @@
    "bodyBytes": 37779,
    "compaction": 4.22,
    "recall": 0.945,
+   "ticked": 541,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -271,12 +319,15 @@
    "bodyBytes": 9151,
    "compaction": 0.9,
    "recall": 0.852,
+   "ticked": 178,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -286,13 +337,16 @@
    "srcBytes": 66780,
    "bodyBytes": 11665,
    "compaction": 5.72,
-   "recall": 0.932,
+   "recall": 0.92,
+   "ticked": 49,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -303,12 +357,15 @@
    "bodyBytes": 28852,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -319,12 +376,15 @@
    "bodyBytes": 2880,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gemma-4-26b-a4b": {
@@ -337,12 +397,15 @@
    "bodyBytes": 36621,
    "compaction": 4.36,
    "recall": 0.945,
+   "ticked": 571,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -353,12 +416,15 @@
    "bodyBytes": 9000,
    "compaction": 0.91,
    "recall": 0.913,
+   "ticked": 171,
+   "invented": 1,
    "inventedPer100": 0.6,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -368,13 +434,16 @@
    "srcBytes": 66780,
    "bodyBytes": 12261,
    "compaction": 5.45,
-   "recall": 0.94,
+   "recall": 0.92,
+   "ticked": 179,
+   "invented": 1,
    "inventedPer100": 0.6,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -385,12 +454,15 @@
    "bodyBytes": 32693,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -401,12 +473,15 @@
    "bodyBytes": 2828,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gemma-4-31b": {
@@ -419,12 +494,15 @@
    "bodyBytes": 33314,
    "compaction": 4.79,
    "recall": 0.851,
+   "ticked": 508,
+   "invented": 4,
    "inventedPer100": 0.8,
    "numbers": "0/0",
    "noLead": 1,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -435,12 +513,15 @@
    "bodyBytes": 9332,
    "compaction": 0.88,
    "recall": 0.925,
+   "ticked": 196,
+   "invented": 1,
    "inventedPer100": 0.5,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -450,13 +531,16 @@
    "srcBytes": 66780,
    "bodyBytes": 11409,
    "compaction": 5.85,
-   "recall": 0.951,
+   "recall": 0.931,
+   "ticked": 388,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -467,12 +551,15 @@
    "bodyBytes": 27092,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -483,12 +570,15 @@
    "bodyBytes": 2424,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gemma-4-31b-noreason": {
@@ -501,12 +591,15 @@
    "bodyBytes": 31909,
    "compaction": 5.0,
    "recall": 0.944,
+   "ticked": 514,
+   "invented": 1,
    "inventedPer100": 0.2,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -517,12 +610,15 @@
    "bodyBytes": 9227,
    "compaction": 0.89,
    "recall": 0.907,
+   "ticked": 176,
+   "invented": 1,
    "inventedPer100": 0.6,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -532,13 +628,16 @@
    "srcBytes": 66780,
    "bodyBytes": 11389,
    "compaction": 5.86,
-   "recall": 0.933,
+   "recall": 0.92,
+   "ticked": 241,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -549,12 +648,15 @@
    "bodyBytes": 27379,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -565,12 +667,15 @@
    "bodyBytes": 2537,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gemma-4-e4b": {
@@ -583,12 +688,15 @@
    "bodyBytes": 39131,
    "compaction": 4.08,
    "recall": 0.997,
+   "ticked": 151,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -598,13 +706,16 @@
    "srcBytes": 8231,
    "bodyBytes": 9034,
    "compaction": 0.91,
-   "recall": 0.762,
+   "recall": 0.739,
+   "ticked": 71,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -614,13 +725,16 @@
    "srcBytes": 66780,
    "bodyBytes": 12449,
    "compaction": 5.36,
-   "recall": 0.919,
+   "recall": 0.907,
+   "ticked": 31,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -631,12 +745,15 @@
    "bodyBytes": 28568,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -647,12 +764,15 @@
    "bodyBytes": 2754,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gpt-6-luna": {
@@ -665,12 +785,15 @@
    "bodyBytes": 39066,
    "compaction": 4.09,
    "recall": 1.0,
+   "ticked": 675,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -681,12 +804,15 @@
    "bodyBytes": 10069,
    "compaction": 0.82,
    "recall": 0.961,
+   "ticked": 237,
+   "invented": 1,
    "inventedPer100": 0.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -697,12 +823,15 @@
    "bodyBytes": 15567,
    "compaction": 4.29,
    "recall": 1.0,
+   "ticked": 522,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -713,12 +842,15 @@
    "bodyBytes": 36014,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -729,12 +861,15 @@
    "bodyBytes": 2426,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gpt-6-luna-copilot": {
@@ -747,12 +882,15 @@
    "bodyBytes": 31377,
    "compaction": 5.09,
    "recall": 0.955,
+   "ticked": 636,
+   "invented": 2,
    "inventedPer100": 0.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -763,12 +901,15 @@
    "bodyBytes": 8729,
    "compaction": 0.94,
    "recall": 0.963,
+   "ticked": 177,
+   "invented": 1,
    "inventedPer100": 0.6,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -779,12 +920,15 @@
    "bodyBytes": 12839,
    "compaction": 5.2,
    "recall": 0.985,
+   "ticked": 436,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -795,12 +939,15 @@
    "bodyBytes": 27710,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -811,12 +958,15 @@
    "bodyBytes": 2342,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gpt-oss-20b": {
@@ -829,12 +979,15 @@
    "bodyBytes": 30383,
    "compaction": 5.25,
    "recall": 0.999,
+   "ticked": 567,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -845,12 +998,15 @@
    "bodyBytes": 8722,
    "compaction": 0.94,
    "recall": 0.828,
+   "ticked": 258,
+   "invented": 1,
    "inventedPer100": 0.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -861,12 +1017,15 @@
    "bodyBytes": 12262,
    "compaction": 5.45,
    "recall": 0.979,
+   "ticked": 435,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -877,12 +1036,15 @@
    "bodyBytes": 32777,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -893,12 +1055,15 @@
    "bodyBytes": 3027,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "gpt-oss-20b-local": {
@@ -911,12 +1076,15 @@
    "bodyBytes": 31652,
    "compaction": 5.04,
    "recall": 0.999,
+   "ticked": 587,
+   "invented": 2,
    "inventedPer100": 0.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -927,12 +1095,15 @@
    "bodyBytes": 9215,
    "compaction": 0.89,
    "recall": 0.864,
+   "ticked": 288,
+   "invented": 4,
    "inventedPer100": 1.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -943,12 +1114,15 @@
    "bodyBytes": 12981,
    "compaction": 5.14,
    "recall": 0.968,
+   "ticked": 461,
+   "invented": 2,
    "inventedPer100": 0.4,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -959,12 +1133,15 @@
    "bodyBytes": 35275,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -975,12 +1152,15 @@
    "bodyBytes": 3017,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "granite-4.0-h-small": {
@@ -993,12 +1173,15 @@
    "bodyBytes": 32403,
    "compaction": 4.93,
    "recall": 0.998,
+   "ticked": 482,
+   "invented": 1,
    "inventedPer100": 0.2,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1009,12 +1192,15 @@
    "bodyBytes": 9039,
    "compaction": 0.91,
    "recall": 0.827,
+   "ticked": 160,
+   "invented": 1,
    "inventedPer100": 0.6,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1025,12 +1211,15 @@
    "bodyBytes": 13142,
    "compaction": 5.08,
    "recall": 0.916,
+   "ticked": 292,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1041,12 +1230,15 @@
    "bodyBytes": 29189,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1057,12 +1249,15 @@
    "bodyBytes": 2298,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "granite-4.0-h-tiny": {
@@ -1075,12 +1270,15 @@
    "bodyBytes": 25514,
    "compaction": 6.26,
    "recall": 0.83,
+   "ticked": 229,
+   "invented": 4,
    "inventedPer100": 1.7,
    "numbers": "0/0",
    "noLead": 9,
    "badHeadings": 73,
    "fences": 18,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1090,13 +1288,16 @@
    "srcBytes": 8231,
    "bodyBytes": 6911,
    "compaction": 1.19,
-   "recall": 0.611,
+   "recall": 0.589,
+   "ticked": 126,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 3,
    "badHeadings": 24,
    "fences": 8,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1107,12 +1308,15 @@
    "bodyBytes": 22950,
    "compaction": 2.91,
    "recall": 0.575,
+   "ticked": 231,
+   "invented": 4,
    "inventedPer100": 1.7,
    "numbers": "0/4",
    "noLead": 7,
    "badHeadings": 8,
    "fences": 8,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1123,12 +1327,15 @@
    "bodyBytes": 22342,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 1,
    "badHeadings": 24,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1139,12 +1346,15 @@
    "bodyBytes": 2567,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "granite-4.2-8b": {
@@ -1157,12 +1367,15 @@
    "bodyBytes": 54572,
    "compaction": 2.92,
    "recall": 0.977,
+   "ticked": 982,
+   "invented": 9,
    "inventedPer100": 0.9,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1173,12 +1386,15 @@
    "bodyBytes": 13537,
    "compaction": 0.61,
    "recall": 0.882,
+   "ticked": 419,
+   "invented": 4,
    "inventedPer100": 1.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1189,12 +1405,15 @@
    "bodyBytes": 18435,
    "compaction": 3.62,
    "recall": 0.938,
+   "ticked": 455,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1205,12 +1424,15 @@
    "bodyBytes": 49905,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1221,12 +1443,15 @@
    "bodyBytes": 3885,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "grok-4.7": {
@@ -1239,12 +1464,15 @@
    "bodyBytes": 73305,
    "compaction": 2.18,
    "recall": 1.0,
+   "ticked": 1167,
+   "invented": 11,
    "inventedPer100": 0.9,
    "numbers": "0/0",
    "noLead": 12,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1255,12 +1483,15 @@
    "bodyBytes": 12838,
    "compaction": 0.64,
    "recall": 1.0,
+   "ticked": 393,
+   "invented": 1,
    "inventedPer100": 0.3,
    "numbers": "0/0",
    "noLead": 5,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1271,12 +1502,15 @@
    "bodyBytes": 21803,
    "compaction": 3.06,
    "recall": 1.0,
+   "ticked": 713,
+   "invented": 2,
    "inventedPer100": 0.3,
    "numbers": "4/4",
    "noLead": 7,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1287,12 +1521,15 @@
    "bodyBytes": 49715,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 11,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1303,12 +1540,15 @@
    "bodyBytes": 4641,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "kolibri-1": {
@@ -1321,12 +1561,15 @@
    "bodyBytes": 35930,
    "compaction": 4.44,
    "recall": 1.0,
+   "ticked": 387,
+   "invented": 1,
    "inventedPer100": 0.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1337,12 +1580,15 @@
    "bodyBytes": 8267,
    "compaction": 1.0,
    "recall": 0.706,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1352,13 +1598,16 @@
    "srcBytes": 66780,
    "bodyBytes": 12932,
    "compaction": 5.16,
-   "recall": 0.872,
+   "recall": 0.87,
+   "ticked": 16,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1369,12 +1618,15 @@
    "bodyBytes": 31652,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1385,12 +1637,15 @@
    "bodyBytes": 2630,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "lfm-2.5-24b-a2b": {
@@ -1403,12 +1658,15 @@
    "bodyBytes": 24156,
    "compaction": 6.61,
    "recall": 0.777,
+   "ticked": 11,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1419,12 +1677,15 @@
    "bodyBytes": 8911,
    "compaction": 0.92,
    "recall": 0.77,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1434,13 +1695,16 @@
    "srcBytes": 66780,
    "bodyBytes": 14527,
    "compaction": 4.6,
-   "recall": 0.934,
+   "recall": 0.933,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1451,12 +1715,15 @@
    "bodyBytes": 38342,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1467,12 +1734,15 @@
    "bodyBytes": 3284,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "mai-code-1.1-flash": {
@@ -1485,12 +1755,15 @@
    "bodyBytes": 39295,
    "compaction": 4.06,
    "recall": 0.754,
+   "ticked": 741,
+   "invented": 6,
    "inventedPer100": 0.8,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1501,12 +1774,15 @@
    "bodyBytes": 14367,
    "compaction": 0.57,
    "recall": 0.983,
+   "ticked": 490,
+   "invented": 2,
    "inventedPer100": 0.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1516,13 +1792,16 @@
    "srcBytes": 66780,
    "bodyBytes": 25871,
    "compaction": 2.58,
-   "recall": 0.977,
+   "recall": 0.985,
+   "ticked": 989,
+   "invented": 1,
    "inventedPer100": 0.1,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1533,12 +1812,15 @@
    "bodyBytes": 56187,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1549,12 +1831,15 @@
    "bodyBytes": 3025,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "mercury-3": {
@@ -1567,12 +1852,15 @@
    "bodyBytes": 49613,
    "compaction": 3.22,
    "recall": 0.947,
+   "ticked": 814,
+   "invented": 2,
    "inventedPer100": 0.2,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1583,12 +1871,15 @@
    "bodyBytes": 12553,
    "compaction": 0.66,
    "recall": 0.955,
+   "ticked": 275,
+   "invented": 4,
    "inventedPer100": 1.5,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1599,12 +1890,15 @@
    "bodyBytes": 16965,
    "compaction": 3.94,
    "recall": 1.0,
+   "ticked": 698,
+   "invented": 1,
    "inventedPer100": 0.1,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1615,12 +1909,15 @@
    "bodyBytes": 43744,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1631,12 +1928,15 @@
    "bodyBytes": 3420,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "mistral-large-4": {
@@ -1649,12 +1949,15 @@
    "bodyBytes": 46641,
    "compaction": 3.42,
    "recall": 0.894,
+   "ticked": 800,
+   "invented": 3,
    "inventedPer100": 0.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1665,12 +1968,15 @@
    "bodyBytes": 12329,
    "compaction": 0.67,
    "recall": 1.0,
+   "ticked": 350,
+   "invented": 4,
    "inventedPer100": 1.1,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1680,13 +1986,16 @@
    "srcBytes": 66780,
    "bodyBytes": 19466,
    "compaction": 3.43,
-   "recall": 0.992,
+   "recall": 1.0,
+   "ticked": 554,
+   "invented": 2,
    "inventedPer100": 0.4,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1697,12 +2006,15 @@
    "bodyBytes": 54284,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 1
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1713,12 +2025,15 @@
    "bodyBytes": 4262,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "muse-spark-1.3": {
@@ -1731,12 +2046,15 @@
    "bodyBytes": 41363,
    "compaction": 3.86,
    "recall": 1.0,
+   "ticked": 795,
+   "invented": 7,
    "inventedPer100": 0.9,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1747,12 +2065,15 @@
    "bodyBytes": 8602,
    "compaction": 0.96,
    "recall": 0.971,
+   "ticked": 77,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1762,13 +2083,16 @@
    "srcBytes": 66780,
    "bodyBytes": 14170,
    "compaction": 4.71,
-   "recall": 1.0,
+   "recall": 0.98,
+   "ticked": 439,
+   "invented": 2,
    "inventedPer100": 0.5,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1779,12 +2103,15 @@
    "bodyBytes": 37948,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1795,12 +2122,15 @@
    "bodyBytes": 2548,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "nemotron-3.5-lightning": {
@@ -1815,12 +2145,15 @@
    "bodyBytes": 27280,
    "compaction": 3.86,
    "recall": 0.795,
+   "ticked": 241,
+   "invented": 3,
    "inventedPer100": 1.2,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1831,12 +2164,15 @@
    "bodyBytes": 9854,
    "compaction": 0.84,
    "recall": 0.882,
+   "ticked": 245,
+   "invented": 1,
    "inventedPer100": 0.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1846,13 +2182,16 @@
    "srcBytes": 66780,
    "bodyBytes": 14773,
    "compaction": 4.52,
-   "recall": 0.867,
+   "recall": 0.847,
+   "ticked": 312,
+   "invented": 2,
    "inventedPer100": 0.6,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1863,12 +2202,15 @@
    "bodyBytes": 54816,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1879,12 +2221,15 @@
    "bodyBytes": 2861,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "nemotron-3.5-lightning-noreason": {
@@ -1897,12 +2242,15 @@
    "bodyBytes": 42957,
    "compaction": 3.72,
    "recall": 0.892,
+   "ticked": 565,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1913,12 +2261,15 @@
    "bodyBytes": 10751,
    "compaction": 0.77,
    "recall": 0.784,
+   "ticked": 256,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -1929,12 +2280,15 @@
    "bodyBytes": 16899,
    "compaction": 3.95,
    "recall": 0.99,
+   "ticked": 441,
+   "invented": 5,
    "inventedPer100": 1.1,
    "numbers": "3/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -1945,12 +2299,15 @@
    "bodyBytes": 47030,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -1961,12 +2318,15 @@
    "bodyBytes": 2743,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "nemotron-3.5-super": {
@@ -1981,12 +2341,15 @@
    "bodyBytes": 24582,
    "compaction": 2.2,
    "recall": 0.727,
+   "ticked": 159,
+   "invented": 2,
    "inventedPer100": 1.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -1996,13 +2359,16 @@
    "srcBytes": 8231,
    "bodyBytes": 12736,
    "compaction": 0.65,
-   "recall": 0.947,
+   "recall": 0.925,
+   "ticked": 153,
+   "invented": 1,
    "inventedPer100": 0.7,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2012,13 +2378,16 @@
    "srcBytes": 66780,
    "bodyBytes": 16234,
    "compaction": 4.11,
-   "recall": 0.981,
+   "recall": 0.969,
+   "ticked": 90,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2029,12 +2398,15 @@
    "bodyBytes": 44183,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2045,12 +2417,15 @@
    "bodyBytes": 3568,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "nemotron-3.5-super-noreason": {
@@ -2063,12 +2438,15 @@
    "bodyBytes": 48107,
    "compaction": 3.32,
    "recall": 1.0,
+   "ticked": 599,
+   "invented": 1,
    "inventedPer100": 0.2,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2079,12 +2457,15 @@
    "bodyBytes": 11018,
    "compaction": 0.75,
    "recall": 0.947,
+   "ticked": 320,
+   "invented": 1,
    "inventedPer100": 0.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2094,13 +2475,16 @@
    "srcBytes": 66780,
    "bodyBytes": 14197,
    "compaction": 4.7,
-   "recall": 0.951,
+   "recall": 0.94,
+   "ticked": 66,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2111,12 +2495,15 @@
    "bodyBytes": 48853,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2127,12 +2514,15 @@
    "bodyBytes": 3573,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen2.5-coder-7b": {
@@ -2145,12 +2535,15 @@
    "bodyBytes": 37725,
    "compaction": 4.23,
    "recall": 0.904,
+   "ticked": 603,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2161,12 +2554,15 @@
    "bodyBytes": 8305,
    "compaction": 0.99,
    "recall": 0.619,
+   "ticked": 143,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2176,13 +2572,16 @@
    "srcBytes": 66780,
    "bodyBytes": 11990,
    "compaction": 5.57,
-   "recall": 0.87,
+   "recall": 0.86,
+   "ticked": 484,
+   "invented": 6,
    "inventedPer100": 1.2,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2193,12 +2592,15 @@
    "bodyBytes": 34487,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 6,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2209,12 +2611,15 @@
    "bodyBytes": 2346,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen3-4b-2507": {
@@ -2227,12 +2632,15 @@
    "bodyBytes": 33823,
    "compaction": 4.72,
    "recall": 0.798,
+   "ticked": 54,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2243,12 +2651,15 @@
    "bodyBytes": 9089,
    "compaction": 0.91,
    "recall": 0.719,
+   "ticked": 91,
+   "invented": 3,
    "inventedPer100": 3.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2258,13 +2669,16 @@
    "srcBytes": 66780,
    "bodyBytes": 14882,
    "compaction": 4.49,
-   "recall": 0.839,
+   "recall": 0.819,
+   "ticked": 177,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2275,12 +2689,15 @@
    "bodyBytes": 32984,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2291,12 +2708,15 @@
    "bodyBytes": 3601,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen3-coder-30b": {
@@ -2309,12 +2729,15 @@
    "bodyBytes": 31630,
    "compaction": 5.05,
    "recall": 0.869,
+   "ticked": 422,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2325,12 +2748,15 @@
    "bodyBytes": 9045,
    "compaction": 0.91,
    "recall": 0.675,
+   "ticked": 25,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2340,13 +2766,16 @@
    "srcBytes": 66780,
    "bodyBytes": 12252,
    "compaction": 5.45,
-   "recall": 0.844,
+   "recall": 0.833,
+   "ticked": 59,
+   "invented": 11,
    "inventedPer100": 18.6,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2357,12 +2786,15 @@
    "bodyBytes": 32386,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2373,12 +2805,15 @@
    "bodyBytes": 2792,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen3.5-35b-a3b": {
@@ -2393,12 +2828,15 @@
    "bodyBytes": 16773,
    "compaction": 4.66,
    "recall": 0.491,
+   "ticked": 268,
+   "invented": 2,
    "inventedPer100": 0.7,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2409,12 +2847,15 @@
    "bodyBytes": 8584,
    "compaction": 0.96,
    "recall": 0.792,
+   "ticked": 197,
+   "invented": 2,
    "inventedPer100": 1.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2425,12 +2866,15 @@
    "bodyBytes": 13199,
    "compaction": 5.06,
    "recall": 0.961,
+   "ticked": 466,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2441,12 +2885,15 @@
    "bodyBytes": 25573,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2457,12 +2904,15 @@
    "bodyBytes": 2362,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen3.5-35b-a3b-noreason": {
@@ -2475,12 +2925,15 @@
    "bodyBytes": 49613,
    "compaction": 3.22,
    "recall": 0.97,
+   "ticked": 744,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2491,12 +2944,15 @@
    "bodyBytes": 11037,
    "compaction": 0.75,
    "recall": 0.847,
+   "ticked": 221,
+   "invented": 1,
    "inventedPer100": 0.5,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2506,13 +2962,16 @@
    "srcBytes": 66780,
    "bodyBytes": 15617,
    "compaction": 4.28,
-   "recall": 0.99,
+   "recall": 0.969,
+   "ticked": 447,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2523,12 +2982,15 @@
    "bodyBytes": 42720,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2539,12 +3001,15 @@
    "bodyBytes": 3039,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen3.5-4b": {
@@ -2557,12 +3022,15 @@
    "bodyBytes": 36981,
    "compaction": 4.32,
    "recall": 0.922,
+   "ticked": 483,
+   "invented": 2,
    "inventedPer100": 0.4,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2573,12 +3041,15 @@
    "bodyBytes": 9065,
    "compaction": 0.91,
    "recall": 0.681,
+   "ticked": 158,
+   "invented": 2,
    "inventedPer100": 1.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2588,13 +3059,16 @@
    "srcBytes": 66780,
    "bodyBytes": 15114,
    "compaction": 4.42,
-   "recall": 0.951,
+   "recall": 0.931,
+   "ticked": 371,
+   "invented": 1,
    "inventedPer100": 0.3,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2605,12 +3079,15 @@
    "bodyBytes": 40362,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2621,12 +3098,15 @@
    "bodyBytes": 3082,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen3.8-27b": {
@@ -2639,12 +3119,15 @@
    "bodyBytes": 45786,
    "compaction": 3.49,
    "recall": 0.977,
+   "ticked": 975,
+   "invented": 8,
    "inventedPer100": 0.8,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2655,12 +3138,15 @@
    "bodyBytes": 11876,
    "compaction": 0.69,
    "recall": 0.956,
+   "ticked": 348,
+   "invented": 7,
    "inventedPer100": 2.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2671,12 +3157,15 @@
    "bodyBytes": 15991,
    "compaction": 4.18,
    "recall": 0.981,
+   "ticked": 432,
+   "invented": 1,
    "inventedPer100": 0.2,
    "numbers": "4/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2687,12 +3176,15 @@
    "bodyBytes": 49098,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2703,12 +3195,15 @@
    "bodyBytes": 3601,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "qwen3.8-27b-noreason": {
@@ -2721,12 +3216,15 @@
    "bodyBytes": 43304,
    "compaction": 3.69,
    "recall": 1.0,
+   "ticked": 785,
+   "invented": 2,
    "inventedPer100": 0.3,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2737,12 +3235,15 @@
    "bodyBytes": 12539,
    "compaction": 0.66,
    "recall": 0.967,
+   "ticked": 355,
+   "invented": 4,
    "inventedPer100": 1.1,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2753,12 +3254,15 @@
    "bodyBytes": 15487,
    "compaction": 4.31,
    "recall": 0.977,
+   "ticked": 558,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2769,12 +3273,15 @@
    "bodyBytes": 41191,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2785,12 +3292,15 @@
    "bodyBytes": 3223,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  },
  "seed-coder-8b": {
@@ -2803,12 +3313,15 @@
    "bodyBytes": 16234,
    "compaction": 9.83,
    "recall": 0.751,
+   "ticked": 133,
+   "invented": 0,
    "inventedPer100": 0.0,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "other": {
    "files": 5,
@@ -2819,12 +3332,15 @@
    "bodyBytes": 5876,
    "compaction": 1.4,
    "recall": 0.585,
+   "ticked": 87,
+   "invented": 1,
    "inventedPer100": 1.1,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "sql": {
    "files": 7,
@@ -2834,13 +3350,16 @@
    "srcBytes": 66780,
    "bodyBytes": 10076,
    "compaction": 6.63,
-   "recall": 0.634,
+   "recall": 0.643,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/4",
    "noLead": 0,
    "badHeadings": 1,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "package": {
    "files": 12,
@@ -2851,12 +3370,15 @@
    "bodyBytes": 21227,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   },
   "project": {
    "files": 1,
@@ -2867,12 +3389,15 @@
    "bodyBytes": 3037,
    "compaction": null,
    "recall": null,
+   "ticked": 0,
+   "invented": 0,
    "inventedPer100": null,
    "numbers": "0/0",
    "noLead": 0,
    "badHeadings": 0,
    "fences": 0,
-   "leaks": 0
+   "leaks": 0,
+   "secretsLeaked": 0
   }
  }
 }

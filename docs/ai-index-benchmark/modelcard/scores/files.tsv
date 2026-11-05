@@ -18,7 +18,7 @@ claude-haiku-5.5	other/scripts/rotate_backups.sh	other	False		False	1202	2544	5	
 claude-haiku-5.5	other/scripts/sales_report.py	other	False		False	2290	2368	9	9	79	2	0	0	True	0	0	0	OSError tuple
 claude-haiku-5.5	sql/library/01_schema.sql	sql	False		False	1622	2413	19	19	80	4	0	0	True	0	0	0	author_author_id_seq book_book_id_seq loan_loan_id_seq member_member_id_seq
 claude-haiku-5.5	sql/library/02_views.sql	sql	False		False	1240	1744	13	13	80	0	0	0	True	0	0	0	
-claude-haiku-5.5	sql/library/03_routines.sql	sql	False		False	2546	3002	14	14	81	0	0	0	True	0	0	0	
+claude-haiku-5.5	sql/library/03_routines.sql	sql	False		False	2546	3002	14	12	81	0	0	0	True	0	0	0	
 claude-haiku-5.5	sql/library/04_migration_v2.sql	sql	False		False	1660	2900	12	12	102	0	0	0	True	0	0	0	
 claude-haiku-5.5	sql/library/05_seed_data.sql	sql	False		False	54543	1640	4	4	60	0	4	4	True	0	0	0	
 claude-haiku-5.5	sql/shop/orders_mysql.sql	sql	False		False	2481	2903	15	15	83	0	0	0	True	0	0	0	
@@ -55,7 +55,7 @@ claude-haiku-5.5-openrouter	other/scripts/rotate_backups.sh	other	False		False	1
 claude-haiku-5.5-openrouter	other/scripts/sales_report.py	other	False		False	2290	2918	9	9	89	3	0	0	True	0	0	0	OSError list tuple
 claude-haiku-5.5-openrouter	sql/library/01_schema.sql	sql	False		False	1622	2339	19	19	31	0	0	0	True	0	0	0	
 claude-haiku-5.5-openrouter	sql/library/02_views.sql	sql	False		False	1240	2392	13	13	97	0	0	0	True	0	0	0	
-claude-haiku-5.5-openrouter	sql/library/03_routines.sql	sql	False		False	2546	3048	14	14	104	0	0	0	True	0	0	0	
+claude-haiku-5.5-openrouter	sql/library/03_routines.sql	sql	False		False	2546	3048	14	12	104	0	0	0	True	0	0	0	
 claude-haiku-5.5-openrouter	sql/library/04_migration_v2.sql	sql	False		False	1660	2695	12	12	94	0	0	0	True	0	0	0	
 claude-haiku-5.5-openrouter	sql/library/05_seed_data.sql	sql	False		False	54543	2194	4	4	56	0	4	4	True	0	0	0	
 claude-haiku-5.5-openrouter	sql/shop/orders_mysql.sql	sql	False		False	2481	3160	15	15	130	0	0	0	True	0	0	0	
@@ -92,7 +92,7 @@ deepseek-coder-v2-lite	other/scripts/rotate_backups.sh	other	False		False	1202	1
 deepseek-coder-v2-lite	other/scripts/sales_report.py	other	False		False	2290	1244	9	7	21	1	0	0	True	0	0	0	Tuple
 deepseek-coder-v2-lite	sql/library/01_schema.sql	sql	False		False	1622	2057	19	16	76	0	0	0	True	0	0	0	
 deepseek-coder-v2-lite	sql/library/02_views.sql	sql	False		False	1240	2021	13	13	28	0	0	0	True	0	0	0	
-deepseek-coder-v2-lite	sql/library/03_routines.sql	sql	False		False	2546	1997	14	12	30	0	0	0	True	0	0	0	
+deepseek-coder-v2-lite	sql/library/03_routines.sql	sql	False		False	2546	1997	14	10	30	0	0	0	True	0	0	0	
 deepseek-coder-v2-lite	sql/library/04_migration_v2.sql	sql	False		False	1660	1939	12	10	70	0	0	0	True	0	0	0	
 deepseek-coder-v2-lite	sql/library/05_seed_data.sql	sql	False		False	54543	3309	4	4	47	0	4	0	True	0	0	0	
 deepseek-coder-v2-lite	sql/shop/orders_mysql.sql	sql	False		False	2481	2331	15	15	46	0	0	0	True	0	0	0	
@@ -127,13 +127,13 @@ gemma-4-12b	other/ringbuf/ringbuf.c	other	False		False	1794	2136	12	7	48	0	0	0	T
 gemma-4-12b	other/ringbuf/ringbuf.h	other	False		False	1292	1984	14	11	52	0	0	0	True	0	0	0	
 gemma-4-12b	other/scripts/rotate_backups.sh	other	False		False	1202	1485	5	5	5	0	0	0	True	0	0	0	
 gemma-4-12b	other/scripts/sales_report.py	other	False		False	2290	1739	9	9	28	0	0	0	True	0	0	0	
-gemma-4-12b	sql/library/01_schema.sql	sql	False		False	1622	1660	19	18	0	0	0	0	True	0	0	0	
+gemma-4-12b	sql/library/01_schema.sql	sql	False		False	1622	1660	19	19	0	0	0	0	True	0	0	0	
 gemma-4-12b	sql/library/02_views.sql	sql	False		False	1240	1282	13	13	0	0	0	0	True	0	0	0	
-gemma-4-12b	sql/library/03_routines.sql	sql	False		False	2546	1924	14	13	15	0	0	0	True	0	0	0	
-gemma-4-12b	sql/library/04_migration_v2.sql	sql	False		False	1660	1391	12	11	16	0	0	0	True	0	0	0	
+gemma-4-12b	sql/library/03_routines.sql	sql	False		False	2546	1924	14	11	15	0	0	0	True	0	0	0	
+gemma-4-12b	sql/library/04_migration_v2.sql	sql	False		False	1660	1391	12	12	16	0	0	0	True	0	0	0	
 gemma-4-12b	sql/library/05_seed_data.sql	sql	False		False	54543	1291	4	4	0	0	4	4	True	0	0	0	
 gemma-4-12b	sql/shop/orders_mysql.sql	sql	False		False	2481	2200	15	12	0	0	0	0	True	0	0	0	
-gemma-4-12b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1917	14	13	18	0	0	0	True	0	0	0	
+gemma-4-12b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1917	14	12	18	0	0	0	True	0	0	0	
 gemma-4-12b	java/config/package.ai.md	package	False		False	0	2941	0	0	0	0	0	0	True	0	0	0	
 gemma-4-12b	java/package.ai.md	package	False		False	0	3312	0	0	0	0	0	0	True	0	0	0	
 gemma-4-12b	java/provider/package.ai.md	package	False		False	0	2770	0	0	0	0	0	0	True	0	0	0	
@@ -166,7 +166,7 @@ gemma-4-26b-a4b	other/scripts/rotate_backups.sh	other	False		False	1202	1544	5	5
 gemma-4-26b-a4b	other/scripts/sales_report.py	other	False		False	2290	1632	9	8	35	1	0	0	True	0	0	0	Generator
 gemma-4-26b-a4b	sql/library/01_schema.sql	sql	False		False	1622	1686	19	19	41	0	0	0	True	0	0	0	
 gemma-4-26b-a4b	sql/library/02_views.sql	sql	False		False	1240	1153	13	12	0	0	0	0	True	0	0	0	
-gemma-4-26b-a4b	sql/library/03_routines.sql	sql	False		False	2546	2095	14	13	0	0	0	0	True	0	0	0	
+gemma-4-26b-a4b	sql/library/03_routines.sql	sql	False		False	2546	2095	14	11	0	0	0	0	True	0	0	0	
 gemma-4-26b-a4b	sql/library/04_migration_v2.sql	sql	False		False	1660	2006	12	12	46	1	0	0	True	0	0	0	copies_le_total
 gemma-4-26b-a4b	sql/library/05_seed_data.sql	sql	False		False	54543	1251	4	4	36	0	4	0	True	0	0	0	
 gemma-4-26b-a4b	sql/shop/orders_mysql.sql	sql	False		False	2481	2020	15	12	6	0	0	0	True	0	0	0	
@@ -203,7 +203,7 @@ gemma-4-31b	other/scripts/rotate_backups.sh	other	False		False	1202	1871	5	5	29	
 gemma-4-31b	other/scripts/sales_report.py	other	False		False	2290	1828	9	9	45	1	0	0	True	0	0	0	Generator
 gemma-4-31b	sql/library/01_schema.sql	sql	False		False	1622	1480	19	19	65	0	0	0	True	0	0	0	
 gemma-4-31b	sql/library/02_views.sql	sql	False		False	1240	1128	13	13	47	0	0	0	True	0	0	0	
-gemma-4-31b	sql/library/03_routines.sql	sql	False		False	2546	1824	14	13	61	0	0	0	True	0	0	0	
+gemma-4-31b	sql/library/03_routines.sql	sql	False		False	2546	1824	14	11	61	0	0	0	True	0	0	0	
 gemma-4-31b	sql/library/04_migration_v2.sql	sql	False		False	1660	1415	12	12	43	0	0	0	True	0	0	0	
 gemma-4-31b	sql/library/05_seed_data.sql	sql	False		False	54543	1203	4	4	54	0	4	0	True	0	0	0	
 gemma-4-31b	sql/shop/orders_mysql.sql	sql	False		False	2481	2210	15	12	57	0	0	0	True	0	0	0	
@@ -238,9 +238,9 @@ gemma-4-31b-noreason	other/ringbuf/ringbuf.c	other	False		False	1794	2094	12	11	
 gemma-4-31b-noreason	other/ringbuf/ringbuf.h	other	False		False	1292	1870	14	13	36	0	0	0	True	0	0	0	
 gemma-4-31b-noreason	other/scripts/rotate_backups.sh	other	False		False	1202	1849	5	4	24	0	0	0	True	0	0	0	
 gemma-4-31b-noreason	other/scripts/sales_report.py	other	False		False	2290	1693	9	9	44	1	0	0	True	0	0	0	Generator
-gemma-4-31b-noreason	sql/library/01_schema.sql	sql	False		False	1622	1598	19	18	0	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	sql/library/01_schema.sql	sql	False		False	1622	1598	19	19	0	0	0	0	True	0	0	0	
 gemma-4-31b-noreason	sql/library/02_views.sql	sql	False		False	1240	1120	13	12	39	0	0	0	True	0	0	0	
-gemma-4-31b-noreason	sql/library/03_routines.sql	sql	False		False	2546	1913	14	13	56	0	0	0	True	0	0	0	
+gemma-4-31b-noreason	sql/library/03_routines.sql	sql	False		False	2546	1913	14	11	56	0	0	0	True	0	0	0	
 gemma-4-31b-noreason	sql/library/04_migration_v2.sql	sql	False		False	1660	1613	12	12	46	0	0	0	True	0	0	0	
 gemma-4-31b-noreason	sql/library/05_seed_data.sql	sql	False		False	54543	903	4	4	36	0	4	0	True	0	0	0	
 gemma-4-31b-noreason	sql/shop/orders_mysql.sql	sql	False		False	2481	2239	15	12	54	0	0	0	True	0	0	0	
@@ -270,18 +270,18 @@ gemma-4-e4b	java/provider/AiGenerationProviderFactory.java	java	False		False	367
 gemma-4-e4b	java/provider/LlamaCppJniAiGenerationProvider.java	java	False		False	12915	2644	4	4	29	0	0	0	True	0	0	0	
 gemma-4-e4b	java/provider/LlamaCppJniConfig.java	java	False		False	36703	7362	45	45	0	0	0	0	True	0	0	0	
 gemma-4-e4b	java/provider/OpenAiCompatibleProviderSupport.java	java	False		False	11622	3231	0	0	30	0	0	0	True	0	0	0	
-gemma-4-e4b	other/kernels/histogram.cl	other	False		False	1653	1596	9	6	0	0	0	0	True	0	0	0	
+gemma-4-e4b	other/kernels/histogram.cl	other	False		False	1653	1596	9	5	0	0	0	0	True	0	0	0	
 gemma-4-e4b	other/ringbuf/ringbuf.c	other	False		False	1794	2185	12	8	30	0	0	0	True	0	0	0	
 gemma-4-e4b	other/ringbuf/ringbuf.h	other	False		False	1292	1987	14	11	22	0	0	0	True	0	0	0	
 gemma-4-e4b	other/scripts/rotate_backups.sh	other	False		False	1202	1492	5	4	1	0	0	0	True	0	0	0	
 gemma-4-e4b	other/scripts/sales_report.py	other	False		False	2290	1774	9	8	18	0	0	0	True	0	0	0	
-gemma-4-e4b	sql/library/01_schema.sql	sql	False		False	1622	2045	19	18	0	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/01_schema.sql	sql	False		False	1622	2045	19	19	0	0	0	0	True	0	0	0	
 gemma-4-e4b	sql/library/02_views.sql	sql	False		False	1240	1168	13	13	3	0	0	0	True	0	0	0	
-gemma-4-e4b	sql/library/03_routines.sql	sql	False		False	2546	2048	14	14	6	0	0	0	True	0	0	0	
-gemma-4-e4b	sql/library/04_migration_v2.sql	sql	False		False	1660	1717	12	9	18	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/03_routines.sql	sql	False		False	2546	2048	14	12	6	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/library/04_migration_v2.sql	sql	False		False	1660	1717	12	10	18	0	0	0	True	0	0	0	
 gemma-4-e4b	sql/library/05_seed_data.sql	sql	False		False	54543	1491	4	4	4	0	4	0	True	0	0	0	
 gemma-4-e4b	sql/shop/orders_mysql.sql	sql	False		False	2481	1981	15	11	0	0	0	0	True	0	0	0	
-gemma-4-e4b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1999	14	14	0	0	0	0	True	0	0	0	
+gemma-4-e4b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1999	14	13	0	0	0	0	True	0	0	0	
 gemma-4-e4b	java/config/package.ai.md	package	False		False	0	3073	0	0	0	0	0	0	True	0	0	0	
 gemma-4-e4b	java/package.ai.md	package	False		False	0	3083	0	0	0	0	0	0	True	0	0	0	
 gemma-4-e4b	java/provider/package.ai.md	package	False		False	0	3386	0	0	0	0	0	0	True	0	0	0	
@@ -492,7 +492,7 @@ granite-4.0-h-tiny	java/provider/AiGenerationProviderFactory.java	java	False		Fa
 granite-4.0-h-tiny	java/provider/LlamaCppJniAiGenerationProvider.java	java	False		False	12915	1114	4	2	17	0	0	0	True	0	0	0	
 granite-4.0-h-tiny	java/provider/LlamaCppJniConfig.java	java	False		False	36703	2872	45	45	0	0	0	0	False	0	2	0	
 granite-4.0-h-tiny	java/provider/OpenAiCompatibleProviderSupport.java	java	False		False	11622	2728	0	0	0	0	0	0	False	9	2	0	
-granite-4.0-h-tiny	other/kernels/histogram.cl	other	False		False	1653	905	9	5	0	0	0	0	False	8	2	0	
+granite-4.0-h-tiny	other/kernels/histogram.cl	other	False		False	1653	905	9	4	0	0	0	0	False	8	2	0	
 granite-4.0-h-tiny	other/ringbuf/ringbuf.c	other	False		False	1794	1513	12	8	47	0	0	0	False	8	2	0	
 granite-4.0-h-tiny	other/ringbuf/ringbuf.h	other	False		False	1292	1809	14	12	43	0	0	0	True	0	0	0	
 granite-4.0-h-tiny	other/scripts/rotate_backups.sh	other	False		False	1202	1135	5	1	17	0	0	0	True	0	0	0	
@@ -608,13 +608,13 @@ kolibri-1	other/ringbuf/ringbuf.c	other	False		False	1794	1963	12	9	0	0	0	0	True
 kolibri-1	other/ringbuf/ringbuf.h	other	False		False	1292	2024	14	10	0	0	0	0	True	0	0	0	
 kolibri-1	other/scripts/rotate_backups.sh	other	False		False	1202	1352	5	2	0	0	0	0	True	0	0	0	
 kolibri-1	other/scripts/sales_report.py	other	False		False	2290	1382	9	8	0	0	0	0	True	0	0	0	
-kolibri-1	sql/library/01_schema.sql	sql	False		False	1622	2084	19	16	0	0	0	0	True	0	0	0	
+kolibri-1	sql/library/01_schema.sql	sql	False		False	1622	2084	19	17	0	0	0	0	True	0	0	0	
 kolibri-1	sql/library/02_views.sql	sql	False		False	1240	1520	13	13	0	0	0	0	True	0	0	0	
-kolibri-1	sql/library/03_routines.sql	sql	False		False	2546	2044	14	10	0	0	0	0	True	0	0	0	
-kolibri-1	sql/library/04_migration_v2.sql	sql	False		False	1660	1906	12	9	0	0	0	0	True	0	0	0	
+kolibri-1	sql/library/03_routines.sql	sql	False		False	2546	2044	14	8	0	0	0	0	True	0	0	0	
+kolibri-1	sql/library/04_migration_v2.sql	sql	False		False	1660	1906	12	10	0	0	0	0	True	0	0	0	
 kolibri-1	sql/library/05_seed_data.sql	sql	False		False	54543	1283	4	4	0	0	4	0	True	0	0	0	
-kolibri-1	sql/shop/orders_mysql.sql	sql	False		False	2481	2133	15	13	0	0	0	0	True	0	0	0	
-kolibri-1	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1962	14	13	16	0	0	0	True	0	0	0	
+kolibri-1	sql/shop/orders_mysql.sql	sql	False		False	2481	2133	15	14	0	0	0	0	True	0	0	0	
+kolibri-1	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1962	14	12	16	0	0	0	True	0	0	0	
 kolibri-1	java/config/package.ai.md	package	False		False	0	2500	0	0	0	0	0	0	True	0	0	0	
 kolibri-1	java/package.ai.md	package	False		False	0	5144	0	0	0	0	0	0	True	0	0	0	
 kolibri-1	java/provider/package.ai.md	package	False		False	0	3553	0	0	0	0	0	0	True	0	0	0	
@@ -645,13 +645,13 @@ lfm-2.5-24b-a2b	other/ringbuf/ringbuf.c	other	False		False	1794	2151	12	10	0	0	0
 lfm-2.5-24b-a2b	other/ringbuf/ringbuf.h	other	False		False	1292	2383	14	13	0	0	0	0	True	0	0	0	
 lfm-2.5-24b-a2b	other/scripts/rotate_backups.sh	other	False		False	1202	1421	5	1	0	0	0	0	True	0	0	0	
 lfm-2.5-24b-a2b	other/scripts/sales_report.py	other	False		False	2290	1453	9	8	0	0	0	0	True	0	0	0	
-lfm-2.5-24b-a2b	sql/library/01_schema.sql	sql	False		False	1622	1920	19	17	0	0	0	0	True	0	0	0	
+lfm-2.5-24b-a2b	sql/library/01_schema.sql	sql	False		False	1622	1920	19	18	0	0	0	0	True	0	0	0	
 lfm-2.5-24b-a2b	sql/library/02_views.sql	sql	False		False	1240	1784	13	13	0	0	0	0	True	0	0	0	
-lfm-2.5-24b-a2b	sql/library/03_routines.sql	sql	False		False	2546	1958	14	13	0	0	0	0	True	0	0	0	
-lfm-2.5-24b-a2b	sql/library/04_migration_v2.sql	sql	False		False	1660	2090	12	11	0	0	0	0	True	0	0	0	
+lfm-2.5-24b-a2b	sql/library/03_routines.sql	sql	False		False	2546	1958	14	11	0	0	0	0	True	0	0	0	
+lfm-2.5-24b-a2b	sql/library/04_migration_v2.sql	sql	False		False	1660	2090	12	12	0	0	0	0	True	0	0	0	
 lfm-2.5-24b-a2b	sql/library/05_seed_data.sql	sql	False		False	54543	1524	4	4	0	0	4	0	True	0	0	0	
-lfm-2.5-24b-a2b	sql/shop/orders_mysql.sql	sql	False		False	2481	2820	15	12	0	0	0	0	True	0	0	0	
-lfm-2.5-24b-a2b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	2431	14	14	0	0	0	0	True	0	0	0	
+lfm-2.5-24b-a2b	sql/shop/orders_mysql.sql	sql	False		False	2481	2820	15	13	0	0	0	0	True	0	0	0	
+lfm-2.5-24b-a2b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	2431	14	13	0	0	0	0	True	0	0	0	
 lfm-2.5-24b-a2b	java/config/package.ai.md	package	False		False	0	3615	0	0	0	0	0	0	True	0	0	0	
 lfm-2.5-24b-a2b	java/package.ai.md	package	False		False	0	5521	0	0	0	0	0	0	True	0	0	0	
 lfm-2.5-24b-a2b	java/provider/package.ai.md	package	False		False	0	3524	0	0	0	0	0	0	True	0	0	0	
@@ -682,7 +682,7 @@ mai-code-1.1-flash	other/ringbuf/ringbuf.c	other	False		False	1794	3204	12	11	12
 mai-code-1.1-flash	other/ringbuf/ringbuf.h	other	False		False	1292	3348	14	14	109	0	0	0	True	0	0	0	
 mai-code-1.1-flash	other/scripts/rotate_backups.sh	other	False		False	1202	2889	5	5	82	1	0	0	True	0	0	0	code
 mai-code-1.1-flash	other/scripts/sales_report.py	other	False		False	2290	2582	9	9	71	0	0	0	True	0	0	0	
-mai-code-1.1-flash	sql/library/01_schema.sql	sql	False		False	1622	2171	19	16	0	0	0	0	True	0	0	0	
+mai-code-1.1-flash	sql/library/01_schema.sql	sql	False		False	1622	2171	19	17	0	0	0	0	True	0	0	0	
 mai-code-1.1-flash	sql/library/02_views.sql	sql	False		False	1240	3947	13	13	159	1	0	0	True	0	0	0	MERGE
 mai-code-1.1-flash	sql/library/03_routines.sql	sql	False		False	2546	5317	14	14	237	0	0	0	True	0	0	0	
 mai-code-1.1-flash	sql/library/04_migration_v2.sql	sql	False		False	1660	3625	12	12	172	0	0	0	True	0	0	0	
@@ -756,7 +756,7 @@ mistral-large-4	other/ringbuf/ringbuf.c	other	False		False	1794	3030	12	12	111	0
 mistral-large-4	other/ringbuf/ringbuf.h	other	False		False	1292	2296	14	14	0	0	0	0	True	0	0	0	
 mistral-large-4	other/scripts/rotate_backups.sh	other	False		False	1202	2294	5	5	78	4	0	0	True	0	0	0	human path size
 mistral-large-4	other/scripts/sales_report.py	other	False		False	2290	2451	9	9	70	0	0	0	True	0	0	0	
-mistral-large-4	sql/library/01_schema.sql	sql	False		False	1622	2256	19	18	0	0	0	0	True	0	0	0	
+mistral-large-4	sql/library/01_schema.sql	sql	False		False	1622	2256	19	19	0	0	0	0	True	0	0	0	
 mistral-large-4	sql/library/02_views.sql	sql	False		False	1240	2222	13	13	95	0	0	0	True	0	0	0	
 mistral-large-4	sql/library/03_routines.sql	sql	False		False	2546	3247	14	14	137	0	0	0	True	0	0	0	
 mistral-large-4	sql/library/04_migration_v2.sql	sql	False		False	1660	3300	12	12	123	0	0	0	True	0	0	0	
@@ -764,7 +764,7 @@ mistral-large-4	sql/library/05_seed_data.sql	sql	False		False	54543	1500	4	4	49	
 mistral-large-4	sql/shop/orders_mysql.sql	sql	False		False	2481	3573	15	15	0	0	0	0	True	0	0	0	
 mistral-large-4	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	3368	14	14	150	0	0	0	True	0	0	0	
 mistral-large-4	java/config/package.ai.md	package	False		False	0	5194	0	0	0	0	0	0	True	0	0	0	
-mistral-large-4	java/package.ai.md	package	False		False	0	6771	0	0	0	0	0	0	True	0	0	1	
+mistral-large-4	java/package.ai.md	package	False		False	0	6771	0	0	0	0	0	0	True	0	0	0	
 mistral-large-4	java/provider/package.ai.md	package	False		False	0	5746	0	0	0	0	0	0	True	0	0	0	
 mistral-large-4	other/kernels/package.ai.md	package	False		False	0	2044	0	0	0	0	0	0	True	0	0	0	
 mistral-large-4	other/package.ai.md	package	False		False	0	4071	0	0	0	0	0	0	True	0	0	0	
@@ -795,7 +795,7 @@ muse-spark-1.3	other/scripts/rotate_backups.sh	other	False		False	1202	1340	5	5	
 muse-spark-1.3	other/scripts/sales_report.py	other	False		False	2290	1777	9	9	0	0	0	0	True	0	0	0	
 muse-spark-1.3	sql/library/01_schema.sql	sql	False		False	1622	1534	19	19	31	0	0	0	True	0	0	0	
 muse-spark-1.3	sql/library/02_views.sql	sql	False		False	1240	1189	13	13	0	0	0	0	True	0	0	0	
-muse-spark-1.3	sql/library/03_routines.sql	sql	False		False	2546	2329	14	14	6	0	0	0	True	0	0	0	
+muse-spark-1.3	sql/library/03_routines.sql	sql	False		False	2546	2329	14	12	6	0	0	0	True	0	0	0	
 muse-spark-1.3	sql/library/04_migration_v2.sql	sql	False		False	1660	2182	12	12	68	0	0	0	True	0	0	0	
 muse-spark-1.3	sql/library/05_seed_data.sql	sql	False		False	54543	1090	4	4	47	2	4	4	True	0	0	0	offset
 muse-spark-1.3	sql/shop/orders_mysql.sql	sql	False		False	2481	3361	15	15	166	0	0	0	True	0	0	0	
@@ -832,7 +832,7 @@ nemotron-3.5-lightning	other/scripts/rotate_backups.sh	other	False		False	1202	1
 nemotron-3.5-lightning	other/scripts/sales_report.py	other	False		False	2290	1730	9	8	0	0	0	0	True	0	0	0	
 nemotron-3.5-lightning	sql/library/01_schema.sql	sql	False		False	1622	2105	19	19	0	0	0	0	True	0	0	0	
 nemotron-3.5-lightning	sql/library/02_views.sql	sql	False		False	1240	1299	13	9	0	0	0	0	True	0	0	0	
-nemotron-3.5-lightning	sql/library/03_routines.sql	sql	False		False	2546	1908	14	10	0	0	0	0	True	0	0	0	
+nemotron-3.5-lightning	sql/library/03_routines.sql	sql	False		False	2546	1908	14	8	0	0	0	0	True	0	0	0	
 nemotron-3.5-lightning	sql/library/04_migration_v2.sql	sql	False		False	1660	3078	12	12	141	2	0	0	True	0	0	0	book_copy_copy_id_seq branch_branch_id_seq
 nemotron-3.5-lightning	sql/library/05_seed_data.sql	sql	False		False	54543	1106	4	4	0	0	4	0	True	0	0	0	
 nemotron-3.5-lightning	sql/shop/orders_mysql.sql	sql	False		False	2481	2628	15	11	53	0	0	0	True	0	0	0	
@@ -899,18 +899,18 @@ nemotron-3.5-super	java/provider/AiGenerationProviderFactory.java	java	False		Fa
 nemotron-3.5-super	java/provider/LlamaCppJniAiGenerationProvider.java	java	False		False	12915	4417	4	4	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	java/provider/LlamaCppJniConfig.java	java	False	empty	True	36703	0	45	0	0	0	0	0	False	0	0	0	
 nemotron-3.5-super	java/provider/OpenAiCompatibleProviderSupport.java	java	False		True	11622	2650	0	0	81	0	0	0	True	0	0	0	
-nemotron-3.5-super	other/kernels/histogram.cl	other	False		False	1653	2525	9	8	0	0	0	0	True	0	0	0	
+nemotron-3.5-super	other/kernels/histogram.cl	other	False		False	1653	2525	9	7	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	other/ringbuf/ringbuf.c	other	False		False	1794	3058	12	11	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	other/ringbuf/ringbuf.h	other	False		False	1292	2554	14	13	88	0	0	0	True	0	0	0	
 nemotron-3.5-super	other/scripts/rotate_backups.sh	other	False		False	1202	2223	5	5	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	other/scripts/sales_report.py	other	False		False	2290	2376	9	9	65	1	0	0	True	0	0	0	tuple
-nemotron-3.5-super	sql/library/01_schema.sql	sql	False		False	1622	1876	19	18	0	0	0	0	True	0	0	0	
+nemotron-3.5-super	sql/library/01_schema.sql	sql	False		False	1622	1876	19	19	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	sql/library/02_views.sql	sql	False		False	1240	2230	13	13	83	0	0	0	True	0	0	0	
-nemotron-3.5-super	sql/library/03_routines.sql	sql	False		False	2546	3329	14	14	0	0	0	0	True	0	0	0	
-nemotron-3.5-super	sql/library/04_migration_v2.sql	sql	False		False	1660	1842	12	11	7	0	0	0	True	0	0	0	
+nemotron-3.5-super	sql/library/03_routines.sql	sql	False		False	2546	3329	14	12	0	0	0	0	True	0	0	0	
+nemotron-3.5-super	sql/library/04_migration_v2.sql	sql	False		False	1660	1842	12	12	7	0	0	0	True	0	0	0	
 nemotron-3.5-super	sql/library/05_seed_data.sql	sql	False		False	54543	1780	4	4	0	0	4	4	True	0	0	0	
 nemotron-3.5-super	sql/shop/orders_mysql.sql	sql	False		False	2481	2537	15	15	0	0	0	0	True	0	0	0	
-nemotron-3.5-super	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	2640	14	14	0	0	0	0	True	0	0	0	
+nemotron-3.5-super	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	2640	14	13	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	java/config/package.ai.md	package	False		False	0	2819	0	0	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	java/package.ai.md	package	False		False	0	5865	0	0	0	0	0	0	True	0	0	0	
 nemotron-3.5-super	java/provider/package.ai.md	package	False		False	0	4193	0	0	0	0	0	0	True	0	0	0	
@@ -941,13 +941,13 @@ nemotron-3.5-super-noreason	other/ringbuf/ringbuf.c	other	False		False	1794	2364
 nemotron-3.5-super-noreason	other/ringbuf/ringbuf.h	other	False		False	1292	2415	14	13	80	0	0	0	True	0	0	0	
 nemotron-3.5-super-noreason	other/scripts/rotate_backups.sh	other	False		False	1202	1969	5	5	34	0	0	0	True	0	0	0	
 nemotron-3.5-super-noreason	other/scripts/sales_report.py	other	False		False	2290	2024	9	8	47	1	0	0	True	0	0	0	tuple
-nemotron-3.5-super-noreason	sql/library/01_schema.sql	sql	False		False	1622	1757	19	18	0	0	0	0	True	0	0	0	
+nemotron-3.5-super-noreason	sql/library/01_schema.sql	sql	False		False	1622	1757	19	19	0	0	0	0	True	0	0	0	
 nemotron-3.5-super-noreason	sql/library/02_views.sql	sql	False		False	1240	1246	13	13	0	0	0	0	True	0	0	0	
-nemotron-3.5-super-noreason	sql/library/03_routines.sql	sql	False		False	2546	3074	14	14	0	0	0	0	True	0	0	0	
-nemotron-3.5-super-noreason	sql/library/04_migration_v2.sql	sql	False		False	1660	2192	12	11	0	0	0	0	True	0	0	0	
+nemotron-3.5-super-noreason	sql/library/03_routines.sql	sql	False		False	2546	3074	14	12	0	0	0	0	True	0	0	0	
+nemotron-3.5-super-noreason	sql/library/04_migration_v2.sql	sql	False		False	1660	2192	12	12	0	0	0	0	True	0	0	0	
 nemotron-3.5-super-noreason	sql/library/05_seed_data.sql	sql	False		False	54543	1311	4	4	66	0	4	4	True	0	0	0	
 nemotron-3.5-super-noreason	sql/shop/orders_mysql.sql	sql	False		False	2481	2395	15	13	0	0	0	0	True	0	0	0	
-nemotron-3.5-super-noreason	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	2222	14	13	0	0	0	0	True	0	0	0	
+nemotron-3.5-super-noreason	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	2222	14	12	0	0	0	0	True	0	0	0	
 nemotron-3.5-super-noreason	java/config/package.ai.md	package	False		False	0	3955	0	0	0	0	0	0	True	0	0	0	
 nemotron-3.5-super-noreason	java/package.ai.md	package	False		False	0	7807	0	0	0	0	0	0	True	0	0	0	
 nemotron-3.5-super-noreason	java/provider/package.ai.md	package	False		False	0	4275	0	0	0	0	0	0	True	0	0	0	
@@ -984,7 +984,7 @@ qwen2.5-coder-7b	sql/library/03_routines.sql	sql	False		False	2546	1716	14	10	67
 qwen2.5-coder-7b	sql/library/04_migration_v2.sql	sql	False		False	1660	1616	12	9	69	0	0	0	True	0	0	0	
 qwen2.5-coder-7b	sql/library/05_seed_data.sql	sql	False		False	54543	1440	4	4	108	6	4	0	True	0	0	0	varchar
 qwen2.5-coder-7b	sql/shop/orders_mysql.sql	sql	False		False	2481	2203	15	14	115	0	0	0	True	0	0	0	
-qwen2.5-coder-7b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1655	14	13	0	0	0	0	True	0	0	0	
+qwen2.5-coder-7b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1655	14	12	0	0	0	0	True	0	0	0	
 qwen2.5-coder-7b	java/config/package.ai.md	package	False		False	0	1735	0	0	0	0	0	0	True	0	0	0	
 qwen2.5-coder-7b	java/package.ai.md	package	False		False	0	4712	0	0	0	0	0	0	True	0	0	0	
 qwen2.5-coder-7b	java/provider/package.ai.md	package	False		False	0	3366	0	0	0	0	0	0	True	0	0	0	
@@ -1017,7 +1017,7 @@ qwen3-4b-2507	other/scripts/rotate_backups.sh	other	False		False	1202	1394	5	1	0
 qwen3-4b-2507	other/scripts/sales_report.py	other	False		False	2290	1567	9	7	8	0	0	0	True	0	0	0	
 qwen3-4b-2507	sql/library/01_schema.sql	sql	False		False	1622	2378	19	15	0	0	0	0	True	0	0	0	
 qwen3-4b-2507	sql/library/02_views.sql	sql	False		False	1240	1668	13	13	0	0	0	0	True	0	0	0	
-qwen3-4b-2507	sql/library/03_routines.sql	sql	False		False	2546	2116	14	9	0	0	0	0	True	0	0	0	
+qwen3-4b-2507	sql/library/03_routines.sql	sql	False		False	2546	2116	14	7	0	0	0	0	True	0	0	0	
 qwen3-4b-2507	sql/library/04_migration_v2.sql	sql	False		False	1660	2701	12	11	82	0	0	0	True	0	0	0	
 qwen3-4b-2507	sql/library/05_seed_data.sql	sql	False		False	54543	2370	4	4	75	0	4	4	True	0	0	0	
 qwen3-4b-2507	sql/shop/orders_mysql.sql	sql	False		False	2481	1587	15	10	20	0	0	0	True	0	0	0	
@@ -1054,10 +1054,10 @@ qwen3-coder-30b	other/scripts/rotate_backups.sh	other	False		False	1202	1401	5	1
 qwen3-coder-30b	other/scripts/sales_report.py	other	False		False	2290	2084	9	6	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	sql/library/01_schema.sql	sql	False		False	1622	1635	19	16	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	sql/library/02_views.sql	sql	False		False	1240	1205	13	12	0	0	0	0	True	0	0	0	
-qwen3-coder-30b	sql/library/03_routines.sql	sql	False		False	2546	1560	14	10	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/library/03_routines.sql	sql	False		False	2546	1560	14	8	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	sql/library/04_migration_v2.sql	sql	False		False	1660	2941	12	10	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	sql/library/05_seed_data.sql	sql	False		False	54543	1166	4	4	59	11	4	0	True	0	0	0	integer
-qwen3-coder-30b	sql/shop/orders_mysql.sql	sql	False		False	2481	1882	15	10	0	0	0	0	True	0	0	0	
+qwen3-coder-30b	sql/shop/orders_mysql.sql	sql	False		False	2481	1882	15	11	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1863	14	13	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	java/config/package.ai.md	package	False		False	0	2641	0	0	0	0	0	0	True	0	0	0	
 qwen3-coder-30b	java/package.ai.md	package	False		False	0	4726	0	0	0	0	0	0	True	0	0	0	
@@ -1128,7 +1128,7 @@ qwen3.5-35b-a3b-noreason	other/scripts/rotate_backups.sh	other	False		False	1202
 qwen3.5-35b-a3b-noreason	other/scripts/sales_report.py	other	False		False	2290	2090	9	9	48	1	0	0	True	0	0	0	Generator
 qwen3.5-35b-a3b-noreason	sql/library/01_schema.sql	sql	False		False	1622	2140	19	19	55	0	0	0	True	0	0	0	
 qwen3.5-35b-a3b-noreason	sql/library/02_views.sql	sql	False		False	1240	2202	13	13	78	0	0	0	True	0	0	0	
-qwen3.5-35b-a3b-noreason	sql/library/03_routines.sql	sql	False		False	2546	2353	14	14	59	0	0	0	True	0	0	0	
+qwen3.5-35b-a3b-noreason	sql/library/03_routines.sql	sql	False		False	2546	2353	14	12	59	0	0	0	True	0	0	0	
 qwen3.5-35b-a3b-noreason	sql/library/04_migration_v2.sql	sql	False		False	1660	2612	12	12	59	0	0	0	True	0	0	0	
 qwen3.5-35b-a3b-noreason	sql/library/05_seed_data.sql	sql	False		False	54543	1326	4	4	41	0	4	0	True	0	0	0	
 qwen3.5-35b-a3b-noreason	sql/shop/orders_mysql.sql	sql	False		False	2481	2418	15	15	60	0	0	0	True	0	0	0	
@@ -1165,7 +1165,7 @@ qwen3.5-4b	other/scripts/rotate_backups.sh	other	False		False	1202	1603	5	1	17	2
 qwen3.5-4b	other/scripts/sales_report.py	other	False		False	2290	1643	9	4	20	0	0	0	True	0	0	0	
 qwen3.5-4b	sql/library/01_schema.sql	sql	False		False	1622	2517	19	19	45	0	0	0	True	0	0	0	
 qwen3.5-4b	sql/library/02_views.sql	sql	False		False	1240	2116	13	13	71	0	0	0	True	0	0	0	
-qwen3.5-4b	sql/library/03_routines.sql	sql	False		False	2546	2787	14	14	69	1	0	0	True	0	0	0	CURRENT_TIMESTAMP
+qwen3.5-4b	sql/library/03_routines.sql	sql	False		False	2546	2787	14	12	69	1	0	0	True	0	0	0	CURRENT_TIMESTAMP
 qwen3.5-4b	sql/library/04_migration_v2.sql	sql	False		False	1660	2352	12	12	66	0	0	0	True	0	0	0	
 qwen3.5-4b	sql/library/05_seed_data.sql	sql	False		False	54543	1810	4	4	39	0	4	4	True	0	0	0	
 qwen3.5-4b	sql/shop/orders_mysql.sql	sql	False		False	2481	2175	15	12	44	0	0	0	True	0	0	0	
@@ -1274,13 +1274,13 @@ seed-coder-8b	other/ringbuf/ringbuf.c	other	False		False	1794	1467	12	9	28	0	0	0
 seed-coder-8b	other/ringbuf/ringbuf.h	other	False		False	1292	1432	14	9	30	0	0	0	True	0	0	0	
 seed-coder-8b	other/scripts/rotate_backups.sh	other	False		False	1202	959	5	1	5	0	0	0	True	0	0	0	
 seed-coder-8b	other/scripts/sales_report.py	other	False		False	2290	1058	9	6	9	1	0	0	True	0	0	0	generator
-seed-coder-8b	sql/library/01_schema.sql	sql	False		False	1622	1619	19	15	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/library/01_schema.sql	sql	False		False	1622	1619	19	16	0	0	0	0	True	0	0	0	
 seed-coder-8b	sql/library/02_views.sql	sql	False		False	1240	1169	13	12	0	0	0	0	True	0	0	0	
-seed-coder-8b	sql/library/03_routines.sql	sql	False		False	2546	1463	14	10	0	0	0	0	True	0	0	0	
-seed-coder-8b	sql/library/04_migration_v2.sql	sql	False		False	1660	1372	12	5	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/library/03_routines.sql	sql	False		False	2546	1463	14	9	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/library/04_migration_v2.sql	sql	False		False	1660	1372	12	6	0	0	0	0	True	0	0	0	
 seed-coder-8b	sql/library/05_seed_data.sql	sql	False		False	54543	1208	4	0	0	0	4	0	True	1	0	0	
-seed-coder-8b	sql/shop/orders_mysql.sql	sql	False		False	2481	1605	15	10	0	0	0	0	True	0	0	0	
-seed-coder-8b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1640	14	13	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/shop/orders_mysql.sql	sql	False		False	2481	1605	15	11	0	0	0	0	True	0	0	0	
+seed-coder-8b	sql/warehouse/stock_sync_tsql.sql	sql	False		False	2688	1640	14	12	0	0	0	0	True	0	0	0	
 seed-coder-8b	java/config/package.ai.md	package	False		False	0	1110	0	0	0	0	0	0	True	0	0	0	
 seed-coder-8b	java/package.ai.md	package	False		False	0	2149	0	0	0	0	0	0	True	0	0	0	
 seed-coder-8b	java/provider/package.ai.md	package	False		False	0	1446	0	0	0	0	0	0	True	0	0	0	
