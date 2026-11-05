@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * The version of srcmorph itself, as the build wrote it into {@value #RESOURCE} next to this class: what
  * every summary records as its generator ({@code G}) unless the configuration names another
- * ({@code pluginVersion}). The CLI and the plugin record the same version this way, the one of the
+ * ({@code generatorVersion}). The CLI and the plugin record the same version this way, the one of the
  * library that wrote the summary.
  */
 @ToString

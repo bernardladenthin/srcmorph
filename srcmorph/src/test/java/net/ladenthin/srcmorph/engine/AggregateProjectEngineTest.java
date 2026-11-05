@@ -75,7 +75,7 @@ public class AggregateProjectEngineTest {
 
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(outputRoot.toFile());
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setProjectName("my-project");
 
@@ -96,7 +96,7 @@ public class AggregateProjectEngineTest {
 
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(outputRoot.toFile());
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setProjectName("   ");
 
@@ -113,7 +113,7 @@ public class AggregateProjectEngineTest {
 
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(outputRoot.toFile());
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setProjectName("my-project");
         config.setGenerationProvider("mock");

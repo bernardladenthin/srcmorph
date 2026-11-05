@@ -35,7 +35,7 @@ public final class RunRecord {
     /** Seconds per nanosecond. */
     private static final double NANOS_PER_SECOND = 1_000_000_000.0d;
 
-    private final String pluginVersion;
+    private final String generatorVersion;
 
     /** The files the plan skipped (a skip rule): no entry of their own, counted in the totals. */
     private final int skipped;
@@ -55,22 +55,22 @@ public final class RunRecord {
     /**
      * Creates an empty record of a run that starts now.
      *
-     * @param pluginVersion the version recorded with it
+     * @param generatorVersion the version recorded with it
      * @param skipped       the files the plan skipped
      */
-    public RunRecord(final String pluginVersion, final int skipped) {
-        this(pluginVersion, skipped, System::nanoTime);
+    public RunRecord(final String generatorVersion, final int skipped) {
+        this(generatorVersion, skipped, System::nanoTime);
     }
 
     /**
      * Creates an empty record of a run that starts now on {@code clock} (tests).
      *
-     * @param pluginVersion the version recorded with it
+     * @param generatorVersion the version recorded with it
      * @param skipped       the files the plan skipped
      * @param clock         the run's clock in nanoseconds
      */
-    RunRecord(final String pluginVersion, final int skipped, final LongSupplier clock) {
-        this.pluginVersion = pluginVersion;
+    RunRecord(final String generatorVersion, final int skipped, final LongSupplier clock) {
+        this.generatorVersion = generatorVersion;
         this.skipped = skipped;
         this.clock = clock;
         this.startNanos = clock.getAsLong();
@@ -203,7 +203,7 @@ public final class RunRecord {
     String toJson() throws IOException {
         final ObjectMapper mapper = new ObjectMapper();
         final ObjectNode root = mapper.createObjectNode();
-        root.put("pluginVersion", pluginVersion);
+        root.put("generatorVersion", generatorVersion);
         final ObjectNode totals = root.putObject("totals");
         final ArrayNode files = root.putArray("files");
         AiGenerationUsage sum = AiGenerationUsage.NONE;

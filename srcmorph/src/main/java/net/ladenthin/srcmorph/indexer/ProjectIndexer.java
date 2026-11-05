@@ -96,7 +96,7 @@ public class ProjectIndexer {
     private static final String OVERVIEW_SOURCE_LEAD_SEPARATOR = ": ";
 
     private final String projectTitle;
-    private final String pluginVersion;
+    private final String generatorVersion;
     private final String aiVersion;
     private final boolean force;
 
@@ -127,18 +127,18 @@ public class ProjectIndexer {
      * Creates a deterministic {@link ProjectIndexer} with no AI overview.
      *
      * @param projectTitle  title recorded in the project index header (typically the Maven project name)
-     * @param pluginVersion plugin version recorded in the header
+     * @param generatorVersion generator version recorded in the header
      * @param aiVersion     AI summarisation logic version recorded in the header
      * @param force         when {@code true}, rewrite the project index even when it is unchanged
      * @param regenerateOn  which changed header fields rewrite the project index
      */
     public ProjectIndexer(
             final String projectTitle,
-            final String pluginVersion,
+            final String generatorVersion,
             final String aiVersion,
             final boolean force,
             final AiRegenerateOn regenerateOn) {
-        this(projectTitle, pluginVersion, aiVersion, force, regenerateOn, null);
+        this(projectTitle, generatorVersion, aiVersion, force, regenerateOn, null);
     }
 
     /**
@@ -148,7 +148,7 @@ public class ProjectIndexer {
      * above.</p>
      *
      * @param projectTitle            title recorded in the project index header
-     * @param pluginVersion           plugin version recorded in the header
+     * @param generatorVersion           generator version recorded in the header
      * @param aiVersion               AI summarisation logic version recorded in the header
      * @param force                   when {@code true}, rewrite the project index even when unchanged
      * @param regenerateOn            which changed header fields rewrite the project index
@@ -156,13 +156,13 @@ public class ProjectIndexer {
      */
     public ProjectIndexer(
             final String projectTitle,
-            final String pluginVersion,
+            final String generatorVersion,
             final String aiVersion,
             final boolean force,
             final AiRegenerateOn regenerateOn,
             final @Nullable ProjectOverview overview) {
         this.projectTitle = projectTitle;
-        this.pluginVersion = pluginVersion;
+        this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
         this.force = force;
         this.headerSupport = new AiMdHeaderSupport(
@@ -257,7 +257,7 @@ public class ProjectIndexer {
                         checksum,
                         latestDate,
                         generatedAt,
-                        pluginVersion,
+                        generatorVersion,
                         aiVersion,
                         AiMdHeaderCodec.NODE_TYPE_PROJECT,
                         packageLinks)

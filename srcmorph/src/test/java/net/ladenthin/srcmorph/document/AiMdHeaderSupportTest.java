@@ -338,7 +338,7 @@ public class AiMdHeaderSupportTest {
 
     @ParameterizedTest(name = "field {0} changed alone does not force a rewrite")
     @MethodSource("ignoredHeaderFields")
-    public void shouldWrite_onlyTheModificationTimeOrThePluginVersionChanged_returnsFalse(
+    public void shouldWrite_onlyTheModificationTimeOrTheGeneratorVersionChanged_returnsFalse(
             final String fieldName, final AiMdHeader expectedHeader) throws IOException {
         final Path target = folder.resolve("test.ai.md");
         documentCodec.write(target, new AiMdDocument(storedHeader(), EXISTING_BODY));

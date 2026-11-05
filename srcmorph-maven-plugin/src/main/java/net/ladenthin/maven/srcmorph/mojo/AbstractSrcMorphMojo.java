@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  * CLI's ({@link #configurationFile}, JSON or YAML); the POM names the file and the switches, nothing
  * else. {@link #buildConfiguration(RuleSection)} reads it and fills what it leaves unset from the Maven
  * project: {@code baseDirectory} ({@code ${project.basedir}}), {@code subtrees} (the source directory
- * and the resource directories that exist) and {@code projectName}; {@code pluginVersion} is srcmorph's
+ * and the resource directories that exist) and {@code projectName}; {@code generatorVersion} is srcmorph's
  * own version, as in the CLI. A
  * {@code ${name}} in the file is a Maven property (user, then project, then system), so
  * {@code -Dai.gpuLayers=12} reaches it.

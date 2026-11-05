@@ -30,7 +30,7 @@ Major field groups:
 | Output | `outputDirectory`, `force`, `regenerateOn` (`config.AiRegenerateOn`: `source`, `prompt`, `facts`, `model`, `children`, each `true` by default, each the header field `C`, `P`, `N`, `M` or `K` whose change rewrites a summary; `force` rewrites every one), `planOnly`, `runRecordFile` (the JSON record of a file phase, `engine.RunRecord`) |
 | Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` (`List<AiFactDefinition>`: a `key` and `facts` or a `factsFile`) |
 | AI backend | `generationProvider` (`"mock"`, `"llamacpp-jni"` or `"openai-compatible"`; a model definition's own `provider` overrides it); every model parameter is a field of an `aiDefinitions` entry |
-| Header metadata | `pluginVersion`, `aiVersion`, `projectName` |
+| Header metadata | `generatorVersion`, `aiVersion`, `projectName` |
 
 Every other `config/` class is a plain, Maven-annotation-free JavaBean too: `AiModelDefinition` (a
 named, complete set of GGUF sampling parameters), `AiPromptDefinition` (a named prompt template —

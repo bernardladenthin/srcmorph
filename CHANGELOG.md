@@ -59,6 +59,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   `SourceFileIndexer.classify` takes both lookups non-null (the two-argument one skips the window
   check). `AiGenerationProviderFactory.effectiveProvider` takes a non-null run provider and returns a
   non-null key, and `AiPromptTemplateLoader.load(List)` is gone (`load(List, Collection)` remains).
+- **A configuration that sets `pluginVersion` names it `generatorVersion`** (it is srcmorph's own
+  version, the header's `G`, in the CLI and the plugin alike); the run record's `pluginVersion` is
+  `generatorVersion` too, and so are the bean's getter and setter and the `RunRecord` parameter.
 - **Java callers of the library, the naming review** (`docs/code-review-2026-11-05.md` section 2):
   `AiGenerationTimings` is `TimedGeneration`; `AiPromptPreparationSupport.getBasePromptLength` is
   `basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` like

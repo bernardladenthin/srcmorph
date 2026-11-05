@@ -129,7 +129,7 @@ public final class AggregatePackagesEngine {
             final PackageIndexer packageIndexer = new PackageIndexer(
                     basePath,
                     outputPath,
-                    config.getPluginVersion(),
+                    config.getGeneratorVersion(),
                     config.getAiVersion(),
                     resolvedSubtrees,
                     config.isForce(),

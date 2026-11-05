@@ -93,7 +93,7 @@ Package root: `net.ladenthin.srcmorph`.
   **`SrcMorphConfiguration`**: one bean holding everything a run needs (`baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, the size band, `force`, `regenerateOn` (`AiRegenerateOn`: which changed header field rewrites a summary), `planOnly`,
   `generationProvider`, `profileDirectory`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`,
-  `pluginVersion`/`aiVersion`/`projectName`, `runRecordFile`: the JSON record of a file phase,
+  `generatorVersion`/`aiVersion`/`projectName`, `runRecordFile`: the JSON record of a file phase,
   `engine.RunRecord`, `partsDirectory`: each chunked file's map and reduce answers). The file around it is **`SrcMorphConfigurationFile`**
   (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the CLI's `command` /
   `modelFilter`), read by **`SrcMorphConfigurationFileLoader`** the same way for both surfaces: the
@@ -283,7 +283,7 @@ themselves (five goals, `RuleSection`).
   file with the core's loader and fills what it leaves unset from Maven: `baseDirectory`
   (`${project.basedir}`), `subtrees` (the source directory and the resource directories that exist
   below the base; a resource directory that holds the source directory is left out) and
-  `projectName` (`pluginVersion`, the header's `G`, is srcmorph's own version in the CLI and the
+  `projectName` (`generatorVersion`, the header's `G`, is srcmorph's own version in the CLI and the
   plugin alike: `support.AiGeneratorVersion`, filled in by the core's resource filtering); `${name}`
   in the file is a Maven property (user over project properties over the
   project's own values such as `project.basedir` over system), which is how the self-test's `-Dai.*`

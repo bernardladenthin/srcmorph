@@ -104,7 +104,7 @@ public final class AggregateProjectEngine {
             LOGGER.info("Project overview generation: disabled (no rule configured)");
             final ProjectIndexer indexer = new ProjectIndexer(
                     title,
-                    config.getPluginVersion(),
+                    config.getGeneratorVersion(),
                     config.getAiVersion(),
                     config.isForce(),
                     config.getRegenerateOn());
@@ -182,7 +182,7 @@ public final class AggregateProjectEngine {
                 promptSupport)) {
             final ProjectIndexer indexer = new ProjectIndexer(
                     title,
-                    config.getPluginVersion(),
+                    config.getGeneratorVersion(),
                     config.getAiVersion(),
                     config.isForce(),
                     config.getRegenerateOn(),

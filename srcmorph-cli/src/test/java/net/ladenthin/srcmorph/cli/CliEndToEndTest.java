@@ -52,7 +52,7 @@ public class CliEndToEndTest {
         configuration.srcMorph.setBaseDirectory(tempDir.toFile());
         configuration.srcMorph.setOutputDirectory(tempDir.resolve("out").toFile());
         configuration.srcMorph.setGenerationProvider("mock");
-        configuration.srcMorph.setPluginVersion("1.0.0-test");
+        configuration.srcMorph.setGeneratorVersion("1.0.0-test");
         configuration.srcMorph.setAiVersion("0.0.0");
 
         final AiPromptDefinition prompt = new AiPromptDefinition();

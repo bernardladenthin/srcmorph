@@ -137,7 +137,8 @@ nothing else. What the file leaves unset, Maven fills from the project:
 | `subtrees` | the project's source directory and resource directories that exist below the base directory (a resource's includes and excludes are not applied; a resource directory that holds the source directory, such as the project directory itself, is left out) |
 | `outputDirectory` | `src/site/ai` below the base directory |
 | `projectName` | `${project.name}` |
-| `pluginVersion` | `${project.version}` |
+
+`generatorVersion`, the header's `G`, is srcmorph's own version unless the file sets it, as in the CLI.
 
 Relative paths in the file resolve against the file's directory: the directories (`partsDirectory`
 too), `runRecordFile`,

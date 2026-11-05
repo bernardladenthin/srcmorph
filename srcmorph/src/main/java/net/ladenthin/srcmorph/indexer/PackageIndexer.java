@@ -94,7 +94,7 @@ public class PackageIndexer {
     });
 
     private final Path outputRoot;
-    private final String pluginVersion;
+    private final String generatorVersion;
     private final String aiVersion;
     private final List<Path> sourceSubtrees;
     private final List<Path> aiSubtrees;
@@ -128,7 +128,7 @@ public class PackageIndexer {
      *
      * @param baseDirectory          project base directory
      * @param outputRoot             root directory in which {@code .ai.md} files reside
-     * @param pluginVersion          plugin version recorded in headers
+     * @param generatorVersion          generator version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
      * @param sourceSubtrees         source subtrees in scope; may be empty
      * @param force                  when {@code true}, rewrite every package, whatever {@code regenerateOn}
@@ -142,7 +142,7 @@ public class PackageIndexer {
     public PackageIndexer(
             final Path baseDirectory,
             final Path outputRoot,
-            final String pluginVersion,
+            final String generatorVersion,
             final String aiVersion,
             final Collection<Path> sourceSubtrees,
             final boolean force,
@@ -152,7 +152,7 @@ public class PackageIndexer {
             final AiPromptSupport promptSupport,
             final AiModelDefinitionSupport modelDefinitionSupport) {
         this.outputRoot = outputRoot;
-        this.pluginVersion = pluginVersion;
+        this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
         this.sourceSubtrees = new ArrayList<>(sourceSubtrees);
         // Inlined here (instead of calling toAiSubtrees) so the Checker Framework
@@ -283,7 +283,7 @@ public class PackageIndexer {
                         packageChecksum,
                         packageDate,
                         generatedAt,
-                        pluginVersion,
+                        generatorVersion,
                         aiVersion,
                         AiMdHeaderCodec.NODE_TYPE_PACKAGE,
                         childLinks)

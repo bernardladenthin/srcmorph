@@ -233,7 +233,7 @@ public final class GenerateEngine {
         final int totalFiles = plan.routedCount();
         final long runStartNanos = System.nanoTime();
         final RunRecord runRecord =
-                new RunRecord(config.getPluginVersion(), plan.skipped().size());
+                new RunRecord(config.getGeneratorVersion(), plan.skipped().size());
         long doneEstimatedSeconds = 0;
         int doneFiles = 0;
         int wrote = 0;
@@ -573,7 +573,7 @@ public final class GenerateEngine {
                     resolvedExtensions,
                     config.getFileNames(),
                     config.getFileInterpreters(),
-                    config.getPluginVersion(),
+                    config.getGeneratorVersion(),
                     config.getAiVersion(),
                     resolvedSubtrees,
                     config.getExcludes(),

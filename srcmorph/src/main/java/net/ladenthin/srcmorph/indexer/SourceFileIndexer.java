@@ -84,7 +84,7 @@ public final class SourceFileIndexer {
     private final List<Pattern> fileNames;
     private final List<String> fileInterpreters;
     private final int contentHeadChars;
-    private final String pluginVersion;
+    private final String generatorVersion;
     private final String aiVersion;
     private final List<Path> subtrees;
     private final AiSourceExcludeFilter excludeFilter;
@@ -115,7 +115,7 @@ public final class SourceFileIndexer {
      *                         {@code null} or empty
      * @param fileInterpreters interpreters whose scripts without an extension are indexed, by their
      *                         {@code #!} line ({@link AiShebang}); may be {@code null} or empty
-     * @param pluginVersion    plugin version recorded in headers
+     * @param generatorVersion    generator version recorded in headers
      * @param aiVersion        AI summarisation logic version recorded in headers
      * @param subtrees         source subtrees in scope; may be empty
      * @param excludes         glob patterns (relative to {@code baseDirectory}, {@code /} separators)
@@ -137,7 +137,7 @@ public final class SourceFileIndexer {
             final Collection<String> fileExtensions,
             final @Nullable Collection<String> fileNames,
             final @Nullable Collection<String> fileInterpreters,
-            final String pluginVersion,
+            final String generatorVersion,
             final String aiVersion,
             final Collection<Path> subtrees,
             final @Nullable Collection<String> excludes,
@@ -167,7 +167,7 @@ public final class SourceFileIndexer {
                     + " (a whole #! line), not " + contentHeadChars);
         }
         this.contentHeadChars = contentHeadChars;
-        this.pluginVersion = pluginVersion;
+        this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
         this.subtrees = new ArrayList<>(subtrees);
         this.excludeFilter = new AiSourceExcludeFilter(excludes);
@@ -450,7 +450,7 @@ public final class SourceFileIndexer {
                         checksum,
                         sourceModified,
                         generatedAt,
-                        pluginVersion,
+                        generatorVersion,
                         aiVersion,
                         AiMdHeaderCodec.NODE_TYPE_FILE)
                 .withHashes(promptHash, factsHash, modelHash, "");

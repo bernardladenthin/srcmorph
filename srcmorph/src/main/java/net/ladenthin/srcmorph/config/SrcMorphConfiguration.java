@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
  * of that file.
  *
  * <p>The plugin fills what the file leaves unset from the Maven project ({@code baseDirectory},
- * {@code subtrees}, {@code projectName}, {@code pluginVersion}); see the plugin module's
+ * {@code subtrees}, {@code projectName}, {@code generatorVersion}); see the plugin module's
  * {@code AbstractSrcMorphMojo}.</p>
  *
  * <p>Deliberately excluded: the per-goal {@code skip}/{@code skipFile}/{@code skipPackage}/
@@ -73,7 +73,7 @@ public class SrcMorphConfiguration {
     private @Nullable File partsDirectory;
     private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
     private @Nullable List<AiFactDefinition> factDefinitions;
-    private String pluginVersion = new AiGeneratorVersion().version();
+    private String generatorVersion = new AiGeneratorVersion().version();
     private String aiVersion = DEFAULT_AI_VERSION;
     private @Nullable String projectName;
 
@@ -510,17 +510,17 @@ public class SrcMorphConfiguration {
      *
      * @return the generator version
      */
-    public String getPluginVersion() {
-        return pluginVersion;
+    public String getGeneratorVersion() {
+        return generatorVersion;
     }
 
     /**
      * Sets the generator (plugin) version recorded in every written {@code .ai.md} header.
      *
-     * @param pluginVersion the generator version
+     * @param generatorVersion the generator version
      */
-    public void setPluginVersion(final String pluginVersion) {
-        this.pluginVersion = pluginVersion;
+    public void setGeneratorVersion(final String generatorVersion) {
+        this.generatorVersion = generatorVersion;
     }
 
     /**

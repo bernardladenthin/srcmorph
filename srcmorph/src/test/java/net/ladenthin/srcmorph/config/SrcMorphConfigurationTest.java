@@ -27,7 +27,7 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getAiVersion(), is(SrcMorphConfiguration.DEFAULT_AI_VERSION));
         assertThat(c.getMinFileSizeBytes(), is(0L));
         assertThat(c.getMaxFileSizeBytes(), is(0L));
-        assertThat(c.getPluginVersion(), is(new AiGeneratorVersion().version()));
+        assertThat(c.getGeneratorVersion(), is(new AiGeneratorVersion().version()));
     }
 
     @Test
@@ -210,10 +210,10 @@ public class SrcMorphConfigurationTest {
     }
 
     @Test
-    public void pluginVersionRoundTrips() {
+    public void generatorVersionRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        c.setPluginVersion("1.2.3");
-        assertThat(c.getPluginVersion(), is("1.2.3"));
+        c.setGeneratorVersion("1.2.3");
+        assertThat(c.getGeneratorVersion(), is("1.2.3"));
     }
 
     @Test

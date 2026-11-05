@@ -523,7 +523,7 @@ public class SourceFileIndexerTest {
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
 
     // shared constant used across multiple tests in the same fold
-    private static final String PLUGIN_VERSION = "0.1.0-SNAPSHOT";
+    private static final String GENERATOR_VERSION = "0.1.0-SNAPSHOT";
     private static final String AI_VERSION = "0.0.0";
 
     // <editor-fold defaultstate="collapsed" desc="indexSourceRoot">
@@ -533,7 +533,7 @@ public class SourceFileIndexerTest {
         final Path temp = Files.createTempDirectory("ai-test");
         final SourceFileIndexer indexer = new SourceFileIndexer(
                 new SystemStreamLog(), temp, temp, List.of(".java"),
-                PLUGIN_VERSION, AI_VERSION, List.of(), false,
+                GENERATOR_VERSION, AI_VERSION, List.of(), false,
                 new MockAiGenerationProvider(), List.of(), new AiPromptSupport(List.of())
         );
 

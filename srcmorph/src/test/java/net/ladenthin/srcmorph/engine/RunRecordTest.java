@@ -67,7 +67,7 @@ public class RunRecordTest {
     public void toJson_oneObjectPerFile() throws Exception {
         final JsonNode root = new ObjectMapper().readTree(runRecord().toJson());
 
-        assertThat(root.get("pluginVersion").asText(), is(equalTo("9.9.9")));
+        assertThat(root.get("generatorVersion").asText(), is(equalTo("9.9.9")));
         final JsonNode a = root.get("files").get(0);
         assertThat(a.get("file").asText(), is(equalTo("src/A.java")));
         assertThat(a.get("rule").asText(), is(equalTo("java")));

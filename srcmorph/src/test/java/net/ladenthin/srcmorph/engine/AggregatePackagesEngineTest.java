@@ -108,7 +108,7 @@ public class AggregatePackagesEngineTest {
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(outputRoot.toFile());
         config.setGenerationProvider("mock");
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
@@ -152,7 +152,7 @@ public class AggregatePackagesEngineTest {
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(outputRoot.toFile());
         config.setGenerationProvider("mock");
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(smallWindow));

@@ -90,7 +90,7 @@ public class GenerateEngineTest {
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(tempDir.resolve("out").toFile());
         config.setGenerationProvider("mock");
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setPromptDefinitions(CommonTestFixtures.createFilePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
@@ -1011,7 +1011,7 @@ public class GenerateEngineTest {
         assertThat(file.get("completionTokens").asLong() > 0, is(true));
         assertThat(file.get("finishReason").asText(), is("stop"));
         assertThat(file.get("promptHash").asText().matches("[0-9A-F]{8}"), is(true));
-        assertThat(first.get("pluginVersion").asText(), is("1.0.0"));
+        assertThat(first.get("generatorVersion").asText(), is("1.0.0"));
         // the second run found it up to date: no call, no tokens
         assertThat(second.get("files").get(0).get("outcome").asText(), is("unchanged"));
         assertThat(second.get("totals").get("calls").asInt(), is(0));

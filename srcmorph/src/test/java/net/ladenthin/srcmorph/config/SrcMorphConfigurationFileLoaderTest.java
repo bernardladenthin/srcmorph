@@ -354,14 +354,14 @@ public class SrcMorphConfigurationFileLoaderTest {
         final SrcMorphConfigurationFile empty =
                 SrcMorphConfigurationFileLoader.load(write("empty.yaml", "srcMorph:\n"), defaultBase(), NO_PROPERTIES);
         final SrcMorphConfiguration nothing = SrcMorphConfigurationFileLoader.load(
-                        write("nothing.yaml", "srcMorph:\n  pluginVersion:\n  aiVersion: ~\n"),
+                        write("nothing.yaml", "srcMorph:\n  generatorVersion:\n  aiVersion: ~\n"),
                         defaultBase(),
                         NO_PROPERTIES)
                 .getSrcMorph();
 
         // assert
         assertThat(empty.getSrcMorph().getBaseDirectory(), is(equalTo(defaultBase())));
-        assertThat(nothing.getPluginVersion(), is(equalTo(new SrcMorphConfiguration().getPluginVersion())));
+        assertThat(nothing.getGeneratorVersion(), is(equalTo(new SrcMorphConfiguration().getGeneratorVersion())));
         assertThat(nothing.getAiVersion(), is(equalTo(new SrcMorphConfiguration().getAiVersion())));
     }
 

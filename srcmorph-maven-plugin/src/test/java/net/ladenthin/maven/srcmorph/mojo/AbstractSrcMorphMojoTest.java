@@ -180,7 +180,7 @@ public class AbstractSrcMorphMojoTest {
                         sources.toFile().getAbsolutePath(), resources.toFile().getAbsolutePath()))));
         assertThat(config.getProjectName(), is(equalTo("fixture-project")));
         // the generator is srcmorph itself, not the project
-        assertThat(config.getPluginVersion(), is(equalTo(new AiGeneratorVersion().version())));
+        assertThat(config.getGeneratorVersion(), is(equalTo(new AiGeneratorVersion().version())));
         assertThat(config.isForce(), is(false));
     }
 
@@ -238,13 +238,13 @@ public class AbstractSrcMorphMojoTest {
         writeConfiguration(
                 project,
                 "srcMorph:\n  subtrees: [\"lib\"]\n  projectName: \"from-the-file\"\n"
-                        + "  pluginVersion: \"9.9.9\"\n  force: true\n");
+                        + "  generatorVersion: \"9.9.9\"\n  force: true\n");
 
         final SrcMorphConfiguration config = mojo().buildConfiguration(RuleSection.FILES);
 
         assertThat(config.getSubtrees(), is(equalTo(Collections.singletonList("lib"))));
         assertThat(config.getProjectName(), is(equalTo("from-the-file")));
-        assertThat(config.getPluginVersion(), is(equalTo("9.9.9")));
+        assertThat(config.getGeneratorVersion(), is(equalTo("9.9.9")));
         // srcmorph.force unset (false) does not undo the file's force
         assertThat(config.isForce(), is(true));
     }

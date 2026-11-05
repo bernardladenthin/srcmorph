@@ -70,9 +70,9 @@ breaking change, the CHANGELOG's Upgrading section names each one)
 - [x] A2 (6381089) N5 `AiMdHeader`'s accessors by name (`headerVersion()`, `checksum()`, `sourceDate()`,
   `generatedAt()`, `generatorVersion()`, `aiVersion()`, `nodeType()`, `promptHash()`, `factsHash()`,
   `modelHash()`, `childrenHash()`); the codec keeps the letters
-- [x] A3 N8 `AiIndexPlan.Entry` to `Route`, `RunRecord.Entry` to `FileRecord`, a `RecordedHashes`
+- [x] A3 (6300ad9) N8 `AiIndexPlan.Entry` to `Route`, `RunRecord.Entry` to `FileRecord`, a `RecordedHashes`
   value instead of `Map.Entry<String, String>`
-- [ ] A4 N9 `pluginVersion` to `generatorVersion` (configuration key, bean, `RunRecord`)
+- [x] A4 N9 `pluginVersion` to `generatorVersion` (configuration key, bean, `RunRecord`)
 - [ ] A5 N10 drop `AiGenerationConfig`: the model registry builds `ProviderConfig` from the
   `AiModelDefinition` directly
 - [ ] A6 N4a, N6 and N7 in one pass per package, each class renamed once (the `Ai` prefix goes but
