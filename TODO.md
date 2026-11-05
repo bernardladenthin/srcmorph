@@ -6,7 +6,80 @@ repo-specific or this repo's slice of a cross-cutting initiative.
 
 **Completed work is not recorded here.** It lives in git history and in
 `crossrepostatus.md`; a finished item is deleted from this file rather than annotated, so
-everything below is genuinely still open.
+everything below is genuinely still open. The one exception is the plan's table: its numbers stay
+until every row is done, a finished row says `done` with its commit, and then the table goes.
+
+## Plan (2026-11-05): every open item, the simplest first
+
+Each row is one item of the sections below (the "Details" column names its section); a row is worked
+off or decided in this order. **Who**: `Claude` = can be done now without the owner, `Owner` = waits
+for a decision or an action of the owner (the proposal is the default once the owner agrees),
+`External` = waits for something outside this repository.
+
+**Wave 1: decisions** (minutes for the owner, the work after them is short)
+
+| # | Item | Proposal | Who | Status | Details |
+|---|---|---|---|---|---|
+| 1 | CodeQL #270, `awaitNanos` ignored | false positive: dismiss it on GitHub | Owner | open | Review of 2026-11-02, core |
+| 2 | The Claude Code Review workflow fails on every PR | renew the key or its credit, or remove the workflow | Owner | open | Other open items |
+| 3 | SonarCloud's 98 issues need a token to read | give one, or drop the item | Owner | open | Review of 2026-11-02, tests and gates |
+| 4 | gpt-oss-20b runs away on a big TypeScript file | `onIncomplete: retryOnce` in `run.py` and the examples | Owner | open | TypeScript measurement |
+| 5 | `G` records the project's version in the plugin | record the plugin's version (`G` names the generator) | Owner | open | Reviews of 2026-11-04 |
+| 6 | `${...}` has no escape | `$${...}` writes a literal `${...}` | Owner | open | Reviews of 2026-11-04 |
+| 7 | The rate limiter keeps a window per server and limit | one window per server, at the smallest limit | Owner | open | Reviews of 2026-11-04 |
+| 8 | `P` covers the map and reduce prompts of every file | keep it, document it | Claude | done 2026-11-05 | — |
+| 9 | The plan's chunk estimate cannot know a counted window | a known limit, documented | Claude | done 2026-11-05 | — |
+| 10 | Count a remote `llama-server`'s tokens with `/tokenize` | dropped: OpenRouter has none, little gain | Claude | done 2026-11-05 | — |
+| 11 | `@VisibleForTesting` | not adopted: say so in `CODE_WRITING_GUIDE.md`, drop the item | Owner | open | Other open items |
+| 12 | TypeScript fact counters | dropped: recall is 98 to 100 % with the oop prompt | Owner | open | TypeScript measurement |
+| 13 | A rule for `package.json` and other manifests | measure the ops prompt on it once (internally) | Claude | open | TypeScript measurement |
+| 14 | jqwik pin | decided: the pin stays, a rule of `CLAUDE.md` | Owner | done 2026-11-05 | — |
+
+**Wave 2: quick fixes** (each up to 30 min, with tests)
+
+| # | Item | Who | Status | Details |
+|---|---|---|---|---|
+| 15 | `srcmorph/spotbugs-exclude.xml` names the POM as the source of prompts and model settings | Claude | open | Review of 2026-11-02, core |
+| 16 | The smoke step that counts the planned files runs from `examples/`, not the root | Claude | open | Review of 2026-11-02, tests and gates |
+| 17 | `run.py` deletes `--out/<key>` without a marker check | Claude | open | Review of 2026-11-02 |
+| 18 | `languages-2026-11/README.md`: the score command lacks `--meta` | Claude | open | Review of 2026-11-02, benchmark tooling |
+| 19 | The remote calibration warning is logged under the llama.cpp class | Claude | open | Other open items |
+| 20 | A `baseUrl`'s user info is printed as written | Claude | open | Review of 2026-11-02, core |
+| 21 | `AiGenerationUsage.add` counts `NONE` as a call | Claude | open | Review of 2026-11-02, core |
+| 22 | Tests: `check()` with `planOnly` and model files, the interrupt branch, a changed prompt hash, the smaller window after an overflow, the plugin's base directory | Claude | open | Review of 2026-11-02, tests and gates |
+| 23 | SpotBugs: split the `SrcMorphConfigurationFileLoader` match, the stale `NP_NULL_ON_SOME_PATH` | Claude | open | Review of 2026-11-02, tests and gates |
+
+**Wave 3: medium fixes** (each 1 to 3 h)
+
+| # | Item | Who | Status | Details |
+|---|---|---|---|---|
+| 24 | Fact counter gaps: shell `((a))`, Perl `<<` after `}` / in a regex / `q{}`, SQL strings and comments, the smaller ones | Claude | open | Review of 2026-11-02, fact counters |
+| 25 | `score.py` and `report.py`: `LEAK` in backticks, a summary after `<think>`, words, backtick spans, thousands separators, weighted kinds | Claude | open | Review of 2026-11-02, benchmark tooling |
+| 26 | Benchmark meta (srcmorph commit, Python, corpus hash), `large.py` golden hash, non-UTF-8 sources, the tools' mutations | Claude | open | Review of 2026-11-02 |
+| 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | open | Review of 2026-11-02, core |
+| 28 | Run record totals (skipped, wall time), plan tokens by oversize strategy, the first file's model load | Claude | open | Review of 2026-11-02, core |
+| 29 | Test upkeep: guide drift, logger levels, the 2000-character chunk, the byte checksum, the calibration block through the loader, the fb-contrib match per class | Claude | open | Review of 2026-11-02, tests |
+| 30 | API reviews: null-safety, package hierarchy, naming (`code-quality-todos.md`) | Claude | open | Other open items |
+
+**Wave 4: larger work**
+
+| # | Item | Who | Status | Details |
+|---|---|---|---|---|
+| 31 | Split the pure map-reduce logic out of `AiFieldGenerationSupport` onto the PIT gate | Claude | open | Review of 2026-11-02, tests |
+| 32 | Keep the map-reduce part summaries on request; then measure where gpt-oss-20b loses the middle | Claude | open | Audit of 2026-11-01 |
+| 33 | Launch the Vulkan module once on this machine's RTX 3070 | Claude | open | Other open items |
+
+**Wave 5: measurements and what waits outside**
+
+| # | Item | Who | Status | Details |
+|---|---|---|---|---|
+| 34 | `ringbuf.c`: three more gpt-oss-20b card runs | Claude | open | Enterprise kinds |
+| 35 | A large POM for `big-pom` / `huge-pom` (local Granite, hours) | Claude | open | Verification of 2026-11-01, D3 |
+| 36 | The self-test routes the new kinds after a measurement on real projects (Claude picks open-source ones) | Claude | open | Enterprise kinds |
+| 37 | Card text and the method's limits (correlation, BM25 range, Fisher, faithfulness) | Owner (when the card is re-rendered) | open | Review of 2026-11-02, benchmark tooling |
+| 38 | Use jllama's `ChatStreamAssembler` | External (its release) | open | Other open items |
+| 39 | ROCm, SYCL, OpenVINO: no hardware here | Owner (keep or drop) | open | Other open items |
+| 40 | Merge PR #269 | Owner | open | Enterprise kinds |
 
 ## Open
 
@@ -105,12 +178,6 @@ Seven reviews (map-reduce engine, providers, configuration and engine, prompts, 
 benchmark tooling, tests) checked the branch at c2d6834; what they found is fixed (CHANGELOG,
 Unreleased) except:
 
-- The plan's chunk estimate cannot know a counted window (it loads no model), so for a local model its
-  ETA of a dense file stays an estimate.
-- `P` covers the map and reduce prompts also for files that never used them, so with
-  `regenerateOn.prompt` (the default) a changed map or reduce prompt rewrites every file of the rule,
-  not only its chunked ones.
-- The token count of a remote `llama-server` could use its `/tokenize`; OpenRouter has none.
 - Benchmark: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name
   rate is taken inside backticks only and by substring; recall counts names, not faithfulness (a bare
   name list scores 100 %, wrong claims are not measured); with three runs against three a Fisher test
@@ -220,8 +287,6 @@ Unreleased) except:
   registering `[CUDA, RPC, CPU]`, against 63 / 7.1 with `[RPC, CPU]` on the CPU jar. **Still
   unlaunched: `rocm`, `sycl`, `openvino` and `vulkan`** — no AMD, Intel or second GPU here. Vulkan is
   reachable on any NVIDIA box and is the cheapest one to add next.
-
-- **jqwik pin policy** — see [`../workspace/policies/jqwik-prompt-injection.md`](../workspace/policies/jqwik-prompt-injection.md). `jqwik.version ≤ 1.9.3` is mandatory (declared in `srcmorph/pom.xml`, the only reactor module with a jqwik test dependency).
 
 - **`@VisibleForTesting` audit.** Nothing is annotated, and the inventory has two kinds of package-private members that must not be lumped together. **Production API, not candidates:** the four of `provider.LlamaCppJniProviderSupport` (`buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`, `logPromptCacheReuse`) and the static `lazyMode`/`cacheType` are package-private because `LlamaCppJniAiGenerationProvider` calls them (they were moved out of it so the PIT gate reaches them); their visibility serves the provider, the tests only ride along. **Test seams, the actual candidates:** `document.AiMdDocumentCodec.read(List)` and the `String write(AiMdDocument)` overload (their Javadoc says so; production goes through the `Path` overloads) and `prompt.AiPromptPreparationSupport.trimSourceAtLineBreak` (called only inside its own class and by `AiPromptPreparationSupportTest`). The plugin has no such seam any more: `GenerateMojo.buildGenerateConfiguration()` is called only by its own `execute()`, and the protected `AbstractAiIndexMojo.buildConfiguration(RuleSection)` serves the goal mojos (`AbstractAiIndexMojoTest` calls it too). Guava is not a dependency, so closing this means either a project-local marker annotation on the second group (there is precedent: `support.ConvertToRecord`) or recording that the convention is not adopted here. Decide and act rather than re-auditing.
 

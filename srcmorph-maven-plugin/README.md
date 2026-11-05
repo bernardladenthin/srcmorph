@@ -88,7 +88,7 @@ default (a summary that does not record a field differs too):
 | Switch | Field | Changes with |
 |---|---|---|
 | `source` | `C` | the file's source; a package's files; the packages the project lists and their checksums |
-| `prompt` | `P` | the rule's prompts |
+| `prompt` | `P` | the rule's prompts, its map and reduce prompts too: a changed `map-chunk` rewrites every file of a rule that names it, also one that fit the window and never used it |
 | `facts` | `N` | the rule's fact counters |
 | `model` | `M` | the rule's model definition, or the model it names |
 | `children` | `K` | a summary a package or the project is written from (a file re-summarized over the same source) |
@@ -209,7 +209,9 @@ The file has three building blocks:
      far faster than a few giant ones (one 384K-token pass alone can dwarf a whole run): the self-test
      map-reduces with H-Tiny over 64K and samples with H-1B over 16K; map-reduce over a 384K-class window
      is the slowest combination. A local model sizes the chunks by the source's density in tokens; a
-     chunk denser than that is read in two halves.
+     chunk denser than that is read in two halves. The plan loads no model, so it counts the chunks by
+     the character estimate: for a dense file of a local model, its chunk count and time are an
+     estimate the run can correct.
    - **`sampleChunks`** — the same over `maxChunks` representative chunks (always the first and the last,
      evenly spaced between), to bound the time of an arbitrarily large file (e.g. 7 MB): a 16K-window
      model with `maxChunks: 6` is ~7 calls (~1 h order on a reference CPU; less on GPU) — the right
