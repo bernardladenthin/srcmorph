@@ -696,8 +696,10 @@ on every pull request. It then runs the `java/smoke-fatjar-cli` action of [berna
 possible real launch of the CLI. **Do not "strengthen" it to `config_All.json` over a real source
 tree:** the example configs are tuned for a small demo tree, so `All` against this repo's own
 sources fails by design (19 files exceed the demo model's context window with `onOversize=fail`) —
-that would make the smoke non-deterministic, not more thorough. Run from `examples/`, the shipped
-`Plan` example plans the one file of the demo tree `examples/src/main/java`. The tree has to stay,
+that would make the smoke non-deterministic, not more thorough. The shipped `Plan` example plans
+the one file of the demo tree `examples/src/main/java`; the step that counts it runs from the
+repository root (`examples/config_Plan.json`), so a relative path resolved against the working
+directory instead of the file's directory fails it. The tree has to stay,
 because a configured subtree that does not exist fails the run, and its file has to stay below the
 examples' mock window, or `onOversize=fail` fails the smoke. That window is what the mock model's
 `contextSize` (4096) leaves next to the profile's fallback prompt, so a longer prompt shrinks it: at

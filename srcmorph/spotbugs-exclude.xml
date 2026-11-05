@@ -142,10 +142,10 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         FORMAT_STRING_MANIPULATION on the prompt-template pipeline.
 
-        The plugin's whole contract is "developers write prompt templates in their POM
-        &lt;configuration&gt; and the plugin substitutes per-file context into them via
-        String.format". The template comes from operator-controlled POM XML (parsed and
-        validated by Maven at build time), not from end-user request input. A malformed
+        The whole contract is "developers write prompt templates in their configuration file (or
+        the profile it names) and srcmorph substitutes per-file context into them via
+        String.format". The template comes from the operator's own configuration file (JSON or
+        YAML, read the same way by the CLI and the plugin), not from end-user request input. A malformed
         template raises IllegalFormatException on first use, immediately surfacing the
         configuration error.
 
@@ -385,8 +385,8 @@ SPDX-License-Identifier: Apache-2.0
             exercised directly by unit tests.
           - UCPM_USE_CHARACTER_PARAMETERIZED_METHOD: renderMarkdown appends short literal strings
             for the Markdown template; spelling them as String literals keeps the template readable.
-          - WEM_WEAK_EXCEPTION_MESSAGING: AiConditionEvaluator.validate's message describes a POM
-            configuration error in operator terms; it intentionally reads as a user-facing config
+          - WEM_WEAK_EXCEPTION_MESSAGING: AiConditionEvaluator.validate's message describes a
+            configuration-file error in operator terms; it intentionally reads as a user-facing config
             diagnostic rather than carrying internal state (the matching GenerateMojo/CalibrateMojo
             WEM suppression lives in the srcmorph-maven-plugin module's own filter file).
           - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: arises from the Objects.requireNonNull /
@@ -482,8 +482,8 @@ SPDX-License-Identifier: Apache-2.0
         IMPROPER_UNICODE on LlamaCppJniProviderSupport.lazyMode. Identical shape and
         rationale to the AiOversizeStrategy.fromConfig suppression directly above: the method resolves a
         configured &lt;lazyMode&gt; value against a fixed, closed set of ASCII tokens (off/auto/on)
-        that the binding's own LazyMode enum declares, authored by the operator in POM XML or a
-        CLI JSON/YAML config - not user or locale text. Matching that token case-insensitively is the
+        that the binding's own LazyMode enum declares, authored by the operator in the
+        configuration file - not user or locale text. Matching that token case-insensitively is the
         intended, safe behaviour. Scoped to the one resolution method.
 
         NOTE the method name is matched literally, so a rename silently voids this entry and reds the
@@ -503,7 +503,7 @@ SPDX-License-Identifier: Apache-2.0
         lazyMode suppression directly above: the method resolves a configured
         &lt;cacheTypeK&gt;/&lt;cacheTypeV&gt; value against the fixed, closed set of ASCII tokens the
         binding's own CacheType enum declares (f32/f16/bf16/q8_0/q4_0/q4_1/iq4_nl/q5_0/q5_1), authored by
-        the operator in POM XML or a CLI JSON/YAML config - not user or locale text. Matching that token
+        the operator in the configuration file - not user or locale text. Matching that token
         case-insensitively is the intended, safe behaviour. Scoped to the one resolution method.
     -->
     <Match>
@@ -558,7 +558,7 @@ SPDX-License-Identifier: Apache-2.0
         `new File(modelPath)` because the path is not a compile-time constant. Reading a configured
         path is the entire purpose of this method: it exists so that a typo in a modelPath fails at
         plan time instead of an hour into a run inside the native loader. The value comes from the
-        operator's own POM XML or CLI configuration on a local batch build tool - the same trust
+        operator's own configuration file on a local batch build tool - the same trust
         boundary as the FORMAT_STRING_MANIPULATION and CRLF_INJECTION_LOGS suppressions above, and the
         same filesystem the Maven build already has full access to. There is no request-handling
         surface here for a traversal to cross. The call is a stat only; nothing is opened or read.
@@ -576,7 +576,7 @@ SPDX-License-Identifier: Apache-2.0
         modelDirectory, a prompt's templateFile against
         profileDirectory. They join the directory and a relative path into one, and ask
         Paths.get(path).getRoot() whether the path stands on its own; both values come from the
-        operator's own POM XML or CLI configuration, the same trust boundary as validateLocalModel
+        operator's own configuration file, the same trust boundary as validateLocalModel
         above. A path outside the directory is a requirement, not an escape: an absolute path is
         always used as it is (AbsolutePathRequirement in the tests). Nothing is opened or read here.
         Scoped to the two methods.
@@ -595,7 +595,7 @@ SPDX-License-Identifier: Apache-2.0
         two loaders' load (AiPromptTemplateLoader, AiFactDefinitionLoader). Reading the file a prompt or
         fact definition names (templateFile / factsFile, resolved against profileDirectory), or the
         <key>.md / <key>.tsv of the profile a rule's key names, is the entire purpose of these classes;
-        the directory and the keys come from the operator's own POM XML or CLI configuration, the same
+        the directory and the keys come from the operator's own configuration file, the same
         trust boundary as resolveAgainst above, on a local batch tool with full access to that
         filesystem anyway. The files are read as UTF-8 text and become a system prompt or regex
         counters; nothing is written or executed. Scoped to those methods.
@@ -662,7 +662,7 @@ SPDX-License-Identifier: Apache-2.0
         (1) java.nio.file.Path instances for source/output files discovered by walking the
         project's own base/output directories (the same local filesystem the Maven build already
         has full read/write access to — never a network request body or other externally-supplied
-        channel); (2) plugin-internal config strings the operator authored in their own POM
+        channel); (2) config strings the operator authored in their own configuration file
         (contextType labels "file"/"package"/"project", prompt keys, model keys); and (3) computed
         sizes/durations/counts. This is a local batch build tool, not a service handling untrusted
         requests, so there is no log-forging trust boundary to defend here — the same Path/String
