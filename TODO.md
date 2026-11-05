@@ -30,14 +30,36 @@ repository.
 | 40 | Merge PR #269 | merge | Owner | Enterprise kinds |
 | 45 | The review's further proposals: renames N4 to N15 and P9 | decided 2026-11-05: all of them, the configuration keys included | Claude | Run plan, phase A |
 
-## Run plan (2026-11-05): rows 45, 29, 13, 32, 35 and 36, one step after the other
+## Run plan (2026-11-05): rows 45, 29, 13, 32, 35 and 36, then the reviews
 
-The run works this list from the top: it takes the first unticked step, does it with its tests,
-ticks it (`[x]` with the commit) and pushes. A step it finds on the way is added where it belongs;
-a step that cannot be done is marked `[!]` with the reason and skipped. Every step of phase A and B
-ends green: `mvn verify` of the reactor (tests, SpotBugs, NullAway, Checker, ArchUnit, Spotless);
-PIT at 100 runs after each phase, not after each step. When every step is ticked, the ticked ones
-are deleted together with this section's rows of the plan.
+**How the run works.** A `/loop` names this section and nothing else; everything it needs is here,
+and the run may change this section itself (a step added, split, reordered or reworded) when the
+work shows it should.
+
+- **One step per pass.** Take the first unticked step, do it fully with its tests, tick it (`[x]`
+  with the commit), commit and push. A step found on the way is added where it belongs; a step
+  that cannot be done is marked `[!]` with the reason and skipped.
+- **Green before a tick.** Every step of phases A and B ends green: `mvn verify` of the reactor
+  (tests, SpotBugs, NullAway, Checker, ArchUnit), Spotless applied. PIT at 100 runs at the end of
+  each phase. The guides apply as CLAUDE.md says (`CODE_WRITING_GUIDE`, `TEST_WRITING_GUIDE`);
+  every breaking change gets its line in the CHANGELOG's Upgrading section in the same commit.
+- **Everything on the branch** `feat/profiles-v3-kinds-and-safety` (PR #269); no new branch, no
+  force push, no remote branch touched; releases, tags, repository settings and the merge stay with
+  the owner. A commit is preceded by the leak scan (no private names or paths in the diff).
+- **Watch the PR after every push**: CI (`gh pr checks 269`; on a red job of the run's own making:
+  cancel the run, commit the fix, push), the SonarCloud analysis of the PR (its new issues, read
+  through the API) and the reviews and comments on GitHub (CodeRabbit and any other reviewer). A
+  verified finding becomes a step of the phase it belongs to, or is fixed at once when it is small;
+  one that is not real gets a short reply saying why. The Claude review job and FOSSA are ignored.
+- **Long jobs** (PIT, a measurement) run in the background; the pass waits for their notice instead
+  of polling.
+- **Measurements** (phase C) follow the benchmark's rules: the owner's model list, one OpenRouter
+  run at a time (a local run may run beside it), keys read per command and never printed, internal
+  corpora and their outputs stay outside the repository, `scores/` may be re-scored, the model card
+  is not re-rendered.
+- **The end.** When phases A to C are ticked, phase R runs. When R is ticked and only `Owner` and
+  `External` rows are left in the plan: the ticked steps and this section go, the plan's finished
+  rows go, CI is green, a final report (in German) goes to the owner, and the loop stops.
 
 **Phase A: the review's renames and P9** (`docs/code-review-2026-11-05.md` sections 1 and 2; a
 breaking change, the CHANGELOG's Upgrading section names each one)
@@ -98,6 +120,20 @@ Granite run may run beside one; the scores go to `scores/`, the model card is no
 - [ ] C4 Row 36: the new kinds on real open-source projects (picked and named in the writeup); the
   self-test routes the kinds that hold up
 - [ ] C5 The writeups (`docs/ai-index-benchmark/`), CHANGELOG, this file
+
+**Phase R: the reviews** (after phase C; at least two review agents per round, each started fresh
+with the code, not with the run's conclusions)
+
+- [ ] R1 Round 1: one agent reviews the whole repository, one the delta of the branch against
+  `main` (`git diff main...HEAD`): correctness, the guides, tests, documentation against the code,
+  the benchmark's claims against its data. Each finding is verified against the code before it
+  counts
+- [ ] R2 The verified findings of R1 fixed, each with its tests (a large refactor is reported in
+  this file instead of applied, as CLAUDE.md says)
+- [ ] R3 Round 2 the same way, on the state after R2; its verified findings fixed. Another round
+  follows while a round finds anything of high or medium weight, at most four rounds in all
+- [ ] R4 CI green, the SonarCloud analysis of the PR without a new issue of the run's own, no open
+  review comment on the PR left unanswered
 
 ## Open
 
