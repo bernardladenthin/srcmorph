@@ -59,7 +59,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | done 2026-11-05 | — |
 | 28 | Run record totals (skipped, wall time), plan tokens by oversize strategy, the first file's model load | Claude | done 2026-11-05 | — |
 | 29 | Test upkeep: done for logger levels, fixed temp names, the 2000-character chunk, the byte checksum, the calibration block through the loader and the fb-contrib match per class. Left: the guide drift of older tests (433 two-part and 221 one-part test names, missing arrange/act/assert comments, 195 qualified names) | Owner: a sweep, or fix a file's drift when it is touched | open | Review of 2026-11-02, tests |
-| 30 | API reviews: null-safety, package hierarchy, naming (`code-quality-todos.md`) | Claude | open | Other open items |
+| 30 | API reviews: null-safety, package hierarchy, naming: the review is [`docs/code-review-2026-11-05.md`](docs/code-review-2026-11-05.md) (a target tree, moves M1 to M10, renames N1 to N15). Left: the restructure itself | Owner: go for the limited restructure it proposes (on a `main` without an open core PR), or not | open | Other open items |
 
 **Wave 4: larger work**
 
@@ -73,7 +73,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 
 | # | Item | Who | Status | Details |
 |---|---|---|---|---|
-| 34 | `ringbuf.c`: three more gpt-oss-20b card runs | Claude | open | Enterprise kinds |
+| 34 | `ringbuf.c`: three more gpt-oss-20b card runs | Claude | done 2026-11-05 (malloc and memcpy in 3 of 3 runs, 7 of 9 in all: variation) | — |
 | 35 | A large POM for `big-pom` / `huge-pom` (local Granite, hours) | Claude | open | Verification of 2026-11-01, D3 |
 | 36 | The self-test routes the new kinds after a measurement on real projects (Claude picks open-source ones) | Claude | open | Enterprise kinds |
 | 37 | Card text and the method's limits (correlation, BM25 range, Fisher, faithfulness) | Owner (when the card is re-rendered) | open | Review of 2026-11-02, benchmark tooling |
@@ -81,6 +81,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 39 | ROCm, SYCL, OpenVINO: no hardware here | Owner (keep or drop) | open | Other open items |
 | 40 | Merge PR #269 | Owner | open | Enterprise kinds |
 | 41 | Run `ProfileFactPatternsLinearityTest` on the oldest supported JDK too (the read budget counts `charAt` calls) | Claude | open | Reviews of 2026-11-04 |
+| 42 | Null-safety findings S1 to S7 of the review: skip rules' null keys behind non-null getters, `baseDirectory` without a default, `""` for no model path, the `requireNonNull` workarounds | Claude | open | `docs/code-review-2026-11-05.md` section 3 |
 
 ## Open
 
@@ -92,10 +93,6 @@ for a decision or an action of the owner (the proposal is the default once the o
   routed in `examples/copilot-api-gateway/srcmorph-luna.yaml` and measured on the enterprise corpus
   (`docs/ai-index-benchmark/remeasure-2026-11-04b/`), which is written for the benchmark. Once
   measured on a corpus of real projects, the self-test can take them too.
-- gpt-oss-20b named `ringbuf.c`'s headers instead of `malloc` and `memcpy` in two of six card runs
-  after the path line came into the user message (fallback prompt, none before): watch it in the
-  next round; with three more runs it is variation or a sentence for the fallback prompt.
-
 ### TypeScript measurement of 2026-11-05 (internal; the data stays out of the repository), open items
 
 Fixed on PR #269: the finish reason `error`, the TypeScript rule, the time estimate's basis,
@@ -220,6 +217,3 @@ Unreleased) except:
   decode, with `devices: Vulkan1` at 3491 / 83. **Still unlaunched: `rocm`, `sycl` and `openvino`** — no
   AMD discrete, Intel or other GPU here.
 
-- **Null-safety refinement.** JSpecify + NullAway are enforced at compile time in strict JSpecify mode in every module (see each module's own `pom.xml`); `@NullMarked` on the package; framework-populated POJOs carry class-level `@SuppressWarnings({"NullAway.Init","initialization.fields.uninitialized"})`. Open follow-up: review remaining unannotated public API surfaces for places where `@Nullable` would be more precise than the implicit non-null default.
-
-- **Cross-repo code-quality TODOs** — see [`../workspace/policies/code-quality-todos.md`](../workspace/policies/code-quality-todos.md) for the canonical `@VisibleForTesting` design-fit review, package hierarchy review, and class/method naming review. This repo has no `@VisibleForTesting` usages today; the package and naming reviews are still open here.
