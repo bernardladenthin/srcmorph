@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
-"""Tests of run.py, search.py and large.py that need no network and no model.
+"""Tests of run.py, search.py, large.py, report.py and repeat.py that need no network and no model.
 
 Run from the repository root: python -m unittest discover -s docs/ai-index-benchmark/modelcard/tests
 """
@@ -19,6 +19,7 @@ from unittest import mock
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 import run  # noqa: E402
+import repeat  # noqa: E402
 import search  # noqa: E402
 
 MODELS = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
@@ -419,6 +420,46 @@ class ReportTest(unittest.TestCase):
         self.assertTrue(text.startswith("before\n<!-- generated:begin -->\n### Run overview\n"))
         self.assertTrue(text.endswith("<!-- generated:end -->\nafter\n"))
         self.assertNotIn("\nold\n", text)
+
+
+class RepeatTest(unittest.TestCase):
+
+    @staticmethod
+    def row(kind, found, expected, failed=False, lead=True):
+        return {"kind": kind, "failed": failed, "idsFound": found, "idsExpected": expected, "lead": lead,
+                "badHeadings": 0, "fences": 0, "leaks": 0}
+
+    def test_quality_ofACorpusOfOtherFilesOnly_isRecallAndFormatHalfEach(self):
+        rows = [self.row("other", 3, 4), self.row("other", 2, 2, lead=False)]
+
+        result = repeat.quality(rows)
+
+        self.assertEqual(result["recall"], {"other": 0.875})
+        self.assertEqual(result["format"], 0.5)
+        self.assertEqual(result["quality"], round((0.875 + 0.5) / 2, 4))
+
+    def test_runs_scoresEachRunWithoutTheCardsRun(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            roots = []
+            for name in ("run1", "run2"):
+                (Path(tmp) / name / "out" / "m").mkdir(parents=True)
+                roots.append(Path(tmp) / name)
+            with mock.patch.object(repeat, "score_model", return_value=[self.row("other", 1, 1)]) as scored, \
+                    mock.patch.object(sys, "stdout", io.StringIO()):
+                result = repeat.repeat(roots, Path(tmp), {}, card=False)
+
+        self.assertEqual([r["run"] for r in result["m"]["runs"]], ["run1", "run2"])
+        self.assertEqual(scored.call_count, 2)
+
+    def test_runs_withTheCardsScoresOrWithRepeat_isRefused(self):
+        for extra in (["--repeat", "x"], ["--scores", str(HERE / "scores")]):
+            with self.subTest(extra=extra):
+                result = subprocess.run([sys.executable, str(HERE / "repeat.py"), "--work", ".", "--runs", "r"]
+                                        + extra, capture_output=True, text=True)
+
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("--runs", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

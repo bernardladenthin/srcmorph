@@ -261,12 +261,13 @@ The shell prompt took four drafts on gpt-oss: with the first two, it wrote `tmp`
 built from (the `.partial` file of the benchmark's backup script); with "each as `name=value`" it
 copied the assignments into a code fence in two of three runs; "one bullet each" kept both. Three
 runs each on OpenRouter, six with the language prompts on the language corpus, scored as the model
-card scores (`score.py --facts`; outputs in
-[`languages-2026-11/`](../docs/ai-index-benchmark/languages-2026-11/)):
+card scores (outputs and the command in
+[`languages-2026-11/`](../docs/ai-index-benchmark/languages-2026-11/)). The language corpus has only
+other files, so its score has two parts, (recall + format share) / 2, against the card's four:
 
 | Corpus | Model | before (`file-body-fallback`) | with the language prompts |
 |---|---|---|---|
-| language corpus | gpt-oss-20b | 95.7 % (95.6 to 96.1) | 97.7 % (89.5 to 100; 99.1 % without one empty answer) |
+| language corpus | gpt-oss-20b | 95.7 % (95.3 to 96.1) | 97.7 % (89.5 to 100; 99.1 % without one empty answer) |
 | language corpus | GPT-6 Luna | 99.6 % (99.3 to 100) | 99.9 % (99.3 to 100) |
 | benchmark | gpt-oss-20b | 100 % in all three | 99.6 % (99.0 to 100) |
 | benchmark | GPT-6 Luna | 100 % | 100 % |
