@@ -8,10 +8,10 @@
 # ${...} Maven properties of the fixture pom, so a -D on the command line is observable:
 # it.model (the model every rule runs on) and it.aiVersion (in every header).
 
-packageFieldGenerations:
+packageRules:
   - promptKey: package-body
     aiDefinitionKey: "${it.model}"
-projectFieldGenerations:
+projectRules:
   - promptKey: project-body
     aiDefinitionKey: "${it.model}"
 
@@ -52,7 +52,7 @@ srcMorph:
     - key: project-body
       templateFile: "../../.github/plugin-it/project-body.md"
 
-  fieldGenerations:
+  rules:
     # Extra.java: inline facts with an ignore counter, kept out of the facts line and out of the count.
     - id: extra
       promptKey: file-body-oop

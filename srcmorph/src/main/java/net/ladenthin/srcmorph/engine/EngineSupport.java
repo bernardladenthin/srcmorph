@@ -135,7 +135,7 @@ final class EngineSupport {
      * @param profileDirectory  directory relative template files and the prompts named by key are
      *                          resolved against, or {@code null} for the working directory and no lookup
      *                          by key
-     * @param fieldGenerations  the rules whose prompt keys (and map and reduce prompt keys) are looked up in
+     * @param rules  the rules whose prompt keys (and map and reduce prompt keys) are looked up in
      *                          the profile directory when no definition has them, or {@code null} for none
      * @return prompt support instance backed by the configured definitions
      * @throws SrcMorphException if any prompt definition is misconfigured or its file cannot be read
@@ -143,11 +143,11 @@ final class EngineSupport {
     static PromptCatalog buildPromptSupport(
             final @Nullable List<PromptDefinition> promptDefinitions,
             final @Nullable File profileDirectory,
-            final @Nullable List<RoutingRule> fieldGenerations)
+            final @Nullable List<RoutingRule> rules)
             throws SrcMorphException {
         final List<@Nullable String> usedKeys = new ArrayList<>();
-        if (fieldGenerations != null) {
-            for (final RoutingRule rule : fieldGenerations) {
+        if (rules != null) {
+            for (final RoutingRule rule : rules) {
                 // a null key (a skip rule's prompt, an unset map or reduce prompt) is ignored by the loader
                 usedKeys.add(rule.getPromptKey());
                 usedKeys.add(rule.getMapPromptKey());
@@ -187,14 +187,13 @@ final class EngineSupport {
      *
      * @param phase            the goal, named in the error
      * @param cliKey           the configuration file's key for the phase's rules, named in the error
-     * @param fieldGenerations the phase's rules
+     * @param rules the phase's rules
      * @return the rule
      * @throws SrcMorphException if not exactly one rule is given, or it names no prompt or no model
      */
     static RoutingRule requiredPhaseRule(
-            final String phase, final String cliKey, final @Nullable List<RoutingRule> fieldGenerations)
-            throws SrcMorphException {
-        return checkedPhaseRule(phase, cliKey, fieldGenerations, "exactly one rule");
+            final String phase, final String cliKey, final @Nullable List<RoutingRule> rules) throws SrcMorphException {
+        return checkedPhaseRule(phase, cliKey, rules, "exactly one rule");
     }
 
     /**
@@ -203,31 +202,27 @@ final class EngineSupport {
      *
      * @param phase            the goal, named in the error
      * @param cliKey           the configuration file's key for the phase's rules, named in the error
-     * @param fieldGenerations the phase's rules
+     * @param rules the phase's rules
      * @return the rule, or {@code null} when none is given
      * @throws SrcMorphException if more than one rule is given, or it names no prompt or no model
      */
     static @Nullable RoutingRule optionalPhaseRule(
-            final String phase, final String cliKey, final @Nullable List<RoutingRule> fieldGenerations)
-            throws SrcMorphException {
-        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
+            final String phase, final String cliKey, final @Nullable List<RoutingRule> rules) throws SrcMorphException {
+        if (rules == null || rules.isEmpty()) {
             return null;
         }
-        return checkedPhaseRule(phase, cliKey, fieldGenerations, "at most one rule");
+        return checkedPhaseRule(phase, cliKey, rules, "at most one rule");
     }
 
     private static RoutingRule checkedPhaseRule(
-            final String phase,
-            final String cliKey,
-            final @Nullable List<RoutingRule> fieldGenerations,
-            final String takes)
+            final String phase, final String cliKey, final @Nullable List<RoutingRule> rules, final String takes)
             throws SrcMorphException {
-        if (fieldGenerations == null || fieldGenerations.size() != 1) {
+        if (rules == null || rules.size() != 1) {
             throw new SrcMorphException(phase + " takes " + takes + " (its prompt and model), "
-                    + (fieldGenerations == null ? 0 : fieldGenerations.size()) + " given; give the phase its own: "
+                    + (rules == null ? 0 : rules.size()) + " given; give the phase its own: "
                     + cliKey + " in the configuration file");
         }
-        final RoutingRule rule = fieldGenerations.get(0);
+        final RoutingRule rule = rules.get(0);
         if (rule == null || isBlank(rule.getPromptKey()) || isBlank(rule.getAiDefinitionKey())) {
             throw new SrcMorphException("The rule of " + phase + " needs a promptKey and an aiDefinitionKey");
         }
@@ -304,7 +299,7 @@ final class EngineSupport {
      * classification, the rendered plan — and only dies inside the native loader. With several model
      * groups that happens <em>after</em> the earlier groups have already generated, so the failure can
      * arrive an hour into a run for a mistake that was visible before it started. This joins the other
-     * fail-fast checks the engines already run (missing {@code fieldGenerations}, rule-set
+     * fail-fast checks the engines already run (missing {@code rules}, rule-set
      * validation, unmatched files, over-window files).
      *
      * <p><strong>Gated on the provider on purpose.</strong> Only {@code llamacpp-jni} loads a GGUF;
@@ -317,15 +312,13 @@ final class EngineSupport {
      *
      * @param generationProvider     the configured provider key
      * @param modelDefinitionSupport model lookup built from the configured {@code aiDefinitions}
-     * @param fieldGenerations       the routing rules, already validated
+     * @param rules       the routing rules, already validated
      * @throws SrcMorphException if a routed model's file is missing or its path is unset
      */
     static void validateRoutedModelPaths(
-            final String generationProvider,
-            final ModelRegistry modelDefinitionSupport,
-            final List<RoutingRule> fieldGenerations)
+            final String generationProvider, final ModelRegistry modelDefinitionSupport, final List<RoutingRule> rules)
             throws SrcMorphException {
-        for (final RoutingRule rule : fieldGenerations) {
+        for (final RoutingRule rule : rules) {
             if (rule == null || rule.isSkip()) {
                 continue;
             }
@@ -356,13 +349,12 @@ final class EngineSupport {
      * report as a configuration error.
      *
      * @param modelDefinitionSupport model lookup built from the configured {@code aiDefinitions}
-     * @param fieldGenerations       the rules
+     * @param rules       the rules
      * @throws SrcMorphException if a rule (other than a skip rule) names an undefined model
      */
-    static void requireDefinedModels(
-            final ModelRegistry modelDefinitionSupport, final List<RoutingRule> fieldGenerations)
+    static void requireDefinedModels(final ModelRegistry modelDefinitionSupport, final List<RoutingRule> rules)
             throws SrcMorphException {
-        for (final RoutingRule rule : fieldGenerations) {
+        for (final RoutingRule rule : rules) {
             if (rule == null || rule.isSkip()) {
                 continue;
             }

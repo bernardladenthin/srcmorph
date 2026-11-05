@@ -318,7 +318,7 @@ srcMorph:
     - key: my-model
       modelPath: /path/to/model.gguf
       contextSize: 16384
-  fieldGenerations:
+  rules:
     - promptKey: file-body
       aiDefinitionKey: my-model      # reference by key
 ```

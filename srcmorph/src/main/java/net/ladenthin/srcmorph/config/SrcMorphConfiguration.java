@@ -71,7 +71,7 @@ public class SrcMorphConfiguration {
     private @Nullable File profileDirectory;
     private @Nullable File runRecordFile;
     private @Nullable File partsDirectory;
-    private @Nullable List<RoutingRule> fieldGenerations;
+    private @Nullable List<RoutingRule> rules;
     private @Nullable List<FactDefinition> factDefinitions;
     private String generatorVersion = new GeneratorVersion().version();
     private String aiVersion = DEFAULT_AI_VERSION;
@@ -472,17 +472,17 @@ public class SrcMorphConfiguration {
      *
      * @return the field generation rules, or {@code null} when none are configured
      */
-    public @Nullable List<RoutingRule> getFieldGenerations() {
-        return fieldGenerations;
+    public @Nullable List<RoutingRule> getRules() {
+        return rules;
     }
 
     /**
      * Sets the per-field AI generation configurations (routing rules).
      *
-     * @param fieldGenerations the field generation rules, or {@code null} for none
+     * @param rules the field generation rules, or {@code null} for none
      */
-    public void setFieldGenerations(final @Nullable List<RoutingRule> fieldGenerations) {
-        this.fieldGenerations = fieldGenerations;
+    public void setRules(final @Nullable List<RoutingRule> rules) {
+        this.rules = rules;
     }
 
     /**

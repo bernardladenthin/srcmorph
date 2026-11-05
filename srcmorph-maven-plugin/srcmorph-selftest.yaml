@@ -5,8 +5,8 @@
 # The configuration of this module's srcmorph-selftest profile (mvn -P srcmorph-selftest): the plugin
 # summarizes two packages of the core library with the measured profile, the same models and rules as
 # examples/build-your-own-jar/srcmorph.yaml (BuildYourOwnJarSelfTestParityTest compares the two).
-# Each goal takes its section: generate the fieldGenerations, aggregate-packages the
-# packageFieldGenerations, aggregate-project the projectFieldGenerations.
+# Each goal takes its section: generate the rules, aggregate-packages the
+# packageRules, aggregate-project the projectRules.
 #
 # ${name} is a Maven property, set in the pom and overridable on the command line:
 #   ai.model                  the model of every ordinary file, package and the overview
@@ -17,13 +17,13 @@
 # e.g. mvn -P srcmorph-selftest -Dai.modelDir=/path/to/models -Dai.gpuLayers=12 process-resources
 
 # The rules of the package phase (aggregate-packages) and of the project overview (aggregate-project).
-packageFieldGenerations:
+packageRules:
   - promptKey: package-body
     onIncomplete: retryOnce                # an answer cut off or empty is asked for once more
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: "${ai.model}"
-projectFieldGenerations:
+projectRules:
   - promptKey: project-body
     onIncomplete: retryOnce
     mapPromptKey: map-chunk
@@ -137,7 +137,7 @@ srcMorph:
 
   # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
   # (~275 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
-  fieldGenerations:
+  rules:
     # Files that hold credentials are never sent to a model, whatever their extension: the highest
     # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
     # the file out altogether. fileNames match the name in any case.

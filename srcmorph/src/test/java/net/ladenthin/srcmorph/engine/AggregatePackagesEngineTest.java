@@ -50,7 +50,7 @@ public class AggregatePackagesEngineTest {
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(tempDir.resolve("out-does-not-exist").toFile());
         config.setGenerationProvider("mock");
-        config.setFieldGenerations(CommonTestFixtures.createPackageFieldGenerations());
+        config.setRules(CommonTestFixtures.createPackageRules());
 
         final int aggregated = new AggregatePackagesEngine(config).execute();
 
@@ -77,8 +77,8 @@ public class AggregatePackagesEngineTest {
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(tempDir.resolve("out").toFile());
         config.setGenerationProvider("mock");
-        config.setFieldGenerations(CommonTestFixtures.createPackageFieldGenerations());
-        config.getFieldGenerations().get(0).setOnOversize("sampleChunks");
+        config.setRules(CommonTestFixtures.createPackageRules());
+        config.getRules().get(0).setOnOversize("sampleChunks");
 
         final SrcMorphException thrown =
                 assertThrows(SrcMorphException.class, () -> new AggregatePackagesEngine(config).check());
@@ -112,7 +112,7 @@ public class AggregatePackagesEngineTest {
         config.setAiVersion("0.0.0");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
-        config.setFieldGenerations(CommonTestFixtures.createPackageFieldGenerations());
+        config.setRules(CommonTestFixtures.createPackageRules());
 
         final int aggregated = new AggregatePackagesEngine(config).execute();
 
@@ -156,7 +156,7 @@ public class AggregatePackagesEngineTest {
         config.setAiVersion("0.0.0");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(smallWindow));
-        config.setFieldGenerations(CommonTestFixtures.createPackageFieldGenerations());
+        config.setRules(CommonTestFixtures.createPackageRules());
 
         // act
         new AggregatePackagesEngine(config).execute();
@@ -180,7 +180,7 @@ public class AggregatePackagesEngineTest {
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
         // the file rules of a run used to reach this phase too: every package was generated once per rule
-        config.setFieldGenerations(Arrays.asList(
+        config.setRules(Arrays.asList(
                 CommonTestFixtures.createPackageFieldGeneration(), CommonTestFixtures.createPackageFieldGeneration()));
 
         final SrcMorphException thrown =

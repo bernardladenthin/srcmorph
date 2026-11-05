@@ -51,7 +51,7 @@ public class GenerateEngineTest {
 
     /**
      * A routable rule matching {@code .java} files, with the {@code default} AI definition key. Unlike
-     * {@link CommonTestFixtures#createFileFieldGenerations()} (whose rule carries no condition — fine for
+     * {@link CommonTestFixtures#createFileRules()} (whose rule carries no condition — fine for
      * the indexer-level tests that never call {@link net.ladenthin.srcmorph.routing.RuleSelector#validate}),
      * {@link GenerateEngine#execute()} does call {@code validate}, so the rule here needs a real condition.
      */
@@ -94,17 +94,17 @@ public class GenerateEngineTest {
         config.setAiVersion("0.0.0");
         config.setPromptDefinitions(CommonTestFixtures.createFilePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
-        config.setFieldGenerations(Collections.singletonList(javaFileRule()));
+        config.setRules(Collections.singletonList(javaFileRule()));
         return config;
     }
 
     @Test
     public void execute_missingFieldGenerationsThrowsSrcMorphException() throws IOException {
         final SrcMorphConfiguration config = baseConfig();
-        config.setFieldGenerations(null);
+        config.setRules(null);
 
         final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
-        assertThat(e.getMessage(), containsString("No fieldGenerations configured"));
+        assertThat(e.getMessage(), containsString("No rules configured"));
     }
 
     @Test
@@ -156,7 +156,7 @@ public class GenerateEngineTest {
         fallback.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         fallback.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         fallback.setFallback(true);
-        config.setFieldGenerations(Arrays.asList(javaFileRule(), fallback));
+        config.setRules(Arrays.asList(javaFileRule(), fallback));
 
         final GenerateResult result = new GenerateEngine(config).execute();
 
@@ -174,7 +174,7 @@ public class GenerateEngineTest {
         fallback.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         fallback.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         fallback.setFallback(true);
-        config.setFieldGenerations(Arrays.asList(javaFileRule(), fallback));
+        config.setRules(Arrays.asList(javaFileRule(), fallback));
 
         final GenerateResult result = new GenerateEngine(config).execute();
 
@@ -228,7 +228,7 @@ public class GenerateEngineTest {
         final RuleCondition condition = new RuleCondition();
         condition.setExtensions(Arrays.asList(".txt"));
         onlyMatchesTxt.setCondition(condition);
-        config.setFieldGenerations(Arrays.asList(onlyMatchesTxt));
+        config.setRules(Arrays.asList(onlyMatchesTxt));
 
         final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
         assertThat(e.getMessage(), containsString("matched no rule and no fallback"));
@@ -352,7 +352,7 @@ public class GenerateEngineTest {
         final SrcMorphConfiguration config = baseConfig();
         final RoutingRule rule = javaFileRule();
         rule.setFactsKey("no-such-group");
-        config.setFieldGenerations(Collections.singletonList(rule));
+        config.setRules(Collections.singletonList(rule));
 
         // act
         final SrcMorphException thrown =
@@ -387,7 +387,7 @@ public class GenerateEngineTest {
                 profile("# counters\nclasses\t\\bclass\\s+\\w\n").toFile());
         final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
-        config.setFieldGenerations(Collections.singletonList(rule));
+        config.setRules(Collections.singletonList(rule));
 
         // act
         final GenerateResult result = new GenerateEngine(config).execute();
@@ -407,7 +407,7 @@ public class GenerateEngineTest {
         config.setProfileDirectory(profile("no tab on this line\n").toFile());
         final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
-        config.setFieldGenerations(Collections.singletonList(rule));
+        config.setRules(Collections.singletonList(rule));
 
         // act
         final SrcMorphException thrown =
@@ -428,7 +428,7 @@ public class GenerateEngineTest {
         config.setFactDefinitions(Collections.singletonList(definition));
         final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
-        config.setFieldGenerations(Collections.singletonList(rule));
+        config.setRules(Collections.singletonList(rule));
 
         // act
         final SrcMorphException thrown =
@@ -643,7 +643,7 @@ public class GenerateEngineTest {
         tiny.setCharsPerToken(1);
         config.setAiDefinitions(Collections.singletonList(tiny));
         // sample, so the over-window check of the plan lets the file through to this one
-        config.getFieldGenerations().get(0).setOnOversize("sample");
+        config.getRules().get(0).setOnOversize("sample");
 
         final SrcMorphException thrown =
                 assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
@@ -670,7 +670,7 @@ public class GenerateEngineTest {
         if ("sampleChunks".equals(onOversize)) {
             rule.setMaxChunks(2);
         }
-        config.setFieldGenerations(Collections.singletonList(rule));
+        config.setRules(Collections.singletonList(rule));
         final StringBuilder big = new StringBuilder();
         for (int i = 0; i < 400; i++) {
             big.append("int field").append(i).append(" = ").append(i).append(";\n");
@@ -788,12 +788,12 @@ public class GenerateEngineTest {
     @Test
     public void execute_maxChunksWithoutSampleChunks_isAConfigurationError() throws Exception {
         final SrcMorphConfiguration config = oversizeConfig("mapReduce");
-        config.getFieldGenerations().get(0).setMaxChunks(6);
+        config.getRules().get(0).setMaxChunks(6);
 
         final SrcMorphException thrown =
                 assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
 
-        assertThat(thrown.getMessage(), containsString("Invalid fieldGenerations: maxChunks applies only to"));
+        assertThat(thrown.getMessage(), containsString("Invalid rules: maxChunks applies only to"));
     }
 
     @Test
@@ -1169,7 +1169,7 @@ public class GenerateEngineTest {
     public void check_aMapPromptWithoutATemplate_failsBeforeAModelLoads() throws Exception {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
-        final RoutingRule rule = config.getFieldGenerations().get(0);
+        final RoutingRule rule = config.getRules().get(0);
         rule.setOnOversize("mapReduce");
         rule.setMapPromptKey("no-such-prompt");
 

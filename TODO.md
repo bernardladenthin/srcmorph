@@ -75,15 +75,19 @@ breaking change, the CHANGELOG's Upgrading section names each one)
 - [x] A4 (9f2546e) N9 `pluginVersion` to `generatorVersion` (configuration key, bean, `RunRecord`)
 - [x] A5 (a058ad2) N10 drop `AiGenerationConfig`: the model registry builds `ProviderConfig` from the
   `AiModelDefinition` directly
-- [x] A6 N4a, N6 and N7 in one pass (per package was dropped: the references cross every package, so the steps would touch the same files again), each class renamed once (the `Ai` prefix goes but
+- [x] A6 (31a8288) N4a, N6 and N7 in one pass (per package was dropped: the references cross every package, so the steps would touch the same files again), each class renamed once (the `Ai` prefix goes but
   on `AiMd*`; `RoutingRule`, `RuleSelector`, `ModelRegistry`, `PromptCatalog`, `PromptPreparer`,
   `FactGroups`, `AiMdRewritePolicy` with `shouldRewrite`, `MapReduceMath`; `AiCondition` to
   `RuleCondition`, `AiPathSupport` to `SourcePaths`); the test classes, PIT's `targetClasses`,
   `spotbugs-exclude.xml`, ArchUnit and CLAUDE.md move with them
-- [ ] A7 N4b the configuration keys `rules`, `packageRules`, `projectRules` (the loader, the CLI,
+- [x] A7 N4b the configuration keys `rules`, `packageRules`, `projectRules` (the loader, the CLI,
   the plugin, `examples/`, the profile's configurations, the plugin-it fixture, the benchmark's
   `run.py`, the READMEs)
-- [ ] A8 P9 `module-info` exports `config` and `engine`, and `support` to the CLI only
+- [!] A8 P9 `module-info` exports `config` and `engine`, and `support` to the CLI only. Not done: the
+  public signatures of `engine` name types of `indexer` (`IndexOutcome`, `CalibrationMeasurement`),
+  `provider` (`GenerationUsage`, `RemoteModel`, `GenerationProviderFactory`) and `prompt`, so a
+  module-path consumer could call the engines but not name what they take and return. It needs an
+  engine API without those types first (owner: wanted or not)
 - [ ] A9 PIT at 100 in all three modules; CLAUDE.md's counts; `docs/code-review-2026-11-05.md` says
   what was applied
 

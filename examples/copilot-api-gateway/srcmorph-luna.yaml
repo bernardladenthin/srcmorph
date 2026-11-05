@@ -19,14 +19,14 @@ command: Plan
 
 # The package maps and the project overview, from the file summaries. A package whose summaries do
 # not fit the window is read in parts too (the default, fail, would stop the run).
-packageFieldGenerations:
+packageRules:
   - promptKey: package-body
     onIncomplete: retryOnce                # an answer cut off or empty is asked for once more: one more request
     onOversize: mapReduce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: luna
-projectFieldGenerations:
+projectRules:
   - promptKey: project-body
     onIncomplete: retryOnce
     onOversize: mapReduce
@@ -165,7 +165,7 @@ srcMorph:
   # call; a single-shot call does not read them, a reduce call does. A file larger than the window is
   # read chunk by chunk (mapReduce): Luna named every name planted in the middle of a 1.6 MB SQL dump,
   # an 870 KB XML catalog and a 283 KB Java enum in three of three runs (MODEL-CARD finding 7).
-  fieldGenerations:
+  rules:
     # Files that hold credentials are never sent to a model, whatever their extension: the highest
     # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
     # the file out altogether. fileNames match the name in any case.

@@ -20,6 +20,6 @@ SPDX-License-Identifier: Apache-2.0
         <contextSize>${bench.ctx}</contextSize><gpuLayers>${bench.ngl}</gpuLayers><maxOutputTokens>256</maxOutputTokens>
         <temperature>${bench.temp}</temperature><threads>8</threads><charsPerToken>${bench.cpt}</charsPerToken>
         <topP>1.0</topP><topK>0</topK><minP>0.0</minP><repeatPenalty>1.0</repeatPenalty><reasoningEffort>${bench.effort}</reasoningEffort></aiDefinition></aiDefinitions>
-      <fieldGenerations><fieldGeneration><id>java</id><promptKey>p</promptKey><aiDefinitionKey>m</aiDefinitionKey>
-        <condition><extensions><extension>.java</extension></extensions></condition></fieldGeneration></fieldGenerations>
+      <rules><fieldGeneration><id>java</id><promptKey>p</promptKey><aiDefinitionKey>m</aiDefinitionKey>
+        <condition><extensions><extension>.java</extension></extensions></condition></fieldGeneration></rules>
     </configuration></plugin></plugins></build></project>

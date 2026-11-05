@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Phase 2 orchestration: aggregates per-package {@code .ai.md} index files and fills in their
  * AI-generated summary fields, with the phase's one rule: its prompt and model
- * ({@link SrcMorphConfiguration#getFieldGenerations()} holds exactly that rule).
+ * ({@link SrcMorphConfiguration#getRules()} holds exactly that rule).
  *
  * <p>Extracted from what was {@code AggregatePackagesMojo.execute()} in the
  * {@code llamacpp-ai-index-maven-plugin} module.</p>
@@ -36,7 +36,7 @@ public final class AggregatePackagesEngine {
     private static final String PHASE = "aggregate-packages";
 
     /** The configuration file's key for the phase's rule, named in a configuration error. */
-    private static final String CLI_KEY = "packageFieldGenerations";
+    private static final String CLI_KEY = "packageRules";
 
     private final SrcMorphConfiguration config;
 
@@ -57,10 +57,10 @@ public final class AggregatePackagesEngine {
      * @throws SrcMorphException naming the first problem found
      */
     public void check() throws SrcMorphException {
-        final RoutingRule rule = EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule rule = EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getRules());
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(rule));
         EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(),
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),
@@ -102,7 +102,7 @@ public final class AggregatePackagesEngine {
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
 
         // the rule is checked before anything else, so a wrong one fails on a fresh tree too
-        final RoutingRule rule = EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule rule = EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getRules());
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(rule));
         if (!outputPath.toFile().exists()) {
             LOGGER.info("AI output directory does not exist, skipping package aggregation: {}", outputPath);
@@ -110,7 +110,7 @@ public final class AggregatePackagesEngine {
         }
 
         final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         EngineSupport.validateRoutedModelPaths(

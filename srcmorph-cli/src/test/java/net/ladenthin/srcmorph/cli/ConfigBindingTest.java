@@ -62,8 +62,8 @@ public class ConfigBindingTest {
                 fromJson.srcMorph.getAiDefinitions().get(0).getKey(),
                 is(equalTo(fromYaml.srcMorph.getAiDefinitions().get(0).getKey())));
         assertThat(
-                fromJson.srcMorph.getFieldGenerations().get(0).getPromptKey(),
-                is(equalTo(fromYaml.srcMorph.getFieldGenerations().get(0).getPromptKey())));
+                fromJson.srcMorph.getRules().get(0).getPromptKey(),
+                is(equalTo(fromYaml.srcMorph.getRules().get(0).getPromptKey())));
     }
 
     private static void assertConfigurationMatchesFixture(final CConfiguration configuration) {
@@ -85,8 +85,8 @@ public class ConfigBindingTest {
         assertThat(model.getMaxOutputTokens(), is(equalTo(64)));
         assertThat(model.getThreads(), is(equalTo(2)));
 
-        assertThat(srcMorph.getFieldGenerations().size(), is(equalTo(1)));
-        final RoutingRule rule = srcMorph.getFieldGenerations().get(0);
+        assertThat(srcMorph.getRules().size(), is(equalTo(1)));
+        final RoutingRule rule = srcMorph.getRules().get(0);
         assertThat(rule.getPromptKey(), is(equalTo("file-body")));
         assertThat(rule.getAiDefinitionKey(), is(equalTo("mock-model")));
         assertThat(rule.isFallback(), is(true));

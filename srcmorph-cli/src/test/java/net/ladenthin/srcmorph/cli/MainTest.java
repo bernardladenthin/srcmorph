@@ -258,7 +258,7 @@ public class MainTest {
         configuration.command = CCommand.Plan;
         configuration.srcMorph.setBaseDirectory(tempDir.toFile());
         configuration.srcMorph.setOutputDirectory(tempDir.resolve("out").toFile());
-        // No fieldGenerations configured -> GenerateEngine.execute() throws SrcMorphException,
+        // No rules configured -> GenerateEngine.execute() throws SrcMorphException,
         // which Main.run() wraps as an unchecked IllegalStateException (no System.exit anywhere).
         final Main main = new Main(configuration);
 

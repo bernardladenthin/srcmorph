@@ -128,13 +128,12 @@ public class BuildYourOwnJarSelfTestParityTest {
 
     @Test
     public void fileRules_matchTheSelfTest() throws IOException {
-        assertThat(
-                json(exampleRun().getFieldGenerations()), is(json(selftestRun().getFieldGenerations())));
+        assertThat(json(exampleRun().getRules()), is(json(selftestRun().getRules())));
     }
 
     @Test
     public void phaseRules_matchTheSelfTest() throws IOException {
-        assertThat(json(example.packageFieldGenerations), is(json(selftest.getPackageFieldGenerations())));
-        assertThat(json(example.projectFieldGenerations), is(json(selftest.getProjectFieldGenerations())));
+        assertThat(json(example.packageRules), is(json(selftest.getPackageRules())));
+        assertThat(json(example.projectRules), is(json(selftest.getProjectRules())));
     }
 }

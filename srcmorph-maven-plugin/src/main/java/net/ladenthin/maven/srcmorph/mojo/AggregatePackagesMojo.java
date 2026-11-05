@@ -14,7 +14,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Maven goal {@code srcmorph:aggregate-packages}: summarizes every package of the {@code .ai.md} tree
- * into its {@code package.ai.md}, with the one package rule ({@code packageFieldGenerations}) of the
+ * into its {@code package.ai.md}, with the one package rule ({@code packageRules}) of the
  * configuration file.
  *
  * <p>Thin wrapper: builds the configuration and delegates the whole run to

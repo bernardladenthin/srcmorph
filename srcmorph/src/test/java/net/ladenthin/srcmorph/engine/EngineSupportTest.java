@@ -370,10 +370,10 @@ public class EngineSupportTest {
                 null, Collections.<RoutingRule>emptyList(), Arrays.asList(phaseRule("a", "m"), phaseRule("b", "m")))) {
             final SrcMorphException thrown = assertThrows(
                     SrcMorphException.class,
-                    () -> EngineSupport.requiredPhaseRule("aggregate-packages", "packageFieldGenerations", rules));
+                    () -> EngineSupport.requiredPhaseRule("aggregate-packages", "packageRules", rules));
 
             assertThat(thrown.getMessage(), containsString("aggregate-packages takes exactly one rule"));
-            assertThat(thrown.getMessage(), containsString("packageFieldGenerations in the configuration file"));
+            assertThat(thrown.getMessage(), containsString("packageRules in the configuration file"));
             assertThat(thrown.getMessage(), containsString((rules == null ? 0 : rules.size()) + " given"));
         }
     }
@@ -402,8 +402,7 @@ public class EngineSupportTest {
 
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class,
-                () -> EngineSupport.optionalPhaseRule(
-                        "aggregate-project", "projectFieldGenerations", Arrays.asList(rule, rule)));
+                () -> EngineSupport.optionalPhaseRule("aggregate-project", "projectRules", Arrays.asList(rule, rule)));
         assertThat(thrown.getMessage(), containsString("aggregate-project takes at most one rule"));
     }
     // </editor-fold>

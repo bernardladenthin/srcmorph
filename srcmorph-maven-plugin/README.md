@@ -42,12 +42,12 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - Traverses generated `.ai.md` files
 - Builds hierarchical package summaries
 - Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
-- Takes exactly one rule, `packageFieldGenerations` of the configuration file (the package prompt and its model); none or more fail the goal
+- Takes exactly one rule, `packageRules` of the configuration file (the package prompt and its model); none or more fail the goal
 ### 3. Project Index (aggregate-project)
 - Harvests the one-line lead from every `package.ai.md` — the per-package listing is deterministic, no AI call
 - Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
 - A compact, always-loadable table of contents an agent reads first to navigate down
-- **Optional** (opt-in): configure one rule in `projectFieldGenerations` (more fail the goal) and it makes *one* extra AI call to
+- **Optional** (opt-in): configure one rule in `projectRules` (more fail the goal) and it makes *one* extra AI call to
   write a short `#### Overview` paragraph from the package leads. The deterministic per-package listing is
   unchanged; with no field generation the goal stays purely deterministic and calls no model.
 ## Example Output
@@ -154,9 +154,9 @@ its section of the file:
 
 | Goal | Rules |
 |---|---|
-| `generate`, `calibrate` | `srcMorph.fieldGenerations`, the file rules |
-| `aggregate-packages` | `packageFieldGenerations`, exactly one rule |
-| `aggregate-project` | `projectFieldGenerations`, none (a deterministic index) or one (with an overview) |
+| `generate`, `calibrate` | `srcMorph.rules`, the file rules |
+| `aggregate-packages` | `packageRules`, exactly one rule |
+| `aggregate-project` | `projectRules`, none (a deterministic index) or one (with an overview) |
 | `check` | all three |
 
 The file has three building blocks:
@@ -172,7 +172,7 @@ The file has three building blocks:
    repository is [`profiles/v3/`](../profiles/README.md); copy it into your project or point at a
    checkout. A `promptDefinitions` entry with an inline `template` (or its own `templateFile`) still
    works and wins over a file of the same key, as does a `factDefinitions` entry for facts.
-3. **`fieldGenerations`** — the routing **rules** of the file phase. Each rule maps a `promptKey` to an
+3. **`rules`** — the routing **rules** of the file phase. Each rule maps a `promptKey` to an
    `aiDefinitionKey` (model id, which carries the full parameter set) and selects files with a
    composable **`condition`** tree: `and`/`or`/`not` over the leaves `extensions`, `size`
    (`min`/`max` bytes), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
@@ -288,10 +288,10 @@ and `srcmorph.yaml` next to it:
 
 ```yaml
 # provider defaults to "mock"; llamacpp-jni runs a real GGUF model
-packageFieldGenerations:            # aggregate-packages: exactly one rule
+packageRules:            # aggregate-packages: exactly one rule
   - promptKey: package-body
     aiDefinitionKey: coder
-projectFieldGenerations:            # aggregate-project: leave it out for a purely deterministic index
+projectRules:            # aggregate-project: leave it out for a purely deterministic index
   - promptKey: project-body
     aiDefinitionKey: coder
 
@@ -311,7 +311,7 @@ srcMorph:
   profileDirectory: src/srcmorph/profile
   # 3) The file rules: a .java rule (matched by its condition) and the fallback for everything else.
   #    See "Routing rules" below for size/lines/modified/glob conditions, priority, and skip.
-  fieldGenerations:
+  rules:
     - id: java
       promptKey: file-body-oop
       aiDefinitionKey: coder
@@ -336,7 +336,7 @@ the same model and different `contextSize`), a map-reduce over a small fast Gran
 files, skip generated sources, and a fallback for everything else:
 
 ```yaml
-  fieldGenerations:
+  rules:
     - id: skip-generated                             # skip wins by priority
       skip: true
       priority: 100
@@ -440,7 +440,7 @@ The POM sets only these; everything else is the configuration file (above).
 The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirectory`, `fileExtensions`,
 `fileNames`, `fileInterpreters`, `contentHeadChars`, `excludes`, `minFileSizeBytes` /
 `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
-`profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
+`profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `rules`,
 `force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`, `partsDirectory`) are
 described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).

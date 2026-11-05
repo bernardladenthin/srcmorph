@@ -62,12 +62,12 @@ public class CommonTestFixtures {
      *
      * @return list with one field generation config for the body
      */
-    public static List<RoutingRule> createFileFieldGenerations() {
+    public static List<RoutingRule> createFileRules() {
         return Arrays.asList(createFileFieldGeneration());
     }
 
     /**
-     * Creates the one file-level rule of {@link #createFileFieldGenerations()}.
+     * Creates the one file-level rule of {@link #createFileRules()}.
      *
      * @return the {@code file-body} rule on the default model
      */
@@ -102,12 +102,12 @@ public class CommonTestFixtures {
      *
      * @return list with one field generation config for the body
      */
-    public static List<RoutingRule> createPackageFieldGenerations() {
+    public static List<RoutingRule> createPackageRules() {
         return Arrays.asList(createPackageFieldGeneration());
     }
 
     /**
-     * Creates the one package-level rule of {@link #createPackageFieldGenerations()}.
+     * Creates the one package-level rule of {@link #createPackageRules()}.
      *
      * @return the {@code package-body} rule on the default model
      */

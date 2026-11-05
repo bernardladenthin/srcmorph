@@ -177,8 +177,8 @@ Rules of thumb:
 - **`gpt-4o-mini`** takes only about 12k input tokens: fine for small files, too small for long
   Java classes. Set `contextSize` to `12000` or less.
 - **A cheap model for the file summaries**, a stronger one for the package and project summaries:
-  the file rules (`srcMorph.fieldGenerations`) and the top-level `packageFieldGenerations` /
-  `projectFieldGenerations` each name their own model.
+  the file rules (`srcMorph.rules`) and the top-level `packageRules` /
+  `projectRules` each name their own model.
 - Prefer models with a `0x` or low multiplier for whole trees.
 
 ## 4. Limits of this route

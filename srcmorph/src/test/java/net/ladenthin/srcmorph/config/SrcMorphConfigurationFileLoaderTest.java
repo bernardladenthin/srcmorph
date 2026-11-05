@@ -46,12 +46,12 @@ public class SrcMorphConfigurationFileLoaderTest {
     @Test
     public void load_yamlAndJson_bindEverySection() throws IOException {
         final String yaml = "command: All\nmodelFilter: grok\n"
-                + "packageFieldGenerations:\n  - promptKey: package-body\n    aiDefinitionKey: m\n"
-                + "projectFieldGenerations:\n  - promptKey: project-body\n    aiDefinitionKey: m\n"
+                + "packageRules:\n  - promptKey: package-body\n    aiDefinitionKey: m\n"
+                + "projectRules:\n  - promptKey: project-body\n    aiDefinitionKey: m\n"
                 + "srcMorph:\n  generationProvider: mock\n";
         final String json = "{\"command\":\"All\",\"modelFilter\":\"grok\","
-                + "\"packageFieldGenerations\":[{\"promptKey\":\"package-body\",\"aiDefinitionKey\":\"m\"}],"
-                + "\"projectFieldGenerations\":[{\"promptKey\":\"project-body\",\"aiDefinitionKey\":\"m\"}],"
+                + "\"packageRules\":[{\"promptKey\":\"package-body\",\"aiDefinitionKey\":\"m\"}],"
+                + "\"projectRules\":[{\"promptKey\":\"project-body\",\"aiDefinitionKey\":\"m\"}],"
                 + "\"srcMorph\":{\"generationProvider\":\"mock\"}}";
 
         for (final Path file :
@@ -61,8 +61,8 @@ public class SrcMorphConfigurationFileLoaderTest {
 
             assertThat(content.getCommand(), is(equalTo("All")));
             assertThat(content.getModelFilter(), is(equalTo("grok")));
-            assertThat(content.getPackageFieldGenerations().get(0).getPromptKey(), is(equalTo("package-body")));
-            assertThat(content.getProjectFieldGenerations().get(0).getPromptKey(), is(equalTo("project-body")));
+            assertThat(content.getPackageRules().get(0).getPromptKey(), is(equalTo("package-body")));
+            assertThat(content.getProjectRules().get(0).getPromptKey(), is(equalTo("project-body")));
             assertThat(content.getSrcMorph().getGenerationProvider(), is(equalTo("mock")));
         }
     }
@@ -195,7 +195,7 @@ public class SrcMorphConfigurationFileLoaderTest {
     public void load_fileNamesAndTheNewConditionLeaves_bind() throws IOException {
         final Path file = write(
                 "srcmorph.yaml",
-                "srcMorph:\n  fileNames: [\"Dockerfile\", \"Jenkinsfile\"]\n  fieldGenerations:\n"
+                "srcMorph:\n  fileNames: [\"Dockerfile\", \"Jenkinsfile\"]\n  rules:\n"
                         + "    - promptKey: file-body-ops\n      condition:\n        or:\n          conditions:\n"
                         + "            - fileNames: [\"Dockerfile.*\"]\n"
                         + "            - contentMatches: \"(?m)^apiVersion:\"\n"
@@ -206,7 +206,7 @@ public class SrcMorphConfigurationFileLoaderTest {
 
         assertThat(srcMorph.getFileNames(), is(Arrays.asList("Dockerfile", "Jenkinsfile")));
         final List<RuleCondition> leaves =
-                srcMorph.getFieldGenerations().get(0).getCondition().getOr().getConditions();
+                srcMorph.getRules().get(0).getCondition().getOr().getConditions();
         assertThat(leaves.get(0).getFileNames(), is(Arrays.asList("Dockerfile.*")));
         assertThat(leaves.get(1).getContentMatches(), is("(?m)^apiVersion:"));
         assertThat(leaves.get(2).getPathGlob(), is("**/{k8s,helm}/**"));
@@ -372,7 +372,7 @@ public class SrcMorphConfigurationFileLoaderTest {
         rule.setPromptKey("p");
         rule.setOnOversize("mapReduce");
         final SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
-        srcMorph.setFieldGenerations(java.util.Collections.singletonList(rule));
+        srcMorph.setRules(java.util.Collections.singletonList(rule));
 
         // act
         final String json = SrcMorphConfigurationFileLoader.newJsonMapper().writeValueAsString(srcMorph);

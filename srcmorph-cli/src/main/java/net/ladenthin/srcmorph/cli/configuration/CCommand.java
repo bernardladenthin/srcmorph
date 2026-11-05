@@ -30,19 +30,19 @@ public enum CCommand {
      * Phase 1: indexes source files and fills in their AI-generated summary fields
      * ({@code net.ladenthin.srcmorph.engine.GenerateEngine}, exactly as configured).
      */
-    GenerateFileIndex("one .ai.md per source file (srcMorph.fieldGenerations)"),
+    GenerateFileIndex("one .ai.md per source file (srcMorph.rules)"),
 
     /**
      * Phase 2: aggregates per-package {@code .ai.md} index files
      * ({@code net.ladenthin.srcmorph.engine.AggregatePackagesEngine}).
      */
-    AggregatePackages("one package.ai.md per directory (packageFieldGenerations)"),
+    AggregatePackages("one package.ai.md per directory (packageRules)"),
 
     /**
      * Phase 3: aggregates the single project-level {@code .ai.md} index
      * ({@code net.ladenthin.srcmorph.engine.AggregateProjectEngine}).
      */
-    AggregateProject("project.ai.md, with an overview by projectFieldGenerations"),
+    AggregateProject("project.ai.md, with an overview by projectRules"),
 
     /**
      * Runs all three phases in order: {@link #GenerateFileIndex}, then {@link #AggregatePackages},

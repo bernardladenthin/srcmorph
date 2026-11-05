@@ -122,7 +122,7 @@ public class AggregateProjectEngineTest {
         final RoutingRule overview = new RoutingRule();
         overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setFieldGenerations(Collections.singletonList(overview));
+        config.setRules(Collections.singletonList(overview));
 
         new AggregateProjectEngine(config).execute();
 
@@ -142,7 +142,7 @@ public class AggregateProjectEngineTest {
         final RoutingRule overview = new RoutingRule();
         overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setFieldGenerations(Arrays.asList(overview, overview));
+        config.setRules(Arrays.asList(overview, overview));
 
         final SrcMorphException thrown =
                 assertThrows(SrcMorphException.class, () -> new AggregateProjectEngine(config).execute());

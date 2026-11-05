@@ -72,9 +72,9 @@ public class CliEndToEndTest {
         rule.setPromptKey("file-body");
         rule.setAiDefinitionKey("mock-model");
         rule.setFallback(true);
-        configuration.srcMorph.setFieldGenerations(Collections.singletonList(rule));
+        configuration.srcMorph.setRules(Collections.singletonList(rule));
         // the package phase takes exactly one rule of its own; the project phase runs without one
-        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("file-body"));
+        configuration.packageRules = Collections.singletonList(phaseRule("file-body"));
 
         return configuration;
     }
@@ -243,16 +243,16 @@ public class CliEndToEndTest {
         final CConfiguration configuration = buildAllCommandConfiguration();
         configuration.srcMorph.setPromptDefinitions(
                 Arrays.asList(inlinePrompt("file-body"), inlinePrompt("package-body"), inlinePrompt("project-body")));
-        final List<RoutingRule> fileRules = configuration.srcMorph.getFieldGenerations();
-        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("package-body"));
-        configuration.projectFieldGenerations = Collections.singletonList(phaseRule("project-body"));
+        final List<RoutingRule> fileRules = configuration.srcMorph.getRules();
+        configuration.packageRules = Collections.singletonList(phaseRule("package-body"));
+        configuration.projectRules = Collections.singletonList(phaseRule("project-body"));
 
         new Main(configuration).run();
 
         final Path outputRoot = tempDir.resolve("out");
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(true));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(true));
-        assertThat(configuration.srcMorph.getFieldGenerations() == fileRules, is(true));
+        assertThat(configuration.srcMorph.getRules() == fileRules, is(true));
     }
 
     /**
@@ -264,7 +264,7 @@ public class CliEndToEndTest {
     @Test
     public void run_allCommand_packageRuleWithAnUnknownPrompt_failsInThePackagePhase() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
-        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("no-such-prompt"));
+        configuration.packageRules = Collections.singletonList(phaseRule("no-such-prompt"));
 
         final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
 
@@ -283,7 +283,7 @@ public class CliEndToEndTest {
         configuration.command = CCommand.All;
         new Main(configuration).run();
         configuration.command = CCommand.AggregateProject;
-        configuration.projectFieldGenerations = Collections.singletonList(phaseRule("no-such-prompt"));
+        configuration.projectRules = Collections.singletonList(phaseRule("no-such-prompt"));
 
         final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
 
@@ -301,7 +301,7 @@ public class CliEndToEndTest {
         configuration.command = CCommand.GenerateFileIndex;
         new Main(configuration).run();
         configuration.command = CCommand.AggregatePackages;
-        configuration.packageFieldGenerations = Collections.singletonList(phaseRule("no-such-prompt"));
+        configuration.packageRules = Collections.singletonList(phaseRule("no-such-prompt"));
 
         final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
 
@@ -309,7 +309,7 @@ public class CliEndToEndTest {
     }
 
     /**
-     * The file rules never reach the package phase: without {@code packageFieldGenerations} it fails,
+     * The file rules never reach the package phase: without {@code packageRules} it fails,
      * naming the key, after the file phase completed.
      *
      * @throws Exception if the fixture cannot be written
@@ -317,17 +317,17 @@ public class CliEndToEndTest {
     @Test
     public void run_allCommand_withoutAPackageRule_failsInThePackagePhase() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
-        configuration.packageFieldGenerations = null;
+        configuration.packageRules = null;
 
         final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
 
         assertThat(causeChain(thrown), containsString("aggregate-packages takes exactly one rule"));
-        assertThat(causeChain(thrown), containsString("packageFieldGenerations"));
+        assertThat(causeChain(thrown), containsString("packageRules"));
         assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
     }
 
     /**
-     * Without {@code projectFieldGenerations} the project index is written without an overview; the
+     * Without {@code projectRules} the project index is written without an overview; the
      * file rule no longer becomes the overview's prompt.
      *
      * @throws Exception if the run fails
@@ -360,7 +360,7 @@ public class CliEndToEndTest {
         configuration.command = CCommand.Check;
         final RoutingRule rule = phaseRule("file-body");
         rule.setAiDefinitionKey("no-such-model");
-        configuration.packageFieldGenerations = Collections.singletonList(rule);
+        configuration.packageRules = Collections.singletonList(rule);
 
         final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
 
@@ -374,7 +374,7 @@ public class CliEndToEndTest {
         configuration.command = CCommand.Check;
         final RoutingRule rule = phaseRule("file-body");
         rule.setAiDefinitionKey("no-overview-model");
-        configuration.projectFieldGenerations = Collections.singletonList(rule);
+        configuration.projectRules = Collections.singletonList(rule);
 
         final RuntimeException thrown = assertThrows(RuntimeException.class, () -> new Main(configuration).run());
 

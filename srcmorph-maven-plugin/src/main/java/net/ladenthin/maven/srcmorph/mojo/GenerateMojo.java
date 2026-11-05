@@ -14,7 +14,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Maven goal {@code srcmorph:generate}: summarizes every routed source file into its {@code .ai.md},
- * with the file rules ({@code srcMorph.fieldGenerations}) of the configuration file.
+ * with the file rules ({@code srcMorph.rules}) of the configuration file.
  *
  * <p>Thin wrapper: builds the configuration ({@code AbstractSrcMorphMojo.buildConfiguration})
  * and delegates the whole run to {@link GenerateEngine}.</p>

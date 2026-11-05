@@ -307,7 +307,7 @@ SPDX-License-Identifier: Apache-2.0
         SrcMorphConfiguration (migration step 5, engine extraction) is the same kind of bean, one tier
         up: the mutable JavaBean bindable from Maven plexus reflection, a future Jackson ObjectMapper, or
         plain Java code, holding every List field (subtrees/excludes/fileExtensions/promptDefinitions/
-        aiDefinitions/fieldGenerations/factDefinitions) the same way the mojo's own @Parameter fields used
+        aiDefinitions/rules/factDefinitions) the same way the mojo's own @Parameter fields used
         to. One instance is built once per goal invocation and handed to exactly one engine, which reads
         it and discards it - the same single-threaded, no-shared-state lifecycle as the beans above.
 

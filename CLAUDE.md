@@ -92,10 +92,10 @@ Package root: `net.ladenthin.srcmorph`.
   file of the CLI and the plugin, or built in plain Java code. The run's object is
   **`SrcMorphConfiguration`**: one bean holding everything a run needs (`baseDirectory`,
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, the size band, `force`, `regenerateOn` (`RegenerateOn`: which changed header field rewrites a summary), `planOnly`,
-  `generationProvider`, `profileDirectory`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`,
+  `generationProvider`, `profileDirectory`, `promptDefinitions`, `aiDefinitions`, `rules`, `factDefinitions`,
   `generatorVersion`/`aiVersion`/`projectName`, `runRecordFile`: the JSON record of a file phase,
   `engine.RunRecord`, `partsDirectory`: each chunked file's map and reduce answers). The file around it is **`SrcMorphConfigurationFile`**
-  (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the CLI's `command` /
+  (`srcMorph`, `packageRules`, `projectRules`, and the CLI's `command` /
   `modelFilter`), read by **`SrcMorphConfigurationFileLoader`** the same way for both surfaces: the
   extension picks JSON or YAML, a `${name}` in a parsed value is a property of the caller (the plugin:
   Maven's; the CLI: the system properties), unknown keys fail, and every relative path resolves
@@ -228,7 +228,7 @@ CLI driven by a single JSON or YAML configuration file:
   `Main.fromFile`. `CCommand` is `Plan | Check | GenerateFileIndex | AggregatePackages |
   AggregateProject | All | Calibrate | ListModels`, each with the one-line `summary()` the usage
   prints; `ListModels` reads the top-level `modelFilter` too, and the package and project phases take
-  only the top-level `packageFieldGenerations` / `projectFieldGenerations` (a copy of `srcMorph` with
+  only the top-level `packageRules` / `projectRules` (a copy of `srcMorph` with
   those rules, the sections the plugin's aggregate goals read from the same file): the package phase
   exactly one rule, the project phase none or one (`EngineSupport.requiredPhaseRule` /
   `optionalPhaseRule`). `Check` runs `check()` of the three engines (the package phase only when
@@ -534,7 +534,7 @@ See [`../workspace/workflows/pull-request-workflow.md`](../workspace/workflows/p
    what Maven knows about the project.
 5. **Provider abstraction** — AI backends are pluggable through `GenerationProvider`; the mock
    provider enables fully deterministic tests everywhere.
-6. **Configuration-driven prompts & rule-based routing** — prompt templates and the `fieldGenerations`
+6. **Configuration-driven prompts & rule-based routing** — prompt templates and the `rules`
    routing rules (composable `condition` tree, priority, skip, exactly one fallback) are data, never
    hardcoded in Java; see `SrcMorphConfiguration`'s Javadoc and each engine's own Javadoc for the
    `generate`/`aggregate-packages`/`aggregate-project`/`calibrate` semantics.

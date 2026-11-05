@@ -67,7 +67,7 @@ public class MojoGoalTest {
 
         final MojoExecutionException thrown = assertThrows(MojoExecutionException.class, this::generate);
 
-        assertThat(thrown.getMessage(), containsString("No fieldGenerations configured"));
+        assertThat(thrown.getMessage(), containsString("No rules configured"));
     }
     // </editor-fold>
 
@@ -85,8 +85,7 @@ public class MojoGoalTest {
 
     @Test
     public void aggregatePackages_withoutAPackageRule_failsNamingIt() throws Exception {
-        writeConfiguration(
-                project, MOCK_CONFIGURATION.substring(MOCK_CONFIGURATION.indexOf("projectFieldGenerations:")));
+        writeConfiguration(project, MOCK_CONFIGURATION.substring(MOCK_CONFIGURATION.indexOf("projectRules:")));
         writeSource(project);
         generate();
 
@@ -139,8 +138,7 @@ public class MojoGoalTest {
 
     @Test
     public void check_withoutAPackageRule_checksTheOtherPhases() throws Exception {
-        writeConfiguration(
-                project, MOCK_CONFIGURATION.substring(MOCK_CONFIGURATION.indexOf("projectFieldGenerations:")));
+        writeConfiguration(project, MOCK_CONFIGURATION.substring(MOCK_CONFIGURATION.indexOf("projectRules:")));
         writeSource(project);
 
         configured(new CheckMojo(), project).execute();
@@ -153,8 +151,8 @@ public class MojoGoalTest {
         writeConfiguration(
                 project,
                 MOCK_CONFIGURATION.replace(
-                        "projectFieldGenerations:\n  - promptKey: file-body\n    aiDefinitionKey: mock-model\n",
-                        "projectFieldGenerations:\n  - promptKey: file-body\n    aiDefinitionKey: another-model\n"));
+                        "projectRules:\n  - promptKey: file-body\n    aiDefinitionKey: mock-model\n",
+                        "projectRules:\n  - promptKey: file-body\n    aiDefinitionKey: another-model\n"));
         writeSource(project);
 
         final MojoExecutionException thrown = assertThrows(

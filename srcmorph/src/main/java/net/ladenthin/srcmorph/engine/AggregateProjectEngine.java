@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  * <p>Extracted from what was {@code AggregateProjectMojo.execute()} in the
  * {@code llamacpp-ai-index-maven-plugin} module. By default this is fully deterministic (a per-package
  * lead/link table of contents, no model call); when
- * {@link SrcMorphConfiguration#getFieldGenerations()} holds a rule (at most one), it is the
+ * {@link SrcMorphConfiguration#getRules()} holds a rule (at most one), it is the
  * <em>optional</em> AI overview generation (one extra call synthesising a short project overview
  * paragraph from the per-package leads) — see {@link ProjectIndexer}.</p>
  */
@@ -43,7 +43,7 @@ public final class AggregateProjectEngine {
     private static final String PHASE = "aggregate-project";
 
     /** The configuration file's key for the phase's rule, named in a configuration error. */
-    private static final String CLI_KEY = "projectFieldGenerations";
+    private static final String CLI_KEY = "projectRules";
 
     private final SrcMorphConfiguration config;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
@@ -83,7 +83,7 @@ public final class AggregateProjectEngine {
         LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
 
         // the rule is checked before anything else, so a wrong one fails on a fresh tree too
-        final RoutingRule overview = EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule overview = EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getRules());
         if (overview != null) {
             EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
         }
@@ -129,14 +129,14 @@ public final class AggregateProjectEngine {
      * @throws SrcMorphException naming the first problem found
      */
     public void check() throws SrcMorphException {
-        final RoutingRule overview = EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule overview = EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getRules());
         if (overview == null) {
             LOGGER.info("Check passed: the project index has no overview rule and calls no model.");
             return;
         }
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
         EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(),
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),
@@ -163,7 +163,7 @@ public final class AggregateProjectEngine {
     private IndexOutcome aggregateWithOverview(final Path outputPath, final String title, final RoutingRule overview)
             throws SrcMorphException, IOException {
         final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         EngineSupport.validateRoutedModelPaths(

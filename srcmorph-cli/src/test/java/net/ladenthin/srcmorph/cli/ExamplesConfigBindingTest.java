@@ -139,8 +139,8 @@ public class ExamplesConfigBindingTest {
         assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
         assertThat(model.isStream(), is(true));
         assertThat(model.getRequestsPerMinute(), is(25));
-        assertThat(srcMorph.getFieldGenerations().size(), is(1));
-        assertThat(srcMorph.getFieldGenerations().get(0).isFallback(), is(true));
+        assertThat(srcMorph.getRules().size(), is(1));
+        assertThat(srcMorph.getRules().get(0).isFallback(), is(true));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph.yaml");
     }
 
@@ -177,13 +177,13 @@ public class ExamplesConfigBindingTest {
                 Objects.requireNonNull(srcMorph.getProfileDirectory()).getPath());
         final List<RoutingRule> rules = new ArrayList<>();
         final List<RoutingRule> skipped = new ArrayList<>();
-        for (final RoutingRule rule : srcMorph.getFieldGenerations()) {
+        for (final RoutingRule rule : srcMorph.getRules()) {
             (rule.isSkip() ? skipped : rules).add(rule);
         }
         assertThat("the credentials rule", skipped.size(), is(1));
         assertThat(skipped.get(0).getId(), is(equalTo("secrets")));
-        rules.addAll(Objects.requireNonNull(configuration.packageFieldGenerations));
-        rules.addAll(Objects.requireNonNull(configuration.projectFieldGenerations));
+        rules.addAll(Objects.requireNonNull(configuration.packageRules));
+        rules.addAll(Objects.requireNonNull(configuration.projectRules));
         for (final RoutingRule rule : rules) {
             final String label = "rule " + rule.getPromptKey();
             assertThat(label, rule.getAiDefinitionKey(), is(equalTo(model.getKey())));
@@ -194,7 +194,7 @@ public class ExamplesConfigBindingTest {
                     label, Files.isRegularFile(profileDirectory.resolve(rule.getReducePromptKey() + ".md")), is(true));
         }
         final List<String> withoutFacts = new ArrayList<>();
-        for (final RoutingRule rule : srcMorph.getFieldGenerations()) {
+        for (final RoutingRule rule : srcMorph.getRules()) {
             final String label = "rule " + rule.getId();
             if (rule.isSkip()) {
                 continue;
@@ -242,7 +242,7 @@ public class ExamplesConfigBindingTest {
                 EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml"),
                 EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml"))) {
             final List<RoutingRule> rules =
-                    Main.fromYaml(Main.readString(config)).srcMorph.getFieldGenerations();
+                    Main.fromYaml(Main.readString(config)).srcMorph.getRules();
             final net.ladenthin.srcmorph.routing.RuleSelector selector =
                     new net.ladenthin.srcmorph.routing.RuleSelector();
             selector.validate(rules);
@@ -262,7 +262,7 @@ public class ExamplesConfigBindingTest {
         final List<RoutingRule> rules = Main.fromYaml(
                         Main.readString(EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml")))
                 .srcMorph
-                .getFieldGenerations();
+                .getRules();
         final net.ladenthin.srcmorph.routing.RuleSelector selector = new net.ladenthin.srcmorph.routing.RuleSelector();
         selector.validate(rules);
         final String[][] cases = {
@@ -360,14 +360,10 @@ public class ExamplesConfigBindingTest {
                 is(equalTo("mock")));
 
         // Every shipped example configures at least the fallback routing rule, so the run has
-        // something to do (a config with an empty <fieldGenerations> fails GenerateEngine/
+        // something to do (a config with an empty <rules> fails GenerateEngine/
         // CalibrateEngine at run time, so an example silently missing it would be useless).
-        assertThat(
-                fileName + ": fieldGenerations must be configured", srcMorph.getFieldGenerations(), is(notNullValue()));
-        assertThat(
-                fileName + ": fieldGenerations must not be empty",
-                srcMorph.getFieldGenerations().size(),
-                greaterThan(0));
+        assertThat(fileName + ": rules must be configured", srcMorph.getRules(), is(notNullValue()));
+        assertThat(fileName + ": rules must not be empty", srcMorph.getRules().size(), greaterThan(0));
         assertPromptFilesResolve(EXAMPLES_DIRECTORY, configuration, fileName);
     }
 
@@ -393,9 +389,7 @@ public class ExamplesConfigBindingTest {
         assertThat(label + ": profileDirectory must be set", srcMorph.getProfileDirectory(), is(notNullValue()));
         final List<@Nullable String> usedKeys = new ArrayList<>();
         for (final @Nullable List<RoutingRule> rules : Arrays.<@Nullable List<RoutingRule>>asList(
-                srcMorph.getFieldGenerations(),
-                configuration.packageFieldGenerations,
-                configuration.projectFieldGenerations)) {
+                srcMorph.getRules(), configuration.packageRules, configuration.projectRules)) {
             if (rules != null) {
                 for (final RoutingRule rule : rules) {
                     usedKeys.add(rule.getPromptKey());

@@ -155,7 +155,7 @@ public abstract class AbstractSrcMorphMojo extends AbstractMojo {
                     "Cannot read the srcmorph configuration file " + configurationFile + ": " + e.getMessage(), e);
         }
         final SrcMorphConfiguration config = file.getSrcMorph();
-        config.setFieldGenerations(section.rulesOf(file));
+        config.setRules(section.rulesOf(file));
         if (config.getSubtrees() == null) {
             // the loader sets the base directory: the file's, or the project's when the file sets none
             final File base = config.getBaseDirectory();

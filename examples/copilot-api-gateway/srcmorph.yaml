@@ -55,7 +55,7 @@ srcMorph:
       maxOutputTokens: 4096                  # the v1 prompt asks for a structured summary of every section
       temperature: 0.2
 
-  fieldGenerations:
+  rules:
     - promptKey: file-body-oop
       onIncomplete: retryOnce              # an answer cut off or empty is asked for once more: one more request
       aiDefinitionKey: copilot

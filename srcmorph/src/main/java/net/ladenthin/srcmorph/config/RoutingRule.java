@@ -9,11 +9,11 @@ import lombok.ToString;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One routing rule of the configuration file's {@code fieldGenerations}: a {@link #condition} that
+ * One routing rule of the configuration file's {@code rules}: a {@link #condition} that
  * selects files, a {@link #priority} to break ties when several rules match, and an action — route the
  * matched files to a {@code (promptKey, aiDefinitionKey)}, mark them {@link #skip skipped}, or act as
  * the single explicit {@link #fallback}. The package and project phases take one rule of the same
- * shape from {@code packageFieldGenerations} / {@code projectFieldGenerations}.
+ * shape from {@code packageRules} / {@code projectRules}.
  *
  * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters because the
  * configuration file is bound through them.</p>

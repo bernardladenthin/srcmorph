@@ -94,7 +94,7 @@ public final class GenerateEngine {
      * Runs the full plan-then-execute Phase 1 pipeline.
      *
      * @return the outcome of the run (a plan-only result when {@link SrcMorphConfiguration#isPlanOnly()})
-     * @throws SrcMorphException if the run is misconfigured (no {@code fieldGenerations}, an unmatched
+     * @throws SrcMorphException if the run is misconfigured (no {@code rules}, an unmatched
      *                            file with no fallback, a hard oversize failure, or an invalid rule set)
      * @throws IOException       if the source tree cannot be walked or a target file cannot be written
      */
@@ -126,34 +126,34 @@ public final class GenerateEngine {
 
         logRun(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
-        final List<RoutingRule> configured = config.getFieldGenerations();
+        final List<RoutingRule> configured = config.getRules();
         if (configured == null || configured.isEmpty()) {
-            throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
-                    + " configuration file); nothing to generate.");
+            throw new SrcMorphException(
+                    "No rules configured (srcMorph.rules of the" + " configuration file); nothing to generate.");
         }
         // the run resolves the facts keys into copies: the caller's rules stay as given, so check() and a
         // second execute() of the same configuration read them as the first did
-        final List<RoutingRule> fieldGenerations = copies(configured);
+        final List<RoutingRule> rules = copies(configured);
 
         final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final PromptPreparer promptPreparationSupport = new PromptPreparer(promptSupport);
         // Resolve each rule's factsKey to its shared factDefinitions group (copies the counters onto the
         // rule's facts) BEFORE validation, so the resolved fact patterns are validated too.
-        EngineSupport.resolveFactsKeys(config, fieldGenerations);
+        EngineSupport.resolveFactsKeys(config, rules);
 
         final RuleSelector selector = new RuleSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model), as a
         // configuration error the surfaces report as such.
         try {
-            selector.validate(fieldGenerations);
+            selector.validate(rules);
         } catch (final IllegalArgumentException e) {
-            throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
+            throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
         }
-        EngineSupport.requireDefinedModels(modelDefinitionSupport, fieldGenerations);
-        requirePrompts(promptSupport, fieldGenerations);
+        EngineSupport.requireDefinedModels(modelDefinitionSupport, rules);
+        requirePrompts(promptSupport, rules);
 
         final SourceFileIndexer fileIndexer =
                 newFileIndexer(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
@@ -174,7 +174,7 @@ public final class GenerateEngine {
         //    each file fits its routed model's context window (computed up front, same threshold the
         //    run uses to trim — see InputWindowCalculator).
         final IndexPlan plan =
-                fileIndexer.classify(candidates, fieldGenerations, modelDefinitionSupport, promptPreparationSupport);
+                fileIndexer.classify(candidates, rules, modelDefinitionSupport, promptPreparationSupport);
         LOGGER.info("AI index plan (Markdown):\n{}", plan.renderMarkdown(basePath));
 
         // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
@@ -212,8 +212,7 @@ public final class GenerateEngine {
         // default command. check() is the plan with this check, for the machine that runs.
         final boolean planOnly = !checkOnly && config.isPlanOnly();
         if (!planOnly) {
-            EngineSupport.validateRoutedModelPaths(
-                    config.getGenerationProvider(), modelDefinitionSupport, fieldGenerations);
+            EngineSupport.validateRoutedModelPaths(config.getGenerationProvider(), modelDefinitionSupport, rules);
         }
         if (planOnly || checkOnly) {
             LOGGER.info(
@@ -460,7 +459,7 @@ public final class GenerateEngine {
                 try {
                     HeaderHashes.prompt(promptSupport, rule);
                 } catch (final IllegalArgumentException e) {
-                    throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
+                    throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
                 }
             }
         }

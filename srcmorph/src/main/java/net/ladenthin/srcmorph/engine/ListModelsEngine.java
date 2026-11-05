@@ -101,7 +101,7 @@ public final class ListModelsEngine {
         final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(definitions, config.getModelDirectory());
         final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         final List<ModelListReport.Listing> listings = new ArrayList<>(definitions.size());
         final Set<String> servers = new HashSet<>(definitions.size());
         for (final ModelDefinition definition : definitions) {

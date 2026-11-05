@@ -48,7 +48,7 @@ public class CheckMojo extends AbstractSrcMorphMojo {
             new GenerateEngine(buildConfiguration(RuleSection.FILES)).check();
             // the package phase only when the file configures it: a project may not aggregate packages
             final SrcMorphConfiguration packages = buildConfiguration(RuleSection.PACKAGE);
-            if (packages.getFieldGenerations() != null) {
+            if (packages.getRules() != null) {
                 new AggregatePackagesEngine(packages).check();
             }
             new AggregateProjectEngine(buildConfiguration(RuleSection.PROJECT)).check();

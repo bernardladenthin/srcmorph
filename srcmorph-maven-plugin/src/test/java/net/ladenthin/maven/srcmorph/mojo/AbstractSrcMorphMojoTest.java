@@ -99,26 +99,14 @@ public class AbstractSrcMorphMojoTest {
         writeConfiguration(
                 project,
                 MOCK_CONFIGURATION.replace(
-                        "projectFieldGenerations:\n  - promptKey: file-body\n",
-                        "projectFieldGenerations:\n  - promptKey: project-body\n"));
+                        "projectRules:\n  - promptKey: file-body\n", "projectRules:\n  - promptKey: project-body\n"));
 
         assertThat(
-                mojo().buildConfiguration(RuleSection.FILES)
-                        .getFieldGenerations()
-                        .get(0)
-                        .isFallback(),
-                is(true));
+                mojo().buildConfiguration(RuleSection.FILES).getRules().get(0).isFallback(), is(true));
         assertThat(
-                mojo().buildConfiguration(RuleSection.PACKAGE)
-                        .getFieldGenerations()
-                        .get(0)
-                        .isFallback(),
-                is(false));
+                mojo().buildConfiguration(RuleSection.PACKAGE).getRules().get(0).isFallback(), is(false));
         assertThat(
-                mojo().buildConfiguration(RuleSection.PROJECT)
-                        .getFieldGenerations()
-                        .get(0)
-                        .getPromptKey(),
+                mojo().buildConfiguration(RuleSection.PROJECT).getRules().get(0).getPromptKey(),
                 is(equalTo("project-body")));
     }
 
@@ -126,7 +114,7 @@ public class AbstractSrcMorphMojoTest {
     public void buildConfiguration_aSectionTheFileLacks_isNull() throws Exception {
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
 
-        assertThat(mojo().buildConfiguration(RuleSection.PACKAGE).getFieldGenerations(), is(nullValue()));
+        assertThat(mojo().buildConfiguration(RuleSection.PACKAGE).getRules(), is(nullValue()));
     }
     // </editor-fold>
 

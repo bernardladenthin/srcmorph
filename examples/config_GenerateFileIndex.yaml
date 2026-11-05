@@ -26,7 +26,7 @@ srcMorph:
       maxOutputTokens: 64
       temperature: 0.15
       threads: 2
-  fieldGenerations:
+  rules:
     - promptKey: file-body-fallback
       aiDefinitionKey: mock-model
       fallback: true

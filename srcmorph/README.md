@@ -14,7 +14,7 @@ Package root: `net.ladenthin.srcmorph`.
 `net.ladenthin.srcmorph.config.SrcMorphConfiguration` is one mutable JavaBean holding everything a
 run needs, bound by Jackson or set in plain Java. The CLI and the Maven plugin read it from one
 configuration file, JSON or YAML, through `SrcMorphConfigurationFileLoader`, into a
-`SrcMorphConfigurationFile` (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the
+`SrcMorphConfigurationFile` (`srcMorph`, `packageRules`, `projectRules`, and the
 CLI's `command` / `modelFilter`): the extension picks the parser, a `${name}` in a value is the
 caller's property (`$${name}` a literal `${name}`), an unknown key fails, and relative paths resolve against the file's directory:
 the directories and `runRecordFile` directly, a `modelPath`, `templateFile` or `factsFile` through
@@ -28,7 +28,7 @@ Major field groups:
 |---|---|
 | Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `fileNames` (globs over the file name, in any case, for files without an extension), `fileInterpreters` (scripts without an extension, by the interpreter their `#!` line names, `support.Shebang`), `contentHeadChars` (how much of a file the `contentMatches` and `interpreters` conditions read, default 16,384, at least 256), `minFileSizeBytes`/`maxFileSizeBytes`; a glob takes `*`, `**`, `?` and `{a,b}` (`support.Glob`) |
 | Output | `outputDirectory`, `force`, `regenerateOn` (`config.RegenerateOn`: `source`, `prompt`, `facts`, `model`, `children`, each `true` by default, each the header field `C`, `P`, `N`, `M` or `K` whose change rewrites a summary; `force` rewrites every one), `planOnly`, `runRecordFile` (the JSON record of a file phase, `engine.RunRecord`) |
-| Routing & prompts | `promptDefinitions` (`List<PromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<ModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<RoutingRule>` — the routing rules), `factDefinitions` (`List<FactDefinition>`: a `key` and `facts` or a `factsFile`) |
+| Routing & prompts | `promptDefinitions` (`List<PromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<ModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `rules` (`List<RoutingRule>` — the routing rules), `factDefinitions` (`List<FactDefinition>`: a `key` and `facts` or a `factsFile`) |
 | AI backend | `generationProvider` (`"mock"`, `"llamacpp-jni"` or `"openai-compatible"`; a model definition's own `provider` overrides it); every model parameter is a field of an `aiDefinitions` entry |
 | Header metadata | `generatorVersion`, `aiVersion`, `projectName` |
 
@@ -59,17 +59,17 @@ Maven plugin's mojos, the CLI's `Main`) translate these into whatever their own 
 | Engine | Purpose | Result |
 |---|---|---|
 | `GenerateEngine` | Phase 1: plans the whole run (which model + prompt each file gets, or skip/unmatched, and whether it fits its routed model's context window), fails fast on an unmatched file or a hard oversize failure, stops after the plan when `planOnly` is set, otherwise loads each distinct routed model once and indexes its files. | `GenerateResult` (`planOnly()`, `written()`, `unchanged()`, `skipped()`) |
-| `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory, with the one rule of `fieldGenerations` (exactly one: its prompt and model). | `int` — package index files written |
-| `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); with a rule in `fieldGenerations` (at most one), one extra AI call writes a short `#### Overview` paragraph. | `int` — `1` if written, `0` otherwise |
+| `AggregatePackagesEngine` | Phase 2: aggregates every package beneath the output directory into a `package.ai.md` per directory, with the one rule of `rules` (exactly one: its prompt and model). | `int` — package index files written |
+| `AggregateProjectEngine` | Phase 3: harvests every package's one-line lead into a single `project.ai.md` table of contents. Fully deterministic by default (no model call); with a rule in `rules` (at most one), one extra AI call writes a short `#### Overview` paragraph. | `int` — `1` if written, `0` otherwise |
 | `CalibrateEngine` | Loads each distinct model a `GenerateEngine` run would load, measures its prefill/decode throughput via a couple of representative generations, and returns a paste-ready report. | `CalibrationReport` (`measurements()`, a paste-ready YAML `calibration:` block per model for its `aiDefinitions` entry, and the JSON / YAML report files) |
 | `ListModelsEngine` | Asks each OpenAI-compatible server the `aiDefinitions` name for its models (`GET <baseUrl>/models`), optionally filtered by id. | `ModelListReport` (`listings()`, `render()` — a model table as YAML comments and an `aiDefinitions` block with one entry per model) |
 
-**One configuration, three meanings of `fieldGenerations`.** `GenerateEngine` *routes* each file to
+**One configuration, three meanings of `rules`.** `GenerateEngine` *routes* each file to
 exactly one matching rule (by `condition` + `priority`, with the explicit `fallback` catching the
 rest). The aggregation engines route nothing: `AggregatePackagesEngine` takes exactly one rule and
 `AggregateProjectEngine` none or one, and both fail on more, so a routing table meant for the files
 never reaches a package or the project. Give each phase its own rules: the top-level
-`packageFieldGenerations` / `projectFieldGenerations` of the configuration file, which the CLI and
+`packageRules` / `projectRules` of the configuration file, which the CLI and
 the plugin's aggregate goals read.
 
 ## Use as a library
@@ -102,7 +102,7 @@ RoutingRule rule = new RoutingRule();
 rule.setPromptKey("file-body-fallback");
 rule.setAiDefinitionKey("coder");
 rule.setFallback(true);
-config.setFieldGenerations(Collections.singletonList(rule));
+config.setRules(Collections.singletonList(rule));
 
 try {
     GenerateResult result = new GenerateEngine(config).execute();

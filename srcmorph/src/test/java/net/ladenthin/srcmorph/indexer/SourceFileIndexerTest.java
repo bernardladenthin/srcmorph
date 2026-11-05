@@ -232,7 +232,7 @@ public class SourceFileIndexerTest {
         writeJava(foo, "package com.example;\nclass Foo {}\n");
 
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final SummaryGenerator support = mockSupport();
 
         // first write
@@ -264,7 +264,7 @@ public class SourceFileIndexerTest {
         Files.createDirectories(foo.getParent());
         Files.write(foo, new byte[] {'c', 'l', 'a', 's', 's', ' ', 'F', (byte) 0xE4, '{', '}', '\n'});
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(IndexOutcome.WRITTEN));
 
@@ -285,7 +285,7 @@ public class SourceFileIndexerTest {
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "package com.example;\nclass Foo {}\n");
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(IndexOutcome.WRITTEN));
 
@@ -313,7 +313,7 @@ public class SourceFileIndexerTest {
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "package com.example;\nclass Foo {}\n");
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "", "EEEE0005"), is(IndexOutcome.WRITTEN));
 
@@ -342,7 +342,7 @@ public class SourceFileIndexerTest {
         neither.setPrompt(false);
         neither.setFacts(false);
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L, neither);
-        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(IndexOutcome.WRITTEN));
 
@@ -864,7 +864,7 @@ public class SourceFileIndexerTest {
         withMark[2] = (byte) 0xBF;
         System.arraycopy(text, 0, withMark, 3, text.length);
         writeBytes(foo, withMark);
-        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final FactCounter counter = new FactCounter();
         counter.setLabel("starts with package");
         counter.setPattern("\\Apackage\\b");
@@ -893,7 +893,7 @@ public class SourceFileIndexerTest {
     }
 
     private static RoutingRule ruleWithFacts() {
-        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final FactCounter counter = new FactCounter();
         counter.setLabel("classes");
         counter.setPattern("\\bclass\\b");

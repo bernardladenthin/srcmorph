@@ -71,9 +71,9 @@ every key. The ones to set:
   (`promptKey`, `factsKey`). The shipped `../../profiles/v3` is this repository's measured profile and
   is found as long as the example stays in the clone; copy the directory and point there to change a
   prompt.
-- **`fieldGenerations`**: which prompt and model each file gets, by extension and size; the package
-  and project summaries have rules of their own, `packageFieldGenerations` and
-  `projectFieldGenerations`.
+- **`rules`**: which prompt and model each file gets, by extension and size; the package
+  and project summaries have rules of their own, `packageRules` and
+  `projectRules`.
 
 What a run does: for every matching file, srcmorph sends the prompt and the source to the model and
 writes the answer next to the source's path under `outputDirectory`, as `<file>.ai.md`.

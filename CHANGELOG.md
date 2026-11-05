@@ -59,6 +59,10 @@ The entries below hold the details; what a 1.4.0 user changes:
   `SourceFileIndexer.classify` takes both lookups non-null (the two-argument one skips the window
   check). `AiGenerationProviderFactory.effectiveProvider` takes a non-null run provider and returns a
   non-null key, and `AiPromptTemplateLoader.load(List)` is gone (`load(List, Collection)` remains).
+- **Every configuration file renames three keys**: `fieldGenerations` is `rules` (under `srcMorph`),
+  `packageFieldGenerations` is `packageRules` and `projectFieldGenerations` is `projectRules` (the
+  loader refuses the old names as unknown keys). The beans' accessors follow (`getRules`,
+  `getPackageRules`, `getProjectRules`; the CLI's `CConfiguration` fields too).
 - **A configuration that sets `pluginVersion` names it `generatorVersion`** (it is srcmorph's own
   version, the header's `G`, in the CLI and the plugin alike); the run record's `pluginVersion` is
   `generatorVersion` too, and so are the bean's getter and setter and the `RunRecord` parameter.

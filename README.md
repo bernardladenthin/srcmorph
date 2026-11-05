@@ -139,7 +139,7 @@ srcMorph:
   aiDefinitions:
     - key: coder
       modelPath: /path/to/model.gguf
-  fieldGenerations:
+  rules:
     - promptKey: file-body-fallback
       aiDefinitionKey: coder
       fallback: true
@@ -208,7 +208,7 @@ Maven is the supported path; JBang is a shortcut.
 ```java
 SrcMorphConfiguration config = new SrcMorphConfiguration();
 config.setBaseDirectory(new File("."));
-// ... set outputDirectory, promptDefinitions, aiDefinitions, fieldGenerations ...
+// ... set outputDirectory, promptDefinitions, aiDefinitions, rules ...
 new GenerateEngine(config).execute();
 ```
 

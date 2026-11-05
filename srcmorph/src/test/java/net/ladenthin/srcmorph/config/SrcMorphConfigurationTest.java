@@ -39,7 +39,7 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getFileExtensions(), is(nullValue()));
         assertThat(c.getPromptDefinitions(), is(nullValue()));
         assertThat(c.getAiDefinitions(), is(nullValue()));
-        assertThat(c.getFieldGenerations(), is(nullValue()));
+        assertThat(c.getRules(), is(nullValue()));
         assertThat(c.getFactDefinitions(), is(nullValue()));
         assertThat(c.getModelDirectory(), is(nullValue()));
         assertThat(c.getProfileDirectory(), is(nullValue()));
@@ -196,8 +196,8 @@ public class SrcMorphConfigurationTest {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
         final RoutingRule f = new RoutingRule();
         f.setPromptKey("p");
-        c.setFieldGenerations(Arrays.asList(f));
-        assertThat(c.getFieldGenerations(), hasItem(f));
+        c.setRules(Arrays.asList(f));
+        assertThat(c.getRules(), hasItem(f));
     }
 
     @Test

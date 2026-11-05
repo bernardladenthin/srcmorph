@@ -108,17 +108,17 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD on CConfiguration.packageFieldGenerations and
-        projectFieldGenerations, read by Main. Jackson writes them, from the CLI's configuration
+        UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD on CConfiguration.packageRules and
+        projectRules, read by Main. Jackson writes them, from the CLI's configuration
         file, by reflection (the class's public-field binding convention, like srcMorph and
         modelFilter); SpotBugs sees no write in the bytecode because there is none. Unset they stay
-        null, which means "use srcMorph.fieldGenerations" - an initializer would only restate that.
+        null, which means "use srcMorph.rules" - an initializer would only restate that.
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.cli.configuration.CConfiguration"/>
         <Or>
-            <Field name="packageFieldGenerations"/>
-            <Field name="projectFieldGenerations"/>
+            <Field name="packageRules"/>
+            <Field name="projectRules"/>
         </Or>
         <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD"/>
     </Match>

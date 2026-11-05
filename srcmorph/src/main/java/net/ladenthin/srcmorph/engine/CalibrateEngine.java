@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Extracted from what was {@code CalibrateMojo.execute()} in the {@code llamacpp-ai-index-maven-plugin}
  * module. For each distinct model a {@link GenerateEngine} run would load (the {@code aiDefinitionKey}s
- * referenced by {@link SrcMorphConfiguration#getFieldGenerations()}), loads the model once (catching a
+ * referenced by {@link SrcMorphConfiguration#getRules()}), loads the model once (catching a
  * bad path / OOM / wrong native early), runs a couple of representative generations via
  * {@link CalibrationRunner}, and reads the model's own measured prefill/decode throughput. The caller
  * pastes {@link CalibrationReport#renderPasteBlock()} into the model's entry under {@code aiDefinitions} so the plan's time
@@ -66,14 +66,14 @@ public final class CalibrateEngine {
      *                            with the failing model's key)
      */
     public CalibrationReport execute() throws SrcMorphException {
-        final List<RoutingRule> fieldGenerations = config.getFieldGenerations();
-        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
-            throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
-                    + " configuration file); nothing to calibrate.");
+        final List<RoutingRule> rules = config.getRules();
+        if (rules == null || rules.isEmpty()) {
+            throw new SrcMorphException(
+                    "No rules configured (srcMorph.rules of the" + " configuration file); nothing to calibrate.");
         }
 
         final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final PromptPreparer promptPreparationSupport = new PromptPreparer(promptSupport);
@@ -81,7 +81,7 @@ public final class CalibrateEngine {
 
         // Distinct routed models, each mapped to a representative prompt key (skip rules have none).
         final Map<String, String> modelToPrompt = new LinkedHashMap<>();
-        for (final RoutingRule rule : fieldGenerations) {
+        for (final RoutingRule rule : rules) {
             if (rule == null) {
                 continue;
             }
@@ -96,8 +96,7 @@ public final class CalibrateEngine {
         }
 
         // Same fail-fast check as the generate goal: calibrate loads every routed model in turn.
-        EngineSupport.validateRoutedModelPaths(
-                config.getGenerationProvider(), modelDefinitionSupport, fieldGenerations);
+        EngineSupport.validateRoutedModelPaths(config.getGenerationProvider(), modelDefinitionSupport, rules);
 
         LOGGER.info(
                 "AI index calibration: {} model(s). Provider: {}",

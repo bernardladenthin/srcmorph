@@ -16,10 +16,10 @@ final class MojoFixtures {
      * A configuration on the {@code mock} provider: one inline prompt, one model, one fallback file
      * rule, and a package and a project rule on the same prompt and model.
      */
-    static final String MOCK_CONFIGURATION = "packageFieldGenerations:\n"
+    static final String MOCK_CONFIGURATION = "packageRules:\n"
             + "  - promptKey: file-body\n"
             + "    aiDefinitionKey: mock-model\n"
-            + "projectFieldGenerations:\n"
+            + "projectRules:\n"
             + "  - promptKey: file-body\n"
             + "    aiDefinitionKey: mock-model\n"
             + "srcMorph:\n"
@@ -31,7 +31,7 @@ final class MojoFixtures {
             + "    - key: mock-model\n"
             + "      modelPath: mock.gguf\n"
             + "      charsPerToken: 0\n"
-            + "  fieldGenerations:\n"
+            + "  rules:\n"
             + "    - promptKey: file-body\n"
             + "      aiDefinitionKey: mock-model\n"
             + "      fallback: true\n";

@@ -18,7 +18,7 @@ import org.apache.maven.plugins.annotations.Parameter;
  *
  * <p>Deterministic by default: it harvests the one-line lead of each package summary into a table of
  * contents and calls no model. With a project rule in the configuration file
- * ({@code projectFieldGenerations}, at most one) it makes <em>one</em> model call for a short
+ * ({@code projectRules}, at most one) it makes <em>one</em> model call for a short
  * {@code #### Overview} paragraph from the leads (see
  * {@link net.ladenthin.srcmorph.indexer.ProjectIndexer}).</p>
  *

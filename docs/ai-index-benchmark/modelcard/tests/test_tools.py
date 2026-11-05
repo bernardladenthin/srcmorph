@@ -75,10 +75,10 @@ class RulesTest(unittest.TestCase):
         project = run.phase_config("AggregateProject", Path("w"), Path("o"), run.PROFILES / "v3", definition)
 
         chunked = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts", "onIncomplete": "retryOnce"}
-        self.assertEqual(packages["packageFieldGenerations"],
+        self.assertEqual(packages["packageRules"],
                          [{"promptKey": "package-body", "aiDefinitionKey": "m", **chunked}])
-        self.assertNotIn("projectFieldGenerations", packages)
-        self.assertEqual(project["projectFieldGenerations"],
+        self.assertNotIn("projectRules", packages)
+        self.assertEqual(project["projectRules"],
                          [{"promptKey": "project-body", "aiDefinitionKey": "m", **chunked}])
 
     def test_chunkedRules_nameTheMapAndReducePrompts_otherRulesNot(self):
@@ -134,10 +134,10 @@ class RulesTest(unittest.TestCase):
 
     def test_everyRuleOfEveryPhase_asksOnceMoreOnAnIncompleteAnswer(self):
         definition = {"key": "m", "provider": "mock"}
-        for phase, section in (("GenerateFileIndex", None), ("AggregatePackages", "packageFieldGenerations"),
-                               ("AggregateProject", "projectFieldGenerations")):
+        for phase, section in (("GenerateFileIndex", None), ("AggregatePackages", "packageRules"),
+                               ("AggregateProject", "projectRules")):
             config = run.phase_config(phase, Path("w"), Path("o"), run.PROFILES / "v3", definition, facts=True)
-            rules = config["srcMorph"]["fieldGenerations"] + (config[section] if section else [])
+            rules = config["srcMorph"]["rules"] + (config[section] if section else [])
             self.assertTrue(rules)
             self.assertEqual({r["onIncomplete"] for r in rules if not r.get("skip")}, {"retryOnce"})
 
@@ -361,7 +361,7 @@ class CutOffTest(unittest.TestCase):
 
     def test_filesNotWritten_isTheOnlyFailureTheNextPhasesRunAfter(self):
         self.assertTrue(run.files_not_written(self.log("SrcMorphException: 2 file(s) were not written (an incomplete")))
-        self.assertFalse(run.files_not_written(self.log("SrcMorphException: Invalid fieldGenerations: two fallbacks")))
+        self.assertFalse(run.files_not_written(self.log("SrcMorphException: Invalid rules: two fallbacks")))
 
 
 class ReportTest(unittest.TestCase):

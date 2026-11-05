@@ -22,9 +22,9 @@ public class SrcMorphConfigurationFile {
 
     private SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
 
-    private @Nullable List<RoutingRule> packageFieldGenerations;
+    private @Nullable List<RoutingRule> packageRules;
 
-    private @Nullable List<RoutingRule> projectFieldGenerations;
+    private @Nullable List<RoutingRule> projectRules;
 
     /** Creates an empty configuration file content, every default applied. */
     public SrcMorphConfigurationFile() {
@@ -68,7 +68,7 @@ public class SrcMorphConfigurationFile {
     }
 
     /**
-     * Returns the run configuration, with the file rules ({@code fieldGenerations}) of the
+     * Returns the run configuration, with the file rules ({@code rules}) of the
      * {@code generate}, {@code calibrate} and {@code check} goals.
      *
      * @return the run configuration
@@ -91,17 +91,17 @@ public class SrcMorphConfigurationFile {
      *
      * @return the rules, or {@code null} when unset
      */
-    public @Nullable List<RoutingRule> getPackageFieldGenerations() {
-        return packageFieldGenerations;
+    public @Nullable List<RoutingRule> getPackageRules() {
+        return packageRules;
     }
 
     /**
      * Sets the rule of the package phase.
      *
-     * @param packageFieldGenerations the rules
+     * @param packageRules the rules
      */
-    public void setPackageFieldGenerations(final @Nullable List<RoutingRule> packageFieldGenerations) {
-        this.packageFieldGenerations = packageFieldGenerations;
+    public void setPackageRules(final @Nullable List<RoutingRule> packageRules) {
+        this.packageRules = packageRules;
     }
 
     /**
@@ -109,16 +109,16 @@ public class SrcMorphConfigurationFile {
      *
      * @return the rules, or {@code null} when unset
      */
-    public @Nullable List<RoutingRule> getProjectFieldGenerations() {
-        return projectFieldGenerations;
+    public @Nullable List<RoutingRule> getProjectRules() {
+        return projectRules;
     }
 
     /**
      * Sets the rule of the project phase.
      *
-     * @param projectFieldGenerations the rules
+     * @param projectRules the rules
      */
-    public void setProjectFieldGenerations(final @Nullable List<RoutingRule> projectFieldGenerations) {
-        this.projectFieldGenerations = projectFieldGenerations;
+    public void setProjectRules(final @Nullable List<RoutingRule> projectRules) {
+        this.projectRules = projectRules;
     }
 }

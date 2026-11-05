@@ -11,30 +11,30 @@ import org.jspecify.annotations.Nullable;
 /** The rules of the configuration file a goal runs with. */
 enum RuleSection {
 
-    /** The file rules ({@code srcMorph.fieldGenerations}): {@code generate}, {@code calibrate}. */
+    /** The file rules ({@code srcMorph.rules}): {@code generate}, {@code calibrate}. */
     FILES {
         @Override
         @Nullable
         List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
-            return file.getSrcMorph().getFieldGenerations();
+            return file.getSrcMorph().getRules();
         }
     },
 
-    /** The package rule ({@code packageFieldGenerations}): {@code aggregate-packages}. */
+    /** The package rule ({@code packageRules}): {@code aggregate-packages}. */
     PACKAGE {
         @Override
         @Nullable
         List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
-            return file.getPackageFieldGenerations();
+            return file.getPackageRules();
         }
     },
 
-    /** The project rule ({@code projectFieldGenerations}): {@code aggregate-project}. */
+    /** The project rule ({@code projectRules}): {@code aggregate-project}. */
     PROJECT {
         @Override
         @Nullable
         List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
-            return file.getProjectFieldGenerations();
+            return file.getProjectRules();
         }
     };
 

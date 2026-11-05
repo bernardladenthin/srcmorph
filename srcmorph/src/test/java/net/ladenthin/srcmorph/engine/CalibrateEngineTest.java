@@ -55,7 +55,7 @@ public class CalibrateEngineTest {
     @Test
     public void execute_missingFieldGenerationsThrowsSrcMorphException() {
         final SrcMorphConfiguration config = baseConfig();
-        config.setFieldGenerations(null);
+        config.setRules(null);
 
         final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new CalibrateEngine(config).execute());
         assertThat(e.getMessage(), containsString("nothing to calibrate"));
@@ -65,7 +65,7 @@ public class CalibrateEngineTest {
     public void execute_noRoutableRuleThrowsSrcMorphException() {
         final SrcMorphConfiguration config = baseConfig();
         // A rule with neither promptKey nor aiDefinitionKey set is not routable.
-        config.setFieldGenerations(Collections.singletonList(new RoutingRule()));
+        config.setRules(Collections.singletonList(new RoutingRule()));
 
         final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new CalibrateEngine(config).execute());
         assertThat(e.getMessage(), containsString("No routable"));
@@ -74,7 +74,7 @@ public class CalibrateEngineTest {
     @Test
     public void execute_calibratesTheRoutedModelAndRendersXml() throws Exception {
         final SrcMorphConfiguration config = baseConfig();
-        config.setFieldGenerations(CommonTestFixtures.createFileFieldGenerations());
+        config.setRules(CommonTestFixtures.createFileRules());
 
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
@@ -103,7 +103,7 @@ public class CalibrateEngineTest {
         final RoutingRule ruleB = new RoutingRule();
         ruleB.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         ruleB.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setFieldGenerations(java.util.Arrays.asList(ruleA, ruleB));
+        config.setRules(java.util.Arrays.asList(ruleA, ruleB));
 
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
@@ -119,7 +119,7 @@ public class CalibrateEngineTest {
     @Test
     public void execute_writesTheReportAsJsonAndYamlIntoTheOutputDirectory() throws Exception {
         final SrcMorphConfiguration config = baseConfig();
-        config.setFieldGenerations(CommonTestFixtures.createFileFieldGenerations());
+        config.setRules(CommonTestFixtures.createFileRules());
 
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
@@ -142,7 +142,7 @@ public class CalibrateEngineTest {
         final SrcMorphConfiguration config = baseConfig();
         final Path nested = outputDirectory.resolve("does/not/exist/yet");
         config.setOutputDirectory(nested.toFile());
-        config.setFieldGenerations(CommonTestFixtures.createFileFieldGenerations());
+        config.setRules(CommonTestFixtures.createFileRules());
 
         new CalibrateEngine(config).execute();
 

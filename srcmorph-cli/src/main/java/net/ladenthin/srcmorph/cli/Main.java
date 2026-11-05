@@ -128,8 +128,8 @@ public class Main {
         }
         configuration.modelFilter = file.getModelFilter();
         configuration.srcMorph = file.getSrcMorph();
-        configuration.packageFieldGenerations = file.getPackageFieldGenerations();
-        configuration.projectFieldGenerations = file.getProjectFieldGenerations();
+        configuration.packageRules = file.getPackageRules();
+        configuration.projectRules = file.getProjectRules();
         return configuration;
     }
 
@@ -285,10 +285,10 @@ public class Main {
                 case Check: {
                     new GenerateEngine(configuration.srcMorph).check();
                     // the package phase only when configured: GenerateFileIndex alone needs no package rule
-                    if (configuration.packageFieldGenerations != null) {
-                        new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).check();
+                    if (configuration.packageRules != null) {
+                        new AggregatePackagesEngine(forPhase(configuration.packageRules)).check();
                     }
-                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).check();
+                    new AggregateProjectEngine(forPhase(configuration.projectRules)).check();
                     break;
                 }
                 case GenerateFileIndex: {
@@ -296,11 +296,11 @@ public class Main {
                     break;
                 }
                 case AggregatePackages: {
-                    new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).execute();
+                    new AggregatePackagesEngine(forPhase(configuration.packageRules)).execute();
                     break;
                 }
                 case AggregateProject: {
-                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).execute();
+                    new AggregateProjectEngine(forPhase(configuration.projectRules)).execute();
                     break;
                 }
                 case All: {
@@ -310,8 +310,8 @@ public class Main {
                         LOGGER.info("planOnly: the package and project phases do not run.");
                         break;
                     }
-                    new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).execute();
-                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).execute();
+                    new AggregatePackagesEngine(forPhase(configuration.packageRules)).execute();
+                    new AggregateProjectEngine(forPhase(configuration.projectRules)).execute();
                     break;
                 }
                 case Calibrate: {
@@ -344,20 +344,19 @@ public class Main {
 
     /**
      * The configuration one aggregation phase runs with: a copy of {@link CConfiguration#srcMorph} whose
-     * {@code fieldGenerations} are the phase's own rule, as the plugin's aggregate goals build theirs. The
+     * {@code rules} are the phase's own rule, as the plugin's aggregate goals build theirs. The
      * file rules of {@code srcMorph} never reach a phase: the package phase takes exactly one rule and
-     * fails without {@link CConfiguration#packageFieldGenerations}, the project phase writes its index
-     * without an overview when {@link CConfiguration#projectFieldGenerations} is unset. The shared
+     * fails without {@link CConfiguration#packageRules}, the project phase writes its index
+     * without an overview when {@link CConfiguration#projectRules} is unset. The shared
      * configuration is never modified, so the file phase of {@link CCommand#All} keeps its own rules.
      *
-     * @param phaseFieldGenerations the phase's rules ({@link CConfiguration#packageFieldGenerations}
-     *                              or {@link CConfiguration#projectFieldGenerations}), or {@code null}
+     * @param phaseRules the phase's rules ({@link CConfiguration#packageRules}
+     *                              or {@link CConfiguration#projectRules}), or {@code null}
      * @return the configuration to hand the phase's engine
      */
-    private SrcMorphConfiguration forPhase(final @Nullable List<RoutingRule> phaseFieldGenerations) {
+    private SrcMorphConfiguration forPhase(final @Nullable List<RoutingRule> phaseRules) {
         final SrcMorphConfiguration copy = deepCopy(configuration.srcMorph);
-        copy.setFieldGenerations(
-                phaseFieldGenerations == null ? Collections.<RoutingRule>emptyList() : phaseFieldGenerations);
+        copy.setRules(phaseRules == null ? Collections.<RoutingRule>emptyList() : phaseRules);
         return copy;
     }
 

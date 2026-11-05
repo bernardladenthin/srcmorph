@@ -243,9 +243,9 @@ def file_rules(profile, key, facts=False, oversize=None, max_chunks=None, java_p
 
 def phase_config(phase, work, out_dir, profile, definition, facts=False, oversize=None, max_chunks=None,
                  run_record=None, java_prompt=JAVA_PROMPT):
-    """The CLI configuration of one phase. The file phase's rules are srcMorph's fieldGenerations; the
-    package and project phases take their one rule from packageFieldGenerations and
-    projectFieldGenerations, as the CLI reads them."""
+    """The CLI configuration of one phase. The file phase's rules are srcMorph's rules; the
+    package and project phases take their one rule from packageRules and
+    projectRules, as the CLI reads them."""
     key = definition["key"]
     rules = file_rules(profile, key, facts, oversize, max_chunks, java_prompt)
     config = {
@@ -261,15 +261,15 @@ def phase_config(phase, work, out_dir, profile, definition, facts=False, oversiz
             "force": True,
             "profileDirectory": str(profile),
             "aiDefinitions": [definition],
-            "fieldGenerations": rules,
+            "rules": rules,
         },
     }
     if phase == "AggregatePackages":
-        config["packageFieldGenerations"] = [
+        config["packageRules"] = [
             {"promptKey": "package-body", "aiDefinitionKey": key, "onIncomplete": ON_INCOMPLETE,
              **chunk_prompts(profile)}]
     elif phase == "AggregateProject":
-        config["projectFieldGenerations"] = [
+        config["projectRules"] = [
             {"promptKey": "project-body", "aiDefinitionKey": key, "onIncomplete": ON_INCOMPLETE,
              **chunk_prompts(profile)}]
     if run_record is not None and phase == "GenerateFileIndex":
