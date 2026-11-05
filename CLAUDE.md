@@ -146,7 +146,7 @@ Package root: `net.ladenthin.srcmorph`.
   `<baseUrl>/chat/completions`, and `listModels()` from `<baseUrl>/models` into `RemoteModel`s, key
   from the env var `apiKeyEnv` names; its pure logic lives in the PIT-gated
   `OpenAiCompatibleProviderSupport`; with `requestsPerMinute` every request first passes the
-  `RequestRateLimiter` shared by all providers of one server and limit, which waits on a
+  `RequestRateLimiter` shared by all providers of one server, at the smallest limit they name, which waits on a
   `Condition` instead of `Thread.sleep`), `LlamaCppJniConfig` (built through `LlamaCppJniConfig.builder(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching
   `AiGenerationConfig.DEFAULT_*`) + `LlamaCppJniConfigFactory` (the pure 37-field

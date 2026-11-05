@@ -30,9 +30,10 @@ import org.slf4j.LoggerFactory;
  * under the limit instead.</p>
  *
  * <p>{@link #shared(String, int)} hands every provider of one server (its {@code baseUrl} and key
- * variable) with the same limit the same window, so the models and the phases of one run count
- * together. A process does not know the requests of an earlier one: a run started right after
- * another can still meet a full server window.</p>
+ * variable) the same window, so the models and the phases of one run count together; two models of
+ * one server with different limits share the smallest one, which is the server's. A process does not
+ * know the requests of an earlier one: a run started right after another can still meet a full
+ * server window.</p>
  */
 @ToString
 final class RequestRateLimiter {
@@ -42,7 +43,7 @@ final class RequestRateLimiter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestRateLimiter.class);
 
-    /** One window per server and limit, for every provider of this process. */
+    /** One window per server, for every provider of this process. */
     private static final ConcurrentMap<String, RequestRateLimiter> SHARED = new ConcurrentHashMap<>();
 
     /** Waits a number of nanoseconds; {@link Condition#awaitNanos(long)} unless a test replaces it. */
@@ -59,7 +60,9 @@ final class RequestRateLimiter {
     }
 
     private final String server;
-    private final int perMinute;
+    /** How many requests may start within the window: the smallest limit a provider of the server named. */
+    private volatile int perMinute;
+
     private final long windowNanos;
 
     @ToString.Exclude
@@ -101,17 +104,32 @@ final class RequestRateLimiter {
     }
 
     /**
-     * The limiter of one server, shared by every provider of this process that names the same server
-     * and limit.
+     * The limiter of one server, shared by every provider of this process that names the same server:
+     * two models of one server with 20 and 10 requests a minute send at most 10 together, not 30.
      *
      * @param server    the server: its {@code baseUrl} and the name of its key variable
-     * @param perMinute the limit, positive
+     * @param perMinute the limit this provider names, positive; one smaller than the window's lowers it
      * @return the shared limiter
      */
     static RequestRateLimiter shared(final String server, final int perMinute) {
-        return SHARED.computeIfAbsent(
-                server + '\n' + perMinute,
-                k -> new RequestRateLimiter(server, perMinute, WINDOW_NANOS, System::nanoTime, null));
+        final RequestRateLimiter limiter = SHARED.computeIfAbsent(
+                server, k -> new RequestRateLimiter(server, perMinute, WINDOW_NANOS, System::nanoTime, null));
+        limiter.lowerLimitTo(perMinute);
+        return limiter;
+    }
+
+    /**
+     * Lowers the limit to {@code limit} when it is smaller; a larger one leaves it as it is.
+     *
+     * @param limit the limit a provider of this server names
+     */
+    void lowerLimitTo(final int limit) {
+        lock.lock();
+        try {
+            perMinute = Math.min(perMinute, limit);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

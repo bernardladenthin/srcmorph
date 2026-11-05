@@ -159,13 +159,37 @@ public class RequestRateLimiterTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="shared">
+    /** Two models of one server with 30 and 20 requests a minute share one window at 20, not two (50). */
     @Test
-    public void shared_oneWindowPerServerAndLimit() {
+    public void shared_oneWindowPerServer_atTheSmallestLimit() {
         final RequestRateLimiter first = RequestRateLimiter.shared("http://shared-test K", 30);
 
-        assertThat(RequestRateLimiter.shared("http://shared-test K", 30), is(sameInstance(first)));
-        assertThat(RequestRateLimiter.shared("http://shared-test K", 31), is(not(sameInstance(first))));
+        assertThat(RequestRateLimiter.shared("http://shared-test K", 31), is(sameInstance(first)));
+        assertThat(first.toString(), containsString("perMinute=30"));
+        assertThat(RequestRateLimiter.shared("http://shared-test K", 20), is(sameInstance(first)));
+        assertThat(first.toString(), containsString("perMinute=20"));
         assertThat(RequestRateLimiter.shared("http://shared-test L", 30), is(not(sameInstance(first))));
+    }
+
+    @Test
+    public void lowerLimitTo_aSmallerLimit_holdsTheNextRequest_aLargerOneNot() throws Exception {
+        // arrange: three requests may start; then a larger limit, then a smaller one
+        final List<Long> waits = new ArrayList<>();
+        final RequestRateLimiter limiter = new RequestRateLimiter("http://gateway K", 3, WINDOW, () -> 0L, nanos -> {
+            waits.add(nanos);
+            throw new InterruptedException("stop");
+        });
+        limiter.lowerLimitTo(5);
+        limiter.acquire();
+        limiter.acquire();
+
+        // act
+        limiter.lowerLimitTo(2);
+
+        // assert: the third request is held at 2, where 3 (or the 5) would have let it start
+        assertThrows(InterruptedIOException.class, limiter::acquire);
+        assertThat(waits.size(), is(1));
+        assertThat(limiter.startedInWindow(), is(2));
     }
 
     @Test

@@ -157,6 +157,9 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **`requestsPerMinute` keeps one window per server**, at the smallest limit a model of it names:
+  two models of one server (same `baseUrl` and `apiKeyEnv`) with 20 and 10 requests a minute sent up
+  to 30 together, two windows; they send at most 10 now.
 - **`G` is srcmorph's own version, in the CLI and the plugin alike.** The plugin recorded the
   version of the user's project as the generator and the CLI recorded none; a summary now names the
   srcmorph release that wrote it (`support.AiGeneratorVersion`, which the core's build fills in), and
