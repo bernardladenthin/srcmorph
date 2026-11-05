@@ -8,7 +8,7 @@
 > This repo is Java 8, so only the `-8.md` baseline applies.
 > This file contains only **plugin-specific applications** of those rules:
 > the `AI_MD_EXTENSION` / header-field-key / node-type / provider-name
-> constants, the Mojo + `@VisibleForTesting` constructor pair, the Maven
+> constants, the Mojo + test constructor pair, why `@VisibleForTesting` is not used, the Maven
 > `@Parameter` reflection-injected exception to the records rule, prompt
 > target string constants, and the `AiPromptDefinition` /
 > `AiModelDefinition` key-indexed examples.
@@ -79,7 +79,7 @@ When a class accepts `org.apache.maven.plugin.logging.Log` and tests need to inj
 Provide two constructors:
 
 1. **Mojo constructor** — Mojo subclasses obtain the logger via `AbstractMojo.getLog()` and pass it in. This is the constructor used by Maven at runtime.
-2. **`@VisibleForTesting` constructor** — accepts a `Log` parameter directly. This is the constructor used by tests.
+2. **Test constructor** — accepts a `Log` parameter directly. This is the constructor used by tests (not annotated, see section 8).
 
 ```java
 public class SourceFileIndexer {
@@ -331,3 +331,22 @@ srcMorph:
 | `AiModelDefinition` | `AiModelDefinitionSupport` | `AiFieldGenerationConfig.aiDefinitionKey` |
 
 ---
+
+## 8. `@VisibleForTesting` Is Not Used
+
+The workspace guide's `@VisibleForTesting` is **not adopted** in this repository (decided
+2026-11-05): Guava is no dependency, and a project-local marker would mark members whose visibility
+serves production as often as tests. Two kinds of package-private members exist, and they are not
+to be confused:
+
+- **Production API at package level.** `provider.LlamaCppJniProviderSupport`'s
+  `buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`,
+  `logPromptCacheReuse`, `stoppedByProvider` and the static `lazyMode` / `cacheType` are
+  package-private because `LlamaCppJniAiGenerationProvider` and `OpenAiCompatibleAiGenerationProvider`
+  call them (they live in the support class so the PIT gate reaches them). Their tests ride along.
+- **Test seams.** `document.AiMdDocumentCodec.read(List)`, its `String write(AiMdDocument)` overload
+  and `prompt.AiPromptPreparationSupport.trimSourceAtLineBreak` exist for their tests; production
+  goes through the `Path` overloads and the public preparation methods.
+
+A test seam says so in its Javadoc ("a test seam", naming the production path it stands in for).
+Make a member package-private for a test only when no public behaviour can show the same thing.

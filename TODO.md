@@ -21,7 +21,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | # | Item | Proposal | Who | Status | Details |
 |---|---|---|---|---|---|
 | 1 | CodeQL #270, `awaitNanos` ignored | false positive: dismiss it on GitHub | Owner | open | Review of 2026-11-02, core |
-| 2 | The Claude Code Review workflow fails on every PR | renew the key or its credit, or remove the workflow | Owner | open | Other open items |
+| 2 | The Claude Code Review workflow fails on every PR | no budget this month; green again with the next | Owner | done 2026-11-05 | — |
 | 3 | SonarCloud's 98 issues need a token to read | give one, or drop the item | Owner | open | Review of 2026-11-02, tests and gates |
 | 4 | gpt-oss-20b runs away on a big TypeScript file | `onIncomplete: retryOnce` in `run.py` and the examples | Owner | open | TypeScript measurement |
 | 5 | `G` records the project's version in the plugin | record the plugin's version (`G` names the generator) | Owner | open | Reviews of 2026-11-04 |
@@ -30,8 +30,8 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 8 | `P` covers the map and reduce prompts of every file | keep it, document it | Claude | done 2026-11-05 | — |
 | 9 | The plan's chunk estimate cannot know a counted window | a known limit, documented | Claude | done 2026-11-05 | — |
 | 10 | Count a remote `llama-server`'s tokens with `/tokenize` | dropped: OpenRouter has none, little gain | Claude | done 2026-11-05 | — |
-| 11 | `@VisibleForTesting` | not adopted: say so in `CODE_WRITING_GUIDE.md`, drop the item | Owner | open | Other open items |
-| 12 | TypeScript fact counters | dropped: recall is 98 to 100 % with the oop prompt | Owner | open | TypeScript measurement |
+| 11 | `@VisibleForTesting` | not adopted: `CODE_WRITING_GUIDE.md` section 8 | Owner | done 2026-11-05 | — |
+| 12 | TypeScript fact counters | dropped: recall is 98 to 100 % with the oop prompt | Owner | done 2026-11-05 | — |
 | 13 | A rule for `package.json` and other manifests | measure the ops prompt on it once (internally) | Claude | open | TypeScript measurement |
 | 14 | jqwik pin | decided: the pin stays, a rule of `CLAUDE.md` | Owner | done 2026-11-05 | — |
 
@@ -107,9 +107,6 @@ wait for a decision:
   runaway dearer (72 s and four times the tokens). What would save the file is `onIncomplete:
   retryOnce`; decide whether `run.py` (whose budget and strategy the published numbers were measured
   with) or the examples take it.
-- **TypeScript has no fact counters**: exports, classes, interfaces, functions and arrow consts would
-  count as `kotlin-facts` does. Not written yet, because the recall is already 98 to 100 % with the
-  oop prompt and a counter changes nothing the scores read.
 - **`package.json` varies with gpt-oss-20b**: 45, 13, 28 and 15 of its 45 participants, commands,
   tools and dependencies in four runs (Luna 43 to 45 each time), with the fallback prompt. A rule for
   manifests (`package.json`, maybe `pyproject.toml`) with the ops prompt and counters for scripts and
@@ -255,11 +252,6 @@ Unreleased) except:
 
 ### Other open items
 
-- **The Claude Code Review workflow fails on every pull request**: it runs with the
-  `anthropic_api_key` secret (`claude_code_oauth_token` is empty) and the model call ends after
-  ~300 ms with `is_error: true`, no turn, no cost: the key is refused or its account has no credit.
-  The owner renews the key or its credit, or the workflow stays red.
-
 - **Use jllama's `ChatStreamAssembler` instead of srcmorph's own stream assembly.** The `stream`
   setting of the `openai-compatible` provider needs a Server-Sent Events body assembled into a chat
   completion; java-llama.cpp has that as `net.ladenthin.llama.json.ChatStreamAssembler`
@@ -287,8 +279,6 @@ Unreleased) except:
   registering `[CUDA, RPC, CPU]`, against 63 / 7.1 with `[RPC, CPU]` on the CPU jar. **Still
   unlaunched: `rocm`, `sycl`, `openvino` and `vulkan`** — no AMD, Intel or second GPU here. Vulkan is
   reachable on any NVIDIA box and is the cheapest one to add next.
-
-- **`@VisibleForTesting` audit.** Nothing is annotated, and the inventory has two kinds of package-private members that must not be lumped together. **Production API, not candidates:** the four of `provider.LlamaCppJniProviderSupport` (`buildChatTemplateKwargs`, `buildInferenceParameters`, `warnOnTruncatedAnswer`, `logPromptCacheReuse`) and the static `lazyMode`/`cacheType` are package-private because `LlamaCppJniAiGenerationProvider` calls them (they were moved out of it so the PIT gate reaches them); their visibility serves the provider, the tests only ride along. **Test seams, the actual candidates:** `document.AiMdDocumentCodec.read(List)` and the `String write(AiMdDocument)` overload (their Javadoc says so; production goes through the `Path` overloads) and `prompt.AiPromptPreparationSupport.trimSourceAtLineBreak` (called only inside its own class and by `AiPromptPreparationSupportTest`). The plugin has no such seam any more: `GenerateMojo.buildGenerateConfiguration()` is called only by its own `execute()`, and the protected `AbstractAiIndexMojo.buildConfiguration(RuleSection)` serves the goal mojos (`AbstractAiIndexMojoTest` calls it too). Guava is not a dependency, so closing this means either a project-local marker annotation on the second group (there is precedent: `support.ConvertToRecord`) or recording that the convention is not adopted here. Decide and act rather than re-auditing.
 
 - **Null-safety refinement.** JSpecify + NullAway are enforced at compile time in strict JSpecify mode in every module (see each module's own `pom.xml`); `@NullMarked` on the package; framework-populated POJOs carry class-level `@SuppressWarnings({"NullAway.Init","initialization.fields.uninitialized"})`. Open follow-up: review remaining unannotated public API surfaces for places where `@Nullable` would be more precise than the implicit non-null default.
 
