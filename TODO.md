@@ -27,12 +27,13 @@ everything below is genuinely still open.
 Fixed on PR #269: the finish reason `error`, the TypeScript rule, the time estimate's basis. These
 wait for a decision:
 
-- **4096 output tokens are short for big TypeScript files**: three answers of eight runs were cut at
-  the budget (files of 105 and 128 KB, and one of 9.6K prompt tokens with the oop prompt). srcmorph
-  handled it as meant (not written, exit 1, the next run tries again), but the file stays without a
-  summary while the model keeps listing members. A larger `maxOutputTokens` for remote models, or a
-  size rule that map-reduces such files, would need a measurement; `run.py`'s budget is the one the
-  published numbers were measured with.
+- **gpt-oss-20b runs away on a big TypeScript file now and then; a larger budget does not help.** The
+  three files cut at 4096 tokens ran again at 16384 with the oop prompt, two runs per model: every
+  finished answer took 1229 to 1618 tokens (Luna's six, gpt-oss's five), and gpt-oss's sixth ran
+  to 16384 on a file it summarized in the other run. So 4096 stays: a larger budget only makes a
+  runaway dearer (72 s and four times the tokens). What would save the file is `onIncomplete:
+  retryOnce`; decide whether `run.py` (whose budget and strategy the published numbers were measured
+  with) or the examples take it.
 - **TypeScript has no fact counters**: exports, classes, interfaces, functions and arrow consts would
   count as `kotlin-facts` does. Not written yet, because the recall is already 98 to 100 % with the
   oop prompt and a counter changes nothing the scores read.
@@ -55,12 +56,6 @@ Two reviews, verified against the code; fixed on the branch except these, which 
   with 20 and 10 requests a minute send up to 30 (its Javadoc says so; decide whether one window per
   server is meant).
 
-### After the release of 1.4.0
-
-- `java-facts` `type declarations` counts private and protected nested types and `@interface`s since
-  `0374f73`: the facts line of such a Java file differs from the runs of
-  `docs/ai-index-benchmark/remeasure-2026-11-02/`; scores read names, not this count.
-
 ### Audit of 2026-11-01 (PR #261), in this order
 
 Six reviews of the codebase found the items below; each package is one commit with its tests, and a
@@ -71,19 +66,7 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
    runs are done: [`remeasure-2026-11-01/`](docs/ai-index-benchmark/remeasure-2026-11-01/README.md)
    (hosted: gpt-oss-20b 99.4 / 99.8 / 78.1 %, GPT-6 Luna 99.8 / 100 / 97.9 % on the language, card and
    large corpora; locally every large-file run fails at least one file), and in finding 7 of the
-   card. What the runs found:
-   - **On large files an answer outgrew the output budget.** Since an incomplete answer is never
-     written, an answer cut off at `maxOutputTokens` (a chunk's part summary at the time, or the final
-     answer) failed its file: every local preset lost at least one of the three large files, and hosted
-     gpt-oss-20b the enum once. Since then a cut part summary is kept, map and reduce calls say what
-     their input is, the reduce reads the exact facts, and a local model's windows are counted in
-     tokens (D3). Measured again on 2026-11-02
-     ([`remeasure-2026-11-02/`](docs/ai-index-benchmark/remeasure-2026-11-02/README.md)): gpt-oss-20b
-     99.1 / 99.9 / 75.2 %, Luna 99.5 / 100 / 99.0 %; H-Tiny over 64K 66.6 % (over 384K on 2026-11-01:
-     21.9), H-1B 17.1 % with the generic prompt. gpt-oss-20b lost the SQL dump in two of three runs
-     when one chunk's answer was all reasoning (4096 tokens, no text; 16384 made it worse, provider
-     and `reasoning.max_tokens` did not matter); since such a part is read again in two halves the
-     dump is written in every run (93.0 % over three runs, `oss-runaway/` of the same folder).
+   card. What is still open from the runs:
    - **gpt-oss-20b's map-reduce loses the middle of a file.** Since the map and reduce prompts it
      names the catalog's planted middle element in every run, the enum's middle area in none of
      the 4096-token runs (once at 16384; Luna in every run); the partial summaries are not kept, so where it is lost is not known.
@@ -181,8 +164,7 @@ Unreleased) except:
 
 **Benchmark tooling (after the runs, which read `run.py` and `search.py`):**
 
-- `score.py`: lower-case SQL types (`integer`) count as invented names (Qwen3-Coder's 18.6 per 100 on
-  SQL is all `integer`), and `report.py` averages the kinds unweighted; `LEAK` matches inside
+- `score.py`: `report.py` averages the kinds unweighted; `LEAK` matches inside
   backticks (Mistral's `` `<|channel|>` ``), and a complete summary after a `<think>` block counts as
   leak-only; an everyday word in a column or field listing (`email VARCHAR(254)`, 53 misses) does
   not count; `facts.json` words lack `histogram`, `CHECKOUT`, `Since`; a backtick span check can match
@@ -194,10 +176,9 @@ Unreleased) except:
 
 **Tests and gates:**
 
-- No core test calls an engine's `check()` (where it differs from the plan: `planOnly`, model files);
-  the provider's timeout retry and its interrupt branch have no test; the run record's per-file
-  usage, `rule` and `factsHash` and a changed prompt hash are not asserted; the overflow test does not
-  assert the smaller window; the plugin's base-directory default cannot be told from the file's
+- No core test calls an engine's `check()` where it differs from the plan (`planOnly`, model
+  files); the provider's interrupt branch has no test; a changed prompt hash in the run record is not
+  asserted; the overflow test does not assert the smaller window; the plugin's base-directory default cannot be told from the file's
   directory (every fixture puts the file in the project directory).
 - SpotBugs: `SrcMorphConfigurationFileLoader` sits in a Match that suppresses seven patterns for a
   reason that covers two; a stale `NP_NULL_ON_SOME_PATH` suppression; the plugin's excludes name
