@@ -16,8 +16,8 @@ public class AiGenerationTimeEstimatorTest {
     // <editor-fold defaultstate="collapsed" desc="estimatePromptTokens">
     @Test
     public void estimatePromptTokens_addsTemplateOverheadToScaledChars() {
-        // 4200 / 4.8 = 875 source tokens, + 700 template overhead = 1575.
-        assertThat(estimator.estimatePromptTokens(4200), is(1575));
+        // 4200 / 4.0 = 1050 source tokens, + 1000 template overhead = 2050.
+        assertThat(estimator.estimatePromptTokens(4200), is(2050));
     }
 
     @Test
@@ -28,23 +28,23 @@ public class AiGenerationTimeEstimatorTest {
 
     // <editor-fold defaultstate="collapsed" desc="prefill / decode arithmetic">
     @Test
-    public void estimatePrefillMillis_appliesLinearPlusQuadraticTerms() {
-        // 24.4*1000 + 0.000674*1000^2 = 24400 + 674 = 25074.
-        assertThat(estimator.estimatePrefillMillis(1000), is(closeTo(25074.0d, 1e-6d)));
+    public void estimatePrefillMillis_isTheLatencyPlusThePrompt() {
+        // 2100 + 0.105*1000 = 2205.
+        assertThat(estimator.estimatePrefillMillis(1000), is(closeTo(2205.0d, 1e-6d)));
     }
 
     @Test
-    public void estimateDecodeMillis_scalesOutputByLinearPlusContextTerm() {
-        // 800 * (56.8 + 0.01568*1000) = 800 * 72.48 = 57984.
-        assertThat(estimator.estimateDecodeMillis(1000, 800), is(closeTo(57984.0d, 1e-6d)));
+    public void estimateDecodeMillis_scalesWithTheOutput() {
+        // 6.45 * 800 = 5160.
+        assertThat(estimator.estimateDecodeMillis(800), is(closeTo(5160.0d, 1e-6d)));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="estimateSeconds">
     @Test
     public void estimateSeconds_combinesPrefillAndDecodeRoundedToSeconds() {
-        // n=1575: prefill=40101.94 ms + decode(800)=65196.8 ms = 105298.74 ms; ×1.15 margin / 1000 -> 121 s.
-        assertThat(estimator.estimateSeconds(4200, 800), is(121L));
+        // n=2050: prefill 2100 + 215.25 = 2315.25 ms + decode(800) 5160 ms = 7475.25 ms; x1.15 / 1000 -> 9 s.
+        assertThat(estimator.estimateSeconds(4200, 800), is(9L));
     }
 
     @Test
@@ -53,14 +53,24 @@ public class AiGenerationTimeEstimatorTest {
                 estimator.estimateSeconds(4200),
                 is(estimator.estimateSeconds(4200, AiGenerationTimeEstimator.DEFAULT_EXPECTED_OUTPUT_TOKENS)));
     }
+
+    /** A big prompt stays cheap: 400 KB of source (100K tokens) is about 12 s more than none. */
+    @Test
+    public void estimateSeconds_aBigPrompt_growsLinearlyAndSlowly() {
+        final long small = estimator.estimateSeconds(0, 950);
+        final long big = estimator.estimateSeconds(400_000, 950);
+
+        assertThat(small, is(10L));
+        assertThat(big, is(22L));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="estimateSecondsCalibrated">
     @Test
     public void calibrated_usesLinearMeasuredThroughput() {
-        // sourceChars 4800 / cpt 4.8 = 1000 + 700 template = 1700 prompt tokens.
-        // (1700/1000 prefill + 800/100 decode) = 9.7 s; ×1.15 margin -> 11 s.
-        assertThat(estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 4.8d), is(11L));
+        // sourceChars 4800 / cpt 4.8 = 1000 + 1000 template = 2000 prompt tokens.
+        // (2000/1000 prefill + 800/100 decode) = 10 s; x1.15 margin = 11.5 -> 12 s.
+        assertThat(estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 4.8d), is(12L));
     }
 
     @Test
@@ -81,7 +91,7 @@ public class AiGenerationTimeEstimatorTest {
     public void calibrated_zeroCharsPerToken_usesDefaultEstimationRate() {
         assertThat(
                 estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 0.0d),
-                is(estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 4.8d)));
+                is(estimator.estimateSecondsCalibrated(4800, 800, 1000.0d, 100.0d, 4.0d)));
     }
 
     @Test
@@ -112,20 +122,25 @@ public class AiGenerationTimeEstimatorTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="measurement proof">
+    /**
+     * The model was fitted to 1423 single-call GPT-6 Luna files of the 2026-11 measurements. Per prompt
+     * size it must meet the measured median time within 10 %, at the median prompt and output of that
+     * size, otherwise the constants have drifted.
+     */
     @Test
-    public void estimatePrefillMillis_reproducesMeasuredReferencePoints() {
-        // The quadratic model was fitted to three end-to-end CPU measurements
-        // (Ryzen 7 5800H, gpt-oss-20b UD-Q4_K_XL). It must reproduce each measured
-        // prefill within 5 %, otherwise the calibration constants have drifted.
-        assertPrefillWithinFivePercent(3309, 88254.16d);
-        assertPrefillWithinFivePercent(24081, 978040.23d);
-        assertPrefillWithinFivePercent(61484, 4053373.24d);
+    public void estimate_reproducesTheMeasuredMediansOfGpt6Luna() {
+        assertCallWithinTenPercent(1408, 618, 6.0d);
+        assertCallWithinTenPercent(3504, 1002, 8.9d);
+        assertCallWithinTenPercent(11943, 1707, 14.2d);
+        assertCallWithinTenPercent(21315, 1320, 12.1d);
+        assertCallWithinTenPercent(97616, 456, 16.8d);
     }
 
-    private void assertPrefillWithinFivePercent(final int promptTokens, final double measuredMillis) {
-        final double predicted = estimator.estimatePrefillMillis(promptTokens);
-        final double tolerance = measuredMillis * 0.05d;
-        assertThat(predicted, is(closeTo(measuredMillis, tolerance)));
+    private void assertCallWithinTenPercent(final int promptTokens, final int outputTokens, final double seconds) {
+        final double predicted =
+                (estimator.estimatePrefillMillis(promptTokens) + estimator.estimateDecodeMillis(outputTokens))
+                        / 1000.0d;
+        assertThat(predicted, is(closeTo(seconds, seconds * 0.1d)));
     }
     // </editor-fold>
 }

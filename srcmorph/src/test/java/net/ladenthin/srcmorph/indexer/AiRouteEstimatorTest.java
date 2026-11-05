@@ -54,6 +54,36 @@ public class AiRouteEstimatorTest {
         assertThat(seconds, is(not(equalTo(reference.estimateSeconds(50_000)))));
     }
 
+    // isCalibrated: whether the plan and the log name the model's calibration or GPT-6 Luna as the basis
+    private static AiGenerationConfig calibratedWith(final double prefill, final double decode) {
+        final AiCalibration calibration = new AiCalibration();
+        calibration.setPrefillTokensPerSecond(prefill);
+        calibration.setDecodeTokensPerSecond(decode);
+        final AiGenerationConfig config = new AiGenerationConfig();
+        config.setCalibration(calibration);
+        return config;
+    }
+
+    @Test
+    public void isCalibrated_bothThroughputsMeasured_isTrue() {
+        assertThat(AiRouteEstimator.isCalibrated(calibratedWith(400.0d, 9.0d)), is(true));
+    }
+
+    @Test
+    public void isCalibrated_withoutACalibration_isFalse() {
+        assertThat(AiRouteEstimator.isCalibrated(uncalibrated), is(false));
+    }
+
+    /** A throughput of 0 is "not measured": the estimate falls back to the built-in model, and so does the label. */
+    @Test
+    public void isCalibrated_aThroughputOfZero_isFalse() {
+        assertThat(AiRouteEstimator.isCalibrated(calibratedWith(0.0d, 9.0d)), is(false));
+        assertThat(AiRouteEstimator.isCalibrated(calibratedWith(400.0d, 0.0d)), is(false));
+        assertThat(
+                estimator.estimateSeconds(12_345L, calibratedWith(0.0d, 9.0d)),
+                is(equalTo(reference.estimateSeconds(12_345))));
+    }
+
     @Test
     public void estimateSeconds_moreThanAnIntOfChars_countsAsTheLargestInt() {
         assertThat(
@@ -65,27 +95,28 @@ public class AiRouteEstimatorTest {
     // <editor-fold defaultstate="collapsed" desc="estimateRouteSeconds">
     @Test
     public void estimateRouteSeconds_aFileThatFits_costsOneGenerationOfItsSize() {
-        // exactly the window still fits; the estimate is of the file size, not the window
+        // exactly the window still fits; the estimate is of the file size, not the window (one large enough
+        // that the linear, flat estimate tells the two apart)
         assertThat(
-                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 777L, 5_000L, 5_000L, 0),
+                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 777L, 200_000L, 200_000L, 0),
                 is(equalTo(window(777L))));
     }
 
     @Test
     public void estimateRouteSeconds_overTheWindow_deterministicIsFree() {
         assertThat(
-                estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 9_000L, 5_001L, 5_000L, 0),
+                estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
                 is(0L));
     }
 
     @Test
     public void estimateRouteSeconds_overTheWindow_sampleAndFailCostOneWindow() {
         assertThat(
-                estimator.estimateRouteSeconds(rule("sample", 0), uncalibrated, 9_000L, 5_001L, 5_000L, 0),
-                is(equalTo(window(5_000L))));
+                estimator.estimateRouteSeconds(rule("sample", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
+                is(equalTo(window(200_000L))));
         assertThat(
-                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 9_000L, 5_001L, 5_000L, 0),
-                is(equalTo(window(5_000L))));
+                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
+                is(equalTo(window(200_000L))));
     }
 
     /*

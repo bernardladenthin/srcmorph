@@ -9,7 +9,7 @@ import lombok.ToString;
  * Per-model, per-machine timing calibration measured by the {@code srcmorph:calibrate} goal (or the CLI's
  * {@code Calibrate}) and pasted as {@code calibration:} into the model's entry under {@code aiDefinitions}
  * of the configuration file. It makes the plan's time estimate reflect the
- * actual hardware (GPU/CPU, quant, context) instead of the built-in reference-CPU coefficients.
+ * actual hardware (GPU/CPU, quant, context) instead of the built-in estimate, which is based on GPT-6 Luna.
  *
  * <p>All values default to {@code 0}, which means "not calibrated": the estimator then falls back to its
  * built-in model. The calibration is used only when {@link #getPrefillTokensPerSecond()} and

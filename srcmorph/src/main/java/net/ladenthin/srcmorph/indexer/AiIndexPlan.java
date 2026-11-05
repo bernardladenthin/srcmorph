@@ -5,9 +5,11 @@ package net.ladenthin.srcmorph.indexer;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
@@ -138,13 +140,30 @@ public final class AiIndexPlan {
         }
     }
 
+    /** What a model header names as the basis of a time without a calibration of the model. */
+    static final String BUILT_IN_BASIS = "based on GPT-6 Luna";
+
+    /** What a model header names as the basis of a time from the model's own calibration. */
+    static final String CALIBRATED_BASIS = "from the model's calibration";
+
     private final Map<String, List<Entry>> routesByModel = new LinkedHashMap<>();
     private final List<Path> skipped = new ArrayList<>();
     private final List<Path> unmatched = new ArrayList<>();
+    private final Set<String> calibratedModels = new HashSet<>();
 
     /** Creates an empty plan. */
     public AiIndexPlan() {
         // no-op
+    }
+
+    /**
+     * Records that a model's times come from its own {@code calibration}; the times of every other model
+     * are the built-in estimate, based on GPT-6 Luna. The plan names the basis in the model's header.
+     *
+     * @param aiDefinitionKey the model id
+     */
+    public void markCalibrated(final String aiDefinitionKey) {
+        calibratedModels.add(aiDefinitionKey);
     }
 
     /**
@@ -398,7 +417,9 @@ public final class AiIndexPlan {
                     .append(tokens(entries))
                     .append(" source tokens, est. ")
                     .append(estimator.formatDuration(modelSeconds(entries)))
-                    .append("\n\n| File | Rule | Prompt | Window | Tokens | Est. |\n|---|---|---|---|---|---|\n");
+                    .append(" (")
+                    .append(calibratedModels.contains(group.getKey()) ? CALIBRATED_BASIS : BUILT_IN_BASIS)
+                    .append(")\n\n| File | Rule | Prompt | Window | Tokens | Est. |\n|---|---|---|---|---|---|\n");
             for (final Entry entry : entries) {
                 sb.append("| ")
                         .append(relativize(baseDir, entry.file()))

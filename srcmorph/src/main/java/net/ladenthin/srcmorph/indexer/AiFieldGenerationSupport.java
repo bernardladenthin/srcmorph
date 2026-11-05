@@ -101,11 +101,13 @@ public class AiFieldGenerationSupport {
     private static final String PROCESSING_LOG_ETA_INFIX = " tokens) - estimated ";
 
     /**
-     * Suffix on the processing log line stressing that the duration is a rough,
-     * hardware-specific estimate (see {@link AiGenerationTimeEstimator}). ASCII-only for CI logs.
+     * Suffix on the processing log line of a model without a calibration: the duration is the built-in
+     * estimate (see {@link AiGenerationTimeEstimator}). ASCII-only for CI logs.
      */
-    private static final String PROCESSING_LOG_DISCLAIMER =
-            " (rough; calibrated on reference CPU + gpt-oss-20b - actual depends on your hardware)";
+    private static final String PROCESSING_LOG_DISCLAIMER = " (rough; based on GPT-6 Luna)";
+
+    /** Suffix on the processing log line of a model whose own calibration gives the duration. */
+    private static final String PROCESSING_LOG_DISCLAIMER_CALIBRATED = " (rough; from the model's calibration)";
 
     /** Prefix of the per-file actual-duration log line emitted after generation completes. */
     private static final String GENERATED_LOG_PREFIX = "Generated ";
@@ -517,16 +519,19 @@ public class AiFieldGenerationSupport {
                 ? SIZE_BELOW_ONE_KIB_LABEL
                 : Integer.toString(sourceText.length() / KIBIBYTES_DIVISOR);
         // Use the model's measured calibration when present, so the live per-file ETA matches the
-        // (already calibrated) plan ETA instead of the built-in reference-CPU model.
+        // (already calibrated) plan ETA instead of the built-in GPT-6 Luna model.
         final long estimatedSeconds = routeEstimator.estimateSeconds(processedSourceChars, generationConfig);
         LOGGER.info(
                 PROCESSING_LOG_PREFIX + "{} '{}'" + PROCESSING_LOG_SIZE_INFIX + "{}" + PROCESSING_LOG_TOKENS_INFIX
-                        + "{}" + PROCESSING_LOG_ETA_INFIX + "{}" + PROCESSING_LOG_DISCLAIMER,
+                        + "{}" + PROCESSING_LOG_ETA_INFIX + "{}{}",
                 contextType,
                 contextFile,
                 sourceSizeKb,
                 timeEstimator.estimatePromptTokens(processedSourceChars),
-                timeEstimator.formatDuration(estimatedSeconds));
+                timeEstimator.formatDuration(estimatedSeconds),
+                AiRouteEstimator.isCalibrated(generationConfig)
+                        ? PROCESSING_LOG_DISCLAIMER_CALIBRATED
+                        : PROCESSING_LOG_DISCLAIMER);
 
         LOGGER.info(
                 "Generating field '{}' with temperature={}, maxInputChars={}",

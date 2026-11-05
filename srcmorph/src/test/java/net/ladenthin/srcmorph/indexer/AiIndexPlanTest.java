@@ -76,6 +76,25 @@ public class AiIndexPlanTest {
         assertThat(md, containsString("weird.txt"));
     }
 
+    /** A calibrated model's times are its own; the others' are the built-in estimate, and the header says which. */
+    @Test
+    public void renderMarkdown_namesTheBasisOfEachModelsTime() {
+        final AiIndexPlan plan = new AiIndexPlan();
+        plan.addRoute("local", Paths.get("A.java"), rule("p1"), 600);
+        plan.addRoute("remote", Paths.get("B.java"), rule("p1"), 9);
+        plan.markCalibrated("local");
+
+        final String md = plan.renderMarkdown(Paths.get(""));
+
+        assertThat(
+                md,
+                containsString(
+                        "### Model `local` - 1 file(s), ~0 source tokens, est. ~10 min (from the model's calibration)\n"));
+        assertThat(
+                md,
+                containsString("### Model `remote` - 1 file(s), ~0 source tokens, est. ~9 s (based on GPT-6 Luna)\n"));
+    }
+
     @Test
     public void windowExceededCount_countsOnlyOverWindowEntries() {
         final AiIndexPlan plan = new AiIndexPlan();
@@ -255,8 +274,14 @@ public class AiIndexPlanTest {
 
         final String md = plan.renderMarkdown(base);
 
-        assertThat(md, containsString("### Model `modelA` - 2 file(s), ~1500 source tokens, est. "));
-        assertThat(md, containsString("### Model `modelB` - 3 file(s), ~210 source tokens, est. "));
+        assertThat(
+                md,
+                containsString(
+                        "### Model `modelA` - 2 file(s), ~1500 source tokens, est. ~20 s (based on GPT-6 Luna)\n"));
+        assertThat(
+                md,
+                containsString(
+                        "### Model `modelB` - 3 file(s), ~210 source tokens, est. ~30 s (based on GPT-6 Luna)\n"));
         assertThat(md, containsString("| ~1000 |"));
         assertThat(
                 md,
@@ -275,9 +300,9 @@ public class AiIndexPlanTest {
     @Test
     public void addRoute_withoutTokens_estimatesThemAtTheDefaultRatio() {
         final AiIndexPlan plan = new AiIndexPlan();
-        plan.addRoute("modelA", Paths.get("Foo.java"), rule("p1"), 10, 49L, 9_000L);
+        plan.addRoute("modelA", Paths.get("Foo.java"), rule("p1"), 10, 41L, 9_000L);
 
-        // 49 characters at 4.8 per token are 10.2, rounded up
+        // 41 characters at 4.0 per token are 10.25, rounded up
         assertThat(plan.routesByModel().get("modelA").get(0).sourceTokens(), is(11L));
         assertThat(AiIndexPlan.estimatedTokens(48L, 4.8d), is(10L));
         assertThat(AiIndexPlan.estimatedTokens(0L, 3.0d), is(0L));

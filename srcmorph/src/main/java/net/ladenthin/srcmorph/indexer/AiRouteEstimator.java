@@ -27,6 +27,20 @@ public final class AiRouteEstimator {
     }
 
     /**
+     * Whether a model's estimate comes from its own {@code calibration}: one with a measured prefill and a
+     * measured decode throughput. Otherwise the estimate is the built-in one, based on GPT-6 Luna.
+     *
+     * @param modelConfig the routed model's config
+     * @return {@code true} when the model's calibration is used
+     */
+    public static boolean isCalibrated(final AiGenerationConfig modelConfig) {
+        final AiCalibration calibration = modelConfig.getCalibration();
+        return calibration != null
+                && calibration.getPrefillTokensPerSecond() > 0.0d
+                && calibration.getDecodeTokensPerSecond() > 0.0d;
+    }
+
+    /**
      * Estimates one generation's seconds for a character count, from the model's {@code calibration}
      * (measured per-machine throughput) when present, otherwise the estimator's built-in model.
      *

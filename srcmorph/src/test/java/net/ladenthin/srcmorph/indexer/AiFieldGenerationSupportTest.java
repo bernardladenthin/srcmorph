@@ -297,6 +297,8 @@ public class AiFieldGenerationSupportTest {
         assertThat(processingMsg, containsString("Processing file"));
         assertThat(processingMsg, containsString("tokens"));
         assertThat(processingMsg, containsString("estimated"));
+        // the default model has no calibration: the time is the built-in one, and the line says on what
+        assertThat(processingMsg, endsWith(" (rough; based on GPT-6 Luna)"));
 
         // Second message: the single generation line — temperature + maxInputChars, no retry config
         final String generatingMsg = infos.get(1);
@@ -1406,6 +1408,34 @@ public class AiFieldGenerationSupportTest {
 
         // assert
         assertThat(result.body(), containsString(" part summaries cut at the output budget)\n\nFINAL"));
+    }
+
+    /**
+     * An answer the provider stopped (finish reason {@code error}) is left for the next run: even under
+     * keep its text is not the model's finished answer, unlike one cut at the output budget.
+     */
+    @Test
+    public void incomplete_keep_anAnswerTheProviderStopped_isNotWritten() throws Exception {
+        // arrange
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            throw new AiIncompleteAnswerException(
+                    AiIncompleteAnswerException.Reason.ABORTED, "ended with finish reason 'error'", "- test paging (");
+        };
+
+        // act
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(
+                        normalRule("m", "keep"),
+                        Files.createTempFile("Paging", ".ts"),
+                        "file",
+                        "export class Paging {}",
+                        anyHeader());
+
+        // assert
+        assertThat(result.complete(), is(false));
+        assertThat(calls.get(), is(1));
     }
 
     @Test

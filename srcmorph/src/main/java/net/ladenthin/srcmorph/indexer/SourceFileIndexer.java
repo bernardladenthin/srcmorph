@@ -303,6 +303,9 @@ public final class SourceFileIndexer {
                         availableSourceChars,
                         basePromptLength,
                         chunkPromptLength(rule, shown, basePromptLength, promptPreparationSupport));
+                if (AiRouteEstimator.isCalibrated(modelConfig)) {
+                    plan.markCalibrated(rule.getAiDefinitionKey());
+                }
                 final double charsPerToken = modelConfig.getCharsPerToken() > 0
                         ? modelConfig.getCharsPerToken()
                         : AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;

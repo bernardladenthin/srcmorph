@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * bad path / OOM / wrong native early), runs a couple of representative generations via
  * {@link AiCalibrationRunner}, and reads the model's own measured prefill/decode throughput. The caller
  * pastes {@link CalibrationReport#renderPasteBlock()} into the model's entry under {@code aiDefinitions} so the plan's time
- * estimate reflects <em>this</em> machine instead of the built-in reference-CPU coefficients.</p>
+ * estimate reflects <em>this</em> machine instead of the built-in estimate, which is based on GPT-6 Luna.</p>
  */
 @ToString
 public final class CalibrateEngine {
