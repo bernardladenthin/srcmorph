@@ -243,6 +243,25 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
+- **The fact counters read more of what they count, and less of what they do not** (every facts
+  hash of the changed files changes, so `regenerateOn.facts` rewrites their summaries once):
+  - shell: a `<<` after up to three groups in parentheses (`$(( (a) + ((b)) << n ))`) is a shift,
+    and `MSG=${MSG:-a b}` is an assignment, not the environment prefix of a command;
+  - Perl: a `<<` after a hash element (`$h{x} <<BITS`, `$r->{k}`) is a shift, one inside `q{}`,
+    `qq//`, `qw`, `qr`, `m//`, `s///`, `y` or `tr` opens no heredoc (`print {$fh} <<EOT` still does);
+  - SQL: an apostrophe in PostgreSQL's one-line dollar quoting, Oracle's `q'[...]'`, a MySQL
+    `"..."` string or a MySQL `#` comment opens no literal that hid the next statements (quoted
+    identifiers, T-SQL `#temp` tables and multi-line `$$` function bodies stay); MariaDB's
+    `CREATE OR REPLACE TABLE`, PostgreSQL's `CREATE FOREIGN TABLE` and T-SQL's `COLUMNSTORE`
+    indexes count; MySQL's `VALUES(col)` of `ON DUPLICATE KEY UPDATE` is no row;
+  - Java: annotations on the declaration's own line, type parameters three deep and parameters
+    that start on the next line count; `yield f(x);`, a record header and an enum constant with a
+    body (`PLUS("+") {`) are no method or constructor;
+  - XML: `id` and `name` count inside a tag only, not as `name = 'a'` in element text;
+  - a blanked region keeps every line terminator Java's regex reads (NEL, U+2028, U+2029 too), so
+    `^` sees the same lines as before.
+- **The fallback prompt's example `MAX_RETRIES` is `POOL_SIZE`**: `MAX_RETRIES` is a scored name of
+  the language corpus, which a model could copy from the prompt (the prompt hash changes).
 - **An answer the provider stopped was written as a finished summary.** OpenRouter answers a
   generation that failed half-way with a 2xx, the text so far and finish reason `error`; only
   `length` counted as incomplete, so the summary ended mid-sentence, without a warning (measured on

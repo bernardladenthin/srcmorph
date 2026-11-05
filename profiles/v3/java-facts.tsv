@@ -8,7 +8,10 @@
 # constructors, subtract them), and the field count only sees fields with a strong modifier
 # (final-only and package-private fields are not counted, to skip final local variables). A parameter
 # list may hold one level of parentheses (@Size(max = 3) String s), read possessively, so the
-# constants of a long enum stay linear; "type declarations" counts nested and private types, records
+# constants of a long enum stay linear. Annotations on the declaration's own line count with it
+# (@Override public void run()), type parameters may nest three deep (<T extends Comparable<T>>), a
+# switch expression's yield and a record header are no method, and an enum constant with a body
+# (PLUS("+") {) is no constructor: a constructor's first parameter is a type and a name; "type declarations" counts nested and private types, records
 # and @interface too. Type arguments are read within one line and a field initializer up to 10,000
 # characters, so a file of declarations without their ">" or ";" stays linear: a generic type split
 # over lines, or a longer initializer, is not counted. JavaStructureFactPatternsTest pins the accepted
@@ -24,6 +27,6 @@ type declarations	(?m)^[ \t]*(?:(?:public|protected|private|static|final|abstrac
 public declarations	\bpublic\b
 [raw] TODO/FIXME	\b(?:TODO|FIXME)\b
 @Override	@Override\b
-methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp)[ \t]+)*(?:<[^>\n]+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]
-constructors	(?m)^[ \t]*(?:(?:public|private|protected)[ \t]+)?([A-Z][A-Za-z0-9_$]*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{
-field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]{0,10000}+)?;
+methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*(?:<(?:[^<>\n]|<(?:[^<>\n]|<[^<>\n]*+>)*+>)*+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw|yield|record)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*[{;]
+constructors	(?m)^[ \t]*(?:(?:public|private|protected|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*([A-Z][A-Za-z0-9_$]*)[ \t]*\((?=[ \t\n]*+\)|[ \t\n]*+(?:(?:final|@[A-Za-z_$][\w$.]*+(?:\([^()\n]*+\))?)[ \t]+)*(?!new\b)[A-Za-z_$][\w$.]*+(?:<[^()\n]*+>)?(?:\[\])*(?:\.\.\.)?[ \t]+[A-Za-z_$])(?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{
+field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]{0,10000}+)?;

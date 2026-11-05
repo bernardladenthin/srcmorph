@@ -124,6 +124,17 @@ public class XmlFactPatternsTest {
                 is(2));
     }
 
+    /** Element text is no tag: a "name = 'a'" in it is no attribute; one over several lines of a tag is. */
+    @Test
+    public void idAndNameAttributes_inElementText_doNotCount() {
+        assertThat(
+                count(
+                        XML,
+                        "id and name attributes",
+                        "<p>set name = 'a' and id=\"b\" here</p>\n<bean\n    class=\"x\"\n    id=\"c\"/>\n"),
+                is(1));
+    }
+
     @Test
     public void idAndNameAttributes_prefixedOnesCountANamespaceDeclarationDoesNot() {
         assertThat(

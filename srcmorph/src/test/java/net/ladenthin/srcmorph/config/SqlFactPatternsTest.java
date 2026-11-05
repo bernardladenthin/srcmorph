@@ -185,6 +185,48 @@ public class SqlFactPatternsTest {
                 is(2));
     }
 
+    /**
+     * A string with an apostrophe in another dialect's quoting opens no '...' literal that would run over
+     * the next statements: PostgreSQL's dollar quoting on one line, Oracle's q'[...]', a MySQL "..."
+     * string and a MySQL # comment.
+     */
+    @Test
+    public void ignore_anApostropheInsideOtherQuotingOrAHashComment_blanksNoStatement() {
+        final String next = "\nINSERT INTO t VALUES ('a');\nINSERT INTO t VALUES (2);\n";
+        assertThat(count("INSERT statements", "SELECT $$it's$$;" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT $fn$it's$fn$;" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT q'[it's]' FROM dual;" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT Q'{it's}', nq'!x's!' FROM dual;" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT \"it's\";" + next), is(2));
+        assertThat(count("INSERT statements", "# it's a comment" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT 1; # it's late" + next), is(2));
+    }
+
+    /**
+     * What the dialect quoting must leave: a quoted identifier names the INSERT's table, a T-SQL temp
+     * table starts with #, and a function body in dollar quotes is SQL whose statements count.
+     */
+    @Test
+    public void ignore_quotedIdentifiersTempTablesAndDollarQuotedBodies_stay() {
+        assertThat(count("INSERT statements", "INSERT \"tbl\" VALUES (1);\n"), is(1));
+        assertThat(
+                count("VALUES rows (approx)", "INSERT INTO #tmp VALUES (1), (2);\nINSERT INTO ##g VALUES (3);\n"),
+                is(3));
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "CREATE FUNCTION f() RETURNS void AS $$\nBEGIN\n  INSERT INTO log VALUES (1);\nEND;\n$$"
+                                + " LANGUAGE plpgsql;\n"),
+                is(1));
+    }
+
+    /** MySQL's executable comment holds SQL, which counts; a plain comment's does not. */
+    @Test
+    public void ignore_aMultiLineMySqlVersionComment_counts() {
+        assertThat(
+                count("views", "/*!50001\nCREATE VIEW v AS SELECT 1\n*/;\n/*\nCREATE VIEW w AS SELECT 2\n*/\n"), is(1));
+    }
+
     @Test
     public void ignore_unclosedBlockComment_commentsOutTheRest() {
         assertThat(
@@ -287,6 +329,16 @@ public class SqlFactPatternsTest {
         assertThat(count("VALUES rows (approx)", "INSERT INTO archive (id) SELECT id FROM loan WHERE done;"), is(0));
     }
 
+    /** VALUES(col) of MySQL's ON DUPLICATE KEY UPDATE reads the inserted value; it is no row. */
+    @Test
+    public void valuesRows_theValuesFunctionOfOnDuplicateKeyUpdate_isNoRow() {
+        assertThat(
+                count(
+                        "VALUES rows (approx)",
+                        "INSERT INTO t (a, b) VALUES (1, 2), (3, 4)\nON DUPLICATE KEY UPDATE a = VALUES(a), b=VALUES(b);\n"),
+                is(2));
+    }
+
     @Test
     public void valuesRows_tupleNestedInARow_countsOnceMore() {
         // the accepted overcount: "), (" inside a row starts no row, but is counted as one
@@ -306,6 +358,16 @@ public class SqlFactPatternsTest {
                                 + "CREATE TABLE dbo.D (Id INT);\n"
                                 + "CREATE TABLE `e` (id INT) ENGINE=InnoDB;\n"),
                 is(5));
+    }
+
+    @Test
+    public void tables_mariaDbOrReplaceAndPostgresForeign_count() {
+        assertThat(
+                count(
+                        "tables",
+                        "CREATE OR REPLACE TABLE a (x int);\nCREATE FOREIGN TABLE f (x int) SERVER s;\n"
+                                + "CREATE FOREIGN DATA WRAPPER w;\n"),
+                is(2));
     }
 
     @Test
@@ -395,6 +457,16 @@ public class SqlFactPatternsTest {
                         "indexes",
                         "CREATE CLUSTERED INDEX a ON dbo.T (X);\nCREATE UNIQUE NONCLUSTERED INDEX b ON dbo.T (Y);\n"),
                 is(2));
+    }
+
+    @Test
+    public void indexes_tSqlColumnstore_count() {
+        assertThat(
+                count(
+                        "indexes",
+                        "CREATE CLUSTERED COLUMNSTORE INDEX cci ON t;\nCREATE NONCLUSTERED COLUMNSTORE INDEX n ON t (a);\n"
+                                + "CREATE COLUMNSTORE INDEX c ON t (a);\n"),
+                is(3));
     }
 
     @Test

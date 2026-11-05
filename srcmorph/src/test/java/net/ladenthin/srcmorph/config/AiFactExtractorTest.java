@@ -161,6 +161,18 @@ public class AiFactExtractorTest {
         assertThat(counts.get("types"), is(3));
     }
 
+    /**
+     * Java's ^ also starts a line after NEL, the line separator and the paragraph separator: a region
+     * holding one keeps it, and a region right after one starts a line.
+     */
+    @Test
+    public void counts_theOtherLineTerminatorsOfJavaRegex_areLineBreaksToo() {
+        final Map<String, Integer> counts = AiFactExtractor.counts(
+                Arrays.asList(ignore("comments", "(?s)/\\*.*?\\*/"), counter("types", "(?m)^class\\b")),
+                "a/* x */class A {}\nb/* y\u0085*/class B {}\n /* z */class C {}\n");
+        assertThat(counts.get("types"), is(3));
+    }
+
     @Test
     public void counts_twoIgnoreCounters_bothBlank() {
         final Map<String, Integer> counts = AiFactExtractor.counts(

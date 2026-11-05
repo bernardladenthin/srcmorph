@@ -143,6 +143,17 @@ public class ShellFactPatternsTest {
                 is(2));
     }
 
+    /** Several groups, a nested ((a)) and a group with one of its own before the shift: still arithmetic. */
+    @Test
+    public void functions_arithmeticShiftAfterSeveralOrNestedGroups_opensNoHeredoc() {
+        assertThat(
+                count(
+                        "functions",
+                        "y=$(( (a) + (b) << n ))\nz=$(( ((a)) << m ))\nw=$(( (a * (b + 1)) << k ))\n"
+                                + "f() {\n}\nn\nm\nk\ng() {\n}\n"),
+                is(2));
+    }
+
     @Test
     public void functions_heredocMarkerInsideAString_opensNothing() {
         assertThat(count("functions", "echo \"usage: cat <<EOF\"\nf() {\n}\nEOF\ng() {\n}\n"), is(2));
@@ -319,6 +330,13 @@ public class ShellFactPatternsTest {
                                 + "x=$(( 1 + 2 ))\nHOST_FILES=([staging]=\"hosts.staging\" [production]=\"hosts.production\")\n"
                                 + "DRY_RUN=0\nX=\"a b\" cmd\n"),
                 is(9));
+    }
+
+    /** A ${...} with a blank inside is one word of the value, not the end of an environment prefix. */
+    @Test
+    public void scriptLevelAssignments_aDefaultWithABlank_countsAndAPrefixStaysOne() {
+        assertThat(count("script-level assignments", "MSG=${MSG:-a b}\nN=${N:-$(date)}\n"), is(2));
+        assertThat(count("script-level assignments", "MSG=${MSG:-a b} cmd\nA=${X:-1} B=${Y:-c d} make\n"), is(0));
     }
 
     @Test

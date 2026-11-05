@@ -25,7 +25,7 @@ The essential steps / algorithm / responsibility as bullets. This is the most im
 Each public/exported unit as `name(params) -> returnType` + a clause (max 6 words) on its purpose, then the internal (static / private / helper) functions by name, including the program entry point (`main`). For SQL: procedures/functions with params and result. For a command-line interface: every command, subcommand and option by the exact name a user types (e.g. `sync-users`, `--dry-run`), also where it differs from the function implementing it.
 
 #### Constants and configuration
-Every named constant, macro, enum value and status code, and every configuration or environment variable the file defines or reads (e.g. `MAX_RETRIES`, `STATUS_OK`, `OUTPUT_DIR`, `TIMEOUT_SECONDS`), by its exact name, with its value or default when the source gives one.
+Every named constant, macro, enum value and status code, and every configuration or environment variable the file defines or reads (e.g. `POOL_SIZE`, `STATUS_OK`, `OUTPUT_DIR`, `TIMEOUT_SECONDS`), by its exact name, with its value or default when the source gives one.
 
 #### Dependencies
 Imports / includes / referenced modules or tables, and the library functions called (e.g. `fopen`, `strlen`), as searchable names.

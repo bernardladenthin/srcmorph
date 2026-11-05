@@ -143,6 +143,25 @@ public class PerlFactPatternsTest {
                 is(2));
     }
 
+    /** A hash element or a dereference before << is a value, so it is a shift; a {$fh} block is not. */
+    @Test
+    public void subs_shiftAfterAHashElement_opensNoHeredoc_aBlockFilehandleDoes() {
+        assertThat(
+                count("subs", "my $b = $h{x} <<BITS;\nmy $c = $r->{k}{j} << K;\nsub a {}\nBITS\nK\nsub b {}\n"), is(2));
+        assertThat(count("subs", "print {$fh} <<EOT;\nsub no {}\nEOT\nsub yes {}\n"), is(1));
+    }
+
+    /** A << inside a quote-like operator or a regex is text, not a heredoc. */
+    @Test
+    public void subs_heredocMarkerInsideAQuoteLikeOperatorOrARegex_opensNothing() {
+        assertThat(
+                count(
+                        "subs",
+                        "my $u = q{cat <<EOF};\nmy $v = qq/a <<END/;\nsub a {}\nEOF\nEND\n"
+                                + "if ($x =~ m/<<HERE/) {}\n$y =~ s/<<THERE/x/;\nsub b {}\nHERE\nTHERE\nsub c {}\n"),
+                is(3));
+    }
+
     @Test
     public void subs_heredocMarkerInsideAStringOrATrailingComment_opensNothing() {
         assertThat(count("subs", "print \"cat <<EOF\\n\";\nsub a {}\nEOF\nsub b {}\n"), is(2));

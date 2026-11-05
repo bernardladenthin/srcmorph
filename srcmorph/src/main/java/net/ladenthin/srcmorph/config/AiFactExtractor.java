@@ -64,6 +64,13 @@ public final class AiFactExtractor {
     /** No label starts with this: it opens a marker such as {@code [ignore]} in a facts file. */
     public static final String LABEL_MARKER_START = "[";
 
+    /**
+     * The characters Java's regular expressions read as line terminators without {@code UNIX_LINES}:
+     * carriage return, line feed, next line, line separator and paragraph separator. A blanked region
+     * keeps them, so {@code ^} and {@code $} see the same lines as before.
+     */
+    private static final String LINE_BREAKS = "\r\n\u0085  ";
+
     /** Utility class; not instantiable. */
     private AiFactExtractor() {
         // no-op
@@ -225,7 +232,7 @@ public final class AiFactExtractor {
      * Returns the line breaks of a text, in order.
      *
      * @param text the text
-     * @return its {@code \r} and {@code \n} characters
+     * @return its line break characters ({@link #isLineBreak(char)})
      */
     private static String lineBreaks(final String text) {
         final StringBuilder breaks = new StringBuilder();
@@ -239,13 +246,14 @@ public final class AiFactExtractor {
     }
 
     /**
-     * Returns whether a character ends a line.
+     * Returns whether a character ends a line, as Java's {@code ^} and {@code $} read it in multiline mode
+     * without {@code UNIX_LINES}.
      *
      * @param c the character
-     * @return {@code true} for {@code \r} and {@code \n}
+     * @return {@code true} for {@link #LINE_BREAKS}
      */
     private static boolean isLineBreak(final char c) {
-        return c == '\r' || c == '\n';
+        return LINE_BREAKS.indexOf(c) >= 0;
     }
 
     /**

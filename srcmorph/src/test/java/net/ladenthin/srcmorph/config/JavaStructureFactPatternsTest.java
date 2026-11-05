@@ -80,6 +80,37 @@ public class JavaStructureFactPatternsTest {
     }
 
     @Test
+    public void method_annotatedOnTheSameLine_counts() {
+        assertThat(
+                count(
+                        METHOD_PATTERN,
+                        "    @Override public void run() {\n    }\n"
+                                + "    @SuppressWarnings(\"x\") @Deprecated private static int f(int a) {\n    }\n"),
+                is(2));
+    }
+
+    @Test
+    public void method_nestedGenericBounds_count() {
+        assertThat(
+                count(
+                        METHOD_PATTERN,
+                        "    public static <T extends Comparable<T>> T max(List<T> xs) {\n    }\n"
+                                + "    <K, V extends Map<K, List<V>>> void put(K k, V v);\n"),
+                is(2));
+    }
+
+    /** A switch expression's yield and a record header have a method's shape, but are none. */
+    @Test
+    public void method_yieldAndARecordHeader_doNotCount() {
+        assertThat(
+                count(
+                        METHOD_PATTERN,
+                        "int x = switch (k) {\n    case 1 -> {\n        yield f(x);\n    }\n    default -> 0;\n};\n"
+                                + "record Point(int x, int y) {\n}\npublic record Pair(String a, String b) {}\n"),
+                is(0));
+    }
+
+    @Test
     public void method_genericMultilineThrows_counts() {
         assertThat(count(METHOD_PATTERN, "public <T> T bar(List<T> x,\n int y) throws IOException {\n}"), is(1));
     }
@@ -210,6 +241,38 @@ public class JavaStructureFactPatternsTest {
                         CTOR_PATTERN,
                         "    public Foo(@Named(\"a\") String a,\n            @Size(max = 3) List<String> b) {\n    }\n"),
                 is(1));
+    }
+
+    /** An enum constant with a body has a constructor's shape; its arguments are values, not parameters. */
+    @Test
+    public void ctor_enumConstantsWithABody_doNotCount() {
+        assertThat(
+                count(
+                        CTOR_PATTERN,
+                        "enum Op {\n    PLUS(\"+\") {\n        int apply(int a) { return a; }\n    },\n"
+                                + "    MINUS(1) {\n    },\n    TIMES(new Sym('*')) {\n    },\n    DIV(Sym.SLASH) {\n    };\n"
+                                + "    Op(String s) {\n    }\n    Op() {\n    }\n}\n"),
+                is(2));
+    }
+
+    @Test
+    public void field_annotatedOnTheSameLine_counts() {
+        assertThat(
+                count(
+                        FIELD_PATTERN,
+                        "    @Inject private Clock clock;\n    @Column(name = \"x\") protected int x = 1;\n"),
+                is(2));
+    }
+
+    @Test
+    public void ctor_parametersOnTheNextLine_count() {
+        assertThat(
+                count(CTOR_PATTERN, "    Service(\n            final Repo r,\n            int n) {\n    }\n"), is(1));
+    }
+
+    @Test
+    public void ctor_annotatedOnTheSameLine_counts() {
+        assertThat(count(CTOR_PATTERN, "    @Inject public Service(final Repo r) {\n    }\n"), is(1));
     }
 
     @Test

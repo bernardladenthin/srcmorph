@@ -9,7 +9,8 @@
 # does not count as this script's, and a heredoc marker inside a comment opens nothing. A heredoc may
 # end at any word, quoted or not (<<EOF, <<'END-OF-SQL', <<!); its end marker stands alone on its
 # line, after tabs only for <<-; a heredoc whose marker never comes runs to the end of the file, as
-# bash reads it. A << inside (( )), $(( )) or $[ ] is a shift, and one whose line goes on with an
+# bash reads it. A << inside (( )), $(( )) or $[ ] is a shift (read up to 120 characters back, or
+# over up to three groups in parentheses, each with up to two of its own), and one whose line goes on with an
 # unclosed quote sits inside a string; neither opens a heredoc, so a long file of either stays
 # linear. A function body may be any compound command ({, (, if, for, while, until, case, select,
 # [[). "exported variables" and "readonly variables" count every name of a line
@@ -19,7 +20,7 @@
 # on one line, a blank and # inside a quoted string (read as a comment), and a value with more than
 # one level of $( ) are not read as the shell reads them. ShellFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern of the profile reads linearly.
-[ignore] comments and heredoc bodies	(?ms)^[ \t]*#[^\n]*|(?<=[ \t])#[^\n]*|(?=<<)(?<!<|\(\([^)\n]{0,120}|\(\([^()\n]{0,40}\([^()\n]{0,40}\)[^)\n]{0,40}|\$\[[^\]\n]{0,120})<<(?:-[ \t]*(?:(["'])((?:(?!\1)[^\n])+)\1|\\?([^\s<>|&;()'"`]++))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^\t*(?:\2|\3)$|.*)|[ \t]*(?:(["'])((?:(?!\4)[^\n])+)\4|\\?([^\s<>|&;()'"`-][^\s<>|&;()'"`]*+))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^(?:\5|\6)$|.*))
+[ignore] comments and heredoc bodies	(?ms)^[ \t]*#[^\n]*|(?<=[ \t])#[^\n]*|(?=<<)(?<!<|\(\([^)\n]{0,120}|\(\([^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\)(?:[^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\))?(?:[^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\))?[^)\n]{0,40}|\$\[[^\]\n]{0,120})<<(?:-[ \t]*(?:(["'])((?:(?!\1)[^\n])+)\1|\\?([^\s<>|&;()'"`]++))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^\t*(?:\2|\3)$|.*)|[ \t]*(?:(["'])((?:(?!\4)[^\n])+)\4|\\?([^\s<>|&;()'"`-][^\s<>|&;()'"`]*+))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^(?:\5|\6)$|.*))
 functions	(?m)^[ \t]*(?:function[ \t]+[A-Za-z_][\w.:-]*[ \t]*(?:\([ \t]*\))?|[A-Za-z_][\w.:-]*[ \t]*\([ \t]*\))[ \t]*(?:\{|\(|$|\[\[|(?:if|for|while|until|case|select)\b)
 getopts loops	\bgetopts[ \t]+
 getopts option letters	(?:\bgetopts[ \t]+["']?:?|\G(?<=[:A-Za-z0-9]):?)[A-Za-z0-9]
@@ -28,7 +29,7 @@ named positional parameters	(?m)^[ \t]*(?:(?:local|readonly|declare|typeset|expo
 exported variables	(?m)(?:^[ \t]*(?:export|(?:declare|typeset|local)[ \t]+-(?=[a-zA-Z]*x)(?![a-zA-Z]*[fFn])[a-zA-Z]+)(?:[ \t]+-[a-eg-mo-zA-Z]+)*(?![ \t]+-)|\G(?<=[^\n])(?:=(?:"[^"\n]*+"|'[^'\n]*+'|\$\([^)\n]*+\)|\$\{[^}\n]*+\}|[^\s;&|"'$()]++|\$)*+)?)[ \t]+[A-Za-z_]\w*
 readonly variables	(?m)(?:^[ \t]*(?:readonly|(?:declare|typeset|local)[ \t]+-(?=[a-zA-Z]*r)(?![a-zA-Z]*[fFn])[a-zA-Z]+)(?:[ \t]+-[a-eg-mo-zA-Z]+)*(?![ \t]+-)|\G(?<=[^\n])(?:=(?:"[^"\n]*+"|'[^'\n]*+'|\$\([^)\n]*+\)|\$\{[^}\n]*+\}|[^\s;&|"'$()]++|\$)*+)?)[ \t]+[A-Za-z_]\w*
 defaulted variables	\$\{[A-Za-z_]\w*:?[-=]
-script-level assignments	(?m)^[A-Za-z_]\w*(?:\[[^\]\n]*\])?\+?=(?!(?:"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|\\.|\$\((?:[^()\n]|\([^()\n]*\))*\)|\((?:[^()\n]|\([^()\n]*\))*\)|[^\s"'\\;&|#()])*+[ \t]+(?:[A-Za-z_]\w*(?:\[[^\]\n]*\])?\+?=(?:"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|\\.|\$\((?:[^()\n]|\([^()\n]*\))*\)|\((?:[^()\n]|\([^()\n]*\))*\)|[^\s"'\\;&|#()])*+[ \t]+)*[^\s=;&|#\\][^\s=;&|#]*(?:[ \t]|$|[;&|]))
+script-level assignments	(?m)^[A-Za-z_]\w*(?:\[[^\]\n]*\])?\+?=(?!(?:"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|\\.|\$\{[^}\n]*+\}|\$\((?:[^()\n]|\([^()\n]*\))*\)|\((?:[^()\n]|\([^()\n]*\))*\)|[^\s"'\\;&|#()])*+[ \t]+(?:[A-Za-z_]\w*(?:\[[^\]\n]*\])?\+?=(?:"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|\\.|\$\{[^}\n]*+\}|\$\((?:[^()\n]|\([^()\n]*\))*\)|\((?:[^()\n]|\([^()\n]*\))*\)|[^\s"'\\;&|#()])*+[ \t]+)*[^\s=;&|#\\][^\s=;&|#]*(?:[ \t]|$|[;&|]))
 sourced files	(?m)(?:^|[;&|{(]|\b(?:then|else|do)\b)[ \t]*(?:source|\.)[ \t]+[^\s;&|]+
 traps	(?m)^[ \t]*trap[ \t]+(?!-[lp]\b)
 set -e	(?m)^[ \t]*set(?:[ \t]+(?:-o[ \t]+\w+|[-+][a-zA-Z]+))*?[ \t]+(?:-[a-zA-Z]*e[a-zA-Z]*\b|-o[ \t]+errexit\b)
