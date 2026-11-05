@@ -93,7 +93,8 @@ JAVA_FILES = [
 ]
 EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh", ".pl", ".pm", ".xml", ".xsd", ".xsl", ".xslt",
               ".wsdl", ".kt", ".kts", ".groovy", ".scala", ".jsp", ".jspf", ".tag", ".xhtml", ".bpmn", ".dmn",
-              ".yml", ".yaml", ".proto", ".avsc", ".graphql", ".graphqls", ".tf", ".hcl", ".gradle", ".properties"]
+              ".yml", ".yaml", ".proto", ".avsc", ".graphql", ".graphqls", ".tf", ".hcl", ".gradle", ".properties",
+              ".ts", ".mts", ".cts"]
 # Files without an extension the runs index by name.
 FILE_NAMES = ["Dockerfile", "Containerfile"]
 # A language gets a rule of its own when the profile has its prompt (file-body-<prompt>.md) or when
@@ -119,6 +120,8 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("kotlin", {"extensions": [".kt", ".kts"]}, "oop", 0),
              ("groovy", {"extensions": [".groovy"]}, "oop", 0),
              ("scala", {"extensions": [".scala"]}, "oop", 0),
+             # measured 2026-11-05 on a TypeScript repository: the oop prompt names more of the API than the fallback
+             ("typescript", {"extensions": [".ts", ".mts", ".cts"]}, "oop", 0),
              ("jee", {"fileNames": ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]}, "xml", 10),
              ("persistence", {"fileNames": ["persistence.xml", "orm.xml", "*.hbm.xml"]}, "xml", 10),
              ("mybatis", _and({"extensions": [".xml"]}, {"contentMatches": r"mybatis\.org//DTD Mapper"}), "xml", 10),

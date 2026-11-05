@@ -117,6 +117,14 @@ class RulesTest(unittest.TestCase):
         # a kind without a facts file of its own counts nothing
         self.assertNotIn("factsKey", rules["ops"])
 
+    def test_typeScript_takesTheOopPromptWithoutFacts(self):
+        rules = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
+
+        self.assertEqual(rules["typescript"]["promptKey"], "file-body-oop")
+        self.assertEqual(rules["typescript"]["condition"], {"extensions": [".ts", ".mts", ".cts"]})
+        self.assertNotIn("factsKey", rules["typescript"])
+        self.assertTrue({".ts", ".mts", ".cts"} <= set(run.EXTENSIONS))
+
     def test_aProfileWithoutAKindsPromptOrFacts_hasNoRuleForIt(self):
         with tempfile.TemporaryDirectory() as tmp:
             rules = {r["id"] for r in run.file_rules(Path(tmp), "m", facts=True)}

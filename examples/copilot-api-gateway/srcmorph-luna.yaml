@@ -66,6 +66,9 @@ srcMorph:
     - ".gvy"
     - ".gradle"
     - ".scala"
+    - ".ts"
+    - ".mts"
+    - ".cts"
     - ".jsp"
     - ".jspf"
     - ".jspx"
@@ -284,6 +287,14 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         extensions: [".scala"]
+    - id: typescript                         # the oop prompt names more of a TypeScript file's API than
+      promptKey: file-body-oop               # the fallback (measured 2026-11-05); no counters of its own
+      aiDefinitionKey: luna
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".ts", ".mts", ".cts"]
     - id: jee                                # Jakarta EE descriptors
       promptKey: file-body-xml
       aiDefinitionKey: luna

@@ -208,7 +208,7 @@ public class ExamplesConfigBindingTest {
             }
         }
         // the kinds profile v3 has no counters for
-        assertThat(withoutFacts, is(List.of("ops", "fallback")));
+        assertThat(withoutFacts, is(List.of("typescript", "ops", "fallback")));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
     }
 
@@ -277,6 +277,9 @@ public class ExamplesConfigBindingTest {
             {"src/main/kotlin/Build.kts", "println(1)\n", "kotlin"},
             {"src/test/groovy/OrderSpec.groovy", "class OrderSpec {}\n", "groovy"},
             {"src/main/scala/Order.scala", "case class Order()\n", "scala"},
+            {"src/extension.ts", "export function activate() {}\n", "typescript"},
+            {"scripts/release.mts", "export {};\n", "typescript"},
+            {"esbuild.js", "require('esbuild');\n", "fallback"},
             {"src/main/webapp/WEB-INF/web.xml", "<web-app/>\n", "jee"},
             {"META-INF/ejb-jar.xml", "<ejb-jar/>\n", "jee"},
             {"META-INF/persistence.xml", "<persistence/>\n", "persistence"},
