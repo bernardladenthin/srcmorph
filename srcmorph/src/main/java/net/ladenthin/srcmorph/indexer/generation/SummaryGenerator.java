@@ -12,7 +12,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.facts.AiFactExtractor;
@@ -203,7 +203,7 @@ public class SummaryGenerator {
      *
      * @param generationProvider       AI backend used to generate text for each field
      * @param promptPreparationSupport helper that resolves and prepares prompt templates
-     * @param modelDefinitionSupport   lookup for {@link net.ladenthin.srcmorph.config.AiGenerationConfig} by key
+     * @param modelDefinitionSupport   lookup for {@link net.ladenthin.srcmorph.config.AiModelDefinition} by key
      */
     public SummaryGenerator(
             final AiGenerationProvider generationProvider,
@@ -242,7 +242,7 @@ public class SummaryGenerator {
      * <ol>
      *   <li>The prompt is prepared via {@link net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport#preparePrompt}.</li>
      *   <li>A trim warning is logged if the source was truncated and
-     *       {@link net.ladenthin.srcmorph.config.AiGenerationConfig#isWarnOnTrim()} is {@code true}.</li>
+     *       {@link net.ladenthin.srcmorph.config.AiModelDefinition#isWarnOnTrim()} is {@code true}.</li>
      *   <li>The AI provider generates the summary of the whole source, or the rule's {@code onOversize}
      *       handles a source that does not fit.</li>
      *   <li>An incomplete answer (empty, cut off by the output limit, or no answer at all) is logged and
@@ -267,7 +267,7 @@ public class SummaryGenerator {
             final String contextType,
             final String sourceText)
             throws IOException {
-        final AiGenerationConfig generationConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
+        final AiModelDefinition generationConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
         parts = new SummaryParts();
         try {
             return new AiGenerationResult(generateBody(rule, generationConfig, contextFile, contextType, sourceText));
@@ -298,7 +298,7 @@ public class SummaryGenerator {
      */
     private String generateBody(
             final AiFieldGenerationConfig fieldGeneration,
-            final AiGenerationConfig generationConfig,
+            final AiModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
             final String sourceText)
@@ -371,7 +371,7 @@ public class SummaryGenerator {
      * @throws IOException if the provider fails to count
      */
     private int countedWindow(
-            final AiGenerationConfig generationConfig,
+            final AiModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
             final AiGenerationRequest request,
@@ -429,7 +429,7 @@ public class SummaryGenerator {
      */
     private String oversized(
             final AiFieldGenerationConfig fieldGeneration,
-            final AiGenerationConfig generationConfig,
+            final AiModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
             final String sourceText,
@@ -479,7 +479,7 @@ public class SummaryGenerator {
      */
     private String generateLogged(
             final AiFieldGenerationConfig fieldGeneration,
-            final AiGenerationConfig generationConfig,
+            final AiModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
             final String sourceText,
@@ -817,7 +817,7 @@ public class SummaryGenerator {
             final boolean mayCut,
             final boolean part)
             throws IOException {
-        final AiGenerationConfig model = modelDefinitionSupport.getConfig(fieldGeneration.requireAiDefinitionKey());
+        final AiModelDefinition model = modelDefinitionSupport.getConfig(fieldGeneration.requireAiDefinitionKey());
         final int tokenLimit = AiTokenWindow.promptTokenLimit(model.getContextSize(), model.getMaxOutputTokens());
         callCut = false;
         try {
@@ -975,11 +975,11 @@ public class SummaryGenerator {
     /**
      * Returns the effective {@code maxInputChars} for the given field generation entry.
      *
-     * <p>When the {@link net.ladenthin.srcmorph.config.AiGenerationConfig#getCharsPerToken()} value is greater than zero,
+     * <p>When the {@link net.ladenthin.srcmorph.config.AiModelDefinition#getCharsPerToken()} value is greater than zero,
      * the maximum is computed for every file, from the prompt rendered with that file's name, by the
      * calculation the plan uses ({@link AiInputWindowCalculator}), so the plan and the run agree; the
      * calculation is logged in detail once per {@code (aiDefinitionKey, promptKey)} pair. When
-     * {@code charsPerToken} is zero, the static {@link net.ladenthin.srcmorph.config.AiGenerationConfig#getMaxInputChars()}
+     * {@code charsPerToken} is zero, the static {@link net.ladenthin.srcmorph.config.AiModelDefinition#DEFAULT_MAX_INPUT_CHARS}
      * fallback is returned instead.</p>
      *
      * @param fieldGeneration  the field configuration identifying the definition and prompt keys
@@ -989,10 +989,10 @@ public class SummaryGenerator {
      */
     private int resolveMaxInputChars(
             final AiFieldGenerationConfig fieldGeneration,
-            final AiGenerationConfig generationConfig,
+            final AiModelDefinition generationConfig,
             final Path contextFile) {
         if (generationConfig.getCharsPerToken() <= 0) {
-            return generationConfig.getMaxInputChars();
+            return AiModelDefinition.DEFAULT_MAX_INPUT_CHARS;
         }
 
         final int basePromptLength =
@@ -1023,7 +1023,7 @@ public class SummaryGenerator {
      *                        {@code maxOutputTokens}, and {@code charsPerToken}
      * @param basePromptLength character length of the prompt template rendered with empty source
      */
-    private void logMaxInputChars(final AiGenerationConfig config, final int basePromptLength) {
+    private void logMaxInputChars(final AiModelDefinition config, final int basePromptLength) {
         final int contextSize = config.getContextSize();
         final int charsPerToken = config.getCharsPerToken();
         final int maxOutputTokens = config.getMaxOutputTokens();
@@ -1032,7 +1032,7 @@ public class SummaryGenerator {
         final int promptChars = basePromptLength;
         final int eofChars = AiPromptPreparationSupport.EOF_MARKER_LENGTH;
         final int outputChars = maxOutputTokens * charsPerToken;
-        final int safetyChars = AiGenerationConfig.DEFAULT_SAFETY_MARGIN_CHARS;
+        final int safetyChars = AiModelDefinition.DEFAULT_SAFETY_MARGIN_CHARS;
         final int overheadTotal = promptChars + eofChars + outputChars + safetyChars;
         final int availableChars = totalChars - overheadTotal;
         // Single source of truth for the threshold shared with the planning path ({@code SourceFileIndexer.classify}).

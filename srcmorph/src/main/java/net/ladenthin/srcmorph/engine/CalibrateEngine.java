@@ -16,7 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
@@ -180,7 +180,7 @@ public final class CalibrateEngine {
             final AiPromptPreparationSupport promptPreparationSupport,
             final AiGenerationProviderFactory providerFactory)
             throws SrcMorphException {
-        final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(modelKey);
+        final AiModelDefinition modelConfig = modelDefinitionSupport.getConfig(modelKey);
         final long windowChars = calibrationRunner.windowChars(modelConfig, promptKey, promptPreparationSupport);
 
         LOGGER.info("");

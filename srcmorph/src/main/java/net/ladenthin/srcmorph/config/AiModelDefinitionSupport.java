@@ -13,12 +13,12 @@ import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolves {@link AiModelDefinition} entries by their key, returning the corresponding
- * {@link AiGenerationConfig}.
+ * Resolves {@link AiModelDefinition} entries by their key, each a copy with its model path resolved.
  *
  * <p>Built from the {@code aiDefinitions} list of the configuration file, this
- * support class acts as a lookup table that converts each {@link AiModelDefinition} into
- * a ready-to-use {@link AiGenerationConfig} object. Routing rules and engines
+ * support class acts as a lookup table that holds a copy of each {@link AiModelDefinition}, its
+ * relative {@code modelPath} resolved against the model directory, so the caller's beans stay as
+ * they are. Routing rules and engines
  * reference definitions by their string key rather than embedding the full parameter
  * set inline.</p>
  *
@@ -46,7 +46,7 @@ public final class AiModelDefinitionSupport {
      */
     private static final String MISSING_DEFINITION_MESSAGE_PREFIX = "Missing AI model definition for key: ";
 
-    private final Map<String, AiGenerationConfig> configs;
+    private final Map<String, AiModelDefinition> definitions;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -77,13 +77,13 @@ public final class AiModelDefinitionSupport {
     public AiModelDefinitionSupport(
             final @Nullable List<AiModelDefinition> definitions, final @Nullable File modelDirectory) {
         if (definitions == null) {
-            this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
+            this.definitions = new HashMap<>(compatibilityHelper.hashMapCapacityFor(0));
             return;
         }
         final int count = definitions.size();
         // Presize so the loop's put() calls never trigger a rehash
         // (fb-contrib PSC_PRESIZE_COLLECTIONS).
-        this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
+        this.definitions = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
         for (int i = 0; i < count; i++) {
             final AiModelDefinition definition = definitions.get(i);
             final String key = definition.getKey();
@@ -91,22 +91,22 @@ public final class AiModelDefinitionSupport {
                 throw new IllegalArgumentException(
                         "aiDefinitions[" + i + "].key is required (bad entry: " + definition + ")");
             }
-            if (configs.containsKey(key)) {
+            if (this.definitions.containsKey(key)) {
                 throw new IllegalArgumentException("aiDefinitions[" + i + "].key '" + key + "' is defined twice");
             }
-            configs.put(key, toConfig(definition, modelDirectory));
+            this.definitions.put(key, resolved(definition, modelDirectory));
         }
     }
 
     /**
-     * Returns the {@link AiGenerationConfig} associated with the given key.
+     * Returns the {@link AiModelDefinition} associated with the given key.
      *
      * @param key the definition key to look up; must not be {@code null}
-     * @return the corresponding generation config
+     * @return the resolved definition
      * @throws IllegalArgumentException if no definition is registered for {@code key}
      */
-    public AiGenerationConfig getConfig(final String key) {
-        final AiGenerationConfig config = configs.get(key);
+    public AiModelDefinition getConfig(final String key) {
+        final AiModelDefinition config = definitions.get(key);
         if (config == null) {
             throw new IllegalArgumentException(MISSING_DEFINITION_MESSAGE_PREFIX + key);
         }
@@ -134,67 +134,19 @@ public final class AiModelDefinitionSupport {
     }
 
     /**
-     * Converts an {@link AiModelDefinition} into an {@link AiGenerationConfig} by copying
-     * all field values, the model path resolved against {@code modelDirectory}.
+     * Copies a definition with its model path resolved against {@code modelDirectory}.
      *
-     * @param definition     the definition to convert; must not be {@code null}
+     * @param definition     the definition to copy; must not be {@code null}
      * @param modelDirectory directory a relative model path is resolved against, or {@code null}
-     * @return a fully populated {@link AiGenerationConfig}
+     * @return the copy
      */
-    private static AiGenerationConfig toConfig(
-            final AiModelDefinition definition, final @Nullable File modelDirectory) {
-        final AiGenerationConfig config = new AiGenerationConfig();
+    private static AiModelDefinition resolved(final AiModelDefinition definition, final @Nullable File modelDirectory) {
+        final AiModelDefinition copy = definition.copy();
         final @Nullable String modelPath = definition.getModelPath();
         final String resolved = resolveModelPath(modelDirectory, modelPath);
         // null only when the definition names no model; passed on as before, for the engines'
         // fail-fast model path check to report.
-        config.setModelPath(resolved == null ? modelPath : resolved);
-        config.setContextSize(definition.getContextSize());
-        config.setMaxOutputTokens(definition.getMaxOutputTokens());
-        config.setTemperature(definition.getTemperature());
-        config.setThreads(definition.getThreads());
-        config.setCharsPerToken(definition.getCharsPerToken());
-        config.setWarnOnTrim(definition.isWarnOnTrim());
-        config.setTopP(definition.getTopP());
-        config.setTopK(definition.getTopK());
-        config.setMinP(definition.getMinP());
-        config.setTopNSigma(definition.getTopNSigma());
-        config.setRepeatPenalty(definition.getRepeatPenalty());
-        config.setStopStrings(definition.getStopStrings());
-        config.setChatTemplateEnableThinking(definition.getChatTemplateEnableThinking());
-        config.setCachePrompt(definition.isCachePrompt());
-        config.setSwaFull(definition.isSwaFull());
-        config.setCacheReuse(definition.getCacheReuse());
-        config.setGpuLayers(definition.getGpuLayers());
-        config.setSeed(definition.getSeed());
-        config.setCpuMoeLayers(definition.getCpuMoeLayers());
-        config.setCpuFfnLayers(definition.getCpuFfnLayers());
-        config.setKvUnifiedPerSlot(definition.getKvUnifiedPerSlot());
-        config.setLazyMode(definition.getLazyMode());
-        config.setRepeatLastN(definition.getRepeatLastN());
-        config.setCacheTypeK(definition.getCacheTypeK());
-        config.setCacheTypeV(definition.getCacheTypeV());
-        config.setFlashAttn(definition.isFlashAttn());
-        config.setBatchSize(definition.getBatchSize());
-        config.setUbatchSize(definition.getUbatchSize());
-        config.setThreadsBatch(definition.getThreadsBatch());
-        config.setMainGpu(definition.getMainGpu());
-        config.setDevices(definition.getDevices());
-        config.setProvider(definition.getProvider());
-        config.setRemoteModel(definition.getRemoteModel());
-        config.setBaseUrl(definition.getBaseUrl());
-        config.setApiKeyEnv(definition.getApiKeyEnv());
-        config.setStream(definition.isStream());
-        config.setRequestsPerMinute(definition.getRequestsPerMinute());
-        config.setMaxRetries(definition.getMaxRetries());
-        config.setReasoningEffort(definition.getReasoningEffort());
-        config.setReasoningBudgetTokens(definition.getReasoningBudgetTokens());
-        config.setDryMultiplier(definition.getDryMultiplier());
-        config.setDryBase(definition.getDryBase());
-        config.setDryAllowedLength(definition.getDryAllowedLength());
-        config.setDryPenaltyLastN(definition.getDryPenaltyLastN());
-        config.setDrySequenceBreakers(definition.getDrySequenceBreakers());
-        config.setCalibration(definition.getCalibration());
-        return config;
+        copy.setModelPath(resolved == null ? modelPath : resolved);
+        return copy;
     }
 }

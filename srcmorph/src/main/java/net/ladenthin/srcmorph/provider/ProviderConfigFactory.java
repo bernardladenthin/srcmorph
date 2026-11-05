@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.provider;
 
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import java.util.Collections;
+import java.util.List;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Pure mapping from a resolved {@link AiGenerationConfig} to an immutable {@link ProviderConfig}.
+ * Pure mapping from a resolved {@link AiModelDefinition} to an immutable {@link ProviderConfig}.
  *
  * <p>Extracted from what was {@code AbstractAiIndexMojo.buildLlamaCppJniConfig} in the
  * {@code llamacpp-ai-index-maven-plugin} module: the model lookup lives in the {@code engine}
@@ -22,15 +25,16 @@ public final class ProviderConfigFactory {
 
     /**
      * Builds a {@link ProviderConfig} by copying every field from a resolved
-     * {@link AiGenerationConfig} (an {@link net.ladenthin.srcmorph.config.AiModelDefinition} looked up by
-     * key). Both list-valued getters already normalise a {@code null} to an empty list in their own
-     * setters, so this method forwards them as-is; {@link ProviderConfig}'s constructor keeps its
-     * own null guard for callers that build one directly.
+     * {@link AiModelDefinition} (an {@link net.ladenthin.srcmorph.config.AiModelDefinition} looked up by
+     * key). An unset list of the definition is an empty one here: no stop strings, the binding's own
+     * DRY sequence breakers.
      *
      * @param config      the resolved AI model generation config
      * @return the fully populated llama.cpp configuration
      */
-    public static ProviderConfig fromGenerationConfig(final AiGenerationConfig config) {
+    public static ProviderConfig fromGenerationConfig(final AiModelDefinition config) {
+        final @Nullable List<String> breakers = config.getDrySequenceBreakers();
+        final @Nullable List<String> stopStrings = config.getStopStrings();
         // A remote model (openai-compatible) needs no model file, so its definition may name none.
         return ProviderConfig.builder()
                 .modelPath(config.getModelPath())
@@ -75,8 +79,8 @@ public final class ProviderConfigFactory {
                 .dryBase(config.getDryBase())
                 .dryAllowedLength(config.getDryAllowedLength())
                 .dryPenaltyLastN(config.getDryPenaltyLastN())
-                .drySequenceBreakers(config.getDrySequenceBreakers())
-                .stopStrings(config.getStopStrings())
+                .drySequenceBreakers(breakers != null ? breakers : Collections.<String>emptyList())
+                .stopStrings(stopStrings != null ? stopStrings : Collections.<String>emptyList())
                 .build();
     }
 }

@@ -9,7 +9,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
@@ -19,8 +19,8 @@ public class AiHeaderHashesTest {
 
     private static final AiChecksumSupport CHECKSUMS = new AiChecksumSupport();
 
-    private static AiGenerationConfig model(final String remoteModel, final String modelPath) {
-        final AiGenerationConfig config = new AiGenerationConfig();
+    private static AiModelDefinition model(final String remoteModel, final String modelPath) {
+        final AiModelDefinition config = new AiModelDefinition();
         config.setRemoteModel(remoteModel);
         config.setModelPath(modelPath);
         return config;
@@ -96,7 +96,7 @@ public class AiHeaderHashesTest {
 
     @Test
     public void model_withoutAModelPath_hashesAnEmptyFileName() {
-        final AiGenerationConfig remote = model("gpt-6-luna", null);
+        final AiModelDefinition remote = model("gpt-6-luna", null);
 
         assertThat(AiHeaderHashes.model("luna", remote), is(CHECKSUMS.calculateCrc32Hex("luna\u0000gpt-6-luna\u0000")));
     }

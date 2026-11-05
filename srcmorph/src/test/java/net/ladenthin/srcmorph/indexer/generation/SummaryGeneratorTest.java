@@ -148,7 +148,7 @@ public class SummaryGeneratorTest {
     @Test
     public void generate_providerReturnsEmpty_warningContainsContextFile() throws Exception {
         // arrange
-        final Path contextFile = tempFile("AiGenerationConfig", ".java");
+        final Path contextFile = tempFile("AiModelDefinition", ".java");
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final SummaryGenerator support = new SummaryGenerator(
@@ -161,7 +161,7 @@ public class SummaryGeneratorTest {
                 CommonTestFixtures.createFileFieldGeneration(),
                 contextFile,
                 "file",
-                "public class AiGenerationConfig {}");
+                "public class AiModelDefinition {}");
 
         // assert
         assertThat(getCapturedWarnings().size(), is(equalTo(1)));

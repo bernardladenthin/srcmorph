@@ -460,7 +460,7 @@ part of the text the model and the fact counters see.
 
 Every model knob lives inside its entry of `aiDefinitions` (referenced by `aiDefinitionKey`). Only `key` and `modelPath` are required (`modelPath` not for an `openai-compatible`
 model); everything else has a default. The defaults below are the shipped values
-(`AiGenerationConfig.DEFAULT_*`).
+(`AiModelDefinition.DEFAULT_*`).
 
 | Key | Default | Description |
 |---|---|---|

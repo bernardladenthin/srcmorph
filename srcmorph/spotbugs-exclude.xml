@@ -84,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
         IMC_IMMATURE_CLASS_NO_EQUALS on the AiModelDefinitionSupport service.
 
         AiModelDefinitionSupport is a service/lookup class: it owns a
-        Map<String, AiGenerationConfig> built once from the @Parameter
+        Map<String, AiModelDefinition> built once from the @Parameter
         definitions list, and exposes a get(key) lookup. It is constructed
         once per Mojo execution, held inside the Mojo, and discarded. No
         code path stores two AiModelDefinitionSupport instances in a Set/Map
@@ -267,17 +267,14 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the calibration accessors of the configuration beans
-        (AiModelDefinition, AiGenerationConfig). Same rationale as the routing-config EI suppression above:
+        EI_EXPOSE_REP / EI_EXPOSE_REP2 on the calibration accessors of the configuration bean
+        (AiModelDefinition). Same rationale as the routing-config EI suppression above:
         these are mutable JavaBeans the plugin framework populates via reflection; the AiCalibration the
         getter returns / the setter stores IS the configuration, read once during the run and never shared
         across threads. A defensive copy would deep-clone an immutable-after-injection value for no gain.
     -->
     <Match>
-        <Or>
-            <Class name="net.ladenthin.srcmorph.config.AiModelDefinition"/>
-            <Class name="net.ladenthin.srcmorph.config.AiGenerationConfig"/>
-        </Or>
+        <Class name="net.ladenthin.srcmorph.config.AiModelDefinition"/>
         <Or>
             <Method name="getCalibration"/>
             <Method name="setCalibration"/>

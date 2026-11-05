@@ -5,7 +5,7 @@ package net.ladenthin.srcmorph.indexer;
 
 import java.util.List;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiSourceLines;
@@ -65,7 +65,7 @@ public final class AiHeaderHashes {
      * @param config the definition's resolved configuration
      * @return the hash
      */
-    public static String model(final String key, final AiGenerationConfig config) {
+    public static String model(final String key, final AiModelDefinition config) {
         return CHECKSUMS.calculateCrc32Hex(
                 key + SEPARATOR + config.getRemoteModel() + SEPARATOR + fileName(config.getModelPath()));
     }

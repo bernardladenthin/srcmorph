@@ -5,7 +5,7 @@
 // @formatter:on
 package net.ladenthin.srcmorph.indexer.generation;
 
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 
 /**
@@ -19,8 +19,8 @@ import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
  *
  * <p>The budget mirrors the runtime trim check in
  * {@link AiPromptPreparationSupport#preparePrompt}: the rendered prompt (template + source) must fit
- * {@link #maxInputChars(AiGenerationConfig, int)}; since the template ({@code basePromptLength}) is
- * fixed, the source budget is {@link #availableSourceChars(AiGenerationConfig, int)} and a source is
+ * {@link #maxInputChars(AiModelDefinition, int)}; since the template ({@code basePromptLength}) is
+ * fixed, the source budget is {@link #availableSourceChars(AiModelDefinition, int)} and a source is
  * trimmed when its length exceeds it.</p>
  */
 public final class AiInputWindowCalculator {
@@ -39,8 +39,8 @@ public final class AiInputWindowCalculator {
     /**
      * Returns the maximum number of characters of the rendered prompt (template + source) that fit the
      * model's context window before trimming. Mirrors the runtime computation: when
-     * {@link AiGenerationConfig#getCharsPerToken()} is {@code <= 0} the static
-     * {@link AiGenerationConfig#getMaxInputChars()} fallback is used (e.g. mock-based tests); otherwise
+     * {@link AiModelDefinition#getCharsPerToken()} is {@code <= 0} the static
+     * {@link AiModelDefinition#DEFAULT_MAX_INPUT_CHARS} fallback is used (e.g. mock-based tests); otherwise
      * it is {@code (contextSize x charsPerToken)} minus the prompt-template, EOF-marker, reserved-output
      * and safety-margin overhead, rounded down to a {@link #MAX_INPUT_CHARS_ROUNDING} multiple.
      *
@@ -48,29 +48,29 @@ public final class AiInputWindowCalculator {
      * @param basePromptLength the length of the rendered prompt template with an empty source
      * @return the maximum rendered-prompt length in characters (never negative)
      */
-    public static int maxInputChars(final AiGenerationConfig config, final int basePromptLength) {
+    public static int maxInputChars(final AiModelDefinition config, final int basePromptLength) {
         if (config.getCharsPerToken() <= 0) {
-            return config.getMaxInputChars();
+            return AiModelDefinition.DEFAULT_MAX_INPUT_CHARS;
         }
         final int totalChars = config.getContextSize() * config.getCharsPerToken();
         final int overhead = basePromptLength
                 + AiPromptPreparationSupport.EOF_MARKER_LENGTH
                 + config.getMaxOutputTokens() * config.getCharsPerToken()
-                + AiGenerationConfig.DEFAULT_SAFETY_MARGIN_CHARS;
+                + AiModelDefinition.DEFAULT_SAFETY_MARGIN_CHARS;
         final int available = totalChars - overhead;
         return Math.max(0, (available / MAX_INPUT_CHARS_ROUNDING) * MAX_INPUT_CHARS_ROUNDING);
     }
 
     /**
      * Returns how many characters of <em>source</em> fit before trimming: the
-     * {@link #maxInputChars(AiGenerationConfig, int)} budget minus the fixed prompt template
+     * {@link #maxInputChars(AiModelDefinition, int)} budget minus the fixed prompt template
      * ({@code basePromptLength}). Never negative.
      *
      * @param config           the model generation config
      * @param basePromptLength the length of the rendered prompt template with an empty source
      * @return the source-character budget (never negative)
      */
-    public static long availableSourceChars(final AiGenerationConfig config, final int basePromptLength) {
+    public static long availableSourceChars(final AiModelDefinition config, final int basePromptLength) {
         return Math.max(0L, (long) maxInputChars(config, basePromptLength) - basePromptLength);
     }
 
@@ -84,7 +84,7 @@ public final class AiInputWindowCalculator {
      * @return {@code true} when the source would be trimmed (exceeds the window)
      */
     public static boolean exceedsWindow(
-            final AiGenerationConfig config, final int basePromptLength, final long sourceChars) {
+            final AiModelDefinition config, final int basePromptLength, final long sourceChars) {
         return sourceChars > availableSourceChars(config, basePromptLength);
     }
 }

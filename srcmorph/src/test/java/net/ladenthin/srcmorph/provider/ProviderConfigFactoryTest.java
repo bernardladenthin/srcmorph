@@ -10,7 +10,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.Collections;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import org.junit.jupiter.api.Test;
 
 public class ProviderConfigFactoryTest {
@@ -19,8 +19,8 @@ public class ProviderConfigFactoryTest {
      * Every field set to a distinct, distinguishable value so a mutant that swaps two getters (or drops
      * an argument) in {@link ProviderConfigFactory#fromGenerationConfig} is killed.
      */
-    private static AiGenerationConfig fullConfig() {
-        final AiGenerationConfig config = new AiGenerationConfig();
+    private static AiModelDefinition fullConfig() {
+        final AiModelDefinition config = new AiModelDefinition();
         config.setModelPath("model.gguf");
         config.setContextSize(1111);
         config.setMaxOutputTokens(222);
@@ -126,7 +126,7 @@ public class ProviderConfigFactoryTest {
         // factory never sees a null here. It proves the empty list survives the mapping, NOT that the
         // factory itself guards against null -- that guard lives in ProviderConfig's constructor
         // and is pinned by ProviderConfigTest.
-        final AiGenerationConfig config = fullConfig();
+        final AiModelDefinition config = fullConfig();
         config.setStopStrings(null);
         config.setDrySequenceBreakers(null);
 
@@ -139,7 +139,7 @@ public class ProviderConfigFactoryTest {
     @Test
     public void fromGenerationConfig_noModelPath_hasNone() {
         // arrange: a remote (openai-compatible) definition names no model file
-        final AiGenerationConfig config = new AiGenerationConfig();
+        final AiModelDefinition config = new AiModelDefinition();
         config.setModelPath(null);
         config.setProvider("openai-compatible");
 

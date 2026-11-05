@@ -10,7 +10,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import net.ladenthin.srcmorph.config.AiCalibration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import org.junit.jupiter.api.Test;
 
 public class AiRouteEstimatorTest {
@@ -19,7 +19,7 @@ public class AiRouteEstimatorTest {
 
     private final AiGenerationTimeEstimator reference = new AiGenerationTimeEstimator();
 
-    private final AiGenerationConfig uncalibrated = new AiGenerationConfig();
+    private final AiModelDefinition uncalibrated = new AiModelDefinition();
 
     private static AiFieldGenerationConfig rule(final String onOversize, final int maxChunks) {
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
@@ -44,7 +44,7 @@ public class AiRouteEstimatorTest {
         calibration.setPrefillTokensPerSecond(400.0d);
         calibration.setDecodeTokensPerSecond(9.0d);
         calibration.setCharsPerToken(3.5d);
-        final AiGenerationConfig calibrated = new AiGenerationConfig();
+        final AiModelDefinition calibrated = new AiModelDefinition();
         calibrated.setCalibration(calibration);
 
         final long seconds = estimator.estimateSeconds(50_000L, calibrated);
@@ -54,11 +54,11 @@ public class AiRouteEstimatorTest {
     }
 
     // isCalibrated: whether the plan and the log name the model's calibration or GPT-6 Luna as the basis
-    private static AiGenerationConfig calibratedWith(final double prefill, final double decode) {
+    private static AiModelDefinition calibratedWith(final double prefill, final double decode) {
         final AiCalibration calibration = new AiCalibration();
         calibration.setPrefillTokensPerSecond(prefill);
         calibration.setDecodeTokensPerSecond(decode);
-        final AiGenerationConfig config = new AiGenerationConfig();
+        final AiModelDefinition config = new AiModelDefinition();
         config.setCalibration(calibration);
         return config;
     }
@@ -145,9 +145,9 @@ public class AiRouteEstimatorTest {
     /** A model's own characters per token size its part summaries; without one, the estimate's 4 does. */
     @Test
     public void estimateRouteSeconds_mapReduce_theFanInReadsTheModelsCharactersPerToken() {
-        final AiGenerationConfig dense = new AiGenerationConfig();
+        final AiModelDefinition dense = new AiModelDefinition();
         dense.setCharsPerToken(2);
-        final AiGenerationConfig unset = new AiGenerationConfig();
+        final AiModelDefinition unset = new AiModelDefinition();
         unset.setCharsPerToken(0);
 
         // 3 chunks; at 2 characters a part summary is 1 964 characters, 4 fit the 8 000: one reduce call
@@ -203,7 +203,7 @@ public class AiRouteEstimatorTest {
         // arrange: a map-reduce of a source ten windows long
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
         rule.setOnOversize("mapReduce");
-        final AiGenerationConfig model = new AiGenerationConfig();
+        final AiModelDefinition model = new AiModelDefinition();
 
         // act
         final long sameAsTheRule = estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000, 1_000);

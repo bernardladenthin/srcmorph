@@ -731,9 +731,8 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.config.AiFieldGenerationConfig</param>
                         <param>net.ladenthin.srcmorph.routing.AiFieldGenerationSelector</param>
                         <param>net.ladenthin.srcmorph.routing.AiFileContext</param>
-                        <param>net.ladenthin.srcmorph.config.AiGenerationConfig</param>
-                        <param>net.ladenthin.srcmorph.config.AiRangeCondition</param>
                         <param>net.ladenthin.srcmorph.config.AiModelDefinition</param>
+                        <param>net.ladenthin.srcmorph.config.AiRangeCondition</param>
                         <param>net.ladenthin.srcmorph.config.AiModelDefinitionSupport</param>
                         <param>net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.AiInputWindowCalculator</param>

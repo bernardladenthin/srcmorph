@@ -6,7 +6,6 @@ package net.ladenthin.srcmorph;
 import java.util.Arrays;
 import java.util.List;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiPromptDefinition;
@@ -120,7 +119,7 @@ public class CommonTestFixtures {
      * Creates the standard default {@link AiModelDefinition} list for tests.
      *
      * <p>Provides a single definition keyed {@link #AI_DEFINITION_KEY_DEFAULT} that uses
-     * all {@link AiGenerationConfig} default values. Tests that need custom values
+     * all {@link AiModelDefinition} default values. Tests that need custom values
      * (e.g. different {@code temperature}) should build their own list.</p>
      *
      * @return list with one default model definition

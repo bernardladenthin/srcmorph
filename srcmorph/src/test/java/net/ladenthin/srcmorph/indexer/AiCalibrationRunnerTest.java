@@ -7,7 +7,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
@@ -22,8 +22,8 @@ public class AiCalibrationRunnerTest {
         return new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions()));
     }
 
-    private static AiGenerationConfig config() {
-        final AiGenerationConfig config = new AiGenerationConfig();
+    private static AiModelDefinition config() {
+        final AiModelDefinition config = new AiModelDefinition();
         config.setContextSize(2048);
         config.setCharsPerToken(4);
         config.setMaxOutputTokens(64);
@@ -124,7 +124,7 @@ public class AiCalibrationRunnerTest {
     @Test
     public void measure_zeroCharsPerToken_fallsBackToTheBuiltInRatio() throws Exception {
         // arrange
-        final AiGenerationConfig zeroRatio = config();
+        final AiModelDefinition zeroRatio = config();
         zeroRatio.setCharsPerToken(0);
         final AiGenerationProvider zeroRateProvider = new AiGenerationProvider() {
             @Override
@@ -225,7 +225,7 @@ public class AiCalibrationRunnerTest {
     @Test
     public void measure_windowTooSmallForASizeDifferential_stillYieldsAFiniteCharsPerToken() throws Exception {
         // arrange -- a one-token context leaves no room, so mid and near both clamp to the minimum
-        final AiGenerationConfig tinyWindow = config();
+        final AiModelDefinition tinyWindow = config();
         tinyWindow.setContextSize(1);
 
         // act

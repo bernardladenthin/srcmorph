@@ -75,6 +75,10 @@ The entries below hold the details; what a 1.4.0 user changes:
   `AiIndexPlan.Entry` is `AiIndexPlan.Route`, `RunRecord.Entry` is `RunRecord.FileRecord`, and
   `SourceFileIndexer.recordedHashes` returns a `RecordedHashes` (`promptHash()`, `factsHash()`) instead
   of a `Map.Entry`.
+  `AiGenerationConfig` is gone: `AiModelDefinitionSupport.getConfig` returns a copy of the
+  `AiModelDefinition` with its model path resolved, `ProviderConfigFactory` builds a `ProviderConfig`
+  from it, and the `DEFAULT_*` constants are `AiModelDefinition`'s (`maxInputChars` was never
+  configurable: `DEFAULT_MAX_INPUT_CHARS` is the fallback without `charsPerToken`).
 
 ### Added
 

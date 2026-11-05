@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiCondition;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.AiRegenerateOn;
@@ -309,7 +309,7 @@ public final class SourceFileIndexer {
             } else if (rule.isSkip()) {
                 plan.addSkipped(file);
             } else if (modelDefinitionSupport != null && promptPreparationSupport != null) {
-                final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
+                final AiModelDefinition modelConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
                 final Path shown = baseDirectory.relativize(file);
                 final int basePromptLength = promptPreparationSupport.basePromptLength(rule.requirePromptKey(), shown);
                 final long availableSourceChars =

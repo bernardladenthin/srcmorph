@@ -12,7 +12,7 @@ import java.util.Locale;
 import java.util.Objects;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.RemoteModel;
 import org.jspecify.annotations.Nullable;
@@ -168,7 +168,7 @@ public final class ModelListReport {
         appendField(out, "contextSize", Integer.toString(contextSize(listing.contextSize(), model.contextLength())));
         appendField(out, "maxOutputTokens", Integer.toString(listing.maxOutputTokens()));
         appendField(out, "temperature", Float.toString(listing.temperature()));
-        if (!AiGenerationConfig.DEFAULT_REASONING_EFFORT.equals(listing.reasoningEffort())) {
+        if (!AiModelDefinition.DEFAULT_REASONING_EFFORT.equals(listing.reasoningEffort())) {
             appendField(out, "reasoningEffort", quote(listing.reasoningEffort()));
         }
     }
@@ -222,7 +222,7 @@ public final class ModelListReport {
 
         private Listing(
                 final String key,
-                final AiGenerationConfig pattern,
+                final AiModelDefinition pattern,
                 final int listed,
                 final Collection<RemoteModel> models) {
             this.key = Objects.requireNonNull(key, "key");
@@ -249,7 +249,7 @@ public final class ModelListReport {
          */
         static Listing of(
                 final String key,
-                final AiGenerationConfig pattern,
+                final AiModelDefinition pattern,
                 final int listed,
                 final Collection<RemoteModel> models) {
             return new Listing(key, pattern, listed, models);

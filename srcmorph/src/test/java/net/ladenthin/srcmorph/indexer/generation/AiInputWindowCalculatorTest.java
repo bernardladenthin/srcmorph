@@ -6,15 +6,14 @@ package net.ladenthin.srcmorph.indexer.generation;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import org.junit.jupiter.api.Test;
 
 public class AiInputWindowCalculatorTest {
 
-    private static AiGenerationConfig config(
-            final int contextSize, final int charsPerToken, final int maxOutputTokens) {
-        final AiGenerationConfig config = new AiGenerationConfig();
+    private static AiModelDefinition config(final int contextSize, final int charsPerToken, final int maxOutputTokens) {
+        final AiModelDefinition config = new AiModelDefinition();
         config.setContextSize(contextSize);
         config.setCharsPerToken(charsPerToken);
         config.setMaxOutputTokens(maxOutputTokens);
@@ -30,17 +29,16 @@ public class AiInputWindowCalculatorTest {
 
     @Test
     public void maxInputChars_charsPerTokenZero_usesStaticFallback() {
-        final AiGenerationConfig config = config(2048, 0, 128);
-        config.setMaxInputChars(12345);
-        // charsPerToken <= 0 -> the static maxInputChars fallback is returned verbatim.
-        assertThat(AiInputWindowCalculator.maxInputChars(config, 999), is(12345));
+        final AiModelDefinition config = config(2048, 0, 128);
+        // charsPerToken <= 0 -> the static fallback is returned verbatim.
+        assertThat(AiInputWindowCalculator.maxInputChars(config, 999), is(AiModelDefinition.DEFAULT_MAX_INPUT_CHARS));
     }
 
     @Test
     public void maxInputChars_computesFromContextWindow() {
         // total = 1000 * 4 = 4000; overhead = base 165 + EOF 35 + output 100*4=400 + safety 500 = 1100;
         // available = 2900; rounded down to a 100-multiple = 2900.
-        final AiGenerationConfig config = config(1000, 4, 100);
+        final AiModelDefinition config = config(1000, 4, 100);
         assertThat(AiInputWindowCalculator.maxInputChars(config, 165), is(2900));
     }
 
@@ -50,35 +48,35 @@ public class AiInputWindowCalculatorTest {
         // available = 2960 (NOT a 100-multiple) -> rounded down to 2900. The non-multiple value makes the
         // rounding observable, and 2960 sits so that dropping/flipping the 35-char EOF term (a +-70 shift)
         // crosses the 100-boundary to 3000 -> any such mutation changes the result and is killed.
-        final AiGenerationConfig config = config(1000, 4, 100);
+        final AiModelDefinition config = config(1000, 4, 100);
         assertThat(AiInputWindowCalculator.maxInputChars(config, 105), is(2900));
     }
 
     @Test
     public void maxInputChars_neverNegative_whenOverheadExceedsWindow() {
         // Tiny context: overhead dwarfs the window, so the budget clamps to 0 (not negative).
-        final AiGenerationConfig config = config(10, 4, 100);
+        final AiModelDefinition config = config(10, 4, 100);
         assertThat(AiInputWindowCalculator.maxInputChars(config, 165), is(0));
     }
 
     @Test
     public void availableSourceChars_isBudgetMinusBasePrompt() {
         // maxInputChars 2900 - basePromptLength 165 = 2735.
-        final AiGenerationConfig config = config(1000, 4, 100);
+        final AiModelDefinition config = config(1000, 4, 100);
         assertThat(AiInputWindowCalculator.availableSourceChars(config, 165), is(2735L));
     }
 
     @Test
     public void availableSourceChars_neverNegative() {
         // maxInputChars clamps to 0; subtracting basePromptLength still clamps to 0 (not negative).
-        final AiGenerationConfig config = config(10, 4, 100);
+        final AiModelDefinition config = config(10, 4, 100);
         assertThat(AiInputWindowCalculator.availableSourceChars(config, 165), is(0L));
     }
 
     @Test
     public void exceedsWindow_isTrueOnlyAboveTheSourceBudget() {
         // availableSourceChars = 2735 here.
-        final AiGenerationConfig config = config(1000, 4, 100);
+        final AiModelDefinition config = config(1000, 4, 100);
         assertThat(AiInputWindowCalculator.exceedsWindow(config, 165, 2735L), is(false));
         assertThat(AiInputWindowCalculator.exceedsWindow(config, 165, 2736L), is(true));
     }

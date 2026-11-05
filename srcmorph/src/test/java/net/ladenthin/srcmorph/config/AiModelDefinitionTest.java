@@ -5,12 +5,17 @@ package net.ladenthin.srcmorph.config;
 
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 public class AiModelDefinitionTest {
@@ -306,7 +311,7 @@ public class AiModelDefinitionTest {
     @Test
     public void maxRetriesDefaultsAndRoundTrips() {
         final AiModelDefinition c = new AiModelDefinition();
-        assertThat(c.getMaxRetries(), is(AiGenerationConfig.DEFAULT_MAX_RETRIES));
+        assertThat(c.getMaxRetries(), is(AiModelDefinition.DEFAULT_MAX_RETRIES));
         c.setMaxRetries(7);
         assertThat(c.getMaxRetries(), is(7));
     }
@@ -314,7 +319,7 @@ public class AiModelDefinitionTest {
     @Test
     public void requestsPerMinuteDefaultsToNoLimitAndRoundTrips() {
         AiModelDefinition c = new AiModelDefinition();
-        assertThat(c.getRequestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));
+        assertThat(c.getRequestsPerMinute(), is(AiModelDefinition.DEFAULT_REQUESTS_PER_MINUTE));
         c.setRequestsPerMinute(25);
         assertThat(c.getRequestsPerMinute(), is(25));
     }
@@ -489,5 +494,67 @@ public class AiModelDefinitionTest {
         assertThat(c.getThreads(), is(7));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="copy">
+    /** A value of the field's type that differs from every default, so a field the copy loses shows. */
+    private static Object changed(final Field field, final Object current) {
+        final Class<?> type = field.getType();
+        if (type == int.class) {
+            return ((Integer) current) + 7;
+        }
+        if (type == float.class) {
+            return ((Float) current) + 0.5f;
+        }
+        if (type == boolean.class) {
+            return !((Boolean) current);
+        }
+        if (type == Boolean.class) {
+            return Boolean.TRUE;
+        }
+        if (type == String.class) {
+            return field.getName() + "-set";
+        }
+        if (type == List.class) {
+            return new ArrayList<>(Arrays.asList(field.getName()));
+        }
+        if (type == AiCalibration.class) {
+            return new AiCalibration();
+        }
+        throw new AssertionError("no changed value for " + field);
+    }
+
+    @Test
+    public void copy_everyFieldChanged_copiesEveryField() throws IllegalAccessException {
+        // arrange
+        final AiModelDefinition definition = new AiModelDefinition();
+        for (final Field field : AiModelDefinition.class.getDeclaredFields()) {
+            if (!Modifier.isStatic(field.getModifiers())) {
+                field.setAccessible(true);
+                field.set(definition, changed(field, field.get(definition)));
+            }
+        }
+
+        // act
+        final AiModelDefinition copy = definition.copy();
+
+        // assert
+        assertThat(copy, is(not(sameInstance(definition))));
+        assertThat(copy.toString(), is(definition.toString()));
+    }
+
+    @Test
+    public void copy_lists_areNotShared() {
+        // arrange
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setStopStrings(Arrays.asList("<end>"));
+
+        // act
+        final AiModelDefinition copy = definition.copy();
+        definition.setStopStrings(Arrays.asList("<other>"));
+
+        // assert
+        assertThat(copy.getStopStrings(), is(Arrays.asList("<end>")));
+    }
     // </editor-fold>
 }

@@ -166,8 +166,8 @@ Package root: `net.ladenthin.srcmorph`.
   `Condition` instead of `Thread.sleep`), `ProviderConfig` (one model's configuration for whichever
   provider runs it, built through `ProviderConfig.builder().modelPath(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching
-  `AiGenerationConfig.DEFAULT_*`) + `ProviderConfigFactory` (the pure 37-field
-  mapping from a resolved `AiGenerationConfig` to the native binding's parameter objects — extracted
+  `AiModelDefinition.DEFAULT_*`) + `ProviderConfigFactory` (the pure 37-field
+  mapping from a resolved `AiModelDefinition` to the native binding's parameter objects — extracted
   from the old mojo so it is unit- and PIT-testable without a Maven runtime), `AiCompletionParser`.
 - **`support/`** — foundation helpers with no dependency on anything above them: `AiChecksumSupport`,
   `AiTimeSupport`, `AiPathSupport`, `AiSourceExcludeFilter`, `ReadBudget` (the time limit of a fact

@@ -11,7 +11,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
@@ -107,7 +106,7 @@ public final class ListModelsEngine {
         final Set<String> servers = new HashSet<>(definitions.size());
         for (final AiModelDefinition definition : definitions) {
             final String key = definition.requireKey();
-            final AiGenerationConfig pattern = modelDefinitionSupport.getConfig(key);
+            final AiModelDefinition pattern = modelDefinitionSupport.getConfig(key);
             final String provider = AiGenerationProviderFactory.effectiveProvider(
                     config.getGenerationProvider(), pattern.getProvider());
             if (!AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)

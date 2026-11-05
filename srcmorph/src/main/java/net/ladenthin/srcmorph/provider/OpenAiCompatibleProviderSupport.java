@@ -556,7 +556,7 @@ final class OpenAiCompatibleProviderSupport {
      * (a local {@code llama-server} or {@code NativeServer}); anything else fails before a byte is
      * sent. Without that, a model that sets a plain-{@code http} {@code baseUrl} would send the key its
      * {@code apiKeyEnv} names readable to every hop. Which host may receive a key at all is the
-     * model's own decision: no {@code apiKeyEnv}, no key ({@code AiGenerationConfig.DEFAULT_API_KEY_ENV}
+     * model's own decision: no {@code apiKeyEnv}, no key ({@code AiModelDefinition.DEFAULT_API_KEY_ENV}
      * is empty).
      *
      * @param endpoint the URL the request goes to (from {@link #endpoint()})

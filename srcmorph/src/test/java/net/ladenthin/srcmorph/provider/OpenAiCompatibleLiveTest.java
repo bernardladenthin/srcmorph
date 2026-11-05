@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 import net.ladenthin.llama.server.NativeServer;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
@@ -122,7 +122,7 @@ public class OpenAiCompatibleLiveTest {
         Assumptions.assumeTrue(
                 key != null && !key.trim().isEmpty(),
                 OPENROUTER_KEY_ENV + " is not set (a pull request from a fork or from Dependabot gets no secret)");
-        describeGreeter(AiGenerationConfig.DEFAULT_BASE_URL, model, OPENROUTER_KEY_ENV);
+        describeGreeter(AiModelDefinition.DEFAULT_BASE_URL, model, OPENROUTER_KEY_ENV);
     }
 
     /**

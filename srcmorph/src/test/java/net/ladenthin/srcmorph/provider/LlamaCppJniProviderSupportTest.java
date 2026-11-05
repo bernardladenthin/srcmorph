@@ -221,7 +221,7 @@ public class LlamaCppJniProviderSupportTest {
     }
 
     /**
-     * The seed sentinel is {@link net.ladenthin.srcmorph.config.AiGenerationConfig#DEFAULT_SEED} (-1),
+     * The seed sentinel is {@link net.ladenthin.srcmorph.config.AiModelDefinition#DEFAULT_SEED} (-1),
      * meaning "random per request". Forwarding it would pin every run to seed -1 and silently destroy
      * the randomness upstream provides, so an unconfigured run must send nothing at all.
      */

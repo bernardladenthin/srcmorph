@@ -6,7 +6,7 @@ package net.ladenthin.srcmorph.indexer.generation;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiCalibration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 
 /**
@@ -32,7 +32,7 @@ public final class AiRouteEstimator {
      * @param modelConfig the routed model's config
      * @return {@code true} when the model's calibration is used
      */
-    public static boolean isCalibrated(final AiGenerationConfig modelConfig) {
+    public static boolean isCalibrated(final AiModelDefinition modelConfig) {
         final AiCalibration calibration = modelConfig.getCalibration();
         return calibration != null
                 && calibration.getPrefillTokensPerSecond() > 0.0d
@@ -48,7 +48,7 @@ public final class AiRouteEstimator {
      * @param modelConfig the routed model's config (may carry a calibration)
      * @return the estimated seconds
      */
-    public long estimateSeconds(final long chars, final AiGenerationConfig modelConfig) {
+    public long estimateSeconds(final long chars, final AiModelDefinition modelConfig) {
         final int cappedChars = (int) Math.min(chars, Integer.MAX_VALUE);
         final AiCalibration calibration = modelConfig.getCalibration();
         if (calibration == null) {
@@ -80,7 +80,7 @@ public final class AiRouteEstimator {
      */
     public long estimateRouteSeconds(
             final AiFieldGenerationConfig rule,
-            final AiGenerationConfig modelConfig,
+            final AiModelDefinition modelConfig,
             final long fileSizeBytes,
             final long sourceChars,
             final long availableSourceChars,
@@ -96,7 +96,7 @@ public final class AiRouteEstimator {
     }
 
     /**
-     * Estimates a route as {@link #estimateRouteSeconds(AiFieldGenerationConfig, AiGenerationConfig, long, long,
+     * Estimates a route as {@link #estimateRouteSeconds(AiFieldGenerationConfig, AiModelDefinition, long, long,
      * long, int)} does, with the chunks sized as the run sizes them: next to {@code chunkPromptLength}, the
      * longer of the rule's map and reduce prompts with a chunk's label reserve.
      *
@@ -111,7 +111,7 @@ public final class AiRouteEstimator {
      */
     public long estimateRouteSeconds(
             final AiFieldGenerationConfig rule,
-            final AiGenerationConfig modelConfig,
+            final AiModelDefinition modelConfig,
             final long fileSizeBytes,
             final long sourceChars,
             final long availableSourceChars,

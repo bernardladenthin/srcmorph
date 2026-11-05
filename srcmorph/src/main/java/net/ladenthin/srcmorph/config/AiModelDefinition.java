@@ -19,68 +19,500 @@ import org.jspecify.annotations.Nullable;
  * {@link AiFieldGenerationConfig#aiDefinitionKey}. This allows a single model configuration
  * to be defined once and reused across multiple field-generation entries and goals.</p>
  *
- * <p>All numeric fields default to the same values as {@link AiGenerationConfig} so that
+ * <p>All numeric fields default to the same values as {@link AiModelDefinition} so that
  * a minimal definition only needs to supply a {@link #key} and a {@link #modelPath}.</p>
  *
  * <p><strong>Note:</strong> This class must remain a mutable JavaBean with setters because
  * the configuration file is bound through them.</p>
  *
  * @see AiModelDefinitionSupport
- * @see AiGenerationConfig
+ * @see AiModelDefinition
  */
 @ToString
 public class AiModelDefinition {
 
-    /** Creates a new {@link AiModelDefinition} with the defaults of {@link AiGenerationConfig} applied. */
+    /** Default context window size (in tokens) used when no explicit context size is configured. */
+    public static final int DEFAULT_CONTEXT_SIZE = 32768;
+
+    /** Default maximum number of output tokens to generate in a single inference call. */
+    public static final int DEFAULT_MAX_OUTPUT_TOKENS = 128;
+
+    /**
+     * Default sampling temperature. Lower values make output more deterministic;
+     * {@code 0.0} is fully greedy.
+     */
+    public static final float DEFAULT_TEMPERATURE = 0.15f;
+
+    /**
+     * Default number of CPU threads used for llama.cpp inference: 4, or fewer when the machine has
+     * fewer cores.
+     * <p>Never more than the cores: ggml synchronises its threads on spinning barriers, so more threads
+     * than cores is not a little slower but orders of magnitude slower. Each barrier waits for a thread
+     * the OS has descheduled. Measured on four visible cores, the same real-model test class took
+     * 644.9 s with 8 threads and 7.8 s with 4. The former default of 8 hit that on every four-core
+     * machine, the GitHub runner included. Four is enough for the models srcmorph runs; set
+     * {@code threads} higher on a machine with more cores after measuring it ({@code Calibrate}).</p>
+     */
+    public static final int DEFAULT_THREADS = Math.min(4, Runtime.getRuntime().availableProcessors());
+
+    /**
+     * The maximum number of characters of source text fed into the prompt when {@link #charsPerToken}
+     * is zero (e.g. in mock-based tests). When {@link #charsPerToken} is greater than zero, the limit is
+     * calculated from the context size, the output tokens, the prompt overhead and the safety margin.
+     */
+    public static final int DEFAULT_MAX_INPUT_CHARS = 120000;
+
+    /**
+     * Default number of characters per token used in the automatic input limit
+     * calculation. A value of {@code 4} is a conventional conservative estimate that works
+     * well across most Latin-script source code.
+     *
+     * <p>Set to {@code 0} to disable automatic calculation and fall back to
+     * {@link #DEFAULT_MAX_INPUT_CHARS}.</p>
+     */
+    public static final int DEFAULT_CHARS_PER_TOKEN = 4;
+
+    /**
+     * Default safety margin in characters subtracted from the total available budget
+     * during automatic input limit calculation. Provides headroom for
+     * tokenisation overhead and minor prompt expansions.
+     */
+    public static final int DEFAULT_SAFETY_MARGIN_CHARS = 500;
+
+    /**
+     * Default setting for whether to emit a warning when the prompt source text is trimmed
+     * to fit within {@link #DEFAULT_MAX_INPUT_CHARS}.
+     */
+    public static final boolean DEFAULT_WARN_ON_TRIM = true;
+
+    /**
+     * Default nucleus-sampling probability threshold.
+     *
+     * <p>Note what this value is <em>not</em>: it does not match llama.cpp, whose own default is
+     * {@code 0.95} ({@code common.h}), and it is forwarded on every request rather than only when
+     * configured — so srcmorph actively narrows the nucleus relative to a plain llama.cpp run. That is
+     * a deliberate srcmorph default for summarisation, not a pass-through. (An earlier version of this
+     * javadoc claimed it matched the library default and preserved prior behaviour; both were wrong.)</p>
+     */
+    public static final float DEFAULT_TOP_P = 0.9f;
+
+    /**
+     * Default top-k sampling limit.
+     * Matches the {@code net.ladenthin:llama} {@code InferenceParameters} library default so
+     * that models which do not declare an explicit value retain the same output distribution
+     * as before this field was introduced.
+     */
+    public static final int DEFAULT_TOP_K = 40;
+
+    /**
+     * Default min-p sampling threshold. A value of {@code 0.0} disables min-p truncation.
+     *
+     * <p>It is forwarded unconditionally, so this <em>overrides</em> llama.cpp's own default of
+     * {@code 0.05} ({@code common.h}) rather than preserving it — the opposite of what an earlier
+     * version of this javadoc claimed. Disabling min-p by default is intentional here (top-p and top-k
+     * do the truncation), but it is a choice, not a no-op.</p>
+     *
+     * <p>min-p keeps only tokens whose
+     * probability is at least this fraction of the top token's probability; it is the recommended
+     * primary truncation for gpt-oss at a non-greedy temperature (scales the cut-off to the model's
+     * confidence — see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} D1).
+     */
+    public static final float DEFAULT_MIN_P = 0.0f;
+
+    /**
+     * Default top-n-sigma sampling threshold. A value of {@code -1.0} disables it and preserves
+     * existing behaviour. top-n-sigma keeps tokens within n standard deviations of the max logit;
+     * unlike top-p/min-p its candidate set is temperature-invariant, which can make structured
+     * extraction more reproducible (see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} E6).
+     */
+    public static final float DEFAULT_TOP_N_SIGMA = -1.0f;
+
+    /**
+     * Default repetition penalty. A value of {@code 1.0} means no penalty and preserves
+     * existing behaviour for models that do not specify it.
+     */
+    public static final float DEFAULT_REPEAT_PENALTY = 1.0f;
+
+    /**
+     * Default setting for the model's chat-template thinking mode: {@code null}, meaning
+     * <em>unset</em>.
+     *
+     * <p>The value is a tri-state on purpose. While it was a plain {@code boolean} defaulting to
+     * {@code true}, every run put {@code enable_thinking} into
+     * {@link net.ladenthin.llama.parameters.ModelParameters#setChatTemplateKwargs} &#x2014; including
+     * runs whose chat template has never heard of the kwarg, which llama.cpp's Jinja layer has been
+     * moving from "silently ignored" toward "warned about". There was no way to switch that noise
+     * off except by setting the knob to {@code false}, which means something else entirely.</p>
+     *
+     * <p>"Send it only when it differs from the template's default" is not implementable here:
+     * srcmorph would have to parse and evaluate the template to know that default, which is exactly
+     * the work it delegates to the binding. So the rule is "send it only when the user actually set
+     * it": {@code null} omits the kwarg and the model's own chat-template default applies, while
+     * {@code true} and {@code false} are both forwarded verbatim. Set {@code false} for Gemma 4
+     * definitions to keep {@code <|channel>thought} tokens out of stored output.</p>
+     */
+    public static final @Nullable Boolean DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING = null;
+
+    /**
+     * Default for whether llama.cpp prompt caching ({@code cache_prompt}) is enabled.
+     *
+     * <p>When {@code true}, the provider keeps the shared prompt-template prefix in the KV cache and
+     * reuses it across files — only the differing source text is re-prefilled per file. This is a
+     * pure speed optimisation: prefix reuse is exact, so the generated output is unchanged.</p>
+     */
+    public static final boolean DEFAULT_CACHE_PROMPT = true;
+
+    /**
+     * Default gpt-oss reasoning-effort level ({@code "low"} / {@code "medium"} / {@code "high"}).
+     *
+     * <p>{@code "low"} keeps the discarded chain-of-thought minimal for the short, structured
+     * summaries this plugin produces (the gpt-oss model default would be {@code "medium"}). It is
+     * passed as the {@code reasoning_effort} chat-template kwarg; most other chat templates ignore
+     * it. An empty value omits the kwarg entirely so the model's own template default applies. The
+     * local provider sends thinking off as llama.cpp's server does, {@code enable_thinking}
+     * {@code false} and no {@code reasoning_effort}: {@code "none"} sends that instead of the effort,
+     * and with {@code chatTemplateEnableThinking} {@code false} the effort is not sent.</p>
+     */
+    public static final String DEFAULT_REASONING_EFFORT = "low";
+
+    /**
+     * Default reasoning/think-token budget ({@code thinking_budget_tokens} / {@code --reasoning-budget}).
+     * {@code -1} = unrestricted (llama.cpp default). A value {@code >= 0} caps the harmony analysis
+     * (reasoning) tokens so a runaway chain-of-thought cannot starve the final answer of output budget;
+     * see {@code docs/ai-index-benchmark/gpt-oss-tuning.md} E2.
+     */
+    public static final int DEFAULT_REASONING_BUDGET_TOKENS = -1;
+
+    /**
+     * Default for whether the full-size sliding-window-attention (SWA) KV cache is kept
+     * ({@code --swa-full}). {@code true} = keep the full SWA KV so the shared prompt prefix is reusable
+     * across files (the llama.cpp default of window-sized SWA KV uses ~half the RAM but is not reusable
+     * across requests). Adopted as the shipped default (pairs with {@link #DEFAULT_CACHE_REUSE}) because
+     * project indexing is a multi-file batch sharing one prompt prefix, where E4 measured ~21% less
+     * prefill / ~12% less wall time; cost is ~2× SWA-layer KV RAM (acceptable for the typical overnight
+     * full-project run). Set {@code false} for RAM-constrained single-file use.
+     */
+    public static final boolean DEFAULT_SWA_FULL = true;
+
+    /**
+     * Default minimum chunk size (tokens) for cross-request KV prefix reuse ({@code --cache-reuse}).
+     * {@code 256} = the value E4 measured; lets the server reuse a matching prompt prefix from a previous
+     * request instead of re-prefilling it (exact-prefix match, so output is unchanged). Pairs with
+     * {@link #DEFAULT_SWA_FULL}; set {@code 0} to disable (the llama.cpp default).
+     */
+    public static final int DEFAULT_CACHE_REUSE = 256;
+
+    /**
+     * Default number of model layers to offload to the GPU ({@code --gpu-layers}). {@code -1} (default)
+     * means "do not set it" — the binding/native build decides (a CPU build stays on CPU; a GPU build
+     * uses its own default). {@code 0} forces CPU even on a GPU build; a positive value offloads that
+     * many layers (use partial offload when the model does not fit in VRAM). Only effective with a GPU
+     * native (e.g. the {@code cuda13-windows-x86-64} / {@code vulkan-windows-x86-64} classifier).
+     */
+    public static final int DEFAULT_GPU_LAYERS = -1;
+
+    /**
+     * Default RNG seed for generation ({@code seed}). {@code -1} (default) means "do not set it", and
+     * upstream then draws a random seed <em>per request</em>.
+     *
+     * <p>That default is why a re-run is not reproducible: with a non-zero temperature every
+     * generation samples differently, so re-indexing an unchanged file (or any run with
+     * {@code force=true}) produces a different {@code .ai.md} body than the one already committed.
+     * Setting a fixed seed makes the body stable for a given machine and configuration, which is what
+     * turns a re-index into a reviewable diff instead of noise.</p>
+     *
+     * <p><strong>Not bit-reproducibility.</strong> llama.cpp results are not identical across thread
+     * counts, batch sizes or backends, so a fixed seed pins the sampling, not the arithmetic. Change
+     * {@code threads}, the model, the prompt or the native build and the output can still move.</p>
+     */
+    public static final int DEFAULT_SEED = -1;
+
+    /**
+     * Default number of MoE (mixture-of-experts) layers to keep on the CPU ({@code --n-cpu-moe},
+     * {@code -ncmoe}). {@code -1} (default) means "do not set it".
+     *
+     * <p>This is the companion to {@link #DEFAULT_GPU_LAYERS} and usually the better trade for this
+     * tool: {@code --gpu-layers} moves <em>whole layers</em> off the GPU and costs attention speed,
+     * whereas this moves only the expert weights &mdash; the class that dominates a MoE model's size
+     * &mdash; so a substantially larger model fits the same VRAM at a smaller speed cost. {@code 0}
+     * is a valid, meaningful value (keep no expert layer on the CPU). Only effective on a GPU native
+     * build and only for MoE models.</p>
+     */
+    public static final int DEFAULT_CPU_MOE_LAYERS = -1;
+
+    /**
+     * Default number of FFN (feed-forward) layers to keep on the CPU ({@code --n-cpu-ffn},
+     * {@code -ncffn}). {@code -1} (default) means "do not set it". The dense-model counterpart to
+     * {@link #DEFAULT_CPU_MOE_LAYERS}; {@code 0} is valid and meaningful.
+     */
+    public static final int DEFAULT_CPU_FFN_LAYERS = -1;
+
+    /**
+     * Default per-slot unified KV context cap ({@code --kv-unified-per-slot}). {@code -1} (default)
+     * means "do not set it".
+     *
+     * <p>Only the <em>cap</em> half of the upstream flag applies here: it becomes the slot's context
+     * budget. The other half &mdash; sizing the shared KV pool to {@code n_parallel * N} when no
+     * context size is given &mdash; lives in llama.cpp's standalone server, which this provider never
+     * enters, and it cannot trigger anyway because a context size is always set. Must be positive if
+     * set; the binding rejects {@code 0} and negatives.</p>
+     */
+    public static final int DEFAULT_KV_UNIFIED_PER_SLOT = -1;
+
+    /**
+     * Default tensor-read laziness ({@code --tensor-read-lazy}). Empty (default) means "do not set
+     * it"; recognised values are {@code off}, {@code auto} and {@code on}.
+     *
+     * <p>Deferring tensor reads can shorten model load time, which matters here because a run loads
+     * and unloads one model per model group and {@code calibrate} preflights every model in turn.</p>
+     */
+    public static final String DEFAULT_LAZY_MODE = "";
+
+    /**
+     * Default repeat-penalty window ({@code --repeat-last-n}). {@code -1} (default) means "do not set
+     * it" — llama.cpp applies its own window (64 tokens). {@code 0} disables the penalty entirely and is
+     * a meaningful value, so the forwarding guard is {@code >= 0}, not {@code > 0}; the binding rejects
+     * negatives.
+     *
+     * <p>This is the window {@link #DEFAULT_REPEAT_PENALTY} acts on. Configuring a penalty without its
+     * range leaves the strength adjustable but the reach fixed, which is why the two belong together.</p>
+     */
+    public static final int DEFAULT_REPEAT_LAST_N = -1;
+
+    /**
+     * Default KV-cache data type for K ({@code --cache-type-k}). Empty (default) means "do not set it".
+     * Recognised values are the llama.cpp cache types: {@code f32}, {@code f16}, {@code bf16},
+     * {@code q8_0}, {@code q4_0}, {@code q4_1}, {@code iq4_nl}, {@code q5_0}, {@code q5_1}.
+     *
+     * <p>Quantizing the KV cache is the most direct trade of quality for context length: at {@code q8_0}
+     * the cache costs about half of {@code f16}, so a larger {@code contextSize} — or {@code swaFull} —
+     * fits the same VRAM. Whether it pays off is measurable: {@code srcmorph:calibrate} reports the
+     * prompt-cache reuse the extra room buys.</p>
+     */
+    public static final String DEFAULT_CACHE_TYPE_K = "";
+
+    /**
+     * Default KV-cache data type for V ({@code --cache-type-v}). Same values and defaults as
+     * {@link #DEFAULT_CACHE_TYPE_K}.
+     *
+     * <p><b>Quantizing V generally requires Flash Attention</b> — see {@link #DEFAULT_FLASH_ATTN}.
+     * Without it llama.cpp will usually refuse to load, so set the two together.</p>
+     */
+    public static final String DEFAULT_CACHE_TYPE_V = "";
+
+    /**
+     * Default Flash Attention setting ({@code --flash-attn}).
+     *
+     * <p>{@code true} emits {@code --flash-attn on}; {@code false} emits nothing at all, which leaves
+     * llama.cpp's own default in force — and that default is {@code auto}, not off ({@code common.h}:
+     * {@code flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO}). An earlier version of this javadoc said
+     * {@code false} "leaves it off, as llama.cpp does"; both halves were wrong. Enabling it lowers
+     * KV-cache memory and is the precondition for quantizing the V cache
+     * ({@link #DEFAULT_CACHE_TYPE_V}).</p>
+     *
+     * <p>The value matters, and that is why the knob went through a release refusing to be set at all:
+     * {@code --flash-attn} takes a mandatory {@code [on|off|auto]}, and the binding used to offer only a
+     * bare-flag setter, which emitted the key alone and made llama.cpp's parser consume the next argv
+     * token — killing the load while naming a flag the user never set. {@code net.ladenthin:llama}
+     * 6.0.0 added {@code ModelParameters.setFlashAttn(FlashAttn)}, which is what the provider uses.</p>
+     */
+    public static final boolean DEFAULT_FLASH_ATTN = false;
+
+    /**
+     * Default logical batch size ({@code --batch-size}). {@code -1} (default) means "do not set it", so
+     * llama.cpp keeps its own default of {@code 2048} ({@code common.h}). The forwarding guard is
+     * {@code > 0} because a batch size of zero is not a meaningful request — not, as an earlier version
+     * of this javadoc claimed, because {@code 0} means "decide for me" upstream; it does not.
+     *
+     * <p>This is a prefill-throughput knob, and prefill is what dominates an indexing run: every file is
+     * one large prompt with a short answer. {@code srcmorph:calibrate} measures the effect directly.</p>
+     */
+    public static final int DEFAULT_BATCH_SIZE = -1;
+
+    /**
+     * Default physical batch size ({@code --ubatch-size}). Same {@code -1} = "do not set it" convention
+     * and {@code > 0} guard as {@link #DEFAULT_BATCH_SIZE}; it bounds how much of a logical batch is
+     * submitted to the backend at once, so it is the knob that trades prefill speed against peak memory.
+     */
+    public static final int DEFAULT_UBATCH_SIZE = -1;
+
+    /**
+     * Default batch/prompt-processing thread count ({@code --threads-batch}). {@code -1} (default) means
+     * "do not set it" — llama.cpp then reuses {@code threads}. Guard is {@code > 0}.
+     *
+     * <p>Prefill parallelises differently from decode, so the optimum is often not the decode thread
+     * count: on a machine with efficiency cores, more threads help prompt processing while hurting
+     * token generation. This knob is what lets the two be tuned apart.</p>
+     */
+    public static final int DEFAULT_THREADS_BATCH = -1;
+
+    /**
+     * Default primary GPU index ({@code --main-gpu}). {@code -1} (default) means "do not set it" — the
+     * binding/native build decides (llama.cpp's own default is device {@code 0}). Set a non-negative
+     * index to pick a specific device. This matters on machines with more than one GPU visible to the
+     * backend: a Vulkan build enumerates <em>all</em> GPUs (e.g. an integrated GPU as device {@code 0}
+     * and a discrete GPU as device {@code 1}), so the default may select the slower one; a CUDA build
+     * only enumerates NVIDIA devices. Only effective with a GPU native. See also {@link #DEFAULT_DEVICES}.
+     */
+    public static final int DEFAULT_MAIN_GPU = -1;
+
+    /**
+     * Default device selection ({@code --device}). Empty (default) means "do not set it" — the
+     * binding/native build decides. A non-empty value is a comma-separated list of backend device
+     * names to use (e.g. {@code Vulkan1} or {@code CUDA0}); it takes precedence over a single
+     * {@link #DEFAULT_MAIN_GPU} index when finer control across multiple devices is needed. Only
+     * effective with a GPU native.
+     */
+    public static final String DEFAULT_DEVICES = "";
+
+    /**
+     * Default AI provider of a single model definition. Empty (default) means "the run's
+     * {@code generationProvider}"; a non-empty value ({@code llamacpp-jni}, {@code openai-compatible},
+     * {@code mock}) overrides it for this model only, so one run can route some files to a local GGUF
+     * and others to a remote model.
+     */
+    public static final String DEFAULT_PROVIDER = "";
+
+    /**
+     * Default model id the {@code openai-compatible} provider asks the server for (the request's
+     * {@code model} field, e.g. {@code openai/gpt-6-luna} on OpenRouter). Empty (default) sends none,
+     * which a llama.cpp {@code llama-server} or jllama's {@code NativeServer} accept: they serve the
+     * one model they loaded.
+     */
+    public static final String DEFAULT_REMOTE_MODEL = "";
+
+    /**
+     * Default base URL of the {@code openai-compatible} provider: OpenRouter's OpenAI-compatible API.
+     * The provider posts to {@code <baseUrl>/chat/completions}, so a local {@code llama-server} or
+     * {@code NativeServer} is {@code http://127.0.0.1:<port>/v1}.
+     */
+    public static final String DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
+
+    /**
+     * Default name of the environment variable holding the API key of the {@code openai-compatible}
+     * provider, sent as {@code Authorization: Bearer <key>}: empty, so <b>no key is sent unless a
+     * model names its variable</b> (for OpenRouter, {@code OPENROUTER_API_KEY}). A default that named
+     * a variable would hand that key to any {@code baseUrl} a model sets, so a custom endpoint would
+     * receive the OpenRouter key without anyone having decided that. The key itself never appears in
+     * a configuration file; an empty name, or a variable that is unset or empty, sends no key, which a
+     * local server without {@code --api-key} accepts.
+     */
+    public static final String DEFAULT_API_KEY_ENV = "";
+
+    /**
+     * Default of the {@code openai-compatible} provider's {@code stream} switch: {@code false}, one
+     * JSON answer per request. {@code true} asks for the answer as Server-Sent Events
+     * ({@code stream: true} with {@code stream_options.include_usage}) and assembles the events into
+     * the same chat response before it is parsed, so the summary does not change. For a server whose
+     * non-streaming path is unusable: the GitHub Copilot API Gateway VS&nbsp;Code extension adds every
+     * language-model tool registered in VS&nbsp;Code to a non-streaming request and runs the tool calls
+     * the model answers with, while its streaming path sends only the request's own tools (srcmorph
+     * sends none). A streamed answer also keeps the connection busy, so a slow model no longer runs
+     * into the read timeout of one silent request.
+     */
+    public static final boolean DEFAULT_STREAM = false;
+
+    /**
+     * Default of the {@code openai-compatible} provider's {@code requestsPerMinute}: {@code 0}, no
+     * limit. A positive value holds a request back until fewer than that many requests to the same
+     * server started in the last 60 seconds, so a fast model stays under a server's rate limit (the
+     * GitHub Copilot API Gateway answers a request over its {@code rateLimitPerMinute} with
+     * {@code 429}, which srcmorph only retries {@link #DEFAULT_MAX_RETRIES maxRetries} times). Every model
+     * of one server with the same key and the
+     * same limit shares one window, across the phases of one run.
+     */
+    public static final int DEFAULT_REQUESTS_PER_MINUTE = 0;
+
+    /**
+     * Default of the {@code openai-compatible} provider's {@code maxRetries}: {@code 3}. A request that
+     * failed with {@code 408}, {@code 429}, a {@code 5xx} status or a timeout is sent again that many times
+     * at most, after the server's {@code Retry-After} or an exponential backoff with jitter; any other
+     * failure is final at once. {@code 0} sends every request once.
+     */
+    public static final int DEFAULT_MAX_RETRIES = 3;
+
+    /**
+     * Default DRY (Don't Repeat Yourself) sampling multiplier ({@code --dry-multiplier}).
+     * {@code 0.0} = disabled (llama.cpp default). A positive value penalises verbatim n-gram
+     * repetition, which can break runaway repetition loops; the other {@code dry*} knobs only take
+     * effect when this is non-zero. Opt-in safety knob for repetition-prone models/configs.
+     */
+    public static final float DEFAULT_DRY_MULTIPLIER = 0.0f;
+
+    /**
+     * Default DRY base ({@code --dry-base}); the exponential growth base of the repetition penalty.
+     * {@code 1.75} = llama.cpp default. Only takes effect when {@link #DEFAULT_DRY_MULTIPLIER} is non-zero.
+     */
+    public static final float DEFAULT_DRY_BASE = 1.75f;
+
+    /**
+     * Default DRY allowed length ({@code --dry-allowed-length}); the longest n-gram that may repeat
+     * without penalty. {@code 2} = llama.cpp default. Only takes effect when DRY is enabled.
+     */
+    public static final int DEFAULT_DRY_ALLOWED_LENGTH = 2;
+
+    /**
+     * Default DRY penalty look-back window in tokens ({@code --dry-penalty-last-n}).
+     * {@code -1} = not sent, so llama.cpp picks its own window; {@code 0} = disabled. Only takes effect
+     * when DRY is enabled.
+     *
+     * <p>{@code -1} is a srcmorph sentinel, <b>not</b> a value the binding accepts: llama.cpp b10273
+     * dropped the old "{@code -1} = context size" meaning, and the binding now rejects any negative
+     * window outright. So a negative must never reach {@code withDryPenaltyLastN} &mdash; see the guard
+     * in {@code LlamaCppJniAiGenerationProvider.buildInferenceParameters}.</p>
+     */
+    public static final int DEFAULT_DRY_PENALTY_LAST_N = -1;
+
+    /** Creates a new {@link AiModelDefinition} with the defaults applied. */
     public AiModelDefinition() {
         // no-op
     }
 
     private @Nullable String key;
     private @Nullable String modelPath;
-    private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;
-    private int maxOutputTokens = AiGenerationConfig.DEFAULT_MAX_OUTPUT_TOKENS;
-    private float temperature = AiGenerationConfig.DEFAULT_TEMPERATURE;
-    private int threads = AiGenerationConfig.DEFAULT_THREADS;
-    private int charsPerToken = AiGenerationConfig.DEFAULT_CHARS_PER_TOKEN;
-    private boolean warnOnTrim = AiGenerationConfig.DEFAULT_WARN_ON_TRIM;
-    private float topP = AiGenerationConfig.DEFAULT_TOP_P;
-    private int topK = AiGenerationConfig.DEFAULT_TOP_K;
-    private float minP = AiGenerationConfig.DEFAULT_MIN_P;
-    private float topNSigma = AiGenerationConfig.DEFAULT_TOP_N_SIGMA;
-    private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
-    private @Nullable Boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
-    private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
-    private boolean swaFull = AiGenerationConfig.DEFAULT_SWA_FULL;
-    private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
-    private int gpuLayers = AiGenerationConfig.DEFAULT_GPU_LAYERS;
-    private int seed = AiGenerationConfig.DEFAULT_SEED;
-    private int cpuMoeLayers = AiGenerationConfig.DEFAULT_CPU_MOE_LAYERS;
-    private int cpuFfnLayers = AiGenerationConfig.DEFAULT_CPU_FFN_LAYERS;
-    private int kvUnifiedPerSlot = AiGenerationConfig.DEFAULT_KV_UNIFIED_PER_SLOT;
-    private String lazyMode = AiGenerationConfig.DEFAULT_LAZY_MODE;
-    private int repeatLastN = AiGenerationConfig.DEFAULT_REPEAT_LAST_N;
-    private String cacheTypeK = AiGenerationConfig.DEFAULT_CACHE_TYPE_K;
-    private String cacheTypeV = AiGenerationConfig.DEFAULT_CACHE_TYPE_V;
-    private boolean flashAttn = AiGenerationConfig.DEFAULT_FLASH_ATTN;
-    private int batchSize = AiGenerationConfig.DEFAULT_BATCH_SIZE;
-    private int ubatchSize = AiGenerationConfig.DEFAULT_UBATCH_SIZE;
-    private int threadsBatch = AiGenerationConfig.DEFAULT_THREADS_BATCH;
-    private int mainGpu = AiGenerationConfig.DEFAULT_MAIN_GPU;
-    private String devices = AiGenerationConfig.DEFAULT_DEVICES;
-    private String provider = AiGenerationConfig.DEFAULT_PROVIDER;
-    private String remoteModel = AiGenerationConfig.DEFAULT_REMOTE_MODEL;
-    private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
-    private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
-    private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
-    private int requestsPerMinute = AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE;
-    private int maxRetries = AiGenerationConfig.DEFAULT_MAX_RETRIES;
-    private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
-    private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
-    private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
-    private float dryBase = AiGenerationConfig.DEFAULT_DRY_BASE;
-    private int dryAllowedLength = AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH;
-    private int dryPenaltyLastN = AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N;
+    private int contextSize = DEFAULT_CONTEXT_SIZE;
+    private int maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS;
+    private float temperature = DEFAULT_TEMPERATURE;
+    private int threads = DEFAULT_THREADS;
+    private int charsPerToken = DEFAULT_CHARS_PER_TOKEN;
+    private boolean warnOnTrim = DEFAULT_WARN_ON_TRIM;
+    private float topP = DEFAULT_TOP_P;
+    private int topK = DEFAULT_TOP_K;
+    private float minP = DEFAULT_MIN_P;
+    private float topNSigma = DEFAULT_TOP_N_SIGMA;
+    private float repeatPenalty = DEFAULT_REPEAT_PENALTY;
+    private @Nullable Boolean chatTemplateEnableThinking = DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
+    private boolean cachePrompt = DEFAULT_CACHE_PROMPT;
+    private boolean swaFull = DEFAULT_SWA_FULL;
+    private int cacheReuse = DEFAULT_CACHE_REUSE;
+    private int gpuLayers = DEFAULT_GPU_LAYERS;
+    private int seed = DEFAULT_SEED;
+    private int cpuMoeLayers = DEFAULT_CPU_MOE_LAYERS;
+    private int cpuFfnLayers = DEFAULT_CPU_FFN_LAYERS;
+    private int kvUnifiedPerSlot = DEFAULT_KV_UNIFIED_PER_SLOT;
+    private String lazyMode = DEFAULT_LAZY_MODE;
+    private int repeatLastN = DEFAULT_REPEAT_LAST_N;
+    private String cacheTypeK = DEFAULT_CACHE_TYPE_K;
+    private String cacheTypeV = DEFAULT_CACHE_TYPE_V;
+    private boolean flashAttn = DEFAULT_FLASH_ATTN;
+    private int batchSize = DEFAULT_BATCH_SIZE;
+    private int ubatchSize = DEFAULT_UBATCH_SIZE;
+    private int threadsBatch = DEFAULT_THREADS_BATCH;
+    private int mainGpu = DEFAULT_MAIN_GPU;
+    private String devices = DEFAULT_DEVICES;
+    private String provider = DEFAULT_PROVIDER;
+    private String remoteModel = DEFAULT_REMOTE_MODEL;
+    private String baseUrl = DEFAULT_BASE_URL;
+    private String apiKeyEnv = DEFAULT_API_KEY_ENV;
+    private boolean stream = DEFAULT_STREAM;
+    private int requestsPerMinute = DEFAULT_REQUESTS_PER_MINUTE;
+    private int maxRetries = DEFAULT_MAX_RETRIES;
+    private String reasoningEffort = DEFAULT_REASONING_EFFORT;
+    private int reasoningBudgetTokens = DEFAULT_REASONING_BUDGET_TOKENS;
+    private float dryMultiplier = DEFAULT_DRY_MULTIPLIER;
+    private float dryBase = DEFAULT_DRY_BASE;
+    private int dryAllowedLength = DEFAULT_DRY_ALLOWED_LENGTH;
+    private int dryPenaltyLastN = DEFAULT_DRY_PENALTY_LAST_N;
     private @Nullable List<String> drySequenceBreakers;
     private @Nullable List<String> stopStrings;
 
@@ -141,7 +573,7 @@ public class AiModelDefinition {
     /**
      * Returns the context window size (in tokens).
      *
-     * @return context size, defaults to {@link AiGenerationConfig#DEFAULT_CONTEXT_SIZE}
+     * @return context size, defaults to {@link #DEFAULT_CONTEXT_SIZE}
      */
     public int getContextSize() {
         return contextSize;
@@ -159,7 +591,7 @@ public class AiModelDefinition {
     /**
      * Returns the maximum number of output tokens per inference call.
      *
-     * @return max output tokens, defaults to {@link AiGenerationConfig#DEFAULT_MAX_OUTPUT_TOKENS}
+     * @return max output tokens, defaults to {@link #DEFAULT_MAX_OUTPUT_TOKENS}
      */
     public int getMaxOutputTokens() {
         return maxOutputTokens;
@@ -177,7 +609,7 @@ public class AiModelDefinition {
     /**
      * Returns the base sampling temperature.
      *
-     * @return temperature, defaults to {@link AiGenerationConfig#DEFAULT_TEMPERATURE}
+     * @return temperature, defaults to {@link #DEFAULT_TEMPERATURE}
      */
     public float getTemperature() {
         return temperature;
@@ -195,7 +627,7 @@ public class AiModelDefinition {
     /**
      * Returns the number of CPU threads for inference.
      *
-     * @return thread count, defaults to {@link AiGenerationConfig#DEFAULT_THREADS}
+     * @return thread count, defaults to {@link #DEFAULT_THREADS}
      */
     public int getThreads() {
         return threads;
@@ -217,9 +649,9 @@ public class AiModelDefinition {
      * <p>Together with {@link #contextSize} and {@link #maxOutputTokens}, this value drives
      * the runtime calculation of how many source characters may be fed into the prompt before
      * trimming. Setting this to {@code 0} disables automatic calculation and falls back to
-     * the internal default ({@link AiGenerationConfig#DEFAULT_MAX_INPUT_CHARS}).</p>
+     * the internal default ({@link #DEFAULT_MAX_INPUT_CHARS}).</p>
      *
-     * @return chars-per-token ratio; defaults to {@link AiGenerationConfig#DEFAULT_CHARS_PER_TOKEN}
+     * @return chars-per-token ratio; defaults to {@link #DEFAULT_CHARS_PER_TOKEN}
      */
     public int getCharsPerToken() {
         return charsPerToken;
@@ -238,7 +670,7 @@ public class AiModelDefinition {
     /**
      * Returns whether a warning is emitted when source text is trimmed.
      *
-     * @return {@code true} to emit a warning on trim; defaults to {@link AiGenerationConfig#DEFAULT_WARN_ON_TRIM}
+     * @return {@code true} to emit a warning on trim; defaults to {@link #DEFAULT_WARN_ON_TRIM}
      */
     public boolean isWarnOnTrim() {
         return warnOnTrim;
@@ -256,7 +688,7 @@ public class AiModelDefinition {
     /**
      * Returns the nucleus-sampling probability threshold.
      *
-     * @return top-p value; defaults to {@link AiGenerationConfig#DEFAULT_TOP_P}
+     * @return top-p value; defaults to {@link #DEFAULT_TOP_P}
      */
     public float getTopP() {
         return topP;
@@ -274,7 +706,7 @@ public class AiModelDefinition {
     /**
      * Returns the top-k sampling limit.
      *
-     * @return top-k value; defaults to {@link AiGenerationConfig#DEFAULT_TOP_K}
+     * @return top-k value; defaults to {@link #DEFAULT_TOP_K}
      */
     public int getTopK() {
         return topK;
@@ -292,7 +724,7 @@ public class AiModelDefinition {
     /**
      * Returns the repetition penalty.
      *
-     * @return repeat-penalty value; defaults to {@link AiGenerationConfig#DEFAULT_REPEAT_PENALTY}
+     * @return repeat-penalty value; defaults to {@link #DEFAULT_REPEAT_PENALTY}
      */
     public float getRepeatPenalty() {
         return repeatPenalty;
@@ -310,7 +742,7 @@ public class AiModelDefinition {
     /**
      * Returns the min-p sampling threshold.
      *
-     * @return min-p threshold; defaults to {@link AiGenerationConfig#DEFAULT_MIN_P} ({@code 0.0} = disabled)
+     * @return min-p threshold; defaults to {@link #DEFAULT_MIN_P} ({@code 0.0} = disabled)
      */
     public float getMinP() {
         return minP;
@@ -328,7 +760,7 @@ public class AiModelDefinition {
     /**
      * Returns the top-n-sigma sampling threshold.
      *
-     * @return top-n-sigma threshold; defaults to {@link AiGenerationConfig#DEFAULT_TOP_N_SIGMA} ({@code -1.0} = disabled)
+     * @return top-n-sigma threshold; defaults to {@link #DEFAULT_TOP_N_SIGMA} ({@code -1.0} = disabled)
      */
     public float getTopNSigma() {
         return topNSigma;
@@ -348,7 +780,7 @@ public class AiModelDefinition {
      *
      * @return {@code true} or {@code false} when the knob was set, {@code null} when it is unset
      *         &#x2014; the kwarg is then not sent and the model's own chat-template default applies;
-     *         defaults to {@link AiGenerationConfig#DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING}
+     *         defaults to {@link #DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING}
      */
     public @Nullable Boolean getChatTemplateEnableThinking() {
         return chatTemplateEnableThinking;
@@ -371,7 +803,7 @@ public class AiModelDefinition {
      * Returns whether llama.cpp prompt caching is enabled for this model.
      *
      * @return {@code true} to reuse the shared prompt-prefix KV across files;
-     *         defaults to {@link AiGenerationConfig#DEFAULT_CACHE_PROMPT}
+     *         defaults to {@link #DEFAULT_CACHE_PROMPT}
      */
     public boolean isCachePrompt() {
         return cachePrompt;
@@ -390,7 +822,7 @@ public class AiModelDefinition {
     /**
      * Returns whether the full-size SWA KV cache is kept ({@code --swa-full}) for this model.
      *
-     * @return {@code true} to keep full SWA KV; defaults to {@link AiGenerationConfig#DEFAULT_SWA_FULL}
+     * @return {@code true} to keep full SWA KV; defaults to {@link #DEFAULT_SWA_FULL}
      */
     public boolean isSwaFull() {
         return swaFull;
@@ -408,7 +840,7 @@ public class AiModelDefinition {
     /**
      * Returns the KV prefix-reuse minimum chunk size ({@code --cache-reuse}) for this model.
      *
-     * @return cache-reuse chunk size; defaults to {@link AiGenerationConfig#DEFAULT_CACHE_REUSE} (0 = off)
+     * @return cache-reuse chunk size; defaults to {@link #DEFAULT_CACHE_REUSE} (0 = off)
      */
     public int getCacheReuse() {
         return cacheReuse;
@@ -426,7 +858,7 @@ public class AiModelDefinition {
     /**
      * Returns the GPU layer offload count ({@code --gpu-layers}) for this model.
      *
-     * @return GPU layers; defaults to {@link AiGenerationConfig#DEFAULT_GPU_LAYERS} (-1 = leave default)
+     * @return GPU layers; defaults to {@link #DEFAULT_GPU_LAYERS} (-1 = leave default)
      */
     public int getGpuLayers() {
         return gpuLayers;
@@ -444,7 +876,7 @@ public class AiModelDefinition {
     /**
      * Returns the number of MoE layers kept on the CPU ({@code --n-cpu-moe}) for this model.
      *
-     * @return CPU MoE layers; defaults to {@link AiGenerationConfig#DEFAULT_CPU_MOE_LAYERS} (-1 = leave default)
+     * @return CPU MoE layers; defaults to {@link #DEFAULT_CPU_MOE_LAYERS} (-1 = leave default)
      */
     public int getCpuMoeLayers() {
         return cpuMoeLayers;
@@ -462,7 +894,7 @@ public class AiModelDefinition {
     /**
      * Returns the RNG seed for this model.
      *
-     * @return the seed; defaults to {@link AiGenerationConfig#DEFAULT_SEED} (-1 = random per request)
+     * @return the seed; defaults to {@link #DEFAULT_SEED} (-1 = random per request)
      */
     public int getSeed() {
         return seed;
@@ -480,7 +912,7 @@ public class AiModelDefinition {
     /**
      * Returns the number of FFN layers kept on the CPU ({@code --n-cpu-ffn}) for this model.
      *
-     * @return CPU FFN layers; defaults to {@link AiGenerationConfig#DEFAULT_CPU_FFN_LAYERS} (-1 = leave default)
+     * @return CPU FFN layers; defaults to {@link #DEFAULT_CPU_FFN_LAYERS} (-1 = leave default)
      */
     public int getCpuFfnLayers() {
         return cpuFfnLayers;
@@ -498,7 +930,7 @@ public class AiModelDefinition {
     /**
      * Returns the per-slot unified KV context cap ({@code --kv-unified-per-slot}) for this model.
      *
-     * @return the cap; defaults to {@link AiGenerationConfig#DEFAULT_KV_UNIFIED_PER_SLOT} (-1 = leave default)
+     * @return the cap; defaults to {@link #DEFAULT_KV_UNIFIED_PER_SLOT} (-1 = leave default)
      */
     public int getKvUnifiedPerSlot() {
         return kvUnifiedPerSlot;
@@ -528,13 +960,13 @@ public class AiModelDefinition {
      * @param lazyMode {@code off}, {@code auto}, {@code on}, or empty/{@code null} to leave the default
      */
     public void setLazyMode(final @Nullable String lazyMode) {
-        this.lazyMode = lazyMode != null ? lazyMode : AiGenerationConfig.DEFAULT_LAZY_MODE;
+        this.lazyMode = lazyMode != null ? lazyMode : DEFAULT_LAZY_MODE;
     }
 
     /**
      * Returns the repeat-penalty window ({@code --repeat-last-n}) for this model.
      *
-     * @return the window; defaults to {@link AiGenerationConfig#DEFAULT_REPEAT_LAST_N}
+     * @return the window; defaults to {@link #DEFAULT_REPEAT_LAST_N}
      */
     public int getRepeatLastN() {
         return repeatLastN;
@@ -566,7 +998,7 @@ public class AiModelDefinition {
      * @param cacheTypeK a llama.cpp cache type, or empty/{@code null} to leave the default
      */
     public void setCacheTypeK(final @Nullable String cacheTypeK) {
-        this.cacheTypeK = cacheTypeK != null ? cacheTypeK : AiGenerationConfig.DEFAULT_CACHE_TYPE_K;
+        this.cacheTypeK = cacheTypeK != null ? cacheTypeK : DEFAULT_CACHE_TYPE_K;
     }
 
     /**
@@ -585,7 +1017,7 @@ public class AiModelDefinition {
      * @param cacheTypeV a llama.cpp cache type, or empty/{@code null} to leave the default
      */
     public void setCacheTypeV(final @Nullable String cacheTypeV) {
-        this.cacheTypeV = cacheTypeV != null ? cacheTypeV : AiGenerationConfig.DEFAULT_CACHE_TYPE_V;
+        this.cacheTypeV = cacheTypeV != null ? cacheTypeV : DEFAULT_CACHE_TYPE_V;
     }
 
     /**
@@ -665,7 +1097,7 @@ public class AiModelDefinition {
     /**
      * Returns the primary GPU index ({@code --main-gpu}) for this model.
      *
-     * @return the GPU index; defaults to {@link AiGenerationConfig#DEFAULT_MAIN_GPU} (-1 = leave default)
+     * @return the GPU index; defaults to {@link #DEFAULT_MAIN_GPU} (-1 = leave default)
      */
     public int getMainGpu() {
         return mainGpu;
@@ -683,7 +1115,7 @@ public class AiModelDefinition {
     /**
      * Returns the device selection ({@code --device}) for this model.
      *
-     * @return the comma-separated device list; defaults to {@link AiGenerationConfig#DEFAULT_DEVICES} (empty = leave default)
+     * @return the comma-separated device list; defaults to {@link #DEFAULT_DEVICES} (empty = leave default)
      */
     public String getDevices() {
         return devices;
@@ -695,13 +1127,13 @@ public class AiModelDefinition {
      * @param devices the comma-separated backend device names (e.g. {@code Vulkan1}), or {@code null}/empty to leave default
      */
     public void setDevices(final @Nullable String devices) {
-        this.devices = devices == null ? AiGenerationConfig.DEFAULT_DEVICES : devices;
+        this.devices = devices == null ? DEFAULT_DEVICES : devices;
     }
 
     /**
      * Returns the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}).
      *
-     * @return the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}; defaults to {@link AiGenerationConfig#DEFAULT_PROVIDER}
+     * @return the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}; defaults to {@link #DEFAULT_PROVIDER}
      */
     public String getProvider() {
         return provider;
@@ -713,13 +1145,13 @@ public class AiModelDefinition {
      * @param provider the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}, or {@code null} for the default
      */
     public void setProvider(final @Nullable String provider) {
-        this.provider = provider == null ? AiGenerationConfig.DEFAULT_PROVIDER : provider;
+        this.provider = provider == null ? DEFAULT_PROVIDER : provider;
     }
 
     /**
      * Returns the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}).
      *
-     * @return the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none; defaults to {@link AiGenerationConfig#DEFAULT_REMOTE_MODEL}
+     * @return the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none; defaults to {@link #DEFAULT_REMOTE_MODEL}
      */
     public String getRemoteModel() {
         return remoteModel;
@@ -731,13 +1163,13 @@ public class AiModelDefinition {
      * @param remoteModel the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none, or {@code null} for the default
      */
     public void setRemoteModel(final @Nullable String remoteModel) {
-        this.remoteModel = remoteModel == null ? AiGenerationConfig.DEFAULT_REMOTE_MODEL : remoteModel;
+        this.remoteModel = remoteModel == null ? DEFAULT_REMOTE_MODEL : remoteModel;
     }
 
     /**
      * Returns the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called).
      *
-     * @return the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called); defaults to {@link AiGenerationConfig#DEFAULT_BASE_URL}
+     * @return the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called); defaults to {@link #DEFAULT_BASE_URL}
      */
     public String getBaseUrl() {
         return baseUrl;
@@ -749,13 +1181,13 @@ public class AiModelDefinition {
      * @param baseUrl the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called), or {@code null} for the default
      */
     public void setBaseUrl(final @Nullable String baseUrl) {
-        this.baseUrl = baseUrl == null ? AiGenerationConfig.DEFAULT_BASE_URL : baseUrl;
+        this.baseUrl = baseUrl == null ? DEFAULT_BASE_URL : baseUrl;
     }
 
     /**
      * Returns the name of the environment variable holding the API key (never the key itself).
      *
-     * @return the name of the environment variable holding the API key (never the key itself); empty sends none; defaults to {@link AiGenerationConfig#DEFAULT_API_KEY_ENV}
+     * @return the name of the environment variable holding the API key (never the key itself); empty sends none; defaults to {@link #DEFAULT_API_KEY_ENV}
      */
     public String getApiKeyEnv() {
         return apiKeyEnv;
@@ -767,14 +1199,14 @@ public class AiModelDefinition {
      * @param apiKeyEnv the name of the environment variable holding the API key (never the key itself); empty sends none, or {@code null} for the default
      */
     public void setApiKeyEnv(final @Nullable String apiKeyEnv) {
-        this.apiKeyEnv = apiKeyEnv == null ? AiGenerationConfig.DEFAULT_API_KEY_ENV : apiKeyEnv;
+        this.apiKeyEnv = apiKeyEnv == null ? DEFAULT_API_KEY_ENV : apiKeyEnv;
     }
 
     /**
      * Returns whether the {@code openai-compatible} provider requests a streamed answer for this model.
      *
      * @return {@code true} for Server-Sent Events, {@code false} for one JSON answer; defaults to
-     *         {@link AiGenerationConfig#DEFAULT_STREAM}
+     *         {@link #DEFAULT_STREAM}
      */
     public boolean isStream() {
         return stream;
@@ -782,7 +1214,7 @@ public class AiModelDefinition {
 
     /**
      * Sets whether the {@code openai-compatible} provider requests a streamed answer for this model;
-     * see {@link AiGenerationConfig#DEFAULT_STREAM}.
+     * see {@link #DEFAULT_STREAM}.
      *
      * @param stream {@code true} for Server-Sent Events, {@code false} for one JSON answer
      */
@@ -795,7 +1227,7 @@ public class AiModelDefinition {
      * server at most.
      *
      * @return the limit; {@code 0} or less for none; defaults to
-     *         {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}
+     *         {@link #DEFAULT_REQUESTS_PER_MINUTE}
      */
     public int getRequestsPerMinute() {
         return requestsPerMinute;
@@ -803,7 +1235,7 @@ public class AiModelDefinition {
 
     /**
      * Sets how many requests a minute the {@code openai-compatible} provider sends to this model's
-     * server at most; see {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}.
+     * server at most; see {@link #DEFAULT_REQUESTS_PER_MINUTE}.
      *
      * @param requestsPerMinute the limit; {@code 0} or less for none
      */
@@ -816,7 +1248,7 @@ public class AiModelDefinition {
      * server again.
      *
      * @return the retries; {@code 0} or less for none; defaults to
-     *         {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}
+     *         {@link #DEFAULT_MAX_RETRIES}
      */
     public int getMaxRetries() {
         return maxRetries;
@@ -824,7 +1256,7 @@ public class AiModelDefinition {
 
     /**
      * Sets how often the {@code openai-compatible} provider sends a failed request to this model's server
-     * again; see {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}.
+     * again; see {@link #DEFAULT_MAX_RETRIES}.
      *
      * @param maxRetries the retries; {@code 0} or less for none
      */
@@ -836,7 +1268,7 @@ public class AiModelDefinition {
      * Returns the gpt-oss reasoning-effort level for this model.
      *
      * @return reasoning effort ({@code "low"}/{@code "medium"}/{@code "high"}), or empty to omit it;
-     *         defaults to {@link AiGenerationConfig#DEFAULT_REASONING_EFFORT}
+     *         defaults to {@link #DEFAULT_REASONING_EFFORT}
      */
     public String getReasoningEffort() {
         return reasoningEffort;
@@ -855,7 +1287,7 @@ public class AiModelDefinition {
     /**
      * Returns the reasoning/think-token budget for this model.
      *
-     * @return budget tokens; defaults to {@link AiGenerationConfig#DEFAULT_REASONING_BUDGET_TOKENS} (-1 = off)
+     * @return budget tokens; defaults to {@link #DEFAULT_REASONING_BUDGET_TOKENS} (-1 = off)
      */
     public int getReasoningBudgetTokens() {
         return reasoningBudgetTokens;
@@ -873,7 +1305,7 @@ public class AiModelDefinition {
     /**
      * Returns the DRY sampling multiplier for this model.
      *
-     * @return DRY multiplier; defaults to {@link AiGenerationConfig#DEFAULT_DRY_MULTIPLIER} (0.0 = off)
+     * @return DRY multiplier; defaults to {@link #DEFAULT_DRY_MULTIPLIER} (0.0 = off)
      */
     public float getDryMultiplier() {
         return dryMultiplier;
@@ -891,7 +1323,7 @@ public class AiModelDefinition {
     /**
      * Returns the DRY base for this model.
      *
-     * @return DRY base; defaults to {@link AiGenerationConfig#DEFAULT_DRY_BASE}
+     * @return DRY base; defaults to {@link #DEFAULT_DRY_BASE}
      */
     public float getDryBase() {
         return dryBase;
@@ -909,7 +1341,7 @@ public class AiModelDefinition {
     /**
      * Returns the DRY allowed length for this model.
      *
-     * @return DRY allowed length; defaults to {@link AiGenerationConfig#DEFAULT_DRY_ALLOWED_LENGTH}
+     * @return DRY allowed length; defaults to {@link #DEFAULT_DRY_ALLOWED_LENGTH}
      */
     public int getDryAllowedLength() {
         return dryAllowedLength;
@@ -927,7 +1359,7 @@ public class AiModelDefinition {
     /**
      * Returns the DRY penalty look-back window for this model.
      *
-     * @return DRY penalty last-n; defaults to {@link AiGenerationConfig#DEFAULT_DRY_PENALTY_LAST_N}
+     * @return DRY penalty last-n; defaults to {@link #DEFAULT_DRY_PENALTY_LAST_N}
      */
     public int getDryPenaltyLastN() {
         return dryPenaltyLastN;
@@ -995,5 +1427,63 @@ public class AiModelDefinition {
      */
     public void setCalibration(final @Nullable AiCalibration calibration) {
         this.calibration = calibration;
+    }
+
+    /**
+     * Returns a copy of this definition, every field value; the lists are copied too.
+     *
+     * @return the copy
+     */
+    public AiModelDefinition copy() {
+        final AiModelDefinition copy = new AiModelDefinition();
+        copy.setKey(key);
+        copy.setModelPath(modelPath);
+        copy.setContextSize(getContextSize());
+        copy.setMaxOutputTokens(getMaxOutputTokens());
+        copy.setTemperature(getTemperature());
+        copy.setThreads(getThreads());
+        copy.setCharsPerToken(getCharsPerToken());
+        copy.setWarnOnTrim(isWarnOnTrim());
+        copy.setTopP(getTopP());
+        copy.setTopK(getTopK());
+        copy.setMinP(getMinP());
+        copy.setTopNSigma(getTopNSigma());
+        copy.setRepeatPenalty(getRepeatPenalty());
+        copy.setStopStrings(getStopStrings());
+        copy.setChatTemplateEnableThinking(getChatTemplateEnableThinking());
+        copy.setCachePrompt(isCachePrompt());
+        copy.setSwaFull(isSwaFull());
+        copy.setCacheReuse(getCacheReuse());
+        copy.setGpuLayers(getGpuLayers());
+        copy.setSeed(getSeed());
+        copy.setCpuMoeLayers(getCpuMoeLayers());
+        copy.setCpuFfnLayers(getCpuFfnLayers());
+        copy.setKvUnifiedPerSlot(getKvUnifiedPerSlot());
+        copy.setLazyMode(getLazyMode());
+        copy.setRepeatLastN(getRepeatLastN());
+        copy.setCacheTypeK(getCacheTypeK());
+        copy.setCacheTypeV(getCacheTypeV());
+        copy.setFlashAttn(isFlashAttn());
+        copy.setBatchSize(getBatchSize());
+        copy.setUbatchSize(getUbatchSize());
+        copy.setThreadsBatch(getThreadsBatch());
+        copy.setMainGpu(getMainGpu());
+        copy.setDevices(getDevices());
+        copy.setProvider(getProvider());
+        copy.setRemoteModel(getRemoteModel());
+        copy.setBaseUrl(getBaseUrl());
+        copy.setApiKeyEnv(getApiKeyEnv());
+        copy.setStream(isStream());
+        copy.setRequestsPerMinute(getRequestsPerMinute());
+        copy.setMaxRetries(getMaxRetries());
+        copy.setReasoningEffort(getReasoningEffort());
+        copy.setReasoningBudgetTokens(getReasoningBudgetTokens());
+        copy.setDryMultiplier(getDryMultiplier());
+        copy.setDryBase(getDryBase());
+        copy.setDryAllowedLength(getDryAllowedLength());
+        copy.setDryPenaltyLastN(getDryPenaltyLastN());
+        copy.setDrySequenceBreakers(getDrySequenceBreakers());
+        copy.setCalibration(getCalibration());
+        return copy;
     }
 }

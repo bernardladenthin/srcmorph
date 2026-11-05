@@ -6,7 +6,7 @@ package net.ladenthin.srcmorph.indexer;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.indexer.generation.AiInputWindowCalculator;
 import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
@@ -66,7 +66,7 @@ public final class AiCalibrationRunner {
      */
     public AiCalibrationMeasurement measure(
             final AiGenerationProvider provider,
-            final AiGenerationConfig config,
+            final AiModelDefinition config,
             final String promptKey,
             final AiPromptPreparationSupport prep)
             throws IOException {
@@ -181,7 +181,7 @@ public final class AiCalibrationRunner {
             final double nearWallSeconds,
             final TimedGeneration probe,
             final double probeWallSeconds,
-            final AiGenerationConfig config,
+            final AiModelDefinition config,
             final int cachedPromptTokens) {
         final double charsPerToken =
                 config.getCharsPerToken() > 0 ? config.getCharsPerToken() : FALLBACK_CHARS_PER_TOKEN;
@@ -211,7 +211,7 @@ public final class AiCalibrationRunner {
      * @return the available source-character window
      */
     public long windowChars(
-            final AiGenerationConfig config, final String promptKey, final AiPromptPreparationSupport prep) {
+            final AiModelDefinition config, final String promptKey, final AiPromptPreparationSupport prep) {
         final int basePromptLength = prep.basePromptLength(promptKey, Paths.get(CALIBRATION_CONTEXT_NAME));
         return AiInputWindowCalculator.availableSourceChars(config, basePromptLength);
     }

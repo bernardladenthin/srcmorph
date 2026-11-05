@@ -375,7 +375,7 @@ final class LlamaCppJniProviderSupport {
         // Pin the RNG seed only when explicitly configured (>= 0). Upstream's default is a random seed
         // per request, so an unconfigured run keeps exactly the behaviour it had; a configured one makes
         // the generated body stable for a given machine and configuration, which is what turns a
-        // re-index into a reviewable diff. Not bit-reproducibility -- see AiGenerationConfig.DEFAULT_SEED.
+        // re-index into a reviewable diff. Not bit-reproducibility -- see AiModelDefinition.DEFAULT_SEED.
         final InferenceParameters seededParameters =
                 config.seed() >= 0 ? baseParameters.withSeed(config.seed()) : baseParameters;
         // The two penalty windows -- the one the repeat penalty acts on, and DRY's own -- are forwarded

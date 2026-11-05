@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.config;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -34,7 +35,7 @@ public class AiModelDefinitionSupportTest {
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition));
 
         // act
-        final AiGenerationConfig config = support.getConfig(key);
+        final AiModelDefinition config = support.getConfig(key);
 
         // assert
         assertThat(config, is(notNullValue()));
@@ -101,7 +102,7 @@ public class AiModelDefinitionSupportTest {
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition));
 
         // act
-        final AiGenerationConfig config = support.getConfig(key);
+        final AiModelDefinition config = support.getConfig(key);
 
         // assert
         assertThat(config.getModelPath(), is(equalTo("/models/test.gguf")));
@@ -166,7 +167,7 @@ public class AiModelDefinitionSupportTest {
     }
 
     @Test
-    public void getConfig_defaultValues_matchAiGenerationConfigDefaults() {
+    public void getConfig_defaultValues_matchTheDefinitionDefaults() {
         // arrange
         final String key = "defaults-model";
         final AiModelDefinition definition = new AiModelDefinition();
@@ -174,52 +175,51 @@ public class AiModelDefinitionSupportTest {
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(definition));
 
         // act
-        final AiGenerationConfig config = support.getConfig(key);
+        final AiModelDefinition config = support.getConfig(key);
 
         // assert
-        assertThat(config.getContextSize(), is(equalTo(AiGenerationConfig.DEFAULT_CONTEXT_SIZE)));
-        assertThat(config.getMaxOutputTokens(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_OUTPUT_TOKENS)));
-        assertThat(config.getTemperature(), is(equalTo(AiGenerationConfig.DEFAULT_TEMPERATURE)));
-        assertThat(config.getThreads(), is(equalTo(AiGenerationConfig.DEFAULT_THREADS)));
-        assertThat(config.getCharsPerToken(), is(equalTo(AiGenerationConfig.DEFAULT_CHARS_PER_TOKEN)));
-        assertThat(config.getMaxInputChars(), is(equalTo(AiGenerationConfig.DEFAULT_MAX_INPUT_CHARS)));
-        assertThat(config.isWarnOnTrim(), is(AiGenerationConfig.DEFAULT_WARN_ON_TRIM));
-        assertThat(
-                config.getChatTemplateEnableThinking(), is(AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
-        assertThat(config.isCachePrompt(), is(AiGenerationConfig.DEFAULT_CACHE_PROMPT));
-        assertThat(config.isSwaFull(), is(AiGenerationConfig.DEFAULT_SWA_FULL));
-        assertThat(config.getCacheReuse(), is(equalTo(AiGenerationConfig.DEFAULT_CACHE_REUSE)));
-        assertThat(config.getGpuLayers(), is(equalTo(AiGenerationConfig.DEFAULT_GPU_LAYERS)));
-        assertThat(config.getSeed(), is(equalTo(AiGenerationConfig.DEFAULT_SEED)));
-        assertThat(config.getCpuMoeLayers(), is(equalTo(AiGenerationConfig.DEFAULT_CPU_MOE_LAYERS)));
-        assertThat(config.getCpuFfnLayers(), is(equalTo(AiGenerationConfig.DEFAULT_CPU_FFN_LAYERS)));
-        assertThat(config.getKvUnifiedPerSlot(), is(equalTo(AiGenerationConfig.DEFAULT_KV_UNIFIED_PER_SLOT)));
-        assertThat(config.getLazyMode(), is(equalTo(AiGenerationConfig.DEFAULT_LAZY_MODE)));
-        assertThat(config.getRepeatLastN(), is(equalTo(AiGenerationConfig.DEFAULT_REPEAT_LAST_N)));
-        assertThat(config.getCacheTypeK(), is(equalTo(AiGenerationConfig.DEFAULT_CACHE_TYPE_K)));
-        assertThat(config.getCacheTypeV(), is(equalTo(AiGenerationConfig.DEFAULT_CACHE_TYPE_V)));
-        assertThat(config.isFlashAttn(), is(equalTo(AiGenerationConfig.DEFAULT_FLASH_ATTN)));
-        assertThat(config.getBatchSize(), is(equalTo(AiGenerationConfig.DEFAULT_BATCH_SIZE)));
-        assertThat(config.getUbatchSize(), is(equalTo(AiGenerationConfig.DEFAULT_UBATCH_SIZE)));
-        assertThat(config.getThreadsBatch(), is(equalTo(AiGenerationConfig.DEFAULT_THREADS_BATCH)));
-        assertThat(config.getMainGpu(), is(equalTo(AiGenerationConfig.DEFAULT_MAIN_GPU)));
-        assertThat(config.getDevices(), is(equalTo(AiGenerationConfig.DEFAULT_DEVICES)));
-        assertThat(config.getProvider(), is(equalTo(AiGenerationConfig.DEFAULT_PROVIDER)));
-        assertThat(config.getRemoteModel(), is(equalTo(AiGenerationConfig.DEFAULT_REMOTE_MODEL)));
-        assertThat(config.getBaseUrl(), is(equalTo(AiGenerationConfig.DEFAULT_BASE_URL)));
-        assertThat(config.getApiKeyEnv(), is(equalTo(AiGenerationConfig.DEFAULT_API_KEY_ENV)));
-        assertThat(config.isStream(), is(AiGenerationConfig.DEFAULT_STREAM));
-        assertThat(config.getRequestsPerMinute(), is(AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE));
-        assertThat(config.getMaxRetries(), is(AiGenerationConfig.DEFAULT_MAX_RETRIES));
-        assertThat(config.getReasoningEffort(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_EFFORT)));
-        assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS)));
-        assertThat(config.getMinP(), is(equalTo(AiGenerationConfig.DEFAULT_MIN_P)));
-        assertThat(config.getTopNSigma(), is(equalTo(AiGenerationConfig.DEFAULT_TOP_N_SIGMA)));
-        assertThat(config.getDryMultiplier(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_MULTIPLIER)));
-        assertThat(config.getDryBase(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_BASE)));
-        assertThat(config.getDryAllowedLength(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH)));
-        assertThat(config.getDryPenaltyLastN(), is(equalTo(AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N)));
-        assertThat(config.getDrySequenceBreakers(), is(Collections.<String>emptyList()));
+        assertThat(config.getContextSize(), is(equalTo(AiModelDefinition.DEFAULT_CONTEXT_SIZE)));
+        assertThat(config.getMaxOutputTokens(), is(equalTo(AiModelDefinition.DEFAULT_MAX_OUTPUT_TOKENS)));
+        assertThat(config.getTemperature(), is(equalTo(AiModelDefinition.DEFAULT_TEMPERATURE)));
+        assertThat(config.getThreads(), is(equalTo(AiModelDefinition.DEFAULT_THREADS)));
+        assertThat(config.getCharsPerToken(), is(equalTo(AiModelDefinition.DEFAULT_CHARS_PER_TOKEN)));
+        assertThat(config.isWarnOnTrim(), is(AiModelDefinition.DEFAULT_WARN_ON_TRIM));
+        assertThat(config.getChatTemplateEnableThinking(), is(AiModelDefinition.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
+        assertThat(config.isCachePrompt(), is(AiModelDefinition.DEFAULT_CACHE_PROMPT));
+        assertThat(config.isSwaFull(), is(AiModelDefinition.DEFAULT_SWA_FULL));
+        assertThat(config.getCacheReuse(), is(equalTo(AiModelDefinition.DEFAULT_CACHE_REUSE)));
+        assertThat(config.getGpuLayers(), is(equalTo(AiModelDefinition.DEFAULT_GPU_LAYERS)));
+        assertThat(config.getSeed(), is(equalTo(AiModelDefinition.DEFAULT_SEED)));
+        assertThat(config.getCpuMoeLayers(), is(equalTo(AiModelDefinition.DEFAULT_CPU_MOE_LAYERS)));
+        assertThat(config.getCpuFfnLayers(), is(equalTo(AiModelDefinition.DEFAULT_CPU_FFN_LAYERS)));
+        assertThat(config.getKvUnifiedPerSlot(), is(equalTo(AiModelDefinition.DEFAULT_KV_UNIFIED_PER_SLOT)));
+        assertThat(config.getLazyMode(), is(equalTo(AiModelDefinition.DEFAULT_LAZY_MODE)));
+        assertThat(config.getRepeatLastN(), is(equalTo(AiModelDefinition.DEFAULT_REPEAT_LAST_N)));
+        assertThat(config.getCacheTypeK(), is(equalTo(AiModelDefinition.DEFAULT_CACHE_TYPE_K)));
+        assertThat(config.getCacheTypeV(), is(equalTo(AiModelDefinition.DEFAULT_CACHE_TYPE_V)));
+        assertThat(config.isFlashAttn(), is(equalTo(AiModelDefinition.DEFAULT_FLASH_ATTN)));
+        assertThat(config.getBatchSize(), is(equalTo(AiModelDefinition.DEFAULT_BATCH_SIZE)));
+        assertThat(config.getUbatchSize(), is(equalTo(AiModelDefinition.DEFAULT_UBATCH_SIZE)));
+        assertThat(config.getThreadsBatch(), is(equalTo(AiModelDefinition.DEFAULT_THREADS_BATCH)));
+        assertThat(config.getMainGpu(), is(equalTo(AiModelDefinition.DEFAULT_MAIN_GPU)));
+        assertThat(config.getDevices(), is(equalTo(AiModelDefinition.DEFAULT_DEVICES)));
+        assertThat(config.getProvider(), is(equalTo(AiModelDefinition.DEFAULT_PROVIDER)));
+        assertThat(config.getRemoteModel(), is(equalTo(AiModelDefinition.DEFAULT_REMOTE_MODEL)));
+        assertThat(config.getBaseUrl(), is(equalTo(AiModelDefinition.DEFAULT_BASE_URL)));
+        assertThat(config.getApiKeyEnv(), is(equalTo(AiModelDefinition.DEFAULT_API_KEY_ENV)));
+        assertThat(config.isStream(), is(AiModelDefinition.DEFAULT_STREAM));
+        assertThat(config.getRequestsPerMinute(), is(AiModelDefinition.DEFAULT_REQUESTS_PER_MINUTE));
+        assertThat(config.getMaxRetries(), is(AiModelDefinition.DEFAULT_MAX_RETRIES));
+        assertThat(config.getReasoningEffort(), is(equalTo(AiModelDefinition.DEFAULT_REASONING_EFFORT)));
+        assertThat(config.getReasoningBudgetTokens(), is(equalTo(AiModelDefinition.DEFAULT_REASONING_BUDGET_TOKENS)));
+        assertThat(config.getMinP(), is(equalTo(AiModelDefinition.DEFAULT_MIN_P)));
+        assertThat(config.getTopNSigma(), is(equalTo(AiModelDefinition.DEFAULT_TOP_N_SIGMA)));
+        assertThat(config.getDryMultiplier(), is(equalTo(AiModelDefinition.DEFAULT_DRY_MULTIPLIER)));
+        assertThat(config.getDryBase(), is(equalTo(AiModelDefinition.DEFAULT_DRY_BASE)));
+        assertThat(config.getDryAllowedLength(), is(equalTo(AiModelDefinition.DEFAULT_DRY_ALLOWED_LENGTH)));
+        assertThat(config.getDryPenaltyLastN(), is(equalTo(AiModelDefinition.DEFAULT_DRY_PENALTY_LAST_N)));
+        // unset stays unset: ProviderConfigFactory hands the provider an empty list
+        assertThat(config.getDrySequenceBreakers(), is(nullValue()));
     }
 
     @Test
@@ -264,8 +264,8 @@ public class AiModelDefinitionSupportTest {
         final AiModelDefinitionSupport support = new AiModelDefinitionSupport(Arrays.asList(defA, defB));
 
         // act
-        final AiGenerationConfig configA = support.getConfig("model-a");
-        final AiGenerationConfig configB = support.getConfig("model-b");
+        final AiModelDefinition configA = support.getConfig("model-a");
+        final AiModelDefinition configB = support.getConfig("model-b");
 
         // assert
         assertThat(configA.getMaxOutputTokens(), is(equalTo(1)));
@@ -343,6 +343,25 @@ public class AiModelDefinitionSupportTest {
         assertThat(
                 support.getConfig("relative").getModelPath(),
                 is(equalTo(new File(modelDirectory, "sub/model.gguf").getPath())));
+    }
+
+    @Test
+    public void getConfig_relativeModelPathWithModelDirectory_isACopyWithTheKeyAndLeavesTheDefinition(
+            @TempDir final File modelDirectory) {
+        // arrange
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("relative");
+        definition.setModelPath("sub/model.gguf");
+        final AiModelDefinitionSupport support =
+                new AiModelDefinitionSupport(Arrays.asList(definition), modelDirectory);
+
+        // act
+        final AiModelDefinition resolved = support.getConfig("relative");
+
+        // assert
+        assertThat(resolved, is(not(sameInstance(definition))));
+        assertThat(resolved.getKey(), is(equalTo("relative")));
+        assertThat(definition.getModelPath(), is(equalTo("sub/model.gguf")));
     }
 
     @Test

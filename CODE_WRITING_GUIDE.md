@@ -144,7 +144,7 @@ public class AiPreparedPrompt {
 }
 ```
 
-**Exception:** Classes that are instantiated by Maven's plugin framework via reflection (e.g., `@Parameter`-bearing configuration classes like `AiPromptDefinition`, `AiGenerationConfig`, `AiFieldGenerationConfig`) must remain regular classes with setters, because Maven cannot inject values into record components.
+**Exception:** Classes that are instantiated by Maven's plugin framework via reflection (e.g., `@Parameter`-bearing configuration classes like `AiPromptDefinition`, `AiModelDefinition`, `AiFieldGenerationConfig`) must remain regular classes with setters, because Maven cannot inject values into record components.
 
 ---
 
@@ -277,8 +277,8 @@ When the configuration file contains a list of named definitions (e.g. prompt te
 ```java
 public class AiModelDefinition {
     private String key;
-    private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;
-    private float temperature = AiGenerationConfig.DEFAULT_TEMPERATURE;
+    private int contextSize = AiModelDefinition.DEFAULT_CONTEXT_SIZE;
+    private float temperature = AiModelDefinition.DEFAULT_TEMPERATURE;
     // ... other fields with defaults, plus getters/setters
 }
 ```
@@ -289,7 +289,7 @@ public class AiModelDefinitionSupport {
     private static final String MISSING_DEFINITION_MESSAGE_PREFIX =
             "Missing AI model definition for key: ";
 
-    private final Map<String, AiGenerationConfig> configs = new HashMap<>();
+    private final Map<String, AiModelDefinition> configs = new HashMap<>();
 
     public AiModelDefinitionSupport(final List<AiModelDefinition> definitions) {
         if (definitions != null) {
@@ -301,8 +301,8 @@ public class AiModelDefinitionSupport {
         }
     }
 
-    public AiGenerationConfig getConfig(final String key) {
-        final AiGenerationConfig config = configs.get(key);
+    public AiModelDefinition getConfig(final String key) {
+        final AiModelDefinition config = configs.get(key);
         if (config == null) {
             throw new IllegalArgumentException(MISSING_DEFINITION_MESSAGE_PREFIX + key);
         }

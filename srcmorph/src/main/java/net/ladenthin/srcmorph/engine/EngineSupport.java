@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
@@ -294,7 +293,7 @@ final class EngineSupport {
      */
     static ProviderConfig resolveProviderConfig(
             final AiModelDefinitionSupport modelDefinitionSupport, final String aiDefinitionKey) {
-        final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(aiDefinitionKey);
+        final AiModelDefinition modelConfig = modelDefinitionSupport.getConfig(aiDefinitionKey);
         return ProviderConfigFactory.fromGenerationConfig(modelConfig);
     }
 
@@ -334,7 +333,7 @@ final class EngineSupport {
             if (aiDefinitionKey == null) {
                 continue;
             }
-            final AiGenerationConfig modelConfig = definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
+            final AiModelDefinition modelConfig = definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
             final String provider =
                     AiGenerationProviderFactory.effectiveProvider(generationProvider, modelConfig.getProvider());
             if (AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)) {
@@ -374,7 +373,7 @@ final class EngineSupport {
         }
     }
 
-    private static AiGenerationConfig definedModel(
+    private static AiModelDefinition definedModel(
             final AiModelDefinitionSupport modelDefinitionSupport,
             final AiFieldGenerationConfig rule,
             final String aiDefinitionKey)
@@ -399,7 +398,7 @@ final class EngineSupport {
      * @throws SrcMorphException if the URL is not {@code http(s)}, or the key is missing or would go out
      *                           in cleartext
      */
-    private static void validateRemoteModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
+    private static void validateRemoteModel(final String aiDefinitionKey, final AiModelDefinition modelConfig)
             throws SrcMorphException {
         final String baseUrl = modelConfig.getBaseUrl().trim();
         if (!baseUrl.startsWith(HTTP_SCHEME) && !baseUrl.startsWith(HTTPS_SCHEME)) {
@@ -422,7 +421,7 @@ final class EngineSupport {
      * @param modelConfig     the definition's resolved configuration
      * @throws SrcMorphException if the file is missing, not a GGUF, or not readable
      */
-    private static void validateLocalModel(final String aiDefinitionKey, final AiGenerationConfig modelConfig)
+    private static void validateLocalModel(final String aiDefinitionKey, final AiModelDefinition modelConfig)
             throws SrcMorphException {
         final String modelPath = modelConfig.getModelPath();
         if (modelPath == null || !new File(modelPath).isFile()) {
@@ -461,7 +460,7 @@ final class EngineSupport {
      * @throws SrcMorphException if the file is not a readable GGUF
      */
     private static void validateAgainstTheModelItself(
-            final String aiDefinitionKey, final AiGenerationConfig modelConfig, final Path modelFile)
+            final String aiDefinitionKey, final AiModelDefinition modelConfig, final Path modelFile)
             throws SrcMorphException {
         final GgufModelInfo info = new GgufModelInspector().inspect(modelFile);
         if (!info.readable()) {

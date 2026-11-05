@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.support.ConvertToRecord;
 import org.jspecify.annotations.Nullable;
 
@@ -80,7 +80,7 @@ public final class ProviderConfig {
      * <p>Private on purpose: with thirty-seven fields a positional constructor is unreadable at the call
      * site and a swap of two same-typed neighbours compiles silently. {@link #builder()} is the only
      * way in, so every value arrives named, and every value the caller did not name is the matching
-     * {@code AiGenerationConfig.DEFAULT_*} rather than Java's zero.</p>
+     * {@code AiModelDefinition.DEFAULT_*} rather than Java's zero.</p>
      *
      * <p>No normalisation happens here — the builder's setters already did it, and duplicating a guard on
      * an unreachable path would only look like protection.</p>
@@ -135,7 +135,7 @@ public final class ProviderConfig {
     }
 
     /**
-     * Starts building a configuration with every value pre-set to its {@code AiGenerationConfig.DEFAULT_*},
+     * Starts building a configuration with every value pre-set to its {@code AiModelDefinition.DEFAULT_*},
      * and no model file.
      *
      * @return a builder carrying the defaults
@@ -240,7 +240,7 @@ public final class ProviderConfig {
      * @return {@code true} or {@code false} when the knob was set, {@code null} when it is unset
      *         &#x2014; the provider then omits the {@code enable_thinking} kwarg entirely and the
      *         model's own chat-template default applies
-     * @see AiGenerationConfig#DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING
+     * @see AiModelDefinition#DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING
      */
     public @Nullable Boolean chatTemplateEnableThinking() {
         return chatTemplateEnableThinking;
@@ -547,10 +547,10 @@ public final class ProviderConfig {
     /**
      * Fluent builder for {@link ProviderConfig}.
      *
-     * <p>Every setter is optional and starts at the matching {@code AiGenerationConfig.DEFAULT_*}, so this
+     * <p>Every setter is optional and starts at the matching {@code AiModelDefinition.DEFAULT_*}, so this
      * class is the single place those defaults are applied: {@code ProviderConfigFactory}'s
      * fallback path no longer restates all thirty-six of them, and a knob added to
-     * {@code AiGenerationConfig} cannot end up with a different default here by omission.</p>
+     * {@code AiModelDefinition} cannot end up with a different default here by omission.</p>
      *
      * <p>Not thread-safe, and not meant to be: a builder is filled and built on one thread, and the
      * {@link ProviderConfig} it produces is immutable.</p>
@@ -558,47 +558,47 @@ public final class ProviderConfig {
     public static final class Builder {
 
         private @Nullable String modelPath;
-        private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;
-        private int maxOutputTokens = AiGenerationConfig.DEFAULT_MAX_OUTPUT_TOKENS;
-        private float temperature = AiGenerationConfig.DEFAULT_TEMPERATURE;
-        private int threads = AiGenerationConfig.DEFAULT_THREADS;
-        private float topP = AiGenerationConfig.DEFAULT_TOP_P;
-        private int topK = AiGenerationConfig.DEFAULT_TOP_K;
-        private float minP = AiGenerationConfig.DEFAULT_MIN_P;
-        private float topNSigma = AiGenerationConfig.DEFAULT_TOP_N_SIGMA;
-        private float repeatPenalty = AiGenerationConfig.DEFAULT_REPEAT_PENALTY;
-        private @Nullable Boolean chatTemplateEnableThinking = AiGenerationConfig.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
-        private boolean cachePrompt = AiGenerationConfig.DEFAULT_CACHE_PROMPT;
-        private boolean swaFull = AiGenerationConfig.DEFAULT_SWA_FULL;
-        private int cacheReuse = AiGenerationConfig.DEFAULT_CACHE_REUSE;
-        private int gpuLayers = AiGenerationConfig.DEFAULT_GPU_LAYERS;
-        private int seed = AiGenerationConfig.DEFAULT_SEED;
-        private int cpuMoeLayers = AiGenerationConfig.DEFAULT_CPU_MOE_LAYERS;
-        private int cpuFfnLayers = AiGenerationConfig.DEFAULT_CPU_FFN_LAYERS;
-        private int kvUnifiedPerSlot = AiGenerationConfig.DEFAULT_KV_UNIFIED_PER_SLOT;
-        private String lazyMode = AiGenerationConfig.DEFAULT_LAZY_MODE;
-        private int repeatLastN = AiGenerationConfig.DEFAULT_REPEAT_LAST_N;
-        private String cacheTypeK = AiGenerationConfig.DEFAULT_CACHE_TYPE_K;
-        private String cacheTypeV = AiGenerationConfig.DEFAULT_CACHE_TYPE_V;
-        private boolean flashAttn = AiGenerationConfig.DEFAULT_FLASH_ATTN;
-        private int batchSize = AiGenerationConfig.DEFAULT_BATCH_SIZE;
-        private int ubatchSize = AiGenerationConfig.DEFAULT_UBATCH_SIZE;
-        private int threadsBatch = AiGenerationConfig.DEFAULT_THREADS_BATCH;
-        private int mainGpu = AiGenerationConfig.DEFAULT_MAIN_GPU;
-        private String devices = AiGenerationConfig.DEFAULT_DEVICES;
-        private String provider = AiGenerationConfig.DEFAULT_PROVIDER;
-        private String remoteModel = AiGenerationConfig.DEFAULT_REMOTE_MODEL;
-        private String baseUrl = AiGenerationConfig.DEFAULT_BASE_URL;
-        private String apiKeyEnv = AiGenerationConfig.DEFAULT_API_KEY_ENV;
-        private boolean stream = AiGenerationConfig.DEFAULT_STREAM;
-        private int requestsPerMinute = AiGenerationConfig.DEFAULT_REQUESTS_PER_MINUTE;
-        private int maxRetries = AiGenerationConfig.DEFAULT_MAX_RETRIES;
-        private String reasoningEffort = AiGenerationConfig.DEFAULT_REASONING_EFFORT;
-        private int reasoningBudgetTokens = AiGenerationConfig.DEFAULT_REASONING_BUDGET_TOKENS;
-        private float dryMultiplier = AiGenerationConfig.DEFAULT_DRY_MULTIPLIER;
-        private float dryBase = AiGenerationConfig.DEFAULT_DRY_BASE;
-        private int dryAllowedLength = AiGenerationConfig.DEFAULT_DRY_ALLOWED_LENGTH;
-        private int dryPenaltyLastN = AiGenerationConfig.DEFAULT_DRY_PENALTY_LAST_N;
+        private int contextSize = AiModelDefinition.DEFAULT_CONTEXT_SIZE;
+        private int maxOutputTokens = AiModelDefinition.DEFAULT_MAX_OUTPUT_TOKENS;
+        private float temperature = AiModelDefinition.DEFAULT_TEMPERATURE;
+        private int threads = AiModelDefinition.DEFAULT_THREADS;
+        private float topP = AiModelDefinition.DEFAULT_TOP_P;
+        private int topK = AiModelDefinition.DEFAULT_TOP_K;
+        private float minP = AiModelDefinition.DEFAULT_MIN_P;
+        private float topNSigma = AiModelDefinition.DEFAULT_TOP_N_SIGMA;
+        private float repeatPenalty = AiModelDefinition.DEFAULT_REPEAT_PENALTY;
+        private @Nullable Boolean chatTemplateEnableThinking = AiModelDefinition.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING;
+        private boolean cachePrompt = AiModelDefinition.DEFAULT_CACHE_PROMPT;
+        private boolean swaFull = AiModelDefinition.DEFAULT_SWA_FULL;
+        private int cacheReuse = AiModelDefinition.DEFAULT_CACHE_REUSE;
+        private int gpuLayers = AiModelDefinition.DEFAULT_GPU_LAYERS;
+        private int seed = AiModelDefinition.DEFAULT_SEED;
+        private int cpuMoeLayers = AiModelDefinition.DEFAULT_CPU_MOE_LAYERS;
+        private int cpuFfnLayers = AiModelDefinition.DEFAULT_CPU_FFN_LAYERS;
+        private int kvUnifiedPerSlot = AiModelDefinition.DEFAULT_KV_UNIFIED_PER_SLOT;
+        private String lazyMode = AiModelDefinition.DEFAULT_LAZY_MODE;
+        private int repeatLastN = AiModelDefinition.DEFAULT_REPEAT_LAST_N;
+        private String cacheTypeK = AiModelDefinition.DEFAULT_CACHE_TYPE_K;
+        private String cacheTypeV = AiModelDefinition.DEFAULT_CACHE_TYPE_V;
+        private boolean flashAttn = AiModelDefinition.DEFAULT_FLASH_ATTN;
+        private int batchSize = AiModelDefinition.DEFAULT_BATCH_SIZE;
+        private int ubatchSize = AiModelDefinition.DEFAULT_UBATCH_SIZE;
+        private int threadsBatch = AiModelDefinition.DEFAULT_THREADS_BATCH;
+        private int mainGpu = AiModelDefinition.DEFAULT_MAIN_GPU;
+        private String devices = AiModelDefinition.DEFAULT_DEVICES;
+        private String provider = AiModelDefinition.DEFAULT_PROVIDER;
+        private String remoteModel = AiModelDefinition.DEFAULT_REMOTE_MODEL;
+        private String baseUrl = AiModelDefinition.DEFAULT_BASE_URL;
+        private String apiKeyEnv = AiModelDefinition.DEFAULT_API_KEY_ENV;
+        private boolean stream = AiModelDefinition.DEFAULT_STREAM;
+        private int requestsPerMinute = AiModelDefinition.DEFAULT_REQUESTS_PER_MINUTE;
+        private int maxRetries = AiModelDefinition.DEFAULT_MAX_RETRIES;
+        private String reasoningEffort = AiModelDefinition.DEFAULT_REASONING_EFFORT;
+        private int reasoningBudgetTokens = AiModelDefinition.DEFAULT_REASONING_BUDGET_TOKENS;
+        private float dryMultiplier = AiModelDefinition.DEFAULT_DRY_MULTIPLIER;
+        private float dryBase = AiModelDefinition.DEFAULT_DRY_BASE;
+        private int dryAllowedLength = AiModelDefinition.DEFAULT_DRY_ALLOWED_LENGTH;
+        private int dryPenaltyLastN = AiModelDefinition.DEFAULT_DRY_PENALTY_LAST_N;
         private List<String> drySequenceBreakers = Collections.<String>emptyList();
         private List<String> stopStrings = Collections.<String>emptyList();
 
@@ -823,7 +823,7 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder lazyMode(final String lazyMode) {
-            this.lazyMode = lazyMode != null ? lazyMode : AiGenerationConfig.DEFAULT_LAZY_MODE;
+            this.lazyMode = lazyMode != null ? lazyMode : AiModelDefinition.DEFAULT_LAZY_MODE;
             return this;
         }
 
@@ -845,7 +845,7 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder cacheTypeK(final String cacheTypeK) {
-            this.cacheTypeK = cacheTypeK != null ? cacheTypeK : AiGenerationConfig.DEFAULT_CACHE_TYPE_K;
+            this.cacheTypeK = cacheTypeK != null ? cacheTypeK : AiModelDefinition.DEFAULT_CACHE_TYPE_K;
             return this;
         }
 
@@ -856,7 +856,7 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder cacheTypeV(final String cacheTypeV) {
-            this.cacheTypeV = cacheTypeV != null ? cacheTypeV : AiGenerationConfig.DEFAULT_CACHE_TYPE_V;
+            this.cacheTypeV = cacheTypeV != null ? cacheTypeV : AiModelDefinition.DEFAULT_CACHE_TYPE_V;
             return this;
         }
 
@@ -922,7 +922,7 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder devices(final String devices) {
-            this.devices = devices != null ? devices : AiGenerationConfig.DEFAULT_DEVICES;
+            this.devices = devices != null ? devices : AiModelDefinition.DEFAULT_DEVICES;
             return this;
         }
 
@@ -933,7 +933,7 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder provider(final String provider) {
-            this.provider = provider != null ? provider : AiGenerationConfig.DEFAULT_PROVIDER;
+            this.provider = provider != null ? provider : AiModelDefinition.DEFAULT_PROVIDER;
             return this;
         }
 
@@ -944,7 +944,7 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder remoteModel(final String remoteModel) {
-            this.remoteModel = remoteModel != null ? remoteModel : AiGenerationConfig.DEFAULT_REMOTE_MODEL;
+            this.remoteModel = remoteModel != null ? remoteModel : AiModelDefinition.DEFAULT_REMOTE_MODEL;
             return this;
         }
 
@@ -955,7 +955,7 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder baseUrl(final String baseUrl) {
-            this.baseUrl = baseUrl != null ? baseUrl : AiGenerationConfig.DEFAULT_BASE_URL;
+            this.baseUrl = baseUrl != null ? baseUrl : AiModelDefinition.DEFAULT_BASE_URL;
             return this;
         }
 
@@ -966,13 +966,13 @@ public final class ProviderConfig {
          * @return this builder
          */
         public Builder apiKeyEnv(final String apiKeyEnv) {
-            this.apiKeyEnv = apiKeyEnv != null ? apiKeyEnv : AiGenerationConfig.DEFAULT_API_KEY_ENV;
+            this.apiKeyEnv = apiKeyEnv != null ? apiKeyEnv : AiModelDefinition.DEFAULT_API_KEY_ENV;
             return this;
         }
 
         /**
          * Sets whether the {@code openai-compatible} provider requests a streamed answer; see
-         * {@link AiGenerationConfig#DEFAULT_STREAM}.
+         * {@link AiModelDefinition#DEFAULT_STREAM}.
          *
          * @param stream {@code true} for Server-Sent Events, {@code false} for one JSON answer
          * @return this builder
@@ -984,7 +984,7 @@ public final class ProviderConfig {
 
         /**
          * Sets how many requests a minute the {@code openai-compatible} provider sends to the server at
-         * most; see {@link AiGenerationConfig#DEFAULT_REQUESTS_PER_MINUTE}.
+         * most; see {@link AiModelDefinition#DEFAULT_REQUESTS_PER_MINUTE}.
          *
          * @param requestsPerMinute the limit; {@code 0} or less for none
          * @return this builder
@@ -996,7 +996,7 @@ public final class ProviderConfig {
 
         /**
          * Sets how often the {@code openai-compatible} provider sends a failed request again; see
-         * {@link AiGenerationConfig#DEFAULT_MAX_RETRIES}.
+         * {@link AiModelDefinition#DEFAULT_MAX_RETRIES}.
          *
          * @param maxRetries the retries; {@code 0} or less for none
          * @return this builder
@@ -1014,7 +1014,7 @@ public final class ProviderConfig {
          */
         public Builder reasoningEffort(final String reasoningEffort) {
             this.reasoningEffort =
-                    reasoningEffort != null ? reasoningEffort : AiGenerationConfig.DEFAULT_REASONING_EFFORT;
+                    reasoningEffort != null ? reasoningEffort : AiModelDefinition.DEFAULT_REASONING_EFFORT;
             return this;
         }
 
