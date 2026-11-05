@@ -157,8 +157,13 @@ public abstract class AbstractSrcMorphMojo extends AbstractMojo {
         final SrcMorphConfiguration config = file.getSrcMorph();
         config.setFieldGenerations(section.rulesOf(file));
         if (config.getSubtrees() == null) {
+            // the loader sets the base directory: the file's, or the project's when the file sets none
             final File base = config.getBaseDirectory();
-            config.setSubtrees(projectSubtrees(base != null ? base : projectDirectory));
+            if (base == null) {
+                throw new MojoExecutionException(
+                        "The configuration file " + configurationFile + " left no baseDirectory");
+            }
+            config.setSubtrees(projectSubtrees(base));
         }
         if (config.getProjectName() == null) {
             config.setProjectName(projectName);
