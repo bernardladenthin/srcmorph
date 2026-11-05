@@ -181,7 +181,7 @@ is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later 
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
 100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 84 entries (nested classes counted) across
 config/document/engine/indexer/prompt/provider/support, all killed at 100%. **All three modules are
-PIT-gated now**: `srcmorph-cli` (24/24) and `srcmorph-maven-plugin` (80/80) carry their own
+PIT-gated now**: `srcmorph-cli` (26/26) and `srcmorph-maven-plugin` (78/78) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
 naming the CPU natives jar of every desktop platform — since llama 6.0.0 `net.ladenthin:llama` is the
 classes only); the `gpu-cuda`/`gpu-vulkan` profiles and `-Dllama.classifier=<natives jar>` (profile
@@ -606,8 +606,8 @@ See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-te
 See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-mutation-testing.md).
 Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `mvn test-compile org.pitest:pitest-maven:mutationCoverage`; or scoped to one module with
-`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (about 1630 mutations),
-`srcmorph-maven-plugin` (80, the mojo classes) and `srcmorph-cli` (24). The CLI's
+`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (1921 mutations on 2026-11-05),
+`srcmorph-maven-plugin` (78, the mojo classes) and `srcmorph-cli` (26). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
 `smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts
 `Main#run end.` in its output, which is an end-to-end check a unit mutant cannot reach.
