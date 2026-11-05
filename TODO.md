@@ -44,7 +44,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 17 | `run.py` deletes `--out/<key>` without a marker check | Claude | done 2026-11-05 | — |
 | 18 | `languages-2026-11/README.md`: the score command lacks `--meta` | Claude | done 2026-11-05 | — |
 | 19 | The remote calibration warning is logged under the llama.cpp class | Claude | done 2026-11-05 | — |
-| 20 | A `baseUrl`'s user info is printed as written | Claude | open | Review of 2026-11-02, core |
+| 20 | A `baseUrl`'s user info is printed as written | Claude | done 2026-11-05 | — |
 | 21 | `AiGenerationUsage.add` counts `NONE` as a call | Claude | open | Review of 2026-11-02, core |
 | 22 | Tests: `check()` with `planOnly` and model files, the interrupt branch, a changed prompt hash, the smaller window after an overflow, the plugin's base directory | Claude | open | Review of 2026-11-02, tests and gates |
 | 23 | SpotBugs: split the `SrcMorphConfigurationFileLoader` match, the stale `NP_NULL_ON_SOME_PATH` | Claude | open | Review of 2026-11-02, tests and gates |
@@ -196,10 +196,6 @@ Unreleased) except:
 
 - CodeQL #270 (`RequestRateLimiter`: the return value of `awaitNanos` ignored) is a false positive:
   the loop in `acquire()` re-checks the window after every wake-up; the owner dismisses it.
-- The configuration echo of the CLI and the messages that name a `baseUrl` (`ListModelsEngine`,
-  `EngineSupport`, the provider's endpoint errors, the rate limiter) print it as written, user info
-  included. `HttpURLConnection` does not authenticate with a URL's user info, so a key there does not
-  work anyway; mask it if a server ever takes one.
 - Smaller: `AiGenerationUsage.add` counts one call whatever it adds (also `NONE` from a provider
   that knows no usage); the plan's token figures ignore the oversize strategy; the reduce estimate
   assumes a fan-in of 16; the per-file time of a local group's first file includes the model load;

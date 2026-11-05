@@ -115,14 +115,14 @@ public final class ListModelsEngine {
                             + pattern.getApiKeyEnv().trim())) {
                 continue;
             }
-            LOGGER.info("Listing the models of aiDefinition '{}' at {}", key, pattern.getBaseUrl());
+            final String shown = OpenAiCompatibleAiGenerationProvider.withoutUserInfo(pattern.getBaseUrl());
+            LOGGER.info("Listing the models of aiDefinition '{}' at {}", key, shown);
             final List<RemoteModel> models;
             try {
                 models = lister.list(LlamaCppJniConfigFactory.fromGenerationConfig(pattern), promptSupport);
             } catch (final IOException | IllegalArgumentException e) {
                 throw new SrcMorphException(
-                        "Listing the models of aiDefinition '" + key + "' at " + pattern.getBaseUrl() + " failed: "
-                                + e.getMessage(),
+                        "Listing the models of aiDefinition '" + key + "' at " + shown + " failed: " + e.getMessage(),
                         e);
             }
             listings.add(ModelListReport.Listing.of(key, pattern, models.size(), matching(models)));

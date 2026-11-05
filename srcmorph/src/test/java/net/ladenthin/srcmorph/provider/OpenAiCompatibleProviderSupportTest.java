@@ -389,6 +389,43 @@ public class OpenAiCompatibleProviderSupportTest {
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc/passwd'"));
     }
+
+    @Test
+    public void endpoint_otherSchemeWithUserInfo_isRejectedWithoutTheUserInfo() {
+        final OpenAiCompatibleProviderSupport support = support(
+                LlamaCppJniConfig.builder("").baseUrl("ftp://u:secret@h/v1").build());
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+        assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'ftp://***@h/v1'"));
+    }
+
+    /** srcmorph never sends a URL's user info, so a key written there would not authenticate. */
+    @Test
+    public void endpoint_userInfo_isRejectedWithoutPrintingIt() {
+        final OpenAiCompatibleProviderSupport support = support(LlamaCppJniConfig.builder("")
+                .baseUrl("https://user:secret@h/v1")
+                .build());
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+        assertThat(
+                thrown.getMessage(),
+                is("its baseUrl carries user info ('https://***@h/v1'), which srcmorph never sends: put the key"
+                        + " in the variable apiKeyEnv names"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="withoutUserInfo">
+    @Test
+    public void withoutUserInfo_masksTheUserInfoOfEveryUrl() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.withoutUserInfo(
+                        "baseUrl: \"https://u:p@h:8443/v1\"\nother: http://key@127.0.0.1/x"),
+                is("baseUrl: \"https://***@h:8443/v1\"\nother: http://***@127.0.0.1/x"));
+    }
+
+    @Test
+    public void withoutUserInfo_anAtInThePathOrTheQueryOrAMail_staysAsItIs() {
+        final String text = "https://h/v1/@scope/pkg?by=a@b#x@y and mail me@example.org";
+        assertThat(OpenAiCompatibleProviderSupport.withoutUserInfo(text), is(text));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="apiKey">
@@ -515,6 +552,15 @@ public class OpenAiCompatibleProviderSupportTest {
     // <editor-fold defaultstate="collapsed" desc="keyProblem">
     private static final Function<String, @Nullable String> KEY_SET =
             name -> "OPENROUTER_API_KEY".equals(name) ? "k" : null;
+
+    /** Found before any request, with or without a key variable, and named without the user info. */
+    @Test
+    public void keyProblem_userInfo_isNamedMasked() {
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem(" https://u:secret@openrouter.ai/api/v1 ", " ", KEY_SET),
+                is("its baseUrl carries user info ('https://***@openrouter.ai/api/v1'), which srcmorph never"
+                        + " sends: put the key in the variable apiKeyEnv names"));
+    }
 
     @Test
     public void keyProblem_noApiKeyEnv_isNone() {

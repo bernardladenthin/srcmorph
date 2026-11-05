@@ -766,6 +766,20 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
+        CRLF_INJECTION_LOGS on the calibration's warning in OpenAiCompatibleAiGenerationProvider
+        .generateWithTimings: LlamaCppJniProviderSupport.truncationWarning builds it from
+        AiGenerationRequest.sourceFile(), a path this tool produced by walking the operator's own
+        subtrees, the configured output budget and the server's finish reason - the trust boundary of
+        the provider's other log suppressions. Naming the file is the point of the warning. Scoped to
+        the one method.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider"/>
+        <Method name="generateWithTimings"/>
+        <Bug pattern="CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!--
         RequestRateLimiter (the openai-compatible provider's requestsPerMinute), two findings:
 
         CRLF_INJECTION_LOGS on acquire: the one log line of a wait names the server, the baseUrl and

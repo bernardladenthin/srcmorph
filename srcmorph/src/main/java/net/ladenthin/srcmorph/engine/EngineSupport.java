@@ -390,7 +390,8 @@ final class EngineSupport {
         if (!baseUrl.startsWith(HTTP_SCHEME) && !baseUrl.startsWith(HTTPS_SCHEME)) {
             throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
                     + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
-                    + " provider but its baseUrl is not an http(s) URL: '" + baseUrl + "'");
+                    + " provider but its baseUrl is not an http(s) URL: '"
+                    + OpenAiCompatibleAiGenerationProvider.withoutUserInfo(baseUrl) + "'");
         }
         final String keyProblem = OpenAiCompatibleAiGenerationProvider.keyProblem(baseUrl, modelConfig.getApiKeyEnv());
         if (keyProblem != null) {

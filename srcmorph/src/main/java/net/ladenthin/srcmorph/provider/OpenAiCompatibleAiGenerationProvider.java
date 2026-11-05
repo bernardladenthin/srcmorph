@@ -243,9 +243,9 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     }
 
     /**
-     * What would fail the first request of a model, found before any request is made: an
-     * {@code apiKeyEnv} whose variable is not set in the process environment, or a key that would go in
-     * cleartext to another machine.
+     * What would fail the first request of a model, found before any request is made: a {@code baseUrl}
+     * with user info (never sent), an {@code apiKeyEnv} whose variable is not set in the process
+     * environment, or a key that would go in cleartext to another machine.
      *
      * @param baseUrl   the model's {@code baseUrl}, an {@code http(s)} URL
      * @param apiKeyEnv the model's {@code apiKeyEnv}
@@ -253,6 +253,17 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
      */
     public static @Nullable String keyProblem(final String baseUrl, final String apiKeyEnv) {
         return OpenAiCompatibleProviderSupport.keyProblem(baseUrl, apiKeyEnv, System::getenv);
+    }
+
+    /**
+     * Replaces the user info of every URL in a text by {@code ***} ({@code https://***@host/v1}), for a
+     * text that names a {@code baseUrl}: the CLI's configuration echo, a log line, a message.
+     *
+     * @param text the text
+     * @return the text with every URL's user info masked
+     */
+    public static String withoutUserInfo(final String text) {
+        return OpenAiCompatibleProviderSupport.withoutUserInfo(text);
     }
 
     private ChatResponse chatResponse(final AiGenerationRequest request) throws IOException {

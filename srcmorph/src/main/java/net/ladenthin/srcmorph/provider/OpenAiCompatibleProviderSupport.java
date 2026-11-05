@@ -154,6 +154,16 @@ final class OpenAiCompatibleProviderSupport {
     /** The HTTPS scheme prefix a {@code baseUrl} may start with. */
     static final String HTTPS_SCHEME = "https://";
 
+    /**
+     * The user info of a URL ({@code user:password@} after the scheme and before the host), which srcmorph
+     * never sends ({@code HttpURLConnection} does not authenticate with it) and never prints.
+     */
+    private static final Pattern URL_USER_INFO =
+            Pattern.compile("([A-Za-z][A-Za-z0-9+.-]{0,20}://)[^/?#@\\s\"']{0,256}+@");
+
+    /** What a URL's user info is printed as: the scheme, then this, then the host. */
+    private static final String MASKED_USER_INFO = "$1***@";
+
     /** Host name of the loopback interface, in any case. */
     private static final Pattern LOOPBACK_HOST_NAME = Pattern.compile("localhost", Pattern.CASE_INSENSITIVE);
 
@@ -436,9 +446,40 @@ final class OpenAiCompatibleProviderSupport {
     private String baseUrl() {
         final String base = config.baseUrl().trim();
         if (!base.startsWith(HTTP_SCHEME) && !base.startsWith(HTTPS_SCHEME)) {
-            throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + base + "'");
+            throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + withoutUserInfo(base) + "'");
+        }
+        final @Nullable String userInfo = userInfoProblem(base);
+        if (userInfo != null) {
+            throw new IllegalArgumentException(userInfo);
         }
         return withoutTrailingSlashes(base);
+    }
+
+    /**
+     * Replaces the user info of every URL in a text by {@code ***}, so a password written into a
+     * {@code baseUrl} reaches no log line and no message: {@code https://u:p@host/v1} is printed as
+     * {@code https://***@host/v1}.
+     *
+     * @param text the text, a URL or a configuration echo
+     * @return the text with every URL's user info masked
+     */
+    static String withoutUserInfo(final String text) {
+        return URL_USER_INFO.matcher(text).replaceAll(MASKED_USER_INFO);
+    }
+
+    /**
+     * The problem of a {@code baseUrl} that carries user info: srcmorph never sends it, so a key there
+     * would not authenticate, and the run stops before a request instead of failing on the first one.
+     *
+     * @param baseUrl the model's {@code baseUrl}
+     * @return the problem, with the user info masked, or {@code null} when the URL carries none
+     */
+    static @Nullable String userInfoProblem(final String baseUrl) {
+        final String masked = withoutUserInfo(baseUrl);
+        return masked.equals(baseUrl)
+                ? null
+                : "its baseUrl carries user info ('" + masked + "'), which srcmorph never sends: put the key"
+                        + " in the variable apiKeyEnv names";
     }
 
     private static String withoutTrailingSlashes(final String url) {
@@ -583,9 +624,10 @@ final class OpenAiCompatibleProviderSupport {
     }
 
     /**
-     * What would fail the first request of a model, found before any request is made: an
-     * {@code apiKeyEnv} whose variable is not set, or a key that would go in cleartext to another
-     * machine (a plain {@code http} {@code baseUrl} that is not loopback).
+     * What would fail the first request of a model, found before any request is made: a {@code baseUrl}
+     * with user info ({@link #userInfoProblem(String)}), an {@code apiKeyEnv} whose variable is not set,
+     * or a key that would go in cleartext to another machine (a plain {@code http} {@code baseUrl} that is
+     * not loopback).
      *
      * @param baseUrl     the model's {@code baseUrl}, an {@code http(s)} URL
      * @param apiKeyEnv   the model's {@code apiKeyEnv}
@@ -594,6 +636,10 @@ final class OpenAiCompatibleProviderSupport {
      */
     static @Nullable String keyProblem(
             final String baseUrl, final String apiKeyEnv, final Function<String, @Nullable String> environment) {
+        final @Nullable String userInfo = userInfoProblem(baseUrl.trim());
+        if (userInfo != null) {
+            return userInfo;
+        }
         final String name = apiKeyEnv.trim();
         if (name.isEmpty()) {
             return null;
@@ -610,7 +656,7 @@ final class OpenAiCompatibleProviderSupport {
         try {
             host = new URL(base).getHost();
         } catch (final MalformedURLException e) {
-            return "its baseUrl is not a URL: '" + base + "'";
+            return "its baseUrl is not a URL: '" + withoutUserInfo(base) + "'";
         }
         return isLoopbackHost(host)
                 ? null

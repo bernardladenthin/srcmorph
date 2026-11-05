@@ -17,8 +17,10 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
+import net.ladenthin.srcmorph.config.AiModelDefinition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -223,6 +225,24 @@ public class MainTest {
         final CConfiguration roundTripped = Main.fromYaml(yaml);
 
         assertThat(roundTripped.command, is(equalTo(CCommand.Calibrate)));
+    }
+
+    @Test
+    public void configurationEcho_aBaseUrlWithUserInfo_isEchoedMaskedInBothForms() throws Exception {
+        // arrange
+        final CConfiguration configuration = new CConfiguration();
+        final AiModelDefinition model = new AiModelDefinition();
+        model.setKey("remote");
+        model.setBaseUrl("https://user:secret@example.org/v1");
+        configuration.srcMorph.setAiDefinitions(List.of(model));
+
+        // act
+        final String echo = Main.configurationEcho(configuration);
+
+        // assert
+        assertThat(echo.contains("secret"), is(false));
+        assertThat(echo, containsString("\"baseUrl\" : \"https://***@example.org/v1\""));
+        assertThat(echo, containsString("baseUrl: \"https://***@example.org/v1\""));
     }
 
     @Test

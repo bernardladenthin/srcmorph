@@ -33,6 +33,7 @@ import net.ladenthin.srcmorph.engine.CalibrationReport;
 import net.ladenthin.srcmorph.engine.GenerateEngine;
 import net.ladenthin.srcmorph.engine.ListModelsEngine;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
+import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -239,19 +240,31 @@ public class Main {
      * @throws IOException if the configuration cannot be serialised
      */
     public void logConfigurationTransformation() throws IOException {
-        final String json = configurationToJson(configuration);
-        final String yaml = configurationToYAML(configuration);
-        LOGGER.info("Please review the transformed configuration to ensure it aligns with your expectations "
-                + "and requirements before proceeding.:\n"
-                + "########## BEGIN transformed JSON configuration ##########\n"
-                + json
-                + "\n"
-                + "########## END   transformed JSON configuration ##########\n"
-                + "\n"
-                + "########## BEGIN transformed YAML configuration ##########\n"
-                + yaml
-                + "\n"
-                + "########## END   transformed YAML configuration ##########\n");
+        LOGGER.info(configurationEcho(configuration));
+    }
+
+    /**
+     * The configuration echo {@link #logConfigurationTransformation()} logs: the JSON and the YAML form,
+     * every URL's user info masked, so a password written into a {@code baseUrl} reaches no log line
+     * (srcmorph never sends it either).
+     *
+     * @param configuration the configuration
+     * @return the echo
+     * @throws IOException if the configuration cannot be serialised
+     */
+    static String configurationEcho(final CConfiguration configuration) throws IOException {
+        return OpenAiCompatibleAiGenerationProvider.withoutUserInfo(
+                "Please review the transformed configuration to ensure it aligns with your expectations "
+                        + "and requirements before proceeding.:\n"
+                        + "########## BEGIN transformed JSON configuration ##########\n"
+                        + configurationToJson(configuration)
+                        + "\n"
+                        + "########## END   transformed JSON configuration ##########\n"
+                        + "\n"
+                        + "########## BEGIN transformed YAML configuration ##########\n"
+                        + configurationToYAML(configuration)
+                        + "\n"
+                        + "########## END   transformed YAML configuration ##########\n");
     }
 
     /**
