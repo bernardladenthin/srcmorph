@@ -94,7 +94,7 @@ Package root: `net.ladenthin.srcmorph`.
   `outputDirectory`, `subtrees`, `excludes`, `fileExtensions`, the size band, `force`, `regenerateOn` (`AiRegenerateOn`: which changed header field rewrites a summary), `planOnly`,
   `generationProvider`, `profileDirectory`, `promptDefinitions`, `aiDefinitions`, `fieldGenerations`, `factDefinitions`,
   `pluginVersion`/`aiVersion`/`projectName`, `runRecordFile`: the JSON record of a file phase,
-  `engine.RunRecord`). The file around it is **`SrcMorphConfigurationFile`**
+  `engine.RunRecord`, `partsDirectory`: each chunked file's map and reduce answers). The file around it is **`SrcMorphConfigurationFile`**
   (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the CLI's `command` /
   `modelFilter`), read by **`SrcMorphConfigurationFileLoader`** the same way for both surfaces: the
   extension picks JSON or YAML, a `${name}` in a parsed value is a property of the caller (the plugin:
@@ -122,10 +122,10 @@ Package root: `net.ladenthin.srcmorph`.
   plugin's mojos, the CLI's `Main`) wrap it into whatever their own surface expects. `AiProgressBar`
   is `GenerateEngine`'s.
 - **`indexer/`** — the walk/plan/write orchestration (`SourceFileIndexer`, `PackageIndexer`,
-  `ProjectIndexer`, `AiIndexPlan`, `AiCalibrationRunner`, ...); its sub-package
+  `ProjectIndexer` with its optional `ProjectOverview`, `AiIndexPlan`, `AiCalibrationRunner`, ...); its sub-package
   **`indexer.generation`** generates one summary body (`SummaryGenerator`: single-shot, map-reduce,
   sampled chunks or head, deterministic, the overflow retry) with the pure classes it calls
-  (`ChunkPlan`, `ReduceRound`, `IncompleteAnswerAction`, `AiMapReduceSupport`, `AiTokenWindow`, `AiOverflowBackoff`, `AiInputWindowCalculator`,
+  (`ChunkPlan`, `ReduceRound`, `IncompleteAnswerAction`, `SummaryParts`, `AiMapReduceSupport`, `AiTokenWindow`, `AiOverflowBackoff`, `AiInputWindowCalculator`,
   `AiRouteEstimator`, `AiSourceChunker`, `AiDeterministicSummary`, `AiGenerationTimeEstimator`,
   `AiGenerationResult`) and knows nothing of the walkers (`generationDoesNotKnowTheWalkers`). Logs via
   `org.slf4j.Logger` (a private static final field per class), not a Maven `Log` — this is what makes
@@ -151,7 +151,10 @@ Package root: `net.ladenthin.srcmorph`.
   profile over repeated adversarial lines and counts the characters the matcher reads: four times
   the input may read at most six times as many, so a quadratic pattern fails it on any machine, and
   none may reach the time limit `support.ReadBudget` gives a pattern (`READS_PER_CHAR` per character
-  plus `READ_ALLOWANCE`). A new facts file is measured without a change to it.
+  plus `READ_ALLOWANCE`). A new facts file is measured without a change to it. The measure is
+  `FactPatternLinearity`, written in Java 8 without JUnit, so the `linearity-jdk8` job of
+  `publish.yml` runs it on Java 8 as well (it compiles the one class with `--release 8`): keep that
+  class free of anything newer than Java 8.
 - **`provider/`** — the AI backend abstraction: `AiGenerationProvider` (`Closeable`),
   `AiGenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockAiGenerationProvider`,
@@ -161,7 +164,7 @@ Package root: `net.ladenthin.srcmorph`.
   `OpenAiCompatibleProviderSupport`; with `requestsPerMinute` every request first passes the
   `RequestRateLimiter` shared by all providers of one server, at the smallest limit they name, which waits on a
   `Condition` instead of `Thread.sleep`), `ProviderConfig` (one model's configuration for whichever
-  provider runs it, built through `ProviderConfig.builder(modelPath)`; the
+  provider runs it, built through `ProviderConfig.builder().modelPath(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching
   `AiGenerationConfig.DEFAULT_*`) + `ProviderConfigFactory` (the pure 37-field
   mapping from a resolved `AiGenerationConfig` to the native binding's parameter objects — extracted
@@ -196,9 +199,9 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 88 entries (nested classes counted) across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 90 entries (nested classes counted) across
 every package, all killed at 100%. **All three modules are
-PIT-gated now**: `srcmorph-cli` (26/26) and `srcmorph-maven-plugin` (78/78) carry their own
+PIT-gated now**: `srcmorph-cli` (26/26) and `srcmorph-maven-plugin` (79/79) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
 naming the CPU natives jar of every desktop platform — since llama 6.0.0 `net.ladenthin:llama` is the
 classes only); the `gpu-cuda`/`gpu-vulkan` profiles and `-Dllama.classifier=<natives jar>` (profile
@@ -623,8 +626,8 @@ See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-te
 See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-mutation-testing.md).
 Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `mvn test-compile org.pitest:pitest-maven:mutationCoverage`; or scoped to one module with
-`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (2001 mutations on 2026-11-05),
-`srcmorph-maven-plugin` (78, the mojo classes) and `srcmorph-cli` (26). The CLI's
+`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (2017 mutations on 2026-11-05),
+`srcmorph-maven-plugin` (79, the mojo classes) and `srcmorph-cli` (26). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
 `smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts
 `Main#run end.` in its output, which is an end-to-end check a unit mutant cannot reach.

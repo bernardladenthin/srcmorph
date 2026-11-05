@@ -44,8 +44,34 @@ The entries below hold the details; what a 1.4.0 user changes:
   `READ_ALLOWANCE` are `ReadBudget`'s, and
   `OpenAiCompatibleAiGenerationProvider.withoutUserInfo(text)` is `UrlUserInfo.mask(text)`. A
   plugin subclass extends `AbstractSrcMorphMojo` instead of `AbstractAiIndexMojo`.
+- **Java callers of the library, the null-safety review** (the configuration file, the CLI and the
+  plugin stay as they are): `AiFieldGenerationConfig.getPromptKey()` / `getAiDefinitionKey()` are
+  `@Nullable` (a skip rule has none); a rule that routes gives them through `requirePromptKey()` /
+  `requireAiDefinitionKey()`. `SrcMorphConfiguration.getBaseDirectory()` is `@Nullable` until set, and
+  an engine without one throws a `SrcMorphException` instead of a `NullPointerException`.
+  `ProviderConfig.builder()` takes no argument: `.modelPath(path)` sets the model file, and
+  `modelPath()` is `null` rather than `""` for a model without one (a remote model); the llama.cpp JNI
+  provider refuses such a configuration in its constructor. The `getKey()` of `AiModelDefinition`,
+  `AiPromptDefinition` and `AiFactDefinition` and `AiFactCounter.getLabel()` / `getPattern()` are
+  `@Nullable`, and a definition without a key throws an `IllegalArgumentException` instead of a
+  `NullPointerException`. The overview constructor of `ProjectIndexer` takes one `ProjectOverview`
+  (provider, rule, prompt and model lookups) instead of the four values; the four-argument
+  `SourceFileIndexer.classify` takes both lookups non-null (the two-argument one skips the window
+  check). `AiGenerationProviderFactory.effectiveProvider` takes a non-null run provider and returns a
+  non-null key, and `AiPromptTemplateLoader.load(List)` is gone (`load(List, Collection)` remains).
 
 ### Added
+
+- **`partsDirectory` keeps the map-reduce answers of each file:** every map answer and every reduce
+  batch's answer of a file read in chunks, in `<partsDirectory>/<path below the base>.parts.md`, so a
+  measurement can see where a summary loses what a part said (TODO row 32). Unset, nothing is kept.
+- **Fact counters for a `package.json` (`npm-facts`):** the entries of `scripts`, the four dependency
+  objects and `engines`, and the strings of `workspaces`, for a rule with `file-body-ops`; `run.py`
+  routes `package.json` to that rule. Not measured yet (TODO row 13).
+- **The fact counters are measured linear on Java 8 as well:** the `linearity-jdk8` job of
+  `publish.yml` runs `FactPatternLinearity`, the measure of `ProfileFactPatternsLinearityTest` written
+  in Java 8, on a Java 8 JDK, since the counters' time limit counts the reads of a regex engine that
+  differs between JDKs. It gates both publish jobs.
 
 - **`$${name}` writes a literal `${name}`** in a configuration value, whether a property of that
   name exists or not: an inline prompt can show a shell variable (`$${HOME}`) that `-DHOME=...` or a
@@ -305,6 +331,16 @@ The entries below hold the details; what a 1.4.0 user changes:
   card's invented-name rate sums the names of every kind instead of averaging the kinds' rates
   (`summary.json` carries `ticked` and `invented`; `report.py` refuses one without them);
   `CHECKOUT`, `RETURN`, `Since` and `histogram` are everyday words of their files.
+- **The scorer's copy filter and invented names** (TODO row 43; the card stays until it is
+  re-rendered): a `~~~` fence, an indented code block and a copy with its whitespace changed copy the
+  source as a ``` fence does, and do not count. A name is invented unless it is an identifier of the
+  source, a run of an identifier's word parts (split at `_` and at a capital) or their plural, so a
+  piece inside a word (`ame` of `getName`) no longer passes as a substring; the names are those in
+  backticks and the code-shaped words of the prose (`orderTotal`, `OrderService`, `order_total`), and
+  the names of languages, tools and products (`JavaBean`, `PostgreSQL`) and Python's builtin types
+  are none. Over the outputs of 2026-10 no recall changes, and the invented-name rate of a model's
+  kind rises by at most 1.3 per 100 names; qwen3-coder-30b's SQL falls from 18.6 to 3.7, since its
+  few backticked names are joined by the names of its prose.
 - **The fact counters read more of what they count, and less of what they do not** (every facts
   hash of the changed files changes, so `regenerateOn.facts` rewrites their summaries once):
   - shell: a `<<` after up to three groups in parentheses (`$(( (a) + ((b)) << n ))`) is a shift,

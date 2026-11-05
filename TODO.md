@@ -22,7 +22,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 |---|---|---|---|---|---|
 | 1 | CodeQL #270, `awaitNanos` ignored | false positive: dismiss it on GitHub | Owner | open | Review of 2026-11-02, core |
 | 2 | The Claude Code Review workflow fails on every PR | no budget this month; green again with the next | Owner | done 2026-11-05 | — |
-| 3 | SonarCloud's 98 issues need a token to read | give one, or drop the item | Owner | open | Review of 2026-11-02, tests and gates |
+| 3 | SonarCloud: with the token the analysis of PR #269 reads (159 code smells, no bug, no vulnerability, gate passed; the small ones fixed in 8a93b9e), the 98 issues of `main` do not: SonarCloud's main branch is `master`, `main` is a short branch there, and the plan serves no issues of another branch | rename SonarCloud's main branch to `main` (Administration, Branches); then the rest is read | Owner | open | Review of 2026-11-02, tests and gates |
 | 4 | gpt-oss-20b runs away on a big TypeScript file | `onIncomplete: retryOnce` in `run.py` and the examples | Owner | done 2026-11-05 | — |
 | 5 | `G` records the project's version in the plugin | record the plugin's version (`G` names the generator) | Owner | done 2026-11-05 | — |
 | 6 | `${...}` has no escape | `$${...}` writes a literal `${...}` | Owner | done 2026-11-05 | — |
@@ -32,7 +32,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 10 | Count a remote `llama-server`'s tokens with `/tokenize` | dropped: OpenRouter has none, little gain | Claude | done 2026-11-05 | — |
 | 11 | `@VisibleForTesting` | not adopted: `CODE_WRITING_GUIDE.md` section 8 | Owner | done 2026-11-05 | — |
 | 12 | TypeScript fact counters | dropped: recall is 98 to 100 % with the oop prompt | Owner | done 2026-11-05 | — |
-| 13 | A rule for `package.json` and other manifests | measure the ops prompt on it once (internally) | Claude | open | TypeScript measurement |
+| 13 | A rule for `package.json`: the rule and its counters are in (`npm-facts`, 85a4d22); measuring it waits | measure the ops prompt with `npm-facts` on it once (internally) | Claude | open | TypeScript measurement |
 | 14 | jqwik pin | decided: the pin stays, a rule of `CLAUDE.md` | Owner | done 2026-11-05 | — |
 
 **Wave 2: quick fixes** (each up to 30 min, with tests)
@@ -66,7 +66,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | # | Item | Who | Status | Details |
 |---|---|---|---|---|
 | 31 | Split the pure map-reduce logic out of `SummaryGenerator` onto the PIT gate: `ChunkPlan`, `ReduceRound`, `IncompleteAnswerAction` | Claude | done 2026-11-05 (905e1b0) | — |
-| 32 | Keep the map-reduce part summaries on request; then measure where gpt-oss-20b loses the middle | Claude | open | Audit of 2026-11-01 |
+| 32 | Measure where gpt-oss-20b loses the middle; the part summaries are kept on request (`partsDirectory`, 8a93b9e) | Claude | open | Audit of 2026-11-01 |
 | 33 | Launch the Vulkan module once on this machine's RTX 3070 | Claude | done 2026-11-05 | — |
 
 **Wave 5: measurements and what waits outside**
@@ -80,9 +80,9 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 38 | Use jllama's `ChatStreamAssembler` | External (its release) | open | Other open items |
 | 39 | ROCm, SYCL, OpenVINO: no hardware here | Owner (keep or drop) | open | Other open items |
 | 40 | Merge PR #269 | Owner | open | Enterprise kinds |
-| 41 | Run `ProfileFactPatternsLinearityTest` on the oldest supported JDK too (the read budget counts `charAt` calls) | Claude | open | Reviews of 2026-11-04 |
-| 42 | Null-safety findings S1 to S7 of the review: skip rules' null keys behind non-null getters, `baseDirectory` without a default, `""` for no model path, the `requireNonNull` workarounds | Claude | open | `docs/code-review-2026-11-05.md` section 3 |
-| 43 | Scorer gaps: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name rate counts only backticked names, by substring | Claude | open | Review of 2026-11-02, benchmark |
+| 41 | Run `ProfileFactPatternsLinearityTest` on the oldest supported JDK too (the read budget counts `charAt` calls) | Claude | done 2026-11-05 (84f75e4: the `linearity-jdk8` job) | — |
+| 42 | Null-safety findings S1 to S7 of the review: skip rules' null keys behind non-null getters, `baseDirectory` without a default, `""` for no model path, the `requireNonNull` workarounds | Claude | done 2026-11-05 (8a93b9e, with S8, S12 and S13; S9 to S11 are low and stay) | — |
+| 43 | Scorer gaps: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name rate counts only backticked names, by substring | Claude | done 2026-11-05 (84b5d4b) | — |
 | 44 | The language-corpus scores (two-part) have a committed command: `repeat.py --runs --facts` | Claude | done 2026-11-05 (a803487) | — |
 | 45 | The review's further proposals: renames N4 to N15 (`AiRule`, `AiMdHeader`'s accessors, the `Ai` prefix, `generatorVersion`, ...) and P9 (export only `config` and `engine`) | Owner: which of them, if any | open | `docs/code-review-2026-11-05.md` sections 1 and 2 |
 
@@ -102,17 +102,13 @@ Fixed on PR #269: the finish reason `error`, the TypeScript rule, the time estim
 `retryOnce` against gpt-oss-20b's runaways. Open:
 
 - **`package.json` varies with gpt-oss-20b**: 45, 13, 28 and 15 of its 45 participants, commands,
-  tools and dependencies in four runs (Luna 43 to 45 each time), with the fallback prompt. A rule for
-  manifests (`package.json`, maybe `pyproject.toml`) with the ops prompt and counters for scripts and
-  dependencies would be the next thing to measure.
+  tools and dependencies in four runs (Luna 43 to 45 each time), with the fallback prompt. `run.py`
+  routes it to the ops prompt with `npm-facts` (scripts, dependencies, engines, workspaces) now; that
+  rule is the next thing to measure (`pyproject.toml` maybe after it).
 
 ### Reviews of 2026-11-04 (PR #269 at 98c6b77, the delta and the whole repository), open items
 
-Two reviews, verified against the code; fixed on the branch except these, which wait for a decision:
-
-- The read budget of fact and `contentMatches` patterns counts the matcher's `charAt` calls, which
-  may differ between JDK versions; `ProfileFactPatternsLinearityTest` runs on JDK 25 only (not
-  measured). Running it on the oldest supported JDK too would show it.
+Two reviews, verified against the code; everything they found is fixed on the branch.
 
 ### Audit of 2026-11-01 (PR #261), in this order
 
@@ -127,8 +123,8 @@ behaviour may change where the old one was wrong, and the CHANGELOG says so.
    card. What is still open from the runs:
    - **gpt-oss-20b's map-reduce loses the middle of a file.** Since the map and reduce prompts it
      names the catalog's planted middle element in every run, the enum's middle area in none of
-     the 4096-token runs (once at 16384; Luna in every run); the partial summaries are not kept, so where it is lost is not known.
-     Keeping the partials (beside the run record, on request) would show it.
+     the 4096-token runs (once at 16384; Luna in every run). Where it is lost is not known yet:
+     `partsDirectory` keeps every map and reduce answer of a file now, so the next run shows it.
 
 ### Verification of 2026-11-01 (eleven reviews of b74aa6b), open items
 
@@ -163,8 +159,7 @@ Seven reviews (map-reduce engine, providers, configuration and engine, prompts, 
 benchmark tooling, tests) checked the branch at c2d6834; what they found is fixed (CHANGELOG,
 Unreleased) except:
 
-- Benchmark: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name
-  rate is taken inside backticks only and by substring; recall counts names, not faithfulness (a bare
+- Benchmark: recall counts names, not faithfulness (a bare
   name list scores 100 %, wrong claims are not measured); with three runs against three a Fisher test
   cannot reach 0.05, and hit@1 is compared unpaired (McNemar fits); every prompt version was tuned on
   the corpus it is scored on.
@@ -186,7 +181,13 @@ Unreleased) except:
 
 **Tests and gates:**
 
-- SonarCloud reports 98 new issues that are not readable without a token.
+- SonarCloud: the 98 issues of `main` are not readable through the API, since SonarCloud's main branch
+  is `master` and `main` a short branch the plan serves no issues of (row 3). The analysis of PR #269
+  reads: of its 159 code smells the unused locals, the unescaped line separators, the `record`
+  variables, a shadowed field and `Collections.sort` are fixed; left are the test style ones (public
+  test methods, a lambda with several calls in `assertThrows`, many assertions in one test), the
+  cognitive complexity of nine methods and an eight-parameter method (refactors to report, not to
+  apply), and a few false positives (comments read as code).
 
 
 ### Other open items

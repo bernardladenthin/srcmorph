@@ -444,7 +444,7 @@ jobs:
   # Plugin integration test -- the only job that runs srcmorph-maven-plugin AS A PLUGIN.
   #
   # Every other check on that module calls Java methods directly (PluginArchitectureTest,
-  # AbstractSrcMorphMojoTest, MojoGoalTest, MojoPhaseSkipTest, PIT at 78/78), so nothing covers what
+  # AbstractSrcMorphMojoTest, MojoGoalTest, MojoPhaseSkipTest, PIT at 79/79), so nothing covers what
   # only Maven does: injecting the srcmorph.* properties and ${project.*} values into the @Parameter
   # fields, goal-prefix resolution, lifecycle-phase binding, and the descriptor maven-plugin-plugin
   # generates. A renamed @Parameter property shipped green before this job.
