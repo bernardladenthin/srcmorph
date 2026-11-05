@@ -80,7 +80,7 @@ breaking change, the CHANGELOG's Upgrading section names each one)
   `FactGroups`, `AiMdRewritePolicy` with `shouldRewrite`, `MapReduceMath`; `AiCondition` to
   `RuleCondition`, `AiPathSupport` to `SourcePaths`); the test classes, PIT's `targetClasses`,
   `spotbugs-exclude.xml`, ArchUnit and CLAUDE.md move with them
-- [x] A7 N4b the configuration keys `rules`, `packageRules`, `projectRules` (the loader, the CLI,
+- [x] A7 (6ee9f07) N4b the configuration keys `rules`, `packageRules`, `projectRules` (the loader, the CLI,
   the plugin, `examples/`, the profile's configurations, the plugin-it fixture, the benchmark's
   `run.py`, the READMEs)
 - [!] A8 P9 `module-info` exports `config` and `engine`, and `support` to the CLI only. Not done: the
@@ -88,7 +88,7 @@ breaking change, the CHANGELOG's Upgrading section names each one)
   `provider` (`GenerationUsage`, `RemoteModel`, `GenerationProviderFactory`) and `prompt`, so a
   module-path consumer could call the engines but not name what they take and return. It needs an
   engine API without those types first (owner: wanted or not)
-- [ ] A9 PIT at 100 in all three modules; CLAUDE.md's counts; `docs/code-review-2026-11-05.md` says
+- [x] A9 PIT at 100 in all three modules; CLAUDE.md's counts; `docs/code-review-2026-11-05.md` says
   what was applied
 
 **Phase B: the tests follow `TEST_WRITING_GUIDE`** (row 29: three-part names, arrange/act/assert
