@@ -88,7 +88,7 @@ breaking change, the CHANGELOG's Upgrading section names each one)
   `provider` (`GenerationUsage`, `RemoteModel`, `GenerationProviderFactory`) and `prompt`, so a
   module-path consumer could call the engines but not name what they take and return. It needs an
   engine API without those types first (owner: wanted or not)
-- [x] A9 PIT at 100 in all three modules; CLAUDE.md's counts; `docs/code-review-2026-11-05.md` says
+- [x] A9 (aff7adf) PIT at 100 in all three modules; CLAUDE.md's counts; `docs/code-review-2026-11-05.md` says
   what was applied
 
 **Phase B: the tests follow `TEST_WRITING_GUIDE`** (row 29: three-part names, arrange/act/assert
@@ -102,9 +102,13 @@ test methods, one call in an `assertThrows` lambda)
 - [ ] B5 `provider` (20)
 - [ ] B6 `indexer` (9)
 - [ ] B7 `indexer.generation` (15)
-- [ ] B8 `engine` (12) and the root package (3)
+- [ ] B8 `engine` (12)
 - [ ] B9 `srcmorph-cli` (6), `srcmorph-maven-plugin` (8)
 - [ ] B10 PIT at 100 in all three modules; the counts in this file's sections are deleted
+- [ ] B11 `TEST_WRITING_GUIDE.md` says what the tests do: the SPDX header (not the old license
+  block), SLF4J and logback's `ListAppender` (not a Maven `Log`), the current class and package names.
+  SonarCloud's "test methods should not be public" is not followed: the owner's guides write
+  `public` test classes and methods
 
 **Phase C: the measurements** (internal where the data is; OpenRouter runs one at a time, a local
 Granite run may run beside one; the scores go to `scores/`, the model card is not re-rendered)
