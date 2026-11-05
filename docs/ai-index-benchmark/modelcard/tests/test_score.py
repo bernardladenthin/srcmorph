@@ -37,6 +37,39 @@ class NamesFoundTest(unittest.TestCase):
         self.assertEqual(row["idsFound"], 2)
         self.assertEqual(row["fences"], 2)
 
+    def test_aTildeFenceThatCopiesTheSource_doesNotCount(self):
+        source = "public class Foo {\n    void bar() {}\n}\n"
+        row = score.score_file(source, body("~~~java\npublic class Foo {\n    void bar() {}\n}\n~~~\n"),
+                               ["Foo", "bar"], [])
+
+        self.assertEqual(row["idsFound"], 0)
+        self.assertEqual(row["fences"], 2)
+
+    def test_anIndentedCopyOfTheSource_doesNotCount(self):
+        source = "public class Foo {\n    void bar() {}\n}\n"
+        row = score.score_file(source, body("The code:\n\n    public class Foo {\n        void bar() {}\n    }\n"),
+                               ["Foo", "bar"], [])
+
+        self.assertEqual(row["idsFound"], 0)
+
+    def test_anIndentedBlockOfTheModelsOwnText_counts(self):
+        row = score.score_file("public class Foo {\n    void bar() {}\n}\n",
+                               body("The API:\n\n    Foo is the type, bar() its one method\n"), ["Foo", "bar"], [])
+
+        self.assertEqual(row["idsFound"], 2)
+
+    def test_aCopyWithItsWhitespaceChanged_isACopy(self):
+        source = "public class Foo {\n    void bar( int a ) {}\n}\n"
+        row = score.score_file(source, body("```\npublic  class Foo{\nvoid bar(int a) {}\n}\n```\n"), ["Foo", "bar"], [])
+
+        self.assertEqual(row["idsFound"], 0)
+
+    def test_aSignatureList_isNoCopyOfTheDeclarations(self):
+        source = "public class Foo {\n    public void bar(int a) {\n        a++;\n    }\n}\n"
+        row = score.score_file(source, body("```\npublic void bar(int a)\n```\n"), ["bar"], [])
+
+        self.assertEqual(row["idsFound"], 1)
+
     def test_anUnclosedCopy_runsToTheEnd(self):
         row = score.score_file("int Foo = 1;", body("```\nint Foo = 1;"), ["Foo"], [])
 
@@ -138,6 +171,37 @@ class InventedTest(unittest.TestCase):
                                [], [])
 
         self.assertEqual(row["ticked"], 0)
+
+    def test_aPieceInsideAWordPart_isNoNameOfTheSource(self):
+        row = score.score_file("String getName() { return name; }", body("`getName` returns `get` of `ame`."), [], [])
+
+        self.assertEqual(row["ticked"], 3)
+        self.assertEqual(row["inventedNames"], ["ame"])
+
+    def test_runsOfWordParts_prefixesAndPlurals_nameTheSource(self):
+        source = "size_t ringbuf_free_space(void); int DEFAULT_SIZE; class OrderService {}"
+        row = score.score_file(source, body("`free_space`, `ringbuf_`, `DEFAULT_*`, `Service` and the "
+                                            "`OrderServices`; not `ree_space`."), [], [])
+
+        self.assertEqual(row["inventedNames"], ["ree_space"])
+
+    def test_namesOfToolsAndProducts_areNoNames(self):
+        row = score.score_file("", body("A JavaBean read from PostgreSQL."), [], [])
+
+        self.assertEqual(row["ticked"], 0)
+
+    def test_codeShapedWordsOfTheProse_areNames(self):
+        source = "class OrderService { int order_total; }"
+        row = score.score_file(source, body("The OrderService keeps order_total and orderTotal; a `ticked_name` "
+                                            "counts once."), [], [])
+
+        self.assertEqual(row["inventedNames"], ["orderTotal", "ticked_name"])
+        self.assertEqual(row["ticked"], 4)
+
+    def test_aQualifiedCodeShapedWord_countsAsItsLastPart(self):
+        row = score.score_file("class OrderService {}", body("It calls app.OrderService and app.missingName."), [], [])
+
+        self.assertEqual(row["inventedNames"], ["missingName"])
 
     def test_namesInACopiedFence_areNotTicked(self):
         row = score.score_file("x = `Invented`", body("```\nx = `Invented`\n```\n"), [], [])

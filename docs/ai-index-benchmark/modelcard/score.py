@@ -9,10 +9,11 @@ For every model under <out> (one directory per model key) and every source file 
 - recall = per file the share of the expected identifiers (facts.json; for Java the public types and
   the public/protected methods taken from the source, annotated and multi-line signatures included,
   and an interface's methods) the body names as a whole word, averaged over the files of a kind.
-  A code fence that copies the source (at least half of its lines are lines of the source) does
-  not count: a body that pastes the source names every identifier without summarizing it. A fence
-  around the model's own text (a signature list, a summary wrapped in ```markdown) counts; the
-  format column holds it against the body. A name the facts list under "words" is an everyday
+  A code block that copies the source (at least half of its lines are lines of the source, whatever
+  the whitespace in them) does not count: a body that pastes the source names every identifier
+  without summarizing it. A block is a ``` or ~~~ fence or a run of lines indented by four spaces or
+  a tab after a blank line. A fence around the model's own text (a signature list, a summary wrapped
+  in ```markdown) counts; the format column holds it against the body. A name the facts list under "words" is an everyday
   word too (`author`, `status`, `main`): it counts only where the body marks it as code (a backtick
   span, a call `main(`, bold, qualified, an option, the label of a list item, a column with its type
   `email VARCHAR(254)`), because prose uses the same
@@ -20,12 +21,18 @@ For every model under <out> (one directory per model key) and every source file 
   Java summary that writes "close releases the model" means the method `close`, and requiring code
   marks there cost more right names than it saved wrong ones. SQL names are matched without regard
   to case;
-- invented = backticked identifiers outside a copied fence that occur nowhere in the source, per 100
-  backticked identifiers (a proxy for hallucinated names, not a full fact check). A qualified name
-  counts as its last part, and keywords, standard-library types, escapes and format placeholders
-  (`\\t`, `YYYY-MM-DD`, `getX`) are no names;
+- invented = the names outside a copied block that are no identifier of the source, per 100 names (a
+  proxy for hallucinated names, not a full fact check). A name is an identifier in a backtick span,
+  or a word of the prose shaped like code: camelCase, PascalCase with a second capital, or with an
+  underscore (`orderTotal`, `OrderService`, `order_total`). A name of the source is one of its
+  identifiers or a run of their word parts, split at an underscore or a capital (`free_space` and
+  `used` of `ringbuf_free_space` and `ringbuf_used`, `get` of `getName`, the prefix `DEFAULT_`), or
+  their plural; a piece inside a word part (`nam` of `getName`) is none. A qualified name counts as
+  its last part, and keywords, standard-library types, the names of languages, tools and products
+  (`JavaBean`, `PostgreSQL`), escapes and format placeholders (`\\t`, `YYYY-MM-DD`, `getX`) are no
+  names;
 - numbers = the exact counts of facts.json the body states (the seed-data row counts);
-- format: missing lead line, '#' to '###' headings, code fences, leaked reasoning markers (one in
+- format: missing lead line, '#' to '###' headings, code fence markers (``` and ~~~), leaked reasoning markers (one in
   backticks is the summary writing about it, no leak);
 - failed = why a body is not a summary: missing, empty, leak-only (reasoning and no lead; a complete
   summary after a reasoning block is a leak, not a failure), refusal, too-short (under 80 bytes); a failed body scores 0 in recall. cutOff = the generation hit maxOutputTokens (from the
@@ -52,8 +59,16 @@ IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # The lines srcmorph writes in front of a body (AiFactExtractor.FACTS_HEADER,
 # AiMapReduceSupport.COVERAGE_HEADER), in this order.
 MACHINE_LINES = ("**Facts (exact, whole file):** ", "**Coverage:** ")
-# A fenced block (its opening line with the language, its content); an unclosed one runs to the end.
-FENCED = re.compile(r"```[^\n]*\n?(.*?)(?:```|\Z)", re.S)
+# A fenced block (its opening line with the language, its content), opened and closed by the same run of
+# three or more backticks or tildes; an unclosed one runs to the end.
+FENCED = re.compile(r"(?P<marker>`{3,}|~{3,})[^\n]*\n?(?P<code>.*?)(?:(?P=marker)|\Z)", re.S)
+# An indented code block: lines indented by four spaces or a tab, after a blank line or at the start.
+INDENTED = re.compile(r"(?:\A|(?<=\n\n))(?P<code>(?:(?: {4}|\t)[^\n]*(?:\n|\Z))+)")
+# A fence marker the format column counts.
+FENCE_MARKER = re.compile(r"`{3,}|~{3,}")
+# A word of the prose shaped like code: camelCase, PascalCase with a second capital, or snake_case.
+CODE_SHAPED = re.compile(r"(?<![\w`.$])(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*"
+                         r"|[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]*[A-Za-z0-9])(?![\w`$])")
 # A fence is a copy of the source when at least this share of its lines are lines of the source.
 COPIED_SHARE = 0.5
 BACKTICK = re.compile(r"`([^`\n]+)`")
@@ -99,6 +114,11 @@ LinkedHashSet TreeSet Deque ArrayDeque Queue ConcurrentHashMap Stream Collectors
 Supplier Consumer BiConsumer Predicate StringBuilder CharSequence Path Paths Files File Duration
 Instant LocalDate LocalDateTime UUID Pattern Matcher Charset StandardCharsets BigDecimal BigInteger
 CompletableFuture Future ExecutorService TimeUnit AtomicInteger AtomicLong AtomicBoolean
+Dict Tuple Any Callable Sequence Mapping DictReader DictWriter FileNotFoundError ValueError KeyError TypeError
+OSError SystemExit
+JavaBean JavaBeans JavaScript TypeScript JavaDoc Javadoc GitHub GitLab PostgreSQL MySQL SQLite MariaDB
+MongoDB NoSQL GraphQL OAuth OpenAI OpenRouter OpenJDK GraalVM HotSpot IntelliJ NetBeans PowerShell
+DevOps JUnit TestNG SpotBugs ArchUnit NullAway CMake WebSocket WebSockets YouTube LaTeX KaTeX macOS iOS
 NULL TRUE FALSE INTEGER INT BIGINT SMALLINT DECIMAL NUMERIC VARCHAR CHAR TEXT DATE TIME TIMESTAMP
 BOOLEAN SERIAL SELECT INSERT INTO VALUES UPDATE DELETE FROM WHERE JOIN LEFT RIGHT INNER OUTER GROUP
 ORDER HAVING PRIMARY FOREIGN KEY REFERENCES UNIQUE CHECK INDEX VIEW TRIGGER FUNCTION PROCEDURE BEGIN
@@ -171,15 +191,34 @@ def expected_ids(rel, source, facts):
     return [], [], []
 
 
+# Where a run of word parts of an identifier starts and ends: at the identifier's ends, at an underscore,
+# or where a capital follows a small letter or a digit.
+PART_START = r"(?:(?<![A-Za-z0-9_])|(?<=_)|(?<=[a-z0-9])(?=[A-Z]))"
+PART_END = r"(?:(?![A-Za-z0-9_])|(?=_)|(?<=_)|(?<=[a-z0-9])(?=[A-Z]))"
+
+
+def names_the_source(name, identifiers, case_insensitive=False):
+    """Whether a name is one of the identifiers (joined by spaces), a run of their word parts, or the
+    plural of either."""
+    flags = re.I if case_insensitive else 0
+    for candidate in (name, name[:-1]) if len(name) > 3 and name.endswith("s") else (name,):
+        if re.search(PART_START + re.escape(candidate) + PART_END, identifiers, flags):
+            return True
+    return False
+
+
 def ticked_names(prose):
-    """The identifiers of the backticked spans, a qualified name as its last part, without keywords,
-    standard-library types, escapes and placeholders."""
+    """The names of the prose: the identifiers of the backticked spans, a qualified name as its last part,
+    and the code-shaped words outside them, without keywords, standard-library types, escapes and
+    placeholders."""
     names = []
     for span in BACKTICK.findall(prose):
         if PLACEHOLDER.search(span):
             continue
         span = QUALIFIED.sub(lambda m: m.group(0).rsplit(".", 1)[1], span)
         names += [t for t in IDENT.findall(span) if len(t) >= 3 and t not in GENERIC]
+    unticked = QUALIFIED.sub(lambda m: " " + m.group(0).rsplit(".", 1)[1], INLINE_CODE.sub(" ", prose))
+    names += [t for t in CODE_SHAPED.findall(unticked) if t not in GENERIC and not PLACEHOLDER.search(t)]
     return names
 
 
@@ -262,15 +301,22 @@ def failure_of(missing, body, lead, leaks):
 
 
 def without_copies(body, source):
-    """The body with every fence that copies the source blanked, and the other fences' markers dropped."""
-    source_lines = {line.strip() for line in source.splitlines() if line.strip()}
+    """The body with every code block that copies the source blanked, and the other fences' markers
+    dropped. A line of a block is a line of the source whatever the whitespace in it: a copy indented
+    anew or with its spaces changed is still a copy."""
+    source_lines = {"".join(line.split()) for line in source.splitlines() if line.strip()}
 
-    def replace(match):
-        lines = [line.strip() for line in match.group(1).splitlines() if line.strip()]
-        copied = sum(1 for line in lines if line in source_lines)
-        return " " if lines and copied >= COPIED_SHARE * len(lines) else "\n" + match.group(1) + "\n"
+    def copies(code):
+        lines = ["".join(line.split()) for line in code.splitlines() if line.strip()]
+        return bool(lines) and sum(1 for line in lines if line in source_lines) >= COPIED_SHARE * len(lines)
 
-    return FENCED.sub(replace, body)
+    def fence(match):
+        return " " if copies(match.group("code")) else "\n" + match.group("code") + "\n"
+
+    def indented(match):
+        return " \n" if copies(match.group("code")) else match.group("code")
+
+    return INDENTED.sub(indented, FENCED.sub(fence, body))
 
 
 def score_file(source, body, ids, numbers, case_insensitive=False, everyday=()):
@@ -279,8 +325,8 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=()):
     found = names_found(ids, prose, case_insensitive, everyday)
     ticked = ticked_names(prose)
     # SQL names and keywords are case-insensitive: `integer` names the source's INTEGER.
-    haystack = source.lower() if case_insensitive else source
-    invented = [t for t in ticked if (t.lower() if case_insensitive else t) not in haystack]
+    identifiers = " ".join(sorted(set(IDENT.findall(source))))
+    invented = [t for t in ticked if not names_the_source(t, identifiers, case_insensitive)]
     stated = [n for n in numbers if number_pattern(n).search(prose)]
     lines = body.strip().splitlines()
     # a reasoning block in front of a complete summary is a leak (counted below), not a missing lead
@@ -300,7 +346,7 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=()):
         "numbersStated": len(stated),
         "lead": lead,
         "badHeadings": sum(1 for line in lines if re.match(r"^#{1,3}\s", line)),
-        "fences": body.count("```"),
+        "fences": len(FENCE_MARKER.findall(body)),
         "leaks": leaks,
         "empty": not body.strip(),
         "failed": failure_of(False, body, lead, leaks),
