@@ -20,16 +20,84 @@ repository.
 |---|---|---|---|---|
 | 1 | CodeQL #270, `awaitNanos` ignored | false positive: dismiss it on GitHub | Owner | Review of 2026-11-02, core |
 | 3 | SonarCloud: the analysis of PR #269 reads (159 code smells, no bug, no vulnerability, gate passed), the 98 issues of `main` do not: SonarCloud's main branch is `master`, `main` is a short branch there, and the plan serves no issues of another branch | rename SonarCloud's main branch to `main` (Administration, Branches); then the rest is read | Owner | Review of 2026-11-02, tests and gates |
-| 13 | A rule for `package.json`: the rule and its counters are in (`npm-facts`); measuring it waits | measure the ops prompt with `npm-facts` on it once (internally) | Claude | TypeScript measurement |
-| 29 | Test upkeep: the guide drift of older tests (433 two-part and 221 one-part test names, missing arrange/act/assert comments, 195 qualified names) | a sweep, or fix a file's drift when it is touched | Owner | Review of 2026-11-02, tests |
-| 32 | Measure where gpt-oss-20b loses the middle; the part summaries are kept on request (`partsDirectory`) | one large-corpus run with `partsDirectory` | Claude | Audit of 2026-11-01 |
-| 35 | A large POM for `big-pom` / `huge-pom` (local Granite, hours) | three runs each, as for `big-xml` | Claude | Verification of 2026-11-01, D3 |
-| 36 | The self-test routes the new kinds after a measurement on real projects (Claude picks open-source ones) | measure, then route | Claude | Enterprise kinds |
+| 13 | A rule for `package.json`: the rule and its counters are in (`npm-facts`); measuring it waits | measure the ops prompt with `npm-facts` on it once (internally) | Claude | Run plan, C1 |
+| 29 | Test upkeep: the guide drift of older tests (433 two-part and 221 one-part test names, missing arrange/act/assert comments, 195 qualified names) | decided 2026-11-05: the whole sweep, after phase A | Claude | Run plan, phase B |
+| 32 | Measure where gpt-oss-20b loses the middle; the part summaries are kept on request (`partsDirectory`) | one large-corpus run with `partsDirectory` | Claude | Run plan, C2 |
+| 35 | A large POM for `big-pom` / `huge-pom` (local Granite, hours) | three runs each, as for `big-xml` | Claude | Run plan, C3 |
+| 36 | The self-test routes the new kinds after a measurement on real projects (Claude picks open-source ones) | measure, then route | Claude | Run plan, C4 |
 | 37 | Card text and the method's limits (correlation, BM25 range, Fisher, faithfulness) | with the next re-render of the card | Owner | Review of 2026-11-02, benchmark tooling |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
-| 39 | ROCm, SYCL, OpenVINO: no hardware here | keep or drop | Owner | Other open items |
 | 40 | Merge PR #269 | merge | Owner | Enterprise kinds |
-| 45 | The review's further proposals: renames N4 to N15 (`AiRule`, `AiMdHeader`'s accessors, the `Ai` prefix, `generatorVersion`, ...) and P9 (export only `config` and `engine`) | which of them, if any | Owner | `docs/code-review-2026-11-05.md` sections 1 and 2 |
+| 45 | The review's further proposals: renames N4 to N15 and P9 | decided 2026-11-05: all of them, the configuration keys included | Claude | Run plan, phase A |
+
+## Run plan (2026-11-05): rows 45, 29, 13, 32, 35 and 36, one step after the other
+
+The run works this list from the top: it takes the first unticked step, does it with its tests,
+ticks it (`[x]` with the commit) and pushes. A step it finds on the way is added where it belongs;
+a step that cannot be done is marked `[!]` with the reason and skipped. Every step of phase A and B
+ends green: `mvn verify` of the reactor (tests, SpotBugs, NullAway, Checker, ArchUnit, Spotless);
+PIT at 100 runs after each phase, not after each step. When every step is ticked, the ticked ones
+are deleted together with this section's rows of the plan.
+
+**Phase A: the review's renames and P9** (`docs/code-review-2026-11-05.md` sections 1 and 2; a
+breaking change, the CHANGELOG's Upgrading section names each one)
+
+- [ ] A1 The small ones: N15 the plugin's package Javadoc, N14 the CLI's names (`logConfigurationEcho`,
+  `configurationToYaml`, `readString` / `fromJson` / `fromYaml` package-private), N13
+  `basePromptLength`, N12 one `UNKNOWN_CONTEXT_LENGTH` value (`-1`), N11 `TimedGeneration`
+- [ ] A2 N5 `AiMdHeader`'s accessors by name (`headerVersion()`, `checksum()`, `sourceDate()`,
+  `generatedAt()`, `generatorVersion()`, `aiVersion()`, `nodeType()`, `promptHash()`, `factsHash()`,
+  `modelHash()`, `childrenHash()`); the codec keeps the letters
+- [ ] A3 N8 `AiIndexPlan.Entry` to `Route`, `RunRecord.Entry` to `FileRecord`, a `RecordedHashes`
+  value instead of `Map.Entry<String, String>`
+- [ ] A4 N9 `pluginVersion` to `generatorVersion` (configuration key, bean, `RunRecord`)
+- [ ] A5 N10 drop `AiGenerationConfig`: the model registry builds `ProviderConfig` from the
+  `AiModelDefinition` directly
+- [ ] A6 N4a, N6 and N7 in one pass per package, each class renamed once (the `Ai` prefix goes but
+  on `AiMd*`; `RoutingRule`, `RuleSelector`, `ModelRegistry`, `PromptCatalog`, `PromptPreparer`,
+  `FactGroups`, `AiMdRewritePolicy` with `shouldRewrite`, `MapReduceMath`; `AiCondition` to
+  `RuleCondition`, `AiPathSupport` to `SourcePaths`); the test classes, PIT's `targetClasses`,
+  `spotbugs-exclude.xml`, ArchUnit and CLAUDE.md move with them
+  - [ ] A6a `support`
+  - [ ] A6b `config`
+  - [ ] A6c `facts`, `routing`
+  - [ ] A6d `prompt`, `document`
+  - [ ] A6e `provider`
+  - [ ] A6f `indexer`, `indexer.generation`
+  - [ ] A6g `engine`, the CLI, the plugin
+- [ ] A7 N4b the configuration keys `rules`, `packageRules`, `projectRules` (the loader, the CLI,
+  the plugin, `examples/`, the profile's configurations, the plugin-it fixture, the benchmark's
+  `run.py`, the READMEs)
+- [ ] A8 P9 `module-info` exports `config` and `engine`, and `support` to the CLI only
+- [ ] A9 PIT at 100 in all three modules; CLAUDE.md's counts; `docs/code-review-2026-11-05.md` says
+  what was applied
+
+**Phase B: the tests follow `TEST_WRITING_GUIDE`** (row 29: three-part names, arrange/act/assert
+comments, folds, no fully qualified names; the test style findings of SonarCloud: package-private
+test methods, one call in an `assertThrows` lambda)
+
+- [ ] B1 `support` (14 files)
+- [ ] B2 `config` (15)
+- [ ] B3 `facts` (16), `routing` (3)
+- [ ] B4 `document` (7), `prompt` (4)
+- [ ] B5 `provider` (20)
+- [ ] B6 `indexer` (9)
+- [ ] B7 `indexer.generation` (15)
+- [ ] B8 `engine` (12) and the root package (3)
+- [ ] B9 `srcmorph-cli` (6), `srcmorph-maven-plugin` (8)
+- [ ] B10 PIT at 100 in all three modules; the counts in this file's sections are deleted
+
+**Phase C: the measurements** (internal where the data is; OpenRouter runs one at a time, a local
+Granite run may run beside one; the scores go to `scores/`, the model card is not re-rendered)
+
+- [ ] C1 Row 13: the ops prompt with `npm-facts` on `package.json` (gpt-oss-20b and Luna, three runs)
+- [ ] C2 Row 32: a large-corpus run of gpt-oss-20b with `partsDirectory`; where the middle is lost,
+  and what follows from it for the map or reduce prompt
+- [ ] C3 Row 35: a large POM for `big-pom` / `huge-pom`, three runs each with the local Granite tiers;
+  the self-test's rule follows the result
+- [ ] C4 Row 36: the new kinds on real open-source projects (picked and named in the writeup); the
+  self-test routes the kinds that hold up
+- [ ] C5 The writeups (`docs/ai-index-benchmark/`), CHANGELOG, this file
 
 ## Open
 
@@ -98,10 +166,3 @@ repository.
   `OpenAiCompatibleProviderSupportTest`, this item, and, being the last marker, `ReplaceWithLibrary`
   with its test. The stub-server tests in `OpenAiCompatibleAiGenerationProviderTest` stay and prove the
   switch.
-
-- **No GPU module is launched in CI.** `smoke-jar` builds `examples/build-your-own-jar` with the CPU
-  natives only and runs `Plan`; a GitHub-hosted runner has no GPU device, and only a real generation
-  loads the native library. `cuda13-windows-x86-64` (2026-10-23) and `vulkan-windows-x86-64`
-  (2026-11-05) had a manual pass on this machine's RTX 3070 Laptop (`build.sh -Dgpu=<classifier>`,
-  then a `GenerateFileIndex` with `gpuLayers` set). **Still unlaunched: `rocm`, `sycl` and
-  `openvino`**: no AMD discrete, Intel or other GPU here (row 39).
