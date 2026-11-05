@@ -22,15 +22,15 @@ public class RunRecordTest {
     @TempDir
     Path tempDir;
 
-    private static RunRecord record() {
+    private static RunRecord runRecord() {
         // the run starts at 1 s on its clock and is written at 5.5 s; two files were skipped
         final long[] now = {1_000_000_000L};
-        final RunRecord record = new RunRecord("9.9.9", 2, () -> now[0]);
+        final RunRecord runRecord = new RunRecord("9.9.9", 2, () -> now[0]);
         now[0] = 6_500_000_000L;
-        record.addModelLoad("m", 750_000_000L);
-        record.addModelLoad("m", 250_000_000L);
-        record.addModelLoad("other", 0L);
-        record.add(new RunRecord.Entry(
+        runRecord.addModelLoad("m", 750_000_000L);
+        runRecord.addModelLoad("m", 250_000_000L);
+        runRecord.addModelLoad("other", 0L);
+        runRecord.add(new RunRecord.Entry(
                 "src/A.java",
                 "java",
                 "file-body-java",
@@ -40,7 +40,7 @@ public class RunRecordTest {
                 1_500_000_000L,
                 "AAAA0000",
                 "BBBB1111"));
-        record.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.Entry(
                 "src/B.java",
                 "java",
                 "file-body-java",
@@ -50,7 +50,7 @@ public class RunRecordTest {
                 500_000_000L,
                 "AAAA0000",
                 ""));
-        record.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.Entry(
                 "src/C.sql",
                 "sql",
                 "file-body-sql",
@@ -60,12 +60,12 @@ public class RunRecordTest {
                 1_000_000_000L,
                 "CCCC2222",
                 ""));
-        return record;
+        return runRecord;
     }
 
     @Test
     public void toJson_oneObjectPerFile() throws Exception {
-        final JsonNode root = new ObjectMapper().readTree(record().toJson());
+        final JsonNode root = new ObjectMapper().readTree(runRecord().toJson());
 
         assertThat(root.get("pluginVersion").asText(), is(equalTo("9.9.9")));
         final JsonNode a = root.get("files").get(0);
@@ -88,7 +88,8 @@ public class RunRecordTest {
 
     @Test
     public void toJson_totals() throws Exception {
-        final JsonNode totals = new ObjectMapper().readTree(record().toJson()).get("totals");
+        final JsonNode totals =
+                new ObjectMapper().readTree(runRecord().toJson()).get("totals");
 
         assertThat(totals.get("files").asInt(), is(3));
         assertThat(totals.get("written").asInt(), is(1));
@@ -107,8 +108,8 @@ public class RunRecordTest {
 
     @Test
     public void toJson_totals_countUnchangedAndFailedApart() throws Exception {
-        final RunRecord record = record();
-        record.add(new RunRecord.Entry(
+        final RunRecord runRecord = runRecord();
+        runRecord.add(new RunRecord.Entry(
                 "src/D.java",
                 "java",
                 "file-body-java",
@@ -119,7 +120,7 @@ public class RunRecordTest {
                 "AAAA0000",
                 ""));
 
-        final JsonNode totals = new ObjectMapper().readTree(record.toJson()).get("totals");
+        final JsonNode totals = new ObjectMapper().readTree(runRecord.toJson()).get("totals");
 
         assertThat(totals.get("unchanged").asInt(), is(2));
         assertThat(totals.get("failed").asInt(), is(1));
@@ -129,20 +130,22 @@ public class RunRecordTest {
     public void write_createsTheDirectory() throws Exception {
         final Path file = tempDir.resolve("records/run.json");
 
-        record().write(file);
+        runRecord().write(file);
 
-        assertThat(new String(Files.readAllBytes(file), StandardCharsets.UTF_8), is(equalTo(record().toJson())));
+        assertThat(
+                new String(Files.readAllBytes(file), StandardCharsets.UTF_8),
+                is(equalTo(runRecord().toJson())));
     }
 
     @Test
     public void entries_areInOrderAndUnmodifiable() {
-        final RunRecord record = record();
+        final RunRecord runRecord = runRecord();
 
-        assertThat(record.entries().size(), is(3));
-        assertThat(record.entries().get(2).file(), is(equalTo("src/C.sql")));
-        assertThat(record.entries().get(2).outcome(), is(AiIndexOutcome.FAILED));
-        assertThat(record.entries().get(0).usage().calls(), is(2));
+        assertThat(runRecord.entries().size(), is(3));
+        assertThat(runRecord.entries().get(2).file(), is(equalTo("src/C.sql")));
+        assertThat(runRecord.entries().get(2).outcome(), is(AiIndexOutcome.FAILED));
+        assertThat(runRecord.entries().get(0).usage().calls(), is(2));
         org.junit.jupiter.api.Assertions.assertThrows(
-                UnsupportedOperationException.class, () -> record.entries().clear());
+                UnsupportedOperationException.class, () -> runRecord.entries().clear());
     }
 }

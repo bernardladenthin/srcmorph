@@ -5,7 +5,6 @@ package net.ladenthin.srcmorph.provider;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
@@ -17,7 +16,7 @@ import org.jspecify.annotations.Nullable;
  * model file and parameters, an OpenAI-compatible server's {@code baseUrl}, key variable, streaming,
  * rate limit and retries, and the sampling both take.
  *
- * <p>Built through {@link #builder(String)}; the positional constructor is private (thirty-seven
+ * <p>Built through {@link #builder()}; the positional constructor is private (thirty-seven
  * arguments is past the point where a call site is readable or a swapped pair is noticeable).</p>
  *
  * <p>Record-shaped value type marked {@link net.ladenthin.srcmorph.support.ConvertToRecord} for the future Java&nbsp;17+
@@ -30,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 @ToString
 @EqualsAndHashCode
 public final class ProviderConfig {
-    private final String modelPath;
+    private final @Nullable String modelPath;
     private final int contextSize;
     private final int maxOutputTokens;
     private final float temperature;
@@ -79,7 +78,7 @@ public final class ProviderConfig {
      * Creates a configuration from a fully populated {@link Builder}.
      *
      * <p>Private on purpose: with thirty-seven fields a positional constructor is unreadable at the call
-     * site and a swap of two same-typed neighbours compiles silently. {@link #builder(String)} is the only
+     * site and a swap of two same-typed neighbours compiles silently. {@link #builder()} is the only
      * way in, so every value arrives named, and every value the caller did not name is the matching
      * {@code AiGenerationConfig.DEFAULT_*} rather than Java's zero.</p>
      *
@@ -136,26 +135,21 @@ public final class ProviderConfig {
     }
 
     /**
-     * Starts building a configuration for the given model, with every other value pre-set to its
-     * {@code AiGenerationConfig.DEFAULT_*}.
+     * Starts building a configuration with every value pre-set to its {@code AiGenerationConfig.DEFAULT_*},
+     * and no model file.
      *
-     * <p>{@code modelPath} is the one value with no meaningful default, so it is required here rather
-     * than checked in {@code build()}: a caller cannot construct a half-formed builder at all.</p>
-     *
-     * @param modelPath path to the GGUF model file; must not be {@code null}
      * @return a builder carrying the defaults
-     * @throws NullPointerException if {@code modelPath} is {@code null}
      */
-    public static Builder builder(final String modelPath) {
-        return new Builder(modelPath);
+    public static Builder builder() {
+        return new Builder();
     }
 
     /**
-     * Returns the GGUF model file path.
+     * Returns the GGUF model file path: what the llama.cpp JNI provider loads. A remote model has none.
      *
-     * @return model file path
+     * @return model file path, or {@code null} for none
      */
-    public String modelPath() {
+    public @Nullable String modelPath() {
         return modelPath;
     }
 
@@ -563,7 +557,7 @@ public final class ProviderConfig {
      */
     public static final class Builder {
 
-        private final String modelPath;
+        private @Nullable String modelPath;
         private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;
         private int maxOutputTokens = AiGenerationConfig.DEFAULT_MAX_OUTPUT_TOKENS;
         private float temperature = AiGenerationConfig.DEFAULT_TEMPERATURE;
@@ -608,8 +602,19 @@ public final class ProviderConfig {
         private List<String> drySequenceBreakers = Collections.<String>emptyList();
         private List<String> stopStrings = Collections.<String>emptyList();
 
-        private Builder(final String modelPath) {
-            this.modelPath = Objects.requireNonNull(modelPath, "modelPath");
+        private Builder() {
+            // every value starts at its default
+        }
+
+        /**
+         * Sets the GGUF model file path.
+         *
+         * @param modelPath path to the GGUF model file, or {@code null} for none (a remote model)
+         * @return this builder
+         */
+        public Builder modelPath(final @Nullable String modelPath) {
+            this.modelPath = modelPath;
+            return this;
         }
 
         /**

@@ -82,10 +82,10 @@ public class AiFactDefinitionSupportTest {
     @Test
     public void constructor_nullKey_throwsNamingIndex() {
         final AiFactDefinition bad = new AiFactDefinition();
-        final NullPointerException ex = assertThrows(
-                NullPointerException.class, () -> new AiFactDefinitionSupport(Collections.singletonList(bad)));
+        final IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class, () -> new AiFactDefinitionSupport(Collections.singletonList(bad)));
         assertThat(ex.getMessage(), is(notNullValue()));
-        assertThat(ex.getMessage(), containsString("factDefinitions[0]"));
+        assertThat(ex.getMessage(), containsString("factDefinitions[0].key is required"));
     }
 
     @Test

@@ -568,7 +568,7 @@ public class SourceFileIndexerTest {
         for (final Path candidate : candidates) {
             names.add(candidate.getFileName().toString());
         }
-        Collections.sort(names);
+        names.sort(null);
         assertThat(names, is(equalTo(Arrays.asList("Dockerfile", "Foo.java", "Jenkinsfile"))));
     }
 
@@ -761,7 +761,7 @@ public class SourceFileIndexerTest {
         for (final Path file : files) {
             names.add(String.valueOf(file.getFileName()));
         }
-        java.util.Collections.sort(names);
+        names.sort(null);
         return names;
     }
 

@@ -86,7 +86,7 @@ public class CConfiguration {
   `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
   `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations` (the file rules),
   `factDefinitions`, `force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`,
-  `runRecordFile` (below). A
+  `runRecordFile` and `partsDirectory` (below). A
   relative directory or `runRecordFile` resolves
   against the file's directory, a relative `modelPath` against `modelDirectory`, a relative
   `templateFile` or `factsFile` against `profileDirectory`; unset, those two are the file's directory
@@ -106,6 +106,12 @@ cached and completion tokens, the finish reason of the last call, the wall time,
 prompt and of its fact counters; and the totals. It costs a run per file and model and shows which
 summaries a changed prompt touches. Unset (the default), no record is written, so a committed output
 tree does not change with every run.
+
+**The map-reduce answers.** With `srcMorph.partsDirectory` set, the file phase keeps, for each file it
+read in chunks, every map answer and every reduce batch's answer in
+`<partsDirectory>/<path below the base directory>.parts.md`, in the order they came. A measurement can
+then see where a summary loses what a part said. A file read in one piece has none; unset (the
+default), nothing is kept.
 
 ### The eight `CCommand` values
 

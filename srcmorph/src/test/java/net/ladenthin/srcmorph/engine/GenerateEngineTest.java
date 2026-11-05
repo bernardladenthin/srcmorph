@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph.engine;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -727,6 +728,56 @@ public class GenerateEngineTest {
     }
 
     @Test
+    public void execute_partsDirectory_keepsTheMapAndReduceAnswersOfAChunkedFile() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = oversizeConfig("mapReduce");
+        final Path parts = tempDir.resolve("parts");
+        config.setPartsDirectory(parts.toFile());
+
+        // act
+        new GenerateEngine(config).execute();
+
+        // assert: Big.java was read in 4 chunks and one reduce, Foo.java in one piece
+        final String kept = new String(
+                Files.readAllBytes(parts.resolve("src/main/java/com/example/Big.java" + GenerateEngine.PARTS_SUFFIX)),
+                StandardCharsets.UTF_8);
+        assertThat(
+                kept, startsWith("# Map-reduce answers of src/main/java/com/example/Big.java\n\n## Chunk 1 of 4\n\n"));
+        assertThat(kept, containsString("## Chunk 4 of 4\n\n"));
+        assertThat(kept, containsString("## Reduce round 1, batch 1 of 1 (4 parts)\n\n"));
+        assertThat(
+                Files.exists(parts.resolve("src/main/java/com/example/Foo.java" + GenerateEngine.PARTS_SUFFIX)),
+                is(false));
+        assertThat(logged(Level.INFO, "Kept the map-reduce answers of src/main/java/com/example/Big.java"), is(true));
+    }
+
+    @Test
+    public void execute_noPartsDirectory_keepsNoAnswers() throws Exception {
+        // act
+        new GenerateEngine(oversizeConfig("mapReduce")).execute();
+
+        // assert
+        assertThat(logged(Level.INFO, "Kept the map-reduce answers"), is(false));
+    }
+
+    @Test
+    public void execute_aPartsDirectoryThatCannotBeWritten_failsNoFile() throws Exception {
+        // arrange: the parts directory is a file, so no directory can be made below it
+        final SrcMorphConfiguration config = oversizeConfig("mapReduce");
+        final Path blocked = Files.write(tempDir.resolve("blocked"), new byte[0]);
+        config.setPartsDirectory(blocked.toFile());
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(2));
+        assertThat(
+                logged(Level.WARN, "Keeping the map-reduce answers of src/main/java/com/example/Big.java in "),
+                is(true));
+    }
+
+    @Test
     public void execute_sampleChunks_readsMaxChunksAndSaysSo() throws Exception {
         final GenerateResult result = new GenerateEngine(oversizeConfig("sampleChunks")).execute();
 
@@ -813,9 +864,9 @@ public class GenerateEngineTest {
         // assert
         assertThat(thrown.getMessage(), containsString("1 file(s) were not written"));
         assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
-        final String record = new String(Files.readAllBytes(recordFile), StandardCharsets.UTF_8);
-        assertThat(record, containsString("\"failed\""));
-        assertThat(record, containsString("\"written\""));
+        final String written = new String(Files.readAllBytes(recordFile), StandardCharsets.UTF_8);
+        assertThat(written, containsString("\"failed\""));
+        assertThat(written, containsString("\"written\""));
     }
 
     /** A local model loads on its first file: the record names that time under the model, not the file. */
@@ -853,16 +904,16 @@ public class GenerateEngineTest {
         new GenerateEngine(config, loading).execute();
 
         // assert: the model's load in the totals, the file's own time without it
-        final com.fasterxml.jackson.databind.JsonNode record =
+        final com.fasterxml.jackson.databind.JsonNode json =
                 new com.fasterxml.jackson.databind.ObjectMapper().readTree(recordFile.toFile());
         assertThat(
-                record.get("totals")
+                json.get("totals")
                         .get("modelLoadSeconds")
                         .get(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT)
                         .asDouble(),
                 is(3.0d));
-        assertThat(record.get("files").get(0).get("seconds").asDouble() < 3.0d, is(true));
-        assertThat(record.get("totals").get("skipped").asInt(), is(0));
+        assertThat(json.get("files").get(0).get("seconds").asDouble() < 3.0d, is(true));
+        assertThat(json.get("totals").get("skipped").asInt(), is(0));
     }
 
     @Test

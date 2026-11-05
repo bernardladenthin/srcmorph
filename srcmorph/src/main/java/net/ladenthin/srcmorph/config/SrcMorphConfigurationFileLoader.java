@@ -45,7 +45,8 @@ import org.jspecify.annotations.Nullable;
  *       {@code outputDirectory} (unset, {@value SrcMorphConfiguration#DEFAULT_OUTPUT_DIRECTORY} below the
  *       base directory), {@code modelDirectory} and {@code profileDirectory} (unset, the file's
  *       directory, so a model's {@code modelPath}, a prompt's {@code templateFile} and a fact
- *       definition's {@code factsFile} resolve against it too) and {@code runRecordFile}. A path with a
+ *       definition's {@code factsFile} resolve against it too), {@code runRecordFile} and
+ *       {@code partsDirectory}. A path with a
  *       root of its own (absolute, or on Windows root- or drive-relative) is used as it is.</li>
  * </ol>
  */
@@ -80,6 +81,9 @@ public final class SrcMorphConfigurationFileLoader {
 
     /** The key of the run record file in the run configuration. */
     private static final String RUN_RECORD_FILE_KEY = "runRecordFile";
+
+    /** The key of the directory the map-reduce answers are kept in. */
+    private static final String PARTS_DIRECTORY_KEY = "partsDirectory";
 
     /** The key of the subtrees in the run configuration. */
     private static final String SUBTREES_KEY = "subtrees";
@@ -249,6 +253,7 @@ public final class SrcMorphConfigurationFileLoader {
         requireReplaced(MODEL_DIRECTORY_KEY, srcMorph.getModelDirectory());
         requireReplaced(PROFILE_DIRECTORY_KEY, srcMorph.getProfileDirectory());
         requireReplaced(RUN_RECORD_FILE_KEY, srcMorph.getRunRecordFile());
+        requireReplaced(PARTS_DIRECTORY_KEY, srcMorph.getPartsDirectory());
         final List<String> subtrees = srcMorph.getSubtrees();
         if (subtrees != null) {
             for (final String subtree : subtrees) {
@@ -315,6 +320,10 @@ public final class SrcMorphConfigurationFileLoader {
         final File runRecordFile = srcMorph.getRunRecordFile();
         if (runRecordFile != null) {
             srcMorph.setRunRecordFile(resolved(directory, runRecordFile));
+        }
+        final File partsDirectory = srcMorph.getPartsDirectory();
+        if (partsDirectory != null) {
+            srcMorph.setPartsDirectory(resolved(directory, partsDirectory));
         }
     }
 

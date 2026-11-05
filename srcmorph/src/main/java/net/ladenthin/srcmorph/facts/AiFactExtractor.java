@@ -65,7 +65,7 @@ public final class AiFactExtractor {
      * carriage return, line feed, next line, line separator and paragraph separator. A blanked region
      * keeps them, so {@code ^} and {@code $} see the same lines as before.
      */
-    private static final String LINE_BREAKS = "\r\n\u0085  ";
+    private static final String LINE_BREAKS = "\r\n\u0085\u2028\u2029";
 
     /** Utility class; not instantiable. */
     private AiFactExtractor() {
@@ -112,10 +112,15 @@ public final class AiFactExtractor {
         if (counters != null) {
             final String counted = withoutIgnored(counters, source);
             for (final AiFactCounter counter : counters) {
-                if (isReported(counter)) {
-                    final Integer count = count(counter, counter.isRaw() ? source : counted);
+                if (counter == null || counter.isIgnore()) {
+                    continue;
+                }
+                final String label = counter.getLabel();
+                final String pattern = counter.getPattern();
+                if (label != null && pattern != null) {
+                    final Integer count = count(counter, label, pattern, counter.isRaw() ? source : counted);
                     if (count != null) {
-                        counts.put(counter.getLabel(), count);
+                        counts.put(label, count);
                     }
                 }
             }
@@ -180,16 +185,6 @@ public final class AiFactExtractor {
     }
 
     /**
-     * Returns whether a counter is counted and reported: a complete counter that is not an ignore counter.
-     *
-     * @param counter the counter, possibly {@code null}
-     * @return {@code true} when it is reported
-     */
-    private static boolean isReported(final @Nullable AiFactCounter counter) {
-        return counter != null && !counter.isIgnore() && counter.getLabel() != null && counter.getPattern() != null;
-    }
-
-    /**
      * Blanks the matches of every ignore counter, in counter order, keeping their line breaks.
      *
      * @param counters the counters
@@ -199,10 +194,11 @@ public final class AiFactExtractor {
     private static String withoutIgnored(final List<AiFactCounter> counters, final String source) {
         String text = source;
         for (final AiFactCounter counter : counters) {
-            if (counter == null || !counter.isIgnore() || counter.getPattern() == null) {
+            final String pattern = counter == null || !counter.isIgnore() ? null : counter.getPattern();
+            if (pattern == null) {
                 continue;
             }
-            final Matcher matcher = matcher(counter.getPattern(), text);
+            final Matcher matcher = matcher(pattern, text);
             final StringBuilder blanked = new StringBuilder(text.length());
             int last = 0;
             try {
@@ -216,7 +212,7 @@ public final class AiFactExtractor {
                     last = matcher.end();
                 }
             } catch (final ReadBudget.Exhausted e) {
-                stopped(counter, text);
+                stopped(String.valueOf(counter.getLabel()), true, text);
                 continue;
             }
             text = blanked.append(text, last, text.length()).toString();
@@ -257,12 +253,15 @@ public final class AiFactExtractor {
      * different texts they matched.
      *
      * @param counter the counter
+     * @param label   its label
+     * @param pattern its pattern
      * @param text    the text to search
      * @return the count (zero-width matches, e.g. {@code (?m)^}, count once per position), or {@code null}
      *     when the pattern ran out of its time limit
      */
-    private static @Nullable Integer count(final AiFactCounter counter, final String text) {
-        final Matcher matcher = matcher(counter.getPattern(), text);
+    private static @Nullable Integer count(
+            final AiFactCounter counter, final String label, final String pattern, final String text) {
+        final Matcher matcher = matcher(pattern, text);
         try {
             if (!counter.isDistinct()) {
                 int count = 0;
@@ -278,7 +277,7 @@ public final class AiFactExtractor {
             }
             return names.size();
         } catch (final ReadBudget.Exhausted e) {
-            stopped(counter, text);
+            stopped(label, false, text);
             return null;
         }
     }
@@ -297,18 +296,19 @@ public final class AiFactExtractor {
     /**
      * Logs that a counter's pattern ran out of its time limit.
      *
-     * @param counter the counter
-     * @param text    the text it read
+     * @param label  the counter's label
+     * @param ignore whether it is an ignore counter
+     * @param text   the text it read
      */
-    private static void stopped(final AiFactCounter counter, final String text) {
+    private static void stopped(final String label, final boolean ignore, final String text) {
         final int length = text.length();
         LOGGER.warn(
                 "Fact counter '{}' stopped after reading {} characters of a {}-character source: its pattern"
                         + " backtracks too far, so it is {}",
-                counter.getLabel(),
+                label,
                 ReadBudget.limit(length),
                 length,
-                counter.isIgnore() ? "not blanked" : "left out of the facts");
+                ignore ? "not blanked" : "left out of the facts");
     }
 
     /**

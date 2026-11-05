@@ -238,7 +238,7 @@ public final class SourceFileIndexer {
      */
     public AiIndexPlan classify(final Collection<Path> candidates, final List<AiFieldGenerationConfig> rules)
             throws IOException {
-        return classify(candidates, rules, null, null);
+        return plan(candidates, rules, null, null);
     }
 
     /**
@@ -247,17 +247,35 @@ public final class SourceFileIndexer {
      * {@code contextSize}/sampling config and the prompt template length, derives the source-character
      * budget via {@link AiInputWindowCalculator} (the same threshold the run uses to trim), and records
      * whether the file would be trimmed. This lets the plan flag over-window files up front (and the
-     * goal fail fast) instead of silently trimming them at run time. Pass {@code null} supports to skip
-     * the window check.
+     * goal fail fast) instead of silently trimming them at run time.
      *
      * @param candidates               the candidate files (typically from {@link #collectCandidates(Path)})
      * @param rules                    the routing rules in declaration order
-     * @param modelDefinitionSupport   model-config lookup by key, or {@code null} to skip the window check
-     * @param promptPreparationSupport prompt-template helper, or {@code null} to skip the window check
+     * @param modelDefinitionSupport   model-config lookup by key
+     * @param promptPreparationSupport prompt-template helper
      * @return the routing plan
      * @throws IOException if a file size or content cannot be read
      */
     public AiIndexPlan classify(
+            final Collection<Path> candidates,
+            final List<AiFieldGenerationConfig> rules,
+            final AiModelDefinitionSupport modelDefinitionSupport,
+            final AiPromptPreparationSupport promptPreparationSupport)
+            throws IOException {
+        return plan(candidates, rules, modelDefinitionSupport, promptPreparationSupport);
+    }
+
+    /**
+     * Plans the run, with the window check when both supports are given.
+     *
+     * @param candidates               the candidate files
+     * @param rules                    the routing rules in declaration order
+     * @param modelDefinitionSupport   model-config lookup by key, or {@code null} without the window check
+     * @param promptPreparationSupport prompt-template helper, or {@code null} without the window check
+     * @return the routing plan
+     * @throws IOException if a file size or content cannot be read
+     */
+    private AiIndexPlan plan(
             final Collection<Path> candidates,
             final List<AiFieldGenerationConfig> rules,
             final @Nullable AiModelDefinitionSupport modelDefinitionSupport,
@@ -293,9 +311,10 @@ public final class SourceFileIndexer {
             } else if (rule.isSkip()) {
                 plan.addSkipped(file);
             } else if (modelDefinitionSupport != null && promptPreparationSupport != null) {
-                final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.getAiDefinitionKey());
+                final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
                 final Path shown = baseDirectory.relativize(file);
-                final int basePromptLength = promptPreparationSupport.getBasePromptLength(rule.getPromptKey(), shown);
+                final int basePromptLength =
+                        promptPreparationSupport.getBasePromptLength(rule.requirePromptKey(), shown);
                 final long availableSourceChars =
                         AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = source.length();
@@ -308,13 +327,13 @@ public final class SourceFileIndexer {
                         basePromptLength,
                         chunkPromptLength(rule, shown, basePromptLength, promptPreparationSupport));
                 if (AiRouteEstimator.isCalibrated(modelConfig)) {
-                    plan.markCalibrated(rule.getAiDefinitionKey());
+                    plan.markCalibrated(rule.requireAiDefinitionKey());
                 }
                 final double charsPerToken = modelConfig.getCharsPerToken() > 0
                         ? modelConfig.getCharsPerToken()
                         : AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;
                 plan.addRoute(
-                        rule.getAiDefinitionKey(),
+                        rule.requireAiDefinitionKey(),
                         file,
                         rule,
                         routeSeconds,
@@ -324,7 +343,7 @@ public final class SourceFileIndexer {
             } else {
                 final long estimatedSeconds =
                         timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
-                plan.addRoute(rule.getAiDefinitionKey(), file, rule, estimatedSeconds);
+                plan.addRoute(rule.requireAiDefinitionKey(), file, rule, estimatedSeconds);
             }
         }
         return plan;
@@ -378,9 +397,9 @@ public final class SourceFileIndexer {
         }
         return Math.max(
                         preparation.getBasePromptLength(
-                                AiPromptSupport.composedKey(rule.getPromptKey(), rule.getMapPromptKey()), file),
+                                AiPromptSupport.composedKey(rule.requirePromptKey(), rule.getMapPromptKey()), file),
                         preparation.getBasePromptLength(
-                                AiPromptSupport.composedKey(rule.getPromptKey(), rule.getReducePromptKey()), file))
+                                AiPromptSupport.composedKey(rule.requirePromptKey(), rule.getReducePromptKey()), file))
                 + AiMapReduceSupport.CHUNK_LABEL_RESERVE;
     }
 

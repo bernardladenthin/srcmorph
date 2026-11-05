@@ -49,24 +49,6 @@ public final class AiPromptTemplateLoader {
     }
 
     /**
-     * Returns the definitions with every template file read into its template.
-     *
-     * @param promptDefinitions the configured definitions, or {@code null} for none
-     * @return the definitions in the same order, those with a template file replaced by a copy with
-     *         the file's text as template; {@code null} when {@code promptDefinitions} is {@code null}
-     * @throws IOException              if a template file cannot be read
-     * @throws IllegalArgumentException if a definition sets both {@code template} and
-     *                                  {@code templateFile}, or its file holds nothing but whitespace
-     */
-    public @Nullable List<AiPromptDefinition> load(final @Nullable List<AiPromptDefinition> promptDefinitions)
-            throws IOException {
-        if (promptDefinitions == null) {
-            return null;
-        }
-        return load(promptDefinitions, Collections.<@Nullable String>emptyList());
-    }
-
-    /**
      * Returns the definitions with every template file read, plus a definition read from the profile
      * directory for each used prompt key no definition has.
      *
@@ -91,19 +73,23 @@ public final class AiPromptTemplateLoader {
                 new Java8CompatibilityHelper().hashMapCapacityFor(configured.size() + usedPromptKeys.size()));
         for (int i = 0; i < configured.size(); i++) {
             final AiPromptDefinition definition = configured.get(i);
-            defined.add(definition.getKey());
+            final String key = definition.getKey();
+            if (key == null) {
+                throw new IllegalArgumentException(
+                        "promptDefinitions[" + i + "].key is required (bad entry: " + definition + ")");
+            }
+            defined.add(key);
             final String templateFile = definition.getTemplateFile();
             if (templateFile == null) {
                 loaded.add(definition);
                 continue;
             }
-            final String label = "promptDefinitions[" + i + "] (key " + definition.getKey() + ")";
+            final String label = "promptDefinitions[" + i + "] (key " + key + ")";
             if (definition.getTemplate() != null) {
                 throw new IllegalArgumentException(label + " sets both template and templateFile; set one of them");
             }
             final String path = AiPathSupport.resolveAgainst(profileDirectory, templateFile);
-            loaded.add(inline(
-                    definition.getKey(), AiProfileFileSupport.read(label + ": templateFile", String.valueOf(path))));
+            loaded.add(inline(key, AiProfileFileSupport.read(label + ": templateFile", String.valueOf(path))));
         }
         final File directory = profileDirectory;
         if (directory == null) {

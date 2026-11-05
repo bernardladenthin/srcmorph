@@ -17,12 +17,7 @@ public class AiGenerationProviderFactoryTest {
     private final AiPromptSupport promptSupport = new AiPromptSupport(null);
 
     private static ProviderConfig jniConfig() {
-        return ProviderConfig.builder("model.gguf").build();
-    }
-
-    @Test
-    public void nullProviderNameDefaultsToMock() {
-        assertThat(factory.create(null, jniConfig(), promptSupport), is(instanceOf(MockAiGenerationProvider.class)));
+        return ProviderConfig.builder().modelPath("model.gguf").build();
     }
 
     @Test
@@ -58,7 +53,8 @@ public class AiGenerationProviderFactoryTest {
 
     @Test
     public void theModelsOwnProviderOverridesTheRunsProvider() {
-        final ProviderConfig remote = ProviderConfig.builder("")
+        final ProviderConfig remote = ProviderConfig.builder()
+                .modelPath("")
                 .provider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
                 .build();
         assertThat(
@@ -69,7 +65,7 @@ public class AiGenerationProviderFactoryTest {
     @Test
     public void anUnknownProviderOfTheModelIsNamedInTheError() {
         final ProviderConfig remote =
-                ProviderConfig.builder("").provider("nope-model").build();
+                ProviderConfig.builder().modelPath("").provider("nope-model").build();
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class,
                 () -> factory.create(AiGenerationProviderFactory.PROVIDER_MOCK, remote, promptSupport));

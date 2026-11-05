@@ -204,7 +204,6 @@ public class AiRouteEstimatorTest {
         final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
         rule.setOnOversize("mapReduce");
         final AiGenerationConfig model = new AiGenerationConfig();
-        final AiRouteEstimator estimator = new AiRouteEstimator();
 
         // act
         final long sameAsTheRule = estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000, 1_000);

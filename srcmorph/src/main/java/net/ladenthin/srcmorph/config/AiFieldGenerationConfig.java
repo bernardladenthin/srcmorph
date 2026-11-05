@@ -22,7 +22,6 @@ import org.jspecify.annotations.Nullable;
  * @see AiCondition
  */
 @ToString
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiFieldGenerationConfig {
 
     /** Creates a new {@link AiFieldGenerationConfig}. */
@@ -37,13 +36,17 @@ public class AiFieldGenerationConfig {
      */
     private @Nullable String id;
 
-    private String promptKey;
+    /**
+     * Key that references the {@link AiPromptDefinition} of the rule's prompt; {@code null} on a skip rule,
+     * which has none.
+     */
+    private @Nullable String promptKey;
 
     /**
      * Key that references an {@link AiModelDefinition} registered in the {@code aiDefinitions} list;
      * that definition supplies all AI generation parameters (model path, context size, sampling, …).
      */
-    private String aiDefinitionKey;
+    private @Nullable String aiDefinitionKey;
 
     /**
      * The file-matching condition (a composable and/or/not tree of leaves — extension, size, lines,
@@ -158,10 +161,26 @@ public class AiFieldGenerationConfig {
     /**
      * Returns the prompt template key.
      *
-     * @return the key that identifies the prompt template ({@code null} only on an unconfigured skip rule)
+     * @return the key that identifies the prompt template, or {@code null} (a skip rule has none)
+     * @see #requirePromptKey()
      */
-    public String getPromptKey() {
+    public @Nullable String getPromptKey() {
         return promptKey;
+    }
+
+    /**
+     * Returns the prompt template key of a rule that routes: a route rule or the fallback, which
+     * {@link net.ladenthin.srcmorph.routing.AiFieldGenerationSelector#validate validation} gave one.
+     *
+     * @return the key that identifies the prompt template
+     * @throws IllegalStateException if the rule has none (a skip rule)
+     */
+    public String requirePromptKey() {
+        final String key = promptKey;
+        if (key == null) {
+            throw new IllegalStateException("The rule has no promptKey: " + this);
+        }
+        return key;
     }
 
     /**
@@ -169,17 +188,33 @@ public class AiFieldGenerationConfig {
      *
      * @param promptKey key that references an {@link net.ladenthin.srcmorph.config.AiPromptDefinition}
      */
-    public void setPromptKey(final String promptKey) {
+    public void setPromptKey(final @Nullable String promptKey) {
         this.promptKey = promptKey;
     }
 
     /**
      * Returns the AI model definition key.
      *
-     * @return the key that references the {@link AiModelDefinition} ({@code null} only on a skip rule)
+     * @return the key that references the {@link AiModelDefinition}, or {@code null} (a skip rule has none)
+     * @see #requireAiDefinitionKey()
      */
-    public String getAiDefinitionKey() {
+    public @Nullable String getAiDefinitionKey() {
         return aiDefinitionKey;
+    }
+
+    /**
+     * Returns the AI model definition key of a rule that routes: a route rule or the fallback, which
+     * {@link net.ladenthin.srcmorph.routing.AiFieldGenerationSelector#validate validation} gave one.
+     *
+     * @return the key that references the {@link AiModelDefinition}
+     * @throws IllegalStateException if the rule has none (a skip rule)
+     */
+    public String requireAiDefinitionKey() {
+        final String key = aiDefinitionKey;
+        if (key == null) {
+            throw new IllegalStateException("The rule has no aiDefinitionKey: " + this);
+        }
+        return key;
     }
 
     /**
@@ -187,7 +222,7 @@ public class AiFieldGenerationConfig {
      *
      * @param aiDefinitionKey key that references an {@link AiModelDefinition}
      */
-    public void setAiDefinitionKey(final String aiDefinitionKey) {
+    public void setAiDefinitionKey(final @Nullable String aiDefinitionKey) {
         this.aiDefinitionKey = aiDefinitionKey;
     }
 

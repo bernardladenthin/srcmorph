@@ -51,6 +51,9 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
 
     private final AiPromptSupport promptSupport;
 
+    /** The GGUF file {@link #model()} loads. */
+    private final String modelPath;
+
     /**
      * Everything this provider does that does not touch the native handle. Split out so the
      * mutation gate can reach it: see {@link LlamaCppJniProviderSupport}'s own javadoc for why
@@ -68,10 +71,16 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
      *
      * @param config        llama.cpp configuration
      * @param promptSupport prompt lookup used to render request prompts
+     * @throws IllegalArgumentException if the configuration names no model file
      */
     public LlamaCppJniAiGenerationProvider(final ProviderConfig config, final AiPromptSupport promptSupport) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
+        final String path = config.modelPath();
+        if (path == null) {
+            throw new IllegalArgumentException("A llamacpp-jni model needs a modelPath: " + config);
+        }
+        this.modelPath = path;
         this.support = new LlamaCppJniProviderSupport(this.config, this.promptSupport);
     }
 
@@ -81,7 +90,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
         if (current == null) {
             final Map<String, String> chatTemplateKwargs = support.buildChatTemplateKwargs();
             final ModelParameters modelParameters = new ModelParameters()
-                    .setModel(config.modelPath())
+                    .setModel(modelPath)
                     .setCtxSize(config.contextSize())
                     .setThreads(config.threads())
                     // Parse reasoning channels (Qwen <think>, gpt-oss harmony analysis) into

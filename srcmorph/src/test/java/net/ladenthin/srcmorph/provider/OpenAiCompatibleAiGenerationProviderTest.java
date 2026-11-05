@@ -219,7 +219,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> impatientProvider(ProviderConfig.builder("").maxRetries(3))
+                () -> impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(3))
                         .generate(REQUEST));
 
         // assert
@@ -237,7 +237,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> impatientProvider(ProviderConfig.builder("").maxRetries(3))
+                () -> impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(3))
                         .generate(REQUEST));
 
         // assert
@@ -256,7 +256,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> impatientProvider(ProviderConfig.builder("").maxRetries(1))
+                () -> impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(1))
                         .listModels());
 
         // assert: two attempts, one wait, and no InterruptedIOException that would end a whole run (the
@@ -290,7 +290,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void generate_postsTheChatRequestAndReturnsTheAnswer() throws Exception {
         // act
-        final String text = provider(ProviderConfig.builder("").remoteModel("stub/model"), NO_ENVIRONMENT)
+        final String text = provider(ProviderConfig.builder().modelPath("").remoteModel("stub/model"), NO_ENVIRONMENT)
                 .generate(REQUEST);
 
         // assert
@@ -309,7 +309,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void generate_keySet_sendsItAsBearer() throws Exception {
         provider(
-                        ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY"),
+                        ProviderConfig.builder().modelPath("").apiKeyEnv("OPENROUTER_API_KEY"),
                         name -> "OPENROUTER_API_KEY".equals(name) ? "sk-stub" : null)
                 .generate(REQUEST);
         assertThat(header("Authorization"), is("Bearer sk-stub"));
@@ -317,7 +317,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
     @Test
     public void generate_noKey_sendsNoAuthorization() throws Exception {
-        provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST);
+        provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generate(REQUEST);
         assertThat(header("Authorization"), is(nullValue()));
     }
 
@@ -327,7 +327,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
                 AiCompletionParser.THINKING_BLOCK_START_MARKER + "hmm" + AiCompletionParser.THINKING_BLOCK_END_MARKER
                         + "\nThe answer.",
                 "stop");
-        assertThat(provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST), is("The answer."));
+        assertThat(
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generate(REQUEST), is("The answer."));
     }
 
     @Test
@@ -339,7 +340,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         // assert
         assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 403"));
@@ -355,7 +357,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         // assert
         assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 401"));
@@ -369,7 +372,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         firstStatuses.add(503);
         retryAfter = "2";
 
-        final String text = provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST);
+        final String text =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generate(REQUEST);
 
         assertThat(text, is("A tiny test class."));
         assertThat(requests, is(3));
@@ -383,7 +387,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder("").maxRetries(1), NO_ENVIRONMENT)
+                () -> provider(ProviderConfig.builder().modelPath("").maxRetries(1), NO_ENVIRONMENT)
                         .generate(REQUEST));
 
         assertThat(thrown.getMessage(), containsString("answered HTTP 502"));
@@ -398,7 +402,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
         assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         assertThat(requests, is(1));
         assertThat(waits.isEmpty(), is(true));
@@ -411,7 +416,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
         final AiContextOverflowException thrown = assertThrows(
                 AiContextOverflowException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         assertThat(thrown.getMessage(), containsString("answered HTTP 400"));
         assertThat(requests, is(1));
@@ -427,7 +433,13 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         firstStatuses.add(503);
         retryAfter = "60";
         final OpenAiCompatibleAiGenerationProvider realWaiter = new OpenAiCompatibleAiGenerationProvider(
-                ProviderConfig.builder("").baseUrl(baseUrl()).maxRetries(1).build(), PROMPT_SUPPORT, NO_ENVIRONMENT);
+                ProviderConfig.builder()
+                        .modelPath("")
+                        .baseUrl(baseUrl())
+                        .maxRetries(1)
+                        .build(),
+                PROMPT_SUPPORT,
+                NO_ENVIRONMENT);
         Thread.currentThread().interrupt();
         try {
             // act
@@ -449,7 +461,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         answer = "";
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder("").maxRetries(0), NO_ENVIRONMENT)
+                () -> provider(ProviderConfig.builder().modelPath("").maxRetries(0), NO_ENVIRONMENT)
                         .generate(REQUEST));
         assertThat(thrown.getMessage(), containsString("answered HTTP 503: "));
     }
@@ -462,7 +474,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
@@ -483,7 +496,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.ABORTED));
@@ -499,7 +513,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder("").stream(true), NO_ENVIRONMENT)
+                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
                         .generate(REQUEST));
 
         // assert
@@ -515,7 +529,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.EMPTY));
@@ -530,7 +545,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generate(REQUEST));
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.NO_ANSWER));
@@ -544,7 +560,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     public void generateWithTimings_reportsTheServersUsage() throws Exception {
         // act
         final AiGenerationTimings timings =
-                provider(ProviderConfig.builder(""), NO_ENVIRONMENT).generateWithTimings(REQUEST);
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generateWithTimings(REQUEST);
 
         // assert
         assertThat(timings.text(), is("A tiny test class."));
@@ -568,7 +584,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         logger.addAppender(appender);
         try {
             // act
-            provider(ProviderConfig.builder("").maxOutputTokens(64), NO_ENVIRONMENT)
+            provider(ProviderConfig.builder().modelPath("").maxOutputTokens(64), NO_ENVIRONMENT)
                     .generateWithTimings(REQUEST);
 
             // assert
@@ -590,7 +606,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         events = streamed("A tiny ", "test class.", "stop");
 
         // act
-        final String text = provider(ProviderConfig.builder("").stream(true), NO_ENVIRONMENT)
+        final String text = provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
                 .generate(REQUEST);
 
         // assert
@@ -604,7 +620,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void generateWithTimings_stream_reportsTheUsageChunk() throws Exception {
         events = streamed("A tiny ", "test class.", "stop");
-        final AiGenerationTimings timings = provider(ProviderConfig.builder("").stream(true), NO_ENVIRONMENT)
+        final AiGenerationTimings timings = provider(
+                        ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
                 .generateWithTimings(REQUEST);
         assertThat(timings.text(), is("A tiny test class."));
         assertThat(timings.promptTokens(), is(42));
@@ -620,7 +637,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // act
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder("").stream(true), NO_ENVIRONMENT)
+                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
                         .generate(REQUEST));
 
         // assert
@@ -634,7 +651,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
                 "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"half\"},\"finish_reason\":null}]}\n\n");
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder("").stream(true), NO_ENVIRONMENT)
+                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
                         .generate(REQUEST));
         assertThat(thrown.getMessage(), startsWith("The stream ended without 'data: [DONE]' after "));
     }
@@ -646,7 +663,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         answer = "{\"error\":{\"message\":\"Too many concurrent requests\"}}";
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder("").stream(true), NO_ENVIRONMENT)
+                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
                         .generate(REQUEST));
         assertThat(thrown.getMessage(), containsString("answered HTTP 429"));
         assertThat(thrown.getMessage(), containsString("Too many concurrent requests"));
@@ -661,7 +678,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
 
         // act
         final java.util.List<RemoteModel> models = provider(
-                        ProviderConfig.builder("").apiKeyEnv("COPILOT_GATEWAY_API_KEY").stream(true),
+                        ProviderConfig.builder().modelPath("").apiKeyEnv("COPILOT_GATEWAY_API_KEY").stream(true),
                         name -> "COPILOT_GATEWAY_API_KEY".equals(name) ? "gw-key" : null)
                 .listModels();
 
@@ -682,7 +699,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         // arrange
         answer = ModelListFixtures.JLLAMA;
         final OpenAiCompatibleAiGenerationProvider provider =
-                provider(ProviderConfig.builder("").requestsPerMinute(5), NO_ENVIRONMENT);
+                provider(ProviderConfig.builder().modelPath("").requestsPerMinute(5), NO_ENVIRONMENT);
         final RequestRateLimiter shared = RequestRateLimiter.shared(
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/v1 ", 5);
 
@@ -701,14 +718,16 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         answer = "{\"error\":\"Unauthorized\"}";
         final IOException thrown = assertThrows(
                 IOException.class,
-                () -> provider(ProviderConfig.builder(""), NO_ENVIRONMENT).listModels());
+                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
+                        .listModels());
         assertThat(thrown.getMessage(), containsString("/v1/models answered HTTP 401: {\"error\":\"Unauthorized\"}"));
     }
 
     @Test
     public void listModels_keyForAnotherHostOverPlainHttp_isRefusedBeforeConnecting() {
         final OpenAiCompatibleAiGenerationProvider provider = new OpenAiCompatibleAiGenerationProvider(
-                ProviderConfig.builder("")
+                ProviderConfig.builder()
+                        .modelPath("")
                         .baseUrl("http://192.0.2.1:3030/v1")
                         .apiKeyEnv("K")
                         .build(),
@@ -723,14 +742,15 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void close_isANoOp() throws Exception {
         final OpenAiCompatibleAiGenerationProvider provider = new OpenAiCompatibleAiGenerationProvider(
-                ProviderConfig.builder("").build(), PROMPT_SUPPORT);
+                ProviderConfig.builder().modelPath("").build(), PROMPT_SUPPORT);
         provider.close();
         assertThat(provider.toString(), containsString("OpenAiCompatibleAiGenerationProvider"));
     }
 
     @Test
     public void lastUsage_isTheUsageOfTheLastAnswer() throws Exception {
-        final OpenAiCompatibleAiGenerationProvider provider = provider(ProviderConfig.builder(""), NO_ENVIRONMENT);
+        final OpenAiCompatibleAiGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
         assertThat(provider.lastUsage(), is(AiGenerationUsage.NONE));
 
         provider.generate(REQUEST);
@@ -741,7 +761,8 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void lastUsage_ofACutOffAnswer_isKeptAlthoughTheCallThrows() throws Exception {
         answer = completion("half an answ", "length");
-        final OpenAiCompatibleAiGenerationProvider provider = provider(ProviderConfig.builder(""), NO_ENVIRONMENT);
+        final OpenAiCompatibleAiGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
         org.junit.jupiter.api.Assertions.assertThrows(java.io.IOException.class, () -> provider.generate(REQUEST));
 

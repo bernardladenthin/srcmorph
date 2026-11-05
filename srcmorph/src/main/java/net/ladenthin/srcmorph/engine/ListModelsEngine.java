@@ -106,7 +106,7 @@ public final class ListModelsEngine {
         final List<ModelListReport.Listing> listings = new ArrayList<>(definitions.size());
         final Set<String> servers = new HashSet<>(definitions.size());
         for (final AiModelDefinition definition : definitions) {
-            final String key = definition.getKey();
+            final String key = definition.requireKey();
             final AiGenerationConfig pattern = modelDefinitionSupport.getConfig(key);
             final String provider = AiGenerationProviderFactory.effectiveProvider(
                     config.getGenerationProvider(), pattern.getProvider());

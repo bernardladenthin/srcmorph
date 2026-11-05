@@ -72,6 +72,22 @@ public class AiFactDefinitionLoaderTest {
         return counters;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="load: keys">
+    @Test
+    public void load_aDefinitionWithoutKey_isRefusedNamingItsIndex() {
+        // arrange
+        final AiFactDefinition keyless = inline("a", "a", "x");
+        keyless.setKey(null);
+
+        // act
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> load(Arrays.asList(inline("b", "b", "y"), keyless)));
+
+        // assert
+        assertThat(thrown.getMessage(), is("factDefinitions[1].key is required (bad entry: " + keyless + ")"));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="parse">
     @Test
     public void parse_labelTabPattern_skippingCommentsAndEmptyLines() {

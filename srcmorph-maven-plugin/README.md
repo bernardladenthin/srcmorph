@@ -139,7 +139,8 @@ nothing else. What the file leaves unset, Maven fills from the project:
 | `projectName` | `${project.name}` |
 | `pluginVersion` | `${project.version}` |
 
-Relative paths in the file resolve against the file's directory: the directories, `runRecordFile`,
+Relative paths in the file resolve against the file's directory: the directories (`partsDirectory`
+too), `runRecordFile`,
 and a `modelPath`, `templateFile` or `factsFile` through `modelDirectory` / `profileDirectory`,
 which are the file's directory when unset. A `${name}` in a value is a Maven property (the command
 line's `-D`, then the project's `<properties>`, then the project's own values as a POM names them,
@@ -439,7 +440,7 @@ The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirec
 `fileNames`, `fileInterpreters`, `contentHeadChars`, `excludes`, `minFileSizeBytes` /
 `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
 `profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
-`force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are
+`force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`, `partsDirectory`) are
 described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
 A configured subtree that does not exist, or lies outside the base directory, fails the goal; file

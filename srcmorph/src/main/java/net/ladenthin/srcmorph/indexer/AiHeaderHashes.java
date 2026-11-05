@@ -50,7 +50,7 @@ public final class AiHeaderHashes {
     public static String prompt(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
         final String mapKey = rule.getMapPromptKey();
         final String reduceKey = rule.getReducePromptKey();
-        return CHECKSUMS.calculateCrc32Hex(AiSourceLines.normalize(promptSupport.systemPrompt(rule.getPromptKey())
+        return CHECKSUMS.calculateCrc32Hex(AiSourceLines.normalize(promptSupport.systemPrompt(rule.requirePromptKey())
                 + (mapKey != null ? MAP_PROMPT_TAG + promptSupport.systemPrompt(mapKey) : "")
                 + (reduceKey != null ? REDUCE_PROMPT_TAG + promptSupport.systemPrompt(reduceKey) : "")));
     }

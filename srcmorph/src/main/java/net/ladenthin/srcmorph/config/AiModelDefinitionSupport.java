@@ -7,7 +7,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
@@ -24,11 +23,11 @@ import org.jspecify.annotations.Nullable;
  * set inline.</p>
  *
  * <p>Every entry in the supplied list must have a non-null {@code key}; a null key
- * throws {@link NullPointerException} naming the list index and dumping the offending
+ * throws {@link IllegalArgumentException} naming the list index and dumping the offending
  * entry. This is the contract enforcement boundary that makes a misconfigured
  * {@code aiDefinitions} list fail before the run starts rather than silently
  * dropping the entry and surfacing later as a "Missing AI model definition" failure
- * deeper in the run. The engines wrap that {@link NullPointerException} in
+ * deeper in the run. The engines wrap that {@link IllegalArgumentException} in
  * {@code net.ladenthin.srcmorph.engine.SrcMorphException}, so the CLI and the plugin report
  * it as a configuration error rather than a bug.</p>
  *
@@ -54,13 +53,13 @@ public final class AiModelDefinitionSupport {
      * Builds a new {@code AiModelDefinitionSupport} from the supplied definitions list.
      *
      * <p>Every entry must have a non-null {@code key}; a null key throws
-     * {@link NullPointerException} naming the list index and the offending entry.
+     * {@link IllegalArgumentException} naming the list index and the offending entry.
      * See the class Javadoc for the full contract.</p>
      *
      * @param definitions list of AI model definitions; may be {@code null} or empty
      *                    (treated as no definitions); individual entries must be
      *                    well-formed
-     * @throws NullPointerException if any entry has a {@code null} {@code key}
+     * @throws IllegalArgumentException if any entry has a {@code null} or a duplicate {@code key}
      */
     public AiModelDefinitionSupport(final @Nullable List<AiModelDefinition> definitions) {
         this(definitions, null);
@@ -73,7 +72,7 @@ public final class AiModelDefinitionSupport {
      * @param definitions    list of AI model definitions; may be {@code null} or empty
      * @param modelDirectory directory relative model paths are resolved against, or {@code null} to
      *                       keep them relative to the working directory
-     * @throws NullPointerException if any entry has a {@code null} {@code key}
+     * @throws IllegalArgumentException if any entry has a {@code null} or a duplicate {@code key}
      */
     public AiModelDefinitionSupport(
             final @Nullable List<AiModelDefinition> definitions, final @Nullable File modelDirectory) {
@@ -87,15 +86,15 @@ public final class AiModelDefinitionSupport {
         this.configs = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
         for (int i = 0; i < count; i++) {
             final AiModelDefinition definition = definitions.get(i);
-            final int index = i;
-            Objects.requireNonNull(
-                    definition.getKey(),
-                    () -> "aiDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
-            if (configs.containsKey(definition.getKey())) {
+            final String key = definition.getKey();
+            if (key == null) {
                 throw new IllegalArgumentException(
-                        "aiDefinitions[" + index + "].key '" + definition.getKey() + "' is defined twice");
+                        "aiDefinitions[" + i + "].key is required (bad entry: " + definition + ")");
             }
-            configs.put(definition.getKey(), toConfig(definition, modelDirectory));
+            if (configs.containsKey(key)) {
+                throw new IllegalArgumentException("aiDefinitions[" + i + "].key '" + key + "' is defined twice");
+            }
+            configs.put(key, toConfig(definition, modelDirectory));
         }
     }
 

@@ -4,7 +4,6 @@
 package net.ladenthin.srcmorph.provider;
 
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Pure mapping from a resolved {@link AiGenerationConfig} to an immutable {@link ProviderConfig}.
@@ -33,8 +32,8 @@ public final class ProviderConfigFactory {
      */
     public static ProviderConfig fromGenerationConfig(final AiGenerationConfig config) {
         // A remote model (openai-compatible) needs no model file, so its definition may name none.
-        final @Nullable String modelPath = config.getModelPath();
-        return ProviderConfig.builder(modelPath == null ? "" : modelPath)
+        return ProviderConfig.builder()
+                .modelPath(config.getModelPath())
                 .contextSize(config.getContextSize())
                 .maxOutputTokens(config.getMaxOutputTokens())
                 .temperature(config.getTemperature())

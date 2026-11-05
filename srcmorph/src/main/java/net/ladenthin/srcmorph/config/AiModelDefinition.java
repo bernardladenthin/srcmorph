@@ -28,7 +28,6 @@ import org.jspecify.annotations.Nullable;
  * @see AiModelDefinitionSupport
  * @see AiGenerationConfig
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
 public class AiModelDefinition {
 
@@ -37,7 +36,7 @@ public class AiModelDefinition {
         // no-op
     }
 
-    private String key;
+    private @Nullable String key;
     private @Nullable String modelPath;
     private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;
     private int maxOutputTokens = AiGenerationConfig.DEFAULT_MAX_OUTPUT_TOKENS;
@@ -93,8 +92,23 @@ public class AiModelDefinition {
      *
      * @return the key, or {@code null} if not set
      */
-    public String getKey() {
+    public @Nullable String getKey() {
         return key;
+    }
+
+    /**
+     * Returns the key of a definition that {@link AiModelDefinitionSupport} accepted, which refuses one
+     * without a key.
+     *
+     * @return the key
+     * @throws IllegalStateException if the definition has no key
+     */
+    public String requireKey() {
+        final String value = key;
+        if (value == null) {
+            throw new IllegalStateException("The AI definition has no key: " + this);
+        }
+        return value;
     }
 
     /**
@@ -102,7 +116,7 @@ public class AiModelDefinition {
      *
      * @param key the key used to reference this definition from field-generation configs
      */
-    public void setKey(final String key) {
+    public void setKey(final @Nullable String key) {
         this.key = key;
     }
 
@@ -680,7 +694,7 @@ public class AiModelDefinition {
      *
      * @param devices the comma-separated backend device names (e.g. {@code Vulkan1}), or {@code null}/empty to leave default
      */
-    public void setDevices(final String devices) {
+    public void setDevices(final @Nullable String devices) {
         this.devices = devices == null ? AiGenerationConfig.DEFAULT_DEVICES : devices;
     }
 
@@ -698,7 +712,7 @@ public class AiModelDefinition {
      *
      * @param provider the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}, or {@code null} for the default
      */
-    public void setProvider(final String provider) {
+    public void setProvider(final @Nullable String provider) {
         this.provider = provider == null ? AiGenerationConfig.DEFAULT_PROVIDER : provider;
     }
 
@@ -716,7 +730,7 @@ public class AiModelDefinition {
      *
      * @param remoteModel the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none, or {@code null} for the default
      */
-    public void setRemoteModel(final String remoteModel) {
+    public void setRemoteModel(final @Nullable String remoteModel) {
         this.remoteModel = remoteModel == null ? AiGenerationConfig.DEFAULT_REMOTE_MODEL : remoteModel;
     }
 
@@ -734,7 +748,7 @@ public class AiModelDefinition {
      *
      * @param baseUrl the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called), or {@code null} for the default
      */
-    public void setBaseUrl(final String baseUrl) {
+    public void setBaseUrl(final @Nullable String baseUrl) {
         this.baseUrl = baseUrl == null ? AiGenerationConfig.DEFAULT_BASE_URL : baseUrl;
     }
 
@@ -752,7 +766,7 @@ public class AiModelDefinition {
      *
      * @param apiKeyEnv the name of the environment variable holding the API key (never the key itself); empty sends none, or {@code null} for the default
      */
-    public void setApiKeyEnv(final String apiKeyEnv) {
+    public void setApiKeyEnv(final @Nullable String apiKeyEnv) {
         this.apiKeyEnv = apiKeyEnv == null ? AiGenerationConfig.DEFAULT_API_KEY_ENV : apiKeyEnv;
     }
 

@@ -157,7 +157,8 @@ public abstract class AbstractSrcMorphMojo extends AbstractMojo {
         final SrcMorphConfiguration config = file.getSrcMorph();
         config.setFieldGenerations(section.rulesOf(file));
         if (config.getSubtrees() == null) {
-            config.setSubtrees(projectSubtrees(config.getBaseDirectory()));
+            final File base = config.getBaseDirectory();
+            config.setSubtrees(projectSubtrees(base != null ? base : projectDirectory));
         }
         if (config.getProjectName() == null) {
             config.setProjectName(projectName);

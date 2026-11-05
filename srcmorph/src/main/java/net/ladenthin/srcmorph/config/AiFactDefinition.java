@@ -24,7 +24,6 @@ import org.jspecify.annotations.Nullable;
  * @see net.ladenthin.srcmorph.facts.AiFactDefinitionSupport
  * @see AiFactCounter
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
 public class AiFactDefinition {
 
@@ -34,7 +33,7 @@ public class AiFactDefinition {
     }
 
     /** Lookup key referenced by {@link AiFieldGenerationConfig#getFactsKey()}. */
-    private String key;
+    private @Nullable String key;
 
     /** The fact counters this group contributes. */
     private @Nullable List<AiFactCounter> facts;
@@ -45,9 +44,9 @@ public class AiFactDefinition {
     /**
      * Returns the lookup key.
      *
-     * @return the key
+     * @return the key, or {@code null} if not set
      */
-    public String getKey() {
+    public @Nullable String getKey() {
         return key;
     }
 
@@ -56,7 +55,7 @@ public class AiFactDefinition {
      *
      * @param key the key
      */
-    public void setKey(final String key) {
+    public void setKey(final @Nullable String key) {
         this.key = key;
     }
 

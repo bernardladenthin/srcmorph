@@ -166,7 +166,8 @@ public class LlamaCppJniKnobSweepTest {
 
     /** The sweep baseline: everything at its default except the three knobs that bound the cost. */
     private static ProviderConfig.Builder baseline() {
-        return ProviderConfig.builder(NativeLlamaAvailability.modelPath())
+        return ProviderConfig.builder()
+                .modelPath(NativeLlamaAvailability.modelPath())
                 .contextSize(SWEEP_CONTEXT_SIZE)
                 .maxOutputTokens(SWEEP_MAX_OUTPUT_TOKENS)
                 .threads(SWEEP_THREADS);

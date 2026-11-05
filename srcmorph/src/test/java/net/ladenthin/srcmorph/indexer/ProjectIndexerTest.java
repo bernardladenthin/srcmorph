@@ -401,10 +401,8 @@ public class ProjectIndexerTest {
                 "0.0.0",
                 force,
                 new net.ladenthin.srcmorph.config.AiRegenerateOn(),
-                provider,
-                overview,
-                promptSupport,
-                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+                new ProjectOverview(
+                        provider, overview, promptSupport, CommonTestFixtures.createDefaultAiModelDefinitionSupport()));
     }
 
     private void writePackageFile(final Path file, final String title, final String body) throws IOException {

@@ -31,7 +31,8 @@ public class LlamaCppJniAiGenerationProviderTest {
             AiMdHeaderCodec.NODE_TYPE_FILE);
 
     private static ProviderConfig config(final int contextSize, final int maxOutputTokens) {
-        return ProviderConfig.builder(MODEL_PATH)
+        return ProviderConfig.builder()
+                .modelPath(MODEL_PATH)
                 .contextSize(contextSize)
                 .maxOutputTokens(maxOutputTokens)
                 .temperature(0.15f)
@@ -42,6 +43,22 @@ public class LlamaCppJniAiGenerationProviderTest {
     private static AiGenerationRequest request(final String source) {
         return new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), source);
     }
+
+    // <editor-fold defaultstate="collapsed" desc="constructor">
+    @Test
+    public void constructor_withoutModelPath_isRejected() {
+        // arrange
+        final ProviderConfig remote = ProviderConfig.builder().build();
+        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class, () -> new LlamaCppJniAiGenerationProvider(remote, promptSupport));
+
+        // assert
+        assertThat(thrown.getMessage().startsWith("A llamacpp-jni model needs a modelPath: "), is(true));
+    }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="generate">
     @Test

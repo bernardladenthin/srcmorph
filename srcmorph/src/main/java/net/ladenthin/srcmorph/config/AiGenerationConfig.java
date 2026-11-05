@@ -19,7 +19,6 @@ import org.jspecify.annotations.Nullable;
  * instances are mutable JavaBeans populated through setters (by
  * {@link AiModelDefinitionSupport} from a model definition) and managed by identity.
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
 public class AiGenerationConfig {
 
@@ -1087,7 +1086,7 @@ public class AiGenerationConfig {
      *
      * @param devices the comma-separated backend device names (e.g. {@code Vulkan1}), or {@code null}/empty to leave default
      */
-    public void setDevices(final String devices) {
+    public void setDevices(final @Nullable String devices) {
         this.devices = devices == null ? DEFAULT_DEVICES : devices;
     }
 
@@ -1105,7 +1104,7 @@ public class AiGenerationConfig {
      *
      * @param provider the AI provider of this model ({@code llamacpp-jni}, {@code openai-compatible}, {@code mock}); empty uses the run's {@code generationProvider}, or {@code null} for the default
      */
-    public void setProvider(final String provider) {
+    public void setProvider(final @Nullable String provider) {
         this.provider = provider == null ? DEFAULT_PROVIDER : provider;
     }
 
@@ -1123,7 +1122,7 @@ public class AiGenerationConfig {
      *
      * @param remoteModel the model id the {@code openai-compatible} provider requests (e.g. {@code openai/gpt-6-luna}); empty sends none, or {@code null} for the default
      */
-    public void setRemoteModel(final String remoteModel) {
+    public void setRemoteModel(final @Nullable String remoteModel) {
         this.remoteModel = remoteModel == null ? DEFAULT_REMOTE_MODEL : remoteModel;
     }
 
@@ -1141,7 +1140,7 @@ public class AiGenerationConfig {
      *
      * @param baseUrl the base URL of the OpenAI-compatible API ({@code <baseUrl>/chat/completions} is called), or {@code null} for the default
      */
-    public void setBaseUrl(final String baseUrl) {
+    public void setBaseUrl(final @Nullable String baseUrl) {
         this.baseUrl = baseUrl == null ? DEFAULT_BASE_URL : baseUrl;
     }
 
@@ -1159,7 +1158,7 @@ public class AiGenerationConfig {
      *
      * @param apiKeyEnv the name of the environment variable holding the API key (never the key itself); empty sends none, or {@code null} for the default
      */
-    public void setApiKeyEnv(final String apiKeyEnv) {
+    public void setApiKeyEnv(final @Nullable String apiKeyEnv) {
         this.apiKeyEnv = apiKeyEnv == null ? DEFAULT_API_KEY_ENV : apiKeyEnv;
     }
 

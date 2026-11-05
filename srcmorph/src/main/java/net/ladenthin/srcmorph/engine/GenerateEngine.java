@@ -6,6 +6,8 @@ package net.ladenthin.srcmorph.engine;
 import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -61,6 +63,9 @@ public final class GenerateEngine {
     /** Nanoseconds per second, for converting the measured run elapsed time to whole seconds. */
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
+    /** What a kept file of map-reduce answers appends to the source path ({@code partsDirectory}). */
+    static final String PARTS_SUFFIX = ".parts.md";
+
     private final SrcMorphConfiguration config;
     private final AiGenerationProviderFactory providerFactory;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
@@ -113,8 +118,7 @@ public final class GenerateEngine {
     }
 
     private GenerateResult run(final boolean checkOnly) throws SrcMorphException, IOException {
-        final Path basePath =
-                config.getBaseDirectory().toPath().toAbsolutePath().normalize();
+        final Path basePath = EngineSupport.basePath(config);
         final Path outputPath =
                 config.getOutputDirectory().toPath().toAbsolutePath().normalize();
         final List<Path> resolvedSubtrees = EngineSupport.resolveSubtrees(basePath, config.getSubtrees());
@@ -228,7 +232,7 @@ public final class GenerateEngine {
         final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
         final int totalFiles = plan.routedCount();
         final long runStartNanos = System.nanoTime();
-        final RunRecord record =
+        final RunRecord runRecord =
                 new RunRecord(config.getPluginVersion(), plan.skipped().size());
         long doneEstimatedSeconds = 0;
         int doneFiles = 0;
@@ -280,8 +284,8 @@ public final class GenerateEngine {
                         }
                         // a local model loads on the first file that needs it: its own time, not the file's
                         final long loadNanos = provider.takeLoadNanos();
-                        record.addModelLoad(aiDefinitionKey, loadNanos);
-                        record.add(recordEntry(
+                        runRecord.addModelLoad(aiDefinitionKey, loadNanos);
+                        runRecord.add(recordEntry(
                                 basePath,
                                 entry,
                                 aiDefinitionKey,
@@ -289,6 +293,7 @@ public final class GenerateEngine {
                                 support.takeUsage(),
                                 Math.max(0L, System.nanoTime() - fileStartNanos - loadNanos),
                                 recordedHeader(fileIndexer, entry, outcome, promptSupport)));
+                        keepParts(basePath, entry.file(), support.parts());
                         if (outcome == AiIndexOutcome.WRITTEN) {
                             wrote++;
                         } else if (outcome == AiIndexOutcome.UNCHANGED) {
@@ -314,13 +319,13 @@ public final class GenerateEngine {
             }
         } catch (final IOException | RuntimeException | Error e) {
             // the record of the files done so far; a failed write is added to the abort, not put in its place
-            final IOException writeFailure = writeRecord(record);
+            final IOException writeFailure = writeRecord(runRecord);
             if (writeFailure != null) {
                 e.addSuppressed(writeFailure);
             }
             throw e;
         }
-        final IOException writeFailure = writeRecord(record);
+        final IOException writeFailure = writeRecord(runRecord);
         // files that were not written are the run's failure; a failed record write only when there is none
         if (writeFailure != null && failed == 0) {
             throw writeFailure;
@@ -343,18 +348,47 @@ public final class GenerateEngine {
     }
 
     /**
+     * Keeps a file's map-reduce answers when {@code partsDirectory} is set: in
+     * {@code <partsDirectory>/<path below the base directory>.parts.md}. A failed write is logged and
+     * does not fail the file, whose summary is written already.
+     *
+     * @param basePath   the base directory
+     * @param sourceFile the file
+     * @param parts      its answers ({@link SummaryGenerator#parts()}), {@code ""} for none
+     */
+    private void keepParts(final Path basePath, final Path sourceFile, final String parts) {
+        final File directory = config.getPartsDirectory();
+        if (directory == null || parts.isEmpty()) {
+            return;
+        }
+        final String relative = basePath.relativize(sourceFile).toString().replace('\\', '/');
+        final Path target = directory.toPath().resolve(relative + PARTS_SUFFIX);
+        try {
+            final Path parent = target.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.write(
+                    target, ("# Map-reduce answers of " + relative + "\n\n" + parts).getBytes(StandardCharsets.UTF_8));
+            LOGGER.info("Kept the map-reduce answers of {}: {}", relative, target);
+        } catch (final IOException e) {
+            LOGGER.warn("Keeping the map-reduce answers of {} in {} failed: {}", relative, target, e.toString());
+        }
+    }
+
+    /**
      * Writes the run record when {@code runRecordFile} is set.
      *
-     * @param record the record of the files done so far
+     * @param runRecord the record of the files done so far
      * @return the write's failure, logged already, or {@code null}
      */
-    private @Nullable IOException writeRecord(final RunRecord record) {
+    private @Nullable IOException writeRecord(final RunRecord runRecord) {
         final File runRecordFile = config.getRunRecordFile();
         if (runRecordFile == null) {
             return null;
         }
         try {
-            record.write(runRecordFile.toPath());
+            runRecord.write(runRecordFile.toPath());
             LOGGER.info("Run record written: {}", runRecordFile);
             return null;
         } catch (final IOException e) {
@@ -387,8 +421,8 @@ public final class GenerateEngine {
         final String id = rule.getId();
         return new RunRecord.Entry(
                 basePath.relativize(entry.file()).toString().replace('\\', '/'),
-                id != null ? id : rule.getPromptKey(),
-                rule.getPromptKey(),
+                id != null ? id : rule.requirePromptKey(),
+                rule.requirePromptKey(),
                 model,
                 outcome,
                 usage,

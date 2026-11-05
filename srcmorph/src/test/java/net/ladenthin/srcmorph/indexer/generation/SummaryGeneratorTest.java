@@ -34,8 +34,6 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiPromptDefinition;
-import net.ladenthin.srcmorph.document.AiMdHeader;
-import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.facts.AiFactExtractor;
 import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
@@ -133,15 +131,6 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsNonEmpty_noWarningLogged() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "Test.java",
-                "1.0",
-                "ABCD1234",
-                "2026-01-01T00:00:00Z",
-                "2026-01-01T00:01:00Z",
-                "0.1.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider nonEmptyProvider = request -> "A real summary.";
         final SummaryGenerator support = new SummaryGenerator(
@@ -160,15 +149,6 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_warningContainsContextFile() throws Exception {
         // arrange
         final Path contextFile = tempFile("AiGenerationConfig", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "AiGenerationConfig.java",
-                "1.0",
-                "A8CBFAAA",
-                "2026-03-20T21:32:55Z",
-                "2026-03-20T21:58:26Z",
-                "0.1.0-SNAPSHOT",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final SummaryGenerator support = new SummaryGenerator(
@@ -192,15 +172,6 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_warningContainsPromptKey() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "Test.java",
-                "1.0",
-                "ABCD1234",
-                "2026-01-01T00:00:00Z",
-                "2026-01-01T00:01:00Z",
-                "0.1.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final SummaryGenerator support = new SummaryGenerator(
@@ -220,15 +191,6 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_resultBodyIsEmpty() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "Test.java",
-                "1.0",
-                "ABCD1234",
-                "2026-01-01T00:00:00Z",
-                "2026-01-01T00:01:00Z",
-                "0.1.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider emptyProvider = request -> "";
         final SummaryGenerator support = new SummaryGenerator(
@@ -250,15 +212,6 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_callsProviderOnceWarnsOnceAndBodyEmpty() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "Test.java",
-                "1.0",
-                "ABCD1234",
-                "2026-01-01T00:00:00Z",
-                "2026-01-01T00:01:00Z",
-                "0.1.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AtomicInteger callCount = new AtomicInteger(0);
         // The retry mechanism was removed: an empty body now fails fast with a single warning
@@ -289,15 +242,6 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_logsProcessingAndGenerationButNoGeneratedLine() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiMdHeader header = new AiMdHeader(
-                "Test.java",
-                "1.0",
-                "ABCD1234",
-                "2026-01-01T00:00:00Z",
-                "2026-01-01T00:01:00Z",
-                "0.1.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiGenerationProvider alwaysEmptyProvider = new AiGenerationProvider() {
             @Override
@@ -449,6 +393,25 @@ public class SummaryGeneratorTest {
                 result.body(),
                 is(equalTo("**Coverage:** " + mapped + " of " + mapped + " chunks summarized\n\nPARTIAL")));
         assertThat(calls.get(), is(equalTo((int) mapped + 1)));
+    }
+
+    @Test
+    public void parts_ofAMapReduce_areEveryMapAndReduceAnswer_andAOnePieceCallHasNone() throws Exception {
+        // arrange
+        final AtomicInteger calls = new AtomicInteger();
+        final AiGenerationProvider provider = request -> "ANSWER " + calls.incrementAndGet();
+        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
+        final String chunked = support.parts();
+        support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Small", ".java"), "file", "class Small {}");
+
+        // assert
+        assertThat(chunked, startsWith("## Chunk 1 of 2, sampled from "));
+        assertThat(chunked, containsString("\n\nANSWER 1\n\n## Chunk 2 of 2, sampled from "));
+        assertThat(chunked, endsWith("\n\nANSWER 2\n\n## Reduce round 1, batch 1 of 1 (2 parts)\n\nANSWER 3\n\n"));
+        assertThat(support.parts(), is(""));
     }
 
     @Test

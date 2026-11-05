@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph.provider;
 
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
@@ -136,15 +137,17 @@ public class ProviderConfigFactoryTest {
     }
 
     @Test
-    public void fromGenerationConfig_noModelPath_mapsToEmpty() {
-        // A remote (openai-compatible) definition names no model file; the builder takes "" for it.
+    public void fromGenerationConfig_noModelPath_hasNone() {
+        // arrange: a remote (openai-compatible) definition names no model file
         final AiGenerationConfig config = new AiGenerationConfig();
         config.setModelPath(null);
         config.setProvider("openai-compatible");
 
+        // act
         final ProviderConfig result = ProviderConfigFactory.fromGenerationConfig(config);
 
-        assertThat(result.modelPath(), is(""));
+        // assert
+        assertThat(result.modelPath(), is(nullValue()));
         assertThat(result.provider(), is("openai-compatible"));
     }
 }

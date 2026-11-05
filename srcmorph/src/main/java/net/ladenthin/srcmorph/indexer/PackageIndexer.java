@@ -174,7 +174,7 @@ public class PackageIndexer {
         this.promptHash = AiHeaderHashes.prompt(promptSupport, rule);
         this.factsHash = AiFactExtractor.factsHash(rule.getFacts());
         this.modelHash = AiHeaderHashes.model(
-                rule.getAiDefinitionKey(), modelDefinitionSupport.getConfig(rule.getAiDefinitionKey()));
+                rule.requireAiDefinitionKey(), modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey()));
         this.summaryGenerator = new SummaryGenerator(
                 generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
     }

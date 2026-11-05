@@ -6,7 +6,6 @@ package net.ladenthin.srcmorph.prompt;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
@@ -50,9 +49,9 @@ public final class AiPromptSupport {
      *
      * @param promptDefinitions prompt definitions to register; may be {@code null} (treated as no
      *                          definitions); individual entries must be well-formed
-     * @throws NullPointerException     if any entry has a {@code null} {@code key} or {@code null}
-     *                                  {@code template}
-     * @throws IllegalArgumentException if a key contains {@link #COMPOSED_KEY_SEPARATOR}
+     * @throws IllegalArgumentException if any entry has a {@code null} {@code key} or {@code null}
+     *                                  {@code template}, a key contains {@link #COMPOSED_KEY_SEPARATOR}, or a
+     *                                  key is defined twice
      */
     public AiPromptSupport(final @Nullable List<AiPromptDefinition> promptDefinitions) {
         if (promptDefinitions == null) {
@@ -65,25 +64,25 @@ public final class AiPromptSupport {
         this.templates = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
         for (int i = 0; i < count; i++) {
             final AiPromptDefinition definition = promptDefinitions.get(i);
-            final int index = i;
-            Objects.requireNonNull(
-                    definition.getKey(),
-                    () -> "promptDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
-            if (definition.getKey().indexOf(COMPOSED_KEY_SEPARATOR) >= 0) {
-                throw new IllegalArgumentException("promptDefinitions[" + index + "].key '" + definition.getKey()
-                        + "' contains '" + COMPOSED_KEY_SEPARATOR + "', which joins the keys of a composed prompt");
+            final String key = definition.getKey();
+            if (key == null) {
+                throw new IllegalArgumentException(
+                        "promptDefinitions[" + i + "].key is required (bad entry: " + definition + ")");
+            }
+            if (key.indexOf(COMPOSED_KEY_SEPARATOR) >= 0) {
+                throw new IllegalArgumentException("promptDefinitions[" + i + "].key '" + key + "' contains '"
+                        + COMPOSED_KEY_SEPARATOR + "', which joins the keys of a composed prompt");
             }
             final String template = definition.getTemplate();
             if (template == null) {
                 // A template file was read by AiPromptTemplateLoader before; here every template is inline.
-                throw new NullPointerException(
-                        "promptDefinitions[" + index + "].template is required (bad entry: " + definition + ")");
-            }
-            if (templates.containsKey(definition.getKey())) {
                 throw new IllegalArgumentException(
-                        "promptDefinitions[" + index + "].key '" + definition.getKey() + "' is defined twice");
+                        "promptDefinitions[" + i + "].template is required (bad entry: " + definition + ")");
             }
-            templates.put(definition.getKey(), template);
+            if (templates.containsKey(key)) {
+                throw new IllegalArgumentException("promptDefinitions[" + i + "].key '" + key + "' is defined twice");
+            }
+            templates.put(key, template);
         }
     }
 

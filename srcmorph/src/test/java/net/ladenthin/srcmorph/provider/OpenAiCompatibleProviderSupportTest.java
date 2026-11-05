@@ -70,7 +70,7 @@ public class OpenAiCompatibleProviderSupportTest {
     // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
     public void constructor_nullArguments_throw() {
-        final ProviderConfig config = ProviderConfig.builder("").build();
+        final ProviderConfig config = ProviderConfig.builder().modelPath("").build();
         assertThrows(
                 NullPointerException.class,
                 () -> new OpenAiCompatibleProviderSupport(null, PROMPT_SUPPORT, NO_ENVIRONMENT));
@@ -85,7 +85,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_carriesTheSameMessagesAsTheJniProvider() throws Exception {
         // act
-        final JsonNode body = body(ProviderConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder().modelPath("").build());
 
         // assert
         final JsonNode messages = body.get("messages");
@@ -104,7 +104,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_defaults_sendTheDefaultSamplingAndOmitTheUnsetOptionalFields() throws Exception {
         // act
-        final JsonNode body = body(ProviderConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder().modelPath("").build());
 
         // assert
         assertThat(body.has("model"), is(false));
@@ -122,7 +122,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_setValues_areAllSent() throws Exception {
         // arrange
-        final ProviderConfig config = ProviderConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .remoteModel("openai/gpt-6-luna")
                 .maxOutputTokens(256)
                 .temperature(0.5f)
@@ -156,7 +157,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_disabledValues_areOmitted() throws Exception {
         // arrange
-        final ProviderConfig config = ProviderConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .remoteModel("   ")
                 .topK(0)
                 .seed(-1)
@@ -177,14 +179,15 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void requestBody_default_doesNotStream() throws Exception {
-        final JsonNode body = body(ProviderConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder().modelPath("").build());
         assertThat(body.get("stream").asBoolean(), is(false));
         assertThat(body.has("stream_options"), is(false));
     }
 
     @Test
     public void requestBody_stream_asksForTheEventStreamAndItsUsageChunk() throws Exception {
-        final JsonNode body = body(ProviderConfig.builder("").stream(true).build());
+        final JsonNode body =
+                body(ProviderConfig.builder().modelPath("").stream(true).build());
         assertThat(body.get("stream").asBoolean(), is(true));
         assertThat(body.get("stream_options").get("include_usage").asBoolean(), is(true));
     }
@@ -193,20 +196,24 @@ public class OpenAiCompatibleProviderSupportTest {
     // <editor-fold defaultstate="collapsed" desc="accept / completionJson">
     @Test
     public void accept_followsTheStreamSwitch() {
-        assertThat(support(ProviderConfig.builder("").build()).accept(), is("application/json"));
-        assertThat(support(ProviderConfig.builder("").stream(true).build()).accept(), is("text/event-stream"));
+        assertThat(support(ProviderConfig.builder().modelPath("").build()).accept(), is("application/json"));
+        assertThat(
+                support(ProviderConfig.builder().modelPath("").stream(true).build())
+                        .accept(),
+                is("text/event-stream"));
     }
 
     @Test
     public void completionJson_notStreaming_returnsTheBodyUnchanged() throws Exception {
         // a body that is no event stream: assembling it would fail for want of [DONE]
         final String body = "{\"choices\":[]}";
-        assertThat(support(ProviderConfig.builder("").build()).completionJson(body), is(body));
+        assertThat(support(ProviderConfig.builder().modelPath("").build()).completionJson(body), is(body));
     }
 
     @Test
     public void completionJson_streaming_assemblesTheEvents() throws Exception {
-        final String json = support(ProviderConfig.builder("").stream(true).build())
+        final String json = support(
+                        ProviderConfig.builder().modelPath("").stream(true).build())
                 .completionJson(
                         event("{\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}]}") + DONE);
         assertThat(
@@ -358,13 +365,14 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void endpoint_default_isOpenRouter() {
         assertThat(
-                support(ProviderConfig.builder("").build()).endpoint(),
+                support(ProviderConfig.builder().modelPath("").build()).endpoint(),
                 is("https://openrouter.ai/api/v1/chat/completions"));
     }
 
     @Test
     public void endpoint_trailingSlashesAndBlanks_areRemoved() {
-        final ProviderConfig config = ProviderConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .baseUrl(" http://127.0.0.1:8080/v1// ")
                 .build();
         assertThat(support(config).endpoint(), is("http://127.0.0.1:8080/v1/chat/completions"));
@@ -373,27 +381,37 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void endpoint_httpsAndHttp_areAccepted() {
         assertThat(
-                support(ProviderConfig.builder("").baseUrl("https://h/v1").build())
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl("https://h/v1")
+                                .build())
                         .endpoint(),
                 is("https://h/v1/chat/completions"));
         assertThat(
-                support(ProviderConfig.builder("").baseUrl("http://h/v1").build())
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl("http://h/v1")
+                                .build())
                         .endpoint(),
                 is("http://h/v1/chat/completions"));
     }
 
     @Test
     public void endpoint_otherScheme_isRejected() {
-        final OpenAiCompatibleProviderSupport support =
-                support(ProviderConfig.builder("").baseUrl("file:///etc/passwd").build());
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("")
+                .baseUrl("file:///etc/passwd")
+                .build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc/passwd'"));
     }
 
     @Test
     public void endpoint_otherSchemeWithUserInfo_isRejectedWithoutTheUserInfo() {
-        final OpenAiCompatibleProviderSupport support = support(
-                ProviderConfig.builder("").baseUrl("ftp://u:secret@h/v1").build());
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("")
+                .baseUrl("ftp://u:secret@h/v1")
+                .build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'ftp://***@h/v1'"));
     }
@@ -401,8 +419,10 @@ public class OpenAiCompatibleProviderSupportTest {
     /** srcmorph never sends a URL's user info, so a key written there would not authenticate. */
     @Test
     public void endpoint_userInfo_isRejectedWithoutPrintingIt() {
-        final OpenAiCompatibleProviderSupport support = support(
-                ProviderConfig.builder("").baseUrl("https://user:secret@h/v1").build());
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("")
+                .baseUrl("https://user:secret@h/v1")
+                .build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(
                 thrown.getMessage(),
@@ -416,8 +436,10 @@ public class OpenAiCompatibleProviderSupportTest {
     public void apiKey_variableSet_returnsTheTrimmedValue() {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", " sk-test \n");
-        final ProviderConfig config =
-                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .apiKeyEnv("OPENROUTER_API_KEY")
+                .build();
         assertThat(support(config, environment).apiKey(), is("sk-test"));
     }
 
@@ -427,14 +449,16 @@ public class OpenAiCompatibleProviderSupportTest {
         environment.put("OPENROUTER_API_KEY", "wrong");
         environment.put("MY_KEY", "right");
         final ProviderConfig config =
-                ProviderConfig.builder("").apiKeyEnv("MY_KEY").build();
+                ProviderConfig.builder().modelPath("").apiKeyEnv("MY_KEY").build();
         assertThat(support(config, environment).apiKey(), is("right"));
     }
 
     @Test
     public void apiKey_variableUnset_returnsNull() {
-        final ProviderConfig config =
-                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .apiKeyEnv("OPENROUTER_API_KEY")
+                .build();
         assertThat(support(config).apiKey(), is(nullValue()));
     }
 
@@ -442,8 +466,10 @@ public class OpenAiCompatibleProviderSupportTest {
     public void apiKey_variableBlank_returnsNull() {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "  ");
-        final ProviderConfig config =
-                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .apiKeyEnv("OPENROUTER_API_KEY")
+                .build();
         assertThat(support(config, environment).apiKey(), is(nullValue()));
     }
 
@@ -455,8 +481,10 @@ public class OpenAiCompatibleProviderSupportTest {
     public void apiKeyFor_defaultConfigWithACustomHttpsEndpoint_sendsNoKey() throws Exception {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "sk-or-test");
-        final ProviderConfig config =
-                ProviderConfig.builder("").baseUrl("https://other.example/v1").build();
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .baseUrl("https://other.example/v1")
+                .build();
         assertThat(
                 support(config, environment).apiKeyFor("https://other.example/v1/chat/completions"), is(nullValue()));
     }
@@ -464,7 +492,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void apiKey_noVariableNamed_returnsNullWithoutLookingAnythingUp() {
         // arrange -- an environment that would answer for any name, the empty one included
-        final ProviderConfig config = ProviderConfig.builder("").apiKeyEnv("").build();
+        final ProviderConfig config =
+                ProviderConfig.builder().modelPath("").apiKeyEnv("").build();
         final OpenAiCompatibleProviderSupport support =
                 new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, name -> "any");
 
@@ -478,7 +507,11 @@ public class OpenAiCompatibleProviderSupportTest {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "sk-test");
         return support(
-                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build(), environment);
+                ProviderConfig.builder()
+                        .modelPath("")
+                        .apiKeyEnv("OPENROUTER_API_KEY")
+                        .build(),
+                environment);
     }
 
     @Test
@@ -508,7 +541,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void apiKeyFor_plainHttpToAnotherHostWithoutKey_isFine() throws Exception {
         assertThat(
-                support(ProviderConfig.builder("").build()).apiKeyFor("http://example.org/v1/chat/completions"),
+                support(ProviderConfig.builder().modelPath("").build())
+                        .apiKeyFor("http://example.org/v1/chat/completions"),
                 is(nullValue()));
     }
 
@@ -735,7 +769,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void modelsEndpoint_isTheTrimmedBaseUrlWithoutTrailingSlashesPlusModels() {
         assertThat(
-                support(ProviderConfig.builder("")
+                support(ProviderConfig.builder()
+                                .modelPath("")
                                 .baseUrl(" http://127.0.0.1:3030/v1// ")
                                 .build())
                         .modelsEndpoint(),
@@ -744,8 +779,8 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void modelsEndpoint_notHttp_throwsBeforeAnyConnection() {
-        final OpenAiCompatibleProviderSupport support =
-                support(ProviderConfig.builder("").baseUrl("file:///etc").build());
+        final OpenAiCompatibleProviderSupport support = support(
+                ProviderConfig.builder().modelPath("").baseUrl("file:///etc").build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::modelsEndpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc'"));
     }
@@ -755,7 +790,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void serverKey_isTheBaseUrlWithoutTrailingSlashesAndTheKeyVariable() {
         assertThat(
-                support(ProviderConfig.builder("")
+                support(ProviderConfig.builder()
+                                .modelPath("")
                                 .baseUrl(" http://127.0.0.1:3030/v1// ")
                                 .apiKeyEnv(" COPILOT_GATEWAY_API_KEY ")
                                 .build())
@@ -766,7 +802,10 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void serverKey_doesNotCheckTheScheme() {
         assertThat(
-                support(ProviderConfig.builder("").baseUrl("file:///etc/").build())
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl("file:///etc/")
+                                .build())
                         .serverKey(),
                 is("file:///etc "));
     }

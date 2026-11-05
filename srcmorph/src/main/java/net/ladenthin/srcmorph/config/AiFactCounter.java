@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.config;
 
 import lombok.ToString;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One deterministic "fact" counter for an oversize routing rule: a human-readable {@link #label} paired
@@ -38,7 +39,6 @@ import lombok.ToString;
  *
  * @see net.ladenthin.srcmorph.facts.AiFactExtractor
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
 public class AiFactCounter {
 
@@ -48,10 +48,10 @@ public class AiFactCounter {
     }
 
     /** Human-readable label shown next to the count (e.g. {@code "INSERT statements"}). */
-    private String label;
+    private @Nullable String label;
 
     /** Java regular expression whose non-overlapping match count over the whole source is reported. */
-    private String pattern;
+    private @Nullable String pattern;
 
     /** Whether the matches are blanked out before counting instead of being counted and reported. */
     private boolean ignore;
@@ -65,9 +65,9 @@ public class AiFactCounter {
     /**
      * Returns the human-readable label.
      *
-     * @return the label
+     * @return the label, or {@code null} if not set
      */
-    public String getLabel() {
+    public @Nullable String getLabel() {
         return label;
     }
 
@@ -76,16 +76,16 @@ public class AiFactCounter {
      *
      * @param label the label
      */
-    public void setLabel(final String label) {
+    public void setLabel(final @Nullable String label) {
         this.label = label;
     }
 
     /**
      * Returns the counting regular expression.
      *
-     * @return the pattern
+     * @return the pattern, or {@code null} if not set
      */
-    public String getPattern() {
+    public @Nullable String getPattern() {
         return pattern;
     }
 
@@ -94,7 +94,7 @@ public class AiFactCounter {
      *
      * @param pattern the pattern
      */
-    public void setPattern(final String pattern) {
+    public void setPattern(final @Nullable String pattern) {
         this.pattern = pattern;
     }
 

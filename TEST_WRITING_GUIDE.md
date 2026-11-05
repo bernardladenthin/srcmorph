@@ -393,7 +393,7 @@ public void generate_realProvider_returnsNonEmptyResponse() {
     Assume.assumeTrue("test model not found", Files.exists(modelPath));
 
     // arrange
-    final ProviderConfig config = ProviderConfig.builder(modelPath.toString())
+    final ProviderConfig config = ProviderConfig.builder().modelPath(modelPath.toString())
             .contextSize(512).maxOutputTokens(32).temperature(0.0f).threads(2).build();
 
     // act / assert — omitted for brevity

@@ -24,7 +24,6 @@ import org.jspecify.annotations.Nullable;
  * managed by identity inside the plugin (registered in a key-indexed lookup) and the
  * mutable JavaBean shape makes value semantics unsafe.
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
 public class AiPromptDefinition {
 
@@ -33,16 +32,16 @@ public class AiPromptDefinition {
         // no-op
     }
 
-    private String key;
+    private @Nullable String key;
     private @Nullable String template;
     private @Nullable String templateFile;
 
     /**
      * Returns the prompt template lookup key.
      *
-     * @return prompt template lookup key
+     * @return prompt template lookup key, or {@code null} if not set
      */
-    public String getKey() {
+    public @Nullable String getKey() {
         return key;
     }
 
@@ -51,7 +50,7 @@ public class AiPromptDefinition {
      *
      * @param key lookup key
      */
-    public void setKey(final String key) {
+    public void setKey(final @Nullable String key) {
         this.key = key;
     }
 

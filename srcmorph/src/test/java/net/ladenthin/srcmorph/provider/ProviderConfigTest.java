@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.provider;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
@@ -31,7 +32,8 @@ public class ProviderConfigTest {
     /** Builds a config carrying the given lists; every other value stays at its default. */
     private static ProviderConfig configWithLists(
             final @Nullable List<String> drySequenceBreakers, final @Nullable List<String> stopStrings) {
-        return ProviderConfig.builder("model.gguf")
+        return ProviderConfig.builder()
+                .modelPath("model.gguf")
                 .drySequenceBreakers(drySequenceBreakers)
                 .stopStrings(stopStrings)
                 .build();
@@ -106,7 +108,8 @@ public class ProviderConfigTest {
     @Test
     public void builder_leavesEveryUnsetValueAtItsAiGenerationConfigDefault() {
         // act -- name nothing but the one required value
-        final ProviderConfig config = ProviderConfig.builder("model.gguf").build();
+        final ProviderConfig config =
+                ProviderConfig.builder().modelPath("model.gguf").build();
 
         // assert
         assertThat(config.modelPath(), is("model.gguf"));
@@ -162,7 +165,8 @@ public class ProviderConfigTest {
     @Test
     public void builder_everySetterWritesItsOwnField() {
         // act
-        final ProviderConfig config = ProviderConfig.builder("model.gguf")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("model.gguf")
                 .contextSize(1111)
                 .maxOutputTokens(222)
                 .temperature(0.33f)
@@ -260,7 +264,8 @@ public class ProviderConfigTest {
     @Test
     public void builder_nullOnAStringSetter_restoresThatKnobsDefault() {
         // arrange -- set them all first, so the null is genuinely undoing something
-        final ProviderConfig config = ProviderConfig.builder("model.gguf")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("model.gguf")
                 .lazyMode("on")
                 .cacheTypeK("q8_0")
                 .cacheTypeV("q4_0")
@@ -294,10 +299,14 @@ public class ProviderConfigTest {
         assertThat(config.reasoningEffort(), is("low"));
     }
 
-    /** {@code modelPath} is the one value with no default, so it is rejected at the entry point. */
+    /** A remote model names no file, so a configuration without one has none rather than {@code ""}. */
     @Test
-    public void builder_nullModelPath_isRejectedAtTheEntryPoint() {
-        Assertions.assertThrows(NullPointerException.class, () -> ProviderConfig.builder(null));
+    public void builder_withoutModelPath_hasNone() {
+        // act
+        final ProviderConfig config = ProviderConfig.builder().build();
+
+        // assert
+        assertThat(config.modelPath(), is(nullValue()));
     }
 
     /** A builder is reusable: {@code build()} snapshots it, so a later setter cannot reach back. */
@@ -305,7 +314,7 @@ public class ProviderConfigTest {
     public void build_snapshotsTheBuilder_soLaterSettersDoNotMutateAnAlreadyBuiltConfig() {
         // arrange
         final ProviderConfig.Builder builder =
-                ProviderConfig.builder("model.gguf").contextSize(1111);
+                ProviderConfig.builder().modelPath("model.gguf").contextSize(1111);
         final ProviderConfig first = builder.build();
 
         // act

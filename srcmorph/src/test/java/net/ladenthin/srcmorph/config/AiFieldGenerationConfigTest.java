@@ -9,6 +9,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +38,52 @@ public class AiFieldGenerationConfigTest {
         final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
         c.setAiDefinitionKey("gpt-oss-20B-c96k");
         assertThat(c.getAiDefinitionKey(), is(equalTo("gpt-oss-20B-c96k")));
+    }
+
+    @Test
+    public void requirePromptKey_set_isTheKey() {
+        // arrange
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setPromptKey("file-body-java");
+
+        // act + assert
+        assertThat(c.requirePromptKey(), is(equalTo("file-body-java")));
+    }
+
+    @Test
+    public void requirePromptKey_ofASkipRule_isRefused() {
+        // arrange
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setSkip(true);
+
+        // act
+        final IllegalStateException thrown = assertThrows(IllegalStateException.class, c::requirePromptKey);
+
+        // assert
+        assertThat(thrown.getMessage(), is(equalTo("The rule has no promptKey: " + c)));
+    }
+
+    @Test
+    public void requireAiDefinitionKey_set_isTheKey() {
+        // arrange
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setAiDefinitionKey("gpt-oss-20B-c96k");
+
+        // act + assert
+        assertThat(c.requireAiDefinitionKey(), is(equalTo("gpt-oss-20B-c96k")));
+    }
+
+    @Test
+    public void requireAiDefinitionKey_ofASkipRule_isRefused() {
+        // arrange
+        final AiFieldGenerationConfig c = new AiFieldGenerationConfig();
+        c.setSkip(true);
+
+        // act
+        final IllegalStateException thrown = assertThrows(IllegalStateException.class, c::requireAiDefinitionKey);
+
+        // assert
+        assertThat(thrown.getMessage(), is(equalTo("The rule has no aiDefinitionKey: " + c)));
     }
 
     @Test

@@ -82,10 +82,14 @@ public final class CalibrateEngine {
         // Distinct routed models, each mapped to a representative prompt key (skip rules have none).
         final Map<String, String> modelToPrompt = new LinkedHashMap<>();
         for (final AiFieldGenerationConfig rule : fieldGenerations) {
-            if (rule == null || rule.getAiDefinitionKey() == null || rule.getPromptKey() == null) {
+            if (rule == null) {
                 continue;
             }
-            modelToPrompt.putIfAbsent(rule.getAiDefinitionKey(), rule.getPromptKey());
+            final String model = rule.getAiDefinitionKey();
+            final String prompt = rule.getPromptKey();
+            if (model != null && prompt != null) {
+                modelToPrompt.putIfAbsent(model, prompt);
+            }
         }
         if (modelToPrompt.isEmpty()) {
             throw new SrcMorphException("No routable (model + prompt) rule found to calibrate.");

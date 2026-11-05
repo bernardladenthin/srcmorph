@@ -31,6 +31,7 @@ import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
@@ -217,6 +218,37 @@ public class EngineSupportTest {
                 SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(both), null, null));
 
         assertThat(e.getMessage(), containsString("sets both template and templateFile"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="basePath">
+    @Test
+    public void basePath_isTheBaseDirectory_absoluteAndNormalized() throws SrcMorphException {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(new File("a/../b"));
+
+        // act
+        final Path base = EngineSupport.basePath(config);
+
+        // assert
+        assertThat(base, is(new File("b").toPath().toAbsolutePath()));
+    }
+
+    @Test
+    public void basePath_unset_isAConfigurationError() {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, () -> EngineSupport.basePath(config));
+
+        // assert
+        assertThat(
+                thrown.getMessage(),
+                is("The configuration has no baseDirectory (its outputDirectory is "
+                        + SrcMorphConfiguration.DEFAULT_OUTPUT_DIRECTORY.replace('/', File.separatorChar)
+                        + "); set the directory the run reads"));
     }
     // </editor-fold>
 

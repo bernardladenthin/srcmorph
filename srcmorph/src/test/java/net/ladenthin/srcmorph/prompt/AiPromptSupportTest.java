@@ -111,11 +111,10 @@ public class AiPromptSupportTest {
 
     // <editor-fold defaultstate="collapsed" desc="construction">
     @Test
-    public void nullKeyInDefinitionThrowsNamedNpe() {
-        // Exercises the requireNonNull(key) message supplier lambda.
-        NullPointerException ex = assertThrows(
-                NullPointerException.class, () -> new AiPromptSupport(Collections.singletonList(def(null, "tpl"))));
-        assertThat(ex.getMessage(), containsString("promptDefinitions[0].key"));
+    public void nullKeyInDefinitionThrowsNamingTheIndex() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class, () -> new AiPromptSupport(Collections.singletonList(def(null, "tpl"))));
+        assertThat(ex.getMessage(), containsString("promptDefinitions[0].key is required"));
     }
 
     @Test
@@ -127,11 +126,10 @@ public class AiPromptSupportTest {
     }
 
     @Test
-    public void nullTemplateInDefinitionThrowsNamedNpe() {
-        // Exercises the requireNonNull(template) message supplier lambda.
-        NullPointerException ex = assertThrows(
-                NullPointerException.class, () -> new AiPromptSupport(Collections.singletonList(def("key", null))));
-        assertThat(ex.getMessage(), containsString("promptDefinitions[0].template"));
+    public void nullTemplateInDefinitionThrowsNamingTheIndex() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class, () -> new AiPromptSupport(Collections.singletonList(def("key", null))));
+        assertThat(ex.getMessage(), containsString("promptDefinitions[0].template is required"));
     }
 
     @Test

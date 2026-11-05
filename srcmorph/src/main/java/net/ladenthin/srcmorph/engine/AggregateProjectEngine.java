@@ -12,6 +12,7 @@ import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
 import net.ladenthin.srcmorph.indexer.ProjectIndexer;
+import net.ladenthin.srcmorph.indexer.ProjectOverview;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
@@ -145,8 +146,8 @@ public final class AggregateProjectEngine {
         LOGGER.info(
                 "Check passed: the overview rule (prompt '{}', model '{}'), its profile files and its model are in"
                         + " order.",
-                overview.getPromptKey(),
-                overview.getAiDefinitionKey());
+                overview.requirePromptKey(),
+                overview.requireAiDefinitionKey());
     }
 
     /**
@@ -172,12 +173,12 @@ public final class AggregateProjectEngine {
                 config.getGenerationProvider(), modelDefinitionSupport, Collections.singletonList(overview));
         LOGGER.info(
                 "Project overview generation: enabled (prompt '{}', model '{}')",
-                overview.getPromptKey(),
-                overview.getAiDefinitionKey());
+                overview.requirePromptKey(),
+                overview.requireAiDefinitionKey());
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveProviderConfig(modelDefinitionSupport, overview.getAiDefinitionKey()),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, overview.requireAiDefinitionKey()),
                 promptSupport)) {
             final ProjectIndexer indexer = new ProjectIndexer(
                     title,
@@ -185,10 +186,7 @@ public final class AggregateProjectEngine {
                     config.getAiVersion(),
                     config.isForce(),
                     config.getRegenerateOn(),
-                    provider,
-                    overview,
-                    promptSupport,
-                    modelDefinitionSupport);
+                    new ProjectOverview(provider, overview, promptSupport, modelDefinitionSupport));
             return indexer.aggregate(outputPath);
         }
     }

@@ -264,6 +264,7 @@ public class SrcMorphConfigurationFileLoaderTest {
                 "modelDirectory: \"${nope}/x\"",
                 "profileDirectory: \"${nope}/x\"",
                 "runRecordFile: \"${nope}/run.json\"",
+                "partsDirectory: \"${nope}/parts\"",
                 "subtrees: [\"src\", \"${nope}/x\"]"
             })
     public void load_aPathNamingAPropertyNobodySets_failsNamingIt(final String line) throws IOException {
@@ -302,7 +303,7 @@ public class SrcMorphConfigurationFileLoaderTest {
                 "project/config/srcmorph.yaml",
                 "srcMorph:\n  baseDirectory: \"..\"\n  outputDirectory: \"out\"\n"
                         + "  modelDirectory: \"models\"\n  profileDirectory: \"../profiles\"\n"
-                        + "  runRecordFile: \"records/run.json\"\n");
+                        + "  runRecordFile: \"records/run.json\"\n  partsDirectory: \"parts\"\n");
         final Path directory = file.getParent().toAbsolutePath();
 
         final SrcMorphConfiguration srcMorph = SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES)
@@ -321,6 +322,9 @@ public class SrcMorphConfigurationFileLoaderTest {
         assertThat(
                 srcMorph.getRunRecordFile(),
                 is(equalTo(directory.resolve("records/run.json").toFile())));
+        assertThat(
+                srcMorph.getPartsDirectory(),
+                is(equalTo(directory.resolve("parts").toFile())));
     }
 
     @Test
@@ -341,6 +345,7 @@ public class SrcMorphConfigurationFileLoaderTest {
                 srcMorph.getProfileDirectory(),
                 is(equalTo(tempDir.toAbsolutePath().toFile())));
         assertThat(srcMorph.getRunRecordFile(), is(nullValue()));
+        assertThat(srcMorph.getPartsDirectory(), is(nullValue()));
     }
 
     @Test

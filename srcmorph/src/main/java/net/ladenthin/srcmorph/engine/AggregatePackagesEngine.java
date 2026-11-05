@@ -69,8 +69,8 @@ public final class AggregatePackagesEngine {
         LOGGER.info(
                 "Check passed: the package rule (prompt '{}', model '{}'), its profile files and its model are in"
                         + " order.",
-                rule.getPromptKey(),
-                rule.getAiDefinitionKey());
+                rule.requirePromptKey(),
+                rule.requireAiDefinitionKey());
     }
 
     /**
@@ -89,8 +89,7 @@ public final class AggregatePackagesEngine {
             LOGGER.info("planOnly: the package phase does not run.");
             return 0;
         }
-        final Path basePath =
-                config.getBaseDirectory().toPath().toAbsolutePath().normalize();
+        final Path basePath = EngineSupport.basePath(config);
         final Path outputPath =
                 config.getOutputDirectory().toPath().toAbsolutePath().normalize();
         final List<Path> resolvedSubtrees = EngineSupport.resolveSubtrees(basePath, config.getSubtrees());
@@ -118,13 +117,14 @@ public final class AggregatePackagesEngine {
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(), modelDefinitionSupport, Collections.singletonList(rule));
-        LOGGER.info("Package rule    : prompt '{}', model '{}'", rule.getPromptKey(), rule.getAiDefinitionKey());
+        LOGGER.info(
+                "Package rule    : prompt '{}', model '{}'", rule.requirePromptKey(), rule.requireAiDefinitionKey());
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
 
         final AiIndexTally aggregated;
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveProviderConfig(modelDefinitionSupport, rule.getAiDefinitionKey()),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, rule.requireAiDefinitionKey()),
                 promptSupport)) {
             final PackageIndexer packageIndexer = new PackageIndexer(
                     basePath,

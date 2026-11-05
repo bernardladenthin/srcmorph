@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFactDefinition;
@@ -25,8 +24,8 @@ import org.jspecify.annotations.Nullable;
  * rule (setting {@link AiFieldGenerationConfig#setFacts(List)}) so the rest of the pipeline reads the
  * already-resolved {@code getFacts()} uniformly, whether the counters were inline or shared.</p>
  *
- * <p>Every entry must have a non-null {@code key} (a null key throws {@link NullPointerException} naming
- * the index); a {@code factsKey} that matches no group throws {@link IllegalArgumentException}. The
+ * <p>Every entry must have a non-null {@code key} (a null key throws {@link IllegalArgumentException}
+ * naming the index), and a {@code factsKey} that matches no group throws it too. The
  * engines wrap these in {@code net.ladenthin.srcmorph.engine.SrcMorphException}, so a misconfigured
  * configuration file fails fast as a configuration error before any model is loaded.</p>
  *
@@ -47,7 +46,7 @@ public final class AiFactDefinitionSupport {
      *
      * @param definitions list of fact definitions; may be {@code null} or empty (no shared groups);
      *                    every entry must have a non-null {@code key}
-     * @throws NullPointerException if any entry has a {@code null} {@code key}
+     * @throws IllegalArgumentException if any entry has a {@code null} or a duplicate {@code key}
      */
     public AiFactDefinitionSupport(final @Nullable List<AiFactDefinition> definitions) {
         if (definitions == null) {
@@ -58,18 +57,18 @@ public final class AiFactDefinitionSupport {
         this.factsByKey = new HashMap<>(compatibilityHelper.hashMapCapacityFor(count));
         for (int i = 0; i < count; i++) {
             final AiFactDefinition definition = definitions.get(i);
-            final int index = i;
-            Objects.requireNonNull(
-                    definition.getKey(),
-                    () -> "factDefinitions[" + index + "].key is required (bad entry: " + definition + ")");
+            final String key = definition.getKey();
+            if (key == null) {
+                throw new IllegalArgumentException(
+                        "factDefinitions[" + i + "].key is required (bad entry: " + definition + ")");
+            }
             final List<AiFactCounter> facts = definition.getFacts();
             // Normalize a group that declared no counters to an empty list, so the map value is never null
             // (a group that references no facts is a no-op, same as an empty facts list).
-            if (factsByKey.containsKey(definition.getKey())) {
-                throw new IllegalArgumentException(
-                        "factDefinitions[" + index + "].key '" + definition.getKey() + "' is defined twice");
+            if (factsByKey.containsKey(key)) {
+                throw new IllegalArgumentException("factDefinitions[" + i + "].key '" + key + "' is defined twice");
             }
-            factsByKey.put(definition.getKey(), facts != null ? facts : Collections.emptyList());
+            factsByKey.put(key, facts != null ? facts : Collections.emptyList());
         }
     }
 

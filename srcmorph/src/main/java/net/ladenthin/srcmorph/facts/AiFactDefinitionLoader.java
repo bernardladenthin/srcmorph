@@ -106,13 +106,18 @@ public final class AiFactDefinitionLoader {
                 new Java8CompatibilityHelper().hashMapCapacityFor(configured.size() + usedFactsKeys.size()));
         for (int i = 0; i < configured.size(); i++) {
             final AiFactDefinition definition = configured.get(i);
-            defined.add(definition.getKey());
+            final String key = definition.getKey();
+            if (key == null) {
+                throw new IllegalArgumentException(
+                        "factDefinitions[" + i + "].key is required (bad entry: " + definition + ")");
+            }
+            defined.add(key);
             final String factsFile = definition.getFactsFile();
             if (factsFile == null) {
                 loaded.add(definition);
                 continue;
             }
-            final String label = "factDefinitions[" + i + "] (key " + definition.getKey() + ")";
+            final String label = "factDefinitions[" + i + "] (key " + key + ")";
             if (definition.getFacts() != null) {
                 throw new IllegalArgumentException(label + " sets both facts and factsFile; set one of them");
             }
@@ -121,7 +126,7 @@ public final class AiFactDefinitionLoader {
             final File directory = profileDirectory;
             final Deque<String> chain = new ArrayDeque<>();
             loaded.add(group(
-                    definition.getKey(),
+                    key,
                     parse(
                             label + ": factsFile " + path,
                             text,

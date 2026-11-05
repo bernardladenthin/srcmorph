@@ -162,6 +162,9 @@ public class SummaryGenerator {
     /** The part summaries of the current map-reduce the reduce shortened because no two fitted one batch. */
     private int shortenedParts;
 
+    /** The map and reduce answers of the last {@link #generate} call. */
+    private SummaryParts parts = new SummaryParts();
+
     /** Whether the current call's input was cut to fit a smaller window: one call counts once in {@link #cutCalls}. */
     private boolean callCut;
 
@@ -224,6 +227,16 @@ public class SummaryGenerator {
     }
 
     /**
+     * Returns the answers of the last {@link #generate} call's map-reduce, as Markdown: each chunk's map
+     * answer under its label, then each reduce batch's answer under its round and batch.
+     *
+     * @return the answers, {@code ""} when the last call read its source in one piece
+     */
+    public String parts() {
+        return parts.text();
+    }
+
+    /**
      * Generates the body of one context with one rule.
      *
      * <ol>
@@ -254,7 +267,8 @@ public class SummaryGenerator {
             final String contextType,
             final String sourceText)
             throws IOException {
-        final AiGenerationConfig generationConfig = modelDefinitionSupport.getConfig(rule.getAiDefinitionKey());
+        final AiGenerationConfig generationConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
+        parts = new SummaryParts();
         try {
             return new AiGenerationResult(generateBody(rule, generationConfig, contextFile, contextType, sourceText));
         } catch (final AiIncompleteAnswerException e) {
@@ -262,7 +276,7 @@ public class SummaryGenerator {
                     INCOMPLETE_WARN_PREFIX + "{} '{}' (field '{}', {}): {}; not written, left for the next run",
                     contextType,
                     contextFile,
-                    rule.getPromptKey(),
+                    rule.requirePromptKey(),
                     e.reason(),
                     e.detail());
             return AiGenerationResult.incomplete(e.detail());
@@ -292,7 +306,7 @@ public class SummaryGenerator {
         final int effectiveMaxInputChars = resolveMaxInputChars(fieldGeneration, generationConfig, contextFile);
 
         final AiGenerationRequest request =
-                new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText);
+                new AiGenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText);
 
         final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
@@ -425,7 +439,7 @@ public class SummaryGenerator {
         final AiOversizeStrategy oversize = fieldGeneration.oversizeStrategy();
         if (oversize == AiOversizeStrategy.FAIL) {
             final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
-                    new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText), window);
+                    new AiGenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText), window);
             throw new IOException(contextType + " '" + contextFile + "' (" + sourceText.length()
                     + " chars) exceeds the window of model '" + fieldGeneration.getAiDefinitionKey()
                     + "' (" + prepared.availableSourceChars() + " chars of source) and its rule has"
@@ -473,7 +487,7 @@ public class SummaryGenerator {
             final boolean mayCut)
             throws IOException {
         final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(
-                new AiGenerationRequest(fieldGeneration.getPromptKey(), contextFile, sourceText), window);
+                new AiGenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText), window);
         if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
             LOGGER.warn(
                     "Trimmed AI input for {}" + TRIM_WARN_FIELD_LABEL
@@ -505,14 +519,15 @@ public class SummaryGenerator {
                         ? PROCESSING_LOG_DISCLAIMER_CALIBRATED
                         : PROCESSING_LOG_DISCLAIMER);
 
+        final String promptKey = fieldGeneration.requirePromptKey();
         LOGGER.info(
                 "Generating field '{}' with temperature={}, maxInputChars={}",
-                fieldGeneration.getPromptKey(),
+                promptKey,
                 generationConfig.getTemperature(),
                 window);
         final long generationStartNanos = System.nanoTime();
-        final String generated = generateComplete(
-                fieldGeneration, fieldGeneration.getPromptKey(), contextFile, sourceText, window, mayCut, false);
+        final String generated =
+                generateComplete(fieldGeneration, promptKey, contextFile, sourceText, window, mayCut, false);
         final long actualSeconds = (System.nanoTime() - generationStartNanos) / NANOS_PER_SECOND;
 
         // Log the MEASURED wall-clock duration next to the estimate so real runs are directly
@@ -554,9 +569,9 @@ public class SummaryGenerator {
             final String facts)
             throws IOException {
         final String mapKey =
-                AiPromptSupport.composedKey(fieldGeneration.getPromptKey(), fieldGeneration.getMapPromptKey());
+                AiPromptSupport.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getMapPromptKey());
         final String reduceKey =
-                AiPromptSupport.composedKey(fieldGeneration.getPromptKey(), fieldGeneration.getReducePromptKey());
+                AiPromptSupport.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getReducePromptKey());
         final int mapPromptLength = promptPreparationSupport.getBasePromptLength(mapKey, contextFile);
         final int reducePromptLength = promptPreparationSupport.getBasePromptLength(reduceKey, contextFile);
         final int room = ChunkPlan.room(effectiveMaxInputChars, mapPromptLength, reducePromptLength);
@@ -641,9 +656,11 @@ public class SummaryGenerator {
             throws IOException {
         final boolean splittable = AiMapReduceSupport.splittable(chunk.length());
         try {
-            partials.add(
-                    generateComplete(fieldGeneration, mapKey, contextFile, label + chunk, safeWindow, !splittable, part)
-                            .trim());
+            final String answer = generateComplete(
+                            fieldGeneration, mapKey, contextFile, label + chunk, safeWindow, !splittable, part)
+                    .trim();
+            partials.add(answer);
+            parts.map(label, answer);
         } catch (final AiSourceCutException e) {
             LOGGER.info(
                     "  mapReduce chunk of {} chars does not fit the window of {} chars; read in two halves",
@@ -748,12 +765,13 @@ public class SummaryGenerator {
             shortenedParts += reduce.shortenedParts();
             final List<List<String>> batches = reduce.batches();
             final List<String> next = new ArrayList<>(batches.size());
-            for (final List<String> batch : batches) {
+            for (int index = 0; index < batches.size(); index++) {
+                final List<String> batch = batches.get(index);
                 if (reduce.passesOn(batch)) {
                     next.add(batch.get(0));
                     continue;
                 }
-                next.add(generateComplete(
+                final String answer = generateComplete(
                                 fieldGeneration,
                                 reduceKey,
                                 contextFile,
@@ -761,7 +779,9 @@ public class SummaryGenerator {
                                 safeWindow,
                                 true,
                                 reduce.parts())
-                        .trim());
+                        .trim();
+                next.add(answer);
+                parts.reduce(round, index + 1, batches.size(), batch.size(), answer);
             }
             LOGGER.info("  mapReduce reduce round {}: {} -> {} partial(s)", round, level.size(), next.size());
             level = next;
@@ -797,7 +817,7 @@ public class SummaryGenerator {
             final boolean mayCut,
             final boolean part)
             throws IOException {
-        final AiGenerationConfig model = modelDefinitionSupport.getConfig(fieldGeneration.getAiDefinitionKey());
+        final AiGenerationConfig model = modelDefinitionSupport.getConfig(fieldGeneration.requireAiDefinitionKey());
         final int tokenLimit = AiTokenWindow.promptTokenLimit(model.getContextSize(), model.getMaxOutputTokens());
         callCut = false;
         try {
@@ -976,9 +996,9 @@ public class SummaryGenerator {
         }
 
         final int basePromptLength =
-                promptPreparationSupport.getBasePromptLength(fieldGeneration.getPromptKey(), contextFile);
-        if (loggedWindows.add(
-                computeMaxInputCharsKey(fieldGeneration.getAiDefinitionKey(), fieldGeneration.getPromptKey()))) {
+                promptPreparationSupport.getBasePromptLength(fieldGeneration.requirePromptKey(), contextFile);
+        if (loggedWindows.add(computeMaxInputCharsKey(
+                fieldGeneration.requireAiDefinitionKey(), fieldGeneration.requirePromptKey()))) {
             logMaxInputChars(generationConfig, basePromptLength);
         }
         return AiInputWindowCalculator.maxInputChars(generationConfig, basePromptLength);

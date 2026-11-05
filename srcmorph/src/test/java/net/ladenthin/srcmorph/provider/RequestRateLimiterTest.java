@@ -176,9 +176,9 @@ public class RequestRateLimiterTest {
     @Test
     public void lowerLimitTo_aSmallerLimit_holdsTheNextRequest_aLargerOneNot() throws Exception {
         // arrange: three requests may start; then a larger limit, then a smaller one
-        final List<Long> waits = new ArrayList<>();
+        final List<Long> held = new ArrayList<>();
         final RequestRateLimiter limiter = new RequestRateLimiter("http://gateway K", 3, WINDOW, () -> 0L, nanos -> {
-            waits.add(nanos);
+            held.add(nanos);
             throw new InterruptedException("stop");
         });
         limiter.lowerLimitTo(5);
@@ -190,7 +190,7 @@ public class RequestRateLimiterTest {
 
         // assert: the third request is held at 2, where 3 (or the 5) would have let it start
         assertThrows(InterruptedIOException.class, limiter::acquire);
-        assertThat(waits.size(), is(1));
+        assertThat(held.size(), is(1));
         assertThat(limiter.startedInWindow(), is(2));
     }
 

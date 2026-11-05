@@ -27,7 +27,6 @@ import org.jspecify.annotations.Nullable;
  * configuration file (a Jackson {@code ObjectMapper}/{@code YAMLMapper}) and a plain caller populate it
  * the same way.</p>
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
 public class SrcMorphConfiguration {
 
@@ -52,7 +51,7 @@ public class SrcMorphConfiguration {
         // no-op
     }
 
-    private File baseDirectory;
+    private @Nullable File baseDirectory;
     private File outputDirectory = new File(DEFAULT_OUTPUT_DIRECTORY);
     private boolean force;
     private AiRegenerateOn regenerateOn = new AiRegenerateOn();
@@ -71,6 +70,7 @@ public class SrcMorphConfiguration {
     private @Nullable File modelDirectory;
     private @Nullable File profileDirectory;
     private @Nullable File runRecordFile;
+    private @Nullable File partsDirectory;
     private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
     private @Nullable List<AiFactDefinition> factDefinitions;
     private String pluginVersion = new AiGeneratorVersion().version();
@@ -78,11 +78,12 @@ public class SrcMorphConfiguration {
     private @Nullable String projectName;
 
     /**
-     * Returns the project base directory.
+     * Returns the project base directory: the configuration file's loader always sets it, a configuration
+     * built in code has none until {@link #setBaseDirectory(File)}, and the engines refuse to run without one.
      *
-     * @return the base directory
+     * @return the base directory, or {@code null} when none is set
      */
-    public File getBaseDirectory() {
+    public @Nullable File getBaseDirectory() {
         return baseDirectory;
     }
 
@@ -91,7 +92,7 @@ public class SrcMorphConfiguration {
      *
      * @param baseDirectory the base directory
      */
-    public void setBaseDirectory(final File baseDirectory) {
+    public void setBaseDirectory(final @Nullable File baseDirectory) {
         this.baseDirectory = baseDirectory;
     }
 
@@ -441,6 +442,28 @@ public class SrcMorphConfiguration {
      */
     public void setRunRecordFile(final @Nullable File runRecordFile) {
         this.runRecordFile = runRecordFile;
+    }
+
+    /**
+     * Returns the directory the {@code generate} run keeps the map-reduce answers of each file in, or
+     * {@code null} to keep none: every map answer and every reduce batch's answer of a file read in
+     * chunks, in {@code <partsDirectory>/<path below the base directory>.parts.md}, so a measurement can
+     * see where the summary loses what a part said. A file read in one piece has none. A relative path
+     * resolves against the configuration file's directory.
+     *
+     * @return the parts directory, or {@code null}
+     */
+    public @Nullable File getPartsDirectory() {
+        return partsDirectory;
+    }
+
+    /**
+     * Sets the directory the {@code generate} run keeps the map-reduce answers of each file in.
+     *
+     * @param partsDirectory the parts directory, or {@code null} to keep none
+     */
+    public void setPartsDirectory(final @Nullable File partsDirectory) {
+        this.partsDirectory = partsDirectory;
     }
 
     /**

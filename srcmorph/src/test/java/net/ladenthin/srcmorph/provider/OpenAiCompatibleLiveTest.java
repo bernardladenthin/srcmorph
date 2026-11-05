@@ -132,7 +132,8 @@ public class OpenAiCompatibleLiveTest {
     private static void describeGreeter(final String baseUrl, final String model, final String apiKeyEnv)
             throws IOException {
         // arrange
-        final ProviderConfig config = ProviderConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .provider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
                 .baseUrl(baseUrl)
                 .remoteModel(model)

@@ -20,7 +20,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.AbsolutePathRequirement;
 import org.jspecify.annotations.Nullable;
@@ -56,21 +55,42 @@ public class AiPromptTemplateLoaderTest {
     }
 
     private List<AiPromptDefinition> load(final AiPromptDefinition... definitions) throws IOException {
-        return Objects.requireNonNull(
-                new AiPromptTemplateLoader(profileDirectory.toFile()).load(Arrays.asList(definitions)));
+        return new AiPromptTemplateLoader(profileDirectory.toFile())
+                .load(Arrays.asList(definitions), Collections.<@Nullable String>emptyList());
     }
+
+    // <editor-fold defaultstate="collapsed" desc="load: keys">
+    @Test
+    public void load_aDefinitionWithoutKey_isRefusedNamingItsIndex() {
+        // arrange
+        final AiPromptDefinition keyless = inline("a", "A.");
+        keyless.setKey(null);
+
+        // act
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> load(inline("b", "B."), keyless));
+
+        // assert
+        assertThat(thrown.getMessage(), is("promptDefinitions[1].key is required (bad entry: " + keyless + ")"));
+    }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="load">
     @Test
-    public void load_nullList_staysNull() throws IOException {
-        assertThat(new AiPromptTemplateLoader(profileDirectory.toFile()).load(null), is(nullValue()));
+    public void load_nullList_isEmpty() throws IOException {
+        // act
+        final List<AiPromptDefinition> loaded = new AiPromptTemplateLoader(profileDirectory.toFile())
+                .load(null, Collections.<@Nullable String>emptyList());
+
+        // assert
+        assertThat(loaded.isEmpty(), is(true));
     }
 
     @Test
     public void load_emptyList_staysEmpty() throws IOException {
         assertThat(
                 new AiPromptTemplateLoader(null)
-                        .load(Collections.<AiPromptDefinition>emptyList())
+                        .load(Collections.<AiPromptDefinition>emptyList(), Collections.<@Nullable String>emptyList())
                         .isEmpty(),
                 is(true));
     }
@@ -117,8 +137,10 @@ public class AiPromptTemplateLoaderTest {
         Files.createDirectories(relative.getParent());
         Files.write(relative, JAVA_PROMPT.getBytes(StandardCharsets.UTF_8));
         try {
-            final List<AiPromptDefinition> loaded = Objects.requireNonNull(new AiPromptTemplateLoader(null)
-                    .load(Arrays.asList(fromFile("file-body-java", relative.toString()))));
+            final List<AiPromptDefinition> loaded = new AiPromptTemplateLoader(null)
+                    .load(
+                            Arrays.asList(fromFile("file-body-java", relative.toString())),
+                            Collections.<@Nullable String>emptyList());
 
             assertThat(loaded.get(0).getTemplate(), is(JAVA_PROMPT));
         } finally {

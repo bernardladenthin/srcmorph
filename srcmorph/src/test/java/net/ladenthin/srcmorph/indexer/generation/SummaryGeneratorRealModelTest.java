@@ -66,7 +66,8 @@ public class SummaryGeneratorRealModelTest {
 
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final AiPromptPreparationSupport prep = new AiPromptPreparationSupport(promptSupport);
-        final ProviderConfig jniConfig = ProviderConfig.builder(MODEL_PATH)
+        final ProviderConfig jniConfig = ProviderConfig.builder()
+                .modelPath(MODEL_PATH)
                 .contextSize(SMALL_CONTEXT)
                 .maxOutputTokens(48)
                 .temperature(0.15f)

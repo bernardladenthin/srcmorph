@@ -154,7 +154,7 @@ public class LlamaCppJniProviderSupportTest {
     public void buildInferenceParameters_defaultConfig_doesNotThrowOnTheNegativeSentinels() {
         // arrange
         final ProviderConfig defaults =
-                ProviderConfig.builder("/does/not/exist.gguf").build();
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build();
 
         // act / assert
         Assertions.assertDoesNotThrow(() -> providerWith(defaults).buildInferenceParameters(request("class A {}")));
@@ -165,7 +165,7 @@ public class LlamaCppJniProviderSupportTest {
     public void buildInferenceParameters_defaultConfig_sendsNeitherPenaltyWindow() {
         // arrange
         final ProviderConfig defaults =
-                ProviderConfig.builder("/does/not/exist.gguf").build();
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build();
 
         // act
         final String json = providerWith(defaults)
@@ -184,7 +184,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildInferenceParameters_zeroWindows_sendsBothAsZero() {
         // arrange
-        final ProviderConfig zeroed = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig zeroed = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .dryPenaltyLastN(0)
                 .repeatLastN(0)
                 .build();
@@ -203,7 +204,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildInferenceParameters_configuredWindows_arePassedThrough() {
         // arrange
-        final ProviderConfig configured = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig configured = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .dryPenaltyLastN(64)
                 .repeatLastN(128)
                 .build();
@@ -227,7 +229,7 @@ public class LlamaCppJniProviderSupportTest {
     public void buildInferenceParameters_defaultConfig_sendsNoSeed() {
         // arrange
         final ProviderConfig defaults =
-                ProviderConfig.builder("/does/not/exist.gguf").build();
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build();
 
         // act
         final String json = providerWith(defaults)
@@ -246,8 +248,10 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildInferenceParameters_zeroSeed_isStillSent() {
         // arrange
-        final ProviderConfig zeroSeed =
-                ProviderConfig.builder("/does/not/exist.gguf").seed(0).build();
+        final ProviderConfig zeroSeed = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
+                .seed(0)
+                .build();
 
         // act
         final String json = providerWith(zeroSeed)
@@ -267,7 +271,7 @@ public class LlamaCppJniProviderSupportTest {
     public void buildInferenceParameters_defaultConfig_sendsNoDrySequenceBreakers() {
         // arrange
         final ProviderConfig defaults =
-                ProviderConfig.builder("/does/not/exist.gguf").build();
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build();
 
         // act
         final String json = providerWith(defaults)
@@ -282,7 +286,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildInferenceParameters_configuredDrySequenceBreakers_arePassedThrough() {
         // arrange
-        final ProviderConfig configured = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig configured = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .drySequenceBreakers(Collections.singletonList("\\n"))
                 .build();
 
@@ -332,7 +337,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void truncationWarning_finishReasonLength_namesTheFileAndTheBudget() {
         // arrange
-        final LlamaCppJniProviderSupport provider = providerWith(ProviderConfig.builder("/does/not/exist.gguf")
+        final LlamaCppJniProviderSupport provider = providerWith(ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .maxOutputTokens(128)
                 .build());
 
@@ -355,8 +361,8 @@ public class LlamaCppJniProviderSupportTest {
      */
     @Test
     public void truncationWarning_finishReasonStop_isNone() {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
         assertThat(
                 provider.truncationWarning(request("class A {}"), responseWith("stop", new Usage(1, 1))),
@@ -366,8 +372,8 @@ public class LlamaCppJniProviderSupportTest {
     /** The calibration's answer the provider stopped is named with its reason, not as a budget cut. */
     @Test
     public void truncationWarning_finishReasonError_namesTheReason() {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
         assertThat(
                 provider.truncationWarning(request("class A {}"), responseWith("error", new Usage(1, 1))),
@@ -378,8 +384,8 @@ public class LlamaCppJniProviderSupportTest {
     /** No choices means nothing to judge; reading {@code get(0)} anyway would throw. */
     @Test
     public void truncationWarning_noChoices_isNone() {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
         final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
 
         assertThat(provider.truncationWarning(request("class A {}"), empty), is(nullValue()));
@@ -388,16 +394,16 @@ public class LlamaCppJniProviderSupportTest {
     // requireCompleteAnswer: what generate refuses to return as a summary
     @Test
     public void requireCompleteAnswer_finishedAnswerWithText_passes() throws Exception {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
         provider.requireCompleteAnswer(request("class A {}"), responseWith("stop", new Usage(1, 1)), "A summary.");
     }
 
     @Test
     public void requireCompleteAnswer_noChoice_isNoAnswer() {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
         final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
 
         final AiIncompleteAnswerException thrown = assertThrows(
@@ -410,7 +416,8 @@ public class LlamaCppJniProviderSupportTest {
 
     @Test
     public void requireCompleteAnswer_cutOffAtTheBudget_isTruncatedWithTheBudgetAndTheText() {
-        final LlamaCppJniProviderSupport provider = providerWith(ProviderConfig.builder("/does/not/exist.gguf")
+        final LlamaCppJniProviderSupport provider = providerWith(ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .maxOutputTokens(128)
                 .build());
 
@@ -426,8 +433,8 @@ public class LlamaCppJniProviderSupportTest {
 
     @Test
     public void requireCompleteAnswer_finishReasonError_isAbortedWithTheReasonAndTheText() {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
@@ -444,8 +451,8 @@ public class LlamaCppJniProviderSupportTest {
 
     @Test
     public void requireCompleteAnswer_finishReasonContentFilter_isAborted() {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
@@ -459,8 +466,8 @@ public class LlamaCppJniProviderSupportTest {
     /** A server's own word for a finished answer (TGI's {@code eos_token}) or none at all is the model's. */
     @Test
     public void requireCompleteAnswer_anotherOrNoFinishReason_passes() throws Exception {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
         provider.requireCompleteAnswer(request("class A {}"), responseWith("eos_token", new Usage(1, 1)), "A summary.");
         provider.requireCompleteAnswer(request("class A {}"), responseWith(null, new Usage(1, 1)), "A summary.");
@@ -469,8 +476,8 @@ public class LlamaCppJniProviderSupportTest {
 
     @Test
     public void requireCompleteAnswer_finishedButBlank_isEmpty() {
-        final LlamaCppJniProviderSupport provider =
-                providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
         final AiIncompleteAnswerException thrown = assertThrows(
                 AiIncompleteAnswerException.class,
@@ -489,8 +496,8 @@ public class LlamaCppJniProviderSupportTest {
         // arrange
         final ListAppender<ILoggingEvent> appender = attachAppender(Level.DEBUG);
         try {
-            final LlamaCppJniProviderSupport provider =
-                    providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+            final LlamaCppJniProviderSupport provider = providerWith(
+                    ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
             // act -- distinct values so each lands in its own placeholder
             provider.logPromptCacheReuse(request("class A {}"), responseWith("stop", new Usage(70, 11, 33)));
@@ -511,8 +518,8 @@ public class LlamaCppJniProviderSupportTest {
         // arrange
         final ListAppender<ILoggingEvent> appender = attachAppender(Level.INFO);
         try {
-            final LlamaCppJniProviderSupport provider =
-                    providerWith(ProviderConfig.builder("/does/not/exist.gguf").build());
+            final LlamaCppJniProviderSupport provider = providerWith(
+                    ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
             // act
             provider.logPromptCacheReuse(request("class A {}"), responseWith("stop", new Usage(70, 11, 33)));
@@ -543,7 +550,7 @@ public class LlamaCppJniProviderSupportTest {
     public void buildChatTemplateKwargs_defaultConfig_doesNotSendEnableThinking() {
         // arrange
         final ProviderConfig defaults =
-                ProviderConfig.builder("/does/not/exist.gguf").build();
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build();
 
         // act
         final Map<String, String> kwargs = providerWith(defaults).buildChatTemplateKwargs();
@@ -557,7 +564,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildChatTemplateKwargs_blankReasoningEffort_sendsNoKwargAtAll() {
         // arrange
-        final ProviderConfig blank = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig blank = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .reasoningEffort("")
                 .build();
 
@@ -576,7 +584,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildChatTemplateKwargs_thinkingSetToTrue_isStillSent() {
         // arrange
-        final ProviderConfig enabled = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig enabled = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .chatTemplateEnableThinking(Boolean.TRUE)
                 .build();
 
@@ -596,7 +605,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildChatTemplateKwargs_thinkingSetToFalse_isSentAsFalse() {
         // arrange
-        final ProviderConfig disabled = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig disabled = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .chatTemplateEnableThinking(Boolean.FALSE)
                 .build();
 
@@ -615,7 +625,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildChatTemplateKwargs_reasoningEffortConfigured_isSentAlongside() {
         // arrange
-        final ProviderConfig configured = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig configured = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .reasoningEffort("high")
                 .build();
 
@@ -631,7 +642,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildChatTemplateKwargs_thinkingOffWithConfiguredEffort_sendsOnlyThinkingOff() {
         // arrange
-        final ProviderConfig configured = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig configured = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .reasoningEffort("high")
                 .chatTemplateEnableThinking(Boolean.FALSE)
                 .build();
@@ -652,7 +664,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildChatTemplateKwargs_reasoningEffortNone_sendsThinkingOffInstead() {
         // arrange
-        final ProviderConfig none = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig none = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .reasoningEffort("none")
                 .build();
 
@@ -668,7 +681,8 @@ public class LlamaCppJniProviderSupportTest {
     @Test
     public void buildChatTemplateKwargs_reasoningEffortNoneWithThinkingOn_sendsThinkingOff() {
         // arrange
-        final ProviderConfig conflicting = ProviderConfig.builder("/does/not/exist.gguf")
+        final ProviderConfig conflicting = ProviderConfig.builder()
+                .modelPath("/does/not/exist.gguf")
                 .reasoningEffort("none")
                 .chatTemplateEnableThinking(Boolean.TRUE)
                 .build();

@@ -17,7 +17,6 @@ import org.jspecify.annotations.Nullable;
  * ({@code and: {conditions: [...]}}), not a list given to {@code and} or {@code or} directly.</p>
  */
 @ToString
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 public class AiConditionGroup {
 
     private @Nullable List<AiCondition> conditions;

@@ -52,6 +52,22 @@ final class EngineSupport {
     }
 
     /**
+     * Returns the run's base directory, absolute and normalized.
+     *
+     * @param config the run configuration
+     * @return the base directory
+     * @throws SrcMorphException if the configuration names none
+     */
+    static Path basePath(final SrcMorphConfiguration config) throws SrcMorphException {
+        final File base = config.getBaseDirectory();
+        if (base == null) {
+            throw new SrcMorphException("The configuration has no baseDirectory (its outputDirectory is "
+                    + config.getOutputDirectory() + "); set the directory the run reads");
+        }
+        return base.toPath().toAbsolutePath().normalize();
+    }
+
+    /**
      * Resolves the configured subtree strings against {@code basePath}. Used by {@link GenerateEngine} and
      * {@link AggregatePackagesEngine}. A subtree that another one holds, or that is listed twice, is walked
      * by that one already and is left out, so no file is collected twice.
@@ -112,9 +128,9 @@ final class EngineSupport {
      * Builds an {@link AiPromptSupport} from the configured prompt definitions, first reading every
      * {@code templateFile} ({@link AiPromptTemplateLoader}, relative to {@code profileDirectory}), and
      * translating a misconfiguration into a {@link SrcMorphException} so the caller reports it as a
-     * configuration error: a missing {@code key}/{@code template} ({@link NullPointerException}), both
-     * {@code template} and {@code templateFile} or an empty template file
-     * ({@link IllegalArgumentException}), a template file that cannot be read ({@link IOException}).
+     * configuration error: a missing {@code key}/{@code template}, both {@code template} and
+     * {@code templateFile} or an empty template file ({@link IllegalArgumentException}), a template file
+     * that cannot be read ({@link IOException}).
      *
      * @param promptDefinitions the configured prompt definitions, or {@code null} for none
      * @param profileDirectory  directory relative template files and the prompts named by key are
@@ -141,14 +157,14 @@ final class EngineSupport {
         }
         try {
             return new AiPromptSupport(new AiPromptTemplateLoader(profileDirectory).load(promptDefinitions, usedKeys));
-        } catch (final NullPointerException | IllegalArgumentException | IOException e) {
+        } catch (final IllegalArgumentException | IOException e) {
             throw new SrcMorphException("Invalid configuration: " + e.getMessage(), e);
         }
     }
 
     /**
      * Builds an {@link AiModelDefinitionSupport} from the configured AI model definitions, translating a
-     * misconfiguration ({@link NullPointerException} from a missing {@code key}) into a
+     * misconfiguration ({@link IllegalArgumentException} from a missing or duplicate {@code key}) into a
      * {@link SrcMorphException} so the caller reports it as a configuration error.
      *
      * @param aiDefinitions  the configured AI model definitions, or {@code null} for none
@@ -161,7 +177,7 @@ final class EngineSupport {
             throws SrcMorphException {
         try {
             return new AiModelDefinitionSupport(aiDefinitions, modelDirectory);
-        } catch (final NullPointerException e) {
+        } catch (final IllegalArgumentException e) {
             throw new SrcMorphException("Invalid configuration: " + e.getMessage(), e);
         }
     }
@@ -253,7 +269,7 @@ final class EngineSupport {
             new AiFactDefinitionSupport(new AiFactDefinitionLoader(config.getProfileDirectory())
                             .load(config.getFactDefinitions(), usedKeys))
                     .resolveFactsKeys(rules);
-        } catch (final IllegalArgumentException | NullPointerException | IOException e) {
+        } catch (final IllegalArgumentException | IOException e) {
             throw new SrcMorphException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
         }
     }
@@ -325,9 +341,7 @@ final class EngineSupport {
                 validateRemoteModel(aiDefinitionKey, modelConfig);
             } else if (AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
                 validateLocalModel(aiDefinitionKey, modelConfig);
-            } else if (provider != null
-                    && !isBlank(provider)
-                    && !AiGenerationProviderFactory.PROVIDER_MOCK.equals(provider)) {
+            } else if (!isBlank(provider) && !AiGenerationProviderFactory.PROVIDER_MOCK.equals(provider)) {
                 // otherwise the run would fail at this model's group, after the earlier groups generated
                 throw new SrcMorphException("Model '" + aiDefinitionKey + "' has the unknown provider '" + provider
                         + "'; a provider is " + AiGenerationProviderFactory.PROVIDER_MOCK + ", "

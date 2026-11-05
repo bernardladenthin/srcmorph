@@ -8,11 +8,34 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 public class AiModelDefinitionTest {
+
+    @Test
+    public void requireKey_set_isTheKey() {
+        // arrange
+        final AiModelDefinition definition = new AiModelDefinition();
+        definition.setKey("gpt-oss");
+
+        // act + assert
+        assertThat(definition.requireKey(), is("gpt-oss"));
+    }
+
+    @Test
+    public void requireKey_unset_isRefused() {
+        // arrange
+        final AiModelDefinition definition = new AiModelDefinition();
+
+        // act
+        final IllegalStateException thrown = assertThrows(IllegalStateException.class, definition::requireKey);
+
+        // assert
+        assertThat(thrown.getMessage(), is("The AI definition has no key: " + definition));
+    }
 
     @Test
     public void samplingScalarGettersReflectSetters() {

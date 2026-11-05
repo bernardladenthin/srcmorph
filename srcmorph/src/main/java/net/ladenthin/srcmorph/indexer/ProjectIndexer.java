@@ -25,8 +25,6 @@ import net.ladenthin.srcmorph.facts.AiFactExtractor;
 import net.ladenthin.srcmorph.indexer.generation.AiGenerationResult;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
 import net.ladenthin.srcmorph.support.AiTimeSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
@@ -140,25 +138,21 @@ public class ProjectIndexer {
             final String aiVersion,
             final boolean force,
             final AiRegenerateOn regenerateOn) {
-        this(projectTitle, pluginVersion, aiVersion, force, regenerateOn, null, null, null, null);
+        this(projectTitle, pluginVersion, aiVersion, force, regenerateOn, null);
     }
 
     /**
      * Creates a {@link ProjectIndexer} that optionally generates an AI project overview.
      *
-     * <p>The overview is enabled only when {@code generationProvider}, {@code overviewFieldGeneration},
-     * {@code promptSupport}, and {@code modelDefinitionSupport} are all non-{@code null}; otherwise the
-     * indexer behaves exactly like the deterministic constructor above.</p>
+     * <p>Without an {@code overview} the indexer behaves exactly like the deterministic constructor
+     * above.</p>
      *
      * @param projectTitle            title recorded in the project index header
      * @param pluginVersion           plugin version recorded in the header
      * @param aiVersion               AI summarisation logic version recorded in the header
      * @param force                   when {@code true}, rewrite the project index even when unchanged
      * @param regenerateOn            which changed header fields rewrite the project index
-     * @param generationProvider      AI provider for the overview; {@code null} disables it
-     * @param overviewFieldGeneration overview prompt + model; {@code null} disables it
-     * @param promptSupport           prompt lookup; {@code null} disables the overview
-     * @param modelDefinitionSupport  AI model definition lookup; {@code null} disables the overview
+     * @param overview                what the AI overview needs; {@code null} disables it
      */
     public ProjectIndexer(
             final String projectTitle,
@@ -166,10 +160,7 @@ public class ProjectIndexer {
             final String aiVersion,
             final boolean force,
             final AiRegenerateOn regenerateOn,
-            final @Nullable AiGenerationProvider generationProvider,
-            final @Nullable AiFieldGenerationConfig overviewFieldGeneration,
-            final @Nullable AiPromptSupport promptSupport,
-            final @Nullable AiModelDefinitionSupport modelDefinitionSupport) {
+            final @Nullable ProjectOverview overview) {
         this.projectTitle = projectTitle;
         this.pluginVersion = pluginVersion;
         this.aiVersion = aiVersion;
@@ -180,43 +171,27 @@ public class ProjectIndexer {
                 regenerateOn.isFacts(),
                 regenerateOn.isModel(),
                 regenerateOn.isChildren());
-        // Defensive copy: the field generation is a mutable configuration JavaBean owned by the caller.
-        this.overviewFieldGeneration = copyFieldGeneration(overviewFieldGeneration);
-        if (generationProvider != null
-                && overviewFieldGeneration != null
-                && promptSupport != null
-                && modelDefinitionSupport != null) {
+        if (overview != null) {
+            // a copy of every field (copying only the prompt, the model and onIncomplete once made the
+            // overview ignore its rule's onOversize and facts)
+            final AiFieldGenerationConfig rule = overview.rule();
+            final AiModelDefinitionSupport modelDefinitionSupport = overview.modelDefinitionSupport();
+            this.overviewFieldGeneration = rule;
             this.summaryGenerator = new SummaryGenerator(
-                    generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
-            this.overviewPromptHash = AiHeaderHashes.prompt(promptSupport, overviewFieldGeneration);
-            this.overviewFactsHash = AiFactExtractor.factsHash(overviewFieldGeneration.getFacts());
+                    overview.generationProvider(),
+                    new AiPromptPreparationSupport(overview.promptSupport()),
+                    modelDefinitionSupport);
+            this.overviewPromptHash = AiHeaderHashes.prompt(overview.promptSupport(), rule);
+            this.overviewFactsHash = AiFactExtractor.factsHash(rule.getFacts());
             this.overviewModelHash = AiHeaderHashes.model(
-                    overviewFieldGeneration.getAiDefinitionKey(),
-                    modelDefinitionSupport.getConfig(overviewFieldGeneration.getAiDefinitionKey()));
+                    rule.requireAiDefinitionKey(), modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey()));
         } else {
+            this.overviewFieldGeneration = null;
             this.summaryGenerator = null;
             this.overviewPromptHash = "";
             this.overviewFactsHash = "";
             this.overviewModelHash = "";
         }
-    }
-
-    /**
-     * Returns a copy of {@code source} with every field ({@link AiFieldGenerationConfig#copy()}), or
-     * {@code null} when {@code source} is {@code null}. The overview rule is a mutable JavaBean owned by
-     * the caller; copying it prevents external mutation after construction. It used to copy only the
-     * prompt, the model and {@code onIncomplete}, so the overview ignored its rule's {@code onOversize}
-     * and facts.
-     *
-     * @param source the caller-supplied field generation, or {@code null}
-     * @return an independent copy, or {@code null}
-     */
-    private static @Nullable AiFieldGenerationConfig copyFieldGeneration(
-            final @Nullable AiFieldGenerationConfig source) {
-        if (source == null) {
-            return null;
-        }
-        return source.copy();
     }
 
     /**

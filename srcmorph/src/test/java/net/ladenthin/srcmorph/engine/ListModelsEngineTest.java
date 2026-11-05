@@ -38,7 +38,7 @@ public class ListModelsEngineTest {
     /** The configurations the lister was asked with, in order. */
     private final List<ProviderConfig> asked = new ArrayList<>();
 
-    private List<RemoteModel> record(final ProviderConfig config) {
+    private List<RemoteModel> recorded(final ProviderConfig config) {
         asked.add(config);
         return MODELS;
     }
@@ -63,7 +63,7 @@ public class ListModelsEngineTest {
 
     private ModelListReport execute(final SrcMorphConfiguration configuration, final String filter)
             throws SrcMorphException {
-        return new ListModelsEngine(configuration, filter, (config, prompts) -> record(config)).execute();
+        return new ListModelsEngine(configuration, filter, (config, prompts) -> recorded(config)).execute();
     }
 
     // <editor-fold defaultstate="collapsed" desc="which servers">
