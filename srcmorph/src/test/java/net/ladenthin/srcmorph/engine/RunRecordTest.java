@@ -30,7 +30,7 @@ public class RunRecordTest {
         runRecord.addModelLoad("m", 750_000_000L);
         runRecord.addModelLoad("m", 250_000_000L);
         runRecord.addModelLoad("other", 0L);
-        runRecord.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.FileRecord(
                 "src/A.java",
                 "java",
                 "file-body-java",
@@ -40,7 +40,7 @@ public class RunRecordTest {
                 1_500_000_000L,
                 "AAAA0000",
                 "BBBB1111"));
-        runRecord.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.FileRecord(
                 "src/B.java",
                 "java",
                 "file-body-java",
@@ -50,7 +50,7 @@ public class RunRecordTest {
                 500_000_000L,
                 "AAAA0000",
                 ""));
-        runRecord.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.FileRecord(
                 "src/C.sql",
                 "sql",
                 "file-body-sql",
@@ -109,7 +109,7 @@ public class RunRecordTest {
     @Test
     public void toJson_totals_countUnchangedAndFailedApart() throws Exception {
         final RunRecord runRecord = runRecord();
-        runRecord.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.FileRecord(
                 "src/D.java",
                 "java",
                 "file-body-java",

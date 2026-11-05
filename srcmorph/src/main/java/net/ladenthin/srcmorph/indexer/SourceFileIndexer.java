@@ -7,12 +7,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import lombok.ToString;
@@ -353,12 +351,12 @@ public final class SourceFileIndexer {
      * with, from its header ({@code ""} each when the summary does not record them).
      *
      * @param sourceFile the source file
-     * @return the prompt hash (key) and the facts hash (value)
+     * @return the recorded hashes
      * @throws IOException if the summary cannot be read
      */
-    public Map.Entry<String, String> recordedHashes(final Path sourceFile) throws IOException {
+    public RecordedHashes recordedHashes(final Path sourceFile) throws IOException {
         final AiMdHeader header = documentCodec.read(targetFile(sourceFile)).header();
-        return new AbstractMap.SimpleImmutableEntry<>(header.promptHash(), header.factsHash());
+        return new RecordedHashes(header.promptHash(), header.factsHash());
     }
 
     /**

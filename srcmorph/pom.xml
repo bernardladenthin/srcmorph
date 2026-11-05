@@ -740,7 +740,8 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.indexer.AiIndexPlan</param>
                         <param>net.ladenthin.srcmorph.indexer.AiHeaderHashes</param>
                         <param>net.ladenthin.srcmorph.indexer.ProjectOverview</param>
-                        <param>net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry</param>
+                        <param>net.ladenthin.srcmorph.indexer.RecordedHashes</param>
+                        <param>net.ladenthin.srcmorph.indexer.AiIndexPlan$Route</param>
                         <param>net.ladenthin.srcmorph.indexer.AiIndexTally</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.AiMapReduceSupport</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.AiTokenWindow</param>
@@ -805,7 +806,7 @@ SPDX-License-Identifier: Apache-2.0
                                 <param>net.ladenthin.srcmorph.provider.LlamaCppJniProviderSupport</param>
                         <param>net.ladenthin.srcmorph.engine.EngineSupport</param>
                         <param>net.ladenthin.srcmorph.engine.RunRecord</param>
-                        <param>net.ladenthin.srcmorph.engine.RunRecord$Entry</param>
+                        <param>net.ladenthin.srcmorph.engine.RunRecord$FileRecord</param>
                         <param>net.ladenthin.srcmorph.engine.GenerateResult</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport</param>
                         <param>net.ladenthin.srcmorph.engine.CalibrationReport$ModelMeasurement</param>

@@ -27,7 +27,7 @@ import net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator;
 public final class AiIndexPlan {
 
     /** A single planned file together with the rule that routed it and its rough time estimate. */
-    public static final class Entry {
+    public static final class Route {
         private final Path file;
         private final AiFieldGenerationConfig rule;
         private final long estimatedSeconds;
@@ -37,7 +37,7 @@ public final class AiIndexPlan {
         private final long sourceTokens;
 
         /**
-         * Creates a plan entry.
+         * Creates a route.
          *
          * @param file                 the source file
          * @param rule                 the rule that selected it
@@ -47,7 +47,7 @@ public final class AiIndexPlan {
          * @param availableSourceChars the source-character budget of the routed model+prompt (when checked)
          * @param sourceTokens         the estimated tokens of the source (when checked)
          */
-        public Entry(
+        public Route(
                 final Path file,
                 final AiFieldGenerationConfig rule,
                 final long estimatedSeconds,
@@ -146,7 +146,7 @@ public final class AiIndexPlan {
     /** What a model header names as the basis of a time from the model's own calibration. */
     static final String CALIBRATED_BASIS = "from the model's calibration";
 
-    private final Map<String, List<Entry>> routesByModel = new LinkedHashMap<>();
+    private final Map<String, List<Route>> routesByModel = new LinkedHashMap<>();
     private final List<Path> skipped = new ArrayList<>();
     private final List<Path> unmatched = new ArrayList<>();
     private final Set<String> calibratedModels = new HashSet<>();
@@ -181,7 +181,7 @@ public final class AiIndexPlan {
             final long estimatedSeconds) {
         routesByModel
                 .computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>())
-                .add(new Entry(file, rule, estimatedSeconds, false, 0L, 0L, 0L));
+                .add(new Route(file, rule, estimatedSeconds, false, 0L, 0L, 0L));
     }
 
     /**
@@ -232,7 +232,7 @@ public final class AiIndexPlan {
             final long sourceTokens) {
         routesByModel
                 .computeIfAbsent(aiDefinitionKey, key -> new ArrayList<>())
-                .add(new Entry(file, rule, estimatedSeconds, true, sourceChars, availableSourceChars, sourceTokens));
+                .add(new Route(file, rule, estimatedSeconds, true, sourceChars, availableSourceChars, sourceTokens));
     }
 
     /**
@@ -269,7 +269,7 @@ public final class AiIndexPlan {
      *
      * @return an order-preserving map of model id to its planned entries
      */
-    public Map<String, List<Entry>> routesByModel() {
+    public Map<String, List<Route>> routesByModel() {
         return routesByModel;
     }
 
@@ -298,7 +298,7 @@ public final class AiIndexPlan {
      */
     public int routedCount() {
         int total = 0;
-        for (final List<Entry> entries : routesByModel.values()) {
+        for (final List<Route> entries : routesByModel.values()) {
             total += entries.size();
         }
         return total;
@@ -312,8 +312,8 @@ public final class AiIndexPlan {
      */
     public int windowExceededCount() {
         int total = 0;
-        for (final List<Entry> entries : routesByModel.values()) {
-            for (final Entry entry : entries) {
+        for (final List<Route> entries : routesByModel.values()) {
+            for (final Route entry : entries) {
                 if (entry.exceedsWindow()) {
                     total++;
                 }
@@ -332,8 +332,8 @@ public final class AiIndexPlan {
      */
     public int windowFailCount() {
         int total = 0;
-        for (final List<Entry> entries : routesByModel.values()) {
-            for (final Entry entry : entries) {
+        for (final List<Route> entries : routesByModel.values()) {
+            for (final Route entry : entries) {
                 if (entry.exceedsWindow() && strategyOf(entry) == AiOversizeStrategy.FAIL) {
                     total++;
                 }
@@ -348,7 +348,7 @@ public final class AiIndexPlan {
      * @param entry the plan entry
      * @return the parsed oversize strategy
      */
-    private static AiOversizeStrategy strategyOf(final Entry entry) {
+    private static AiOversizeStrategy strategyOf(final Route entry) {
         return entry.rule().oversizeStrategy();
     }
 
@@ -358,9 +358,9 @@ public final class AiIndexPlan {
      * @param entries the model's planned entries
      * @return the total estimated seconds
      */
-    private long modelSeconds(final List<Entry> entries) {
+    private long modelSeconds(final List<Route> entries) {
         long total = 0;
-        for (final Entry entry : entries) {
+        for (final Route entry : entries) {
             total += entry.estimatedSeconds();
         }
         return total;
@@ -373,7 +373,7 @@ public final class AiIndexPlan {
      */
     public long totalEstimatedSeconds() {
         long total = 0;
-        for (final List<Entry> entries : routesByModel.values()) {
+        for (final List<Route> entries : routesByModel.values()) {
             total += modelSeconds(entries);
         }
         return total;
@@ -407,8 +407,8 @@ public final class AiIndexPlan {
                 .append(" over window (")
                 .append(windowFailCount())
                 .append(" will fail) _(time is a rough estimate)_\n");
-        for (final Map.Entry<String, List<Entry>> group : routesByModel.entrySet()) {
-            final List<Entry> entries = group.getValue();
+        for (final Map.Entry<String, List<Route>> group : routesByModel.entrySet()) {
+            final List<Route> entries = group.getValue();
             sb.append("\n### Model `")
                     .append(group.getKey())
                     .append("` - ")
@@ -422,7 +422,7 @@ public final class AiIndexPlan {
                     .append(" (")
                     .append(calibratedModels.contains(group.getKey()) ? CALIBRATED_BASIS : BUILT_IN_BASIS)
                     .append(")\n\n| File | Rule | Prompt | Window | Tokens | Est. |\n|---|---|---|---|---|---|\n");
-            for (final Entry entry : entries) {
+            for (final Route entry : entries) {
                 sb.append("| ")
                         .append(relativize(baseDir, entry.file()))
                         .append(" | ")
@@ -463,9 +463,9 @@ public final class AiIndexPlan {
      * @param entries the entries
      * @return the summed tokens
      */
-    private static long tokens(final List<Entry> entries) {
+    private static long tokens(final List<Route> entries) {
         long sum = 0;
-        for (final Entry entry : entries) {
+        for (final Route entry : entries) {
             if (entry.windowChecked()) {
                 sum += entry.sourceTokens();
             }
@@ -475,14 +475,14 @@ public final class AiIndexPlan {
 
     /**
      * Returns the source tokens the model is sent of the window-checked entries, by each one's oversize
-     * strategy ({@link #sentTokens(Entry)}).
+     * strategy ({@link #sentTokens(Route)}).
      *
      * @param entries the entries
      * @return the tokens sent
      */
-    private static long sentTokens(final List<Entry> entries) {
+    private static long sentTokens(final List<Route> entries) {
         long sum = 0;
-        for (final Entry entry : entries) {
+        for (final Route entry : entries) {
             sum += sentTokens(entry);
         }
         return sum;
@@ -497,7 +497,7 @@ public final class AiIndexPlan {
      * @param entry the routed file
      * @return the tokens sent, the overlap of the chunks and the prompts left out
      */
-    static long sentTokens(final Entry entry) {
+    static long sentTokens(final Route entry) {
         if (!entry.windowChecked()) {
             return 0L;
         }
@@ -529,8 +529,8 @@ public final class AiIndexPlan {
     private void appendTokensByDirectory(final StringBuilder sb, final Path baseDir) {
         final Map<String, Integer> files = new TreeMap<>();
         final Map<String, Long> tokens = new TreeMap<>();
-        for (final List<Entry> entries : routesByModel.values()) {
-            for (final Entry entry : entries) {
+        for (final List<Route> entries : routesByModel.values()) {
+            for (final Route entry : entries) {
                 if (!entry.windowChecked()) {
                     continue;
                 }
@@ -572,8 +572,8 @@ public final class AiIndexPlan {
         sb.append("\n### (!) Over window - source exceeds the model's context window, would be trimmed (")
                 .append(count)
                 .append(")\n\n");
-        for (final Map.Entry<String, List<Entry>> group : routesByModel.entrySet()) {
-            for (final Entry entry : group.getValue()) {
+        for (final Map.Entry<String, List<Route>> group : routesByModel.entrySet()) {
+            for (final Route entry : group.getValue()) {
                 if (entry.exceedsWindow()) {
                     final AiOversizeStrategy strategy = strategyOf(entry);
                     sb.append("- ")
@@ -606,7 +606,7 @@ public final class AiIndexPlan {
      * @param entry the plan entry
      * @return the window cell text
      */
-    private String windowCell(final Entry entry) {
+    private String windowCell(final Route entry) {
         if (!entry.windowChecked()) {
             return "-";
         }

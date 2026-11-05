@@ -474,8 +474,8 @@ public class SourceFileIndexerTest {
      * @return the matched rule's prompt key
      */
     private static String promptKeyOf(final AiIndexPlan plan, final Path file) {
-        for (final List<AiIndexPlan.Entry> entries : plan.routesByModel().values()) {
-            for (final AiIndexPlan.Entry entry : entries) {
+        for (final List<AiIndexPlan.Route> entries : plan.routesByModel().values()) {
+            for (final AiIndexPlan.Route entry : entries) {
                 if (entry.file().equals(file)) {
                     return entry.rule().getPromptKey();
                 }

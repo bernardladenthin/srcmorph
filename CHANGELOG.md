@@ -69,6 +69,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   `checksum()`, `d()` `sourceDate()`, `t()` `generatedAt()`, `g()` `generatorVersion()`, `a()`
   `aiVersion()`, `x()` `nodeType()`, `p()` `promptHash()`, `n()` `factsHash()`, `m()` `modelHash()`
   and `k()` `childrenHash()`.
+  `AiIndexPlan.Entry` is `AiIndexPlan.Route`, `RunRecord.Entry` is `RunRecord.FileRecord`, and
+  `SourceFileIndexer.recordedHashes` returns a `RecordedHashes` (`promptHash()`, `factsHash()`) instead
+  of a `Map.Entry`.
 
 ### Added
 

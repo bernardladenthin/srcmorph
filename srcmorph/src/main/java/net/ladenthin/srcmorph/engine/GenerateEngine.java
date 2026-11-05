@@ -9,7 +9,6 @@ import java.io.InterruptedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +21,7 @@ import net.ladenthin.srcmorph.facts.AiFactExtractor;
 import net.ladenthin.srcmorph.indexer.AiHeaderHashes;
 import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
 import net.ladenthin.srcmorph.indexer.AiIndexPlan;
+import net.ladenthin.srcmorph.indexer.RecordedHashes;
 import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
 import net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
@@ -241,7 +241,7 @@ public final class GenerateEngine {
         int failed = 0;
         // the record is written however the run ends, and a failed write never hides why it ended
         try {
-            for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
+            for (final Map.Entry<String, List<AiIndexPlan.Route>> group :
                     plan.routesByModel().entrySet()) {
                 final String aiDefinitionKey = group.getKey();
                 LOGGER.info(
@@ -254,7 +254,7 @@ public final class GenerateEngine {
                         promptSupport)) {
                     final SummaryGenerator support =
                             new SummaryGenerator(provider, promptPreparationSupport, modelDefinitionSupport);
-                    for (final AiIndexPlan.Entry entry : group.getValue()) {
+                    for (final AiIndexPlan.Route entry : group.getValue()) {
                         AiIndexOutcome outcome;
                         final long fileStartNanos = System.nanoTime();
                         try {
@@ -409,17 +409,17 @@ public final class GenerateEngine {
      * @param hashes        its prompt hash (key) and facts hash (value)
      * @return the entry
      */
-    private static RunRecord.Entry recordEntry(
+    private static RunRecord.FileRecord recordEntry(
             final Path basePath,
-            final AiIndexPlan.Entry entry,
+            final AiIndexPlan.Route entry,
             final String model,
             final AiIndexOutcome outcome,
             final AiGenerationUsage usage,
             final long nanos,
-            final Map.Entry<String, String> hashes) {
+            final RecordedHashes hashes) {
         final AiFieldGenerationConfig rule = entry.rule();
         final String id = rule.getId();
-        return new RunRecord.Entry(
+        return new RunRecord.FileRecord(
                 basePath.relativize(entry.file()).toString().replace('\\', '/'),
                 id != null ? id : rule.requirePromptKey(),
                 rule.requirePromptKey(),
@@ -427,8 +427,8 @@ public final class GenerateEngine {
                 outcome,
                 usage,
                 nanos,
-                hashes.getKey(),
-                hashes.getValue());
+                hashes.promptHash(),
+                hashes.factsHash());
     }
 
     /**
@@ -475,19 +475,19 @@ public final class GenerateEngine {
      * @param entry         the plan entry
      * @param outcome       the file's outcome
      * @param promptSupport the prompts
-     * @return the prompt hash (key) and the facts hash (value)
+     * @return the prompt and facts hashes
      * @throws IOException if an unchanged file's summary cannot be read
      */
-    private static Map.Entry<String, String> recordedHeader(
+    private static RecordedHashes recordedHeader(
             final SourceFileIndexer fileIndexer,
-            final AiIndexPlan.Entry entry,
+            final AiIndexPlan.Route entry,
             final AiIndexOutcome outcome,
             final AiPromptSupport promptSupport)
             throws IOException {
         if (outcome == AiIndexOutcome.UNCHANGED) {
             return fileIndexer.recordedHashes(entry.file());
         }
-        return new AbstractMap.SimpleImmutableEntry<>(
+        return new RecordedHashes(
                 AiHeaderHashes.prompt(promptSupport, entry.rule()),
                 AiFactExtractor.factsHash(entry.rule().getFacts()));
     }
@@ -503,8 +503,8 @@ public final class GenerateEngine {
     private static void checkTargetsAndWindows(final AiIndexPlan plan, final SourceFileIndexer fileIndexer)
             throws SrcMorphException {
         final Map<Path, Path> sourceByTarget = new HashMap<>();
-        for (final List<AiIndexPlan.Entry> entries : plan.routesByModel().values()) {
-            for (final AiIndexPlan.Entry entry : entries) {
+        for (final List<AiIndexPlan.Route> entries : plan.routesByModel().values()) {
+            for (final AiIndexPlan.Route entry : entries) {
                 final Path other = sourceByTarget.put(fileIndexer.targetFile(entry.file()), entry.file());
                 if (other != null) {
                     throw new SrcMorphException(entry.file() + " and " + other + " would both be summarized into "

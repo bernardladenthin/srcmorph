@@ -67,10 +67,10 @@ breaking change, the CHANGELOG's Upgrading section names each one)
 - [x] A1 (a1ce28f) The small ones: N15 the plugin's package Javadoc, N14 the CLI's names (`logConfigurationEcho`,
   `configurationToYaml`, `readString` / `fromJson` / `fromYaml` package-private), N13
   `basePromptLength`, N12 one `UNKNOWN_CONTEXT_LENGTH` value (`-1`), N11 `TimedGeneration`
-- [x] A2 N5 `AiMdHeader`'s accessors by name (`headerVersion()`, `checksum()`, `sourceDate()`,
+- [x] A2 (6381089) N5 `AiMdHeader`'s accessors by name (`headerVersion()`, `checksum()`, `sourceDate()`,
   `generatedAt()`, `generatorVersion()`, `aiVersion()`, `nodeType()`, `promptHash()`, `factsHash()`,
   `modelHash()`, `childrenHash()`); the codec keeps the letters
-- [ ] A3 N8 `AiIndexPlan.Entry` to `Route`, `RunRecord.Entry` to `FileRecord`, a `RecordedHashes`
+- [x] A3 N8 `AiIndexPlan.Entry` to `Route`, `RunRecord.Entry` to `FileRecord`, a `RecordedHashes`
   value instead of `Map.Entry<String, String>`
 - [ ] A4 N9 `pluginVersion` to `generatorVersion` (configuration key, bean, `RunRecord`)
 - [ ] A5 N10 drop `AiGenerationConfig`: the model registry builds `ProviderConfig` from the

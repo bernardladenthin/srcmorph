@@ -46,7 +46,7 @@ public class AiIndexPlanTest {
         plan.addRoute("m", Paths.get("unchecked.sql"), rule("p"), 1);
 
         final List<Long> sent = new ArrayList<>();
-        for (final AiIndexPlan.Entry entry : plan.routesByModel().get("m")) {
+        for (final AiIndexPlan.Route entry : plan.routesByModel().get("m")) {
             sent.add(AiIndexPlan.sentTokens(entry));
         }
 

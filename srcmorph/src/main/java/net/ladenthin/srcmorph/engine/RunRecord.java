@@ -47,7 +47,7 @@ public final class RunRecord {
     /** When the run started, on {@link #clock}. */
     private final long startNanos;
 
-    private final List<Entry> entries = new ArrayList<>();
+    private final List<FileRecord> entries = new ArrayList<>();
 
     /** The time each model took to load, by model key, in the order they loaded. */
     private final Map<String, Long> modelLoadNanos = new LinkedHashMap<>();
@@ -92,7 +92,7 @@ public final class RunRecord {
     /** One routed file of the run. */
     @ToString
     @EqualsAndHashCode
-    public static final class Entry {
+    public static final class FileRecord {
 
         private final String file;
 
@@ -113,7 +113,7 @@ public final class RunRecord {
         private final String factsHash;
 
         /**
-         * Creates an entry.
+         * Creates a file record.
          *
          * @param file       the file, relative to the base directory with {@code /} separators
          * @param rule       the rule's id, or its prompt key when it has none
@@ -125,7 +125,7 @@ public final class RunRecord {
          * @param promptHash the CRC32 of the prompt text
          * @param factsHash  the CRC32 of the fact counters, empty without facts
          */
-        public Entry(
+        public FileRecord(
                 final String file,
                 final String rule,
                 final String promptKey,
@@ -179,7 +179,7 @@ public final class RunRecord {
      *
      * @param entry the file's entry
      */
-    public void add(final Entry entry) {
+    public void add(final FileRecord entry) {
         entries.add(entry);
     }
 
@@ -188,7 +188,7 @@ public final class RunRecord {
      *
      * @return an unmodifiable view
      */
-    public List<Entry> entries() {
+    public List<FileRecord> entries() {
         return Collections.unmodifiableList(entries);
     }
 
@@ -212,7 +212,7 @@ public final class RunRecord {
         int written = 0;
         int unchanged = 0;
         int failed = 0;
-        for (final Entry entry : entries) {
+        for (final FileRecord entry : entries) {
             final ObjectNode node = files.addObject();
             node.put("file", entry.file);
             node.put("rule", entry.rule);

@@ -327,7 +327,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.config.SrcMorphConfiguration"/>
             <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFile"/>
             <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
-            <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan$Entry"/>
+            <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan$Route"/>
         </Or>
         <Or>
             <Bug pattern="EI_EXPOSE_REP"/>
