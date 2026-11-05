@@ -60,6 +60,17 @@ public interface AiGenerationProvider extends AutoCloseable {
         return OptionalInt.empty();
     }
 
+    /**
+     * Returns the nanoseconds this provider spent loading its model since the last call of this method,
+     * and starts counting again: a local model loads on its first use, so the caller tells that time from
+     * the first file's. {@code 0} for a provider that loads nothing (the default: a remote model).
+     *
+     * @return the load time since the last call, {@code 0} when nothing was loaded
+     */
+    default long takeLoadNanos() {
+        return 0L;
+    }
+
     @Override
     default void close() throws IOException {}
 }

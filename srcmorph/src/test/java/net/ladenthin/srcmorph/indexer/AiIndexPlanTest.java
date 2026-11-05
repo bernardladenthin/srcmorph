@@ -11,6 +11,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +30,28 @@ public class AiIndexPlanTest {
         config.setId(id);
         config.setPromptKey(promptKey);
         return config;
+    }
+
+    /** A file over its window sends what its strategy reads, not its source: 1 000 tokens, a window 250. */
+    @Test
+    public void sentTokens_followTheOversizeStrategy() {
+        final AiIndexPlan plan = new AiIndexPlan();
+        for (final String strategy : new String[] {"fail", "sample", "deterministic", "mapReduce", "sampleChunks"}) {
+            final AiFieldGenerationConfig rule = rule(strategy, "p");
+            rule.setOnOversize(strategy);
+            rule.setMaxChunks("sampleChunks".equals(strategy) ? 2 : 0);
+            plan.addRoute("m", Paths.get(strategy + ".sql"), rule, 1, 40_000L, 10_000L, 1_000L);
+        }
+        plan.addRoute("m", Paths.get("fits.sql"), rule("p"), 1, 4_000L, 10_000L, 100L);
+        plan.addRoute("m", Paths.get("unchecked.sql"), rule("p"), 1);
+
+        final List<Long> sent = new ArrayList<>();
+        for (final AiIndexPlan.Entry entry : plan.routesByModel().get("m")) {
+            sent.add(AiIndexPlan.sentTokens(entry));
+        }
+
+        assertThat(sent, is(equalTo(Arrays.asList(250L, 250L, 0L, 1_000L, 500L, 100L, 0L))));
+        assertThat(plan.renderMarkdown(Paths.get("")), containsString(" ~5100 source tokens (~2100 sent), est. "));
     }
 
     @Test
@@ -89,10 +114,11 @@ public class AiIndexPlanTest {
         assertThat(
                 md,
                 containsString(
-                        "### Model `local` - 1 file(s), ~0 source tokens, est. ~10 min (from the model's calibration)\n"));
+                        "### Model `local` - 1 file(s), ~0 source tokens (~0 sent), est. ~10 min (from the model's calibration)\n"));
         assertThat(
                 md,
-                containsString("### Model `remote` - 1 file(s), ~0 source tokens, est. ~9 s (based on GPT-6 Luna)\n"));
+                containsString(
+                        "### Model `remote` - 1 file(s), ~0 source tokens (~0 sent), est. ~9 s (based on GPT-6 Luna)\n"));
     }
 
     @Test
@@ -277,11 +303,11 @@ public class AiIndexPlanTest {
         assertThat(
                 md,
                 containsString(
-                        "### Model `modelA` - 2 file(s), ~1500 source tokens, est. ~20 s (based on GPT-6 Luna)\n"));
+                        "### Model `modelA` - 2 file(s), ~1500 source tokens (~1500 sent), est. ~20 s (based on GPT-6 Luna)\n"));
         assertThat(
                 md,
                 containsString(
-                        "### Model `modelB` - 3 file(s), ~210 source tokens, est. ~30 s (based on GPT-6 Luna)\n"));
+                        "### Model `modelB` - 3 file(s), ~210 source tokens (~210 sent), est. ~30 s (based on GPT-6 Luna)\n"));
         assertThat(md, containsString("| ~1000 |"));
         assertThat(
                 md,

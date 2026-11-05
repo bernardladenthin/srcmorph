@@ -23,7 +23,13 @@ public class RunRecordTest {
     Path tempDir;
 
     private static RunRecord record() {
-        final RunRecord record = new RunRecord("9.9.9");
+        // the run starts at 1 s on its clock and is written at 5.5 s; two files were skipped
+        final long[] now = {1_000_000_000L};
+        final RunRecord record = new RunRecord("9.9.9", 2, () -> now[0]);
+        now[0] = 6_500_000_000L;
+        record.addModelLoad("m", 750_000_000L);
+        record.addModelLoad("m", 250_000_000L);
+        record.addModelLoad("other", 0L);
         record.add(new RunRecord.Entry(
                 "src/A.java",
                 "java",
@@ -93,6 +99,10 @@ public class RunRecordTest {
         assertThat(totals.get("cachedPromptTokens").asLong(), is(80L));
         assertThat(totals.get("completionTokens").asLong(), is(27L));
         assertThat(totals.get("seconds").asDouble(), is(3.0d));
+        assertThat(totals.get("skipped").asInt(), is(2));
+        assertThat(totals.get("wallSeconds").asDouble(), is(5.5d));
+        // a model that loaded twice adds up; one that loaded in no time is not listed
+        assertThat(totals.get("modelLoadSeconds").toString(), is("{\"m\":1.0}"));
     }
 
     @Test

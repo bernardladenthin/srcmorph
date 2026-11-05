@@ -124,7 +124,7 @@ public class AiCompletionParser {
         // </think> with no <think> before it, and not quoted in backticks, ends the reasoning
         final int injectedEnd = trimmed.indexOf(THINK_TAG_END_MARKER);
         if (injectedEnd >= 0
-                && trimmed.lastIndexOf(THINK_TAG_START_MARKER, injectedEnd) < 0
+                && !trimmed.substring(0, injectedEnd).contains(THINK_TAG_START_MARKER)
                 && (injectedEnd == 0 || trimmed.charAt(injectedEnd - 1) != CODE_QUOTE)) {
             return trimmed.substring(injectedEnd + THINK_TAG_END_MARKER.length())
                     .trim();

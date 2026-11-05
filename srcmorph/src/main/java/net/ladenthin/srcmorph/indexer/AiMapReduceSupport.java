@@ -38,6 +38,9 @@ public final class AiMapReduceSupport {
      */
     public static final int MAX_REDUCE_FANIN = 16;
 
+    /** The fewest partials a reduce batch combines: every round shrinks the list, so the reduce ends. */
+    public static final int MIN_REDUCE_FANIN = 2;
+
     /** Label prefix of one partial summary inside a reduce prompt. */
     public static final String PART_LABEL = "Part ";
 
@@ -356,11 +359,42 @@ public final class AiMapReduceSupport {
      * @return the reduce calls
      */
     public static long reduceCalls(final long chunks) {
+        return reduceCalls(chunks, MAX_REDUCE_FANIN);
+    }
+
+    /**
+     * Returns how many reduce calls a map-reduce of {@code chunks} partials makes when every batch holds
+     * {@code fanIn} of them (2 to {@link #MAX_REDUCE_FANIN}): one per batch of every round, until one
+     * summary is left; none for a single chunk.
+     *
+     * @param chunks the partials of the first round
+     * @param fanIn  the partials of a batch, held to 2 to {@link #MAX_REDUCE_FANIN}
+     * @return the reduce calls
+     */
+    public static long reduceCalls(final long chunks, final int fanIn) {
+        final int perBatch = Math.max(MIN_REDUCE_FANIN, Math.min(MAX_REDUCE_FANIN, fanIn));
         long calls = 0;
-        for (long level = chunks; level > 1; level = (level + MAX_REDUCE_FANIN - 1) / MAX_REDUCE_FANIN) {
-            calls += (level + MAX_REDUCE_FANIN - 1) / MAX_REDUCE_FANIN;
+        for (long level = chunks; level > 1; level = (level + perBatch - 1) / perBatch) {
+            calls += (level + perBatch - 1) / perBatch;
         }
         return calls;
+    }
+
+    /**
+     * Returns how many partials a reduce batch is expected to hold before they are written: as many part
+     * summaries of {@code expectedOutputTokens} as fit the source budget (the run packs them so), 2 to
+     * {@link #MAX_REDUCE_FANIN}.
+     *
+     * @param sourceBudget         the characters a call's source may take
+     * @param charsPerToken        the model's characters per token, above 0
+     * @param expectedOutputTokens the tokens a part summary is expected to take
+     * @return the expected fan-in
+     */
+    public static int expectedFanIn(
+            final long sourceBudget, final double charsPerToken, final int expectedOutputTokens) {
+        final double partChars = expectedOutputTokens * charsPerToken + CHUNK_LABEL_RESERVE;
+        final long fits = (long) (sourceBudget / partChars);
+        return (int) Math.max(MIN_REDUCE_FANIN, Math.min(MAX_REDUCE_FANIN, fits));
     }
 
     /**

@@ -415,7 +415,9 @@ public final class AiIndexPlan {
                     .append(entries.size())
                     .append(" file(s), ~")
                     .append(tokens(entries))
-                    .append(" source tokens, est. ")
+                    .append(" source tokens (~")
+                    .append(sentTokens(entries))
+                    .append(" sent), est. ")
                     .append(estimator.formatDuration(modelSeconds(entries)))
                     .append(" (")
                     .append(calibratedModels.contains(group.getKey()) ? CALIBRATED_BASIS : BUILT_IN_BASIS)
@@ -469,6 +471,52 @@ public final class AiIndexPlan {
             }
         }
         return sum;
+    }
+
+    /**
+     * Returns the source tokens the model is sent of the window-checked entries, by each one's oversize
+     * strategy ({@link #sentTokens(Entry)}).
+     *
+     * @param entries the entries
+     * @return the tokens sent
+     */
+    private static long sentTokens(final List<Entry> entries) {
+        long sum = 0;
+        for (final Entry entry : entries) {
+            sum += sentTokens(entry);
+        }
+        return sum;
+    }
+
+    /**
+     * Returns the source tokens a routed file sends the model: all of a file that fits the window, and of
+     * one over it what its oversize strategy reads, none under {@code deterministic}, one window under
+     * {@code sample} and {@code fail}, every chunk under {@code mapReduce} and {@code maxChunks} windows
+     * under {@code sampleChunks}; {@code 0} for a file without a window check.
+     *
+     * @param entry the routed file
+     * @return the tokens sent, the overlap of the chunks and the prompts left out
+     */
+    static long sentTokens(final Entry entry) {
+        if (!entry.windowChecked()) {
+            return 0L;
+        }
+        if (!entry.exceedsWindow()) {
+            return entry.sourceTokens();
+        }
+        // a window holds as many tokens as its characters do at the file's own density
+        final long windowTokens = entry.sourceTokens() * entry.availableSourceChars() / entry.sourceChars();
+        switch (strategyOf(entry)) {
+            case DETERMINISTIC:
+                return 0L;
+            case MAP_REDUCE:
+                return entry.sourceTokens();
+            case SAMPLE_CHUNKS:
+                return Math.min(
+                        entry.sourceTokens(), windowTokens * entry.rule().getMaxChunks());
+            default:
+                return windowTokens;
+        }
     }
 
     /**

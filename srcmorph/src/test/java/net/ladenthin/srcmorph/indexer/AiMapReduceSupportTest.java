@@ -165,6 +165,23 @@ public class AiMapReduceSupportTest {
     }
 
     @Test
+    public void reduceCalls_aSmallerFanIn_takesMoreRounds_heldToTwoAndSixteen() {
+        assertThat(AiMapReduceSupport.reduceCalls(8, 2), is(7L));
+        assertThat(AiMapReduceSupport.reduceCalls(9, 3), is(4L));
+        assertThat(AiMapReduceSupport.reduceCalls(8, 1), is(7L));
+        assertThat(AiMapReduceSupport.reduceCalls(17, 99), is(3L));
+    }
+
+    @Test
+    public void expectedFanIn_thePartSummariesThatFitTheBudget_twoToSixteen() {
+        // a part of 950 tokens at 4 characters is 3 800 characters and a 64-character label: 3 864
+        assertThat(AiMapReduceSupport.expectedFanIn(3_864L * 5, 4.0d, 950), is(5));
+        assertThat(AiMapReduceSupport.expectedFanIn(3_864L * 5 - 1, 4.0d, 950), is(4));
+        assertThat(AiMapReduceSupport.expectedFanIn(100L, 4.0d, 950), is(2));
+        assertThat(AiMapReduceSupport.expectedFanIn(10_000_000L, 4.0d, 950), is(16));
+    }
+
+    @Test
     public void chunkCount_advancesTheBudgetLessTheOverlap() {
         assertThat(AiMapReduceSupport.chunkCount(0, 8_000, 400), is(1L));
         assertThat(AiMapReduceSupport.chunkCount(8_000, 8_000, 400), is(1L));

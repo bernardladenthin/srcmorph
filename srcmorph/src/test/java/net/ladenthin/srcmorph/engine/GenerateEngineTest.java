@@ -30,6 +30,7 @@ import net.ladenthin.srcmorph.config.AiFactDefinition;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
@@ -807,6 +808,53 @@ public class GenerateEngineTest {
         final String record = new String(Files.readAllBytes(recordFile), StandardCharsets.UTF_8);
         assertThat(record, containsString("\"failed\""));
         assertThat(record, containsString("\"written\""));
+    }
+
+    /** A local model loads on its first file: the record names that time under the model, not the file. */
+    @Test
+    public void execute_aModelThatLoadsOnItsFirstFile_isRecordedAsTheModelsLoad() throws Exception {
+        // arrange: a provider that reports 3 s of loading once
+        final SrcMorphConfiguration config = baseConfig();
+        final Path recordFile = tempDir.resolve("run.json");
+        config.setRunRecordFile(recordFile.toFile());
+        final AiGenerationProviderFactory loading = new AiGenerationProviderFactory() {
+            @Override
+            public AiGenerationProvider create(
+                    final String providerName,
+                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
+                return new AiGenerationProvider() {
+                    private long load = 3_000_000_000L;
+
+                    @Override
+                    public String generate(final AiGenerationRequest request) {
+                        return "A summary.";
+                    }
+
+                    @Override
+                    public long takeLoadNanos() {
+                        final long taken = load;
+                        load = 0L;
+                        return taken;
+                    }
+                };
+            }
+        };
+
+        // act
+        new GenerateEngine(config, loading).execute();
+
+        // assert: the model's load in the totals, the file's own time without it
+        final com.fasterxml.jackson.databind.JsonNode record =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(recordFile.toFile());
+        assertThat(
+                record.get("totals")
+                        .get("modelLoadSeconds")
+                        .get(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT)
+                        .asDouble(),
+                is(3.0d));
+        assertThat(record.get("files").get(0).get("seconds").asDouble() < 3.0d, is(true));
+        assertThat(record.get("totals").get("skipped").asInt(), is(0));
     }
 
     @Test

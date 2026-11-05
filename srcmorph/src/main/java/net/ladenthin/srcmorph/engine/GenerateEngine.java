@@ -229,7 +229,8 @@ public final class GenerateEngine {
         final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
         final int totalFiles = plan.routedCount();
         final long runStartNanos = System.nanoTime();
-        final RunRecord record = new RunRecord(config.getPluginVersion());
+        final RunRecord record =
+                new RunRecord(config.getPluginVersion(), plan.skipped().size());
         long doneEstimatedSeconds = 0;
         int doneFiles = 0;
         int wrote = 0;
@@ -278,13 +279,16 @@ public final class GenerateEngine {
                             LOGGER.debug("Summarizing {} failed", entry.file(), e);
                             outcome = AiIndexOutcome.FAILED;
                         }
+                        // a local model loads on the first file that needs it: its own time, not the file's
+                        final long loadNanos = provider.takeLoadNanos();
+                        record.addModelLoad(aiDefinitionKey, loadNanos);
                         record.add(recordEntry(
                                 basePath,
                                 entry,
                                 aiDefinitionKey,
                                 outcome,
                                 support.takeUsage(),
-                                System.nanoTime() - fileStartNanos,
+                                Math.max(0L, System.nanoTime() - fileStartNanos - loadNanos),
                                 recordedHeader(fileIndexer, entry, outcome, promptSupport)));
                         if (outcome == AiIndexOutcome.WRITTEN) {
                             wrote++;

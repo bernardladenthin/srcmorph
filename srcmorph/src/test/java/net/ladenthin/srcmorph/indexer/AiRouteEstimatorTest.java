@@ -122,7 +122,8 @@ public class AiRouteEstimatorTest {
     /*
      * A window of 10 000 characters and no prompt: the run's chunk budget is 8 000 (20 % headroom), the
      * overlap 400, so a chunk advances 7 600 characters. 15 600 characters are exactly 2 chunks, 15 601
-     * are 3; 2 or 3 partials take one reduce.
+     * are 3. A reduce batch of that budget holds 2 part summaries (950 tokens at 4 characters each and a
+     * label): 2 partials take one reduce, 3 take two and then one more.
      */
     @Test
     public void estimateRouteSeconds_mapReduce_everyChunkPlusTheReduce() {
@@ -131,15 +132,42 @@ public class AiRouteEstimatorTest {
                 is(equalTo(3 * window(10_000L))));
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_601L, 10_000L, 0),
-                is(equalTo(4 * window(10_000L))));
+                is(equalTo(6 * window(10_000L))));
     }
 
     @Test
     public void estimateRouteSeconds_mapReduce_manyChunks_reduceInRounds() {
-        // 304 400 characters are 40 chunks: 3 reduce calls of 16 and one of the 3 results
+        // 304 400 characters are 40 chunks; two a batch: 20, 10, 5, 3, 2 and 1 reduce calls
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 304_400L, 10_000L, 0),
-                is(equalTo(44 * window(10_000L))));
+                is(equalTo(81 * window(10_000L))));
+    }
+
+    /** A model's own characters per token size its part summaries; without one, the estimate's 4 does. */
+    @Test
+    public void estimateRouteSeconds_mapReduce_theFanInReadsTheModelsCharactersPerToken() {
+        final AiGenerationConfig dense = new AiGenerationConfig();
+        dense.setCharsPerToken(2);
+        final AiGenerationConfig unset = new AiGenerationConfig();
+        unset.setCharsPerToken(0);
+
+        // 3 chunks; at 2 characters a part summary is 1 964 characters, 4 fit the 8 000: one reduce call
+        assertThat(
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), dense, 1L, 15_601L, 10_000L, 0),
+                is(equalTo(4 * window(10_000L))));
+        // unset reads as 4 characters a token: 2 fit, so 2 and then 1 reduce calls
+        assertThat(
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), unset, 1L, 15_601L, 10_000L, 0),
+                is(equalTo(6 * window(10_000L))));
+    }
+
+    @Test
+    public void estimateRouteSeconds_mapReduce_aWideWindow_reducesSixteenABatch() {
+        // a window of 100 000: budget 80 000 holds 20 part summaries, so a batch is the 16 of the run;
+        // 1 520 000 characters are 20 chunks (76 000 a chunk): 2 reduce calls and one of their 2 results
+        assertThat(
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 1_520_000L, 100_000L, 0),
+                is(equalTo(23 * window(100_000L))));
     }
 
     @Test
@@ -147,7 +175,7 @@ public class AiRouteEstimatorTest {
         // a prompt of 2 000: window 12 000, budget 7 600, overlap 380, so 15 600 characters are 3 chunks
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_600L, 10_000L, 2_000),
-                is(equalTo(4 * window(10_000L))));
+                is(equalTo(6 * window(10_000L))));
     }
 
     @Test
@@ -159,7 +187,7 @@ public class AiRouteEstimatorTest {
         // a cap above the natural count changes nothing
         assertThat(
                 estimator.estimateRouteSeconds(rule("sampleChunks", 9), uncalibrated, 1L, 20_000L, 10_000L, 0),
-                is(equalTo(4 * window(10_000L))));
+                is(equalTo(6 * window(10_000L))));
     }
 
     @Test

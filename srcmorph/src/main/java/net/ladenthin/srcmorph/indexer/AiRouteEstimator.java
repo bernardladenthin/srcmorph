@@ -139,6 +139,12 @@ public final class AiRouteEstimator {
                 AiMapReduceSupport.chunkCount(sourceChars, sourceBudget, AiMapReduceSupport.overlap(sourceBudget));
         final long chunks =
                 strategy == AiOversizeStrategy.SAMPLE_CHUNKS ? Math.min(rule.getMaxChunks(), allChunks) : allChunks;
-        return (chunks + AiMapReduceSupport.reduceCalls(chunks)) * windowSeconds;
+        // a reduce batch holds as many part summaries as fit the window, as the run packs them, not always 16
+        final double charsPerToken = modelConfig.getCharsPerToken() > 0
+                ? modelConfig.getCharsPerToken()
+                : AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;
+        final int fanIn = AiMapReduceSupport.expectedFanIn(
+                sourceBudget, charsPerToken, AiGenerationTimeEstimator.DEFAULT_EXPECTED_OUTPUT_TOKENS);
+        return (chunks + AiMapReduceSupport.reduceCalls(chunks, fanIn)) * windowSeconds;
     }
 }

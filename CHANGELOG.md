@@ -31,6 +31,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   `AiGenerationTimeEstimator` is linear: `REQUEST_OVERHEAD_MS`, `PREFILL_MS_PER_TOKEN` and
   `DECODE_MS_PER_TOKEN` replace the four CPU coefficients, and `estimateDecodeMillis` takes only the
   output tokens. `AiIncompleteAnswerException.Reason` has a fourth value, `ABORTED`.
+  `AiGenerationUsage.add` is `withCall` (one call's usage). `RunRecord` takes the skipped count
+  (`new RunRecord(pluginVersion, skipped)`). `AiGenerationProvider` has `takeLoadNanos()`.
 
 ### Added
 
@@ -157,6 +159,15 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The run record and the plan say more of where the time and the tokens go.** The record's totals
+  name the files the plan skipped (`skipped`), the run's wall time (`wallSeconds`) and each model's
+  load time (`modelLoadSeconds`): a local model loads on its first file, whose own seconds leave the
+  load out now (`AiGenerationProvider.takeLoadNanos`, `0` by default). The plan's model header adds
+  the tokens the model is sent (`~N source tokens (~M sent)`): none of a file `deterministic`
+  summarizes, one window of a `sample` or `fail`, `maxChunks` windows of a `sampleChunks`. Its
+  map-reduce estimate packs as many part summaries into a reduce call as fit the window, as the run
+  does, instead of always 16 (`AiMapReduceSupport.expectedFanIn`), so a narrow window estimates more
+  reduce calls.
 - **`requestsPerMinute` keeps one window per server**, at the smallest limit a model of it names:
   two models of one server (same `baseUrl` and `apiKeyEnv`) with 20 and 10 requests a minute sent up
   to 30 together, two windows; they send at most 10 now.

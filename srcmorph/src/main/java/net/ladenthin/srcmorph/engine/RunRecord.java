@@ -12,7 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.LongSupplier;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
@@ -22,7 +25,9 @@ import net.ladenthin.srcmorph.provider.AiGenerationUsage;
  * The record of one {@code generate} run: one entry per routed file with its rule, prompt and model,
  * what happened to it, the tokens and calls it cost, how its last call ended, its wall time, and the
  * hashes of its prompt and its facts, so a run can be costed per file and model and a changed prompt
- * is visible. Written as JSON to {@code runRecordFile} when the configuration names one.
+ * is visible; the totals add the files the plan skipped, the run's wall time and each model's load
+ * time, which no file's time holds. Written as JSON to {@code runRecordFile} when the configuration
+ * names one.
  */
 @ToString
 public final class RunRecord {
@@ -32,15 +37,56 @@ public final class RunRecord {
 
     private final String pluginVersion;
 
+    /** The files the plan skipped (a skip rule): no entry of their own, counted in the totals. */
+    private final int skipped;
+
+    /** The clock of the run's wall time, in nanoseconds. */
+    @ToString.Exclude
+    private final LongSupplier clock;
+
+    /** When the run started, on {@link #clock}. */
+    private final long startNanos;
+
     private final List<Entry> entries = new ArrayList<>();
 
+    /** The time each model took to load, by model key, in the order they loaded. */
+    private final Map<String, Long> modelLoadNanos = new LinkedHashMap<>();
+
     /**
-     * Creates an empty record.
+     * Creates an empty record of a run that starts now.
      *
      * @param pluginVersion the version recorded with it
+     * @param skipped       the files the plan skipped
      */
-    public RunRecord(final String pluginVersion) {
+    public RunRecord(final String pluginVersion, final int skipped) {
+        this(pluginVersion, skipped, System::nanoTime);
+    }
+
+    /**
+     * Creates an empty record of a run that starts now on {@code clock} (tests).
+     *
+     * @param pluginVersion the version recorded with it
+     * @param skipped       the files the plan skipped
+     * @param clock         the run's clock in nanoseconds
+     */
+    RunRecord(final String pluginVersion, final int skipped, final LongSupplier clock) {
         this.pluginVersion = pluginVersion;
+        this.skipped = skipped;
+        this.clock = clock;
+        this.startNanos = clock.getAsLong();
+    }
+
+    /**
+     * Adds the time a model took to load (a local model loads on the first file that needs it), so that
+     * file's own time leaves it out; a model that loads twice adds up.
+     *
+     * @param model the model key
+     * @param nanos the load time, {@code 0} or less adds nothing
+     */
+    public void addModelLoad(final String model, final long nanos) {
+        if (nanos > 0) {
+            modelLoadNanos.merge(model, nanos, Long::sum);
+        }
     }
 
     /** One routed file of the run. */
@@ -147,8 +193,9 @@ public final class RunRecord {
     }
 
     /**
-     * Returns the record as JSON: the version, the totals (files by outcome, calls, tokens, seconds) and
-     * one object per file.
+     * Returns the record as JSON: the version, the totals (files by outcome and the skipped ones, calls,
+     * tokens, the files' seconds, the run's wall seconds and each model's load seconds) and one object per
+     * file.
      *
      * @return the indented JSON text
      * @throws IOException if it cannot be serialized
@@ -205,6 +252,12 @@ public final class RunRecord {
         totals.put("cachedPromptTokens", sum.cachedPromptTokens());
         totals.put("completionTokens", sum.completionTokens());
         totals.put("seconds", nanos / NANOS_PER_SECOND);
+        totals.put("skipped", skipped);
+        totals.put("wallSeconds", (clock.getAsLong() - startNanos) / NANOS_PER_SECOND);
+        final ObjectNode loads = totals.putObject("modelLoadSeconds");
+        for (final Map.Entry<String, Long> load : modelLoadNanos.entrySet()) {
+            loads.put(load.getKey(), load.getValue() / NANOS_PER_SECOND);
+        }
         return mapper.enable(SerializationFeature.INDENT_OUTPUT).writeValueAsString(root);
     }
 

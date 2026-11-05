@@ -43,6 +43,9 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     @ToString.Exclude
     private @Nullable LlamaModel model;
 
+    /** Nanoseconds spent loading the model since {@link #takeLoadNanos()} was last called. */
+    private long loadNanos;
+
     /** The usage of the last {@link #generate} call. */
     private AiGenerationUsage lastUsage = AiGenerationUsage.NONE;
 
@@ -169,10 +172,19 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
             if (!config.devices().isEmpty()) {
                 modelParameters.setDevices(config.devices());
             }
+            final long loadStart = System.nanoTime();
             current = new LlamaModel(modelParameters);
+            loadNanos += System.nanoTime() - loadStart;
             model = current;
         }
         return current;
+    }
+
+    @Override
+    public long takeLoadNanos() {
+        final long taken = loadNanos;
+        loadNanos = 0L;
+        return taken;
     }
 
     @Override
