@@ -418,6 +418,32 @@ public class OpenAiCompatibleAiGenerationProviderTest {
         assertThat(requests, is(1));
     }
 
+    /**
+     * The waiter of a real run ends the wait before a retry when the thread is interrupted, with an
+     * InterruptedIOException (which ends the run as an interrupt) and the thread's interrupt flag kept.
+     */
+    @Test
+    public void generate_interruptedWhileWaitingToRetry_endsWithTheFlagKept() {
+        // arrange: one 503 asking for a minute's wait, and the thread already interrupted
+        firstStatuses.add(503);
+        retryAfter = "60";
+        final OpenAiCompatibleAiGenerationProvider realWaiter = new OpenAiCompatibleAiGenerationProvider(
+                LlamaCppJniConfig.builder("").baseUrl(baseUrl()).maxRetries(1).build(), PROMPT_SUPPORT, NO_ENVIRONMENT);
+        Thread.currentThread().interrupt();
+        try {
+            // act
+            final java.io.InterruptedIOException thrown =
+                    assertThrows(java.io.InterruptedIOException.class, () -> realWaiter.generate(REQUEST));
+
+            // assert
+            assertThat(thrown.getMessage(), is("interrupted while waiting to retry a request"));
+            assertThat(Thread.currentThread().isInterrupted(), is(true));
+            assertThat(requests, is(1));
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
     @Test
     public void generate_errorStatusWithoutBody_throwsWithTheStatus() {
         status = 503;

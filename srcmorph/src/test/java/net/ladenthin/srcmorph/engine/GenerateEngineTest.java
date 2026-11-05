@@ -484,6 +484,47 @@ public class GenerateEngineTest {
         assertThat(thrown.getMessage(), containsString("mock.gguf"));
     }
 
+    /**
+     * Where check() differs from the plan: planOnly does not apply to it, so the missing model file the
+     * plan-only run above passes fails the check, before any model loads.
+     *
+     * @throws IOException if the fixture cannot be built
+     */
+    @Test
+    public void check_planOnlyAndAMissingModel_failsOnTheModel() throws IOException {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        config.setGenerationProvider(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        config.setPlanOnly(true);
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).check());
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("mock.gguf"));
+        assertThat(thrown.getMessage(), containsString("does not exist"));
+    }
+
+    /**
+     * A check that passes writes nothing and reports a plan, also without planOnly.
+     *
+     * @throws Exception if the check fails
+     */
+    @Test
+    public void check_aConfigurationInOrder_passesAndWritesNothing() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).check();
+
+        // assert
+        assertThat(result.planOnly(), is(true));
+        assertThat(result.written(), is(0));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">

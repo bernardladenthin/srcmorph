@@ -46,7 +46,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 19 | The remote calibration warning is logged under the llama.cpp class | Claude | done 2026-11-05 | — |
 | 20 | A `baseUrl`'s user info is printed as written | Claude | done 2026-11-05 | — |
 | 21 | `AiGenerationUsage.add` counts `NONE` as a call | Claude | done 2026-11-05 | — |
-| 22 | Tests: `check()` with `planOnly` and model files, the interrupt branch, a changed prompt hash, the smaller window after an overflow, the plugin's base directory | Claude | open | Review of 2026-11-02, tests and gates |
+| 22 | Tests: `check()` with `planOnly` and model files, the interrupt branch, a changed prompt hash, the smaller window after an overflow, the plugin's base directory | Claude | done 2026-11-05 | — |
 | 23 | SpotBugs: split the `SrcMorphConfigurationFileLoader` match, the stale `NP_NULL_ON_SOME_PATH` | Claude | open | Review of 2026-11-02, tests and gates |
 
 **Wave 3: medium fixes** (each 1 to 3 h)
@@ -229,11 +229,6 @@ Unreleased) except:
 
 **Tests and gates:**
 
-- No core test calls an engine's `check()` where it differs from the plan (`planOnly`, model
-  files); the provider's interrupt branch has no test; a changed prompt hash in the run record is not
-  asserted; the overflow test does not assert the smaller window; the plugin's base-directory
-  default cannot be told from the file's directory (every fixture puts the file in the project
-  directory).
 - SpotBugs: `SrcMorphConfigurationFileLoader` sits in a Match that suppresses seven patterns for a
   reason that covers two; a stale `NP_NULL_ON_SOME_PATH` suppression.
 - SonarCloud reports 98 new issues that are not readable without a token.

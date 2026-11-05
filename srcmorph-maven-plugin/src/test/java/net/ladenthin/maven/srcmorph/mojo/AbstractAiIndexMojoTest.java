@@ -130,6 +130,31 @@ public class AbstractAiIndexMojoTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="what Maven fills">
+    /**
+     * A file outside the project directory tells the two defaults apart: the base directory is the
+     * project's (Maven's), while the file's own relative paths resolve against the file's directory.
+     */
+    @Test
+    public void buildConfiguration_aFileInASubdirectory_theBaseIsTheProjectAndItsPathsAreTheFiles() throws Exception {
+        // arrange
+        final Path configDirectory = project.resolve("config");
+        writeConfiguration(configDirectory, "srcMorph:\n  generationProvider: mock\n  profileDirectory: profile\n");
+        final TestMojo mojo = mojo();
+        mojo.configurationFile = configDirectory.resolve("srcmorph.yaml").toFile();
+
+        // act
+        final SrcMorphConfiguration config = mojo.buildConfiguration(RuleSection.FILES);
+
+        // assert
+        assertThat(config.getBaseDirectory(), is(equalTo(project.toFile())));
+        assertThat(
+                config.getOutputDirectory(),
+                is(equalTo(project.resolve("src/site/ai").toFile())));
+        assertThat(
+                config.getProfileDirectory(),
+                is(equalTo(configDirectory.resolve("profile").toFile())));
+    }
+
     @Test
     public void buildConfiguration_whatTheFileLeavesUnset_comesFromTheProject() throws Exception {
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");

@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.ToIntFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFactExtractor;
@@ -480,6 +482,50 @@ public class AiFieldGenerationSupportTest {
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(modelKey);
         return rule;
+    }
+
+    /**
+     * The retry after an overflow really sends less: the whole source first, a quarter less of the window
+     * the second time, so a source near the window is cut (a rule that may cut it, here sample).
+     */
+    @Test
+    public void generate_contextOverflow_theRetrySendsTheSmallerWindow() throws Exception {
+        // arrange
+        final List<Integer> sent = new ArrayList<>();
+        final AiGenerationProvider provider = request -> {
+            sent.add(request.sourceText().length());
+            if (sent.size() == 1) {
+                throw new RuntimeException("request (2100 tokens) exceeds the available context size (2048 tokens)");
+            }
+            return "OK";
+        };
+        final String source = largeSource(7000).substring(0, 6500);
+
+        // act
+        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(
+                        oversizeRule("m", "sample", 0),
+                        Files.createTempFile("Dense", ".sql"),
+                        "file",
+                        source,
+                        anyHeader());
+
+        // assert: the first call fits whole, the second at most the window the warning names, three
+        // quarters of the first one
+        assertThat(result.body(), containsString("OK"));
+        assertThat(sent.size(), is(2));
+        assertThat(sent.get(0), is(source.length()));
+        final String warning = getCapturedWarnings().stream()
+                .filter(w -> w.contains("retrying with a smaller window"))
+                .findFirst()
+                .orElseThrow(AssertionError::new);
+        final Matcher windows = Pattern.compile("\\((\\d+) -> (\\d+) chars\\)").matcher(warning);
+        assertThat(windows.find(), is(true));
+        final int before = Integer.parseInt(windows.group(1));
+        final int after = Integer.parseInt(windows.group(2));
+        assertThat(after, is(before * AiOverflowBackoff.BACKOFF_PERCENT / 100));
+        assertThat(sent.get(1) <= after, is(true));
+        assertThat(sent.get(1) < sent.get(0), is(true));
     }
 
     @Test
