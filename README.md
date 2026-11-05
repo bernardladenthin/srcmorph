@@ -222,7 +222,11 @@ README for the full details (routing rules, oversize strategies, exact-count fac
 overview) and [`CLAUDE.md`](CLAUDE.md) for the architecture.
 
 1. **File generation** — scans configured source directories, writes one `.ai.md` file per source
-   file (deterministic metadata header + AI-generated Markdown body).
+   file (deterministic metadata header + AI-generated Markdown body), at the file's path below the
+   base directory with a leading `src/` dropped: `src/main/java/a/B.java` becomes
+   `main/java/a/B.java.ai.md`. A repository whose code sits in `src/` therefore shares its top
+   package with the files of its root (`src/extension.ts` next to `package.json`); two sources that
+   would get one summary (`src/a/X.ts` and `a/X.ts`) fail the run.
 2. **Package aggregation** — traverses the generated `.ai.md` files, writes one `package.ai.md` per
    directory with a deterministic child-link list plus an AI-generated summary.
 3. **Project index** — harvests the one-line lead from every `package.ai.md` into a single

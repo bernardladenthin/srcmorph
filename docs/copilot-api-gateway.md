@@ -93,7 +93,7 @@ the measured run below) for every file, package and the project, a rule per kind
 its prompt and exact fact counters (Java, SQL, shell, Perl, POM and XML, and the enterprise kinds:
 Jakarta EE code and descriptors, JPA and MyBatis mappings, Camel and other integration routes, BPMN,
 DMN, WSDL, JSP and Facelets views, OpenAPI, AsyncAPI, Protobuf, Avro and GraphQL contracts, Kotlin,
-Groovy and Scala, GitHub Actions, Kubernetes, Docker, Compose, Ansible, Terraform, Gradle,
+Groovy, Scala and TypeScript, GitHub Actions, Kubernetes, Docker, Compose, Ansible, Terraform, Gradle,
 properties, PowerShell and batch files; every other YAML takes the ops rule without counters, every
 other file the fallback rule), a rule that skips the files holding credentials, and
 `onOversize: mapReduce` on every rule, the

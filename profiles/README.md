@@ -11,7 +11,7 @@ handed on as a whole.
 
 | File | Key | For |
 |---|---|---|
-| [`v3/file-body-oop.md`](v3/file-body-oop.md) | `promptKey: file-body-oop` | one source file of a class-based language: Java, Kotlin, Groovy, Scala |
+| [`v3/file-body-oop.md`](v3/file-body-oop.md) | `promptKey: file-body-oop` | one source file of a class-based language: Java, Kotlin, Groovy, Scala; TypeScript (`.ts`, `.mts`, `.cts`) as well |
 | [`v3/file-body-view.md`](v3/file-body-view.md) | `promptKey: file-body-view` | one server-side view: JSP, JSP fragment, tag file, Facelets |
 | [`v3/file-body-contract.md`](v3/file-body-contract.md) | `promptKey: file-body-contract` | one API contract: OpenAPI, AsyncAPI, JSON Schema, Avro, Protobuf, GraphQL |
 | [`v3/file-body-ops.md`](v3/file-body-ops.md) | `promptKey: file-body-ops` | one build, deploy or configuration file: CI, Dockerfile, Compose, Kubernetes, Helm, Ansible, Terraform |
@@ -216,7 +216,10 @@ and no summary copied the password the corpus holds. The runs are under
 [`remeasure-2026-11-04/`](../docs/ai-index-benchmark/remeasure-2026-11-04/README.md). Measured are
 therefore Java, SQL, shell, Perl, XML and the fallback on the card and language corpora, and the
 kinds of the enterprise corpus on that corpus alone; Scala, the contract formats other than OpenAPI,
-Terraform, Ansible and Compose ran in no measurement. Their counters (`scala-facts`, `proto-facts`,
+Terraform, Ansible and Compose ran in no measurement. TypeScript ran once, on a repository measured
+internally: with `file-body-oop` both models named more of its exported API than with the fallback,
+which is why `run.py` and the Luna example route `.ts`, `.mts` and `.cts` there; it has no counters.
+Their counters (`scala-facts`, `proto-facts`,
 `avro-facts`, `graphql-facts`, `asyncapi-facts`, `terraform-facts`, `ansible-facts`,
 `compose-facts`, `camel-yaml-facts`, and `dmn-facts`, `gradle-facts`, `properties-facts`,
 `powershell-facts`, `batch-facts`) are pinned by their tests, not by a model run: a facts line is

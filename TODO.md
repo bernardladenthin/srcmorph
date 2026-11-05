@@ -22,6 +22,25 @@ everything below is genuinely still open.
   after the path line came into the user message (fallback prompt, none before): watch it in the
   next round; with three more runs it is variation or a sentence for the fallback prompt.
 
+### TypeScript measurement of 2026-11-05 (internal; the data stays out of the repository), open items
+
+Fixed on PR #269: the finish reason `error`, the TypeScript rule, the time estimate's basis. These
+wait for a decision:
+
+- **4096 output tokens are short for big TypeScript files**: three answers of eight runs were cut at
+  the budget (files of 105 and 128 KB, and one of 9.6K prompt tokens with the oop prompt). srcmorph
+  handled it as meant (not written, exit 1, the next run tries again), but the file stays without a
+  summary while the model keeps listing members. A larger `maxOutputTokens` for remote models, or a
+  size rule that map-reduces such files, would need a measurement; `run.py`'s budget is the one the
+  published numbers were measured with.
+- **TypeScript has no fact counters**: exports, classes, interfaces, functions and arrow consts would
+  count as `kotlin-facts` does. Not written yet, because the recall is already 98 to 100 % with the
+  oop prompt and a counter changes nothing the scores read.
+- **`package.json` varies with gpt-oss-20b**: 45, 13, 28 and 15 of its 45 participants, commands,
+  tools and dependencies in four runs (Luna 43 to 45 each time), with the fallback prompt. A rule for
+  manifests (`package.json`, maybe `pyproject.toml`) with the ops prompt and counters for scripts and
+  dependencies would be the next thing to measure.
+
 ### Reviews of 2026-11-04 (PR #269 at 98c6b77, the delta and the whole repository), open items
 
 Two reviews, verified against the code; fixed on the branch except these, which wait for a decision:

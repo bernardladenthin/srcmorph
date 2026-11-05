@@ -532,7 +532,7 @@ Prompts are referenced by key from the rules and read from the profile (`profile
 self-test configuration uses the ten prompt files and the six fact-counter files of
 [`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
 prompt and each counter exists once in the repository:
-- `file-body-oop` — summarizes a single source file of a class-based language: Java, Kotlin, Groovy, Scala (types, public API, dependencies)
+- `file-body-oop` — summarizes a single source file of a class-based language: Java, Kotlin, Groovy, Scala, and TypeScript (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
   the tables it reads vs writes, and relationships)
 - `file-body-shell`, `file-body-perl`, `file-body-xml` — the same for shell scripts, Perl and XML
@@ -633,9 +633,15 @@ covers, measured on CPU (full rationale in [COMPARISON.md §11](../docs/ai-index
   per-file time, so it covers every file up to ~250 KB with no trimming while small files stay just as
   fast. Lower `contextSize` only to save RAM. Hard ceiling is the 128K window (~480–500 KB of code);
   larger files route to the Granite presets.
-- **Timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt tokens),
-  because attention is O(n) per token — which is why throughput drops as files grow. The plugin logs
-  this estimate per file.
+- **On a CPU, timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt
+  tokens; gpt-oss-20b on a Ryzen 7 5800H), because attention is O(n) per token — which is why
+  throughput drops as files grow.
+- **The logged estimate is based on GPT-6 Luna**, the benchmark's remote model: `2.1 s + 0.105 ms`
+  per prompt token `+ 6.45 ms` per output token, linear up to the largest measured prompts (98K
+  tokens). The plan, the progress bar and the per-file line use it for every model without a
+  `calibration`; the plan and the per-file line say so (`based on GPT-6 Luna`). A local model is far
+  slower, so run `Calibrate` once and paste its `calibration:` block, after which they say `from the
+  model's calibration`.
 
 ## GPU acceleration (opt-in)
 The default natives are CPU (from `net.ladenthin:llama-platform`, see "Dependency" above). On an NVIDIA

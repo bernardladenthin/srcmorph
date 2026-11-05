@@ -28,9 +28,16 @@ The entries below hold the details; what a 1.4.0 user changes:
   `fileNames` and `fileInterpreters` (after `fileExtensions`), an `AiRegenerateOn` (after `force`)
   and `contentHeadChars` (last); `SourceFileIndexer.indexFile` takes a `modelHash` (last);
   `AiMdHeaderSupport` takes the five switches as booleans (without arguments, all on).
+  `AiGenerationTimeEstimator` is linear: `REQUEST_OVERHEAD_MS`, `PREFILL_MS_PER_TOKEN` and
+  `DECODE_MS_PER_TOKEN` replace the four CPU coefficients, and `estimateDecodeMillis` takes only the
+  output tokens. `AiIncompleteAnswerException.Reason` has a fourth value, `ABORTED`.
 
 ### Added
 
+- **TypeScript takes `file-body-oop`:** a rule for `.ts`, `.mts` and `.cts` in `run.py` and in the
+  Luna example (no counters of its own). Measured on 2026-11-05 on a TypeScript repository,
+  internally: with the oop prompt both models named more of the exported API than with the
+  fallback, gpt-oss-20b clearly more, also of the private helpers and the tests.
 - **`examples/copilot-api-gateway/srcmorph-luna.yaml`:** GPT-6 Luna through the GitHub Copilot API
   Gateway for every file, package and the project, with the whole profile v3: a rule per kind of
   source with its prompt and exact fact counters, and `onOversize: mapReduce` on every rule, the
@@ -146,6 +153,16 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The time estimate is based on GPT-6 Luna**, the benchmark's remote model, where it was a local
+  CPU (gpt-oss-20b on a Ryzen 7 5800H): `2.1 s + 0.105 ms` per prompt token `+ 6.45 ms` per output
+  token, fitted over 1423 calls of the 2026-11 measurements and linear up to their largest prompts
+  (98K tokens), 4.0 characters per token, 1000 tokens of prompt around the source, 950 output tokens
+  assumed. For a 24K-token prompt the CPU model said 25 min, Luna takes about 12 s, so a remote run's
+  plan was off by more than an order of magnitude. The per-file log line ends in
+  `(rough; based on GPT-6 Luna)`,
+  and the plan names the basis in every model's header; a model with a `calibration` reads `from
+  the model's calibration` in both instead. A local model is far slower than the estimate:
+  `Calibrate` measures it.
 - **`SourceFileIndexer` is final**, and its public constructor takes `fileNames`,
   `fileInterpreters`, `regenerateOn` and `contentHeadChars` (Upgrading from 1.4.0). The file phase's log lines name a file by its path below
   the base directory (as the model reads it), with the system's separators, where they named the
@@ -208,6 +225,14 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
+- **An answer the provider stopped was written as a finished summary.** OpenRouter answers a
+  generation that failed half-way with a 2xx, the text so far and finish reason `error`; only
+  `length` counted as incomplete, so the summary ended mid-sentence, without a warning (measured on
+  2026-11-05: gpt-oss-20b, 694 tokens, ending in `test paging (`). Finish reason `error` or
+  `content_filter` is now an incomplete answer of the new reason `ABORTED`: not written and left for
+  the next run (`onIncomplete: retryOnce` asks once more first), never kept as a part or under
+  `onIncomplete: keep`; the calibration warns about it. Any other reason (`stop`, a server's own
+  word for it, none) is the model's, as before.
 - **An ignored region at the start of a line left a space there**, so a counter anchored at the line
   start (`^class`, `^import`, Perl's `^my`) missed the code after it: `/* x */class A {}` counted no
   type, the same code on two lines one. Such a region now leaves nothing; within a line it still
