@@ -743,6 +743,9 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.indexer.AiIndexTally</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.AiMapReduceSupport</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.AiTokenWindow</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.ChunkPlan</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.IncompleteAnswerAction</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.ReduceRound</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.AiOverflowBackoff</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.AiRouteEstimator</param>
                         <param>net.ladenthin.srcmorph.prompt.AiGenerationRequest</param>

@@ -188,6 +188,10 @@ The entries below hold the details; what a 1.4.0 user changes:
   layering names every package with the exact layers that use it: `config` no longer depends on
   `prompt`, `prompt` and `provider` no longer on `document`, and a new rule keeps
   `indexer.generation` from depending on the walkers.
+- **The map-reduce decisions are on the PIT gate.** `SummaryGenerator` kept the chunk plan, the
+  packing and shortening of a reduce round and the decision on an incomplete answer next to its
+  provider calls, off the gate; they are the package-private `ChunkPlan`, `ReduceRound` and
+  `IncompleteAnswerAction` now, 46 mutations, all killed. The behavior is unchanged.
 - **The benchmark's runs and tools are pinned better.** `run.py`'s meta records the srcmorph commit
   (`+dirty` with local changes), the Python version and a SHA-256 over the corpus; a test pins the
   bytes `large.py` writes at `--scale 1.0`, so a Python whose `random` draws differently fails it.

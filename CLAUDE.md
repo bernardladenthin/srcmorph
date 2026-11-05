@@ -125,7 +125,7 @@ Package root: `net.ladenthin.srcmorph`.
   `ProjectIndexer`, `AiIndexPlan`, `AiCalibrationRunner`, ...); its sub-package
   **`indexer.generation`** generates one summary body (`SummaryGenerator`: single-shot, map-reduce,
   sampled chunks or head, deterministic, the overflow retry) with the pure classes it calls
-  (`AiMapReduceSupport`, `AiTokenWindow`, `AiOverflowBackoff`, `AiInputWindowCalculator`,
+  (`ChunkPlan`, `ReduceRound`, `IncompleteAnswerAction`, `AiMapReduceSupport`, `AiTokenWindow`, `AiOverflowBackoff`, `AiInputWindowCalculator`,
   `AiRouteEstimator`, `AiSourceChunker`, `AiDeterministicSummary`, `AiGenerationTimeEstimator`,
   `AiGenerationResult`) and knows nothing of the walkers (`generationDoesNotKnowTheWalkers`). Logs via
   `org.slf4j.Logger` (a private static final field per class), not a Maven `Log` — this is what makes
@@ -196,7 +196,7 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 85 entries (nested classes counted) across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 88 entries (nested classes counted) across
 every package, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (26/26) and `srcmorph-maven-plugin` (78/78) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom
@@ -623,7 +623,7 @@ See [`../workspace/policies/ci-test-diagnostics.md`](../workspace/policies/ci-te
 See [`../workspace/policies/pit-mutation-testing.md`](../workspace/policies/pit-mutation-testing.md).
 Run PIT with the lifecycle prefix. Reactor-wide (what CI does):
 `mvn test-compile org.pitest:pitest-maven:mutationCoverage`; or scoped to one module with
-`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (1921 mutations on 2026-11-05),
+`-f srcmorph/pom.xml`. All three modules gate at `mutationThreshold` 100 — `srcmorph` (2001 mutations on 2026-11-05),
 `srcmorph-maven-plugin` (78, the mojo classes) and `srcmorph-cli` (26). The CLI's
 `Main.main(String[])` is the one documented exclusion: it is the process entry point, and the
 `smoke-jar` release-gating job already runs the real `java -jar` artifact and asserts
