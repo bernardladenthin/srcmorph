@@ -59,13 +59,13 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | done 2026-11-05 | — |
 | 28 | Run record totals (skipped, wall time), plan tokens by oversize strategy, the first file's model load | Claude | done 2026-11-05 | — |
 | 29 | Test upkeep: done for logger levels, fixed temp names, the 2000-character chunk, the byte checksum, the calibration block through the loader and the fb-contrib match per class. Left: the guide drift of older tests (433 two-part and 221 one-part test names, missing arrange/act/assert comments, 195 qualified names) | Owner: a sweep, or fix a file's drift when it is touched | open | Review of 2026-11-02, tests |
-| 30 | API reviews: null-safety, package hierarchy, naming: the review is [`docs/code-review-2026-11-05.md`](docs/code-review-2026-11-05.md) (a target tree, moves M1 to M10, renames N1 to N15). Left: the restructure itself | Owner: go for the limited restructure it proposes (on a `main` without an open core PR), or not | open | Other open items |
+| 30 | API reviews: null-safety, package hierarchy, naming: the review is [`docs/code-review-2026-11-05.md`](docs/code-review-2026-11-05.md); its limited restructure is done (moves M1 to M10, renames N1 to N3: `routing`, `facts`, `indexer.generation`, `ProviderConfig`, `SummaryGenerator`, `AbstractSrcMorphMojo`) | Claude | done 2026-11-05 (937c52e) | — |
 
 **Wave 4: larger work**
 
 | # | Item | Who | Status | Details |
 |---|---|---|---|---|
-| 31 | Split the pure map-reduce logic out of `AiFieldGenerationSupport` onto the PIT gate | Claude | open | Review of 2026-11-02, tests |
+| 31 | Split the pure map-reduce logic out of `SummaryGenerator` onto the PIT gate: `ChunkPlan`, `ReduceRound`, `IncompleteAnswerAction` | Claude | done 2026-11-05 (905e1b0) | — |
 | 32 | Keep the map-reduce part summaries on request; then measure where gpt-oss-20b loses the middle | Claude | open | Audit of 2026-11-01 |
 | 33 | Launch the Vulkan module once on this machine's RTX 3070 | Claude | done 2026-11-05 | — |
 
@@ -82,6 +82,9 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 40 | Merge PR #269 | Owner | open | Enterprise kinds |
 | 41 | Run `ProfileFactPatternsLinearityTest` on the oldest supported JDK too (the read budget counts `charAt` calls) | Claude | open | Reviews of 2026-11-04 |
 | 42 | Null-safety findings S1 to S7 of the review: skip rules' null keys behind non-null getters, `baseDirectory` without a default, `""` for no model path, the `requireNonNull` workarounds | Claude | open | `docs/code-review-2026-11-05.md` section 3 |
+| 43 | Scorer gaps: the copy filter misses `~~~` fences, indented code and near-copies; the invented-name rate counts only backticked names, by substring | Claude | open | Review of 2026-11-02, benchmark |
+| 44 | The language-corpus scores (two-part) have a committed command: `repeat.py --runs --facts` | Claude | done 2026-11-05 (a803487) | — |
+| 45 | The review's further proposals: renames N4 to N15 (`AiRule`, `AiMdHeader`'s accessors, the `Ai` prefix, `generatorVersion`, ...) and P9 (export only `config` and `engine`) | Owner: which of them, if any | open | `docs/code-review-2026-11-05.md` sections 1 and 2 |
 
 ## Open
 
@@ -166,11 +169,10 @@ Unreleased) except:
   cannot reach 0.05, and hit@1 is compared unpaired (McNemar fits); every prompt version was tuned on
   the corpus it is scored on.
 
-- Tests (the test review): `AiFieldGenerationSupport` holds most of the pure map-reduce logic off the
-  PIT gate; split it the way `LlamaCppJniProviderSupport` was (row 31). Drift from TEST_WRITING_GUIDE
-  in older tests: 433 test names of two parts and 221 of one where the guide wants three, tests without
-  arrange/act/assert comments or outside folds, 195 fully qualified names (counted 2026-11-05); a sweep
-  renames about 650 tests, which CLAUDE.md counts as a large refactor to report, not to apply.
+- Tests (the test review): drift from TEST_WRITING_GUIDE in older tests (row 29): 433 test names of
+  two parts and 221 of one where the guide wants three, tests without arrange/act/assert comments or
+  outside folds, 195 fully qualified names (counted 2026-11-05); a sweep renames about 650 tests, which
+  CLAUDE.md counts as a large refactor to report, not to apply.
 
 **Core (engine, indexer, provider, config):**
 
@@ -179,7 +181,6 @@ Unreleased) except:
 
 **Benchmark tooling (after the runs, which read `run.py` and `search.py`):**
 
-- The language-corpus scores are two-part means no committed command produces (`languages-2026-11/`).
 - Card text (with D2): the correlation −0.46 is from an older population (today −0.18), the BM25 range
   "67 to 86 %" ends at 91 %, the Fisher test with 3 against 3 runs can never reach p < 0.1.
 
