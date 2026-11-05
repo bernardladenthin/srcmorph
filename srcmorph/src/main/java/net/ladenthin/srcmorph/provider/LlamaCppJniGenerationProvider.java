@@ -252,11 +252,9 @@ public final class LlamaCppJniGenerationProvider implements GenerationProvider, 
         // surface the model's OWN measured throughput (no chars/token estimate).
         final ChatResponse response = chatResponse(request);
         final String text = response.getFirstContent();
+        // A response without a "timings" object comes back with zero rates (Timings.fromJson of a missing
+        // node), so the caller's fallback acts on them; getTimings() is never null.
         final Timings timings = response.getTimings();
-        if (timings == null) {
-            // A build/response without timings degrades to zero rates so the caller's fallback can act.
-            return new TimedGeneration(text, 0, 0, 0.0d, 0, 0.0d);
-        }
         // cache_n is the leading prompt slice llama.cpp served straight from the KV cache. It is the only
         // observable the prefix-reuse settings (cachePrompt / cacheReuse / swaFull) produce, so it is
         // surfaced rather than dropped: without it a run pays swaFull's KV memory on faith.
