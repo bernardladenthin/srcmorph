@@ -13,17 +13,18 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiRegenerateOn;
-import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
+import net.ladenthin.srcmorph.facts.AiFactExtractor;
+import net.ladenthin.srcmorph.indexer.generation.AiGenerationResult;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
@@ -74,7 +75,7 @@ public class PackageIndexer {
     private static final String CHILD_SUMMARY_MISSING_NOTE = "(no summary available)";
 
     /**
-     * Context-type label passed to {@link AiFieldGenerationSupport} so that trim-warning
+     * Context-type label passed to {@link SummaryGenerator} so that trim-warning
      * log messages read "Trimmed AI input for package field '…'".
      */
     private static final String CONTEXT_TYPE_PACKAGE = "package";
@@ -120,7 +121,7 @@ public class PackageIndexer {
     private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
-    private final AiFieldGenerationSupport fieldGenerationSupport;
+    private final SummaryGenerator summaryGenerator;
 
     /**
      * Creates a new {@link PackageIndexer}.
@@ -174,7 +175,7 @@ public class PackageIndexer {
         this.factsHash = AiFactExtractor.factsHash(rule.getFacts());
         this.modelHash = AiHeaderHashes.model(
                 rule.getAiDefinitionKey(), modelDefinitionSupport.getConfig(rule.getAiDefinitionKey()));
-        this.fieldGenerationSupport = new AiFieldGenerationSupport(
+        this.summaryGenerator = new SummaryGenerator(
                 generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
     }
 
@@ -300,7 +301,7 @@ public class PackageIndexer {
         final String sourceText = buildPackageSourceText(baseHeader, contents, summaries, bodyCount);
 
         final AiGenerationResult result =
-                fieldGenerationSupport.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
+                summaryGenerator.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText);
 
         if (!result.complete()) {
             return AiIndexOutcome.FAILED;

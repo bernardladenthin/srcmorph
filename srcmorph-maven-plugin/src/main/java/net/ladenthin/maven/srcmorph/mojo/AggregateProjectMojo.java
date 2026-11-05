@@ -31,7 +31,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "aggregate-project", threadSafe = true)
 @ToString(callSuper = true)
-public class AggregateProjectMojo extends AbstractAiIndexMojo {
+public class AggregateProjectMojo extends AbstractSrcMorphMojo {
 
     /** Creates a new {@link AggregateProjectMojo}. */
     public AggregateProjectMojo() {

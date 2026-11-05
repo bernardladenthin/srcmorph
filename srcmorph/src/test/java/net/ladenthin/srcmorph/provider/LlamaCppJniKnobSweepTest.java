@@ -23,9 +23,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,7 +54,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * name the culprit in the test name.</p>
  *
  * <p><b>No silent gaps.</b> {@link #everyKnob_isSweptOrExplicitlyExcluded()} reflects over
- * {@link LlamaCppJniConfig}'s fields and fails when a knob is neither swept nor listed in
+ * {@link ProviderConfig}'s fields and fails when a knob is neither swept nor listed in
  * {@link #NOT_SWEPT} with a reason. A knob added later therefore reds this class until somebody
  * decides how it is covered, which is the part a hand-maintained list cannot promise.</p>
  */
@@ -85,7 +85,7 @@ public class LlamaCppJniKnobSweepTest {
     /**
      * Knobs that are deliberately not swept, each with the reason it cannot be.
      *
-     * <p>Keys are {@link LlamaCppJniConfig} field names; the completeness check below reads this map,
+     * <p>Keys are {@link ProviderConfig} field names; the completeness check below reads this map,
      * so an entry here is a documented decision rather than an omission.</p>
      */
     private static final Map<String, String> NOT_SWEPT = notSwept();
@@ -160,21 +160,20 @@ public class LlamaCppJniKnobSweepTest {
                 knob("stopStrings", b -> b.stopStrings(Collections.singletonList("</never-emitted>"))));
     }
 
-    private static Arguments knob(final String name, final Consumer<LlamaCppJniConfig.Builder> mutation) {
+    private static Arguments knob(final String name, final Consumer<ProviderConfig.Builder> mutation) {
         return Arguments.of(name, mutation);
     }
 
     /** The sweep baseline: everything at its default except the three knobs that bound the cost. */
-    private static LlamaCppJniConfig.Builder baseline() {
-        return LlamaCppJniConfig.builder(NativeLlamaAvailability.modelPath())
+    private static ProviderConfig.Builder baseline() {
+        return ProviderConfig.builder(NativeLlamaAvailability.modelPath())
                 .contextSize(SWEEP_CONTEXT_SIZE)
                 .maxOutputTokens(SWEEP_MAX_OUTPUT_TOKENS)
                 .threads(SWEEP_THREADS);
     }
 
     private static AiGenerationRequest request() {
-        return new AiGenerationRequest(
-                CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), SWEEP_SOURCE, HEADER);
+        return new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), SWEEP_SOURCE);
     }
 
     /**
@@ -187,11 +186,11 @@ public class LlamaCppJniKnobSweepTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("knobs")
     public void knob_atNonDefaultValue_stillProducesOutput(
-            final String knobName, final Consumer<LlamaCppJniConfig.Builder> mutation) throws Exception {
+            final String knobName, final Consumer<ProviderConfig.Builder> mutation) throws Exception {
         NativeLlamaAvailability.assumeAvailable();
 
         // arrange
-        final LlamaCppJniConfig.Builder builder = baseline();
+        final ProviderConfig.Builder builder = baseline();
         mutation.accept(builder);
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
 
@@ -214,14 +213,14 @@ public class LlamaCppJniKnobSweepTest {
     /**
      * Fails when a knob exists that is neither swept nor listed in {@link #NOT_SWEPT}.
      *
-     * <p>This is the part that survives the next person: a knob added to {@link LlamaCppJniConfig}
+     * <p>This is the part that survives the next person: a knob added to {@link ProviderConfig}
      * without a sweep case is exactly the shape of the two defects above, and a hand-maintained list
      * cannot notice it. Static and synthetic fields are skipped so an instrumented run (JaCoCo adds
      * {@code $jacocoData}) does not read as a missing knob.</p>
      */
     @Test
     public void everyKnob_isSweptOrExplicitlyExcluded() {
-        final Set<String> declared = Arrays.stream(LlamaCppJniConfig.class.getDeclaredFields())
+        final Set<String> declared = Arrays.stream(ProviderConfig.class.getDeclaredFields())
                 .filter(f -> !f.isSynthetic())
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
                 .map(Field::getName)

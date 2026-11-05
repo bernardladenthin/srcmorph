@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * The hashes a summary's header records of what wrote it, so a later run can tell a change
  * ({@link net.ladenthin.srcmorph.document.AiMdHeaderSupport}): the prompts ({@code P}), the model
  * ({@code M}) and the child summaries a package or the project reads ({@code K}); the fact counters'
- * ({@code N}) is {@link net.ladenthin.srcmorph.config.AiFactExtractor#factsHash}. Each is a CRC32, as
+ * ({@code N}) is {@link net.ladenthin.srcmorph.facts.AiFactExtractor#factsHash}. Each is a CRC32, as
  * hex. Pure; no I/O.
  */
 public final class AiHeaderHashes {

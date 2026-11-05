@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.ToString;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 

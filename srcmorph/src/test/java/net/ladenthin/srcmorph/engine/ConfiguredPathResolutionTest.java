@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.function.Function;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.AbsolutePathRequirement;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;

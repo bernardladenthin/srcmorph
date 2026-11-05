@@ -6,7 +6,6 @@ package net.ladenthin.srcmorph.config;
 import java.io.File;
 import java.util.List;
 import lombok.ToString;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.AiGeneratorVersion;
 import org.jspecify.annotations.Nullable;
 
@@ -18,7 +17,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The plugin fills what the file leaves unset from the Maven project ({@code baseDirectory},
  * {@code subtrees}, {@code projectName}, {@code pluginVersion}); see the plugin module's
- * {@code AbstractAiIndexMojo}.</p>
+ * {@code AbstractSrcMorphMojo}.</p>
  *
  * <p>Deliberately excluded: the per-goal {@code skip}/{@code skipFile}/{@code skipPackage}/
  * {@code skipProject} flags. Those are a Maven lifecycle concern (whether an execution runs at all) and
@@ -34,6 +33,13 @@ public class SrcMorphConfiguration {
 
     /** Default output directory (relative to {@link #baseDirectory}) when none is configured. */
     public static final String DEFAULT_OUTPUT_DIRECTORY = "src/site/ai";
+
+    /**
+     * How many characters of a file a {@code contentMatches} condition reads unless
+     * {@link #getContentHeadChars() contentHeadChars} says otherwise: enough for the header of a Kubernetes manifest, an OpenAPI
+     * document or a Camel route, and cheap for a large file.
+     */
+    public static final int DEFAULT_CONTENT_HEAD_CHARS = 16_384;
 
     /** Default AI generation provider name when none is configured. */
     public static final String DEFAULT_GENERATION_PROVIDER = "mock";
@@ -55,7 +61,7 @@ public class SrcMorphConfiguration {
     private @Nullable List<String> fileExtensions;
     private @Nullable List<String> fileNames;
     private @Nullable List<String> fileInterpreters;
-    private int contentHeadChars = AiConditionEvaluator.CONTENT_HEAD_CHARS;
+    private int contentHeadChars = DEFAULT_CONTENT_HEAD_CHARS;
     private long minFileSizeBytes;
     private long maxFileSizeBytes;
     private boolean planOnly;
@@ -243,7 +249,7 @@ public class SrcMorphConfiguration {
      * Returns how many characters of a file the {@code contentMatches} and {@code interpreters}
      * conditions read.
      *
-     * @return the characters; {@link AiConditionEvaluator#CONTENT_HEAD_CHARS} by default
+     * @return the characters; {@value #DEFAULT_CONTENT_HEAD_CHARS} by default
      */
     public int getContentHeadChars() {
         return contentHeadChars;

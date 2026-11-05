@@ -4,7 +4,6 @@
 package net.ladenthin.srcmorph.prompt;
 
 import lombok.ToString;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 
 /**
  * Prepares prompts for {@link net.ladenthin.srcmorph.provider.AiGenerationProvider} calls by substituting the source
@@ -61,7 +60,7 @@ public class AiPromptPreparationSupport {
         }
 
         final AiGenerationRequest emptySourceRequest =
-                new AiGenerationRequest(request.promptKey(), request.sourceFile(), "", request.currentHeader());
+                new AiGenerationRequest(request.promptKey(), request.sourceFile(), "");
 
         final String promptWithoutSource = promptSupport.buildPrompt(emptySourceRequest);
         // the marker goes behind the trimmed source, so it takes its room from the source's: a trimmed
@@ -73,8 +72,8 @@ public class AiPromptPreparationSupport {
         final String trimmedSource = trimSourceAtLineBreak(sourceText, trimPoint);
         final String trimmedSourceWithMarker = trimmedSource + EOF_MARKER;
 
-        final AiGenerationRequest trimmedRequest = new AiGenerationRequest(
-                request.promptKey(), request.sourceFile(), trimmedSourceWithMarker, request.currentHeader());
+        final AiGenerationRequest trimmedRequest =
+                new AiGenerationRequest(request.promptKey(), request.sourceFile(), trimmedSourceWithMarker);
 
         final String trimmedPrompt = promptSupport.buildPrompt(trimmedRequest);
 

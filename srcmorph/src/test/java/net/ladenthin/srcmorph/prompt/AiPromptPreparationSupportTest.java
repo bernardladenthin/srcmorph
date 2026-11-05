@@ -10,7 +10,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import org.junit.jupiter.api.Test;
@@ -43,8 +43,7 @@ public class AiPromptPreparationSupportTest {
         // arrange
         final AiPromptPreparationSupport support = new AiPromptPreparationSupport(createPromptSupport());
         final String sourceText = "public class Test {\n" + "}\n";
-        final AiGenerationRequest request =
-                new AiGenerationRequest("file-summary", Paths.get("Test.java"), sourceText, buildHeader());
+        final AiGenerationRequest request = new AiGenerationRequest("file-summary", Paths.get("Test.java"), sourceText);
 
         // act
         final AiPreparedPrompt preparedPrompt = support.preparePrompt(request, 10_000);
@@ -63,8 +62,7 @@ public class AiPromptPreparationSupportTest {
         // arrange
         final AiPromptPreparationSupport support = new AiPromptPreparationSupport(createPromptSupport());
         final String sourceText = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        final AiGenerationRequest request =
-                new AiGenerationRequest("file-summary", Paths.get("Test.java"), sourceText, buildHeader());
+        final AiGenerationRequest request = new AiGenerationRequest("file-summary", Paths.get("Test.java"), sourceText);
 
         // act
         final AiPreparedPrompt preparedPrompt = support.preparePrompt(request, 40);
@@ -83,8 +81,8 @@ public class AiPromptPreparationSupportTest {
     public void preparePrompt_overheadAlreadyExceedsLimit_sourceTrimmedToEmpty() {
         // arrange
         final AiPromptPreparationSupport support = new AiPromptPreparationSupport(createPromptSupport());
-        final AiGenerationRequest request = new AiGenerationRequest(
-                "file-summary", Paths.get("Test.java"), "abcdefghijklmnopqrstuvwxyz", buildHeader());
+        final AiGenerationRequest request =
+                new AiGenerationRequest("file-summary", Paths.get("Test.java"), "abcdefghijklmnopqrstuvwxyz");
 
         // act
         final AiPreparedPrompt preparedPrompt = support.preparePrompt(request, 5);
@@ -102,8 +100,7 @@ public class AiPromptPreparationSupportTest {
         final AiPromptSupport promptSupport = createPromptSupport();
         final AiPromptPreparationSupport support = new AiPromptPreparationSupport(promptSupport);
         final String sourceText = "public class Test {}\n";
-        final AiGenerationRequest request =
-                new AiGenerationRequest("file-summary", Paths.get("Test.java"), sourceText, buildHeader());
+        final AiGenerationRequest request = new AiGenerationRequest("file-summary", Paths.get("Test.java"), sourceText);
         // limit set to EXACTLY the full prompt length: the <= guard must treat this as "fits".
         final int exactLimit = promptSupport
                 .buildPrompt("file-summary", Paths.get("Test.java"), sourceText)
@@ -182,8 +179,7 @@ public class AiPromptPreparationSupportTest {
         }
         for (int window = 300; window < 1_500; window += 7) {
             final AiPreparedPrompt prepared = support.preparePrompt(
-                    new AiGenerationRequest("file-summary", Paths.get("A.java"), source.toString(), buildHeader()),
-                    window);
+                    new AiGenerationRequest("file-summary", Paths.get("A.java"), source.toString()), window);
             assertThat(prepared.trimmed(), is(true));
             assertThat(prepared.prompt().length() <= window, is(true));
         }

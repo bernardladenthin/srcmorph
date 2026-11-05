@@ -124,7 +124,7 @@ public final class AggregatePackagesEngine {
         final AiIndexTally aggregated;
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, rule.getAiDefinitionKey()),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, rule.getAiDefinitionKey()),
                 promptSupport)) {
             final PackageIndexer packageIndexer = new PackageIndexer(
                     basePath,

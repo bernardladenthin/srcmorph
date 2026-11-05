@@ -7,8 +7,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
-import net.ladenthin.srcmorph.document.AiMdHeader;
+import net.ladenthin.srcmorph.indexer.generation.AiInputWindowCalculator;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationTimings;
@@ -75,23 +75,22 @@ public final class AiCalibrationRunner {
         final long availableSourceChars = AiInputWindowCalculator.availableSourceChars(config, basePromptLength);
         final int midChars = clampSourceChars((long) (availableSourceChars * MID_WINDOW_FRACTION));
         final int nearChars = clampSourceChars((long) (availableSourceChars * NEAR_WINDOW_FRACTION));
-        final AiMdHeader header = new AiMdHeader(CALIBRATION_CONTEXT_NAME, "1.0", "", "", "", "", "", "file");
         // The warmup and the decode probe use the SAME tiny source, so the probe reuses the warmup's
         // prefill KV (prompt cache) and its wall-clock is close to pure decode.
         final String tinySource = syntheticSource(WARMUP_SOURCE_CHARS);
 
         final long loadStartNanos = System.nanoTime();
-        provider.generateWithTimings(request(promptKey, contextFile, tinySource, header));
+        provider.generateWithTimings(new AiGenerationRequest(promptKey, contextFile, tinySource));
         final double loadSeconds = (System.nanoTime() - loadStartNanos) / NANOS_PER_SECOND;
 
         final long midStartNanos = System.nanoTime();
-        final AiGenerationTimings mid =
-                provider.generateWithTimings(request(promptKey, contextFile, syntheticSource(midChars), header));
+        final AiGenerationTimings mid = provider.generateWithTimings(
+                new AiGenerationRequest(promptKey, contextFile, syntheticSource(midChars)));
         final double midWallSeconds = (System.nanoTime() - midStartNanos) / NANOS_PER_SECOND;
 
         final long nearStartNanos = System.nanoTime();
-        final AiGenerationTimings near =
-                provider.generateWithTimings(request(promptKey, contextFile, syntheticSource(nearChars), header));
+        final AiGenerationTimings near = provider.generateWithTimings(
+                new AiGenerationRequest(promptKey, contextFile, syntheticSource(nearChars)));
         final double nearWallSeconds = (System.nanoTime() - nearStartNanos) / NANOS_PER_SECOND;
 
         // Preferred path: the provider reports the model's OWN measured throughput (exact tokens/sec).
@@ -110,7 +109,7 @@ public final class AiCalibrationRunner {
         // generated text gives the ACTUAL output size).
         final long probeStartNanos = System.nanoTime();
         final AiGenerationTimings probe =
-                provider.generateWithTimings(request(promptKey, contextFile, tinySource, header));
+                provider.generateWithTimings(new AiGenerationRequest(promptKey, contextFile, tinySource));
         final double probeWallSeconds = (System.nanoTime() - probeStartNanos) / NANOS_PER_SECOND;
         return wallClockFallback(
                 loadSeconds,
@@ -231,10 +230,5 @@ public final class AiCalibrationRunner {
             sb.append(SYNTHETIC_SOURCE_LINE);
         }
         return sb.toString();
-    }
-
-    private static AiGenerationRequest request(
-            final String promptKey, final Path contextFile, final String source, final AiMdHeader header) {
-        return new AiGenerationRequest(promptKey, contextFile, source, header);
     }
 }

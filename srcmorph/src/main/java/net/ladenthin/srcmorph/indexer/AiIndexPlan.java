@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
-import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator;
 
 /**
  * The routing plan for one {@code generate} run: which files each AI model will index (with which

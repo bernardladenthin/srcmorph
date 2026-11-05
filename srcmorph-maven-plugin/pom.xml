@@ -54,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
              with -Dai.<name>=<value>. Downstream consumers of the PUBLISHED plugin do NOT inherit these;
              their own configuration file sets the same knobs (gpuLayers, mainGpu, devices,
              aiDefinitionKey) and may use ${...} for their own properties. The published mojo
-             parameters are the separate `srcmorph.*` set (see AbstractAiIndexMojo). Do NOT "fix" the
+             parameters are the separate `srcmorph.*` set (see AbstractSrcMorphMojo). Do NOT "fix" the
              docs' `-Dai.*` examples to `srcmorph.*`: the two namespaces are intentionally different.
              ==================================================================================== -->
         <!-- Default AI model definition (key) used by the gpt-oss profile's generate/aggregate executions.
@@ -195,7 +195,7 @@ SPDX-License-Identifier: Apache-2.0
             net.jqwik / org.jetbrains.lincheck / ch.qos.logback are deliberately NOT declared here:
             after the srcmorph extraction, no test remaining in this module uses jqwik properties,
             Lincheck (AiGenerationKindLincheckTest moved to srcmorph with the config package), or a
-            logback ListAppender (AiFieldGenerationSupportTest moved to srcmorph too). jqwik is still
+            logback ListAppender (SummaryGeneratorTest moved to srcmorph too). jqwik is still
             named as a string literal in PluginArchitectureTest's noTestFrameworksInProduction rule,
             which needs no dependency on the jar itself.
         -->
@@ -739,7 +739,7 @@ SPDX-License-Identifier: Apache-2.0
                 </dependencies>
                 <configuration>
                     <targetClasses>
-                        <param>net.ladenthin.maven.srcmorph.mojo.AbstractAiIndexMojo</param>
+                        <param>net.ladenthin.maven.srcmorph.mojo.AbstractSrcMorphMojo</param>
                         <param>net.ladenthin.maven.srcmorph.mojo.GenerateMojo</param>
                         <param>net.ladenthin.maven.srcmorph.mojo.AggregatePackagesMojo</param>
                         <param>net.ladenthin.maven.srcmorph.mojo.AggregateProjectMojo</param>

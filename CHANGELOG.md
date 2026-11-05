@@ -33,6 +33,17 @@ The entries below hold the details; what a 1.4.0 user changes:
   output tokens. `AiIncompleteAnswerException.Reason` has a fourth value, `ABORTED`.
   `AiGenerationUsage.add` is `withCall` (one call's usage). `RunRecord` takes the skipped count
   (`new RunRecord(pluginVersion, skipped)`). `AiGenerationProvider` has `takeLoadNanos()`.
+- **Java callers of the library, the package restructure** (the configuration file, the CLI's
+  commands and the plugin's goals and properties stay as they are; see the entry under Changed):
+  fix the imports of the moved classes and rename `LlamaCppJniConfig` to `ProviderConfig`,
+  `LlamaCppJniConfigFactory` to `ProviderConfigFactory`, `AiFieldGenerationSupport` to
+  `SummaryGenerator` and `EngineSupport.resolveLlamaCppJniConfig` to `resolveProviderConfig`.
+  `AiGenerationRequest` takes three arguments (no header); `SummaryGenerator.generate` takes four
+  (no header). `AiConditionEvaluator.CONTENT_HEAD_CHARS` is
+  `SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS`, `AiFactExtractor.READS_PER_CHAR` and
+  `READ_ALLOWANCE` are `ReadBudget`'s, and
+  `OpenAiCompatibleAiGenerationProvider.withoutUserInfo(text)` is `UrlUserInfo.mask(text)`. A
+  plugin subclass extends `AbstractSrcMorphMojo` instead of `AbstractAiIndexMojo`.
 
 ### Added
 
@@ -159,6 +170,24 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The core library's packages say what their classes do** (the review of 2026-11-05,
+  `docs/code-review-2026-11-05.md`, moves M1 to M10 and renames N1 to N3). `config` holds only the
+  beans and the file loader: the routing (`AiConditionEvaluator`, `AiFieldGenerationSelector`,
+  `AiFileContext`) is the new package `routing`, the fact counters (`AiFactExtractor`,
+  `AiFactDefinitionLoader`, `AiFactDefinitionSupport`) the new package `facts`, and
+  `AiPromptDefinition`, a bean like the others, moved from `prompt` into `config`. The generation of
+  one summary body is the new sub-package `indexer.generation`: `SummaryGenerator` (was
+  `AiFieldGenerationSupport`) with `AiMapReduceSupport`, `AiTokenWindow`, `AiOverflowBackoff`,
+  `AiInputWindowCalculator`, `AiRouteEstimator`, `AiGenerationResult` (from `document`) and
+  `AiSourceChunker`, `AiDeterministicSummary`, `AiGenerationTimeEstimator` (from `support`).
+  `AiGenerationRequest` moved from `document` to `prompt` and lost the header it carried and no
+  provider read; `AiProgressBar` moved from `support` to `engine`. `support` gained `ReadBudget` (the
+  read limit of a pattern, from `AiFactExtractor`) and `UrlUserInfo` (the masking of a URL's user
+  info, which the CLI reached through a provider class). `LlamaCppJniConfig` is `ProviderConfig`,
+  since it configures every provider, and the plugin's base class `AbstractSrcMorphMojo`. The ArchUnit
+  layering names every package with the exact layers that use it: `config` no longer depends on
+  `prompt`, `prompt` and `provider` no longer on `document`, and a new rule keeps
+  `indexer.generation` from depending on the walkers.
 - **The benchmark's runs and tools are pinned better.** `run.py`'s meta records the srcmorph commit
   (`+dirty` with local changes), the Python version and a SHA-256 over the corpus; a test pins the
   bytes `large.py` writes at `--scale 1.0`, so a Python whose `random` draws differently fails it.

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Verifies the per-phase skip mechanism: the generalized {@code shouldSkip()} rule in
- * {@link AbstractAiIndexMojo} and each concrete goal's independent phase flag.
+ * {@link AbstractSrcMorphMojo} and each concrete goal's independent phase flag.
  */
 public class MojoPhaseSkipTest {
 
@@ -32,8 +32,8 @@ public class MojoPhaseSkipTest {
         assertThat(mojo(true, true).shouldSkip(), is(true));
     }
 
-    private static AbstractAiIndexMojo mojo(final boolean globalSkip, final boolean phaseSkip) {
-        final AbstractAiIndexMojo mojo = new AbstractAiIndexMojo() {
+    private static AbstractSrcMorphMojo mojo(final boolean globalSkip, final boolean phaseSkip) {
+        final AbstractSrcMorphMojo mojo = new AbstractSrcMorphMojo() {
             @Override
             protected boolean isPhaseSkipped() {
                 return phaseSkip;
@@ -88,7 +88,7 @@ public class MojoPhaseSkipTest {
 
     /**
      * Sets a {@code boolean} field by name on {@code target}, walking up the class hierarchy so a
-     * field declared on a superclass (e.g. the global {@code skip} on {@link AbstractAiIndexMojo}) is
+     * field declared on a superclass (e.g. the global {@code skip} on {@link AbstractSrcMorphMojo}) is
      * found. Mirrors how Maven's plugin framework injects {@code @Parameter} fields via reflection.
      *
      * @param target    the object whose field to set
@@ -128,7 +128,7 @@ public class MojoPhaseSkipTest {
      * @return the captured info lines
      * @throws Exception if the mojo throws or a field cannot be set
      */
-    private List<String> executeWithGlobalSkip(final AbstractAiIndexMojo mojo) throws Exception {
+    private List<String> executeWithGlobalSkip(final AbstractSrcMorphMojo mojo) throws Exception {
         final CapturingLog log = new CapturingLog();
         mojo.setLog(log);
         setBooleanField(mojo, "skip", true);

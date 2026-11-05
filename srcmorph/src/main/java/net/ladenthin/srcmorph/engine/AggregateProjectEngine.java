@@ -177,7 +177,7 @@ public final class AggregateProjectEngine {
         final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, overview.getAiDefinitionKey()),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, overview.getAiDefinitionKey()),
                 promptSupport)) {
             final ProjectIndexer indexer = new ProjectIndexer(
                     title,

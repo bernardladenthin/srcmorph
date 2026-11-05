@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiCondition;
-import net.ladenthin.srcmorph.config.AiConditionEvaluator;
 import net.ladenthin.srcmorph.config.AiConditionGroup;
 import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
@@ -28,9 +27,11 @@ import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiRangeCondition;
 import net.ladenthin.srcmorph.config.AiRegenerateOn;
+import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
@@ -70,12 +71,12 @@ public class SourceFileIndexerTest {
                 maxSizeBytes,
                 false,
                 regenerateOn,
-                AiConditionEvaluator.CONTENT_HEAD_CHARS);
+                SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
     }
 
-    private AiFieldGenerationSupport mockSupport() {
+    private SummaryGenerator mockSupport() {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        return new AiFieldGenerationSupport(
+        return new SummaryGenerator(
                 new MockAiGenerationProvider(),
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -234,7 +235,7 @@ public class SourceFileIndexerTest {
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
         final AiFieldGenerationConfig rule =
                 CommonTestFixtures.createFileFieldGenerations().get(0);
-        final AiFieldGenerationSupport support = mockSupport();
+        final SummaryGenerator support = mockSupport();
 
         // first write
         final AiIndexOutcome wrote = indexer.indexFile(foo, rule, support, "", "", "");
@@ -267,7 +268,7 @@ public class SourceFileIndexerTest {
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
         final AiFieldGenerationConfig rule =
                 CommonTestFixtures.createFileFieldGenerations().get(0);
-        final AiFieldGenerationSupport support = mockSupport();
+        final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(AiIndexOutcome.WRITTEN));
 
         // act: another byte that is no UTF-8 either
@@ -289,7 +290,7 @@ public class SourceFileIndexerTest {
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
         final AiFieldGenerationConfig rule =
                 CommonTestFixtures.createFileFieldGenerations().get(0);
-        final AiFieldGenerationSupport support = mockSupport();
+        final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(AiIndexOutcome.WRITTEN));
 
         // act
@@ -318,7 +319,7 @@ public class SourceFileIndexerTest {
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
         final AiFieldGenerationConfig rule =
                 CommonTestFixtures.createFileFieldGenerations().get(0);
-        final AiFieldGenerationSupport support = mockSupport();
+        final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "", "EEEE0005"), is(AiIndexOutcome.WRITTEN));
 
         // act
@@ -348,7 +349,7 @@ public class SourceFileIndexerTest {
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L, neither);
         final AiFieldGenerationConfig rule =
                 CommonTestFixtures.createFileFieldGenerations().get(0);
-        final AiFieldGenerationSupport support = mockSupport();
+        final SummaryGenerator support = mockSupport();
         assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(AiIndexOutcome.WRITTEN));
 
         // act
@@ -488,7 +489,11 @@ public class SourceFileIndexerTest {
     // <editor-fold defaultstate="collapsed" desc="fileNames, contentMatches and byte order marks">
     private static SourceFileIndexer indexerWithNames(final Path baseDirectory, final List<String> fileNames) {
         return indexer(
-                baseDirectory, fileNames, Collections.<String>emptyList(), AiConditionEvaluator.CONTENT_HEAD_CHARS, 0L);
+                baseDirectory,
+                fileNames,
+                Collections.<String>emptyList(),
+                SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS,
+                0L);
     }
 
     private static SourceFileIndexer indexer(
@@ -587,7 +592,7 @@ public class SourceFileIndexerTest {
                 0L,
                 false,
                 new AiRegenerateOn(),
-                AiConditionEvaluator.CONTENT_HEAD_CHARS);
+                SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
 
         assertThat(withNull.collectCandidates(temp).size(), is(1));
     }
@@ -786,7 +791,7 @@ public class SourceFileIndexerTest {
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path inside = temp.resolve("src/Inside.java");
         final Path outside = temp.resolve("src/Outside.java");
-        final int head = AiConditionEvaluator.CONTENT_HEAD_CHARS;
+        final int head = SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS;
         writeJava(inside, "x".repeat(head - 4) + "MARK" + "y".repeat(100));
         writeJava(outside, "x".repeat(head - 3) + "MARK" + "y".repeat(100));
         final List<AiFieldGenerationConfig> contentOnly =
@@ -813,7 +818,7 @@ public class SourceFileIndexerTest {
         // 16,384 characters of three bytes each are 49,152 bytes: the head reads them all
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path wide = temp.resolve("src/Wide.java");
-        final int head = AiConditionEvaluator.CONTENT_HEAD_CHARS;
+        final int head = SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS;
         writeJava(wide, "€".repeat(head - 4) + "MARK" + "€".repeat(head));
         final List<AiFieldGenerationConfig> rules =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
@@ -887,9 +892,9 @@ public class SourceFileIndexerTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">
-    private AiFieldGenerationSupport emptyAnswerSupport() {
+    private SummaryGenerator emptyAnswerSupport() {
         final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        return new AiFieldGenerationSupport(
+        return new SummaryGenerator(
                 request -> "",
                 new AiPromptPreparationSupport(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
@@ -965,7 +970,7 @@ public class SourceFileIndexerTest {
         small.setCharsPerToken(1);
         small.setContextSize(4_000);
         final List<String> sent = new ArrayList<>();
-        final AiFieldGenerationSupport recording = new AiFieldGenerationSupport(
+        final SummaryGenerator recording = new SummaryGenerator(
                 request -> {
                     sent.add(request.sourceText());
                     return "summary";
@@ -998,7 +1003,7 @@ public class SourceFileIndexerTest {
         model.setModelPath("mock.gguf");
         final AiPromptSupport prompts = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
         final List<String> heads = new ArrayList<>();
-        final AiFieldGenerationSupport recording = new AiFieldGenerationSupport(
+        final SummaryGenerator recording = new SummaryGenerator(
                 request -> {
                     final String message = prompts.userMessage(request.sourceFile(), request.sourceText());
                     heads.add(message.substring(0, message.indexOf('\n')));

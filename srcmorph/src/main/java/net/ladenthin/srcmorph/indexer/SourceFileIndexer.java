@@ -17,24 +17,28 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.AiCondition;
-import net.ladenthin.srcmorph.config.AiConditionEvaluator;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
-import net.ladenthin.srcmorph.config.AiFileContext;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
 import net.ladenthin.srcmorph.config.AiRegenerateOn;
-import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
+import net.ladenthin.srcmorph.indexer.generation.AiGenerationResult;
+import net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.AiInputWindowCalculator;
+import net.ladenthin.srcmorph.indexer.generation.AiMapReduceSupport;
+import net.ladenthin.srcmorph.indexer.generation.AiRouteEstimator;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.routing.AiConditionEvaluator;
+import net.ladenthin.srcmorph.routing.AiFieldGenerationSelector;
+import net.ladenthin.srcmorph.routing.AiFileContext;
 import net.ladenthin.srcmorph.support.AiChecksumSupport;
-import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiShebang;
 import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
@@ -55,7 +59,7 @@ import org.slf4j.LoggerFactory;
  *       and goal-level size-band filters.</li>
  *   <li>{@link #classify(Collection, List)} — route each candidate to a rule (prompt + model), a skip,
  *       or unmatched, producing an {@link AiIndexPlan}.</li>
- *   <li>{@link #indexFile(Path, AiFieldGenerationConfig, AiFieldGenerationSupport, String, String, String)} — write
+ *   <li>{@link #indexFile(Path, AiFieldGenerationConfig, SummaryGenerator, String, String, String)} — write
  *       one file's {@code .ai.md} with a given rule, using a provider-bearing support (one per model
  *       group).</li>
  * </ol>
@@ -68,7 +72,7 @@ public final class SourceFileIndexer {
     private static final Logger LOGGER = LoggerFactory.getLogger(SourceFileIndexer.class);
 
     /**
-     * Context-type label passed to {@link AiFieldGenerationSupport} so that trim-warning
+     * Context-type label passed to {@link SummaryGenerator} so that trim-warning
      * log messages read "Trimmed AI input for file field '…'".
      */
     private static final String CONTEXT_TYPE_FILE = "file";
@@ -354,7 +358,7 @@ public final class SourceFileIndexer {
 
     /**
      * Returns the prompt length the run sizes a chunk next to: for a chunked rule the longer of its map and
-     * reduce prompts with a chunk's label reserve, as {@code AiFieldGenerationSupport} computes it; otherwise
+     * reduce prompts with a chunk's label reserve, as {@code SummaryGenerator} computes it; otherwise
      * the rule's own.
      *
      * @param rule             the routing rule
@@ -388,7 +392,7 @@ public final class SourceFileIndexer {
      *
      * @param sourceFile the source file
      * @param rule       the routing rule selected for it (supplies the prompt key)
-     * @param support    the field-generation support holding the model group's provider
+     * @param support    the summary generator holding the model group's provider
      * @param promptHash the CRC32 of the rule's prompts, or {@code ""} to write no {@code P}
      * @param factsHash  the CRC32 of the rule's fact counters, or {@code ""} to write no {@code N}
      * @param modelHash  the CRC32 of the rule's model ({@link AiHeaderHashes#model}), or {@code ""} to write
@@ -401,7 +405,7 @@ public final class SourceFileIndexer {
     public AiIndexOutcome indexFile(
             final Path sourceFile,
             final AiFieldGenerationConfig rule,
-            final AiFieldGenerationSupport support,
+            final SummaryGenerator support,
             final String promptHash,
             final String factsHash,
             final String modelHash)
@@ -442,7 +446,7 @@ public final class SourceFileIndexer {
 
         // the model reads the path below the base directory, so two web.xml of different modules read apart
         final AiGenerationResult result =
-                support.generate(rule, baseDirectory.relativize(sourceFile), CONTEXT_TYPE_FILE, sourceText, baseHeader);
+                support.generate(rule, baseDirectory.relativize(sourceFile), CONTEXT_TYPE_FILE, sourceText);
         if (!result.complete()) {
             return AiIndexOutcome.FAILED;
         }

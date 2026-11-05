@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.ToString;
+import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.AiPathSupport;
 import net.ladenthin.srcmorph.support.AiProfileFileSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;

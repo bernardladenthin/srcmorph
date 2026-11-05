@@ -25,8 +25,8 @@ import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicTest;
@@ -243,8 +243,8 @@ public class ExamplesConfigBindingTest {
                 EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml"))) {
             final List<AiFieldGenerationConfig> rules =
                     Main.fromYaml(Main.readString(config)).srcMorph.getFieldGenerations();
-            final net.ladenthin.srcmorph.config.AiFieldGenerationSelector selector =
-                    new net.ladenthin.srcmorph.config.AiFieldGenerationSelector();
+            final net.ladenthin.srcmorph.routing.AiFieldGenerationSelector selector =
+                    new net.ladenthin.srcmorph.routing.AiFieldGenerationSelector();
             selector.validate(rules);
             for (final String name : secrets) {
                 final AiFieldGenerationConfig rule = selector.select(rules, context(name));
@@ -263,8 +263,8 @@ public class ExamplesConfigBindingTest {
                         Main.readString(EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml")))
                 .srcMorph
                 .getFieldGenerations();
-        final net.ladenthin.srcmorph.config.AiFieldGenerationSelector selector =
-                new net.ladenthin.srcmorph.config.AiFieldGenerationSelector();
+        final net.ladenthin.srcmorph.routing.AiFieldGenerationSelector selector =
+                new net.ladenthin.srcmorph.routing.AiFieldGenerationSelector();
         selector.validate(rules);
         final String[][] cases = {
             {"src/main/java/shop/Order.java", "package shop;\nclass Order {}\n", "java"},
@@ -334,13 +334,13 @@ public class ExamplesConfigBindingTest {
             final String path = c[0];
             final String name = path.substring(path.lastIndexOf('/') + 1);
             final AiFieldGenerationConfig rule = selector.select(
-                    rules, new net.ladenthin.srcmorph.config.AiFileContext(name, path, 100L, 3, 0L, c[1]));
+                    rules, new net.ladenthin.srcmorph.routing.AiFileContext(name, path, 100L, 3, 0L, c[1]));
             assertThat(path, rule == null ? null : rule.getId(), is(equalTo(c[2])));
         }
     }
 
-    private static net.ladenthin.srcmorph.config.AiFileContext context(final String name) {
-        return new net.ladenthin.srcmorph.config.AiFileContext(name, "src/" + name, 100L, 3, 0L);
+    private static net.ladenthin.srcmorph.routing.AiFileContext context(final String name) {
+        return new net.ladenthin.srcmorph.routing.AiFileContext(name, "src/" + name, 100L, 3, 0L);
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {

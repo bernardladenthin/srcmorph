@@ -33,7 +33,7 @@ import net.ladenthin.srcmorph.engine.CalibrationReport;
 import net.ladenthin.srcmorph.engine.GenerateEngine;
 import net.ladenthin.srcmorph.engine.ListModelsEngine;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
-import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,7 +253,7 @@ public class Main {
      * @throws IOException if the configuration cannot be serialised
      */
     static String configurationEcho(final CConfiguration configuration) throws IOException {
-        return OpenAiCompatibleAiGenerationProvider.withoutUserInfo(
+        return UrlUserInfo.mask(
                 "Please review the transformed configuration to ensure it aligns with your expectations "
                         + "and requirements before proceeding.:\n"
                         + "########## BEGIN transformed JSON configuration ##########\n"

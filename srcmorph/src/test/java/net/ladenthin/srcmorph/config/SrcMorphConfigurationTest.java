@@ -11,7 +11,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.File;
 import java.util.Arrays;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
 import net.ladenthin.srcmorph.support.AiGeneratorVersion;
 import org.junit.jupiter.api.Test;
 
@@ -90,7 +89,7 @@ public class SrcMorphConfigurationTest {
     public void fileInterpretersAndContentHeadChars_defaultAndRoundTrip() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
         assertThat(c.getFileInterpreters() == null, is(true));
-        assertThat(c.getContentHeadChars(), is(AiConditionEvaluator.CONTENT_HEAD_CHARS));
+        assertThat(c.getContentHeadChars(), is(SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS));
         c.setFileInterpreters(java.util.Arrays.asList("bash", "perl"));
         c.setContentHeadChars(65_536);
         assertThat(c.getFileInterpreters(), is(java.util.Arrays.asList("bash", "perl")));

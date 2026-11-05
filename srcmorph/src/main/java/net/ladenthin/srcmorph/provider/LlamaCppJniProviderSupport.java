@@ -15,7 +15,7 @@ import net.ladenthin.llama.parameters.InferenceParameters;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Pair;
 import net.ladenthin.llama.value.Usage;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Everything {@link LlamaCppJniAiGenerationProvider} does that does not touch the JNI binding's
- * native side: turning a {@link AiGenerationRequest} plus a {@link LlamaCppJniConfig} into
+ * native side: turning a {@link AiGenerationRequest} plus a {@link ProviderConfig} into
  * {@link InferenceParameters}, resolving configured CLI strings to the binding's enums, and
  * reporting on a {@link ChatResponse} that has already come back.
  *
@@ -87,7 +87,7 @@ final class LlamaCppJniProviderSupport {
     /** Number of chat-template kwargs put into the map (used for presizing). */
     private static final int CHAT_TEMPLATE_KWARG_COUNT = 2;
 
-    private final LlamaCppJniConfig config;
+    private final ProviderConfig config;
     private final AiPromptSupport promptSupport;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
@@ -97,7 +97,7 @@ final class LlamaCppJniProviderSupport {
      * @param config        llama.cpp configuration
      * @param promptSupport prompt lookup used to render request prompts
      */
-    LlamaCppJniProviderSupport(final LlamaCppJniConfig config, final AiPromptSupport promptSupport) {
+    LlamaCppJniProviderSupport(final ProviderConfig config, final AiPromptSupport promptSupport) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
     }

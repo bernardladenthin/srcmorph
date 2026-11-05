@@ -5,13 +5,13 @@
 /**
  * JPMS module descriptor for the srcmorph core library.
  *
- * <p>The module exports the seven framework-free packages extracted from the
- * llamacpp-ai-index-maven-plugin's non-mojo layers: {@code config}, {@code document},
- * {@code engine}, {@code indexer}, {@code prompt}, {@code provider}, and {@code support}. These
- * hold the routing/configuration model (incl. the shared root {@code SrcMorphConfiguration}), the
- * {@code .ai.md} document codec, the per-phase orchestration engines, the file/package/project
- * indexers, the prompt templating support, the AI generation provider abstraction (incl. the
- * llama.cpp JNI binding), and the shared stateless helpers. The Maven plugin module
+ * <p>The module exports its ten framework-free packages: {@code config}, {@code document},
+ * {@code engine}, {@code facts}, {@code indexer}, {@code indexer.generation}, {@code prompt},
+ * {@code provider}, {@code routing} and {@code support}. These hold the configuration model (incl.
+ * the shared root {@code SrcMorphConfiguration}), the {@code .ai.md} document codec, the per-phase
+ * orchestration engines, the fact counters, the file/package/project indexers, the generation of
+ * one summary body, the prompt templating support, the AI generation provider abstraction (incl.
+ * the llama.cpp JNI binding), the rule routing, and the shared stateless helpers. The Maven plugin module
  * ({@code net.ladenthin.maven.srcmorph}, in its own reactor module {@code srcmorph-maven-plugin})
  * depends on this module and supplies only the {@code mojo} entry points, which now delegate to the
  * {@code engine} package.</p>
@@ -38,8 +38,8 @@
  * path, including the plan-time {@code GgufModelInspector}, failed for want of a readable module.
  * It is deliberately <b>not</b> {@code transitive}: the binding's types appear only in
  * package-private members ({@code lazyMode}, {@code cacheType},
- * {@code buildInferenceParameters}), never in an exported signature — {@code LlamaCppJniConfigFactory}
- * returns srcmorph's own {@code LlamaCppJniConfig} — so no consumer needs the module transitively.
+ * {@code buildInferenceParameters}), never in an exported signature — {@code ProviderConfigFactory}
+ * returns srcmorph's own {@code ProviderConfig} — so no consumer needs the module transitively.
  * Should a llama type ever surface in an exported signature, this must become
  * {@code requires transitive}.</p>
  *
@@ -77,8 +77,11 @@ module net.ladenthin.srcmorph {
     exports net.ladenthin.srcmorph.config;
     exports net.ladenthin.srcmorph.document;
     exports net.ladenthin.srcmorph.engine;
+    exports net.ladenthin.srcmorph.facts;
     exports net.ladenthin.srcmorph.indexer;
+    exports net.ladenthin.srcmorph.indexer.generation;
     exports net.ladenthin.srcmorph.prompt;
     exports net.ladenthin.srcmorph.provider;
+    exports net.ladenthin.srcmorph.routing;
     exports net.ladenthin.srcmorph.support;
 }

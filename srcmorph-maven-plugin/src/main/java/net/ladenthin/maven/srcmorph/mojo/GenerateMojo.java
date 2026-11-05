@@ -16,7 +16,7 @@ import org.apache.maven.plugins.annotations.Parameter;
  * Maven goal {@code srcmorph:generate}: summarizes every routed source file into its {@code .ai.md},
  * with the file rules ({@code srcMorph.fieldGenerations}) of the configuration file.
  *
- * <p>Thin wrapper: builds the configuration ({@code AbstractAiIndexMojo.buildConfiguration})
+ * <p>Thin wrapper: builds the configuration ({@code AbstractSrcMorphMojo.buildConfiguration})
  * and delegates the whole run to {@link GenerateEngine}.</p>
  */
 // @Parameter fields are populated by the Maven plugin framework via reflection after
@@ -25,7 +25,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "generate", threadSafe = true)
 @ToString(callSuper = true)
-public class GenerateMojo extends AbstractAiIndexMojo {
+public class GenerateMojo extends AbstractSrcMorphMojo {
 
     /** Creates a new {@link GenerateMojo}. */
     public GenerateMojo() {

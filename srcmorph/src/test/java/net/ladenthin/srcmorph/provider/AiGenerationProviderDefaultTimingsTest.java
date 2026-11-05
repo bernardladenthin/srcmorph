@@ -7,8 +7,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.file.Paths;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdHeader;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import org.junit.jupiter.api.Test;
 
 public class AiGenerationProviderDefaultTimingsTest {
@@ -22,7 +22,7 @@ public class AiGenerationProviderDefaultTimingsTest {
         // generated text with zero timings (no measurement available).
         final AiGenerationProvider provider = request -> "TEXT";
         final AiGenerationTimings timings =
-                provider.generateWithTimings(new AiGenerationRequest("summary", Paths.get("Foo.java"), "src", HEADER));
+                provider.generateWithTimings(new AiGenerationRequest("summary", Paths.get("Foo.java"), "src"));
 
         assertThat(timings.text(), is("TEXT"));
         assertThat(timings.promptTokens(), is(0));

@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
  * A composable file-matching condition for a routing rule — a recursive boolean tree.
  *
  * <p>Each node sets <strong>exactly one</strong> of the following (validated by
- * {@link AiConditionEvaluator#validate}):</p>
+ * {@link net.ladenthin.srcmorph.routing.AiConditionEvaluator#validate}):</p>
  * <ul>
  *   <li><b>combinators:</b> {@code and} (all children true), {@code or} (any child true),
  *       {@code not} (single child negated);</li>
@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
  *       base-relative path, same syntax as {@code excludes}), {@code fileNames} (globs over the file
  *       name alone, in any case: {@code Dockerfile}, {@code Jenkinsfile}, {@code *.gradle.kts}),
  *       {@code contentMatches} (a Java regular expression found in the first characters of the file,
- *       {@code contentHeadChars} of the configuration, {@value AiConditionEvaluator#CONTENT_HEAD_CHARS}
+ *       {@code contentHeadChars} of the configuration, {@value SrcMorphConfiguration#DEFAULT_CONTENT_HEAD_CHARS}
  *       by default), {@code interpreters} (the interpreter the file's {@code #!} line names, or a
  *       version of it: {@code bash}, {@code perl}, {@code python}; see
  *       {@link net.ladenthin.srcmorph.support.AiShebang}).</li>

@@ -16,8 +16,8 @@ public class AiGenerationProviderFactoryTest {
     private final AiGenerationProviderFactory factory = new AiGenerationProviderFactory();
     private final AiPromptSupport promptSupport = new AiPromptSupport(null);
 
-    private static LlamaCppJniConfig jniConfig() {
-        return LlamaCppJniConfig.builder("model.gguf").build();
+    private static ProviderConfig jniConfig() {
+        return ProviderConfig.builder("model.gguf").build();
     }
 
     @Test
@@ -58,7 +58,7 @@ public class AiGenerationProviderFactoryTest {
 
     @Test
     public void theModelsOwnProviderOverridesTheRunsProvider() {
-        final LlamaCppJniConfig remote = LlamaCppJniConfig.builder("")
+        final ProviderConfig remote = ProviderConfig.builder("")
                 .provider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
                 .build();
         assertThat(
@@ -68,8 +68,8 @@ public class AiGenerationProviderFactoryTest {
 
     @Test
     public void anUnknownProviderOfTheModelIsNamedInTheError() {
-        final LlamaCppJniConfig remote =
-                LlamaCppJniConfig.builder("").provider("nope-model").build();
+        final ProviderConfig remote =
+                ProviderConfig.builder("").provider("nope-model").build();
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class,
                 () -> factory.create(AiGenerationProviderFactory.PROVIDER_MOCK, remote, promptSupport));

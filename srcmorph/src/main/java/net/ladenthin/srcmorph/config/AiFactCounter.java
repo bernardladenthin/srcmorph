@@ -36,7 +36,7 @@ import lombok.ToString;
  * are intentionally NOT generated (instances are configuration data managed by position in a list, and
  * the mutable JavaBean shape makes value semantics unsafe).</p>
  *
- * @see AiFactExtractor
+ * @see net.ladenthin.srcmorph.facts.AiFactExtractor
  */
 @SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString

@@ -6,7 +6,7 @@ package net.ladenthin.srcmorph.provider;
 import java.io.IOException;
 import java.nio.file.Path;
 import lombok.ToString;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 
 /** Deterministic {@link AiGenerationProvider} that returns a mock summary; used for testing. */
 @ToString

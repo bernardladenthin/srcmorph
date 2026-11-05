@@ -22,7 +22,7 @@ import java.util.function.Function;
 import lombok.ToString;
 import net.ladenthin.llama.json.ChatResponseParser;
 import net.ladenthin.llama.value.ChatResponse;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -139,7 +139,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
      *                      {@code apiKeyEnv} and sampling knobs)
      * @param promptSupport the prompt definitions
      */
-    public OpenAiCompatibleAiGenerationProvider(final LlamaCppJniConfig config, final AiPromptSupport promptSupport) {
+    public OpenAiCompatibleAiGenerationProvider(final ProviderConfig config, final AiPromptSupport promptSupport) {
         this(config, promptSupport, System::getenv);
     }
 
@@ -151,7 +151,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
      * @param environment   looks up an environment variable by name, {@code null} when unset
      */
     OpenAiCompatibleAiGenerationProvider(
-            final LlamaCppJniConfig config,
+            final ProviderConfig config,
             final AiPromptSupport promptSupport,
             final Function<String, @Nullable String> environment) {
         this(config, promptSupport, environment, PARKING_WAITER);
@@ -166,7 +166,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
      * @param waiter        waits between two attempts of a request
      */
     OpenAiCompatibleAiGenerationProvider(
-            final LlamaCppJniConfig config,
+            final ProviderConfig config,
             final AiPromptSupport promptSupport,
             final Function<String, @Nullable String> environment,
             final RetryWaiter waiter) {
@@ -184,7 +184,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
      * @param readTimeoutMillis how long a read of the answer may wait
      */
     OpenAiCompatibleAiGenerationProvider(
-            final LlamaCppJniConfig config,
+            final ProviderConfig config,
             final AiPromptSupport promptSupport,
             final Function<String, @Nullable String> environment,
             final RetryWaiter waiter,
@@ -253,17 +253,6 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
      */
     public static @Nullable String keyProblem(final String baseUrl, final String apiKeyEnv) {
         return OpenAiCompatibleProviderSupport.keyProblem(baseUrl, apiKeyEnv, System::getenv);
-    }
-
-    /**
-     * Replaces the user info of every URL in a text by {@code ***} ({@code https://***@host/v1}), for a
-     * text that names a {@code baseUrl}: the CLI's configuration echo, a log line, a message.
-     *
-     * @param text the text
-     * @return the text with every URL's user info masked
-     */
-    public static String withoutUserInfo(final String text) {
-        return OpenAiCompatibleProviderSupport.withoutUserInfo(text);
     }
 
     private ChatResponse chatResponse(final AiGenerationRequest request) throws IOException {

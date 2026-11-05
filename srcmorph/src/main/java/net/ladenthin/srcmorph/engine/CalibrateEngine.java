@@ -183,7 +183,7 @@ public final class CalibrateEngine {
         LOGGER.info("Model '{}': loading (window ~{} source chars)...", modelKey, windowChars);
         try (AiGenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, modelKey),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, modelKey),
                 promptSupport)) {
             final AiCalibrationMeasurement m =
                     calibrationRunner.measure(provider, modelConfig, promptKey, promptPreparationSupport);

@@ -24,7 +24,7 @@ public class CalibrateEngineTest {
     /**
      * A model definition with a (dummy, never loaded) {@code modelPath} set: even with the mock
      * provider, the engine always builds a
-     * {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} value object, which requires a
+     * {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object, which requires a
      * non-null model path.
      */
     private static AiModelDefinition mockModelDefinition() {

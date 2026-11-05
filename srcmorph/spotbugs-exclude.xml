@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationConfig"/>
             <Class name="net.ladenthin.srcmorph.config.AiRegenerateOn"/>
-            <Class name="net.ladenthin.srcmorph.prompt.AiPromptDefinition"/>
+            <Class name="net.ladenthin.srcmorph.config.AiPromptDefinition"/>
         </Or>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
@@ -51,6 +51,19 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.engine.RunRecord"/>
+        <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
+    </Match>
+
+    <!--
+        IMC_IMMATURE_CLASS_NO_EQUALS on ReadBudget.
+
+        ReadBudget wraps the text one matcher reads and counts the characters it read,
+        which changes with every charAt; it lives for one match and is never compared
+        or used as a key. A value equality over a counter that moves while the matcher
+        runs would mislead. Identity is the correct semantics.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.support.ReadBudget"/>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
 
@@ -80,7 +93,7 @@ SPDX-License-Identifier: Apache-2.0
         AiModelDefinitionSupport above.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiConditionEvaluator"/>
         <Bug pattern="IMC_IMMATURE_CLASS_NO_EQUALS"/>
     </Match>
 
@@ -197,12 +210,12 @@ SPDX-License-Identifier: Apache-2.0
         suppression above.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.support.AiProgressBar"/>
+        <Class name="net.ladenthin.srcmorph.engine.AiProgressBar"/>
         <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
     </Match>
 
     <!--
-        THROWS_METHOD_THROWS_RUNTIMEEXCEPTION on AiFieldGenerationSupport.generateWithOverflowRetry.
+        THROWS_METHOD_THROWS_RUNTIMEEXCEPTION on SummaryGenerator.generateWithOverflowRetry.
         fb-contrib flags the `throw e` as a method throwing a RuntimeException, but this is not raising a
         new unchecked exception as control flow - it RE-THROWS the provider's own caught exception to
         propagate it unchanged (the retry loop only intercepts a context-overflow, identified by message,
@@ -211,7 +224,7 @@ SPDX-License-Identifier: Apache-2.0
         message-based detection deliberately avoids. Scoped to the one retry method.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport"/>
+        <Class name="net.ladenthin.srcmorph.indexer.generation.SummaryGenerator"/>
         <Method name="generateWithOverflowRetry"/>
         <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
     </Match>
@@ -236,7 +249,7 @@ SPDX-License-Identifier: Apache-2.0
         rationale as the AiGenerationTimeEstimator / AiProgressBar OPM suppressions.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFactDefinitionSupport"/>
+        <Class name="net.ladenthin.srcmorph.facts.AiFactDefinitionSupport"/>
         <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
     </Match>
 
@@ -340,7 +353,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Class name="net.ladenthin.srcmorph.config.AiConditionGroup"/>
             <Class name="net.ladenthin.srcmorph.config.AiRangeCondition"/>
-            <Class name="net.ladenthin.srcmorph.config.AiFileContext"/>
+            <Class name="net.ladenthin.srcmorph.routing.AiFileContext"/>
             <Class name="net.ladenthin.srcmorph.config.AiFactCounter"/>
             <Class name="net.ladenthin.srcmorph.config.AiFactDefinition"/>
         </Or>
@@ -392,12 +405,12 @@ SPDX-License-Identifier: Apache-2.0
             null through Jackson past the annotation; the explicit guards are the fail-fast contract.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiConditionEvaluator"/>
         <Method name="branchCount"/>
         <Bug pattern="CE_CLASS_ENVY"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiConditionEvaluator"/>
         <Or>
             <Method name="validateFileNames"/>
             <Method name="validateInterpreters"/>
@@ -405,7 +418,7 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiConditionEvaluator"/>
         <Or>
             <Method name="anyUses"/>
             <Method name="matchesExtension"/>
@@ -414,7 +427,7 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiConditionEvaluator"/>
         <Or>
             <Method name="validate"/>
             <Method name="validateContentMatches"/>
@@ -424,22 +437,22 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Class name="net.ladenthin.srcmorph.facts.AiFactExtractor"/>
         <Method name="factsHash"/>
         <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Class name="net.ladenthin.srcmorph.facts.AiFactExtractor"/>
         <Method name="withoutIgnored"/>
         <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Class name="net.ladenthin.srcmorph.facts.AiFactExtractor"/>
         <Method name="counts"/>
         <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Class name="net.ladenthin.srcmorph.facts.AiFactExtractor"/>
         <Or>
             <Method name="isReported"/>
             <Method name="validate"/>
@@ -448,12 +461,12 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationSelector"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiFieldGenerationSelector"/>
         <Method name="validateRule"/>
         <Bug pattern="CE_CLASS_ENVY"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationSelector"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiFieldGenerationSelector"/>
         <Method name="requireRouteKeys"/>
         <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
     </Match>
@@ -528,7 +541,7 @@ SPDX-License-Identifier: Apache-2.0
         <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
     </Match>
     <Match>
-        <Class name="net.ladenthin.srcmorph.support.AiGenerationTimeEstimator"/>
+        <Class name="net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator"/>
         <Or>
             <Method name="estimateDecodeMillis"/>
             <Method name="estimatePrefillMillis"/>
@@ -629,7 +642,7 @@ SPDX-License-Identifier: Apache-2.0
         warning is useless without saying which counter was stopped. Scoped to the one method.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Class name="net.ladenthin.srcmorph.facts.AiFactExtractor"/>
         <Method name="stopped"/>
         <Bug pattern="CRLF_INJECTION_LOGS"/>
     </Match>
@@ -640,7 +653,7 @@ SPDX-License-Identifier: Apache-2.0
         directory it was evaluated against. Scoped to the one method.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Class name="net.ladenthin.srcmorph.routing.AiConditionEvaluator"/>
         <Method name="stopped"/>
         <Bug pattern="CRLF_INJECTION_LOGS"/>
     </Match>
@@ -704,14 +717,14 @@ SPDX-License-Identifier: Apache-2.0
     <Match>
         <Or>
             <Class name="net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader"/>
-            <Class name="net.ladenthin.srcmorph.config.AiFactDefinitionLoader"/>
+            <Class name="net.ladenthin.srcmorph.facts.AiFactDefinitionLoader"/>
         </Or>
         <Method name="load"/>
         <Bug pattern="PATH_TRAVERSAL_IN"/>
     </Match>
 
     <!--
-        CC_CYCLOMATIC_COMPLEXITY on LlamaCppJniConfig.equals. The method is generated by Lombok's
+        CC_CYCLOMATIC_COMPLEXITY on ProviderConfig.equals. The method is generated by Lombok's
         @EqualsAndHashCode: one comparison branch per field, so its complexity is a direct function of
         the field count and nothing else. It crossed fb-contrib's threshold when the class grew from 26
         to 30 fields (the n-cpu-moe / n-cpu-ffn / kv-unified-per-slot / tensor-read-lazy knobs);
@@ -725,7 +738,7 @@ SPDX-License-Identifier: Apache-2.0
         surfaces.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniConfig"/>
+        <Class name="net.ladenthin.srcmorph.provider.ProviderConfig"/>
         <Method name="equals"/>
         <Bug pattern="CC_CYCLOMATIC_COMPLEXITY"/>
     </Match>
@@ -743,7 +756,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <!--
         CRLF_INJECTION_LOGS on the four indexer classes that log via SLF4J
-        (SourceFileIndexer, PackageIndexer, ProjectIndexer, AiFieldGenerationSupport), and on the
+        (SourceFileIndexer, PackageIndexer, ProjectIndexer, SummaryGenerator), and on the
         engine package's orchestration classes added in migration step 5 (GenerateEngine,
         AggregatePackagesEngine, AggregateProjectEngine, CalibrateEngine, EngineSupport) that log the
         same categories of value one tier up (they moved the mojo-level logging that used to go through
@@ -769,7 +782,7 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.indexer.SourceFileIndexer"/>
             <Class name="net.ladenthin.srcmorph.indexer.PackageIndexer"/>
             <Class name="net.ladenthin.srcmorph.indexer.ProjectIndexer"/>
-            <Class name="net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport"/>
+            <Class name="net.ladenthin.srcmorph.indexer.generation.SummaryGenerator"/>
             <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
             <Class name="net.ladenthin.srcmorph.engine.AggregatePackagesEngine"/>
             <Class name="net.ladenthin.srcmorph.engine.AggregateProjectEngine"/>
@@ -783,7 +796,7 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         DCN_NULLPOINTER_EXCEPTION on EngineSupport.buildPromptSupport / buildAiModelDefinitionSupport and
         GenerateEngine.resolveSharedFacts. Moved verbatim (same rationale) from what was
-        AbstractAiIndexMojo.buildPromptSupport / buildAiModelDefinitionSupport and
+        AbstractSrcMorphMojo.buildPromptSupport / buildAiModelDefinitionSupport and
         GenerateMojo.resolveSharedFacts in the srcmorph-maven-plugin module's own filter file
         (see that file for the full "why not the alternatives" reasoning): these catch sites are the
         deliberate translation bridge between the support classes' Objects.requireNonNull validation

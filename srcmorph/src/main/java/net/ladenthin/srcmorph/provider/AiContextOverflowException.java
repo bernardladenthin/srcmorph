@@ -7,7 +7,7 @@ import java.io.IOException;
 
 /**
  * The server refused a prompt as longer than the model's context. The caller can shrink the source
- * and ask again; {@code AiFieldGenerationSupport} does, as it does for the same error of a local model.
+ * and ask again; {@code SummaryGenerator} does, as it does for the same error of a local model.
  */
 public final class AiContextOverflowException extends IOException {
 

@@ -10,9 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.file.Paths;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import org.junit.jupiter.api.Test;
 
@@ -30,8 +30,8 @@ public class LlamaCppJniAiGenerationProviderTest {
             "0.0.0",
             AiMdHeaderCodec.NODE_TYPE_FILE);
 
-    private static LlamaCppJniConfig config(final int contextSize, final int maxOutputTokens) {
-        return LlamaCppJniConfig.builder(MODEL_PATH)
+    private static ProviderConfig config(final int contextSize, final int maxOutputTokens) {
+        return ProviderConfig.builder(MODEL_PATH)
                 .contextSize(contextSize)
                 .maxOutputTokens(maxOutputTokens)
                 .temperature(0.15f)
@@ -40,7 +40,7 @@ public class LlamaCppJniAiGenerationProviderTest {
     }
 
     private static AiGenerationRequest request(final String source) {
-        return new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), source, HEADER);
+        return new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), source);
     }
 
     // <editor-fold defaultstate="collapsed" desc="generate">

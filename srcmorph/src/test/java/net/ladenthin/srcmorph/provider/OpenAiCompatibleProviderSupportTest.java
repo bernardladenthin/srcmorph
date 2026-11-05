@@ -25,9 +25,9 @@ import net.ladenthin.llama.value.ChatMessage;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -51,26 +51,26 @@ public class OpenAiCompatibleProviderSupportTest {
             "0.0.0",
             AiMdHeaderCodec.NODE_TYPE_FILE);
 
-    private static final AiGenerationRequest REQUEST = new AiGenerationRequest(
-            CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), "class Test {}", HEADER);
+    private static final AiGenerationRequest REQUEST =
+            new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), "class Test {}");
 
-    private static OpenAiCompatibleProviderSupport support(final LlamaCppJniConfig config) {
+    private static OpenAiCompatibleProviderSupport support(final ProviderConfig config) {
         return new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, NO_ENVIRONMENT);
     }
 
     private static OpenAiCompatibleProviderSupport support(
-            final LlamaCppJniConfig config, final Map<String, String> environment) {
+            final ProviderConfig config, final Map<String, String> environment) {
         return new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, environment::get);
     }
 
-    private static JsonNode body(final LlamaCppJniConfig config) throws Exception {
+    private static JsonNode body(final ProviderConfig config) throws Exception {
         return MAPPER.readTree(support(config).requestBody(REQUEST));
     }
 
     // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
     public void constructor_nullArguments_throw() {
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("").build();
+        final ProviderConfig config = ProviderConfig.builder("").build();
         assertThrows(
                 NullPointerException.class,
                 () -> new OpenAiCompatibleProviderSupport(null, PROMPT_SUPPORT, NO_ENVIRONMENT));
@@ -85,7 +85,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_carriesTheSameMessagesAsTheJniProvider() throws Exception {
         // act
-        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder("").build());
 
         // assert
         final JsonNode messages = body.get("messages");
@@ -104,7 +104,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_defaults_sendTheDefaultSamplingAndOmitTheUnsetOptionalFields() throws Exception {
         // act
-        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder("").build());
 
         // assert
         assertThat(body.has("model"), is(false));
@@ -122,7 +122,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_setValues_areAllSent() throws Exception {
         // arrange
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder("")
                 .remoteModel("openai/gpt-6-luna")
                 .maxOutputTokens(256)
                 .temperature(0.5f)
@@ -156,7 +156,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_disabledValues_areOmitted() throws Exception {
         // arrange
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder("")
                 .remoteModel("   ")
                 .topK(0)
                 .seed(-1)
@@ -177,14 +177,14 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void requestBody_default_doesNotStream() throws Exception {
-        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder("").build());
         assertThat(body.get("stream").asBoolean(), is(false));
         assertThat(body.has("stream_options"), is(false));
     }
 
     @Test
     public void requestBody_stream_asksForTheEventStreamAndItsUsageChunk() throws Exception {
-        final JsonNode body = body(LlamaCppJniConfig.builder("").stream(true).build());
+        final JsonNode body = body(ProviderConfig.builder("").stream(true).build());
         assertThat(body.get("stream").asBoolean(), is(true));
         assertThat(body.get("stream_options").get("include_usage").asBoolean(), is(true));
     }
@@ -193,20 +193,20 @@ public class OpenAiCompatibleProviderSupportTest {
     // <editor-fold defaultstate="collapsed" desc="accept / completionJson">
     @Test
     public void accept_followsTheStreamSwitch() {
-        assertThat(support(LlamaCppJniConfig.builder("").build()).accept(), is("application/json"));
-        assertThat(support(LlamaCppJniConfig.builder("").stream(true).build()).accept(), is("text/event-stream"));
+        assertThat(support(ProviderConfig.builder("").build()).accept(), is("application/json"));
+        assertThat(support(ProviderConfig.builder("").stream(true).build()).accept(), is("text/event-stream"));
     }
 
     @Test
     public void completionJson_notStreaming_returnsTheBodyUnchanged() throws Exception {
         // a body that is no event stream: assembling it would fail for want of [DONE]
         final String body = "{\"choices\":[]}";
-        assertThat(support(LlamaCppJniConfig.builder("").build()).completionJson(body), is(body));
+        assertThat(support(ProviderConfig.builder("").build()).completionJson(body), is(body));
     }
 
     @Test
     public void completionJson_streaming_assemblesTheEvents() throws Exception {
-        final String json = support(LlamaCppJniConfig.builder("").stream(true).build())
+        final String json = support(ProviderConfig.builder("").stream(true).build())
                 .completionJson(
                         event("{\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}]}") + DONE);
         assertThat(
@@ -358,13 +358,13 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void endpoint_default_isOpenRouter() {
         assertThat(
-                support(LlamaCppJniConfig.builder("").build()).endpoint(),
+                support(ProviderConfig.builder("").build()).endpoint(),
                 is("https://openrouter.ai/api/v1/chat/completions"));
     }
 
     @Test
     public void endpoint_trailingSlashesAndBlanks_areRemoved() {
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder("")
                 .baseUrl(" http://127.0.0.1:8080/v1// ")
                 .build();
         assertThat(support(config).endpoint(), is("http://127.0.0.1:8080/v1/chat/completions"));
@@ -373,19 +373,19 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void endpoint_httpsAndHttp_areAccepted() {
         assertThat(
-                support(LlamaCppJniConfig.builder("").baseUrl("https://h/v1").build())
+                support(ProviderConfig.builder("").baseUrl("https://h/v1").build())
                         .endpoint(),
                 is("https://h/v1/chat/completions"));
         assertThat(
-                support(LlamaCppJniConfig.builder("").baseUrl("http://h/v1").build())
+                support(ProviderConfig.builder("").baseUrl("http://h/v1").build())
                         .endpoint(),
                 is("http://h/v1/chat/completions"));
     }
 
     @Test
     public void endpoint_otherScheme_isRejected() {
-        final OpenAiCompatibleProviderSupport support = support(
-                LlamaCppJniConfig.builder("").baseUrl("file:///etc/passwd").build());
+        final OpenAiCompatibleProviderSupport support =
+                support(ProviderConfig.builder("").baseUrl("file:///etc/passwd").build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc/passwd'"));
     }
@@ -393,7 +393,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void endpoint_otherSchemeWithUserInfo_isRejectedWithoutTheUserInfo() {
         final OpenAiCompatibleProviderSupport support = support(
-                LlamaCppJniConfig.builder("").baseUrl("ftp://u:secret@h/v1").build());
+                ProviderConfig.builder("").baseUrl("ftp://u:secret@h/v1").build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'ftp://***@h/v1'"));
     }
@@ -401,9 +401,8 @@ public class OpenAiCompatibleProviderSupportTest {
     /** srcmorph never sends a URL's user info, so a key written there would not authenticate. */
     @Test
     public void endpoint_userInfo_isRejectedWithoutPrintingIt() {
-        final OpenAiCompatibleProviderSupport support = support(LlamaCppJniConfig.builder("")
-                .baseUrl("https://user:secret@h/v1")
-                .build());
+        final OpenAiCompatibleProviderSupport support = support(
+                ProviderConfig.builder("").baseUrl("https://user:secret@h/v1").build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
         assertThat(
                 thrown.getMessage(),
@@ -412,29 +411,13 @@ public class OpenAiCompatibleProviderSupportTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="withoutUserInfo">
-    @Test
-    public void withoutUserInfo_masksTheUserInfoOfEveryUrl() {
-        assertThat(
-                OpenAiCompatibleProviderSupport.withoutUserInfo(
-                        "baseUrl: \"https://u:p@h:8443/v1\"\nother: http://key@127.0.0.1/x"),
-                is("baseUrl: \"https://***@h:8443/v1\"\nother: http://***@127.0.0.1/x"));
-    }
-
-    @Test
-    public void withoutUserInfo_anAtInThePathOrTheQueryOrAMail_staysAsItIs() {
-        final String text = "https://h/v1/@scope/pkg?by=a@b#x@y and mail me@example.org";
-        assertThat(OpenAiCompatibleProviderSupport.withoutUserInfo(text), is(text));
-    }
-    // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="apiKey">
     @Test
     public void apiKey_variableSet_returnsTheTrimmedValue() {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", " sk-test \n");
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config =
+                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
         assertThat(support(config, environment).apiKey(), is("sk-test"));
     }
 
@@ -443,15 +426,15 @@ public class OpenAiCompatibleProviderSupportTest {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "wrong");
         environment.put("MY_KEY", "right");
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("MY_KEY").build();
+        final ProviderConfig config =
+                ProviderConfig.builder("").apiKeyEnv("MY_KEY").build();
         assertThat(support(config, environment).apiKey(), is("right"));
     }
 
     @Test
     public void apiKey_variableUnset_returnsNull() {
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config =
+                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
         assertThat(support(config).apiKey(), is(nullValue()));
     }
 
@@ -459,8 +442,8 @@ public class OpenAiCompatibleProviderSupportTest {
     public void apiKey_variableBlank_returnsNull() {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "  ");
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config =
+                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
         assertThat(support(config, environment).apiKey(), is(nullValue()));
     }
 
@@ -472,9 +455,8 @@ public class OpenAiCompatibleProviderSupportTest {
     public void apiKeyFor_defaultConfigWithACustomHttpsEndpoint_sendsNoKey() throws Exception {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "sk-or-test");
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
-                .baseUrl("https://other.example/v1")
-                .build();
+        final ProviderConfig config =
+                ProviderConfig.builder("").baseUrl("https://other.example/v1").build();
         assertThat(
                 support(config, environment).apiKeyFor("https://other.example/v1/chat/completions"), is(nullValue()));
     }
@@ -482,8 +464,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void apiKey_noVariableNamed_returnsNullWithoutLookingAnythingUp() {
         // arrange -- an environment that would answer for any name, the empty one included
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("").build();
+        final ProviderConfig config = ProviderConfig.builder("").apiKeyEnv("").build();
         final OpenAiCompatibleProviderSupport support =
                 new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, name -> "any");
 
@@ -497,7 +478,7 @@ public class OpenAiCompatibleProviderSupportTest {
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "sk-test");
         return support(
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build(), environment);
+                ProviderConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build(), environment);
     }
 
     @Test
@@ -527,7 +508,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void apiKeyFor_plainHttpToAnotherHostWithoutKey_isFine() throws Exception {
         assertThat(
-                support(LlamaCppJniConfig.builder("").build()).apiKeyFor("http://example.org/v1/chat/completions"),
+                support(ProviderConfig.builder("").build()).apiKeyFor("http://example.org/v1/chat/completions"),
                 is(nullValue()));
     }
 
@@ -754,7 +735,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void modelsEndpoint_isTheTrimmedBaseUrlWithoutTrailingSlashesPlusModels() {
         assertThat(
-                support(LlamaCppJniConfig.builder("")
+                support(ProviderConfig.builder("")
                                 .baseUrl(" http://127.0.0.1:3030/v1// ")
                                 .build())
                         .modelsEndpoint(),
@@ -764,7 +745,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void modelsEndpoint_notHttp_throwsBeforeAnyConnection() {
         final OpenAiCompatibleProviderSupport support =
-                support(LlamaCppJniConfig.builder("").baseUrl("file:///etc").build());
+                support(ProviderConfig.builder("").baseUrl("file:///etc").build());
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::modelsEndpoint);
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc'"));
     }
@@ -774,7 +755,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void serverKey_isTheBaseUrlWithoutTrailingSlashesAndTheKeyVariable() {
         assertThat(
-                support(LlamaCppJniConfig.builder("")
+                support(ProviderConfig.builder("")
                                 .baseUrl(" http://127.0.0.1:3030/v1// ")
                                 .apiKeyEnv(" COPILOT_GATEWAY_API_KEY ")
                                 .build())
@@ -785,7 +766,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void serverKey_doesNotCheckTheScheme() {
         assertThat(
-                support(LlamaCppJniConfig.builder("").baseUrl("file:///etc/").build())
+                support(ProviderConfig.builder("").baseUrl("file:///etc/").build())
                         .serverKey(),
                 is("file:///etc "));
     }

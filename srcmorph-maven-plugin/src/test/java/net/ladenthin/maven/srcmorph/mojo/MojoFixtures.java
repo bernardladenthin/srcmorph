@@ -74,7 +74,7 @@ final class MojoFixtures {
      * @param <T>              the goal's type
      * @return the goal
      */
-    static <T extends AbstractAiIndexMojo> T configured(final T mojo, final Path projectDirectory) {
+    static <T extends AbstractSrcMorphMojo> T configured(final T mojo, final Path projectDirectory) {
         mojo.configurationFile = projectDirectory.resolve("srcmorph.yaml").toFile();
         mojo.projectDirectory = projectDirectory.toFile();
         mojo.sourceDirectory = projectDirectory.resolve("src/main/java").toFile();

@@ -9,8 +9,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdHeader;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import org.junit.jupiter.api.Test;
 
 public class MockAiGenerationProviderTest {
@@ -22,8 +22,7 @@ public class MockAiGenerationProviderTest {
 
     @Test
     public void generateUsesFileNameOnly() throws IOException {
-        AiGenerationRequest request =
-                new AiGenerationRequest("summary", Paths.get("a", "b", "Foo.java"), "src", HEADER);
+        AiGenerationRequest request = new AiGenerationRequest("summary", Paths.get("a", "b", "Foo.java"), "src");
         // Only the file name (not the full path) is used — kills the negate mutant on the
         // getFileName() null-guard, which would fall back to the full path string.
         assertThat(provider.generate(request), is("Mock summary for Foo.java"));
@@ -35,7 +34,7 @@ public class MockAiGenerationProviderTest {
         // expected separator from the same Path so the assertion holds on Windows too (the root
         // renders with the platform separator: "/" on POSIX, "\" on Windows).
         Path root = Paths.get("/");
-        AiGenerationRequest request = new AiGenerationRequest("summary", root, "src", HEADER);
+        AiGenerationRequest request = new AiGenerationRequest("summary", root, "src");
         assertThat(provider.generate(request), is("Mock summary for " + root));
     }
 
@@ -44,7 +43,7 @@ public class MockAiGenerationProviderTest {
         // 16 chars of source / 4 chars-per-token -> 4 mock prompt tokens; positive synthetic rates so a
         // calibrate run works without a real model.
         final AiGenerationRequest request =
-                new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123456789012345", HEADER);
+                new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123456789012345");
         final AiGenerationTimings timings = provider.generateWithTimings(request);
         assertThat(timings.text(), is("Mock summary for Foo.java"));
         assertThat(timings.promptTokens(), is(4));
@@ -60,9 +59,9 @@ public class MockAiGenerationProviderTest {
     @Test
     public void generateWithTimings_reportsAConstantCachedPrefixIndependentOfSourceSize() throws IOException {
         final AiGenerationTimings small =
-                provider.generateWithTimings(new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123", HEADER));
+                provider.generateWithTimings(new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123"));
         final AiGenerationTimings large = provider.generateWithTimings(
-                new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123456789012345", HEADER));
+                new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123456789012345"));
 
         assertThat(small.cachedPromptTokens(), is(32));
         assertThat(large.cachedPromptTokens(), is(small.cachedPromptTokens()));
@@ -77,8 +76,8 @@ public class MockAiGenerationProviderTest {
         org.hamcrest.MatcherAssert.assertThat(
                 provider.lastUsage(), org.hamcrest.CoreMatchers.is(AiGenerationUsage.NONE));
 
-        final String text = provider.generate(new net.ladenthin.srcmorph.document.AiGenerationRequest(
-                "k", java.nio.file.Paths.get("A.java"), "abcdefghijklmnop", HEADER));
+        final String text = provider.generate(new net.ladenthin.srcmorph.prompt.AiGenerationRequest(
+                "k", java.nio.file.Paths.get("A.java"), "abcdefghijklmnop"));
 
         org.hamcrest.MatcherAssert.assertThat(
                 provider.lastUsage(),

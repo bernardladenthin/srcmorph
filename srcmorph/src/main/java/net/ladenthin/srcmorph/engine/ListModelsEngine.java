@@ -17,10 +17,11 @@ import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory;
 import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
+import net.ladenthin.srcmorph.provider.ProviderConfigFactory;
 import net.ladenthin.srcmorph.provider.RemoteModel;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +57,7 @@ public final class ListModelsEngine {
          * @return the server's models
          * @throws IOException if the server cannot be asked or its answer cannot be read
          */
-        List<RemoteModel> list(LlamaCppJniConfig config, AiPromptSupport promptSupport) throws IOException;
+        List<RemoteModel> list(ProviderConfig config, AiPromptSupport promptSupport) throws IOException;
     }
 
     private final SrcMorphConfiguration config;
@@ -115,11 +116,11 @@ public final class ListModelsEngine {
                             + pattern.getApiKeyEnv().trim())) {
                 continue;
             }
-            final String shown = OpenAiCompatibleAiGenerationProvider.withoutUserInfo(pattern.getBaseUrl());
+            final String shown = UrlUserInfo.mask(pattern.getBaseUrl());
             LOGGER.info("Listing the models of aiDefinition '{}' at {}", key, shown);
             final List<RemoteModel> models;
             try {
-                models = lister.list(LlamaCppJniConfigFactory.fromGenerationConfig(pattern), promptSupport);
+                models = lister.list(ProviderConfigFactory.fromGenerationConfig(pattern), promptSupport);
             } catch (final IOException | IllegalArgumentException e) {
                 throw new SrcMorphException(
                         "Listing the models of aiDefinition '" + key + "' at " + shown + " failed: " + e.getMessage(),
@@ -146,7 +147,7 @@ public final class ListModelsEngine {
         return kept;
     }
 
-    private static List<RemoteModel> askServer(final LlamaCppJniConfig config, final AiPromptSupport promptSupport)
+    private static List<RemoteModel> askServer(final ProviderConfig config, final AiPromptSupport promptSupport)
             throws IOException {
         try (OpenAiCompatibleAiGenerationProvider provider =
                 new OpenAiCompatibleAiGenerationProvider(config, promptSupport)) {

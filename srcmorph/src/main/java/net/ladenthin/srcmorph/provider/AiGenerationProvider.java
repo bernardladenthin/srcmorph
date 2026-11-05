@@ -5,10 +5,10 @@ package net.ladenthin.srcmorph.provider;
 
 import java.io.IOException;
 import java.util.OptionalInt;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 
 /**
- * Pluggable AI backend that produces text for an {@link net.ladenthin.srcmorph.document.AiGenerationRequest}.
+ * Pluggable AI backend that produces text for an {@link net.ladenthin.srcmorph.prompt.AiGenerationRequest}.
  * Implementations may run locally (llama.cpp) or be mock providers for tests.
  */
 public interface AiGenerationProvider extends AutoCloseable {

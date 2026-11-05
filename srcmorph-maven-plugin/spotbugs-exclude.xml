@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
         is a structural false positive that source changes cannot resolve.
 
         Suppression scoped narrowly to the three concrete Mojos so any genuine
-        SPP finding on non-Mojo code still surfaces. AbstractAiIndexMojo's
+        SPP finding on non-Mojo code still surfaces. AbstractSrcMorphMojo's
         shared @Parameter fields don't trigger SPP because they're written
         from multiple subclasses.
     -->
@@ -91,7 +91,7 @@ SPDX-License-Identifier: Apache-2.0
     <!--
         IMC_IMMATURE_CLASS_NO_EQUALS on Maven plugin Mojos.
 
-        AbstractAiIndexMojo and its concrete subclasses (GenerateMojo,
+        AbstractSrcMorphMojo and its concrete subclasses (GenerateMojo,
         AggregatePackagesMojo) are Maven Mojo instances. Maven instantiates one
         per execution via reflection, populates @Parameter fields via setter
         injection, calls execute(), then discards the instance. Mojos are
@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Or>
-            <Class name="net.ladenthin.maven.srcmorph.mojo.AbstractAiIndexMojo"/>
+            <Class name="net.ladenthin.maven.srcmorph.mojo.AbstractSrcMorphMojo"/>
             <Class name="net.ladenthin.maven.srcmorph.mojo.AggregatePackagesMojo"/>
             <Class name="net.ladenthin.maven.srcmorph.mojo.AggregateProjectMojo"/>
             <Class name="net.ladenthin.maven.srcmorph.mojo.GenerateMojo"/>
@@ -158,21 +158,21 @@ SPDX-License-Identifier: Apache-2.0
 
     <!--
         Migration step 5 (engine extraction) note: the AI_ANNOTATION_ISSUES_NEEDS_NULLABLE
-        (GenerateMojo.resolveFileExtensions), DCN_NULLPOINTER_EXCEPTION (AbstractAiIndexMojo.
+        (GenerateMojo.resolveFileExtensions), DCN_NULLPOINTER_EXCEPTION (AbstractSrcMorphMojo.
         buildPromptSupport/buildAiModelDefinitionSupport, GenerateMojo.resolveSharedFacts), and the
         combined CE_CLASS_ENVY/OCP_OVERLY_CONCRETE_PARAMETER/OPM_OVERLY_PERMISSIVE_METHOD/
         UCPM_USE_CHARACTER_PARAMETERIZED_METHOD/WEM_WEAK_EXCEPTION_MESSAGING/
         RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE suppressions that used to live here were all scoped to
         methods that no longer exist on these mojos - the orchestration (and the findings it produced)
         moved to the srcmorph module's net.ladenthin.srcmorph.engine package (GenerateEngine,
-        CalibrateEngine, EngineSupport) and provider.LlamaCppJniConfigFactory, whose own
+        CalibrateEngine, EngineSupport) and provider.ProviderConfigFactory, whose own
         spotbugs-exclude.xml now carries the equivalent suppressions with the full rationale. The
         thinned mojos (skip check -> buildConfiguration() -> new XxxEngine(config).execute() -> wrap
         SrcMorphException/IOException) trigger none of these detectors.
     -->
 
     <!--
-        PATH_TRAVERSAL_IN on AbstractAiIndexMojo.projectSubtrees: it turns the directories of the
+        PATH_TRAVERSAL_IN on AbstractSrcMorphMojo.projectSubtrees: it turns the directories of the
         project's resources (Resource.getDirectory(), injected by Maven from the project model) into
         File objects to test whether they exist and lie below the base directory. The paths come from
         the operator's own POM, the same trust boundary as every other configured path (see the
@@ -180,7 +180,7 @@ SPDX-License-Identifier: Apache-2.0
         Scoped to the one method.
     -->
     <Match>
-        <Class name="net.ladenthin.maven.srcmorph.mojo.AbstractAiIndexMojo"/>
+        <Class name="net.ladenthin.maven.srcmorph.mojo.AbstractSrcMorphMojo"/>
         <Method name="projectSubtrees"/>
         <Bug pattern="PATH_TRAVERSAL_IN"/>
     </Match>

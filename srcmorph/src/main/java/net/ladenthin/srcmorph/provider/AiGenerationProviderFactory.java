@@ -52,14 +52,14 @@ public class AiGenerationProviderFactory {
      * @param providerName  the run's provider key; {@link #PROVIDER_MOCK}, {@link #PROVIDER_LLAMACPP_JNI}
      *                      or {@link #PROVIDER_OPENAI_COMPATIBLE} (defaults to mock when blank or
      *                      {@code null})
-     * @param llamaConfig   the model's configuration
+     * @param providerConfig   the model's configuration
      * @param promptSupport prompt lookup support passed to providers that need it
      * @return a newly-created provider instance
      * @throws IllegalArgumentException if the provider name is not recognised
      */
     public AiGenerationProvider create(
-            final String providerName, final LlamaCppJniConfig llamaConfig, final AiPromptSupport promptSupport) {
-        final String effective = effectiveProvider(providerName, llamaConfig.provider());
+            final String providerName, final ProviderConfig providerConfig, final AiPromptSupport promptSupport) {
+        final String effective = effectiveProvider(providerName, providerConfig.provider());
         if (effective == null || compatibilityHelper.isBlank(effective)) {
             return new MockAiGenerationProvider();
         }
@@ -68,9 +68,9 @@ public class AiGenerationProviderFactory {
             case PROVIDER_MOCK:
                 return new MockAiGenerationProvider();
             case PROVIDER_LLAMACPP_JNI:
-                return new LlamaCppJniAiGenerationProvider(llamaConfig, promptSupport);
+                return new LlamaCppJniAiGenerationProvider(providerConfig, promptSupport);
             case PROVIDER_OPENAI_COMPATIBLE:
-                return new OpenAiCompatibleAiGenerationProvider(llamaConfig, promptSupport);
+                return new OpenAiCompatibleAiGenerationProvider(providerConfig, promptSupport);
             default:
                 throw new IllegalArgumentException("Unsupported AI provider: " + effective);
         }

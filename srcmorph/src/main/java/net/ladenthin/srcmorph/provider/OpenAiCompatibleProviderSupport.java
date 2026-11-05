@@ -37,10 +37,11 @@ import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.ReplaceWithLibrary;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -154,16 +155,6 @@ final class OpenAiCompatibleProviderSupport {
     /** The HTTPS scheme prefix a {@code baseUrl} may start with. */
     static final String HTTPS_SCHEME = "https://";
 
-    /**
-     * The user info of a URL ({@code user:password@} after the scheme and before the host), which srcmorph
-     * never sends ({@code HttpURLConnection} does not authenticate with it) and never prints.
-     */
-    private static final Pattern URL_USER_INFO =
-            Pattern.compile("([A-Za-z][A-Za-z0-9+.-]{0,20}://)[^/?#@\\s\"']{0,256}+@");
-
-    /** What a URL's user info is printed as: the scheme, then this, then the host. */
-    private static final String MASKED_USER_INFO = "$1***@";
-
     /** Host name of the loopback interface, in any case. */
     private static final Pattern LOOPBACK_HOST_NAME = Pattern.compile("localhost", Pattern.CASE_INSENSITIVE);
 
@@ -242,7 +233,7 @@ final class OpenAiCompatibleProviderSupport {
     /** The years an rfc850-date read too far ahead is moved back. */
     private static final int YEARS_PER_CENTURY = 100;
 
-    private final LlamaCppJniConfig config;
+    private final ProviderConfig config;
 
     @ToString.Exclude
     private final AiPromptSupport promptSupport;
@@ -261,7 +252,7 @@ final class OpenAiCompatibleProviderSupport {
      * @param environment   looks up an environment variable by name, {@code null} when unset
      */
     OpenAiCompatibleProviderSupport(
-            final LlamaCppJniConfig config,
+            final ProviderConfig config,
             final AiPromptSupport promptSupport,
             final Function<String, @Nullable String> environment) {
         this.config = Objects.requireNonNull(config, "config");
@@ -446,25 +437,13 @@ final class OpenAiCompatibleProviderSupport {
     private String baseUrl() {
         final String base = config.baseUrl().trim();
         if (!base.startsWith(HTTP_SCHEME) && !base.startsWith(HTTPS_SCHEME)) {
-            throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + withoutUserInfo(base) + "'");
+            throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + UrlUserInfo.mask(base) + "'");
         }
         final @Nullable String userInfo = userInfoProblem(base);
         if (userInfo != null) {
             throw new IllegalArgumentException(userInfo);
         }
         return withoutTrailingSlashes(base);
-    }
-
-    /**
-     * Replaces the user info of every URL in a text by {@code ***}, so a password written into a
-     * {@code baseUrl} reaches no log line and no message: {@code https://u:p@host/v1} is printed as
-     * {@code https://***@host/v1}.
-     *
-     * @param text the text, a URL or a configuration echo
-     * @return the text with every URL's user info masked
-     */
-    static String withoutUserInfo(final String text) {
-        return URL_USER_INFO.matcher(text).replaceAll(MASKED_USER_INFO);
     }
 
     /**
@@ -475,7 +454,7 @@ final class OpenAiCompatibleProviderSupport {
      * @return the problem, with the user info masked, or {@code null} when the URL carries none
      */
     static @Nullable String userInfoProblem(final String baseUrl) {
-        final String masked = withoutUserInfo(baseUrl);
+        final String masked = UrlUserInfo.mask(baseUrl);
         return masked.equals(baseUrl)
                 ? null
                 : "its baseUrl carries user info ('" + masked + "'), which srcmorph never sends: put the key"
@@ -656,7 +635,7 @@ final class OpenAiCompatibleProviderSupport {
         try {
             host = new URL(base).getHost();
         } catch (final MalformedURLException e) {
-            return "its baseUrl is not a URL: '" + withoutUserInfo(base) + "'";
+            return "its baseUrl is not a URL: '" + UrlUserInfo.mask(base) + "'";
         }
         return isLoopbackHost(host)
                 ? null

@@ -32,9 +32,9 @@ import net.ladenthin.srcmorph.config.AiFactDefinition;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
-import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -51,7 +51,7 @@ public class GenerateEngineTest {
     /**
      * A routable rule matching {@code .java} files, with the {@code default} AI definition key. Unlike
      * {@link CommonTestFixtures#createFileFieldGenerations()} (whose rule carries no condition — fine for
-     * the indexer-level tests that never call {@link net.ladenthin.srcmorph.config.AiFieldGenerationSelector#validate}),
+     * the indexer-level tests that never call {@link net.ladenthin.srcmorph.routing.AiFieldGenerationSelector#validate}),
      * {@link GenerateEngine#execute()} does call {@code validate}, so the rule here needs a real condition.
      */
     private static AiFieldGenerationConfig javaFileRule() {
@@ -66,7 +66,7 @@ public class GenerateEngineTest {
 
     /**
      * A model definition with a (dummy, never loaded) {@code modelPath} set: even with the mock provider,
-     * the engine always builds a {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} value object
+     * the engine always builds a {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object
      * before dispatching to {@link net.ladenthin.srcmorph.provider.AiGenerationProviderFactory}, and that
      * value object requires a non-null model path.
      */
@@ -239,7 +239,7 @@ public class GenerateEngineTest {
 
         // Force the routed model's window to be smaller than the source, with the default
         // onOversize=fail strategy, so the file is a hard failure. The window check happens entirely
-        // during planning, before any LlamaCppJniConfig/provider is built, so modelPath is irrelevant here.
+        // during planning, before any ProviderConfig/provider is built, so modelPath is irrelevant here.
         final AiModelDefinition tinyWindow = new AiModelDefinition();
         tinyWindow.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         tinyWindow.setCharsPerToken(1);
@@ -263,7 +263,7 @@ public class GenerateEngineTest {
         return Arrays.asList(
                 (Logger) LoggerFactory.getLogger(GenerateEngine.class),
                 (Logger) LoggerFactory.getLogger(EngineSupport.class),
-                (Logger) LoggerFactory.getLogger(AiFieldGenerationSupport.class));
+                (Logger) LoggerFactory.getLogger(SummaryGenerator.class));
     }
 
     /** Each captured logger's level before the test, restored after it (null: inherited). */
@@ -782,7 +782,7 @@ public class GenerateEngineTest {
             @Override
             public AiGenerationProvider create(
                     final String providerName,
-                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
                     final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals(fileName)) {
@@ -829,7 +829,7 @@ public class GenerateEngineTest {
             @Override
             public AiGenerationProvider create(
                     final String providerName,
-                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
                     final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
                 return new AiGenerationProvider() {
                     private long load = 3_000_000_000L;
@@ -878,7 +878,7 @@ public class GenerateEngineTest {
             @Override
             public AiGenerationProvider create(
                     final String providerName,
-                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
                     final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
@@ -917,7 +917,7 @@ public class GenerateEngineTest {
             @Override
             public AiGenerationProvider create(
                     final String providerName,
-                    final net.ladenthin.srcmorph.provider.LlamaCppJniConfig llamaConfig,
+                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
                     final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
@@ -1050,24 +1050,23 @@ public class GenerateEngineTest {
         final net.ladenthin.srcmorph.config.AiFactCounter counter = new net.ladenthin.srcmorph.config.AiFactCounter();
         counter.setLabel("tables");
         counter.setPattern("CREATE TABLE");
-        final String plain =
-                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+        final String plain = net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(true);
         final String ignored =
-                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(false);
         counter.setPattern("CREATE VIEW");
         final String otherPattern =
-                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setLabel("views");
         final String otherLabel =
-                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setRaw(true);
-        final String raw = net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+        final String raw = net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
         counter.setRaw(false);
         counter.setDistinct(true);
         final String distinct =
-                net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.singletonList(counter));
+                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
 
         assertThat(plain.matches("[0-9A-F]{8}"), is(true));
         assertThat(
@@ -1078,15 +1077,15 @@ public class GenerateEngineTest {
                 plain,
                 is(new net.ladenthin.srcmorph.support.AiChecksumSupport()
                         .calculateCrc32Hex("tables\tCREATE TABLE\tfalse\n")));
-        assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(null), is(""));
-        assertThat(net.ladenthin.srcmorph.config.AiFactExtractor.factsHash(Collections.emptyList()), is(""));
+        assertThat(net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(null), is(""));
+        assertThat(net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.emptyList()), is(""));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="prompt hash and prompt check">
-    private static net.ladenthin.srcmorph.prompt.AiPromptDefinition promptOf(final String key, final String template) {
-        final net.ladenthin.srcmorph.prompt.AiPromptDefinition definition =
-                new net.ladenthin.srcmorph.prompt.AiPromptDefinition();
+    private static net.ladenthin.srcmorph.config.AiPromptDefinition promptOf(final String key, final String template) {
+        final net.ladenthin.srcmorph.config.AiPromptDefinition definition =
+                new net.ladenthin.srcmorph.config.AiPromptDefinition();
         definition.setKey(key);
         definition.setTemplate(template);
         return definition;

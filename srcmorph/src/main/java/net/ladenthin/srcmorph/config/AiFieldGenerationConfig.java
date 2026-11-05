@@ -18,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  * <p><strong>Note:</strong> this class must remain a mutable JavaBean with setters because the
  * configuration file is bound through them.</p>
  *
- * @see AiFieldGenerationSelector
+ * @see net.ladenthin.srcmorph.routing.AiFieldGenerationSelector
  * @see AiCondition
  */
 @ToString
@@ -51,7 +51,7 @@ public class AiFieldGenerationConfig {
      * none (it catches everything else).
      *
      * @see AiCondition
-     * @see AiConditionEvaluator
+     * @see net.ladenthin.srcmorph.routing.AiConditionEvaluator
      */
     private @Nullable AiCondition condition;
 
@@ -124,14 +124,14 @@ public class AiFieldGenerationConfig {
      * file this rule matches (oversize or not) — exact, language-agnostic structural counts (e.g. SQL
      * {@code INSERT} rows / tables / views, Java types / {@code boolean} fields) that give downstream
      * agents authoritative numbers a sampled AI summary cannot reliably produce. {@code null}/empty = no
-     * facts block. See {@link AiFactExtractor}.
+     * facts block. See {@link net.ladenthin.srcmorph.facts.AiFactExtractor}.
      */
     private @Nullable List<AiFactCounter> facts;
 
     /**
      * Optional reference to a shared {@code factDefinitions} group by its key ({@code factsKey}), or to
      * the file {@code <profileDirectory>/<key>.tsv}, instead of repeating an inline {@link #facts} list.
-     * Resolved before indexing by {@link AiFactDefinitionSupport#resolveFactsKeys(Iterable)}, which copies
+     * Resolved before indexing by {@link net.ladenthin.srcmorph.facts.AiFactDefinitionSupport#resolveFactsKeys(Iterable)}, which copies
      * the referenced counters onto {@link #facts}; a rule that sets both fails. {@code null} = use the
      * inline {@code facts} (or none).
      */
@@ -167,7 +167,7 @@ public class AiFieldGenerationConfig {
     /**
      * Sets the prompt template key.
      *
-     * @param promptKey key that references an {@link net.ladenthin.srcmorph.prompt.AiPromptDefinition}
+     * @param promptKey key that references an {@link net.ladenthin.srcmorph.config.AiPromptDefinition}
      */
     public void setPromptKey(final String promptKey) {
         this.promptKey = promptKey;

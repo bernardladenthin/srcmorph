@@ -17,9 +17,9 @@ import net.ladenthin.llama.server.NativeServer;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -132,7 +132,7 @@ public class OpenAiCompatibleLiveTest {
     private static void describeGreeter(final String baseUrl, final String model, final String apiKeyEnv)
             throws IOException {
         // arrange
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder("")
                 .provider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
                 .baseUrl(baseUrl)
                 .remoteModel(model)
@@ -149,8 +149,8 @@ public class OpenAiCompatibleLiveTest {
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
-        final AiGenerationRequest request = new AiGenerationRequest(
-                CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Greeter.java"), SOURCE, header);
+        final AiGenerationRequest request =
+                new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Greeter.java"), SOURCE);
 
         // act
         final AiGenerationTimings timings;

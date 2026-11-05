@@ -26,7 +26,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 // Framework has no equivalent option for plugin-framework fields, so we suppress class-level.
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "check", threadSafe = true)
-public class CheckMojo extends AbstractAiIndexMojo {
+public class CheckMojo extends AbstractSrcMorphMojo {
 
     /** Creates a new {@link CheckMojo}. */
     public CheckMojo() {

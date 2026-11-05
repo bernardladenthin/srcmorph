@@ -30,11 +30,10 @@ import java.util.List;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -383,29 +382,26 @@ public class EngineSupportTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="resolveLlamaCppJniConfig">
+    // <editor-fold defaultstate="collapsed" desc="resolveProviderConfig">
     @Test
-    public void resolveLlamaCppJniConfig_byKey_looksUpNamedDefinition() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
-
+    public void resolveProviderConfig_byKey_looksUpNamedDefinition() {
         final AiModelDefinition definition = new AiModelDefinition();
         definition.setKey("named");
         definition.setModelPath("named.gguf");
         final AiModelDefinitionSupport modelDefinitionSupport = new AiModelDefinitionSupport(Arrays.asList(definition));
 
-        final LlamaCppJniConfig result = EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, "named");
+        final ProviderConfig result = EngineSupport.resolveProviderConfig(modelDefinitionSupport, "named");
 
         assertThat(result.modelPath(), is("named.gguf"));
     }
 
     @Test
-    public void resolveLlamaCppJniConfig_byKey_missingKeyThrowsIllegalArgumentException() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+    public void resolveProviderConfig_byKey_missingKeyThrowsIllegalArgumentException() {
         final AiModelDefinitionSupport modelDefinitionSupport = new AiModelDefinitionSupport(null);
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, "missing"));
+                () -> EngineSupport.resolveProviderConfig(modelDefinitionSupport, "missing"));
     }
     // </editor-fold>
 

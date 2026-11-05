@@ -15,7 +15,7 @@ import net.ladenthin.llama.json.ChatResponseParser;
 import net.ladenthin.llama.parameters.ModelParameters;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Timings;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
 @ToString
 public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvider, AutoCloseable {
 
-    private final LlamaCppJniConfig config;
+    private final ProviderConfig config;
 
     // Native llama.cpp model handle — its toString prints native pointer / internal
     // state details; excluded from the rendered output. Lazily initialised on first
@@ -69,7 +69,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
      * @param config        llama.cpp configuration
      * @param promptSupport prompt lookup used to render request prompts
      */
-    public LlamaCppJniAiGenerationProvider(final LlamaCppJniConfig config, final AiPromptSupport promptSupport) {
+    public LlamaCppJniAiGenerationProvider(final ProviderConfig config, final AiPromptSupport promptSupport) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
         this.support = new LlamaCppJniProviderSupport(this.config, this.promptSupport);

@@ -11,11 +11,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiRegenerateOn;
-import net.ladenthin.srcmorph.document.AiGenerationResult;
 import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -23,6 +21,9 @@ import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
 import net.ladenthin.srcmorph.document.AiMdLeadExtractor;
+import net.ladenthin.srcmorph.facts.AiFactExtractor;
+import net.ladenthin.srcmorph.indexer.generation.AiGenerationResult;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
@@ -82,7 +83,7 @@ public class ProjectIndexer {
     private static final String ROOT_DISPLAY = ".";
 
     /**
-     * Context-type label passed to {@link AiFieldGenerationSupport} so that trim-warning log messages
+     * Context-type label passed to {@link SummaryGenerator} so that trim-warning log messages
      * read "Trimmed AI input for project field '…'".
      */
     private static final String CONTEXT_TYPE_PROJECT = "project";
@@ -105,7 +106,7 @@ public class ProjectIndexer {
     private final @Nullable AiFieldGenerationConfig overviewFieldGeneration;
 
     /** AI generation loop used for the overview; {@code null} when the overview is disabled. */
-    private final @Nullable AiFieldGenerationSupport fieldGenerationSupport;
+    private final @Nullable SummaryGenerator summaryGenerator;
 
     /** The CRC32 of the overview's prompts ({@code P}), {@code ""} without an overview. */
     private final String overviewPromptHash;
@@ -185,7 +186,7 @@ public class ProjectIndexer {
                 && overviewFieldGeneration != null
                 && promptSupport != null
                 && modelDefinitionSupport != null) {
-            this.fieldGenerationSupport = new AiFieldGenerationSupport(
+            this.summaryGenerator = new SummaryGenerator(
                     generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
             this.overviewPromptHash = AiHeaderHashes.prompt(promptSupport, overviewFieldGeneration);
             this.overviewFactsHash = AiFactExtractor.factsHash(overviewFieldGeneration.getFacts());
@@ -193,7 +194,7 @@ public class ProjectIndexer {
                     overviewFieldGeneration.getAiDefinitionKey(),
                     modelDefinitionSupport.getConfig(overviewFieldGeneration.getAiDefinitionKey()));
         } else {
-            this.fieldGenerationSupport = null;
+            this.summaryGenerator = null;
             this.overviewPromptHash = "";
             this.overviewFactsHash = "";
             this.overviewModelHash = "";
@@ -265,7 +266,7 @@ public class ProjectIndexer {
         // regenerateOn.children says; K: their leads, which the listing and the overview read; P and M: the
         // overview's prompts and model (empty without an overview)
         final AiFieldGenerationConfig overview = this.overviewFieldGeneration;
-        final AiFieldGenerationSupport support = this.fieldGenerationSupport;
+        final SummaryGenerator support = this.summaryGenerator;
         final List<String> leads = new ArrayList<>(entries.size());
         final StringBuilder checksumLines = new StringBuilder();
         for (final PackageEntry entry : entries) {
@@ -297,8 +298,7 @@ public class ProjectIndexer {
 
         final String body;
         if (overview != null && support != null) {
-            final AiGenerationResult overviewResult =
-                    generateOverview(support, overview, projectFile, entries, baseHeader);
+            final AiGenerationResult overviewResult = generateOverview(support, overview, projectFile, entries);
             if (!overviewResult.complete()) {
                 return AiIndexOutcome.FAILED;
             }
@@ -376,27 +376,25 @@ public class ProjectIndexer {
     }
 
     /**
-     * Generates the AI overview paragraph from the per-package leads via {@link AiFieldGenerationSupport}
+     * Generates the AI overview paragraph from the per-package leads via {@link SummaryGenerator}
      * (which handles trimming and retries, and reports an incomplete answer). The model receives only the project
      * title and the one-line package leads, never the full package bodies, keeping the input compact.
      *
-     * @param support     the AI generation loop (non-null)
+     * @param support     the generator of the overview (non-null)
      * @param overview    the overview field generation (non-null)
      * @param projectFile the project index file path, used as the request context file
      * @param entries     the harvested package entries
-     * @param baseHeader  the project index header passed through to the generation request
      * @return the generated overview, or an incomplete result when the model's answer was incomplete
      * @throws IOException if the AI provider throws during generation
      */
     private AiGenerationResult generateOverview(
-            final AiFieldGenerationSupport support,
+            final SummaryGenerator support,
             final AiFieldGenerationConfig overview,
             final Path projectFile,
-            final List<PackageEntry> entries,
-            final AiMdHeader baseHeader)
+            final List<PackageEntry> entries)
             throws IOException {
         final String overviewSource = buildOverviewSource(entries);
-        return support.generate(overview, projectFile, CONTEXT_TYPE_PROJECT, overviewSource, baseHeader);
+        return support.generate(overview, projectFile, CONTEXT_TYPE_PROJECT, overviewSource);
     }
 
     /**

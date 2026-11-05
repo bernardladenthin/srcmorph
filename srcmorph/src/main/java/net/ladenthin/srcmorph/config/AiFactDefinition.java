@@ -21,7 +21,7 @@ import org.jspecify.annotations.Nullable;
  * {@code equals}/{@code hashCode} are intentionally NOT generated (instances are configuration data
  * managed by key in a lookup, and the mutable JavaBean shape makes value semantics unsafe).</p>
  *
- * @see AiFactDefinitionSupport
+ * @see net.ladenthin.srcmorph.facts.AiFactDefinitionSupport
  * @see AiFactCounter
  */
 @SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
@@ -39,7 +39,7 @@ public class AiFactDefinition {
     /** The fact counters this group contributes. */
     private @Nullable List<AiFactCounter> facts;
 
-    /** The file the counters are read from instead of {@link #facts}, see {@link AiFactDefinitionLoader}. */
+    /** The file the counters are read from instead of {@link #facts}, see {@link net.ladenthin.srcmorph.facts.AiFactDefinitionLoader}. */
     private @Nullable String factsFile;
 
     /**

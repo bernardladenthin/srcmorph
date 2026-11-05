@@ -13,23 +13,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFactExtractor;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
+import net.ladenthin.srcmorph.facts.AiFactExtractor;
 import net.ladenthin.srcmorph.indexer.AiHeaderHashes;
 import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
 import net.ladenthin.srcmorph.indexer.AiIndexPlan;
 import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
+import net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.AiGenerationUsage;
-import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
-import net.ladenthin.srcmorph.support.AiProgressBar;
+import net.ladenthin.srcmorph.routing.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -247,10 +246,10 @@ public final class GenerateEngine {
                         group.getValue().size());
                 try (AiGenerationProvider provider = providerFactory.create(
                         config.getGenerationProvider(),
-                        EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, aiDefinitionKey),
+                        EngineSupport.resolveProviderConfig(modelDefinitionSupport, aiDefinitionKey),
                         promptSupport)) {
-                    final AiFieldGenerationSupport support =
-                            new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
+                    final SummaryGenerator support =
+                            new SummaryGenerator(provider, promptPreparationSupport, modelDefinitionSupport);
                     for (final AiIndexPlan.Entry entry : group.getValue()) {
                         AiIndexOutcome outcome;
                         final long fileStartNanos = System.nanoTime();

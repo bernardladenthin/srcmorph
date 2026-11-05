@@ -27,7 +27,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  */
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "calibrate", threadSafe = true)
-public class CalibrateMojo extends AbstractAiIndexMojo {
+public class CalibrateMojo extends AbstractSrcMorphMojo {
 
     /** Creates a new {@link CalibrateMojo}. */
     public CalibrateMojo() {

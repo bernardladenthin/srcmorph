@@ -20,8 +20,8 @@ import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
 import net.ladenthin.srcmorph.provider.ModelListFixtures;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
 import net.ladenthin.srcmorph.provider.RemoteModel;
 import org.junit.jupiter.api.Test;
 
@@ -36,9 +36,9 @@ public class ListModelsEngineTest {
             new RemoteModel("mai-code-1.1-flash", 127790, null, null));
 
     /** The configurations the lister was asked with, in order. */
-    private final List<LlamaCppJniConfig> asked = new ArrayList<>();
+    private final List<ProviderConfig> asked = new ArrayList<>();
 
-    private List<RemoteModel> record(final LlamaCppJniConfig config) {
+    private List<RemoteModel> record(final ProviderConfig config) {
         asked.add(config);
         return MODELS;
     }

@@ -10,24 +10,25 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiFactDefinitionLoader;
-import net.ladenthin.srcmorph.config.AiFactDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
 import net.ladenthin.srcmorph.config.AiGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;
 import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
 import net.ladenthin.srcmorph.config.AiOversizeStrategy;
+import net.ladenthin.srcmorph.config.AiPromptDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.facts.AiFactDefinitionLoader;
+import net.ladenthin.srcmorph.facts.AiFactDefinitionSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
 import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.GgufModelInfo;
 import net.ladenthin.srcmorph.provider.GgufModelInspector;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory;
 import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
+import net.ladenthin.srcmorph.provider.ProviderConfigFactory;
+import net.ladenthin.srcmorph.routing.AiFieldGenerationSelector;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -262,7 +263,7 @@ final class EngineSupport {
     }
 
     /**
-     * Resolves the {@link LlamaCppJniConfig} for one specific {@link AiModelDefinition}, identified by its
+     * Resolves the {@link ProviderConfig} for one specific {@link AiModelDefinition}, identified by its
      * key. Used by {@link GenerateEngine} (one provider per routing group), {@link CalibrateEngine}
      * (one provider per calibrated model) and the aggregation engines (the model of their one rule).
      *
@@ -275,10 +276,10 @@ final class EngineSupport {
      * @return the fully populated llama.cpp configuration for that definition
      * @throws IllegalArgumentException if {@code aiDefinitionKey} matches no registered definition
      */
-    static LlamaCppJniConfig resolveLlamaCppJniConfig(
+    static ProviderConfig resolveProviderConfig(
             final AiModelDefinitionSupport modelDefinitionSupport, final String aiDefinitionKey) {
         final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(aiDefinitionKey);
-        return LlamaCppJniConfigFactory.fromGenerationConfig(modelConfig);
+        return ProviderConfigFactory.fromGenerationConfig(modelConfig);
     }
 
     /**
@@ -391,7 +392,7 @@ final class EngineSupport {
             throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
                     + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
                     + " provider but its baseUrl is not an http(s) URL: '"
-                    + OpenAiCompatibleAiGenerationProvider.withoutUserInfo(baseUrl) + "'");
+                    + UrlUserInfo.mask(baseUrl) + "'");
         }
         final String keyProblem = OpenAiCompatibleAiGenerationProvider.keyProblem(baseUrl, modelConfig.getApiKeyEnv());
         if (keyProblem != null) {
