@@ -46,6 +46,11 @@ public class AiMdChildEntryLineFormatter {
      *         child's modification time is left out, so a touched source does not change its package
      */
     public String format(final String name, final AiMdHeader childHeader) {
-        return name + CHECKSUM_LINE_SEPARATOR + childHeader.c() + CHECKSUM_LINE_SEPARATOR + childHeader.x() + '\n';
+        return name
+                + CHECKSUM_LINE_SEPARATOR
+                + childHeader.checksum()
+                + CHECKSUM_LINE_SEPARATOR
+                + childHeader.nodeType()
+                + '\n';
     }
 }

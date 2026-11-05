@@ -65,6 +65,10 @@ The entries below hold the details; what a 1.4.0 user changes:
   `GgufModelInfo.UNKNOWN_CONTEXT_LENGTH` (it was `0`). The CLI's `Main.logConfigurationTransformation`
   is `logConfigurationEcho`, `configurationToYAML` is `configurationToYaml`, and `readString`,
   `fromJson`, `fromYaml`, `configurationToJson` and `configurationToYaml` are package-private.
+  `AiMdHeader`'s accessors are named (the file keeps its letters): `h()` is `headerVersion()`, `c()`
+  `checksum()`, `d()` `sourceDate()`, `t()` `generatedAt()`, `g()` `generatorVersion()`, `a()`
+  `aiVersion()`, `x()` `nodeType()`, `p()` `promptHash()`, `n()` `factsHash()`, `m()` `modelHash()`
+  and `k()` `childrenHash()`.
 
 ### Added
 

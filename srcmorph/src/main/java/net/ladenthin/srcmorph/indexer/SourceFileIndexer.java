@@ -358,7 +358,7 @@ public final class SourceFileIndexer {
      */
     public Map.Entry<String, String> recordedHashes(final Path sourceFile) throws IOException {
         final AiMdHeader header = documentCodec.read(targetFile(sourceFile)).header();
-        return new AbstractMap.SimpleImmutableEntry<>(header.p(), header.n());
+        return new AbstractMap.SimpleImmutableEntry<>(header.promptHash(), header.factsHash());
     }
 
     /**

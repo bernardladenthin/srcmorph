@@ -62,12 +62,12 @@ public class ProjectIndexerTest {
         final AiMdDocument document = documentCodec.read(projectFile);
         assertThat(document, is(notNullValue()));
         assertThat(document.header().title(), is(equalTo(PROJECT_TITLE)));
-        assertThat(document.header().x(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PROJECT)));
-        assertThat(document.header().g(), is(equalTo("1.0.0")));
-        assertThat(document.header().a(), is(equalTo("0.0.0")));
-        assertThat(document.header().c().trim().isEmpty(), is(false));
-        assertThat(document.header().d().trim().isEmpty(), is(false));
-        assertThat(document.header().t().trim().isEmpty(), is(false));
+        assertThat(document.header().nodeType(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PROJECT)));
+        assertThat(document.header().generatorVersion(), is(equalTo("1.0.0")));
+        assertThat(document.header().aiVersion(), is(equalTo("0.0.0")));
+        assertThat(document.header().checksum().trim().isEmpty(), is(false));
+        assertThat(document.header().sourceDate().trim().isEmpty(), is(false));
+        assertThat(document.header().generatedAt().trim().isEmpty(), is(false));
 
         // assert: the body carries each package's path + lead (one line each, no link)
         final String body = document.body();
@@ -304,7 +304,7 @@ public class ProjectIndexerTest {
         final String firstK = documentCodec
                 .read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME))
                 .header()
-                .k();
+                .childrenHash();
         writePackageFile(packageFile, "main/java/com/example", "> Another lead.\n");
 
         // act
@@ -318,7 +318,7 @@ public class ProjectIndexerTest {
         assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString("Another lead."));
-        assertThat(document.header().k().equals(firstK), is(false));
+        assertThat(document.header().childrenHash().equals(firstK), is(false));
     }
 
     @Test
@@ -330,7 +330,7 @@ public class ProjectIndexerTest {
         final ProjectIndexer frozenChildren = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, childrenOff());
         assertThat(frozenChildren.aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
-        final String firstC = documentCodec.read(projectFile).header().c();
+        final String firstC = documentCodec.read(projectFile).header().checksum();
         final AiIndexOutcome unchanged = frozenChildren.aggregate(outputRoot);
         writePackageFile(packageFile, "main/java/com/example", "> Example package.\n", "BBBBBBBB");
 
@@ -340,7 +340,7 @@ public class ProjectIndexerTest {
         // assert
         assertThat(unchanged, is(AiIndexOutcome.UNCHANGED));
         assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
-        assertThat(documentCodec.read(projectFile).header().c().equals(firstC), is(false));
+        assertThat(documentCodec.read(projectFile).header().checksum().equals(firstC), is(false));
     }
 
     @Test
@@ -359,12 +359,12 @@ public class ProjectIndexerTest {
         final AiMdHeader withOverview = documentCodec.read(projectFile).header();
 
         // assert
-        assertThat(deterministic.p(), is(""));
-        assertThat(deterministic.m(), is(""));
-        assertThat(withOverview.p().isEmpty(), is(false));
-        assertThat(withOverview.m().isEmpty(), is(false));
-        assertThat(withOverview.c(), is(deterministic.c()));
-        assertThat(withOverview.k(), is(deterministic.k()));
+        assertThat(deterministic.promptHash(), is(""));
+        assertThat(deterministic.modelHash(), is(""));
+        assertThat(withOverview.promptHash().isEmpty(), is(false));
+        assertThat(withOverview.modelHash().isEmpty(), is(false));
+        assertThat(withOverview.checksum(), is(deterministic.checksum()));
+        assertThat(withOverview.childrenHash(), is(deterministic.childrenHash()));
     }
     // </editor-fold>
 

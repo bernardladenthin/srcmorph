@@ -437,14 +437,14 @@ When the same literal appears in two or more tests within the same fold, extract
 // GOOD — one definition; both tests derive from it
 private static final String FIXED_CHECKSUM = "AAAAAAAA"; // arbitrary 8-char hex for header tests
 
-assertThat(updated.header().c(), is(equalTo(FIXED_CHECKSUM)));
+assertThat(updated.header().checksum(), is(equalTo(FIXED_CHECKSUM)));
 ```
 
 ```java
 // BAD — same literal repeated across tests
-assertThat(updated.header().c(), is(equalTo("AAAAAAAA")));
+assertThat(updated.header().checksum(), is(equalTo("AAAAAAAA")));
 // ... in another test ...
-assertThat(updated.header().c(), is(equalTo("AAAAAAAA")));
+assertThat(updated.header().checksum(), is(equalTo("AAAAAAAA")));
 ```
 
 Constants belong to their logical fold. Do not share a constant between different folds even when the underlying value is identical — different folds test independent methods and should not be coupled.

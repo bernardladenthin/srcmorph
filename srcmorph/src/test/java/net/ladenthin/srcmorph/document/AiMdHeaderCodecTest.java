@@ -67,10 +67,10 @@ public class AiMdHeaderCodecTest {
                 org.hamcrest.CoreMatchers.containsString(
                         "- X: file\n- P: 0A1B2C3D\n- N: 4E5F6071\n- M: 8A9B0C1D\n- K: 2E3F4A5B\n"));
         assertThat(decoded, is(equalTo(original)));
-        assertThat(decoded.p(), is("0A1B2C3D"));
-        assertThat(decoded.n(), is("4E5F6071"));
-        assertThat(decoded.m(), is("8A9B0C1D"));
-        assertThat(decoded.k(), is("2E3F4A5B"));
+        assertThat(decoded.promptHash(), is("0A1B2C3D"));
+        assertThat(decoded.factsHash(), is("4E5F6071"));
+        assertThat(decoded.modelHash(), is("8A9B0C1D"));
+        assertThat(decoded.childrenHash(), is("2E3F4A5B"));
     }
 
     @Test
@@ -110,13 +110,13 @@ public class AiMdHeaderCodecTest {
 
         // assert
         assertThat(decoded.title(), is(equalTo("main/java/net/ladenthin/maven/llamacpp/aiindex")));
-        assertThat(decoded.h(), is(equalTo(AiMdHeaderCodec.HEADER_VERSION_1_0)));
-        assertThat(decoded.c(), is(equalTo("9863444A")));
-        assertThat(decoded.d(), is(equalTo("2026-03-15T18:33:50Z")));
-        assertThat(decoded.t(), is(equalTo("2026-03-15T18:34:26Z")));
-        assertThat(decoded.g(), is(equalTo("0.1.0-SNAPSHOT")));
-        assertThat(decoded.a(), is(equalTo("0.0.0")));
-        assertThat(decoded.x(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PACKAGE)));
+        assertThat(decoded.headerVersion(), is(equalTo(AiMdHeaderCodec.HEADER_VERSION_1_0)));
+        assertThat(decoded.checksum(), is(equalTo("9863444A")));
+        assertThat(decoded.sourceDate(), is(equalTo("2026-03-15T18:33:50Z")));
+        assertThat(decoded.generatedAt(), is(equalTo("2026-03-15T18:34:26Z")));
+        assertThat(decoded.generatorVersion(), is(equalTo("0.1.0-SNAPSHOT")));
+        assertThat(decoded.aiVersion(), is(equalTo("0.0.0")));
+        assertThat(decoded.nodeType(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PACKAGE)));
     }
     // </editor-fold>
 
@@ -215,9 +215,9 @@ public class AiMdHeaderCodecTest {
 
         // assert
         assertThat(fromFile.title(), is(equalTo(fromLines.title())));
-        assertThat(fromFile.h(), is(equalTo(fromLines.h())));
-        assertThat(fromFile.c(), is(equalTo(fromLines.c())));
-        assertThat(fromFile.x(), is(equalTo(fromLines.x())));
+        assertThat(fromFile.headerVersion(), is(equalTo(fromLines.headerVersion())));
+        assertThat(fromFile.checksum(), is(equalTo(fromLines.checksum())));
+        assertThat(fromFile.nodeType(), is(equalTo(fromLines.nodeType())));
     }
 
     /**
@@ -236,7 +236,7 @@ public class AiMdHeaderCodecTest {
         final AiMdHeader header = new AiMdHeaderCodec().read(lines);
 
         // assert -- the malformed line contributed nothing; the well-formed one still parsed
-        assertThat(header.h(), is(equalTo("1.0")));
+        assertThat(header.headerVersion(), is(equalTo("1.0")));
         assertThat(header.title(), is(equalTo("Test.java")));
     }
 
@@ -250,7 +250,7 @@ public class AiMdHeaderCodecTest {
         final AiMdHeader header = new AiMdHeaderCodec().read(lines);
 
         // assert
-        assertThat(header.h(), is(equalTo("1.0")));
+        assertThat(header.headerVersion(), is(equalTo("1.0")));
     }
 
     /** Input with no title line yields an empty title rather than failing. */
@@ -276,7 +276,7 @@ public class AiMdHeaderCodecTest {
         final AiMdHeader header = new AiMdHeaderCodec().read(lines);
 
         // assert
-        assertThat(header.h(), is(equalTo("1.0")));
+        assertThat(header.headerVersion(), is(equalTo("1.0")));
         assertThat(header.title(), is(equalTo("Test.java")));
     }
 
@@ -290,8 +290,8 @@ public class AiMdHeaderCodecTest {
         final AiMdHeader header = new AiMdHeaderCodec().read(lines);
 
         // assert
-        assertThat(header.c(), is(equalTo("")));
-        assertThat(header.g(), is(equalTo("")));
+        assertThat(header.checksum(), is(equalTo("")));
+        assertThat(header.generatorVersion(), is(equalTo("")));
     }
 
     // </editor-fold>

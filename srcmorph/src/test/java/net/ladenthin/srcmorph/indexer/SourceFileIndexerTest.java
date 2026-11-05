@@ -305,8 +305,8 @@ public class SourceFileIndexerTest {
         final AiMdHeader header = documentCodec
                 .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
                 .header();
-        assertThat(header.p(), is("CCCC0003"));
-        assertThat(header.n(), is("DDDD0004"));
+        assertThat(header.promptHash(), is("CCCC0003"));
+        assertThat(header.factsHash(), is("DDDD0004"));
     }
 
     @Test
@@ -332,8 +332,8 @@ public class SourceFileIndexerTest {
         final AiMdHeader header = documentCodec
                 .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
                 .header();
-        assertThat(header.m(), is("FFFF0006"));
-        assertThat(header.k(), is(""));
+        assertThat(header.modelHash(), is("FFFF0006"));
+        assertThat(header.childrenHash(), is(""));
     }
 
     @Test
@@ -360,7 +360,7 @@ public class SourceFileIndexerTest {
         final AiMdHeader header = documentCodec
                 .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
                 .header();
-        assertThat(header.p(), is("AAAA0001"));
+        assertThat(header.promptHash(), is("AAAA0001"));
     }
     // </editor-fold>
 

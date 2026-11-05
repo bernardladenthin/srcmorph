@@ -603,13 +603,13 @@ public class PackageIndexer {
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
-                        latest = laterDate(latest, readChildPackageHeader(path).d());
+                        latest = laterDate(latest, readChildPackageHeader(path).sourceDate());
                     }
                     continue;
                 }
 
                 if (isAiMdContentFile(name)) {
-                    latest = laterDate(latest, documentCodec.read(path).header().d());
+                    latest = laterDate(latest, documentCodec.read(path).header().sourceDate());
                 }
             }
         }

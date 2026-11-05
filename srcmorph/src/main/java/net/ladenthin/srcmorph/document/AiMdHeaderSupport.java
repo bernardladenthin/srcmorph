@@ -87,7 +87,7 @@ public class AiMdHeaderSupport {
         final AiMdDocument actualDocument = new AiMdDocumentCodec().read(targetFile);
         final AiMdHeader actualHeader = actualDocument.header();
 
-        if (!AiMdHeaderCodec.HEADER_VERSION_1_0.equals(actualHeader.h())) {
+        if (!AiMdHeaderCodec.HEADER_VERSION_1_0.equals(actualHeader.headerVersion())) {
             return true;
         }
 
@@ -95,15 +95,15 @@ public class AiMdHeaderSupport {
             return true;
         }
 
-        return !expectedHeader.h().equals(actualHeader.h())
-                || !expectedHeader.x().equals(actualHeader.x())
+        return !expectedHeader.headerVersion().equals(actualHeader.headerVersion())
+                || !expectedHeader.nodeType().equals(actualHeader.nodeType())
                 || !expectedHeader.title().equals(actualHeader.title())
-                || !expectedHeader.a().equals(actualHeader.a())
-                || changed(source, expectedHeader.c(), actualHeader.c())
-                || changed(prompt, expectedHeader.p(), actualHeader.p())
-                || changed(facts, expectedHeader.n(), actualHeader.n())
-                || changed(model, expectedHeader.m(), actualHeader.m())
-                || changed(children, expectedHeader.k(), actualHeader.k());
+                || !expectedHeader.aiVersion().equals(actualHeader.aiVersion())
+                || changed(source, expectedHeader.checksum(), actualHeader.checksum())
+                || changed(prompt, expectedHeader.promptHash(), actualHeader.promptHash())
+                || changed(facts, expectedHeader.factsHash(), actualHeader.factsHash())
+                || changed(model, expectedHeader.modelHash(), actualHeader.modelHash())
+                || changed(children, expectedHeader.childrenHash(), actualHeader.childrenHash());
     }
 
     /**

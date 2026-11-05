@@ -87,13 +87,13 @@ public class PackageIndexerTest {
 
         // assert
         assertThat(document.header().title(), is(equalTo("main/java/com/example")));
-        assertThat(document.header().h(), is(equalTo(AiMdHeaderCodec.HEADER_VERSION_1_0)));
-        assertThat(document.header().x(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PACKAGE)));
-        assertThat(document.header().g(), is(equalTo("1.0.0")));
-        assertThat(document.header().a(), is(equalTo("0.0.0")));
-        assertThat(document.header().c().trim().isEmpty(), is(false));
-        assertThat(document.header().d().trim().isEmpty(), is(false));
-        assertThat(document.header().t().trim().isEmpty(), is(false));
+        assertThat(document.header().headerVersion(), is(equalTo(AiMdHeaderCodec.HEADER_VERSION_1_0)));
+        assertThat(document.header().nodeType(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PACKAGE)));
+        assertThat(document.header().generatorVersion(), is(equalTo("1.0.0")));
+        assertThat(document.header().aiVersion(), is(equalTo("0.0.0")));
+        assertThat(document.header().checksum().trim().isEmpty(), is(false));
+        assertThat(document.header().sourceDate().trim().isEmpty(), is(false));
+        assertThat(document.header().generatedAt().trim().isEmpty(), is(false));
         assertThat(document.body().trim().isEmpty(), is(false));
     }
     // </editor-fold>
@@ -308,16 +308,16 @@ public class PackageIndexerTest {
                 .aggregate(temp.resolve("ai"));
 
         // assert
-        assertThat(first.p().isEmpty(), is(false));
-        assertThat(first.m().isEmpty(), is(false));
-        assertThat(first.k().isEmpty(), is(false));
+        assertThat(first.promptHash().isEmpty(), is(false));
+        assertThat(first.modelHash().isEmpty(), is(false));
+        assertThat(first.childrenHash().isEmpty(), is(false));
         assertThat(unchanged.written(), is(equalTo(0)));
         assertThat(frozen.written(), is(equalTo(0)));
         // only this package: the mock writes its parents the same body again, so they read unchanged children
         assertThat(rewritten.written(), is(equalTo(1)));
         final AiMdHeader second = documentCodec.read(packageFile).header();
-        assertThat(second.c(), is(first.c()));
-        assertThat(second.k().equals(first.k()), is(false));
+        assertThat(second.checksum(), is(first.checksum()));
+        assertThat(second.childrenHash().equals(first.childrenHash()), is(false));
     }
     // </editor-fold>
 

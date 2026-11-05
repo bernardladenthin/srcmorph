@@ -85,21 +85,21 @@ public class AiMdHeaderCodec {
     /**
      * Current metadata header format version written into every AI document.
      *
-     * @see AiMdHeader#h()
+     * @see AiMdHeader#headerVersion()
      */
     public static final String HEADER_VERSION_1_0 = "1.0";
 
     /**
      * Node type value for source-file-level AI index documents.
      *
-     * @see AiMdHeader#x()
+     * @see AiMdHeader#nodeType()
      */
     public static final String NODE_TYPE_FILE = "file";
 
     /**
      * Node type value for package-level AI index documents.
      *
-     * @see AiMdHeader#x()
+     * @see AiMdHeader#nodeType()
      */
     public static final String NODE_TYPE_PACKAGE = "package";
 
@@ -108,7 +108,7 @@ public class AiMdHeaderCodec {
      * three-level index. The {@link #PROJECT_AI_MD_FILENAME} file lists every package with a
      * one-line lead and a relative link, so an agent can read one compact file and navigate down.
      *
-     * @see AiMdHeader#x()
+     * @see AiMdHeader#nodeType()
      */
     public static final String NODE_TYPE_PROJECT = "project";
 
@@ -222,12 +222,19 @@ public class AiMdHeaderCodec {
                         + "- G: %s\n"
                         + "- A: %s\n"
                         + "- X: %s\n",
-                header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x()));
+                header.title(),
+                header.headerVersion(),
+                header.checksum(),
+                header.sourceDate(),
+                header.generatedAt(),
+                header.generatorVersion(),
+                header.aiVersion(),
+                header.nodeType()));
         // the hashes only when recorded: a file has no K, a rule without counters no N
-        appendWhenSet(builder, FIELD_KEY_P, header.p());
-        appendWhenSet(builder, FIELD_KEY_N, header.n());
-        appendWhenSet(builder, FIELD_KEY_M, header.m());
-        appendWhenSet(builder, FIELD_KEY_K, header.k());
+        appendWhenSet(builder, FIELD_KEY_P, header.promptHash());
+        appendWhenSet(builder, FIELD_KEY_N, header.factsHash());
+        appendWhenSet(builder, FIELD_KEY_M, header.modelHash());
+        appendWhenSet(builder, FIELD_KEY_K, header.childrenHash());
         for (final String child : header.children()) {
             builder.append(CHILD_FIELD_LINE_PREFIX).append(child).append('\n');
         }

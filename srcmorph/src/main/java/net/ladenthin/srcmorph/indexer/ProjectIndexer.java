@@ -224,7 +224,7 @@ public class ProjectIndexer {
             final String lead = leadExtractor.extractLead(document.body());
             entries.add(
                     new PackageEntry(displayPath, link, lead, childEntryLineFormatter.format(link, document.header())));
-            latestDate = laterDate(latestDate, document.header().d());
+            latestDate = laterDate(latestDate, document.header().sourceDate());
         }
         entries.sort(Comparator.comparing(PackageEntry::link));
 
