@@ -157,6 +157,7 @@ Package root: `net.ladenthin.srcmorph`.
   `AiSourceLines` (a source is read once with `\n` line endings: checksum, plan, prompt and chunks see
   the same text),
   `AiShebang` (the interpreter a `#!` line names: `fileInterpreters` and the `interpreters` condition),
+  `AiGeneratorVersion` (srcmorph's own version, the header's `G`),
   `AiDeterministicSummary`, `AiGenerationTimeEstimator`, `Java8CompatibilityHelper`, `ConvertToRecord`,
   `ReplaceWithLibrary` (marks a copy of a library class whose release is not out yet;
   `ReplaceWithLibraryTest` fails once the library class is on the classpath, see `TODO.md`).
@@ -261,8 +262,10 @@ themselves (five goals, `RuleSection`).
   for models, rules, prompts or paths. `AbstractAiIndexMojo.buildConfiguration(RuleSection)` reads the
   file with the core's loader and fills what it leaves unset from Maven: `baseDirectory`
   (`${project.basedir}`), `subtrees` (the source directory and the resource directories that exist
-  below the base; a resource directory that holds the source directory is left out), `projectName`,
-  `pluginVersion`; `${name}` in the file is a Maven property (user over project properties over the
+  below the base; a resource directory that holds the source directory is left out) and
+  `projectName` (`pluginVersion`, the header's `G`, is srcmorph's own version in the CLI and the
+  plugin alike: `support.AiGeneratorVersion`, filled in by the core's resource filtering); `${name}`
+  in the file is a Maven property (user over project properties over the
   project's own values such as `project.basedir` over system), which is how the self-test's `-Dai.*`
   reach `srcmorph-selftest.yaml`.
   `RuleSection` picks the goal's rules: `FILES` (`generate`, `calibrate`), `PACKAGE`

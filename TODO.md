@@ -24,7 +24,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 2 | The Claude Code Review workflow fails on every PR | no budget this month; green again with the next | Owner | done 2026-11-05 | — |
 | 3 | SonarCloud's 98 issues need a token to read | give one, or drop the item | Owner | open | Review of 2026-11-02, tests and gates |
 | 4 | gpt-oss-20b runs away on a big TypeScript file | `onIncomplete: retryOnce` in `run.py` and the examples | Owner | done 2026-11-05 | — |
-| 5 | `G` records the project's version in the plugin | record the plugin's version (`G` names the generator) | Owner | open | Reviews of 2026-11-04 |
+| 5 | `G` records the project's version in the plugin | record the plugin's version (`G` names the generator) | Owner | done 2026-11-05 | — |
 | 6 | `${...}` has no escape | `$${...}` writes a literal `${...}` | Owner | open | Reviews of 2026-11-04 |
 | 7 | The rate limiter keeps a window per server and limit | one window per server, at the smallest limit | Owner | open | Reviews of 2026-11-04 |
 | 8 | `P` covers the map and reduce prompts of every file | keep it, document it | Claude | done 2026-11-05 | — |
@@ -112,8 +112,6 @@ Two reviews, verified against the code; fixed on the branch except these, which 
 - The read budget of fact and `contentMatches` patterns counts the matcher's `charAt` calls, which
   may differ between JDK versions; `ProfileFactPatternsLinearityTest` runs on JDK 25 only (not
   measured). Running it on the oldest supported JDK too would show it.
-- In the plugin, `G` records the version of the user's project, not the plugin's
-  (`AbstractAiIndexMojo`); check whether that is meant.
 - `${...}` in a configuration value has no escape, so a literal `${user.home}` in an inline prompt is
   always replaced; the rate limiter keeps a window per server and limit, so two models on one server
   with 20 and 10 requests a minute send up to 30 (its Javadoc says so; decide whether one window per

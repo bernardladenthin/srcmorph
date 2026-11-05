@@ -31,7 +31,8 @@ import org.jspecify.annotations.Nullable;
  * CLI's ({@link #configurationFile}, JSON or YAML); the POM names the file and the switches, nothing
  * else. {@link #buildConfiguration(RuleSection)} reads it and fills what it leaves unset from the Maven
  * project: {@code baseDirectory} ({@code ${project.basedir}}), {@code subtrees} (the source directory
- * and the resource directories that exist), {@code projectName} and {@code pluginVersion}. A
+ * and the resource directories that exist) and {@code projectName}; {@code pluginVersion} is srcmorph's
+ * own version, as in the CLI. A
  * {@code ${name}} in the file is a Maven property (user, then project, then system), so
  * {@code -Dai.gpuLayers=12} reaches it.
  *
@@ -89,7 +90,7 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.name}", readonly = true)
     protected @Nullable String projectName;
 
-    /** The project's version, recorded in every header when the file sets no {@code pluginVersion}. */
+    /** The project's version, for {@code ${project.version}} in the file. */
     @Parameter(defaultValue = "${project.version}", readonly = true)
     protected String projectVersion;
 
@@ -160,9 +161,6 @@ public abstract class AbstractAiIndexMojo extends AbstractMojo {
         }
         if (config.getProjectName() == null) {
             config.setProjectName(projectName);
-        }
-        if (config.getPluginVersion().isEmpty()) {
-            config.setPluginVersion(projectVersion);
         }
         if (force) {
             config.setForce(true);

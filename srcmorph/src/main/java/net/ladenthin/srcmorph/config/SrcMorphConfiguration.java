@@ -7,6 +7,7 @@ import java.io.File;
 import java.util.List;
 import lombok.ToString;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.support.AiGeneratorVersion;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -66,7 +67,7 @@ public class SrcMorphConfiguration {
     private @Nullable File runRecordFile;
     private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
     private @Nullable List<AiFactDefinition> factDefinitions;
-    private String pluginVersion = "";
+    private String pluginVersion = new AiGeneratorVersion().version();
     private String aiVersion = DEFAULT_AI_VERSION;
     private @Nullable String projectName;
 
@@ -475,7 +476,8 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns the generator (plugin) version recorded in every written {@code .ai.md} header.
+     * Returns the generator version recorded in every written {@code .ai.md} header ({@code G}): srcmorph's
+     * own version ({@link AiGeneratorVersion}) unless the configuration names another.
      *
      * @return the generator version
      */

@@ -153,6 +153,11 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **`G` is srcmorph's own version, in the CLI and the plugin alike.** The plugin recorded the
+  version of the user's project as the generator and the CLI recorded none; a summary now names the
+  srcmorph release that wrote it (`support.AiGeneratorVersion`, which the core's build fills in), and
+  `pluginVersion` in the file still overrides it. `G` never causes a rewrite, so no summary is
+  rewritten for this.
 - **The examples, the self-test and `run.py` ask once more on an incomplete answer**
   (`onIncomplete: retryOnce` on every rule, the package and project rules too). gpt-oss-20b ran
   away to the output budget on one big TypeScript file in six runs and summarized the same file in

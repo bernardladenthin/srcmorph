@@ -247,6 +247,11 @@ SPDX-License-Identifier: Apache-2.0
             <resource>
                 <directory>${project.basedir}/src/main/resources</directory>
             </resource>
+            <!-- srcmorph-version.properties: the version a summary records as its generator (G) -->
+            <resource>
+                <directory>${project.basedir}/src/main/resources-filtered</directory>
+                <filtering>true</filtering>
+            </resource>
             <resource>
                 <directory>${project.basedir}/..</directory>
                 <targetPath>META-INF/third-party/net.ladenthin/${project.artifactId}</targetPath>
@@ -779,6 +784,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.support.AiGlob</param>
                         <param>net.ladenthin.srcmorph.support.AiPathSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiShebang</param>
+                        <param>net.ladenthin.srcmorph.support.AiGeneratorVersion</param>
                         <param>net.ladenthin.srcmorph.support.AiProfileFileSupport</param>
                         <param>net.ladenthin.srcmorph.support.AiProgressBar</param>
                         <param>net.ladenthin.srcmorph.support.AiSourceExcludeFilter</param>

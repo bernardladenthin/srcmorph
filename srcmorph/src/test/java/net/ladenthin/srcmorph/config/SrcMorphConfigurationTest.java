@@ -12,6 +12,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.File;
 import java.util.Arrays;
 import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.support.AiGeneratorVersion;
 import org.junit.jupiter.api.Test;
 
 public class SrcMorphConfigurationTest {
@@ -27,7 +28,7 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getAiVersion(), is(SrcMorphConfiguration.DEFAULT_AI_VERSION));
         assertThat(c.getMinFileSizeBytes(), is(0L));
         assertThat(c.getMaxFileSizeBytes(), is(0L));
-        assertThat(c.getPluginVersion(), is(""));
+        assertThat(c.getPluginVersion(), is(new AiGeneratorVersion().version()));
     }
 
     @Test
