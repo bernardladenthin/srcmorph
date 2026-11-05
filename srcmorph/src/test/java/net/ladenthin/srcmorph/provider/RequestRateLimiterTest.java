@@ -117,6 +117,7 @@ public class RequestRateLimiterTest {
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         final Logger logger = (Logger) LoggerFactory.getLogger(RequestRateLimiter.class);
+        final Level previous = logger.getLevel();
         logger.setLevel(Level.INFO);
         logger.addAppender(appender);
         try {
@@ -135,6 +136,7 @@ public class RequestRateLimiterTest {
                             + " minute (requestsPerMinute 1)"));
         } finally {
             logger.detachAppender(appender);
+            logger.setLevel(previous);
             appender.stop();
         }
     }

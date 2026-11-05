@@ -165,6 +165,12 @@ public class AiMapReduceSupportTest {
     }
 
     @Test
+    public void splittable_fromTwiceTheMinimumChunk_halvesAreNoShorterThanIt() {
+        assertThat(AiMapReduceSupport.splittable(2 * AiMapReduceSupport.MIN_CHUNK_CHARS - 1), is(false));
+        assertThat(AiMapReduceSupport.splittable(2 * AiMapReduceSupport.MIN_CHUNK_CHARS), is(true));
+    }
+
+    @Test
     public void reduceCalls_aSmallerFanIn_takesMoreRounds_heldToTwoAndSixteen() {
         assertThat(AiMapReduceSupport.reduceCalls(8, 2), is(7L));
         assertThat(AiMapReduceSupport.reduceCalls(9, 3), is(4L));

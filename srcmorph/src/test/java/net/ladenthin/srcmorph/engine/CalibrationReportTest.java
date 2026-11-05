@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import net.ladenthin.srcmorph.config.AiCalibration;
+import net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader;
 import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
 import org.junit.jupiter.api.Test;
 
@@ -88,6 +90,31 @@ public class CalibrationReportTest {
                 + "  charsPerToken: 3.00\n";
 
         assertThat(report.renderPasteBlock(), is(expected));
+    }
+
+    /** The block is meant to be pasted: indented into a model's entry, the strict loader binds it as written. */
+    @Test
+    public void renderPasteBlock_pastedIntoAModelsEntry_bindsThroughTheStrictLoader() throws IOException {
+        // arrange
+        final CalibrationReport report = new CalibrationReport(Arrays.asList(new CalibrationReport.ModelMeasurement(
+                "model-a", new AiCalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128))));
+        final StringBuilder yaml =
+                new StringBuilder("srcMorph:\n  aiDefinitions:\n    - key: model-a\n      modelPath: a.gguf\n");
+        for (final String line : report.renderPasteBlock().split("\n")) {
+            yaml.append("      ").append(line).append('\n');
+        }
+
+        // act
+        final AiCalibration calibration = SrcMorphConfigurationFileLoader.parse(yaml.toString(), true)
+                .getSrcMorph()
+                .getAiDefinitions()
+                .get(0)
+                .getCalibration();
+
+        // assert
+        assertThat(calibration.getPrefillTokensPerSecond(), is(1000.5d));
+        assertThat(calibration.getDecodeTokensPerSecond(), is(200.3d));
+        assertThat(calibration.getCharsPerToken(), is(4.57d));
     }
 
     @Test

@@ -23,7 +23,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.AiCondition;
 import net.ladenthin.srcmorph.config.AiFactDefinition;
@@ -264,11 +266,15 @@ public class GenerateEngineTest {
                 (Logger) LoggerFactory.getLogger(AiFieldGenerationSupport.class));
     }
 
+    /** Each captured logger's level before the test, restored after it (null: inherited). */
+    private final Map<Logger, Level> previousLevels = new HashMap<>();
+
     @BeforeEach
     public void attachLogAppender() {
         logAppender = new ListAppender<>();
         logAppender.start();
         for (final Logger logger : capturedLoggers()) {
+            previousLevels.put(logger, logger.getLevel());
             logger.setLevel(Level.DEBUG);
             logger.addAppender(logAppender);
         }
@@ -278,7 +284,9 @@ public class GenerateEngineTest {
     public void detachLogAppender() {
         for (final Logger logger : capturedLoggers()) {
             logger.detachAppender(logAppender);
+            logger.setLevel(previousLevels.get(logger));
         }
+        logAppender.stop();
     }
 
     private List<String> capturedMessages(final Level level) {

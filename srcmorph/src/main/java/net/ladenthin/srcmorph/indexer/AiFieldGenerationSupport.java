@@ -683,7 +683,7 @@ public class AiFieldGenerationSupport {
             final boolean part,
             final List<String> partials)
             throws IOException {
-        final boolean splittable = chunk.length() >= 2 * AiMapReduceSupport.MIN_CHUNK_CHARS;
+        final boolean splittable = AiMapReduceSupport.splittable(chunk.length());
         try {
             partials.add(generateComplete(
                             fieldGeneration,

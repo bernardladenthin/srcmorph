@@ -370,69 +370,172 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        fb-contrib stylistic/opinion detectors on the routing + plan + estimator code. These are
-        bytecode-shape heuristics that source changes cannot resolve without harming readability or
-        the class's intended API, scoped narrowly to the affected classes:
+        fb-contrib's stylistic detectors on the routing, plan, estimator and engine code, one Match per
+        class and pattern, each scoped to the methods it reports (a new finding of the kind elsewhere
+        still fails the build):
 
-          - CE_CLASS_ENVY: buildLlamaCppJniConfig copies the resolved AiGenerationConfig field-by-field
-            into the immutable LlamaCppJniConfig (it necessarily touches that config's getters more than
-            its own state); AiConditionEvaluator.branchCount walks the AiCondition tree. Both are
-            translation/traversal methods - referencing the other type heavily is the point.
-          - OCP_OVERLY_CONCRETE_PARAMETER: parameters typed to the concrete collaborator the method
-            actually needs (AiCondition / Map) rather than an over-abstracted supertype.
-          - OPM_OVERLY_PERMISSIVE_METHOD: the estimator's estimate* helpers and the plan's
-            routedCount/totalEstimatedSeconds are public by design - they are the class API and are
-            exercised directly by unit tests.
-          - UCPM_USE_CHARACTER_PARAMETERIZED_METHOD: renderMarkdown appends short literal strings
-            for the Markdown template; spelling them as String literals keeps the template readable.
-          - WEM_WEAK_EXCEPTION_MESSAGING: AiConditionEvaluator.validate's message describes a
-            configuration-file error in operator terms; it intentionally reads as a user-facing config
-            diagnostic rather than carrying internal state (the matching GenerateMojo/CalibrateMojo
-            WEM suppression lives in the srcmorph-maven-plugin module's own filter file).
-          - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: arises from the Objects.requireNonNull /
-            @NullMarked validation style (see the DCN rationale in the plugin module's filter file);
-            the explicit guards are the deliberate fail-fast contract, not dead checks.
-
-        Migration step 5 (engine extraction) additions, same rationale class:
-          - LlamaCppJniConfigFactory.fromGenerationConfig: the pure field-by-field translation from
-            AiGenerationConfig to LlamaCppJniConfig (moved verbatim out of the old
-            AbstractAiIndexMojo.buildLlamaCppJniConfig) necessarily touches the other type's getters
-            heavily (CE_CLASS_ENVY) and its null-guard on drySequenceBreakers mirrors the same
-            Objects.requireNonNull-adjacent style (RCN).
-          - CalibrateEngine.execute(): the rule.getAiDefinitionKey()/getPromptKey() null checks building
-            the routable-model map are the same deliberate defensive guard style as
-            AiConditionEvaluator.validate (RCN); its thrown messages are user-facing config diagnostics,
-            not internal state (WEM) - moved verbatim out of the old CalibrateMojo.
-          - GenerateEngine.resolveSharedFacts/execute(): resolveSharedFacts's fieldGenerations parameter
-            is typed to the concrete List the caller already has (OCP), and execute()'s thrown messages
-            are the same user-facing config diagnostics (WEM) - moved verbatim out of the old
-            GenerateMojo.
-          - CalibrationReport's constructor parameter is typed List (not Collection) because callers
-            always have an ordered List of measurements and the class explicitly preserves that order
-            (OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER).
+          - CE_CLASS_ENVY: AiConditionEvaluator.branchCount walks the AiCondition tree and
+            AiFieldGenerationSelector.validateRule reads a rule bean's fields: referencing the other
+            type heavily is the point of a traversal or a validation of a plain Jackson bean.
+          - OCP_OVERLY_CONCRETE_PARAMETER / OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER: parameters typed
+            to the List the caller has, whose order is the declaration order of the rules, counters,
+            entries or measurements the method reads.
+          - OPM_OVERLY_PERMISSIVE_METHOD: AiFactExtractor.counts, AiIndexPlan.windowExceededCount and the
+            estimator's estimate* methods are the classes' API, used by the other modules and the
+            tests, which this module's analysis does not see.
+          - UCPM_USE_CHARACTER_PARAMETERIZED_METHOD: renderMarkdown appends short literal strings of the
+            Markdown template; spelling them as String literals keeps the template readable.
+          - WEM_WEAK_EXCEPTION_MESSAGING: the validations' and the engines' messages describe a
+            configuration error in operator terms, a user-facing diagnostic rather than internal state
+            (the plugin's mojos have their own entry in that module's filter file).
+          - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: a key set to nothing in the configuration file binds
+            null through Jackson past the annotation; the explicit guards are the fail-fast contract.
     -->
     <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Method name="branchCount"/>
+        <Bug pattern="CE_CLASS_ENVY"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
         <Or>
-            <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
-            <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationSelector"/>
-            <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
-            <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
-            <Class name="net.ladenthin.srcmorph.support.AiGenerationTimeEstimator"/>
-            <Class name="net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory"/>
-            <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
-            <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
-            <Class name="net.ladenthin.srcmorph.engine.CalibrationReport"/>
-            <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+            <Method name="validateFileNames"/>
+            <Method name="validateInterpreters"/>
         </Or>
+        <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
         <Or>
-            <Bug pattern="CE_CLASS_ENVY"/>
-            <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
-            <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
-            <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
-            <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
-            <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
-            <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+            <Method name="anyUses"/>
+            <Method name="matchesExtension"/>
+            <Method name="matchesFileName"/>
         </Or>
+        <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiConditionEvaluator"/>
+        <Or>
+            <Method name="validate"/>
+            <Method name="validateContentMatches"/>
+            <Method name="validateFileNames"/>
+            <Method name="validateInterpreters"/>
+        </Or>
+        <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Method name="factsHash"/>
+        <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Method name="withoutIgnored"/>
+        <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Method name="counts"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFactExtractor"/>
+        <Or>
+            <Method name="isReported"/>
+            <Method name="validate"/>
+            <Method name="withoutIgnored"/>
+        </Or>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationSelector"/>
+        <Method name="validateRule"/>
+        <Bug pattern="CE_CLASS_ENVY"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.AiFieldGenerationSelector"/>
+        <Method name="requireRouteKeys"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+        <Method name="execute"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.CalibrateEngine"/>
+        <Method name="execute"/>
+        <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.CalibrationReport"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+        <Method name="resolveSubtrees"/>
+        <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+        <Or>
+            <Method name="buildPromptSupport"/>
+            <Method name="requireDefinedModels"/>
+            <Method name="validateRoutedModelPaths"/>
+        </Or>
+        <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
+        <Or>
+            <Method name="requireDefinedModels"/>
+            <Method name="validateRoutedModelPaths"/>
+        </Or>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+        <Method name="copies"/>
+        <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+        <Method name="requirePrompts"/>
+        <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
+        <Method name="run"/>
+        <Bug pattern="WEM_WEAK_EXCEPTION_MESSAGING"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
+        <Or>
+            <Method name="modelSeconds"/>
+            <Method name="tokens"/>
+        </Or>
+        <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
+        <Method name="windowExceededCount"/>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.AiIndexPlan"/>
+        <Method name="renderMarkdown"/>
+        <Bug pattern="UCPM_USE_CHARACTER_PARAMETERIZED_METHOD"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.support.AiGenerationTimeEstimator"/>
+        <Or>
+            <Method name="estimateDecodeMillis"/>
+            <Method name="estimatePrefillMillis"/>
+            <Method name="estimateSeconds"/>
+            <Method name="estimateSecondsCalibrated"/>
+        </Or>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
     </Match>
 
     <!--

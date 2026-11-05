@@ -16,6 +16,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -46,9 +47,25 @@ import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
 public class AiFieldGenerationSupportTest {
+
+    @TempDir
+    Path tempDir;
+
+    /**
+     * A context file of a fixed name: its path heads the prompt, so a random temp-file name would make the
+     * prompt, and with it the window, a little longer or shorter from run to run.
+     */
+    private Path tempFile(final String prefix, final String suffix) throws IOException {
+        final Path file = tempDir.resolve(prefix + suffix);
+        if (!Files.exists(file)) {
+            Files.createFile(file);
+        }
+        return file;
+    }
 
     /**
      * Lower bound on chunks needed to force a second reduce round: strictly above the production
@@ -67,11 +84,19 @@ public class AiFieldGenerationSupportTest {
         return (Logger) LoggerFactory.getLogger(AiFieldGenerationSupport.class);
     }
 
+    /** The logger's level before the test, restored after it (null: inherited). */
+    private Level previousLevel;
+
+    /** Whether the logger was additive before the test. */
+    private boolean previousAdditive;
+
     @BeforeEach
     public void setUp() {
         logAppender = new ListAppender<>();
         logAppender.start();
         final Logger logger = loggerUnderTest();
+        previousLevel = logger.getLevel();
+        previousAdditive = logger.isAdditive();
         logger.setLevel(Level.DEBUG);
         logger.setAdditive(false);
         logger.addAppender(logAppender);
@@ -79,7 +104,11 @@ public class AiFieldGenerationSupportTest {
 
     @AfterEach
     public void tearDown() {
-        loggerUnderTest().detachAppender(logAppender);
+        final Logger logger = loggerUnderTest();
+        logger.detachAppender(logAppender);
+        logger.setLevel(previousLevel);
+        logger.setAdditive(previousAdditive);
+        logAppender.stop();
     }
 
     private List<String> capturedMessages(final Level level) {
@@ -104,7 +133,7 @@ public class AiFieldGenerationSupportTest {
     @Test
     public void generate_providerReturnsNonEmpty_noWarningLogged() throws Exception {
         // arrange
-        final Path contextFile = Files.createTempFile("Test", ".java");
+        final Path contextFile = tempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
                 "Test.java",
                 "1.0",
@@ -132,7 +161,7 @@ public class AiFieldGenerationSupportTest {
     @Test
     public void generate_providerReturnsEmpty_warningContainsContextFile() throws Exception {
         // arrange
-        final Path contextFile = Files.createTempFile("AiGenerationConfig", ".java");
+        final Path contextFile = tempFile("AiGenerationConfig", ".java");
         final AiMdHeader header = new AiMdHeader(
                 "AiGenerationConfig.java",
                 "1.0",
@@ -165,7 +194,7 @@ public class AiFieldGenerationSupportTest {
     @Test
     public void generate_providerReturnsEmpty_warningContainsPromptKey() throws Exception {
         // arrange
-        final Path contextFile = Files.createTempFile("Test", ".java");
+        final Path contextFile = tempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
                 "Test.java",
                 "1.0",
@@ -194,7 +223,7 @@ public class AiFieldGenerationSupportTest {
     @Test
     public void generate_providerReturnsEmpty_resultBodyIsEmpty() throws Exception {
         // arrange
-        final Path contextFile = Files.createTempFile("Test", ".java");
+        final Path contextFile = tempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
                 "Test.java",
                 "1.0",
@@ -224,7 +253,7 @@ public class AiFieldGenerationSupportTest {
     @Test
     public void generate_providerReturnsEmpty_callsProviderOnceWarnsOnceAndBodyEmpty() throws Exception {
         // arrange
-        final Path contextFile = Files.createTempFile("Test", ".java");
+        final Path contextFile = tempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
                 "Test.java",
                 "1.0",
@@ -263,7 +292,7 @@ public class AiFieldGenerationSupportTest {
     @Test
     public void generate_providerReturnsEmpty_logsProcessingAndGenerationButNoGeneratedLine() throws Exception {
         // arrange
-        final Path contextFile = Files.createTempFile("Test", ".java");
+        final Path contextFile = tempFile("Test", ".java");
         final AiMdHeader header = new AiMdHeader(
                 "Test.java",
                 "1.0",
@@ -372,7 +401,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void onOversize_deterministic_skipsModelAndEmitsMetadataBody() throws Exception {
-        final Path contextFile = Files.createTempFile("Huge", ".java");
+        final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> {
             calls.incrementAndGet();
@@ -389,7 +418,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void onOversize_mapReduce_callsModelPerChunkPlusReduce() throws Exception {
-        final Path contextFile = Files.createTempFile("Huge", ".java");
+        final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> {
             calls.incrementAndGet();
@@ -417,7 +446,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (oversizeRule("m", "mapReduce", 2)),
-                        Files.createTempFile("Huge", ".java"),
+                        tempFile("Huge", ".java"),
                         "file",
                         largeSource(7000),
                         anyHeader());
@@ -434,7 +463,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void onOversize_mapReduce_withFacts_prependsExactWholeFileCountsToBody() throws Exception {
-        final Path contextFile = Files.createTempFile("Huge", ".java");
+        final Path contextFile = tempFile("Huge", ".java");
         final AiGenerationProvider provider = request -> "PARTIAL";
         final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
@@ -457,7 +486,7 @@ public class AiFieldGenerationSupportTest {
     public void facts_prependedOnNonOversizeFile() throws Exception {
         // A small source that fits the window (NOT oversize) still gets the exact facts block prepended,
         // so downstream agents get authoritative counts in every summary, not just huge-file ones.
-        final Path contextFile = Files.createTempFile("Small", ".java");
+        final Path contextFile = tempFile("Small", ".java");
         final AiGenerationProvider provider = request -> "AI SUMMARY";
         final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
 
@@ -503,12 +532,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .generate(
-                        oversizeRule("m", "sample", 0),
-                        Files.createTempFile("Dense", ".sql"),
-                        "file",
-                        source,
-                        anyHeader());
+                .generate(oversizeRule("m", "sample", 0), tempFile("Dense", ".sql"), "file", source, anyHeader());
 
         // assert: the first call fits whole, the second at most the window the warning names, three
         // quarters of the first one
@@ -530,7 +554,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void generate_contextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
-        final Path contextFile = Files.createTempFile("Dense", ".sql");
+        final Path contextFile = tempFile("Dense", ".sql");
         final AtomicInteger calls = new AtomicInteger();
         // Fits the char window but the provider rejects the first prompt as over-context (token-dense);
         // the retry with a smaller window then succeeds.
@@ -561,7 +585,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (normalRule("m", null)),
-                        Files.createTempFile("Test", ".java"),
+                        tempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
                         anyHeader());
@@ -572,7 +596,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void generate_persistentContextOverflow_rethrowsAfterRetrying() throws Exception {
-        final Path contextFile = Files.createTempFile("Dense", ".sql");
+        final Path contextFile = tempFile("Dense", ".sql");
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> {
             calls.incrementAndGet();
@@ -589,7 +613,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void generate_nonOverflowRuntimeException_propagatesWithoutRetry() throws Exception {
-        final Path contextFile = Files.createTempFile("X", ".sql");
+        final Path contextFile = tempFile("X", ".sql");
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> {
             calls.incrementAndGet();
@@ -605,7 +629,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void onOversize_mapReduce_unbounded_reducesHierarchicallyInMultipleRounds() throws Exception {
-        final Path contextFile = Files.createTempFile("Huge", ".java");
+        final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> {
             calls.incrementAndGet();
@@ -650,7 +674,7 @@ public class AiFieldGenerationSupportTest {
                 java.io.IOException.class,
                 () -> support.generate(
                         (oversizeRule("m", "mapReduce", 0)),
-                        Files.createTempFile("Huge", ".java"),
+                        tempFile("Huge", ".java"),
                         "file",
                         largeSource(600),
                         anyHeader()));
@@ -676,19 +700,9 @@ public class AiFieldGenerationSupportTest {
         final java.io.IOException failed = org.junit.jupiter.api.Assertions.assertThrows(
                 java.io.IOException.class,
                 () -> supportWithModels(provider, normalWindowModel("m"))
-                        .generate(
-                                oversizeRule("m", "fail", 0),
-                                Files.createTempFile("A", ".java"),
-                                "file",
-                                source,
-                                anyHeader()));
+                        .generate(oversizeRule("m", "fail", 0), tempFile("A", ".java"), "file", source, anyHeader()));
         final AiGenerationResult sampled = supportWithModels(provider, normalWindowModel("m"))
-                .generate(
-                        oversizeRule("m", "sample", 0),
-                        Files.createTempFile("B", ".java"),
-                        "file",
-                        source,
-                        anyHeader());
+                .generate(oversizeRule("m", "sample", 0), tempFile("B", ".java"), "file", source, anyHeader());
 
         // assert: fail refuses instead of writing a cut summary; sample says how much of the head it read
         assertThat(failed.getMessage(), containsString("onOversize: fail"));
@@ -699,7 +713,7 @@ public class AiFieldGenerationSupportTest {
 
     @Test
     public void onOversize_sample_singleCallOnTrimmedHead() throws Exception {
-        final Path contextFile = Files.createTempFile("Huge", ".java");
+        final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final AiGenerationProvider provider = request -> {
             calls.incrementAndGet();
@@ -754,11 +768,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = support.generate(
-                oversizeRule("m", "mapReduce", 0),
-                Files.createTempFile("Huge", ".java"),
-                "file",
-                largeSource(7000),
-                anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
 
         // assert
         assertThat(result.complete(), is(true));
@@ -781,13 +791,9 @@ public class AiFieldGenerationSupportTest {
         assertThat(result.complete(), is(false));
     }
 
-    private static AiGenerationResult assertDoesNotThrowGenerate(final AiFieldGenerationSupport support) {
+    private AiGenerationResult assertDoesNotThrowGenerate(final AiFieldGenerationSupport support) {
         return org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> support.generate(
-                oversizeRule("m", "mapReduce", 0),
-                Files.createTempFile("Huge", ".java"),
-                "file",
-                largeSource(7000),
-                anyHeader()));
+                oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader()));
     }
 
     @Test
@@ -797,7 +803,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (normalRule("m", "retryOnce")),
-                        Files.createTempFile("Test", ".java"),
+                        tempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
                         anyHeader());
@@ -819,7 +825,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (normalRule("m", "retryOnce")),
-                        Files.createTempFile("Test", ".java"),
+                        tempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
                         anyHeader());
@@ -836,7 +842,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (normalRule("m", null)),
-                        Files.createTempFile("Test", ".java"),
+                        tempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
                         anyHeader());
@@ -856,7 +862,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (normalRule("m", "keep")),
-                        Files.createTempFile("Test", ".java"),
+                        tempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
                         anyHeader());
@@ -877,7 +883,7 @@ public class AiFieldGenerationSupportTest {
             final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                     .generate(
                             (normalRule("m", "keep")),
-                            Files.createTempFile("Test", ".java"),
+                            tempFile("Test", ".java"),
                             "file",
                             "public class Test {}",
                             anyHeader());
@@ -895,7 +901,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         (normalRule("m", "fail")),
-                        Files.createTempFile("Test", ".java"),
+                        tempFile("Test", ".java"),
                         "file",
                         "public class Test {}",
                         anyHeader());
@@ -942,7 +948,7 @@ public class AiFieldGenerationSupportTest {
         // act
         final AiGenerationResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 2),
-                Files.createTempFile("Huge", ".java"),
+                tempFile("Huge", ".java"),
                 "file",
                 largeSource(7000),
                 anyHeader());
@@ -973,7 +979,7 @@ public class AiFieldGenerationSupportTest {
         // act
         final AiGenerationResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 2),
-                Files.createTempFile("Huge", ".java"),
+                tempFile("Huge", ".java"),
                 "file",
                 largeSource(7000),
                 anyHeader());
@@ -994,7 +1000,7 @@ public class AiFieldGenerationSupportTest {
         // act
         final AiGenerationResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 2),
-                Files.createTempFile("Huge", ".java"),
+                tempFile("Huge", ".java"),
                 "file",
                 largeSource(7000),
                 anyHeader());
@@ -1017,7 +1023,7 @@ public class AiFieldGenerationSupportTest {
         counter.setPattern("\\bclass\\b");
         rule.setFacts(Collections.singletonList(counter));
         final AiGenerationResult result = supportWithModels(request -> "", normalWindowModel("m"))
-                .generate((rule), Files.createTempFile("Test", ".java"), "file", "public class Test {}", anyHeader());
+                .generate((rule), tempFile("Test", ".java"), "file", "public class Test {}", anyHeader());
 
         assertThat(result.complete(), is(false));
         assertThat(result.body(), is(equalTo("")));
@@ -1036,7 +1042,7 @@ public class AiFieldGenerationSupportTest {
                 () -> supportWith(provider, "m")
                         .generate(
                                 (oversizeRule("m", "fail", 0)),
-                                Files.createTempFile("Huge", ".java"),
+                                tempFile("Huge", ".java"),
                                 "file",
                                 largeSource(500),
                                 anyHeader()));
@@ -1052,8 +1058,8 @@ public class AiFieldGenerationSupportTest {
         final AiModelDefinitionSupport models = normalWindowModel("m");
         final AiPromptPreparationSupport preparation =
                 new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions()));
-        final Path shortName = Files.createTempFile("A", ".java");
-        final Path longName = Files.createTempFile("A_very_long_file_name_that_eats_into_the_prompt_budget", ".java");
+        final Path shortName = tempFile("A", ".java");
+        final Path longName = tempFile("A_very_long_file_name_that_eats_into_the_prompt_budget", ".java");
         final int budget = (int) AiInputWindowCalculator.availableSourceChars(
                 models.getConfig("m"),
                 preparation.getBasePromptLength(CommonTestFixtures.PROMPT_KEY_FILE_BODY, shortName));
@@ -1087,7 +1093,7 @@ public class AiFieldGenerationSupportTest {
 
         support.generate(
                 oversizeRule("m", "sampleChunks", 2),
-                Files.createTempFile("Huge", ".java"),
+                tempFile("Huge", ".java"),
                 "file",
                 largeSource(7000),
                 anyHeader());
@@ -1105,7 +1111,7 @@ public class AiFieldGenerationSupportTest {
     public void takeUsage_anEmptyAnswer_stillCounts() throws Exception {
         final AiFieldGenerationSupport support = supportWithModels(request -> "", normalWindowModel("m"));
 
-        support.generate(normalRule("m", null), Files.createTempFile("Small", ".java"), "file", "x", anyHeader());
+        support.generate(normalRule("m", null), tempFile("Small", ".java"), "file", "x", anyHeader());
 
         // the empty answer was one call; a lambda provider reports no tokens
         assertThat(support.takeUsage().calls(), is(1));
@@ -1119,8 +1125,7 @@ public class AiFieldGenerationSupportTest {
         return definition;
     }
 
-    private static List<AiGenerationRequest> mapReduceRequests(final String mapKey, final String reduceKey)
-            throws Exception {
+    private List<AiGenerationRequest> mapReduceRequests(final String mapKey, final String reduceKey) throws Exception {
         final List<AiGenerationRequest> requests = new ArrayList<>();
         final AiGenerationProvider provider = request -> {
             requests.add(request);
@@ -1134,7 +1139,7 @@ public class AiFieldGenerationSupportTest {
         final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
         rule.setMapPromptKey(mapKey);
         rule.setReducePromptKey(reduceKey);
-        support.generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+        support.generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
         return requests;
     }
 
@@ -1211,7 +1216,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = support.generate(
-                oversizeRule("m", "mapReduce", 0), Files.createTempFile("Dense", ".java"), "file", source, anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", source, anyHeader());
 
         // assert
         assertThat(result.body(), is(equalTo("S")));
@@ -1229,11 +1234,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = support.generate(
-                oversizeRule("m", "mapReduce", 0),
-                Files.createTempFile("Dense", ".java"),
-                "file",
-                largeSource(400),
-                anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", largeSource(400), anyHeader());
 
         // assert: the file is map-reduced, and every call the provider answered fits
         assertThat(result.complete(), is(true));
@@ -1253,11 +1254,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         support.generate(
-                oversizeRule("m", "mapReduce", 0),
-                Files.createTempFile("Dense", ".java"),
-                "file",
-                largeSource(1_000),
-                anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", largeSource(1_000), anyHeader());
 
         // assert: no map call needed a smaller window, so every chunk read the whole of itself
         for (final AiGenerationRequest request : provider.generated) {
@@ -1278,8 +1275,7 @@ public class AiFieldGenerationSupportTest {
         final String source = largeSource(300);
 
         // act
-        support.generate(
-                oversizeRule("m", "mapReduce", 0), Files.createTempFile("Small", ".java"), "file", source, anyHeader());
+        support.generate(oversizeRule("m", "mapReduce", 0), tempFile("Small", ".java"), "file", source, anyHeader());
 
         // assert: the source fits the estimate and goes whole
         assertThat(requests.size(), is(1));
@@ -1304,7 +1300,7 @@ public class AiFieldGenerationSupportTest {
         rule.setFacts(Collections.singletonList(counter));
 
         // act
-        support.generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+        support.generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
 
         // assert: the map calls read their chunk, the reduce call the facts, then the parts
         final AiGenerationRequest reduce = requests.get(requests.size() - 1);
@@ -1340,11 +1336,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = support.generate(
-                oversizeRule("m", "mapReduce", 0),
-                Files.createTempFile("Huge", ".java"),
-                "file",
-                largeSource(7000),
-                anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
 
         // assert: the first reduce reads two shortened parts, and the coverage line counts them
         final AiGenerationRequest firstReduce = requests.stream()
@@ -1379,7 +1371,7 @@ public class AiFieldGenerationSupportTest {
         // act
         final AiGenerationResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 1),
-                Files.createTempFile("Huge", ".java"),
+                tempFile("Huge", ".java"),
                 "file",
                 largeSource(7000),
                 anyHeader());
@@ -1399,7 +1391,7 @@ public class AiFieldGenerationSupportTest {
                 java.io.IOException.class,
                 () -> support.generate(
                         oversizeRule("m", "sample", 0),
-                        Files.createTempFile("Dense", ".java"),
+                        tempFile("Dense", ".java"),
                         "file",
                         largeSource(300),
                         anyHeader()));
@@ -1425,7 +1417,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = support.generate(
-                oversizeRule("m", "mapReduce", 0), Files.createTempFile("Dense", ".java"), "file", source, anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", source, anyHeader());
 
         // assert: the dense chunk went in two halves, nothing was cut
         assertThat(provider.generated.stream().anyMatch(r -> r.sourceText().contains(", half 1:\n")), is(true));
@@ -1450,7 +1442,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+                .generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
 
         // assert
         assertThat(result.body(), containsString(" part summaries cut at the output budget)\n\nFINAL"));
@@ -1474,7 +1466,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         normalRule("m", "keep"),
-                        Files.createTempFile("Paging", ".ts"),
+                        tempFile("Paging", ".ts"),
                         "file",
                         "export class Paging {}",
                         anyHeader());
@@ -1500,7 +1492,7 @@ public class AiFieldGenerationSupportTest {
         supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         oversizeRule("m", "mapReduce", 0),
-                        Files.createTempFile("Huge", ".java"),
+                        tempFile("Huge", ".java"),
                         "file",
                         largeSource(7000),
                         anyHeader());
@@ -1526,7 +1518,7 @@ public class AiFieldGenerationSupportTest {
 
         // act
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
-                .generate(rule, Files.createTempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
+                .generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
 
         // assert: one call per chunk, as many as the coverage line names
         final String chunks = result.body().replaceAll("(?s).*?of (\\d+) chunks summarized.*", "$1");
@@ -1547,7 +1539,7 @@ public class AiFieldGenerationSupportTest {
         supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         oversizeRule("m", "sampleChunks", 2),
-                        Files.createTempFile("Huge", ".java"),
+                        tempFile("Huge", ".java"),
                         "file",
                         largeSource(7000),
                         anyHeader());
@@ -1578,8 +1570,7 @@ public class AiFieldGenerationSupportTest {
         // act
         assertThrows(
                 java.io.IOException.class,
-                () -> support.generate(
-                        normalRule("m", null), Files.createTempFile("Small", ".java"), "file", "x", anyHeader()));
+                () -> support.generate(normalRule("m", null), tempFile("Small", ".java"), "file", "x", anyHeader()));
 
         // assert
         assertThat(support.takeUsage().promptTokens(), is(100L));
@@ -1598,7 +1589,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         oversizeRule("m", "mapReduce", 0),
-                        Files.createTempFile("Huge", ".java"),
+                        tempFile("Huge", ".java"),
                         "file",
                         largeSource(7000),
                         anyHeader());
@@ -1621,7 +1612,7 @@ public class AiFieldGenerationSupportTest {
         final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(
                         oversizeRule("m", "sampleChunks", 2),
-                        Files.createTempFile("Huge", ".java"),
+                        tempFile("Huge", ".java"),
                         "file",
                         largeSource(7000),
                         anyHeader());
@@ -1641,13 +1632,13 @@ public class AiFieldGenerationSupportTest {
 
         // act
         supportWithModels(atLimit, normalWindowModel("m"))
-                .generate(normalRule("m", null), Files.createTempFile("Small", ".java"), "file", source, anyHeader());
+                .generate(normalRule("m", null), tempFile("Small", ".java"), "file", source, anyHeader());
         final java.io.IOException failed = assertThrows(
                 java.io.IOException.class,
                 () -> supportWithModels(aboveLimit, normalWindowModel("m"))
                         .generate(
                                 oversizeRule("m", "sample", 0),
-                                Files.createTempFile("Small", ".java"),
+                                tempFile("Small", ".java"),
                                 "file",
                                 source,
                                 anyHeader()));
@@ -1671,20 +1662,12 @@ public class AiFieldGenerationSupportTest {
         };
         final AiFieldGenerationSupport support = supportWithModels(provider, normalWindowModel("m"));
         final AiGenerationResult first = support.generate(
-                oversizeRule("m", "mapReduce", 0),
-                Files.createTempFile("Huge", ".java"),
-                "file",
-                largeSource(7000),
-                anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
         file.incrementAndGet();
 
         // act
         final AiGenerationResult second = support.generate(
-                oversizeRule("m", "mapReduce", 0),
-                Files.createTempFile("Huge", ".java"),
-                "file",
-                largeSource(7000),
-                anyHeader());
+                oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000), anyHeader());
 
         // assert
         assertThat(first.body(), containsString("cut at the output budget"));

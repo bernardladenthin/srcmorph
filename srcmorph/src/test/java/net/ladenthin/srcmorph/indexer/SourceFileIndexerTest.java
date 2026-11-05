@@ -252,6 +252,33 @@ public class SourceFileIndexerTest {
         assertThat(wroteAgain, is(AiIndexOutcome.UNCHANGED));
     }
 
+    /**
+     * The checksum is over the bytes: two bytes that are no UTF-8 both read as U+FFFD, so the decoded text
+     * stays the same, but the file changed and its summary is rewritten.
+     */
+    @Test
+    public void indexFile_anInvalidByteChangedForAnother_rewritesTheSummary() throws Exception {
+        // arrange: a Latin-1 file, its umlaut no UTF-8
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("src/site/ai");
+        final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
+        Files.createDirectories(foo.getParent());
+        Files.write(foo, new byte[] {'c', 'l', 'a', 's', 's', ' ', 'F', (byte) 0xE4, '{', '}', '\n'});
+        final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
+        final AiFieldGenerationConfig rule =
+                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final AiFieldGenerationSupport support = mockSupport();
+        assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(AiIndexOutcome.WRITTEN));
+
+        // act: another byte that is no UTF-8 either
+        Files.write(foo, new byte[] {'c', 'l', 'a', 's', 's', ' ', 'F', (byte) 0xF6, '{', '}', '\n'});
+        final AiIndexOutcome again = indexer.indexFile(foo, rule, support, "", "", "");
+
+        // assert
+        assertThat(again, is(AiIndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(AiIndexOutcome.UNCHANGED));
+    }
+
     @Test
     public void indexFile_changedPromptOrFactsHash_rewritesTheSummary() throws Exception {
         // arrange

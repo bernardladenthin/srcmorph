@@ -58,7 +58,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 26 | Benchmark meta (srcmorph commit, Python, corpus hash), `large.py` golden hash, non-UTF-8 sources, the tools' mutations | Claude | done 2026-11-05 (run.py's orchestration stays tested by runs only) | — |
 | 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | done 2026-11-05 | — |
 | 28 | Run record totals (skipped, wall time), plan tokens by oversize strategy, the first file's model load | Claude | done 2026-11-05 | — |
-| 29 | Test upkeep: guide drift, logger levels, the 2000-character chunk, the byte checksum, the calibration block through the loader, the fb-contrib match per class | Claude | open | Review of 2026-11-02, tests |
+| 29 | Test upkeep: done for logger levels, fixed temp names, the 2000-character chunk, the byte checksum, the calibration block through the loader and the fb-contrib match per class. Left: the guide drift of older tests (433 two-part and 221 one-part test names, missing arrange/act/assert comments, 195 qualified names) | Owner: a sweep, or fix a file's drift when it is touched | open | Review of 2026-11-02, tests |
 | 30 | API reviews: null-safety, package hierarchy, naming (`code-quality-todos.md`) | Claude | open | Other open items |
 
 **Wave 4: larger work**
@@ -170,13 +170,10 @@ Unreleased) except:
   the corpus it is scored on.
 
 - Tests (the test review): `AiFieldGenerationSupport` holds most of the pure map-reduce logic off the
-  PIT gate; split it the way `LlamaCppJniProviderSupport` was. The checksum over bytes has no
-  indexer-level test. A chunk of exactly 2000 characters (the split boundary) is not tested. The broad
-  fb-contrib SpotBugs match hides 15 benign findings in four classes and suppresses nothing else; split
-  it per class. Drift from TEST_WRITING_GUIDE in older tests (two-segment names, no arrange/act/assert
-  comments, tests outside folds, fully qualified names); random temp-file names feed a prompt length;
-  the test logger's level is never restored; the calibration paste block is never read back through
-  the strict loader.
+  PIT gate; split it the way `LlamaCppJniProviderSupport` was (row 31). Drift from TEST_WRITING_GUIDE
+  in older tests: 433 test names of two parts and 221 of one where the guide wants three, tests without
+  arrange/act/assert comments or outside folds, 195 fully qualified names (counted 2026-11-05); a sweep
+  renames about 650 tests, which CLAUDE.md counts as a large refactor to report, not to apply.
 
 **Core (engine, indexer, provider, config):**
 

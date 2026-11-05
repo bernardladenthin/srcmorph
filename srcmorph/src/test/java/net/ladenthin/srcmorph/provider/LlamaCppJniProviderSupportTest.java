@@ -305,17 +305,23 @@ public class LlamaCppJniProviderSupportTest {
         return new ChatResponse("id", Collections.singletonList(choice), usage, null, "{}");
     }
 
+    /** The logger's level before {@link #attachAppender(Level)}, restored by {@link #detachAppender}. */
+    private static Level previousLevel;
+
     private static ListAppender<ILoggingEvent> attachAppender(final Level level) {
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         final Logger logger = (Logger) LoggerFactory.getLogger(LlamaCppJniProviderSupport.class);
+        previousLevel = logger.getLevel();
         logger.setLevel(level);
         logger.addAppender(appender);
         return appender;
     }
 
     private static void detachAppender(final ListAppender<ILoggingEvent> appender) {
-        ((Logger) LoggerFactory.getLogger(LlamaCppJniProviderSupport.class)).detachAppender(appender);
+        final Logger logger = (Logger) LoggerFactory.getLogger(LlamaCppJniProviderSupport.class);
+        logger.detachAppender(appender);
+        logger.setLevel(previousLevel);
         appender.stop();
     }
 

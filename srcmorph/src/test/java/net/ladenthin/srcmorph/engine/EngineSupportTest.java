@@ -46,18 +46,24 @@ public class EngineSupportTest {
 
     private ListAppender<ILoggingEvent> logAppender;
 
+    /** The logger's level before the test, restored after it (null: inherited). */
+    private Level previousLevel;
+
     @BeforeEach
     public void attachLogAppender() {
         logAppender = new ListAppender<>();
         logAppender.start();
         final Logger logger = (Logger) LoggerFactory.getLogger(EngineSupport.class);
+        previousLevel = logger.getLevel();
         logger.setLevel(Level.DEBUG);
         logger.addAppender(logAppender);
     }
 
     @AfterEach
     public void detachLogAppender() {
-        ((Logger) LoggerFactory.getLogger(EngineSupport.class)).detachAppender(logAppender);
+        final Logger logger = (Logger) LoggerFactory.getLogger(EngineSupport.class);
+        logger.detachAppender(logAppender);
+        logger.setLevel(previousLevel);
         logAppender.stop();
     }
 

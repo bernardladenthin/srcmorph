@@ -351,6 +351,18 @@ public final class AiMapReduceSupport {
     }
 
     /**
+     * Whether a chunk can be read again as two halves, each at least {@link #MIN_CHUNK_CHARS} long: one
+     * that came back without an answer, or that does not fit the counted window. A shorter one is cut
+     * to the window instead.
+     *
+     * @param chunkLength the chunk's characters
+     * @return {@code true} from twice {@link #MIN_CHUNK_CHARS} on
+     */
+    public static boolean splittable(final int chunkLength) {
+        return chunkLength >= 2 * MIN_CHUNK_CHARS;
+    }
+
+    /**
      * Returns how many reduce calls a map-reduce of {@code chunks} partials makes, when every batch holds
      * {@link #MAX_REDUCE_FANIN} partials (fewer when they are long): one per batch of every round, until
      * one summary is left; none for a single chunk.
