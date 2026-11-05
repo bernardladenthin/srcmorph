@@ -187,6 +187,28 @@ class WorkTest(unittest.TestCase):
                 run.prepare_work(work, run.JAVA_COMMIT, corpus=str(Path(tmp) / "corpus"))
             self.assertTrue((work / "keep").is_dir())
 
+    def test_anOutputDirectoryOfSummaries_isDeleted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out" / "m"
+            (out / "java").mkdir(parents=True)
+            (out / "java" / "A.java.ai.md").write_text("summary", encoding="utf-8")
+            (out / "package.ai.md").write_text("package", encoding="utf-8")
+
+            run.clear_out(out)
+
+            self.assertFalse(out.exists())
+
+    def test_anOutputDirectoryHoldingOtherFiles_isRefused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "src"
+            (out / "main").mkdir(parents=True)
+            (out / "main" / "A.java").write_text("class A {}", encoding="utf-8")
+            (out / "A.java.ai.md").write_text("summary", encoding="utf-8")
+
+            with self.assertRaises(SystemExit):
+                run.clear_out(out)
+            self.assertTrue((out / "main" / "A.java").is_file())
+
     def test_itsOwnWorkDirectory_isReplaced(self):
         with tempfile.TemporaryDirectory() as tmp:
             corpus, work = Path(tmp) / "corpus", Path(tmp) / "work"

@@ -22,5 +22,8 @@ a table, an XML element and an error-code area in each file's middle (`middle` i
 
 ```bash
 python score.py --work <copy of corpus-languages> --out ../languages-2026-11/languages/run1/out \
-    --facts facts-languages.json
+    --meta ../languages-2026-11/languages/run1/meta --facts facts-languages.json --scores <dir>
 ```
+
+`--meta` names the run's own cut-offs (without it, those of the card's runs are read), `--scores` a
+directory of its own (without it, the card's `scores/` is overwritten).

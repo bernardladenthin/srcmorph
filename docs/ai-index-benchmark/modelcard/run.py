@@ -36,8 +36,9 @@ Options: --profile <profile under profiles/> (default v3; it needs the five prom
          fewer characters per token than code, and a window filled at 4 is refused by the provider),
          --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
          --commit <git rev of the Java snapshot>, --seed <n> (every model's seed, for repeat runs;
-         the OpenAI-compatible provider sends it too), --out, --meta, --work (created by run.py and
-         marked so; an existing directory without the marker is refused, never deleted).
+         the OpenAI-compatible provider sends it too), --out (a model's earlier summaries there are
+         deleted, a directory holding anything but .ai.md files is refused), --meta, --work (created
+         by run.py and marked so; an existing directory without the marker is refused, never deleted).
 
 <meta>/<model key>.json holds the model definition as sent (without the key variable), the corpus,
 profile and options, the SHA-256 of every prompt and fact file the rules name, the srcmorph-cli jar
@@ -387,13 +388,23 @@ def files_not_written(log_path):
     return FILES_NOT_WRITTEN in log_path.read_text(encoding="utf-8", errors="replace")
 
 
+def clear_out(out_dir):
+    """Deletes a model's earlier output, refusing a directory that holds anything but srcmorph's .ai.md
+    summaries: a mistyped --out never deletes a source tree."""
+    if not out_dir.exists():
+        return
+    foreign = sorted(p for p in out_dir.rglob("*") if p.is_file() and not p.name.endswith(".ai.md"))
+    if foreign:
+        sys.exit(f"{out_dir} holds files srcmorph did not write ({foreign[0]}); refusing to delete it")
+    shutil.rmtree(out_dir)
+
+
 def run_model(args, models, profile, model):
     key = model["key"]
     definition = ai_definition(models, model, args.model_dir, args.seed, args.chars_per_token)
     rules = file_rules(profile, key, args.facts, args.oversize or None, args.max_chunks, args.java_prompt)
     out_dir = Path(args.out) / key
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
+    clear_out(out_dir)
     log_dir = Path(args.work).parent / "logs" / key
     log_dir.mkdir(parents=True, exist_ok=True)
     classpath = Path(args.cp).read_text(encoding="utf-8").strip()
