@@ -9,6 +9,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.Collections;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -46,7 +47,8 @@ public class ShebangTest {
                 "#!bash|bash",
                 "#!/usr/bin/python3.12\\nimport os|python3.12",
             })
-    public void interpreter_namesTheProgramOrWhatEnvRuns(final String head, final String interpreter) {
+    public void interpreter_shebangLine_namesTheProgramOrWhatEnvRuns(final String head, final String interpreter) {
+        // act, assert
         assertThat(Shebang.interpreter(head.replace("\\n", "\n")), is(interpreter));
     }
 
@@ -65,17 +67,21 @@ public class ShebangTest {
                 "#!/usr/bin/env /"
             })
     public void interpreter_withoutAnInterpreter_isNull(final String head) {
+        // act, assert
         assertThat(Shebang.interpreter(head), is(nullValue()));
     }
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(ints = {Shebang.MAX_LINE_CHARS - 4, Shebang.MAX_LINE_CHARS - 3})
-    public void interpreter_readsTheFirstMaxLineCharsOfTheLine(final int padding) {
+    public void interpreter_paddedLine_readsTheFirstMaxLineCharsOfTheLine(final int padding) {
+        // arrange
         // "#!" + padding blanks + "bash": the name ends at MAX_LINE_CHARS in the first case only
         final String head = "#!" + " ".repeat(padding - 2) + "bash";
 
+        // act
         final String interpreter = Shebang.interpreter(head);
 
+        // assert
         assertThat(interpreter, is(padding == Shebang.MAX_LINE_CHARS - 4 ? "bash" : "bas"));
     }
     // </editor-fold>
@@ -94,7 +100,8 @@ public class ShebangTest {
         "python3.1,python3.1",
         "python3.1.2,python3.1"
     })
-    public void matches_theNameOrAVersionOfIt(final String interpreter, final String name) {
+    public void matches_theNameOrAVersionOfIt_isTrue(final String interpreter, final String name) {
+        // act, assert
         assertThat(Shebang.matches(interpreter, Arrays.asList("other", name)), is(true));
     }
 
@@ -112,11 +119,13 @@ public class ShebangTest {
         "python3x,python3"
     })
     public void matches_anotherProgram_isFalse(final String interpreter, final String name) {
+        // act, assert
         assertThat(Shebang.matches(interpreter, Collections.singletonList(name)), is(false));
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     public void matches_nullEntryOrNoNames_isFalse() {
+        // act, assert
         assertThat(Shebang.matches("bash", Collections.singletonList(null)), is(false));
         assertThat(Shebang.matches("bash", Collections.emptyList()), is(false));
     }

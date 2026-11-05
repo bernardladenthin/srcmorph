@@ -35,11 +35,13 @@ public class RouteEstimatorTest {
     // <editor-fold defaultstate="collapsed" desc="estimateSeconds">
     @Test
     public void estimateSeconds_withoutCalibration_isTheBuiltInModel() {
+        // act, assert
         assertThat(estimator.estimateSeconds(12_345L, uncalibrated), is(equalTo(reference.estimateSeconds(12_345))));
     }
 
     @Test
     public void estimateSeconds_withCalibration_usesTheMeasuredThroughput() {
+        // arrange
         final Calibration calibration = new Calibration();
         calibration.setPrefillTokensPerSecond(400.0d);
         calibration.setDecodeTokensPerSecond(9.0d);
@@ -47,12 +49,24 @@ public class RouteEstimatorTest {
         final ModelDefinition calibrated = new ModelDefinition();
         calibrated.setCalibration(calibration);
 
+        // act
         final long seconds = estimator.estimateSeconds(50_000L, calibrated);
 
+        // assert
         assertThat(seconds, is(equalTo(reference.estimateSecondsCalibrated(50_000, 400.0d, 9.0d, 3.5d))));
         assertThat(seconds, is(not(equalTo(reference.estimateSeconds(50_000)))));
     }
 
+    @Test
+    public void estimateSeconds_moreThanAnIntOfChars_countsAsTheLargestInt() {
+        // act, assert
+        assertThat(
+                estimator.estimateSeconds(Long.MAX_VALUE, uncalibrated),
+                is(equalTo(reference.estimateSeconds(Integer.MAX_VALUE))));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="isCalibrated">
     // isCalibrated: whether the plan and the log name the model's calibration or GPT-6 Luna as the basis
     private static ModelDefinition calibratedWith(final double prefill, final double decode) {
         final Calibration calibration = new Calibration();
@@ -65,35 +79,32 @@ public class RouteEstimatorTest {
 
     @Test
     public void isCalibrated_bothThroughputsMeasured_isTrue() {
+        // act, assert
         assertThat(RouteEstimator.isCalibrated(calibratedWith(400.0d, 9.0d)), is(true));
     }
 
     @Test
     public void isCalibrated_withoutACalibration_isFalse() {
+        // act, assert
         assertThat(RouteEstimator.isCalibrated(uncalibrated), is(false));
     }
 
     /** A throughput of 0 is "not measured": the estimate falls back to the built-in model, and so does the label. */
     @Test
     public void isCalibrated_aThroughputOfZero_isFalse() {
+        // act, assert
         assertThat(RouteEstimator.isCalibrated(calibratedWith(0.0d, 9.0d)), is(false));
         assertThat(RouteEstimator.isCalibrated(calibratedWith(400.0d, 0.0d)), is(false));
         assertThat(
                 estimator.estimateSeconds(12_345L, calibratedWith(0.0d, 9.0d)),
                 is(equalTo(reference.estimateSeconds(12_345))));
     }
-
-    @Test
-    public void estimateSeconds_moreThanAnIntOfChars_countsAsTheLargestInt() {
-        assertThat(
-                estimator.estimateSeconds(Long.MAX_VALUE, uncalibrated),
-                is(equalTo(reference.estimateSeconds(Integer.MAX_VALUE))));
-    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="estimateRouteSeconds">
     @Test
     public void estimateRouteSeconds_aFileThatFits_costsOneGenerationOfItsSize() {
+        // act, assert
         // exactly the window still fits; the estimate is of the file size, not the window (one large enough
         // that the linear, flat estimate tells the two apart)
         assertThat(
@@ -103,6 +114,7 @@ public class RouteEstimatorTest {
 
     @Test
     public void estimateRouteSeconds_overTheWindow_deterministicIsFree() {
+        // act, assert
         assertThat(
                 estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
                 is(0L));
@@ -110,6 +122,7 @@ public class RouteEstimatorTest {
 
     @Test
     public void estimateRouteSeconds_overTheWindow_sampleAndFailCostOneWindow() {
+        // act, assert
         assertThat(
                 estimator.estimateRouteSeconds(rule("sample", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
                 is(equalTo(window(200_000L))));
@@ -126,6 +139,7 @@ public class RouteEstimatorTest {
      */
     @Test
     public void estimateRouteSeconds_mapReduce_everyChunkPlusTheReduce() {
+        // act, assert
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_600L, 10_000L, 0),
                 is(equalTo(3 * window(10_000L))));
@@ -135,7 +149,8 @@ public class RouteEstimatorTest {
     }
 
     @Test
-    public void estimateRouteSeconds_mapReduce_manyChunks_reduceInRounds() {
+    public void estimateRouteSeconds_mapReduceOfManyChunks_reducesInRounds() {
+        // act, assert
         // 304 400 characters are 40 chunks; two a batch: 20, 10, 5, 3, 2 and 1 reduce calls
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 304_400L, 10_000L, 0),
@@ -145,11 +160,13 @@ public class RouteEstimatorTest {
     /** A model's own characters per token size its part summaries; without one, the estimate's 4 does. */
     @Test
     public void estimateRouteSeconds_mapReduce_theFanInReadsTheModelsCharactersPerToken() {
+        // arrange
         final ModelDefinition dense = new ModelDefinition();
         dense.setCharsPerToken(2);
         final ModelDefinition unset = new ModelDefinition();
         unset.setCharsPerToken(0);
 
+        // act, assert
         // 3 chunks; at 2 characters a part summary is 1 964 characters, 4 fit the 8 000: one reduce call
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), dense, 1L, 15_601L, 10_000L, 0),
@@ -161,7 +178,8 @@ public class RouteEstimatorTest {
     }
 
     @Test
-    public void estimateRouteSeconds_mapReduce_aWideWindow_reducesSixteenABatch() {
+    public void estimateRouteSeconds_mapReduceOfAWideWindow_reducesSixteenABatch() {
+        // act, assert
         // a window of 100 000: budget 80 000 holds 20 part summaries, so a batch is the 16 of the run;
         // 1 520 000 characters are 20 chunks (76 000 a chunk): 2 reduce calls and one of their 2 results
         assertThat(
@@ -170,7 +188,8 @@ public class RouteEstimatorTest {
     }
 
     @Test
-    public void estimateRouteSeconds_thePromptShrinksTheChunks() {
+    public void estimateRouteSeconds_aPrompt_shrinksTheChunks() {
+        // act, assert
         // a prompt of 2 000: window 12 000, budget 7 600, overlap 380, so 15 600 characters are 3 chunks
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_600L, 10_000L, 2_000),
@@ -179,6 +198,7 @@ public class RouteEstimatorTest {
 
     @Test
     public void estimateRouteSeconds_sampleChunks_readsMaxChunksOfThem() {
+        // act, assert
         // 20 000 characters are 3 chunks
         assertThat(
                 estimator.estimateRouteSeconds(rule("sampleChunks", 2), uncalibrated, 1L, 20_000L, 10_000L, 0),
@@ -191,12 +211,12 @@ public class RouteEstimatorTest {
 
     @Test
     public void estimateRouteSeconds_aWindowOfZero_isTheMinimumChunk() {
+        // act, assert
         // no room at all: the run still chunks at the 1 000-character minimum
         assertThat(
                 estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 1_000L, 0L, 0),
                 is(equalTo(window(0L))));
     }
-    // </editor-fold>
 
     @Test
     public void estimateRouteSeconds_chunksSizedNextToALongerChunkPrompt_areMore() {
@@ -213,4 +233,5 @@ public class RouteEstimatorTest {
         assertThat(longer > sameAsTheRule, is(true));
         assertThat(estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000), is(sameAsTheRule));
     }
+    // </editor-fold>
 }

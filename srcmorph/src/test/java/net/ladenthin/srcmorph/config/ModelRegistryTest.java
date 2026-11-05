@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import net.ladenthin.srcmorph.support.AbsolutePathRequirement;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -26,7 +27,7 @@ public class ModelRegistryTest {
 
     // <editor-fold defaultstate="collapsed" desc="definition">
     @Test
-    public void getConfig_knownKey_returnsConfig() {
+    public void definition_knownKey_returnsConfig() {
         // arrange
         final String key = "my-model";
         final ModelDefinition definition = new ModelDefinition();
@@ -43,7 +44,7 @@ public class ModelRegistryTest {
     }
 
     @Test
-    public void getConfig_knownKey_propagatesAllFields() {
+    public void definition_knownKey_propagatesAllFields() {
         // arrange
         final String key = "full-model";
         final ModelDefinition definition = new ModelDefinition();
@@ -167,7 +168,7 @@ public class ModelRegistryTest {
     }
 
     @Test
-    public void getConfig_defaultValues_matchTheDefinitionDefaults() {
+    public void definition_defaultValues_matchTheDefinitionDefaults() {
         // arrange
         final String key = "defaults-model";
         final ModelDefinition definition = new ModelDefinition();
@@ -223,16 +224,16 @@ public class ModelRegistryTest {
     }
 
     @Test
-    public void getConfig_unknownKey_throwsException() {
+    public void definition_unknownKey_throwsException() {
         // arrange
         final ModelRegistry support = new ModelRegistry(Collections.<ModelDefinition>emptyList());
 
-        // act / assert
+        // act, assert
         assertThrows(IllegalArgumentException.class, () -> support.definition("unknown-key"));
     }
 
     @Test
-    public void getConfig_unknownKey_exceptionMessageContainsKey() {
+    public void definition_unknownKey_exceptionMessageContainsKey() {
         // arrange
         final String missingKey = "missing-model-key";
         final ModelRegistry support = new ModelRegistry(Collections.<ModelDefinition>emptyList());
@@ -249,7 +250,7 @@ public class ModelRegistryTest {
     }
 
     @Test
-    public void getConfig_multipleDefinitions_returnsCorrectOne() {
+    public void definition_multipleDefinitions_returnsCorrectOne() {
         // arrange
         final ModelDefinition defA = new ModelDefinition();
         defA.setKey("model-a");
@@ -271,43 +272,7 @@ public class ModelRegistryTest {
     }
 
     @Test
-    public void constructor_definitionWithNullKey_throwsWithIndexAndBadEntry() {
-        // arrange — first entry well-formed, second missing the required key
-        final ModelDefinition validDef = new ModelDefinition();
-        validDef.setKey("valid");
-        final ModelDefinition nullKeyDef = new ModelDefinition();
-        // key not set — remains null
-
-        // act + assert — construction now fails fast at the bad entry rather than
-        // silently dropping it (which would surface as "Missing AI model definition"
-        // deeper in the goal). Message must name the list index and dump the bad
-        // entry so the user can locate the misconfiguration in their configuration file.
-        final IllegalArgumentException thrown = assertThrows(
-                IllegalArgumentException.class, () -> new ModelRegistry(Arrays.asList(validDef, nullKeyDef)));
-        assertThat(thrown.getMessage(), containsString("aiDefinitions[1].key is required"));
-        assertThat(thrown.getMessage(), containsString("ModelDefinition"));
-    }
-
-    @Test
-    public void constructor_aKeyDefinedTwice_throwsNamingItsSecondIndex() {
-        // arrange
-        final ModelDefinition first = new ModelDefinition();
-        first.setKey("gpt");
-        final ModelDefinition other = new ModelDefinition();
-        other.setKey("other");
-        final ModelDefinition again = new ModelDefinition();
-        again.setKey("gpt");
-
-        // act
-        final IllegalArgumentException thrown = assertThrows(
-                IllegalArgumentException.class, () -> new ModelRegistry(Arrays.asList(first, other, again)));
-
-        // assert
-        assertThat(thrown.getMessage(), is(equalTo("aiDefinitions[2].key 'gpt' is defined twice")));
-    }
-
-    @Test
-    public void getConfig_nullDefinitionsList_throwsForAnyKey() {
+    public void definition_nullDefinitionsList_throwsForAnyKey() {
         // arrange
         final ModelRegistry support = new ModelRegistry(null);
 
@@ -323,9 +288,49 @@ public class ModelRegistryTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="constructor">
+    @Test
+    public void constructor_definitionWithNullKey_throwsWithIndexAndBadEntry() {
+        // arrange — first entry well-formed, second missing the required key
+        final ModelDefinition validDef = new ModelDefinition();
+        validDef.setKey("valid");
+        final ModelDefinition nullKeyDef = new ModelDefinition();
+        // key not set — remains null
+        final List<ModelDefinition> definitions = Arrays.asList(validDef, nullKeyDef);
+
+        // act, assert — construction now fails fast at the bad entry rather than
+        // silently dropping it (which would surface as "Missing AI model definition"
+        // deeper in the goal). Message must name the list index and dump the bad
+        // entry so the user can locate the misconfiguration in their configuration file.
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> new ModelRegistry(definitions));
+        assertThat(thrown.getMessage(), containsString("aiDefinitions[1].key is required"));
+        assertThat(thrown.getMessage(), containsString("ModelDefinition"));
+    }
+
+    @Test
+    public void constructor_aKeyDefinedTwice_throwsNamingItsSecondIndex() {
+        // arrange
+        final ModelDefinition first = new ModelDefinition();
+        first.setKey("gpt");
+        final ModelDefinition other = new ModelDefinition();
+        other.setKey("other");
+        final ModelDefinition again = new ModelDefinition();
+        again.setKey("gpt");
+        final List<ModelDefinition> definitions = Arrays.asList(first, other, again);
+
+        // act
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> new ModelRegistry(definitions));
+
+        // assert
+        assertThat(thrown.getMessage(), is(equalTo("aiDefinitions[2].key 'gpt' is defined twice")));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="modelDirectory">
     @Test
-    public void getConfig_relativeModelPathWithModelDirectory_isResolvedAgainstTheDirectory(
+    public void definition_relativeModelPathWithModelDirectory_isResolvedAgainstTheDirectory(
             @TempDir final File modelDirectory) {
         // arrange
         final ModelDefinition definition = new ModelDefinition();
@@ -342,7 +347,7 @@ public class ModelRegistryTest {
     }
 
     @Test
-    public void getConfig_relativeModelPathWithModelDirectory_isACopyWithTheKeyAndLeavesTheDefinition(
+    public void definition_relativeModelPathWithModelDirectory_isACopyWithTheKeyAndLeavesTheDefinition(
             @TempDir final File modelDirectory) {
         // arrange
         final ModelDefinition definition = new ModelDefinition();
@@ -361,7 +366,7 @@ public class ModelRegistryTest {
 
     @Test
     @AbsolutePathRequirement
-    public void getConfig_absoluteModelPathWithModelDirectory_isUsedAsItIs(@TempDir final File elsewhere) {
+    public void definition_absoluteModelPathWithModelDirectory_isUsedAsItIs(@TempDir final File elsewhere) {
         // arrange: one model below the directory, one outside of it
         final String absolute = new File(elsewhere, "other.gguf").getAbsolutePath();
         final ModelDefinition inside = new ModelDefinition();
@@ -383,19 +388,25 @@ public class ModelRegistryTest {
     }
 
     @Test
-    public void getConfig_withoutModelDirectory_keepsTheRelativePath() {
+    public void definition_withoutModelDirectory_keepsTheRelativePath() {
+        // arrange
         final ModelDefinition definition = new ModelDefinition();
         definition.setKey("relative");
         definition.setModelPath("model.gguf");
 
+        // act
         final ModelRegistry support = new ModelRegistry(Arrays.asList(definition), null);
 
+        // assert
         assertThat(support.definition("relative").getModelPath(), is(equalTo("model.gguf")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="resolveModelPath">
     @Test
     @AbsolutePathRequirement
     public void resolveModelPath_pathWithARoot_staysUnchanged(@TempDir final File modelDirectory) {
+        // act, assert
         // absolute on every platform; on Windows a root-relative path (no drive)
         assertThat(ModelRegistry.resolveModelPath(modelDirectory, "/models/x.gguf"), is(equalTo("/models/x.gguf")));
     }
@@ -404,20 +415,25 @@ public class ModelRegistryTest {
     @AbsolutePathRequirement
     @EnabledOnOs(OS.WINDOWS)
     public void resolveModelPath_windowsDriveRelativePath_staysUnchanged(@TempDir final File modelDirectory) {
+        // act, assert
         assertThat(ModelRegistry.resolveModelPath(modelDirectory, "M:x.gguf"), is(equalTo("M:x.gguf")));
         assertThat(ModelRegistry.resolveModelPath(modelDirectory, "\\x.gguf"), is(equalTo("\\x.gguf")));
     }
 
     @Test
     public void resolveModelPath_unparsablePath_staysUnchanged(@TempDir final File modelDirectory) {
+        // arrange
         // A NUL character is an InvalidPathException on every platform; such a path is not joined
         // below the directory but left as written, so the engines' model check reports it verbatim.
         final String unparsable = "model\u0000.gguf";
+
+        // act, assert
         assertThat(ModelRegistry.resolveModelPath(modelDirectory, unparsable), is(equalTo(unparsable)));
     }
 
     @Test
     public void resolveModelPath_nullModelPath_staysNull(@TempDir final File modelDirectory) {
+        // act, assert
         assertThat(ModelRegistry.resolveModelPath(modelDirectory, null), is(nullValue()));
     }
     // </editor-fold>

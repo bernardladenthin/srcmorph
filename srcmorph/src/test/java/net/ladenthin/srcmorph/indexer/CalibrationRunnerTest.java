@@ -30,12 +30,17 @@ public class CalibrationRunnerTest {
         return config;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="measure">
     @Test
     public void measure_withMockProvider_reportsTheProvidersSyntheticThroughput() throws Exception {
+        // arrange
         final CalibrationRunner runner = new CalibrationRunner();
+
+        // act
         final CalibrationMeasurement m =
                 runner.measure(new MockGenerationProvider(), config(), CommonTestFixtures.PROMPT_KEY_FILE_BODY, prep());
 
+        // assert
         // The mock reports 1000 prefill / 100 decode tok/s and ~4 chars/token (the synthetic source rounds
         // up to whole lines, so it is a hair under 4); the runner surfaces them. Its constant cached
         // prefix cancels out of the mid->near differential, so the ratio is unchanged by it.
@@ -49,6 +54,7 @@ public class CalibrationRunnerTest {
 
     @Test
     public void measure_zeroRateProvider_takesWallClockFallback() throws Exception {
+        // arrange
         // A provider that reports zero rates (like the real JNI path) forces the wall-clock fallback; the
         // measured charsPerToken then comes from the config (4), proving the fallback branch ran.
         final GenerationProvider zeroRateProvider = new GenerationProvider() {
@@ -62,19 +68,29 @@ public class CalibrationRunnerTest {
                 return new TimedGeneration("t", 0, 0, 0.0d, 0, 0.0d);
             }
         };
+
+        // act
         final CalibrationMeasurement m = new CalibrationRunner()
                 .measure(zeroRateProvider, config(), CommonTestFixtures.PROMPT_KEY_FILE_BODY, prep());
+
+        // assert
         assertThat(m.charsPerToken(), is(4.0d));
         assertThat(m.prefillTokensPerSecond() >= 0.0d, is(true));
         assertThat(m.decodeTokensPerSecond() >= 0.0d, is(true));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="windowChars">
     @Test
-    public void windowChars_isPositiveForANormalWindow() {
+    public void windowChars_normalWindow_isPositive() {
+        // act
         final long window =
                 new CalibrationRunner().windowChars(config(), CommonTestFixtures.PROMPT_KEY_FILE_BODY, prep());
+
+        // assert
         assertThat(window > 0, is(true));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="wall-clock fallback divide-by-zero guards">
 

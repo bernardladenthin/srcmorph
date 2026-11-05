@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.ModelDefinition;
@@ -52,32 +53,46 @@ public class CalibrateEngineTest {
         return config;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="execute">
     @Test
-    public void execute_missingFieldGenerationsThrowsSrcMorphException() {
+    public void execute_missingFieldGenerations_throwsSrcMorphException() {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setRules(null);
+        final CalibrateEngine engine = new CalibrateEngine(config);
 
-        final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new CalibrateEngine(config).execute());
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(e.getMessage(), containsString("nothing to calibrate"));
     }
 
     @Test
-    public void execute_noRoutableRuleThrowsSrcMorphException() {
+    public void execute_noRoutableRule_throwsSrcMorphException() {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         // A rule with neither promptKey nor aiDefinitionKey set is not routable.
         config.setRules(Collections.singletonList(new RoutingRule()));
+        final CalibrateEngine engine = new CalibrateEngine(config);
 
-        final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new CalibrateEngine(config).execute());
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(e.getMessage(), containsString("No routable"));
     }
 
     @Test
-    public void execute_calibratesTheRoutedModelAndRendersXml() throws Exception {
+    public void execute_fileRules_calibratesTheRoutedModelAndRendersXml() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setRules(CommonTestFixtures.createFileRules());
 
+        // act
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
+        // assert
         assertThat(report.measurements().size(), is(1));
         final CalibrationReport.ModelMeasurement measurement =
                 report.measurements().get(0);
@@ -95,7 +110,8 @@ public class CalibrateEngineTest {
     }
 
     @Test
-    public void execute_dedupesMultipleRulesRoutedToTheSameModel() throws Exception {
+    public void execute_multipleRulesRoutedToTheSameModel_dedupesTheMeasurement() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final RoutingRule ruleA = new RoutingRule();
         ruleA.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
@@ -103,10 +119,12 @@ public class CalibrateEngineTest {
         final RoutingRule ruleB = new RoutingRule();
         ruleB.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         ruleB.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setRules(java.util.Arrays.asList(ruleA, ruleB));
+        config.setRules(Arrays.asList(ruleA, ruleB));
 
+        // act
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
+        // assert
         assertThat(report.measurements().size(), is(1));
     }
 
@@ -117,12 +135,15 @@ public class CalibrateEngineTest {
      * the files are actually written, to the documented names, with the documented content.
      */
     @Test
-    public void execute_writesTheReportAsJsonAndYamlIntoTheOutputDirectory() throws Exception {
+    public void execute_fileRules_writesTheReportAsJsonAndYamlIntoTheOutputDirectory() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setRules(CommonTestFixtures.createFileRules());
 
+        // act
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
+        // assert
         final Path json = outputDirectory.resolve(CalibrationReport.JSON_FILE_NAME);
         final Path yaml = outputDirectory.resolve(CalibrationReport.YAML_FILE_NAME);
         assertThat(Files.exists(json), is(true));
@@ -138,14 +159,18 @@ public class CalibrateEngineTest {
 
     /** A missing output directory is created rather than being a reason to fail the run. */
     @Test
-    public void execute_createsTheOutputDirectoryWhenItDoesNotExist() throws Exception {
+    public void execute_outputDirectoryDoesNotExist_createsTheOutputDirectory() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final Path nested = outputDirectory.resolve("does/not/exist/yet");
         config.setOutputDirectory(nested.toFile());
         config.setRules(CommonTestFixtures.createFileRules());
 
+        // act
         new CalibrateEngine(config).execute();
 
+        // assert
         assertThat(Files.exists(nested.resolve(CalibrationReport.JSON_FILE_NAME)), is(true));
     }
+    // </editor-fold>
 }

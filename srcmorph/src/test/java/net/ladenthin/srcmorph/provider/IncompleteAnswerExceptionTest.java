@@ -11,11 +11,14 @@ import org.junit.jupiter.api.Test;
 
 public class IncompleteAnswerExceptionTest {
 
+    // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
-    public void withoutText_carriesReasonMessageAndNoPartialText() {
+    public void constructor_withoutText_carriesReasonMessageAndNoPartialText() {
+        // act
         final IncompleteAnswerException e =
                 new IncompleteAnswerException(IncompleteAnswerException.Reason.EMPTY, "nothing for A.java");
 
+        // assert
         assertThat(e.reason(), is(IncompleteAnswerException.Reason.EMPTY));
         assertThat(e.getMessage(), is("nothing for A.java"));
         assertThat(e.detail(), is("nothing for A.java"));
@@ -23,19 +26,23 @@ public class IncompleteAnswerExceptionTest {
     }
 
     @Test
-    public void withText_carriesWhatTheModelWrote() {
+    public void constructor_withText_carriesWhatTheModelWrote() {
+        // act
         final IncompleteAnswerException e =
                 new IncompleteAnswerException(IncompleteAnswerException.Reason.TRUNCATED, "cut off", "half a summary");
 
+        // assert
         assertThat(e.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
         assertThat(e.partialText(), is("half a summary"));
     }
 
     @Test
-    public void nullReasonOrPartialText_isRefused() {
+    public void constructor_nullReasonOrPartialText_throwsException() {
+        // act, assert
         assertThrows(NullPointerException.class, () -> new IncompleteAnswerException(null, "m"));
         assertThrows(
                 NullPointerException.class,
                 () -> new IncompleteAnswerException(IncompleteAnswerException.Reason.TRUNCATED, "m", null));
     }
+    // </editor-fold>
 }

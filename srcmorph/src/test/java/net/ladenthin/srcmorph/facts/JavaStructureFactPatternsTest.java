@@ -76,11 +76,13 @@ public class JavaStructureFactPatternsTest {
     // <editor-fold defaultstate="collapsed" desc="methods">
     @Test
     public void method_annotatedOnOwnLine_counts() {
+        // act, assert
         assertThat(count(METHOD_PATTERN, "@Override\npublic int foo() {\n}"), is(1));
     }
 
     @Test
     public void method_annotatedOnTheSameLine_counts() {
+        // act, assert
         assertThat(
                 count(
                         METHOD_PATTERN,
@@ -91,6 +93,7 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void method_nestedGenericBounds_count() {
+        // act, assert
         assertThat(
                 count(
                         METHOD_PATTERN,
@@ -102,6 +105,7 @@ public class JavaStructureFactPatternsTest {
     /** A switch expression's yield and a record header have a method's shape, but are none. */
     @Test
     public void method_yieldAndARecordHeader_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         METHOD_PATTERN,
@@ -112,38 +116,45 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void method_genericMultilineThrows_counts() {
+        // act, assert
         assertThat(count(METHOD_PATTERN, "public <T> T bar(List<T> x,\n int y) throws IOException {\n}"), is(1));
     }
 
     @Test
     public void method_arrayReturn_counts() {
+        // act, assert
         assertThat(count(METHOD_PATTERN, "int[] baz() {\n}"), is(1));
     }
 
     @Test
     public void method_abstractSemicolon_counts() {
+        // act, assert
         assertThat(count(METHOD_PATTERN, "abstract void run();"), is(1));
     }
 
     @Test
-    public void method_doesNotCountControlStructures() {
+    public void method_controlStructures_doNotCount() {
+        // act, assert
         assertThat(count(METHOD_PATTERN, "if (foo()) { bar(); }"), is(0));
         assertThat(count(METHOD_PATTERN, "        for (int i = 0; i < n; i++) {\n}"), is(0));
     }
 
     @Test
-    public void method_doesNotCountCalls() {
+    public void method_calls_doNotCount() {
+        // act, assert
         assertThat(count(METHOD_PATTERN, "        obj.doThing(x);\n        foo(y);"), is(0));
         assertThat(count(METHOD_PATTERN, "        return compute(x);"), is(0));
     }
 
     @Test
-    public void method_doesNotCountLambda() {
+    public void method_lambda_doesNotCount() {
+        // act, assert
         assertThat(count(METHOD_PATTERN, "        Runnable r = () -> doWork();"), is(0));
     }
 
     @Test
     public void method_annotatedParametersWithParentheses_countOnce() {
+        // act, assert
         assertThat(
                 count(
                         METHOD_PATTERN,
@@ -155,31 +166,44 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void method_longEnum_staysLinear() {
+        // arrange
         final String source = longEnum();
+
+        // act, assert
         // getNumber, getMessage and byNumber; the constructor has no modifier and no return type
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(METHOD_PATTERN, source)), is(3));
+    }
+
+    @Test
+    public void method_typeParametersOverTwoLines_doNotCount() {
+        // act, assert
+        assertThat(count(METHOD_PATTERN, "    public <K,\n        V> void put(K k, V v) {\n"), is(0));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="fields">
     @Test
     public void field_multipleDeclarators_countAsOneStatement() {
+        // act, assert
         // FactExtractor counts matches (statements), so "int a, b, c;" is ONE field declaration.
         assertThat(count(FIELD_PATTERN, "    private int a, b, c;"), is(1));
     }
 
     @Test
     public void field_staticFinalWithInit_counts() {
+        // act, assert
         assertThat(count(FIELD_PATTERN, "    public static final String NAME = \"x\";"), is(1));
     }
 
     @Test
     public void field_genericType_counts() {
+        // act, assert
         assertThat(count(FIELD_PATTERN, "    private Map<String, List<X>> m;"), is(1));
     }
 
     @Test
     public void field_initializerOverManyLines_counts() {
+        // act, assert
         assertThat(
                 count(FIELD_PATTERN, "    private static final int[] A = {\n        1,\n        2,\n    };\n"), is(1));
         assertThat(
@@ -192,50 +216,64 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void field_initializerLongerThanTenThousandCharacters_doesNotCount() {
+        // arrange
         // the initializer is read up to 10,000 characters, which keeps the pattern linear over a file
         // of declarations without their semicolons
         final String table = "    static final String T = \"" + "x".repeat(10_000) + "\";\n";
+
+        // act, assert
         assertThat(count(FIELD_PATTERN, table), is(0));
         assertThat(count(FIELD_PATTERN, "    static final String T = \"" + "x".repeat(9_000) + "\";\n"), is(1));
     }
 
     @Test
     public void field_genericTypeOverTwoLines_doesNotCount() {
+        // act, assert
         // type arguments are read within one line, so a declaration without its ">" cannot rescan the file
         assertThat(count(FIELD_PATTERN, "    private Map<String,\n        Integer> m;\n"), is(0));
     }
 
     @Test
-    public void method_typeParametersOverTwoLines_doNotCount() {
-        assertThat(count(METHOD_PATTERN, "    public <K,\n        V> void put(K k, V v) {\n"), is(0));
-    }
-
-    @Test
     public void field_transientArray_counts() {
+        // act, assert
         assertThat(count(FIELD_PATTERN, "    transient Object[] elementData;"), is(1));
     }
 
     @Test
-    public void field_doesNotCountLocalsOrFinalLocals() {
+    public void field_localsOrFinalLocals_doNotCount() {
+        // act, assert
         assertThat(count(FIELD_PATTERN, "        int local = 5;"), is(0));
         assertThat(count(FIELD_PATTERN, "        final int s;"), is(0));
         assertThat(count(FIELD_PATTERN, "        final Object[] es = elementData;"), is(0));
+    }
+
+    @Test
+    public void field_annotatedOnTheSameLine_counts() {
+        // act, assert
+        assertThat(
+                count(
+                        FIELD_PATTERN,
+                        "    @Inject private Clock clock;\n    @Column(name = \"x\") protected int x = 1;\n"),
+                is(2));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="constructors">
     @Test
-    public void ctor_counts() {
+    public void ctor_publicConstructor_counts() {
+        // act, assert
         assertThat(count(CTOR_PATTERN, "    public Foo(int x) {\n}"), is(1));
     }
 
     @Test
-    public void ctor_doesNotCountLowercaseMethod() {
+    public void ctor_lowercaseMethod_doesNotCount() {
+        // act, assert
         assertThat(count(CTOR_PATTERN, "    public void foo(int x) {\n}"), is(0));
     }
 
     @Test
     public void ctor_annotatedParametersWithParentheses_countOnce() {
+        // act, assert
         assertThat(
                 count(
                         CTOR_PATTERN,
@@ -246,6 +284,7 @@ public class JavaStructureFactPatternsTest {
     /** An enum constant with a body has a constructor's shape; its arguments are values, not parameters. */
     @Test
     public void ctor_enumConstantsWithABody_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         CTOR_PATTERN,
@@ -256,27 +295,21 @@ public class JavaStructureFactPatternsTest {
     }
 
     @Test
-    public void field_annotatedOnTheSameLine_counts() {
-        assertThat(
-                count(
-                        FIELD_PATTERN,
-                        "    @Inject private Clock clock;\n    @Column(name = \"x\") protected int x = 1;\n"),
-                is(2));
-    }
-
-    @Test
     public void ctor_parametersOnTheNextLine_count() {
+        // act, assert
         assertThat(
                 count(CTOR_PATTERN, "    Service(\n            final Repo r,\n            int n) {\n    }\n"), is(1));
     }
 
     @Test
     public void ctor_annotatedOnTheSameLine_counts() {
+        // act, assert
         assertThat(count(CTOR_PATTERN, "    @Inject public Service(final Repo r) {\n    }\n"), is(1));
     }
 
     @Test
     public void ctor_enumConstantsWithArguments_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         CTOR_PATTERN,
@@ -286,7 +319,10 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void ctor_longEnum_staysLinear() {
+        // arrange
         final String source = longEnum();
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(CTOR_PATTERN, source)), is(1));
     }
     // </editor-fold>
@@ -294,6 +330,7 @@ public class JavaStructureFactPatternsTest {
     // <editor-fold defaultstate="collapsed" desc="type declarations">
     @Test
     public void typeDeclarations_topLevelNestedAndAnnotationTypes_count() {
+        // act, assert
         assertThat(
                 count(
                         TYPE_PATTERN,
@@ -305,6 +342,7 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void typeDeclarations_classLiteralsCommentsAndAnonymousClasses_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         TYPE_PATTERN,
@@ -314,7 +352,10 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void typeDeclarations_afterManyBlankLines_stayLinear() {
+        // arrange
         final String source = "\n".repeat(LONG_BLANK_LINES) + "int x;\nclass A {\n}\n";
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(TYPE_PATTERN, source)), is(1));
     }
     // </editor-fold>
@@ -337,9 +378,11 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void wholeFile_commentsStringsAndTextBlocks_doNotCount() {
+        // act
         final Map<String, Integer> counts =
                 ProfileFactPatterns.counts(ProfileFactPatterns.counters("java-facts"), COMMENTED_CLASS);
 
+        // assert
         assertThat(counts.get("type declarations"), is(1));
         assertThat(counts.get("public declarations"), is(3));
         assertThat(counts.get("methods (approx)"), is(1));
@@ -348,28 +391,34 @@ public class JavaStructureFactPatternsTest {
 
     @Test
     public void wholeFile_todosInComments_count() {
+        // act
         final Map<String, Integer> counts =
                 ProfileFactPatterns.counts(ProfileFactPatterns.counters("java-facts"), COMMENTED_CLASS);
 
+        // assert
         assertThat(counts.get("TODO/FIXME"), is(2));
     }
 
     @Test
     public void wholeFile_unclosedBlockCommentAndTextBlock_runToTheEnd() {
+        // act
         final Map<String, Integer> comment =
                 ProfileFactPatterns.counts(ProfileFactPatterns.counters("java-facts"), "public class A {\n/* public\n");
         final Map<String, Integer> textBlock = ProfileFactPatterns.counts(
                 ProfileFactPatterns.counters("java-facts"), "public class A {\nString s = \"\"\"\npublic\n");
 
+        // assert
         assertThat(comment.get("public declarations"), is(1));
         assertThat(textBlock.get("public declarations"), is(1));
     }
 
     @Test
     public void wholeFile_stringNotClosedOnItsLine_isNotBlanked() {
+        // act
         final Map<String, Integer> counts = ProfileFactPatterns.counts(
                 ProfileFactPatterns.counters("java-facts"), "String s = \"public\npublic class A {\n");
 
+        // assert
         assertThat(counts.get("public declarations"), is(2));
     }
     // </editor-fold>

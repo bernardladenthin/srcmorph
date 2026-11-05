@@ -24,17 +24,21 @@ public class GgufModelInspectorTest {
 
     private final GgufModelInspector inspector = new GgufModelInspector();
 
+    // <editor-fold defaultstate="collapsed" desc="inspect">
     /** A Git LFS pointer: exists, is a plain text file, passes any existence check. */
     @Test
     public void inspect_gitLfsPointerInsteadOfAModel_isUnreadableWithAReason() throws Exception {
+        // arrange
         final Path pointer = tempDir.resolve("model.gguf");
         Files.write(
                 pointer,
                 ("version https://git-lfs.github.com/spec/v1\noid sha256:0000\nsize 123\n")
                         .getBytes(StandardCharsets.UTF_8));
 
+        // act
         final GgufModelInfo info = inspector.inspect(pointer);
 
+        // assert
         assertThat(info.readable(), is(false));
         assertThat(info.failure().isEmpty(), is(false));
         assertThat(info.contextLength(), is(GgufModelInfo.UNKNOWN_CONTEXT_LENGTH));
@@ -43,19 +47,25 @@ public class GgufModelInspectorTest {
     /** A truncated download: the right magic bytes, then nothing. */
     @Test
     public void inspect_truncatedFile_isUnreadableRatherThanThrowing() throws Exception {
+        // arrange
         final Path truncated = tempDir.resolve("truncated.gguf");
         Files.write(truncated, new byte[] {'G', 'G', 'U', 'F'});
 
+        // act
         final GgufModelInfo info = inspector.inspect(truncated);
 
+        // assert
         assertThat(info.readable(), is(false));
     }
 
     /** A path that does not exist at all must also come back as a result, not an exception. */
     @Test
     public void inspect_missingFile_isUnreadableRatherThanThrowing() {
+        // act
         final GgufModelInfo info = inspector.inspect(tempDir.resolve("nope.gguf"));
 
+        // assert
         assertThat(info.readable(), is(false));
     }
+    // </editor-fold>
 }

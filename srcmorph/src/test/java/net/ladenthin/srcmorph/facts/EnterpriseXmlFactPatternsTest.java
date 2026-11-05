@@ -49,14 +49,19 @@ public class EnterpriseXmlFactPatternsTest {
         return new ArrayList<>(ProfileFactPatterns.counts(counters, "").keySet());
     }
 
+    // <editor-fold defaultstate="collapsed" desc="xml-facts include">
     @Test
-    public void everyFileButMyBatis_startsWithTheXmlCounters() {
+    public void xmlFactsInclude_everyFileButMyBatis_startsWithTheXmlCounters() {
+        // arrange
         final List<String> xml = labels(XML);
+
+        // act, assert
         for (final List<FactCounter> counters : List.of(JEE, PERSISTENCE, INTEGRATION, BPMN, WSDL)) {
             assertThat(labels(counters).subList(0, xml.size()), is(xml));
         }
         assertThat(labels(MYBATIS).contains("elements"), is(false));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="jee-facts">
     private static final String WEB_XML = "<?xml version=\"1.0\"?>\n"
@@ -91,6 +96,7 @@ public class EnterpriseXmlFactPatternsTest {
 
     @Test
     public void jee_webXml_countsEveryComponentOnceAndNotItsChildren() {
+        // act, assert
         assertThat(count(JEE, "servlets", WEB_XML), is(1));
         assertThat(count(JEE, "servlet mappings", WEB_XML), is(1));
         assertThat(count(JEE, "URL patterns", WEB_XML), is(4));
@@ -109,6 +115,7 @@ public class EnterpriseXmlFactPatternsTest {
 
     @Test
     public void jee_ejbJar_countsBeansByKind() {
+        // act, assert
         assertThat(count(JEE, "session beans", EJB_JAR), is(2));
         assertThat(count(JEE, "stateless session beans", EJB_JAR), is(1));
         assertThat(count(JEE, "message-driven beans", EJB_JAR), is(1));
@@ -121,6 +128,7 @@ public class EnterpriseXmlFactPatternsTest {
 
     @Test
     public void jee_applicationXml_countsItsModules() {
+        // act, assert
         assertThat(
                 count(
                         JEE,
@@ -154,6 +162,7 @@ public class EnterpriseXmlFactPatternsTest {
 
     @Test
     public void persistence_persistenceXml_countsTheUnitAndItsClasses() {
+        // act, assert
         assertThat(count(PERSISTENCE, "persistence units", PERSISTENCE_XML), is(1));
         assertThat(count(PERSISTENCE, "JTA data sources", PERSISTENCE_XML), is(1));
         assertThat(count(PERSISTENCE, "non-JTA data sources", PERSISTENCE_XML), is(0));
@@ -165,6 +174,7 @@ public class EnterpriseXmlFactPatternsTest {
 
     @Test
     public void persistence_ormXml_countsEntitiesQueriesAndAssociations() {
+        // act, assert
         assertThat(count(PERSISTENCE, "persistence units", ORM_XML), is(0));
         assertThat(count(PERSISTENCE, "named queries", ORM_XML), is(1));
         assertThat(count(PERSISTENCE, "entity mappings", ORM_XML), is(1));
@@ -174,6 +184,7 @@ public class EnterpriseXmlFactPatternsTest {
 
     @Test
     public void persistence_hbmXml_countsMappingsAndNotTheQueryTextInCdata() {
+        // act, assert
         assertThat(count(PERSISTENCE, "entity mappings", HBM_XML), is(2));
         assertThat(count(PERSISTENCE, "named queries", HBM_XML), is(2));
         assertThat(count(PERSISTENCE, "associations", HBM_XML), is(2));
@@ -197,7 +208,8 @@ public class EnterpriseXmlFactPatternsTest {
             + "<update id=\"up\">update orders <set>total=#{t}</set></update></mapper>\n";
 
     @Test
-    public void mybatis_countsStatementsAndReadsTheSqlInCdata() {
+    public void mybatis_mapper_countsStatementsAndReadsTheSqlInCdata() {
+        // act, assert
         assertThat(count(MYBATIS, "mapper namespaces", MAPPER), is(1));
         assertThat(count(MYBATIS, "select statements", MAPPER), is(1));
         assertThat(count(MYBATIS, "insert, update and delete statements", MAPPER), is(2));
@@ -237,6 +249,7 @@ public class EnterpriseXmlFactPatternsTest {
 
     @Test
     public void integration_camelRoute_countsRoutesEndpointsAndPlaceholders() {
+        // act, assert
         assertThat(count(INTEGRATION, "Camel routes and route templates", CAMEL), is(1));
         assertThat(count(INTEGRATION, "Camel REST services", CAMEL), is(1));
         assertThat(count(INTEGRATION, "Camel consumer endpoints (from)", CAMEL), is(1));
@@ -247,17 +260,26 @@ public class EnterpriseXmlFactPatternsTest {
     }
 
     @Test
-    public void integration_muleSpringIntegrationAndSynapse() {
+    public void integration_muleSpringIntegrationAndSynapse_countsFlowsChannelsAndProxies() {
+        // act, assert
         assertThat(count(INTEGRATION, "Mule flows and sub-flows", MULE), is(2));
         assertThat(count(INTEGRATION, "Mule flow references", MULE), is(1));
         assertThat(count(INTEGRATION, "error handlers", MULE), is(1));
+
+        // arrange
         final String springIntegration = "<int:channel id=\"in\"/><int:publish-subscribe-channel id=\"out\"/>"
                 + "<int-jms:inbound-channel-adapter id=\"a\"/><int:gateway id=\"g\"/>\n";
+
+        // act, assert
         assertThat(count(INTEGRATION, "Spring Integration channels", springIntegration), is(2));
         assertThat(count(INTEGRATION, "channel adapters and gateways", springIntegration), is(2));
+
+        // arrange
         final String synapse = "<proxy name=\"OrderProxy\"><target><endpoint key=\"ep\"/>"
                 + "<endpoint name=\"direct\"><address uri=\"x\"/></endpoint></target><faultSequence/></proxy>"
                 + "<sequence name=\"main\"/>\n";
+
+        // act, assert
         assertThat(count(INTEGRATION, "Synapse proxies, APIs, sequences and endpoints (named)", synapse), is(3));
         assertThat(count(INTEGRATION, "error handlers", synapse), is(1));
     }
@@ -290,7 +312,8 @@ public class EnterpriseXmlFactPatternsTest {
             + "</bpmn:definitions>\n";
 
     @Test
-    public void bpmn_countsTheProcessAndNotTheDiagram() {
+    public void bpmn_processWithDiagram_countsTheProcessAndNotTheDiagram() {
+        // act, assert
         assertThat(count(BPMN, "processes", PROCESS), is(1));
         assertThat(count(BPMN, "tasks", PROCESS), is(3));
         assertThat(count(BPMN, "call activities and sub-processes", PROCESS), is(1));
@@ -306,7 +329,8 @@ public class EnterpriseXmlFactPatternsTest {
     }
 
     @Test
-    public void bpmn_anUnclosedDiagramRunsToTheEnd() {
+    public void bpmn_unclosedDiagram_runsToTheEnd() {
+        // act, assert
         assertThat(count(BPMN, "processes", "<process id=\"a\"/>\n<bpmndi:BPMNDiagram>\n<process id=\"b\"/>\n"), is(1));
     }
     // </editor-fold>
@@ -350,7 +374,8 @@ public class EnterpriseXmlFactPatternsTest {
             + "</definitions>\n";
 
     @Test
-    public void dmn_countsTheDecisionsAndNotTheDiagram() {
+    public void dmn_decisionsWithDiagram_countsTheDecisionsAndNotTheDiagram() {
+        // act, assert
         assertThat(count(DMN, "decisions", DECISIONS), is(4));
         assertThat(count(DMN, "decision tables", DECISIONS), is(2));
         assertThat(count(DMN, "decision tables with a hit policy other than UNIQUE", DECISIONS), is(1));
@@ -368,7 +393,8 @@ public class EnterpriseXmlFactPatternsTest {
     }
 
     @Test
-    public void dmn_hitPolicyWithAPrefixOrSpacesAndAnUnclosedDiagram() {
+    public void dmn_hitPolicyWithAPrefixOrSpacesAndAnUnclosedDiagram_countsOnce() {
+        // act, assert
         assertThat(
                 count(
                         DMN,
@@ -394,7 +420,8 @@ public class EnterpriseXmlFactPatternsTest {
             + "</definitions>\n";
 
     @Test
-    public void wsdl_countsTheServiceAndKeepsSoapElementsApart() {
+    public void wsdl_serviceDefinition_countsTheServiceAndKeepsSoapElementsApart() {
+        // act, assert
         assertThat(count(WSDL, "services", WSDL_SOURCE), is(1));
         assertThat(count(WSDL, "ports and endpoints", WSDL_SOURCE), is(1));
         assertThat(count(WSDL, "port types and interfaces", WSDL_SOURCE), is(1));

@@ -27,7 +27,7 @@ public class ChunkPlanTest {
 
     // <editor-fold defaultstate="collapsed" desc="room">
     @Test
-    public void room_isTheSafeWindowLessTheLongerPromptAndTheLabel() {
+    public void room_eitherPromptLonger_isTheSafeWindowLessTheLongerPromptAndTheLabel() {
         // act
         final int mapLonger = ChunkPlan.room(10_000, 300, 100);
         final int reduceLonger = ChunkPlan.room(10_000, 100, 300);
@@ -51,10 +51,13 @@ public class ChunkPlanTest {
 
     @Test
     public void of_roomBelowTheMinimum_isRefused() {
+        // arrange
+        final String source = source(10);
+
         // act
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class,
-                () -> ChunkPlan.of(source(10), MIN_WINDOW - 2, 0, 0, OversizeStrategy.MAP_REDUCE, 0));
+                () -> ChunkPlan.of(source, MIN_WINDOW - 2, 0, 0, OversizeStrategy.MAP_REDUCE, 0));
 
         // assert
         assertThat(thrown.getMessage(), is("the window leaves 999 characters for a chunk, fewer than 1000"));
@@ -93,17 +96,21 @@ public class ChunkPlanTest {
         assertThat(plan.total(), is(all.size()));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="chunks">
     @Test
-    public void chunks_cannotBeChanged() {
+    public void chunks_addCalled_throwsException() {
         // arrange
         final ChunkPlan plan = ChunkPlan.of(source(10), 4000, 0, 0, OversizeStrategy.MAP_REDUCE, 0);
+        final List<String> chunks = plan.chunks();
 
-        // act + assert
-        assertThrows(UnsupportedOperationException.class, () -> plan.chunks().add("x"));
+        // act, assert
+        assertThrows(UnsupportedOperationException.class, () -> chunks.add("x"));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="parts and labels">
+    // <editor-fold defaultstate="collapsed" desc="parts">
     @Test
     public void parts_oneChunk_isTheFinalAnswer() {
         // act
@@ -124,8 +131,11 @@ public class ChunkPlanTest {
         assertThat(plan.parts(), is(true));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="label">
     @Test
-    public void label_namesTheChunkAmongThoseReadAndAll() {
+    public void label_sampledPlan_namesTheChunkAmongThoseReadAndAll() {
         // arrange
         final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
 
@@ -136,8 +146,11 @@ public class ChunkPlanTest {
         assertThat(label, is(MapReduceMath.chunkLabel(2, 2, plan.total())));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="coverage">
     @Test
-    public void coverage_countsTheChunksReadOfAll() {
+    public void coverage_sampledPlan_countsTheChunksReadOfAll() {
         // arrange
         final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
 
@@ -149,9 +162,9 @@ public class ChunkPlanTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="reduce">
+    // <editor-fold defaultstate="collapsed" desc="reduceFacts">
     @Test
-    public void reduceFacts_cutsTheFactsToAQuarterOfABatch_andNotesTheSample() {
+    public void reduceFacts_sampledPlan_cutsTheFactsToAQuarterOfABatchAndNotesTheSample() {
         // arrange
         final ChunkPlan plan = ChunkPlan.of(source(100), MIN_WINDOW, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
         final String facts = source(10);
@@ -163,12 +176,15 @@ public class ChunkPlanTest {
         assertThat(reduceFacts, is(MapReduceMath.reduceFacts(facts, 250) + MapReduceMath.sampleNote(2, plan.total())));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="batchBudget">
     @Test
     public void batchBudget_isTheBudgetLessWhatTheBatchReadsFirst_atLeastOne() {
         // arrange
         final ChunkPlan plan = ChunkPlan.of(source(10), MIN_WINDOW, 0, 0, OversizeStrategy.MAP_REDUCE, 0);
 
-        // act + assert
+        // act, assert
         assertThat(plan.batchBudget(""), is(1000));
         assertThat(plan.batchBudget(new String(new char[999])), is(1));
         assertThat(plan.batchBudget(new String(new char[1000])), is(1));

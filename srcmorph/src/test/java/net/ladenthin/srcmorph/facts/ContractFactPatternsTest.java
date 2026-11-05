@@ -64,7 +64,8 @@ public class ContractFactPatternsTest {
             + "}\n";
 
     @Test
-    public void proto_countsTheDeclarationsAndNotTheComments() {
+    public void proto_declarationsAndComments_countsTheDeclarationsAndNotTheComments() {
+        // act, assert
         assertThat(count(PROTO, "messages", PROTO_SOURCE), is(2));
         assertThat(count(PROTO, "enums", PROTO_SOURCE), is(1));
         assertThat(count(PROTO, "services", PROTO_SOURCE), is(1));
@@ -79,7 +80,8 @@ public class ContractFactPatternsTest {
     }
 
     @Test
-    public void proto_anUnclosedBlockCommentRunsToTheEnd() {
+    public void proto_unclosedBlockComment_runsToTheEnd() {
+        // act, assert
         assertThat(count(PROTO, "messages", "message A {}\n/* message B {}\nmessage C {}\n"), is(1));
     }
     // </editor-fold>
@@ -100,7 +102,8 @@ public class ContractFactPatternsTest {
             + "}\n";
 
     @Test
-    public void avro_countsTheTypesAndTheNamedElements() {
+    public void avro_recordSchema_countsTheTypesAndTheNamedElements() {
+        // act, assert
         assertThat(count(AVRO, "records", AVRO_SOURCE), is(2));
         assertThat(count(AVRO, "enums", AVRO_SOURCE), is(1));
         assertThat(count(AVRO, "fixed types", AVRO_SOURCE), is(1));
@@ -153,7 +156,8 @@ public class ContractFactPatternsTest {
             + "}\n";
 
     @Test
-    public void graphql_countsTheSchemaAndNotTheDescriptions() {
+    public void graphql_schemaWithDescriptions_countsTheSchemaAndNotTheDescriptions() {
+        // act, assert
         assertThat(count(GRAPHQL, "object types", SCHEMA), is(2));
         assertThat(count(GRAPHQL, "root operation types", SCHEMA), is(3));
         assertThat(count(GRAPHQL, "interfaces", SCHEMA), is(1));
@@ -171,7 +175,8 @@ public class ContractFactPatternsTest {
     }
 
     @Test
-    public void graphql_countsTheOperationsAndFragmentsOfAnExecutableDocument() {
+    public void graphql_executableDocument_countsTheOperationsAndFragments() {
+        // arrange
         final String operations = "query Orders($first: Int) {\n"
                 + "  orders(first: $first) { ...OrderParts }\n"
                 + "}\n"
@@ -179,12 +184,14 @@ public class ContractFactPatternsTest {
                 + "# subscription Old { x }\n"
                 + "fragment OrderParts on Order { id total }\n";
 
+        // act, assert
         assertThat(count(GRAPHQL, "operations", operations), is(2));
         assertThat(count(GRAPHQL, "fragments", operations), is(1));
     }
 
     @Test
-    public void graphql_anUnclosedBlockStringRunsToTheEnd() {
+    public void graphql_unclosedBlockString_runsToTheEnd() {
+        // act, assert
         assertThat(count(GRAPHQL, "object types", "type A { x: Int }\n\"\"\"\ntype B { y: Int }\n"), is(1));
     }
     // </editor-fold>

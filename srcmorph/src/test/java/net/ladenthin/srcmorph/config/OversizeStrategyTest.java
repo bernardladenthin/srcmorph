@@ -12,22 +12,30 @@ import org.junit.jupiter.api.Test;
 
 public class OversizeStrategyTest {
 
+    // <editor-fold defaultstate="collapsed" desc="DEFAULT">
     @Test
-    public void defaultIsFail() {
+    public void defaultStrategy_constant_isFail() {
+        // act, assert
         assertThat(OversizeStrategy.DEFAULT, is(OversizeStrategy.FAIL));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="configValue">
     @Test
-    public void configValuesAreTheExpectedTokens() {
+    public void configValue_eachConstant_isTheExpectedToken() {
+        // act, assert
         assertThat(OversizeStrategy.FAIL.configValue(), is("fail"));
         assertThat(OversizeStrategy.SAMPLE.configValue(), is("sample"));
         assertThat(OversizeStrategy.MAP_REDUCE.configValue(), is("mapReduce"));
         assertThat(OversizeStrategy.SAMPLE_CHUNKS.configValue(), is("sampleChunks"));
         assertThat(OversizeStrategy.DETERMINISTIC.configValue(), is("deterministic"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="fromConfig">
     @Test
     public void fromConfig_nullOrBlank_isDefault() {
+        // act, assert
         assertThat(OversizeStrategy.fromConfig(null), is(OversizeStrategy.FAIL));
         assertThat(OversizeStrategy.fromConfig(""), is(OversizeStrategy.FAIL));
         assertThat(OversizeStrategy.fromConfig("   "), is(OversizeStrategy.FAIL));
@@ -35,6 +43,7 @@ public class OversizeStrategyTest {
 
     @Test
     public void fromConfig_eachToken_parses() {
+        // act, assert
         assertThat(OversizeStrategy.fromConfig("fail"), is(OversizeStrategy.FAIL));
         assertThat(OversizeStrategy.fromConfig("sample"), is(OversizeStrategy.SAMPLE));
         assertThat(OversizeStrategy.fromConfig("mapReduce"), is(OversizeStrategy.MAP_REDUCE));
@@ -43,15 +52,20 @@ public class OversizeStrategyTest {
     }
 
     @Test
-    public void fromConfig_isCaseInsensitiveAndTrimmed() {
+    public void fromConfig_mixedCaseAndPadded_isCaseInsensitiveAndTrimmed() {
+        // act, assert
         assertThat(OversizeStrategy.fromConfig("  MAPREDUCE  "), is(OversizeStrategy.MAP_REDUCE));
         assertThat(OversizeStrategy.fromConfig("Sample"), is(OversizeStrategy.SAMPLE));
     }
 
     @Test
     public void fromConfig_unknown_throwsWithValue() {
+        // act
         final IllegalArgumentException ex =
                 assertThrows(IllegalArgumentException.class, () -> OversizeStrategy.fromConfig("nonsense"));
+
+        // assert
         assertThat(ex.getMessage(), containsString("nonsense"));
     }
+    // </editor-fold>
 }

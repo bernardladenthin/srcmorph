@@ -28,6 +28,8 @@ import net.ladenthin.srcmorph.config.PromptDefinition;
 import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
+import net.ladenthin.srcmorph.routing.FileContext;
+import net.ladenthin.srcmorph.routing.RuleSelector;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,7 @@ public class ExamplesConfigBindingTest {
      */
     private static final Path EXAMPLES_DIRECTORY = Path.of("../examples");
 
+    // <editor-fold defaultstate="collapsed" desc="fromJsonOrFromYaml">
     /**
      * Builds one {@link DynamicTest} per {@code config_*.json}/{@code config_*.yaml} file found under
      * {@link #EXAMPLES_DIRECTORY}, each asserting that the file parses cleanly and yields a sane
@@ -65,13 +68,17 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if {@link #EXAMPLES_DIRECTORY} cannot be listed
      */
     @TestFactory
-    public List<DynamicTest> everyExampleConfig_bindsSuccessfully() throws IOException {
+    public List<DynamicTest> fromJsonOrFromYaml_everyExampleConfig_bindsSuccessfully() throws IOException {
+        // arrange
         final List<Path> exampleConfigs = listExampleConfigFiles();
+
+        // pre-assert
         assertThat(
                 "expected at least one example config fixture under " + EXAMPLES_DIRECTORY,
                 exampleConfigs.size(),
                 greaterThan(0));
 
+        // act, assert
         final List<DynamicTest> tests = new ArrayList<>(exampleConfigs.size());
         for (final Path exampleConfig : exampleConfigs) {
             tests.add(DynamicTest.dynamicTest(
@@ -79,6 +86,7 @@ public class ExamplesConfigBindingTest {
         }
         return tests;
     }
+    // </editor-fold>
 
     private static List<Path> listExampleConfigFiles() throws IOException {
         final List<Path> found = new ArrayList<>();
@@ -90,6 +98,7 @@ public class ExamplesConfigBindingTest {
         return found;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="fromYaml">
     /**
      * {@code examples/build-your-own-jar/} is how a user builds the runnable jar (docs/windows-intel-core-ultra.md):
      * its {@code srcmorph.yaml} is meant for a real model, so it is not one of the mock fixtures above,
@@ -101,10 +110,14 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if an example file cannot be read
      */
     @Test
-    public void buildYourOwnJarExample_bindsAndNamesTheMainClass() throws IOException {
+    public void fromYaml_buildYourOwnJarExample_bindsAndNamesTheMainClass() throws IOException {
+        // arrange
         final Path directory = EXAMPLES_DIRECTORY.resolve("build-your-own-jar");
+
+        // act
         final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph.yaml")));
 
+        // assert
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getGenerationProvider(), is(equalTo("llamacpp-jni")));
@@ -125,10 +138,14 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if the example file cannot be read
      */
     @Test
-    public void copilotApiGatewayExample_bindsAndStreamsFromLoopback() throws IOException {
+    public void fromYaml_copilotApiGatewayExample_bindsAndStreamsFromLoopback() throws IOException {
+        // arrange
         final Path directory = EXAMPLES_DIRECTORY.resolve("copilot-api-gateway");
+
+        // act
         final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph.yaml")));
 
+        // assert
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getGenerationProvider(), is(equalTo("openai-compatible")));
@@ -154,10 +171,14 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if the example file cannot be read
      */
     @Test
-    public void copilotApiGatewayLunaExample_routesEveryRuleToLunaWithFacts() throws IOException {
+    public void fromYaml_copilotApiGatewayLunaExample_routesEveryRuleToLunaWithFacts() throws IOException {
+        // arrange
         final Path directory = EXAMPLES_DIRECTORY.resolve("copilot-api-gateway");
+
+        // act
         final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph-luna.yaml")));
 
+        // assert
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getAiDefinitions().size(), is(1));
@@ -212,9 +233,12 @@ public class ExamplesConfigBindingTest {
         assertThat(withoutFacts, is(List.of("typescript", "ops", "fallback")));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="select">
     @Test
-    public void credentialsRule_skipsFilesWithSecretsInEveryProfileConfig_andNoSource() throws Exception {
+    public void select_credentialsRuleOfEveryProfileConfig_skipsFilesWithSecretsAndNoSource() throws Exception {
+        // arrange
         final List<String> secrets = List.of(
                 ".env",
                 ".env.production",
@@ -238,13 +262,14 @@ public class ExamplesConfigBindingTest {
                 "secrets.sh",
                 "keys.sql",
                 "Settings.java");
+
+        // act, assert
         for (final Path config : List.of(
                 EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml"),
                 EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml"))) {
             final List<RoutingRule> rules =
                     Main.fromYaml(Main.readString(config)).srcMorph.getRules();
-            final net.ladenthin.srcmorph.routing.RuleSelector selector =
-                    new net.ladenthin.srcmorph.routing.RuleSelector();
+            final RuleSelector selector = new RuleSelector();
             selector.validate(rules);
             for (final String name : secrets) {
                 final RoutingRule rule = selector.select(rules, context(name));
@@ -258,12 +283,13 @@ public class ExamplesConfigBindingTest {
     }
 
     @Test
-    public void lunaExample_routesEveryKindToItsRule() throws Exception {
+    public void select_lunaExample_routesEveryKindToItsRule() throws Exception {
+        // arrange
         final List<RoutingRule> rules = Main.fromYaml(
                         Main.readString(EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml")))
                 .srcMorph
                 .getRules();
-        final net.ladenthin.srcmorph.routing.RuleSelector selector = new net.ladenthin.srcmorph.routing.RuleSelector();
+        final RuleSelector selector = new RuleSelector();
         selector.validate(rules);
         final String[][] cases = {
             {"src/main/java/shop/Order.java", "package shop;\nclass Order {}\n", "java"},
@@ -329,17 +355,19 @@ public class ExamplesConfigBindingTest {
             {"scripts/tool.py", "print(1)\n", "fallback"},
             {"config/.env", "TOKEN=x\n", "secrets"},
         };
+
+        // act, assert
         for (final String[] c : cases) {
             final String path = c[0];
             final String name = path.substring(path.lastIndexOf('/') + 1);
-            final RoutingRule rule = selector.select(
-                    rules, new net.ladenthin.srcmorph.routing.FileContext(name, path, 100L, 3, 0L, c[1]));
+            final RoutingRule rule = selector.select(rules, new FileContext(name, path, 100L, 3, 0L, c[1]));
             assertThat(path, rule == null ? null : rule.getId(), is(equalTo(c[2])));
         }
     }
+    // </editor-fold>
 
-    private static net.ladenthin.srcmorph.routing.FileContext context(final String name) {
-        return new net.ladenthin.srcmorph.routing.FileContext(name, "src/" + name, 100L, 3, 0L);
+    private static FileContext context(final String name) {
+        return new FileContext(name, "src/" + name, 100L, 3, 0L);
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {

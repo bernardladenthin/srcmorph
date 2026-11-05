@@ -23,23 +23,36 @@ public class MapReduceMathTest {
         return sb.toString();
     }
 
-    // <editor-fold defaultstate="collapsed" desc="sizing">
+    // <editor-fold defaultstate="collapsed" desc="safeWindow">
     @Test
-    public void safeWindow_isTheWindowLessTheHeadroom() {
+    public void safeWindow_aWindow_isTheWindowLessTheHeadroom() {
+        // act, assert
         assertThat(MapReduceMath.safeWindow(10_000), is(8_000));
         // integer arithmetic: 20 % of 1234 is 246 (rounded down), the window keeps the rest
         assertThat(MapReduceMath.safeWindow(1_234), is(988));
     }
 
     @Test
+    public void safeWindow_ofAHugeWindow_doesNotOverflow() {
+        // act, assert
+        assertThat(MapReduceMath.safeWindow(200_000_000), is(160_000_000));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="sourceBudget">
+    @Test
     public void sourceBudget_isTheSafeWindowLessThePrompt_atLeastTheMinimum() {
+        // act, assert
         assertThat(MapReduceMath.sourceBudget(8_000, 500), is(7_500));
         assertThat(MapReduceMath.sourceBudget(1_200, 500), is(MapReduceMath.MIN_CHUNK_CHARS));
         assertThat(MapReduceMath.sourceBudget(1_500, 500), is(1_000));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="overlap">
     @Test
     public void overlap_isATwentiethOfTheBudget_atMostTheMaximum() {
+        // act, assert
         assertThat(MapReduceMath.overlap(10_000), is(500));
         assertThat(MapReduceMath.overlap(100_000), is(MapReduceMath.MAX_OVERLAP_CHARS));
         assertThat(MapReduceMath.overlap(40_000), is(2_000));
@@ -48,7 +61,8 @@ public class MapReduceMathTest {
 
     // <editor-fold defaultstate="collapsed" desc="reduceBatches">
     @Test
-    public void reduceBatches_labelsEveryPartWithItsNumberInTheBatch() {
+    public void reduceBatches_partsThatFit_labelsEveryPartWithItsNumberInTheBatch() {
+        // act, assert
         assertThat(
                 MapReduceMath.reduceBatches(Arrays.asList("a", "b"), 1_000),
                 is(equalTo(Collections.singletonList("Part 1:\na\n\nPart 2:\nb\n\n"))));
@@ -56,6 +70,7 @@ public class MapReduceMathTest {
 
     @Test
     public void reduceBatches_nothingToReduce_isNoBatch() {
+        // act, assert
         assertThat(
                 MapReduceMath.reduceBatches(Collections.<String>emptyList(), 1_000)
                         .isEmpty(),
@@ -63,14 +78,17 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void reduceBatches_aBatchEndsWhereTheNextPartWouldNotFit() {
+    public void reduceBatches_aNextPartThatWouldNotFit_endsTheBatch() {
+        // arrange
         // the first part takes 100 + 11 chars of label and separators; the second needs 100 + 16 more
         final String part = chars(100);
         final int firstBatch = ("Part 1:\n" + part + "\n\n").length();
 
+        // act
         final List<String> exactlyFits = MapReduceMath.reduceBatches(Arrays.asList(part, part), firstBatch + 100 + 16);
         final List<String> oneTooFew = MapReduceMath.reduceBatches(Arrays.asList(part, part), firstBatch + 100 + 15);
 
+        // assert
         assertThat(exactlyFits.size(), is(1));
         assertThat(oneTooFew.size(), is(2));
         assertThat(oneTooFew.get(1), is(equalTo("Part 1:\n" + part + "\n\n")));
@@ -78,20 +96,25 @@ public class MapReduceMathTest {
 
     @Test
     public void reduceBatches_aPartLongerThanTheBudget_stillGetsABatch() {
+        // act
         final List<String> batches = MapReduceMath.reduceBatches(Arrays.asList(chars(50), chars(50)), 10);
 
+        // assert
         assertThat(batches.size(), is(2));
     }
 
     @Test
-    public void reduceBatches_atMostTheFanInPerBatch() {
+    public void reduceBatches_morePartsThanTheFanIn_atMostTheFanInPerBatch() {
+        // arrange
         final List<String> partials = new ArrayList<>();
         for (int i = 0; i < MapReduceMath.MAX_REDUCE_FANIN + 1; i++) {
             partials.add("p");
         }
 
+        // act
         final List<String> batches = MapReduceMath.reduceBatches(partials, 1_000_000);
 
+        // assert
         assertThat(batches.size(), is(2));
         assertThat(batches.get(0).contains("Part " + MapReduceMath.MAX_REDUCE_FANIN + ":"), is(true));
         assertThat(batches.get(1), is(equalTo("Part 1:\np\n\n")));
@@ -100,7 +123,8 @@ public class MapReduceMathTest {
 
     // <editor-fold defaultstate="collapsed" desc="combineAll">
     @Test
-    public void combineAll_labelsEveryPartInOrder() {
+    public void combineAll_threeParts_labelsEveryPartInOrder() {
+        // act, assert
         assertThat(
                 MapReduceMath.combineAll(Arrays.asList("a", "b", "c")),
                 is(equalTo("Part 1:\na\n\nPart 2:\nb\n\nPart 3:\nc\n\n")));
@@ -108,13 +132,15 @@ public class MapReduceMathTest {
 
     @Test
     public void combineAll_ofNothing_isEmpty() {
+        // act, assert
         assertThat(MapReduceMath.combineAll(Collections.<String>emptyList()), is(""));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="coverage and chunk arithmetic">
+    // <editor-fold defaultstate="collapsed" desc="chunkCoverage">
     @Test
-    public void chunkCoverage_allOrSampled() {
+    public void chunkCoverage_allOrSampled_namesTheChunksSummarized() {
+        // act, assert
         assertThat(
                 MapReduceMath.chunkCoverage(9, 9, 0, 0, 0), is(equalTo("**Coverage:** 9 of 9 chunks summarized\n\n")));
         assertThat(
@@ -123,7 +149,8 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void chunkCoverage_namesTheCallsCutToFit() {
+    public void chunkCoverage_callsCutToFit_namesTheCalls() {
+        // act, assert
         assertThat(
                 MapReduceMath.chunkCoverage(9, 9, 1, 0, 0),
                 is(equalTo("**Coverage:** 9 of 9 chunks summarized (1 call cut to fit the window)\n\n")));
@@ -133,7 +160,8 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void chunkCoverage_namesThePartSummariesCutAtTheOutputBudget() {
+    public void chunkCoverage_partSummariesCutAtTheOutputBudget_namesThePartSummaries() {
+        // act, assert
         assertThat(
                 MapReduceMath.chunkCoverage(11, 11, 0, 1, 0),
                 is(equalTo("**Coverage:** 11 of 11 chunks summarized (1 part summary cut at the output budget)\n\n")));
@@ -144,14 +172,32 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void headCoverage_namesTheCharactersRead() {
+    public void chunkCoverage_partSummariesShortenedForTheReduce_namesThePartSummaries() {
+        // act, assert
+        assertThat(
+                MapReduceMath.chunkCoverage(4, 4, 0, 0, 1),
+                is(equalTo("**Coverage:** 4 of 4 chunks summarized (1 part summary shortened to fit the reduce)\n\n")));
+        assertThat(
+                MapReduceMath.chunkCoverage(4, 4, 0, 0, 3),
+                is(equalTo(
+                        "**Coverage:** 4 of 4 chunks summarized (3 part summaries shortened to fit the reduce)\n\n")));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="headCoverage">
+    @Test
+    public void headCoverage_aSampledHead_namesTheCharactersRead() {
+        // act, assert
         assertThat(
                 MapReduceMath.headCoverage(12_000, 90_000),
                 is(equalTo("**Coverage:** the first 12000 of 90000 characters (sampled head)\n\n")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="reduceCalls">
     @Test
     public void reduceCalls_oneRoundUpTo16_moreRoundsAbove() {
+        // act, assert
         assertThat(MapReduceMath.reduceCalls(0), is(0L));
         assertThat(MapReduceMath.reduceCalls(1), is(0L));
         assertThat(MapReduceMath.reduceCalls(2), is(1L));
@@ -162,30 +208,40 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void splittable_fromTwiceTheMinimumChunk_halvesAreNoShorterThanIt() {
-        assertThat(MapReduceMath.splittable(2 * MapReduceMath.MIN_CHUNK_CHARS - 1), is(false));
-        assertThat(MapReduceMath.splittable(2 * MapReduceMath.MIN_CHUNK_CHARS), is(true));
-    }
-
-    @Test
-    public void reduceCalls_aSmallerFanIn_takesMoreRounds_heldToTwoAndSixteen() {
+    public void reduceCalls_aSmallerFanInHeldToTwoAndSixteen_takesMoreRounds() {
+        // act, assert
         assertThat(MapReduceMath.reduceCalls(8, 2), is(7L));
         assertThat(MapReduceMath.reduceCalls(9, 3), is(4L));
         assertThat(MapReduceMath.reduceCalls(8, 1), is(7L));
         assertThat(MapReduceMath.reduceCalls(17, 99), is(3L));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="splittable">
+    @Test
+    public void splittable_fromTwiceTheMinimumChunk_halvesAreNoShorterThanIt() {
+        // act, assert
+        assertThat(MapReduceMath.splittable(2 * MapReduceMath.MIN_CHUNK_CHARS - 1), is(false));
+        assertThat(MapReduceMath.splittable(2 * MapReduceMath.MIN_CHUNK_CHARS), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="expectedFanIn">
     @Test
     public void expectedFanIn_thePartSummariesThatFitTheBudget_twoToSixteen() {
+        // act, assert
         // a part of 950 tokens at 4 characters is 3 800 characters and a 64-character label: 3 864
         assertThat(MapReduceMath.expectedFanIn(3_864L * 5, 4.0d, 950), is(5));
         assertThat(MapReduceMath.expectedFanIn(3_864L * 5 - 1, 4.0d, 950), is(4));
         assertThat(MapReduceMath.expectedFanIn(100L, 4.0d, 950), is(2));
         assertThat(MapReduceMath.expectedFanIn(10_000_000L, 4.0d, 950), is(16));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="chunkCount">
     @Test
-    public void chunkCount_advancesTheBudgetLessTheOverlap() {
+    public void chunkCount_sourceLengths_advancesTheBudgetLessTheOverlap() {
+        // act, assert
         assertThat(MapReduceMath.chunkCount(0, 8_000, 400), is(1L));
         assertThat(MapReduceMath.chunkCount(8_000, 8_000, 400), is(1L));
         assertThat(MapReduceMath.chunkCount(8_001, 8_000, 400), is(2L));
@@ -196,50 +252,58 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void chunkCount_matchesTheChunkerOnTextWithoutLineBreaks() {
+    public void chunkCount_textWithoutLineBreaks_matchesTheChunker() {
+        // arrange
         final String source = chars(30_000);
         final int budget = 8_000;
         final int overlap = MapReduceMath.overlap(budget);
 
+        // act, assert
         assertThat(MapReduceMath.chunkCount(source.length(), budget, overlap), is((long)
-                net.ladenthin.srcmorph.indexer.generation.SourceChunker.chunk(source, budget, overlap, 0)
-                        .size()));
+                SourceChunker.chunk(source, budget, overlap, 0).size()));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="chunkLabel">
     @Test
-    public void chunkLabel_namesTheChunkAndTheChunks() {
+    public void chunkLabel_everyChunkRead_namesTheChunkAndTheChunks() {
+        // act, assert
         assertThat(MapReduceMath.chunkLabel(3, 44, 44), is(equalTo("Chunk 3 of 44:\n")));
     }
 
     @Test
     public void chunkLabel_ofASample_namesTheChunksItWasSampledFrom() {
+        // act, assert
         assertThat(MapReduceMath.chunkLabel(3, 6, 44), is(equalTo("Chunk 3 of 6, sampled from 44 chunks:\n")));
     }
 
     @Test
     public void chunkLabel_ofTheLongestNumbers_fitsItsReserve() {
+        // act, assert
         assertThat(
                 MapReduceMath.chunkLabel(99_999, 99_999, 100_000).length() <= MapReduceMath.CHUNK_LABEL_RESERVE,
                 is(true));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="review round 2">
+    // <editor-fold defaultstate="collapsed" desc="reduceGroups">
     @Test
-    public void reduceGroups_areTheBatchesWithoutLabels() {
+    public void reduceGroups_partsThatFit_areTheBatchesWithoutLabels() {
+        // arrange
         final String part = chars(100);
         final int firstBatch = ("Part 1:\n" + part + "\n\n").length();
 
+        // act
         final List<List<String>> groups =
                 MapReduceMath.reduceGroups(Arrays.asList(part, part, "c"), firstBatch + 100 + 16);
 
+        // assert
         assertThat(groups, is(equalTo(Arrays.asList(Arrays.asList(part, part), Collections.singletonList("c")))));
     }
 
     @Test
-    public void reduceGroups_countTheLabelsOfTwoDigitParts() {
+    public void reduceGroups_twoDigitParts_countTheLabels() {
+        // arrange
         // twelve parts of one char: the label of part 10 and above is one char longer
         final List<String> partials = new ArrayList<>();
         for (int i = 0; i < 12; i++) {
@@ -247,25 +311,34 @@ public class MapReduceMathTest {
         }
         final String nine = MapReduceMath.combineAll(partials.subList(0, 11));
 
+        // act
         final List<List<String>> fits = MapReduceMath.reduceGroups(partials, nine.length() + 1 + 16);
         final List<List<String>> short1 = MapReduceMath.reduceGroups(partials, nine.length() + 1 + 15);
 
+        // assert
         assertThat(fits.get(0).size(), is(12));
         assertThat(short1.get(0).size(), is(11));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="pairablePartChars">
     @Test
-    public void pairablePartChars_letTwoPartsFitOneBatch() {
+    public void pairablePartChars_aBudget_letTwoPartsFitOneBatch() {
+        // arrange
         final int budget = 1_000;
         final String part = chars(MapReduceMath.pairablePartChars(budget));
 
+        // act, assert
         assertThat(MapReduceMath.pairablePartChars(budget), is(484));
         assertThat(MapReduceMath.reduceGroups(Arrays.asList(part, part), budget).size(), is(1));
         assertThat(MapReduceMath.pairablePartChars(10), is(1));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="shortened">
     @Test
-    public void shortened_cutsAtTheLastLineEndAndMarksIt() {
+    public void shortened_aPartAboveItsRoom_cutsAtTheLastLineEndAndMarksIt() {
+        // act, assert
         assertThat(MapReduceMath.shortened("abc", 3), is(equalTo("abc")));
         assertThat(
                 MapReduceMath.shortened("line one\nline two\nline three", 20),
@@ -281,17 +354,24 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void shortened_neverExceedsItsRoom() {
+    public void shortened_everyRoom_neverExceedsItsRoom() {
+        // arrange
         final String partial = "a\nbb\nccc\ndddd\neeeee";
+
+        // act, assert
         for (int max = MapReduceMath.SHORTENED_MARKER.length(); max < partial.length(); max++) {
             assertThat(MapReduceMath.shortened(partial, max).length() <= max, is(true));
         }
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="reduceFacts">
     @Test
-    public void reduceFacts_aLineThatFits_isTheLine_aLongOneEndsAtACounter() {
+    public void reduceFacts_aLineThatFitsOrALongOne_isTheLineOrEndsAtACounter() {
+        // arrange
         final String facts = "**Facts (exact, whole file):** a: 1; bb: 22; ccc: 333\n\n";
 
+        // act, assert
         assertThat(MapReduceMath.reduceFacts(facts, facts.length()), is(equalTo(facts)));
         assertThat(
                 MapReduceMath.reduceFacts(facts, 50),
@@ -301,21 +381,27 @@ public class MapReduceMathTest {
     }
 
     @Test
-    public void reduceFacts_endsAtTheLastCounterThatLeavesRoomForTheEllipsis() {
+    public void reduceFacts_aLongLine_endsAtTheLastCounterThatLeavesRoomForTheEllipsis() {
+        // arrange
         // the counter "c: 3" would fit without the ellipsis, not with it
         final String facts = "F: a: 1; b: 2; c: 3; d: 4\n\n";
 
+        // act, assert
         assertThat(MapReduceMath.reduceFacts(facts, 20), is(equalTo("F: a: 1; b: 2; ...\n\n")));
         assertThat(MapReduceMath.reduceFacts(facts, 20).length(), is(20));
     }
 
     @Test
     public void reduceFacts_withoutACounterThatFits_isTheEllipsisAlone() {
+        // act, assert
         assertThat(MapReduceMath.reduceFacts(chars(100), 20), is(equalTo("; ...\n\n")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="halfSplit">
     @Test
-    public void halfSplit_isAfterALineEndNearTheMiddle() {
+    public void halfSplit_lineEndsNearTheMiddle_isAfterALineEndNearTheMiddle() {
+        // act, assert
         // the line end before the middle is nearer
         assertThat(MapReduceMath.halfSplit("aaaa\nbbbb\ncccc\n"), is(5));
         // the line end after the middle is nearer
@@ -333,6 +419,7 @@ public class MapReduceMathTest {
 
     @Test
     public void halfSplit_aLineEndThatLeavesAHalfBelowAQuarter_isNotTaken() {
+        // act, assert
         // a quarter of 8 is 2: a first half of 2 is taken, of 1 is not
         assertThat(MapReduceMath.halfSplit("a\nbbbbbb"), is(2));
         assertThat(MapReduceMath.halfSplit("\nbbbbbbb"), is(4));
@@ -345,9 +432,12 @@ public class MapReduceMathTest {
         final String dense = "\n\n" + "x".repeat(3_000);
         assertThat(MapReduceMath.halfSplit(dense), is(dense.length() / 2));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="cutPart">
     @Test
-    public void cutPart_dropsTheLineTheCutEndedInAndMarksIt() {
+    public void cutPart_aPartCutOff_dropsTheLineTheCutEndedInAndMarksIt() {
+        // act, assert
         assertThat(
                 MapReduceMath.cutPart("- a\n- b\n- c, cut in the mi"),
                 is(equalTo("- a\n- b" + MapReduceMath.SHORTENED_MARKER)));
@@ -356,41 +446,32 @@ public class MapReduceMathTest {
         // a line end only at the start leaves the text whole
         assertThat(MapReduceMath.cutPart("\n- a part"), is(equalTo("\n- a part" + MapReduceMath.SHORTENED_MARKER)));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="halfLabel">
     @Test
-    public void halfLabel_namesTheHalf() {
+    public void halfLabel_aChunkLabel_namesTheHalf() {
+        // arrange
         final String label = MapReduceMath.chunkLabel(3, 44, 44);
 
+        // act, assert
         assertThat(MapReduceMath.halfLabel(label, 1), is(equalTo("Chunk 3 of 44, half 1:\n")));
         assertThat(
                 MapReduceMath.halfLabel(MapReduceMath.halfLabel(label, 2), 1),
                 is(equalTo("Chunk 3 of 44, half 2, half 1:\n")));
         assertThat(MapReduceMath.halfLabel("x", 2), is(equalTo("x, half 2:\n")));
     }
-
-    @Test
-    public void chunkCoverage_namesThePartSummariesShortenedForTheReduce() {
-        assertThat(
-                MapReduceMath.chunkCoverage(4, 4, 0, 0, 1),
-                is(equalTo("**Coverage:** 4 of 4 chunks summarized (1 part summary shortened to fit the reduce)\n\n")));
-        assertThat(
-                MapReduceMath.chunkCoverage(4, 4, 0, 0, 3),
-                is(equalTo(
-                        "**Coverage:** 4 of 4 chunks summarized (3 part summaries shortened to fit the reduce)\n\n")));
-    }
-
-    @Test
-    public void safeWindow_ofAHugeWindow_doesNotOverflow() {
-        assertThat(MapReduceMath.safeWindow(200_000_000), is(160_000_000));
-    }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="sampleNote">
     @Test
     public void sampleNote_namesTheChunksRead_orIsEmpty() {
+        // act, assert
         assertThat(
                 MapReduceMath.sampleNote(6, 44),
                 is(equalTo("**Sample:** the parts summarize 6 of 44 chunks; the rest of the input was not read.\n\n")));
         assertThat(MapReduceMath.sampleNote(44, 44), is(equalTo("")));
         assertThat(MapReduceMath.sampleNote(45, 44), is(equalTo("")));
     }
+    // </editor-fold>
 }

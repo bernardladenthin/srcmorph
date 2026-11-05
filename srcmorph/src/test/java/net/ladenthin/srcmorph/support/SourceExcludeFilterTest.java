@@ -15,73 +15,106 @@ public class SourceExcludeFilterTest {
 
     // <editor-fold defaultstate="collapsed" desc="empty / null / blank">
     @Test
-    public void emptyPatternList_excludesNothing() {
+    public void isExcluded_emptyPatternList_excludesNothing() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.<String>emptyList());
+
+        // act, assert
         assertThat(filter.isExcluded("src/main/java/com/example/Foo.java"), is(false));
     }
 
     @Test
-    public void nullPatternList_excludesNothing() {
+    public void isExcluded_nullPatternList_excludesNothing() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(null);
+
+        // act, assert
         assertThat(filter.isExcluded("anything.java"), is(false));
     }
 
     @Test
-    public void nullAndBlankEntriesAreIgnored() {
+    public void isExcluded_nullAndBlankEntries_areIgnored() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Arrays.asList(null, "", "   ", "\t"));
+
+        // act, assert
         assertThat(filter.isExcluded("anything.java"), is(false));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="** / matches at root and nested">
     @Test
-    public void doubleStarSlash_matchesAtRoot() {
+    public void isExcluded_doubleStarSlash_matchesAtRoot() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("**/package-info.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("package-info.java"), is(true));
     }
 
     @Test
-    public void doubleStarSlash_matchesNested() {
+    public void isExcluded_doubleStarSlash_matchesNested() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("**/package-info.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("src/main/java/com/example/package-info.java"), is(true));
     }
 
     @Test
-    public void doubleStarSlash_doesNotMatchDifferentFile() {
+    public void isExcluded_doubleStarSlash_doesNotMatchDifferentFile() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("**/package-info.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("src/main/java/com/example/Foo.java"), is(false));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="* stays within a segment, ** spans segments">
     @Test
-    public void singleStar_matchesWithinSegment() {
+    public void isExcluded_singleStar_matchesWithinSegment() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("*.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("Foo.java"), is(true));
     }
 
     @Test
-    public void singleStar_doesNotCrossSeparator() {
+    public void isExcluded_singleStar_doesNotCrossSeparator() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("*.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("com/Foo.java"), is(false));
     }
 
     @Test
-    public void trailingSingleStar_matchesRestOfSegmentOnly() {
+    public void isExcluded_trailingSingleStar_matchesRestOfSegmentOnly() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("Bar*"));
+
+        // act, assert
         assertThat(filter.isExcluded("Bar123"), is(true));
         assertThat(filter.isExcluded("Bar/123"), is(false));
     }
 
     @Test
-    public void trailingDoubleStar_spansSegments() {
+    public void isExcluded_trailingDoubleStar_spansSegments() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("target/**"));
+
+        // act, assert
         assertThat(filter.isExcluded("target/generated-sources/com/Foo.java"), is(true));
     }
 
     @Test
-    public void doubleStarInTheMiddle_spansSegments() {
+    public void isExcluded_doubleStarInTheMiddle_spansSegments() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("**/generated/**"));
+
+        // act, assert
         assertThat(filter.isExcluded("src/main/java/com/generated/Foo.java"), is(true));
         assertThat(filter.isExcluded("src/main/java/com/example/Foo.java"), is(false));
     }
@@ -89,40 +122,55 @@ public class SourceExcludeFilterTest {
 
     // <editor-fold defaultstate="collapsed" desc="? single char">
     @Test
-    public void questionMark_matchesExactlyOneNonSeparatorChar() {
+    public void isExcluded_questionMark_matchesExactlyOneNonSeparatorChar() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("A?.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("Ab.java"), is(true));
         assertThat(filter.isExcluded("Abc.java"), is(false));
     }
 
     @Test
-    public void questionMark_doesNotMatchSeparator() {
+    public void isExcluded_questionMark_doesNotMatchSeparator() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("a?b"));
+
+        // act, assert
         assertThat(filter.isExcluded("a/b"), is(false));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="literal escaping">
     @Test
-    public void dotIsLiteral_notAnyChar() {
+    public void isExcluded_dot_isLiteralNotAnyChar() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("Foo.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("Foo.java"), is(true));
         // The '.' must be escaped, so it does NOT match an arbitrary character.
         assertThat(filter.isExcluded("FooXjava"), is(false));
     }
 
     @Test
-    public void regexMetacharactersAreTreatedLiterally() {
+    public void isExcluded_regexMetacharacters_areTreatedLiterally() {
+        // arrange
         // Every metacharacter the translator escapes, in one literal pattern. If any were left
         // unescaped the regex would either fail to compile or fail to match itself.
         final String literal = "a(b)[c]}d+e^f$g|h.txt";
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList(literal));
+
+        // act, assert
         assertThat(filter.isExcluded(literal), is(true));
     }
 
     @Test
-    public void bracesAreAlternatives() {
+    public void isExcluded_braces_areAlternatives() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("**/{target,build}/**"));
+
+        // act, assert
         assertThat(filter.isExcluded("target/a.java"), is(true));
         assertThat(filter.isExcluded("m/build/a.java"), is(true));
         assertThat(filter.isExcluded("m/src/a.java"), is(false));
@@ -130,15 +178,11 @@ public class SourceExcludeFilterTest {
     }
 
     @Test
-    public void unclosedBrace_throws() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new SourceExcludeFilter(Collections.singletonList("**/{target/**")));
-    }
-
-    @Test
-    public void backslashIsTreatedLiterally() {
+    public void isExcluded_backslash_isTreatedLiterally() {
+        // arrange
         final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("a\\b.txt"));
+
+        // act, assert
         assertThat(filter.isExcluded("a\\b.txt"), is(true));
         assertThat(filter.isExcluded("ab.txt"), is(false));
     }
@@ -146,17 +190,33 @@ public class SourceExcludeFilterTest {
 
     // <editor-fold defaultstate="collapsed" desc="multiple patterns / no match">
     @Test
-    public void multiplePatterns_anyMatchExcludes() {
+    public void isExcluded_multiplePatterns_anyMatchExcludes() {
+        // arrange
         final SourceExcludeFilter filter =
                 new SourceExcludeFilter(Arrays.asList("**/package-info.java", "**/module-info.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("com/module-info.java"), is(true));
     }
 
     @Test
-    public void noPatternMatches_returnsFalse() {
+    public void isExcluded_noPatternMatches_returnsFalse() {
+        // arrange
         final SourceExcludeFilter filter =
                 new SourceExcludeFilter(Arrays.asList("**/package-info.java", "**/module-info.java"));
+
+        // act, assert
         assertThat(filter.isExcluded("com/example/Service.java"), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="constructor">
+    @Test
+    public void constructor_unclosedBrace_throwsException() {
+        // act, assert
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new SourceExcludeFilter(Collections.singletonList("**/{target/**")));
     }
     // </editor-fold>
 }

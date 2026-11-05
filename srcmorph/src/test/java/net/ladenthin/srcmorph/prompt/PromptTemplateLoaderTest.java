@@ -65,10 +65,11 @@ public class PromptTemplateLoaderTest {
         // arrange
         final PromptDefinition keyless = inline("a", "A.");
         keyless.setKey(null);
+        final PromptDefinition keyed = inline("b", "B.");
 
         // act
         final IllegalArgumentException thrown =
-                assertThrows(IllegalArgumentException.class, () -> load(inline("b", "B."), keyless));
+                assertThrows(IllegalArgumentException.class, () -> load(keyed, keyless));
 
         // assert
         assertThat(thrown.getMessage(), is("promptDefinitions[1].key is required (bad entry: " + keyless + ")"));
@@ -88,6 +89,7 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_emptyList_staysEmpty() throws IOException {
+        // act, assert
         assertThat(
                 new PromptTemplateLoader(null)
                         .load(Collections.<PromptDefinition>emptyList(), Collections.<@Nullable String>emptyList())
@@ -97,19 +99,25 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_inlineTemplate_isPassedThroughUnchanged() throws IOException {
+        // arrange
         final PromptDefinition definition = inline("file-body-java", JAVA_PROMPT);
 
+        // act
         final List<PromptDefinition> loaded = load(definition);
 
+        // assert
         assertThat(loaded.get(0), is(sameInstance(definition)));
     }
 
     @Test
     public void load_relativeTemplateFile_isReadFromTheProfileDirectory() throws IOException {
+        // arrange
         write("v1/file-body-java.md", JAVA_PROMPT);
 
+        // act
         final List<PromptDefinition> loaded = load(fromFile("file-body-java", "v1/file-body-java.md"));
 
+        // assert
         assertThat(loaded.get(0).getKey(), is("file-body-java"));
         assertThat(loaded.get(0).getTemplate(), is(JAVA_PROMPT));
         assertThat(loaded.get(0).getTemplateFile(), is(nullValue()));
@@ -118,11 +126,14 @@ public class PromptTemplateLoaderTest {
     @Test
     @AbsolutePathRequirement
     public void load_absoluteTemplateFile_ignoresTheProfileDirectory(@TempDir final Path elsewhere) throws IOException {
+        // arrange
         final Path file = elsewhere.resolve("project-body.md");
         Files.write(file, "Write the overview.".getBytes(StandardCharsets.UTF_8));
 
+        // act
         final List<PromptDefinition> loaded = load(fromFile("project-body", file.toString()));
 
+        // assert
         assertThat(loaded.get(0).getTemplate(), is("Write the overview."));
     }
 
@@ -133,15 +144,18 @@ public class PromptTemplateLoaderTest {
      */
     @Test
     public void load_withoutProfileDirectory_resolvesAgainstTheWorkingDirectory() throws IOException {
+        // arrange
         final Path relative = Paths.get("target", "prompt-loader-test", "cwd-relative.md");
         Files.createDirectories(relative.getParent());
         Files.write(relative, JAVA_PROMPT.getBytes(StandardCharsets.UTF_8));
         try {
+            // act
             final List<PromptDefinition> loaded = new PromptTemplateLoader(null)
                     .load(
                             Arrays.asList(fromFile("file-body-java", relative.toString())),
                             Collections.<@Nullable String>emptyList());
 
+            // assert
             assertThat(loaded.get(0).getTemplate(), is(JAVA_PROMPT));
         } finally {
             Files.delete(relative);
@@ -151,34 +165,43 @@ public class PromptTemplateLoaderTest {
     /** The file is the system message verbatim: line breaks and trailing whitespace stay. */
     @Test
     public void load_templateFile_keepsWhitespaceAsWritten() throws IOException {
+        // arrange
         final String text = "\n  Indent kept.\r\nTrailing spaces kept.   \n\n";
         write("raw.md", text);
 
+        // act, assert
         assertThat(load(fromFile("raw", "raw.md")).get(0).getTemplate(), is(text));
     }
 
     @Test
     public void load_leadingByteOrderMark_isDropped() throws IOException {
+        // arrange
         write("bom.md", "\uFEFF" + JAVA_PROMPT);
 
+        // act, assert
         assertThat(load(fromFile("bom", "bom.md")).get(0).getTemplate(), is(JAVA_PROMPT));
     }
 
     @Test
     public void load_byteOrderMarkLaterInTheText_staysPartOfIt() throws IOException {
+        // arrange
         write("inner.md", "a\uFEFFb");
 
+        // act, assert
         assertThat(load(fromFile("inner", "inner.md")).get(0).getTemplate(), is("a\uFEFFb"));
     }
 
     @Test
     public void load_mixedDefinitions_keepTheirOrder() throws IOException {
+        // arrange
         write("package-body.md", "Summarize the package.");
         final PromptDefinition first = inline("file-body-java", JAVA_PROMPT);
 
+        // act
         final List<PromptDefinition> loaded =
                 load(first, fromFile("package-body", "package-body.md"), inline("project-body", "Overview."));
 
+        // assert
         assertThat(loaded.size(), is(3));
         assertThat(loaded.get(0), is(sameInstance(first)));
         assertThat(loaded.get(1).getTemplate(), is("Summarize the package."));
@@ -186,12 +209,15 @@ public class PromptTemplateLoaderTest {
     }
 
     @Test
-    public void load_doesNotModifyTheConfiguredDefinition() throws IOException {
+    public void load_templateFileDefinition_doesNotModifyTheConfiguredDefinition() throws IOException {
+        // arrange
         write("x.md", JAVA_PROMPT);
         final PromptDefinition configured = fromFile("x", "x.md");
 
+        // act
         final PromptDefinition loaded = load(configured).get(0);
 
+        // assert
         assertThat(loaded, is(not(sameInstance(configured))));
         assertThat(configured.getTemplate(), is(nullValue()));
         assertThat(configured.getTemplateFile(), is("x.md"));
@@ -206,10 +232,13 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_usedKeyWithoutDefinition_isReadFromItsFileInTheProfileDirectory() throws IOException {
+        // arrange
         write("file-body-java.md", JAVA_PROMPT);
 
+        // act
         final List<PromptDefinition> loaded = loadUsing(null, "file-body-java");
 
+        // assert
         assertThat(loaded.size(), is(1));
         assertThat(loaded.get(0).getKey(), is("file-body-java"));
         assertThat(loaded.get(0).getTemplate(), is(JAVA_PROMPT));
@@ -218,11 +247,14 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_usedKeys_comeAfterTheDefinitionsInTheOrderUsed() throws IOException {
+        // arrange
         write("b.md", "B.");
         write("c.md", "C.");
 
+        // act
         final List<PromptDefinition> loaded = loadUsing(Arrays.asList(inline("a", "A.")), "c", "b");
 
+        // assert
         assertThat(loaded.get(0).getKey(), is("a"));
         assertThat(loaded.get(1).getTemplate(), is("C."));
         assertThat(loaded.get(2).getTemplate(), is("B."));
@@ -230,46 +262,58 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_usedKeyWithADefinition_keepsTheDefinition() throws IOException {
+        // arrange
         write("file-body-java.md", "the file, not used");
         final PromptDefinition definition = inline("file-body-java", JAVA_PROMPT);
 
+        // act
         final List<PromptDefinition> loaded = loadUsing(Arrays.asList(definition), "file-body-java");
 
+        // assert
         assertThat(loaded.size(), is(1));
         assertThat(loaded.get(0), is(sameInstance(definition)));
     }
 
     @Test
     public void load_keyUsedTwiceAndNullKeys_readTheFileOnce() throws IOException {
+        // arrange
         write("package-body.md", "P.");
 
+        // act
         final List<PromptDefinition> loaded = loadUsing(null, null, "package-body", "package-body", null);
 
+        // assert
         assertThat(loaded.size(), is(1));
         assertThat(loaded.get(0).getTemplate(), is("P."));
     }
 
     @Test
     public void load_usedKeyWithoutProfileDirectory_isNotLookedUp() throws IOException {
+        // act
         final List<PromptDefinition> loaded = new PromptTemplateLoader(null)
                 .load(Arrays.asList(inline("a", "A.")), Arrays.<@Nullable String>asList("a", "missing"));
 
+        // assert
         assertThat(loaded.size(), is(1));
         assertThat(loaded.get(0).getKey(), is("a"));
     }
 
     @Test
     public void load_usedKeyFile_dropsALeadingByteOrderMark() throws IOException {
+        // arrange
         write("x.md", "\uFEFF" + JAVA_PROMPT);
 
+        // act, assert
         assertThat(loadUsing(null, "x").get(0).getTemplate(), is(JAVA_PROMPT));
     }
 
     @Test
     public void load_usedKeyWithoutFile_isRefusedNamingTheFileLookedFor() {
+        // act
         final IllegalArgumentException thrown =
                 assertThrows(IllegalArgumentException.class, () -> loadUsing(null, "file-body-sql"));
 
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("prompt key file-body-sql is used by a rule, but no promptDefinition has it and the profile has no "
@@ -278,18 +322,23 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_usedKeyNamingADirectory_isRefused() throws IOException {
+        // arrange
         Files.createDirectories(profileDirectory.resolve("dir.md"));
 
+        // act, assert
         assertThrows(IllegalArgumentException.class, () -> loadUsing(null, "dir"));
     }
 
     @Test
     public void load_usedKeyWithAnEmptyFile_isRefusedNamingTheKey() throws IOException {
+        // arrange
         write("blank.md", " \n");
 
+        // act
         final IllegalArgumentException thrown =
                 assertThrows(IllegalArgumentException.class, () -> loadUsing(null, "blank"));
 
+        // assert
         assertThat(thrown.getMessage(), containsString("prompt key blank: file "));
         assertThat(thrown.getMessage(), containsString(" is empty"));
     }
@@ -298,12 +347,15 @@ public class PromptTemplateLoaderTest {
     // <editor-fold defaultstate="collapsed" desc="load: refused configurations">
     @Test
     public void load_templateAndTemplateFile_isRefused() throws IOException {
+        // arrange
         write("x.md", JAVA_PROMPT);
         final PromptDefinition both = fromFile("file-body-java", "x.md");
         both.setTemplate(JAVA_PROMPT);
 
+        // act
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> load(both));
 
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("promptDefinitions[0] (key file-body-java) sets both template and templateFile; set one of them"));
@@ -311,9 +363,14 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_missingTemplateFile_namesTheDefinitionAndThePath() {
-        final IOException thrown = assertThrows(
-                IOException.class, () -> load(inline("a", "A."), fromFile("package-body", "v1/missing.md")));
+        // arrange
+        final PromptDefinition inlineDefinition = inline("a", "A.");
+        final PromptDefinition missing = fromFile("package-body", "v1/missing.md");
 
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> load(inlineDefinition, missing));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("promptDefinitions[1] (key package-body): templateFile "));
         assertThat(
                 thrown.getMessage(),
@@ -322,41 +379,58 @@ public class PromptTemplateLoaderTest {
 
     @Test
     public void load_unparsablePath_isReportedAsUnreadable() {
-        final IOException thrown = assertThrows(IOException.class, () -> load(fromFile("bad", "bad\u0000.md")));
+        // arrange
+        final PromptDefinition bad = fromFile("bad", "bad\u0000.md");
 
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> load(bad));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("promptDefinitions[0] (key bad): templateFile "));
     }
 
     @Test
     public void load_whitespaceOnlyFile_isRefused() throws IOException {
+        // arrange
         write("blank.md", " \n\t\n");
+        final PromptDefinition blank = fromFile("blank", "blank.md");
 
-        final IllegalArgumentException thrown =
-                assertThrows(IllegalArgumentException.class, () -> load(fromFile("blank", "blank.md")));
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> load(blank));
 
+        // assert
         assertThat(thrown.getMessage(), containsString("promptDefinitions[0] (key blank): templateFile "));
         assertThat(thrown.getMessage(), containsString(" is empty"));
     }
 
     @Test
     public void load_emptyFile_isRefused() throws IOException {
+        // arrange
         write("empty.md", "");
+        final PromptDefinition empty = fromFile("empty", "empty.md");
 
-        assertThrows(IllegalArgumentException.class, () -> load(fromFile("empty", "empty.md")));
+        // act, assert
+        assertThrows(IllegalArgumentException.class, () -> load(empty));
     }
 
     @Test
     public void load_fileWithOnlyAByteOrderMark_isRefused() throws IOException {
+        // arrange
         write("bom-only.md", "\uFEFF");
+        final PromptDefinition bomOnly = fromFile("bom-only", "bom-only.md");
 
-        assertThrows(IllegalArgumentException.class, () -> load(fromFile("bom-only", "bom-only.md")));
+        // act, assert
+        assertThrows(IllegalArgumentException.class, () -> load(bomOnly));
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="toString">
     @Test
-    public void toString_namesTheProfileDirectory() {
+    public void toString_withProfileDirectory_namesTheProfileDirectory() {
+        // act, assert
         assertThat(
                 new PromptTemplateLoader(profileDirectory.toFile()).toString(),
                 containsString(profileDirectory.toString()));
     }
+    // </editor-fold>
 }

@@ -57,8 +57,10 @@ public class XmlFactPatternsTest {
         return assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(counters, label, source));
     }
 
+    // <editor-fold defaultstate="collapsed" desc="xml-facts profile">
     @Test
-    public void xmlProfile_hasTheseCountersInThisOrder() {
+    public void xmlProfile_counterLabels_areTheseInThisOrder() {
+        // act, assert
         assertThat(
                 new ArrayList<>(ProfileFactPatterns.counts(XML, "").keySet()),
                 is(Arrays.asList(
@@ -69,9 +71,12 @@ public class XmlFactPatternsTest {
                         "XSLT templates",
                         "Spring beans")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="pom-facts profile">
     @Test
-    public void pomProfile_hasTheseCountersInThisOrder() {
+    public void pomProfile_counterLabels_areTheseInThisOrder() {
+        // act, assert
         assertThat(
                 new ArrayList<>(ProfileFactPatterns.counts(POM, "").keySet()),
                 is(Arrays.asList(
@@ -83,10 +88,12 @@ public class XmlFactPatternsTest {
                         "test-scoped dependencies",
                         "managed plugin sections")));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="xml-facts">
     @Test
-    public void elements_startTagsCountAndTheDeclarationACommentAndCdataDoNot() {
+    public void elements_startTagsDeclarationCommentAndCdata_countOnlyTheStartTags() {
+        // act, assert
         assertThat(
                 count(XML, "elements", "<?xml version=\"1.0\"?>\n<!-- <fake/> -->\n<a><b/><![CDATA[<c>]]></a>\n"),
                 is(2));
@@ -94,21 +101,25 @@ public class XmlFactPatternsTest {
 
     @Test
     public void elements_commentOpenerInsideCdata_opensNothing() {
+        // act, assert
         assertThat(count(XML, "elements", "<r><![CDATA[ <!-- ]]><b/><c/><!-- c --><d/></r>\n"), is(4));
     }
 
     @Test
     public void elements_cdataOpenerInsideAComment_opensNothing() {
+        // act, assert
         assertThat(count(XML, "elements", "<r><!-- <![CDATA[ --><b/><c/><![CDATA[ x ]]><d/></r>\n"), is(4));
     }
 
     @Test
     public void elements_markupInAProcessingInstruction_doesNotCount() {
+        // act, assert
         assertThat(count(XML, "elements", "<?php echo \"<b>\"; ?>\n<r/>\n"), is(1));
     }
 
     @Test
     public void namespaceDeclarations_defaultAndPrefixed_count() {
+        // act, assert
         assertThat(
                 count(
                         XML,
@@ -119,7 +130,8 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void idAndNameAttributes_onlyThoseExactAttributeNames() {
+    public void idAndNameAttributes_similarAttributeNames_countOnlyThoseExactNames() {
+        // act, assert
         assertThat(
                 count(XML, "id and name attributes", "<bean id=\"a\" name=\"b\"/>\n<x pid=\"c\" names=\"d\"/>\n"),
                 is(2));
@@ -128,6 +140,7 @@ public class XmlFactPatternsTest {
     /** Element text is no tag: a "name = 'a'" in it is no attribute; one over several lines of a tag is. */
     @Test
     public void idAndNameAttributes_inElementText_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         XML,
@@ -137,7 +150,8 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void idAndNameAttributes_prefixedOnesCountANamespaceDeclarationDoesNot() {
+    public void idAndNameAttributes_prefixedOnesAndANamespaceDeclaration_countOnlyThePrefixedOnes() {
+        // act, assert
         assertThat(
                 count(
                         XML,
@@ -147,7 +161,8 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void xsdTypeDefinitions_namedTypesCountAnonymousOnesDoNot() {
+    public void xsdTypeDefinitions_namedAndAnonymousTypes_countOnlyTheNamedOnes() {
+        // act, assert
         assertThat(
                 count(
                         XML,
@@ -158,7 +173,8 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void xsltTemplates_matchAndNamedCountCallsAndApplyDoNot() {
+    public void xsltTemplates_templatesCallsAndApply_countOnlyMatchAndNamedTemplates() {
+        // act, assert
         assertThat(
                 count(
                         XML,
@@ -169,7 +185,8 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void springBeans_beanElementsCountTheBeansRootDoesNot() {
+    public void springBeans_beanElementsAndTheBeansRoot_countOnlyTheBeanElements() {
+        // act, assert
         assertThat(
                 count(
                         XML,
@@ -180,6 +197,7 @@ public class XmlFactPatternsTest {
 
     @Test
     public void elements_markupInADoctypeInternalSubset_doesNotCount() {
+        // act, assert
         assertThat(
                 count(
                         XML,
@@ -197,51 +215,60 @@ public class XmlFactPatternsTest {
 
     @Test
     public void elements_unclosedComment_isBlankedToTheEnd() {
+        // act, assert
         assertThat(count(XML, "elements", "<a/>\n<!-- <b/>\n<c/>\n"), is(1));
     }
 
     @Test
     public void elements_unclosedCdataAndProcessingInstruction_areBlankedToTheEnd() {
+        // act, assert
         assertThat(count(XML, "elements", "<a/>\n<![CDATA[ <b/>\n<c/>\n"), is(1));
         assertThat(count(XML, "elements", "<a/>\n<?pi <b/>\n<c/>\n"), is(1));
     }
 
     @Test
     public void elements_unclosedDoctype_isBlankedToTheEnd() {
+        // act, assert
         assertThat(count(XML, "elements", "<!DOCTYPE r [\n<!ELEMENT r ANY>\n<r/>\n"), is(0));
         assertThat(count(XML, "elements", "<!DOCTYPE r [ <!ELEMENT r ANY> ]\n<r/>\n"), is(0));
     }
 
     @Test
     public void ignore_manyUnclosedComments_stayLinear() {
+        // act, assert
         assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<!-- x")), is(1));
     }
 
     @Test
     public void ignore_manyUnclosedCdataSections_stayLinear() {
+        // act, assert
         assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<![CDATA[ x")), is(1));
     }
 
     @Test
     public void ignore_manyUnclosedProcessingInstructions_stayLinear() {
+        // act, assert
         assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<? x")), is(1));
     }
 
     @Test
     public void ignore_manyUnclosedDoctypes_stayLinear() {
+        // act, assert
         assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<!DOCTYPE r [ x")), is(1));
         assertThat(countLong(XML, "elements", headThenLines("<r/>\n", "<!DOCTYPE r [ ] x")), is(1));
     }
 
     @Test
     public void xsdTypeDefinitions_manyUnclosedTypeTags_stayLinear() {
+        // act, assert
         assertThat(countLong(XML, "XSD type definitions", headThenLines("", "<xs:complexType a=\"b\"")), is(0));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="pom-facts">
     @Test
-    public void dependencies_everyDependencyElementCountsTheListAndManagementTagsDoNot() {
+    public void dependencies_dependencyListAndManagementTags_countEveryDependencyElementOnly() {
+        // act, assert
         assertThat(
                 count(
                         POM,
@@ -253,22 +280,27 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void managedDependencySections_counted() {
+    public void managedDependencySections_dependencyManagementElement_counts() {
+        // act, assert
         assertThat(
                 count(POM, "managed dependency sections", "<dependencyManagement>\n</dependencyManagement>\n"), is(1));
     }
 
     @Test
-    public void pluginsModulesAndProfiles_elementsCountTheirListsDoNot() {
+    public void pluginsModulesAndProfiles_elementsAndTheirLists_countOnlyTheElements() {
+        // arrange
         final String pom = "<plugins><plugin/><plugin>\n</plugin></plugins>\n<modules><module>a</module></modules>\n"
                 + "<profiles><profile><id>x</id></profile></profiles>\n";
+
+        // act, assert
         assertThat(count(POM, "plugins", pom), is(2));
         assertThat(count(POM, "modules", pom), is(1));
         assertThat(count(POM, "profiles", pom), is(1));
     }
 
     @Test
-    public void testScopedDependencies_scopeTestWithOrWithoutBlanks() {
+    public void testScopedDependencies_scopeTestWithOrWithoutBlanks_counts() {
+        // act, assert
         assertThat(
                 count(
                         POM,
@@ -279,45 +311,58 @@ public class XmlFactPatternsTest {
 
     @Test
     public void dependencies_ofAPlugin_doNotCount() {
+        // arrange
         final String pom = "<dependencies><dependency><scope>test</scope></dependency></dependencies>\n"
                 + "<build><plugins><plugin>\n    <artifactId>x</artifactId>\n"
                 + "    <dependencies><dependency><scope>test</scope></dependency><dependency/></dependencies>\n"
                 + "</plugin></plugins></build>\n";
+
+        // act, assert
         assertThat(count(POM, "dependencies", pom), is(1));
         assertThat(count(POM, "test-scoped dependencies", pom), is(1));
         assertThat(count(POM, "plugins", pom), is(1));
     }
 
     @Test
-    public void plugins_everyPlaceCountsAndManagedPluginSectionsSaysWhetherThereAreAny() {
+    public void plugins_everyPlace_countsAndManagedPluginSectionsSaysWhetherThereAreAny() {
+        // arrange
         final String pom = "<build><pluginManagement><plugins><plugin/></plugins></pluginManagement>\n"
                 + "<plugins><plugin>\n</plugin></plugins></build>\n<reporting><plugins><plugin/></plugins></reporting>\n"
                 + "<profiles><profile><build><plugins><plugin/></plugins></build></profile></profiles>\n";
+
+        // act, assert
         assertThat(count(POM, "plugins", pom), is(4));
         assertThat(count(POM, "managed plugin sections", pom), is(1));
     }
 
     @Test
     public void modulesAndProfiles_insideAPluginConfiguration_doNotCount() {
+        // arrange
         final String pom = "<plugin><configuration><modules><module>a</module></modules>"
                 + "<profiles><profile>x</profile></profiles></configuration></plugin>\n";
+
+        // act, assert
         assertThat(count(POM, "modules", pom), is(0));
         assertThat(count(POM, "profiles", pom), is(0));
     }
 
     @Test
     public void plugins_nestedInASpotBugsConfiguration_areNoPluginsAndItsDependencyIsNone() {
+        // arrange
         final String pom = "<plugins><plugin>\n    <artifactId>spotbugs-maven-plugin</artifactId>\n"
                 + "    <configuration><plugins>\n        <plugin><artifactId>fb-contrib</artifactId></plugin>\n"
                 + "        <plugin><artifactId>findsecbugs-plugin</artifactId></plugin>\n    </plugins></configuration>\n"
                 + "    <dependencies><dependency/></dependencies>\n</plugin></plugins>\n"
                 + "<dependencies><dependency/></dependencies>\n";
+
+        // act, assert
         assertThat(count(POM, "plugins", pom), is(1));
         assertThat(count(POM, "dependencies", pom), is(1));
     }
 
     @Test
     public void dependencies_inCdataOrAfterACommentedPluginOpener_countOnce() {
+        // act, assert
         assertThat(
                 count(
                         POM,
@@ -328,17 +373,20 @@ public class XmlFactPatternsTest {
 
     @Test
     public void dependencies_afterAnUnclosedComment_areNone() {
+        // act, assert
         assertThat(count(POM, "dependencies", "<dependency/>\n<!-- <dependency/>\n<dependency/>\n"), is(1));
     }
 
     @Test
-    public void ignore_manyUnclosedComments_inAPom_stayLinear() {
+    public void ignore_manyUnclosedCommentsInAPom_stayLinear() {
+        // act, assert
         assertThat(countLong(POM, "dependencies", headThenLines("<dependency/>\n", "<!-- x")), is(1));
         assertThat(countLong(POM, "dependencies", headThenLines("<dependency/>\n", "<![CDATA[ x")), is(1));
     }
 
     @Test
     public void ignore_manyUnclosedPlugins_stayLinear() {
+        // act, assert
         assertThat(countLong(POM, "plugins", headThenLines("", "<plugin>")), is(LONG_INPUT_LINES));
         assertThat(countLong(POM, "plugins", headThenLines("", "<plugin><plugin>x")), is(2 * LONG_INPUT_LINES));
     }
@@ -346,8 +394,11 @@ public class XmlFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="the benchmark's language corpus">
     @Test
-    public void corpus_schedulerContextXml() {
+    public void corpus_schedulerContextXml_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/xml/scheduler-context.xml");
+
+        // act, assert
         assertThat(count(XML, "elements", source), is(19));
         assertThat(count(XML, "namespace declarations", source), is(4));
         assertThat(count(XML, "id and name attributes", source), is(11));
@@ -355,8 +406,11 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void corpus_shipmentXsd() {
+    public void corpus_shipmentXsd_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/xml/shipment.xsd");
+
+        // act, assert
         assertThat(count(XML, "elements", source), is(31));
         assertThat(count(XML, "id and name attributes", source), is(20));
         assertThat(count(XML, "XSD type definitions", source), is(5));
@@ -364,16 +418,22 @@ public class XmlFactPatternsTest {
     }
 
     @Test
-    public void corpus_statementToHtmlXsl() {
+    public void corpus_statementToHtmlXsl_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/xml/statement-to-html.xsl");
+
+        // act, assert
         assertThat(count(XML, "elements", source), is(34));
         assertThat(count(XML, "id and name attributes", source), is(8));
         assertThat(count(XML, "XSLT templates", source), is(4));
     }
 
     @Test
-    public void corpus_invoiceServicePom() {
+    public void corpus_invoiceServicePom_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/xml/invoice-service-pom.xml");
+
+        // act, assert
         assertThat(count(XML, "elements", source), is(59));
         assertThat(count(POM, "dependencies", source), is(6));
         assertThat(count(POM, "managed dependency sections", source), is(0));

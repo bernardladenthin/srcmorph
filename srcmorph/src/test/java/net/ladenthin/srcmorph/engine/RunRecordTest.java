@@ -6,12 +6,14 @@ package net.ladenthin.srcmorph.engine;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import net.ladenthin.srcmorph.indexer.IndexOutcome;
 import net.ladenthin.srcmorph.provider.GenerationUsage;
 import org.junit.jupiter.api.Test;
@@ -63,10 +65,13 @@ public class RunRecordTest {
         return runRecord;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="toJson">
     @Test
-    public void toJson_oneObjectPerFile() throws Exception {
+    public void toJson_threeFiles_writesOneObjectPerFile() throws Exception {
+        // act
         final JsonNode root = new ObjectMapper().readTree(runRecord().toJson());
 
+        // assert
         assertThat(root.get("generatorVersion").asText(), is(equalTo("9.9.9")));
         final JsonNode a = root.get("files").get(0);
         assertThat(a.get("file").asText(), is(equalTo("src/A.java")));
@@ -87,10 +92,12 @@ public class RunRecordTest {
     }
 
     @Test
-    public void toJson_totals() throws Exception {
+    public void toJson_threeFiles_writesTheTotals() throws Exception {
+        // act
         final JsonNode totals =
                 new ObjectMapper().readTree(runRecord().toJson()).get("totals");
 
+        // assert
         assertThat(totals.get("files").asInt(), is(3));
         assertThat(totals.get("written").asInt(), is(1));
         assertThat(totals.get("unchanged").asInt(), is(1));
@@ -108,6 +115,7 @@ public class RunRecordTest {
 
     @Test
     public void toJson_totals_countUnchangedAndFailedApart() throws Exception {
+        // arrange
         final RunRecord runRecord = runRecord();
         runRecord.add(new RunRecord.FileRecord(
                 "src/D.java",
@@ -120,32 +128,44 @@ public class RunRecordTest {
                 "AAAA0000",
                 ""));
 
+        // act
         final JsonNode totals = new ObjectMapper().readTree(runRecord.toJson()).get("totals");
 
+        // assert
         assertThat(totals.get("unchanged").asInt(), is(2));
         assertThat(totals.get("failed").asInt(), is(1));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="write">
     @Test
-    public void write_createsTheDirectory() throws Exception {
+    public void write_missingDirectory_createsTheDirectory() throws Exception {
+        // arrange
         final Path file = tempDir.resolve("records/run.json");
 
+        // act
         runRecord().write(file);
 
+        // assert
         assertThat(
                 new String(Files.readAllBytes(file), StandardCharsets.UTF_8),
                 is(equalTo(runRecord().toJson())));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="entries">
     @Test
-    public void entries_areInOrderAndUnmodifiable() {
+    public void entries_threeFiles_areInOrderAndUnmodifiable() {
+        // arrange
         final RunRecord runRecord = runRecord();
 
+        // act, assert
         assertThat(runRecord.entries().size(), is(3));
         assertThat(runRecord.entries().get(2).file(), is(equalTo("src/C.sql")));
         assertThat(runRecord.entries().get(2).outcome(), is(IndexOutcome.FAILED));
         assertThat(runRecord.entries().get(0).usage().calls(), is(2));
-        org.junit.jupiter.api.Assertions.assertThrows(
-                UnsupportedOperationException.class, () -> runRecord.entries().clear());
+        final List<RunRecord.FileRecord> entries = runRecord.entries();
+        assertThrows(UnsupportedOperationException.class, entries::clear);
     }
+    // </editor-fold>
 }

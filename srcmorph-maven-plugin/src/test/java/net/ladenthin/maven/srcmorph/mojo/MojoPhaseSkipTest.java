@@ -21,7 +21,8 @@ public class MojoPhaseSkipTest {
 
     // <editor-fold defaultstate="collapsed" desc="base shouldSkip() truth table">
     @Test
-    public void shouldSkip_isGlobalSkipOrPhaseSkip() {
+    public void shouldSkip_eachFlagCombination_isGlobalSkipOrPhaseSkip() {
+        // act, assert
         // neither flag -> run
         assertThat(mojo(false, false).shouldSkip(), is(false));
         // global skip alone -> skip every phase
@@ -47,42 +48,92 @@ public class MojoPhaseSkipTest {
         mojo.skip = globalSkip;
         return mojo;
     }
+
+    @Test
+    public void shouldSkip_globalSkipAndPhaseFlagOff_skipsThePhase() throws Exception {
+        // arrange
+        final GenerateMojo mojo = new GenerateMojo();
+        setBooleanField(mojo, "skip", true);
+
+        // act, assert
+        assertThat(mojo.isPhaseSkipped(), is(false));
+        assertThat(mojo.shouldSkip(), is(true));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="each concrete goal wires its own phase flag">
     @Test
-    public void generateMojo_phaseFlagTogglesIndependently() throws Exception {
+    public void isPhaseSkipped_generateMojoSkipFile_togglesIndependently() throws Exception {
+        // arrange
         final GenerateMojo mojo = new GenerateMojo();
+
+        // pre-assert
         assertThat(mojo.isPhaseSkipped(), is(false));
+
+        // act
         setBooleanField(mojo, "skipFile", true);
+
+        // assert
         assertThat(mojo.isPhaseSkipped(), is(true));
         assertThat(mojo.shouldSkip(), is(true));
     }
 
     @Test
-    public void aggregatePackagesMojo_phaseFlagTogglesIndependently() throws Exception {
+    public void isPhaseSkipped_aggregatePackagesMojoSkipPackage_togglesIndependently() throws Exception {
+        // arrange
         final AggregatePackagesMojo mojo = new AggregatePackagesMojo();
+
+        // pre-assert
         assertThat(mojo.isPhaseSkipped(), is(false));
+
+        // act
         setBooleanField(mojo, "skipPackage", true);
+
+        // assert
         assertThat(mojo.isPhaseSkipped(), is(true));
         assertThat(mojo.shouldSkip(), is(true));
     }
 
     @Test
-    public void aggregateProjectMojo_phaseFlagTogglesIndependently() throws Exception {
+    public void isPhaseSkipped_aggregateProjectMojoSkipProject_togglesIndependently() throws Exception {
+        // arrange
         final AggregateProjectMojo mojo = new AggregateProjectMojo();
+
+        // pre-assert
         assertThat(mojo.isPhaseSkipped(), is(false));
+
+        // act
         setBooleanField(mojo, "skipProject", true);
+
+        // assert
         assertThat(mojo.isPhaseSkipped(), is(true));
         assertThat(mojo.shouldSkip(), is(true));
     }
 
+    /**
+     * {@code calibrate} is a manual diagnostic goal with no phase flag of its own -- its
+     * {@code isPhaseSkipped()} is a hard {@code false}, so only the global flag disables it. That is a
+     * documented contract with no guard behind it, which makes it worth pinning.
+     */
     @Test
-    public void globalSkipSkipsAPhaseEvenWhenItsPhaseFlagIsOff() throws Exception {
-        final GenerateMojo mojo = new GenerateMojo();
-        setBooleanField(mojo, "skip", true);
+    public void isPhaseSkipped_calibrateMojo_hasNoPhaseFlagOfItsOwn() {
+        // arrange
+        final CalibrateMojo mojo = new CalibrateMojo();
+
+        // act, assert
         assertThat(mojo.isPhaseSkipped(), is(false));
-        assertThat(mojo.shouldSkip(), is(true));
+        assertThat(mojo.shouldSkip(), is(false));
+    }
+
+    /** {@code check} is a diagnostic goal like {@code calibrate}: no phase flag of its own. */
+    @Test
+    public void isPhaseSkipped_checkMojo_hasNoPhaseFlagOfItsOwn() {
+        // arrange
+        final CheckMojo mojo = new CheckMojo();
+
+        // act, assert
+        assertThat(mojo.isPhaseSkipped(), is(false));
+        assertThat(mojo.shouldSkip(), is(false));
     }
     // </editor-fold>
 
@@ -152,7 +203,8 @@ public class MojoPhaseSkipTest {
      * @throws Exception if the mojo throws
      */
     @Test
-    public void generateMojo_globalSkip_returnsWithoutRunningTheEngine() throws Exception {
+    public void execute_generateMojoWithGlobalSkip_returnsWithoutRunningTheEngine() throws Exception {
+        // act, assert
         assertThat(executeWithGlobalSkip(new GenerateMojo()).contains("AI index generation skipped."), is(true));
     }
 
@@ -162,7 +214,8 @@ public class MojoPhaseSkipTest {
      * @throws Exception if the mojo throws
      */
     @Test
-    public void aggregatePackagesMojo_globalSkip_returnsWithoutRunningTheEngine() throws Exception {
+    public void execute_aggregatePackagesMojoWithGlobalSkip_returnsWithoutRunningTheEngine() throws Exception {
+        // act, assert
         assertThat(
                 executeWithGlobalSkip(new AggregatePackagesMojo()).contains("AI package aggregation skipped."),
                 is(true));
@@ -174,7 +227,8 @@ public class MojoPhaseSkipTest {
      * @throws Exception if the mojo throws
      */
     @Test
-    public void aggregateProjectMojo_globalSkip_returnsWithoutRunningTheEngine() throws Exception {
+    public void execute_aggregateProjectMojoWithGlobalSkip_returnsWithoutRunningTheEngine() throws Exception {
+        // act, assert
         assertThat(
                 executeWithGlobalSkip(new AggregateProjectMojo()).contains("AI project index aggregation skipped."),
                 is(true));
@@ -186,23 +240,9 @@ public class MojoPhaseSkipTest {
      * @throws Exception if the mojo throws
      */
     @Test
-    public void calibrateMojo_globalSkip_returnsWithoutRunningTheEngine() throws Exception {
+    public void execute_calibrateMojoWithGlobalSkip_returnsWithoutRunningTheEngine() throws Exception {
+        // act, assert
         assertThat(executeWithGlobalSkip(new CalibrateMojo()).contains("AI index calibration skipped."), is(true));
-    }
-
-    /**
-     * {@code calibrate} is a manual diagnostic goal with no phase flag of its own -- its
-     * {@code isPhaseSkipped()} is a hard {@code false}, so only the global flag disables it. That is a
-     * documented contract with no guard behind it, which makes it worth pinning.
-     */
-    @Test
-    public void calibrateMojo_hasNoPhaseFlagOfItsOwn() {
-        // arrange
-        final CalibrateMojo mojo = new CalibrateMojo();
-
-        // act / assert
-        assertThat(mojo.isPhaseSkipped(), is(false));
-        assertThat(mojo.shouldSkip(), is(false));
     }
 
     /**
@@ -211,17 +251,9 @@ public class MojoPhaseSkipTest {
      * @throws Exception if the mojo throws
      */
     @Test
-    public void checkMojo_globalSkip_returnsWithoutRunningTheEngine() throws Exception {
+    public void execute_checkMojoWithGlobalSkip_returnsWithoutRunningTheEngine() throws Exception {
+        // act, assert
         assertThat(executeWithGlobalSkip(new CheckMojo()).contains("srcmorph check skipped."), is(true));
-    }
-
-    /** {@code check} is a diagnostic goal like {@code calibrate}: no phase flag of its own. */
-    @Test
-    public void checkMojo_hasNoPhaseFlagOfItsOwn() {
-        final CheckMojo mojo = new CheckMojo();
-
-        assertThat(mojo.isPhaseSkipped(), is(false));
-        assertThat(mojo.shouldSkip(), is(false));
     }
 
     // </editor-fold>

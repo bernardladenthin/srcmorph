@@ -68,10 +68,13 @@ public class ProviderConfigFactoryTest {
         return config;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="from">
     @Test
-    public void fromGenerationConfig_threadsEveryFieldThrough() {
+    public void from_everyFieldSet_threadsEveryFieldThrough() {
+        // act
         final ProviderConfig result = ProviderConfigFactory.from(fullConfig());
 
+        // assert
         assertThat(result.modelPath(), is("model.gguf"));
         assertThat(result.contextSize(), is(1111));
         assertThat(result.maxOutputTokens(), is(222));
@@ -121,23 +124,26 @@ public class ProviderConfigFactoryTest {
     }
 
     @Test
-    public void fromGenerationConfig_listsNullifiedThroughTheSetters_arriveAsEmptyLists() {
+    public void from_listsNullifiedThroughTheSetters_arriveAsEmptyLists() {
         // Note what this does and does not pin: the setters normalise null to an empty list, so the
         // factory never sees a null here. It proves the empty list survives the mapping, NOT that the
         // factory itself guards against null -- that guard lives in ProviderConfig's constructor
         // and is pinned by ProviderConfigTest.
+        // arrange
         final ModelDefinition config = fullConfig();
         config.setStopStrings(null);
         config.setDrySequenceBreakers(null);
 
+        // act
         final ProviderConfig result = ProviderConfigFactory.from(config);
 
+        // assert
         assertThat(result.stopStrings(), is(Collections.<String>emptyList()));
         assertThat(result.drySequenceBreakers(), is(Collections.<String>emptyList()));
     }
 
     @Test
-    public void fromGenerationConfig_noModelPath_hasNone() {
+    public void from_noModelPath_hasNone() {
         // arrange: a remote (openai-compatible) definition names no model file
         final ModelDefinition config = new ModelDefinition();
         config.setModelPath(null);
@@ -150,4 +156,5 @@ public class ProviderConfigFactoryTest {
         assertThat(result.modelPath(), is(nullValue()));
         assertThat(result.provider(), is("openai-compatible"));
     }
+    // </editor-fold>
 }

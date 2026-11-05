@@ -26,8 +26,9 @@ public class ProjectOverviewTest {
         return rule;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="accessors">
     @Test
-    public void accessors_returnWhatTheOverviewWasBuiltWith() {
+    public void accessors_builtOverview_returnWhatTheOverviewWasBuiltWith() {
         // arrange
         final GenerationProvider provider = new MockGenerationProvider();
         final PromptCatalog promptSupport = new PromptCatalog(Collections.emptyList());
@@ -43,7 +44,9 @@ public class ProjectOverviewTest {
         assertThat(overview.rule().requirePromptKey(), is("project-overview"));
         assertThat(overview.rule().requireAiDefinitionKey(), is("default"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="rule">
     @Test
     public void rule_isACopy_soNeitherTheCallerNorAReaderChangesIt() {
         // arrange
@@ -62,4 +65,5 @@ public class ProjectOverviewTest {
         assertThat(overview.rule(), is(not(sameInstance(overview.rule()))));
         assertThat(overview.rule().requirePromptKey(), is("project-overview"));
     }
+    // </editor-fold>
 }

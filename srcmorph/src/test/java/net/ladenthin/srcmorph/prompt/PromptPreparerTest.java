@@ -112,16 +112,38 @@ public class PromptPreparerTest {
         // assert — kills the "<=" -> "<" conditional-boundary mutant on the fits-within-limit check.
         assertThat(prepared.trimmed(), is(false));
     }
+
+    @Test
+    public void preparePrompt_aTrimmedPrompt_isNeverLongerThanItsWindow() {
+        // arrange
+        final PromptPreparer support = new PromptPreparer(createPromptSupport());
+        final StringBuilder source = new StringBuilder();
+        for (int i = 0; i < 400; i++) {
+            source.append("line ").append(i).append('\n');
+        }
+        for (int window = 300; window < 1_500; window += 7) {
+            // act
+            final PreparedPrompt prepared = support.preparePrompt(
+                    new GenerationRequest("file-summary", Paths.get("A.java"), source.toString()), window);
+
+            // assert
+            assertThat(prepared.trimmed(), is(true));
+            assertThat(prepared.prompt().length() <= window, is(true));
+        }
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="basePromptLength">
     @Test
-    public void getBasePromptLength_returnsRenderedBaseLength() {
+    public void basePromptLength_fileSummaryKey_returnsRenderedBaseLength() {
+        // arrange
         final PromptCatalog promptSupport = createPromptSupport();
         final PromptPreparer support = new PromptPreparer(promptSupport);
         final int expected = promptSupport
                 .buildPrompt("file-summary", Paths.get("Test.java"), "")
                 .length();
+
+        // act, assert
         // Exact, non-zero base length kills the "return 0" primitive-return mutant.
         assertThat(support.basePromptLength("file-summary", Paths.get("Test.java")), is(equalTo(expected)));
         assertThat(expected > 0, is(true));
@@ -130,8 +152,11 @@ public class PromptPreparerTest {
 
     // <editor-fold defaultstate="collapsed" desc="trimSourceAtLineBreak (package-private, direct)">
     @Test
-    public void trim_targetAtOrBeyondLength_returnsFullSource() {
+    public void trimSourceAtLineBreak_targetAtOrBeyondLength_returnsFullSource() {
+        // arrange
         final PromptPreparer support = new PromptPreparer(createPromptSupport());
+
+        // act, assert
         // targetIndex == length: "a\nb" distinguishes the ">=" boundary from ">" (the mutant would
         // fall through and cut at the newline, yielding "a\n"). Also covers the "return source" path.
         assertThat(support.trimSourceAtLineBreak("a\nb", 3), is(equalTo("a\nb")));
@@ -140,48 +165,45 @@ public class PromptPreparerTest {
     }
 
     @Test
-    public void trim_noNewlineBeforeTarget_cutsAtTarget() {
+    public void trimSourceAtLineBreak_noNewlineBeforeTarget_cutsAtTarget() {
+        // arrange
         final PromptPreparer support = new PromptPreparer(createPromptSupport());
+
+        // act, assert
         // lastNewline < 0 branch -> substring(0, target). Exact value kills the empty-return mutant.
         assertThat(support.trimSourceAtLineBreak("abcdef", 3), is(equalTo("abc")));
     }
 
     @Test
-    public void trim_newlineBeforeTarget_cutsAtLineBoundary() {
+    public void trimSourceAtLineBreak_newlineBeforeTarget_cutsAtLineBoundary() {
+        // arrange
         final PromptPreparer support = new PromptPreparer(createPromptSupport());
+
+        // act, assert
         // Newline at index 1 -> substring(0, lastNewline + 1) = "a\n". Exact value kills the math
         // mutant on (lastNewline + 1) and the empty-return mutant; covers the newline branch (was NO_COVERAGE).
         assertThat(support.trimSourceAtLineBreak("a\nbcd", 3), is(equalTo("a\n")));
     }
 
     @Test
-    public void trim_newlineAtStart_distinguishesConditionalBoundary() {
+    public void trimSourceAtLineBreak_newlineAtStart_distinguishesConditionalBoundary() {
+        // arrange
         final PromptPreparer support = new PromptPreparer(createPromptSupport());
+
+        // act, assert
         // lastNewline == 0 distinguishes "< 0" from the "<= 0" boundary mutant ("\n" vs "\nab").
         assertThat(support.trimSourceAtLineBreak("\nabc", 3), is(equalTo("\n")));
     }
-    // </editor-fold>
 
     @Test
-    public void trim_newlineAtTarget_keepsAtMostTargetCharacters() {
+    public void trimSourceAtLineBreak_newlineAtTarget_keepsAtMostTargetCharacters() {
+        // arrange
         final PromptPreparer support = new PromptPreparer(createPromptSupport());
+
+        // act, assert
         // the line break at index 2 would keep three characters for a target of two
         assertThat(support.trimSourceAtLineBreak("ab\ncd", 2), is(equalTo("ab")));
         assertThat(support.trimSourceAtLineBreak("a\n\ncd", 2), is(equalTo("a\n")));
     }
-
-    @Test
-    public void preparePrompt_aTrimmedPrompt_isNeverLongerThanItsWindow() {
-        final PromptPreparer support = new PromptPreparer(createPromptSupport());
-        final StringBuilder source = new StringBuilder();
-        for (int i = 0; i < 400; i++) {
-            source.append("line ").append(i).append('\n');
-        }
-        for (int window = 300; window < 1_500; window += 7) {
-            final PreparedPrompt prepared = support.preparePrompt(
-                    new GenerationRequest("file-summary", Paths.get("A.java"), source.toString()), window);
-            assertThat(prepared.trimmed(), is(true));
-            assertThat(prepared.prompt().length() <= window, is(true));
-        }
-    }
+    // </editor-fold>
 }

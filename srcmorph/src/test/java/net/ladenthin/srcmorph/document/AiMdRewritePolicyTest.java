@@ -77,7 +77,7 @@ public class AiMdRewritePolicyTest {
 
     // <editor-fold defaultstate="collapsed" desc="shouldRewrite">
     @Test
-    public void shouldWrite_fileDoesNotExist_returnsTrue() throws IOException {
+    public void shouldRewrite_fileDoesNotExist_returnsTrue() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader(FIXED_CHECKSUM, FIXED_G);
@@ -90,7 +90,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_matchingExistingHeaderWithBody_returnsFalse() throws IOException {
+    public void shouldRewrite_matchingExistingHeaderWithBody_returnsFalse() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
@@ -105,7 +105,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_existingHeaderVersionMismatch_returnsTrue() throws IOException {
+    public void shouldRewrite_existingHeaderVersionMismatch_returnsTrue() throws IOException {
         // arrange: an existing doc whose header format version is NOT 1.0, with a non-blank body.
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader oldVersionHeader = new AiMdHeader(
@@ -121,7 +121,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_matchingExistingHeaderEmptyBody_returnsTrue() throws IOException {
+    public void shouldRewrite_matchingExistingHeaderEmptyBody_returnsTrue() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
@@ -137,7 +137,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_matchingExistingHeaderFactsLineOnly_returnsTrue() throws IOException {
+    public void shouldRewrite_matchingExistingHeaderFactsLineOnly_returnsTrue() throws IOException {
         // arrange: what 1.3.0 wrote for an empty or cut-off answer, the facts line and no summary
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
@@ -152,7 +152,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_matchingExistingHeaderFactsLineAndSummary_returnsFalse() throws IOException {
+    public void shouldRewrite_matchingExistingHeaderFactsLineAndSummary_returnsFalse() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader("ABCDEF12", FIXED_G);
@@ -168,7 +168,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_checksumChanged_returnsTrue() throws IOException {
+    public void shouldRewrite_checksumChanged_returnsTrue() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader original = buildHeader("AAAAAAAA", FIXED_G);
@@ -186,7 +186,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_generatorVersionChanged_returnsFalse() throws IOException {
+    public void shouldRewrite_generatorVersionChanged_returnsFalse() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader original = buildHeader(FIXED_CHECKSUM, FIXED_G);
@@ -203,7 +203,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_forceEnabled_returnsTrue() throws IOException {
+    public void shouldRewrite_forceEnabled_returnsTrue() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         final AiMdHeader header = buildHeader(FIXED_CHECKSUM, FIXED_G);
@@ -220,7 +220,7 @@ public class AiMdRewritePolicyTest {
     // <editor-fold defaultstate="collapsed" desc="shouldRewrite -- every compared header field">
 
     /**
-     * The header stored on disk in {@link #shouldWrite_singleHeaderFieldChanged_returnsTrue}. Every
+     * The header stored on disk in {@link #shouldRewrite_singleHeaderFieldChanged_returnsTrue}. Every
      * case writes this one and then passes an expected header differing in exactly one field.
      */
     private static AiMdHeader storedHeader() {
@@ -338,11 +338,13 @@ public class AiMdRewritePolicyTest {
 
     @ParameterizedTest(name = "field {0} changed alone does not force a rewrite")
     @MethodSource("ignoredHeaderFields")
-    public void shouldWrite_onlyTheModificationTimeOrTheGeneratorVersionChanged_returnsFalse(
+    public void shouldRewrite_onlyTheModificationTimeOrTheGeneratorVersionChanged_returnsFalse(
             final String fieldName, final AiMdHeader expectedHeader) throws IOException {
+        // arrange
         final Path target = folder.resolve("test.ai.md");
         documentCodec.write(target, new AiMdDocument(storedHeader(), EXISTING_BODY));
 
+        // act, assert
         assertThat(
                 "a changed " + fieldName + " alone must not force a rewrite",
                 headerSupport.shouldRewrite(false, target, expectedHeader),
@@ -364,7 +366,7 @@ public class AiMdRewritePolicyTest {
      */
     @ParameterizedTest(name = "field {0} changed forces a rewrite")
     @MethodSource("changedHeaderFields")
-    public void shouldWrite_singleHeaderFieldChanged_returnsTrue(
+    public void shouldRewrite_singleHeaderFieldChanged_returnsTrue(
             final String fieldName, final AiMdHeader expectedHeader) throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
@@ -384,7 +386,7 @@ public class AiMdRewritePolicyTest {
      * @throws IOException if the fixture document cannot be written
      */
     @Test
-    public void shouldWrite_noHeaderFieldChanged_returnsFalse() throws IOException {
+    public void shouldRewrite_noHeaderFieldChanged_returnsFalse() throws IOException {
         // arrange
         final Path target = folder.resolve("test.ai.md");
         documentCodec.write(target, new AiMdDocument(storedHeader(), EXISTING_BODY));
@@ -461,7 +463,7 @@ public class AiMdRewritePolicyTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("switchedFields")
-    public void shouldWrite_aSwitchedFieldChanged_rewritesOnlyWhileItsSwitchIsOn(final String field)
+    public void shouldRewrite_aSwitchedFieldChanged_rewritesOnlyWhileItsSwitchIsOn(final String field)
             throws IOException {
         // arrange
         final Path target = writeStoredWithHashes();
@@ -479,12 +481,12 @@ public class AiMdRewritePolicyTest {
 
     @ParameterizedTest(name = "{0} off")
     @MethodSource("switchedFields")
-    public void shouldWrite_anotherSwitchOff_doesNotHideAChangedField(final String off) throws IOException {
+    public void shouldRewrite_anotherSwitchOff_doesNotHideAChangedField(final String off) throws IOException {
         // arrange
         final Path target = writeStoredWithHashes();
         final AiMdRewritePolicy support = allBut(off);
 
-        // act and assert: every other field still rewrites
+        // act, assert: every other field still rewrites
         for (final String field : SWITCHED_FIELDS) {
             if (!field.equals(off)) {
                 assertThat(off + " off, " + field, support.shouldRewrite(false, target, withField(field)), is(true));
@@ -493,7 +495,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_sameHashes_returnsFalse() throws IOException {
+    public void shouldRewrite_sameHashes_returnsFalse() throws IOException {
         // arrange
         final Path target = writeStoredWithHashes();
 
@@ -505,7 +507,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_headerWithoutHashesAndARuleWithThem_returnsTrue() throws IOException {
+    public void shouldRewrite_headerWithoutHashesAndARuleWithThem_returnsTrue() throws IOException {
         // arrange: a summary written before the fields existed records none of them
         final Path target = folder.resolve("test.ai.md");
         documentCodec.write(target, new AiMdDocument(storedHeader(), EXISTING_BODY));
@@ -518,7 +520,7 @@ public class AiMdRewritePolicyTest {
     }
 
     @Test
-    public void shouldWrite_everySwitchOff_stillRewritesAnotherAiVersion() throws IOException {
+    public void shouldRewrite_everySwitchOff_stillRewritesAnotherAiVersion() throws IOException {
         // arrange
         final AiMdRewritePolicy frozen = new AiMdRewritePolicy(false, false, false, false, false);
         final Path target = writeStoredWithHashes();
@@ -533,7 +535,7 @@ public class AiMdRewritePolicyTest {
                         AiMdHeaderCodec.NODE_TYPE_FILE)
                 .withHashes(OTHER_HASH, OTHER_HASH, OTHER_HASH, OTHER_HASH);
 
-        // act and assert
+        // act, assert
         assertThat(frozen.shouldRewrite(false, target, withField("source")), is(false));
         assertThat(frozen.shouldRewrite(false, target, otherVersion), is(true));
     }

@@ -14,68 +14,85 @@ import org.junit.jupiter.api.Test;
 
 public class SourceChunkerTest {
 
+    // <editor-fold defaultstate="collapsed" desc="chunk">
     @Test
-    public void maxCharsBelowOne_throws() {
+    public void chunk_maxCharsBelowOne_throwsException() {
+        // act, assert
         assertThrows(IllegalArgumentException.class, () -> SourceChunker.chunk("abc", 0, 0, 0));
     }
 
     @Test
-    public void emptySource_returnsEmptyList() {
+    public void chunk_emptySource_returnsEmptyList() {
+        // act, assert
         assertThat(SourceChunker.chunk("", 10, 0, 0), is(Arrays.asList()));
     }
 
     @Test
-    public void sourceFitsInOneChunk() {
+    public void chunk_sourceShorterThanMaxChars_returnsOneChunk() {
+        // act, assert
         assertThat(SourceChunker.chunk("abc", 10, 0, 0), is(Arrays.asList("abc")));
     }
 
     @Test
-    public void splitsAtLineBoundaries() {
+    public void chunk_sourceWithLineEnds_splitsAtLineBoundaries() {
+        // act
         // "L1\nL2\nL3\n" with maxChars 4 -> each chunk ends at a newline; rejoined == source.
         final List<String> chunks = SourceChunker.chunk("L1\nL2\nL3\n", 4, 0, 0);
+
+        // assert
         assertThat(chunks, is(Arrays.asList("L1\n", "L2\n", "L3\n")));
         assertThat(String.join("", chunks), is("L1\nL2\nL3\n"));
     }
 
     @Test
-    public void hardCutsWhenNoNewlineInWindow() {
+    public void chunk_noNewlineInWindow_hardCuts() {
+        // act, assert
         // No newline anywhere -> hard cut at maxChars.
         assertThat(SourceChunker.chunk("ABCDEFGH", 3, 0, 0), is(Arrays.asList("ABC", "DEF", "GH")));
     }
 
     @Test
-    public void overlapIsClampedAndProducesOverlappingChunks() {
+    public void chunk_overlapAboveMaxChars_isClampedAndProducesOverlappingChunks() {
+        // act
         // overlap 100 with maxChars 4 -> clamped to 3; consecutive chunks share 3 chars.
         final List<String> chunks = SourceChunker.chunk("ABCDEFGH", 4, 100, 0);
+
+        // assert
         assertThat(chunks, is(Arrays.asList("ABCD", "BCDE", "CDEF", "DEFG", "EFGH")));
     }
 
     @Test
-    public void maxChunksZero_returnsAll() {
+    public void chunk_maxChunksZero_returnsAll() {
+        // act, assert
         assertThat(SourceChunker.chunk("ABCDEFGHIJ", 2, 0, 0), is(Arrays.asList("AB", "CD", "EF", "GH", "IJ")));
     }
 
     @Test
-    public void maxChunksAtOrAboveCount_returnsAll() {
+    public void chunk_maxChunksAtOrAboveCount_returnsAll() {
+        // act, assert
         assertThat(SourceChunker.chunk("ABCDEFGHIJ", 2, 0, 10), is(Arrays.asList("AB", "CD", "EF", "GH", "IJ")));
     }
 
     @Test
-    public void maxChunksOne_keepsTheFirst() {
+    public void chunk_maxChunksOne_keepsTheFirst() {
+        // act, assert
         assertThat(SourceChunker.chunk("ABCDEFGHIJ", 2, 0, 1), is(Arrays.asList("AB")));
     }
 
     @Test
-    public void maxChunksSamplesFirstSpreadAndLast() {
+    public void chunk_maxChunksBelowCount_samplesFirstSpreadAndLast() {
+        // act, assert
         // 5 chunks, cap 3 -> indices round(i*4/2) = 0,2,4 -> head/middle/tail.
         assertThat(SourceChunker.chunk("ABCDEFGHIJ", 2, 0, 3), is(Arrays.asList("AB", "EF", "IJ")));
     }
 
     @Test
-    public void maxChunksUsesRoundingNotFloorForSpread() {
+    public void chunk_maxChunksBelowCount_usesRoundingNotFloorForSpread() {
+        // act, assert
         // 4 chunks, cap 3 -> indices round(i*3/2) = 0, round(1.5)=2, 3 -> AB, EF, GH (floor would pick CD).
         assertThat(SourceChunker.chunk("ABCDEFGH", 2, 0, 3), is(Arrays.asList("AB", "EF", "GH")));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="chunk boundary conditions">
 
@@ -86,7 +103,7 @@ public class SourceChunkerTest {
      * {@code <= 1} would reject it.
      */
     @Test
-    public void maxCharsExactlyOne_isAccepted() {
+    public void chunk_maxCharsExactlyOne_isAccepted() {
         // act
         final List<String> chunks = SourceChunker.chunk("ab", 1, 0, 0);
 
@@ -105,7 +122,7 @@ public class SourceChunkerTest {
      * fits-in-one-chunk test cannot see this because its fixture has no newline to trim to.
      */
     @Test
-    public void sourceFitsInOneChunkButContainsANewline_isNotSplit() {
+    public void chunk_sourceFitsInOneChunkButContainsANewline_isNotSplit() {
         // arrange -- a newline at index 4, content after it, whole thing inside the window
         final String source = "aaaa\nbb";
 
@@ -125,7 +142,7 @@ public class SourceChunkerTest {
      * that state: a hard cut at index 4 lands the next chunk start on the newline itself.
      */
     @Test
-    public void chunkStartingOnANewline_isNotCutToASingleCharacter() {
+    public void chunk_aChunkStartingOnANewline_isNotCutToASingleCharacter() {
         // arrange -- "abcd" hard-cuts at 4, and source[4] is the newline
         final String source = "abcd\nefghij";
 
@@ -173,15 +190,19 @@ public class SourceChunkerTest {
 
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="chunk overlap">
     @Test
-    public void chunk_theOverlapStartsAtALineStart() {
+    public void chunk_overlapOverShortLines_startsAtALineStart() {
+        // arrange
         final StringBuilder source = new StringBuilder();
         for (int i = 0; i < 200; i++) {
             source.append("line number ").append(i).append('\n');
         }
 
+        // act
         final List<String> chunks = SourceChunker.chunk(source.toString(), 300, 40, 0);
 
+        // assert
         for (int i = 1; i < chunks.size(); i++) {
             assertThat(chunks.get(i).startsWith("line number "), is(true));
         }
@@ -189,9 +210,12 @@ public class SourceChunkerTest {
 
     @Test
     public void chunk_anOverlapWithinOneLine_startsWhereTheCharactersSay() {
+        // act
         // no line end inside the overlap: it starts mid-line rather than not at all
         final List<String> chunks = SourceChunker.chunk("abcdefghij\nklmnopqrst", 10, 3, 0);
 
+        // assert
         assertThat(chunks.get(1), is(equalTo("hij\n")));
     }
+    // </editor-fold>
 }

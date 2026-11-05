@@ -32,9 +32,11 @@ public class IndexPlanTest {
         return config;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="sentTokens">
     /** A file over its window sends what its strategy reads, not its source: 1 000 tokens, a window 250. */
     @Test
-    public void sentTokens_followTheOversizeStrategy() {
+    public void sentTokens_routesOverTheirWindow_followTheOversizeStrategy() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
         for (final String strategy : new String[] {"fail", "sample", "deterministic", "mapReduce", "sampleChunks"}) {
             final RoutingRule rule = rule(strategy, "p");
@@ -45,47 +47,62 @@ public class IndexPlanTest {
         plan.addRoute("m", Paths.get("fits.sql"), rule("p"), 1, 4_000L, 10_000L, 100L);
         plan.addRoute("m", Paths.get("unchecked.sql"), rule("p"), 1);
 
+        // act
         final List<Long> sent = new ArrayList<>();
         for (final IndexPlan.Route entry : plan.routesByModel().get("m")) {
             sent.add(IndexPlan.sentTokens(entry));
         }
 
+        // assert
         assertThat(sent, is(equalTo(Arrays.asList(250L, 250L, 0L, 1_000L, 500L, 100L, 0L))));
         assertThat(plan.renderMarkdown(Paths.get("")), containsString(" ~5100 source tokens (~2100 sent), est. "));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="routedCount">
     @Test
-    public void routedCountAndPerModelGrouping() {
+    public void routedCount_threeRoutesOverTwoModels_countsAndGroupsPerModel() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
         plan.addRoute("modelA", Paths.get("a/Foo.java"), rule("p1"), 60);
         plan.addRoute("modelA", Paths.get("a/Bar.java"), rule("p1"), 120);
         plan.addRoute("modelB", Paths.get("b/Baz.java"), rule("p2"), 30);
 
+        // act, assert
         assertThat(plan.routedCount(), is(equalTo(3)));
         assertThat(plan.routesByModel().get("modelA").size(), is(equalTo(2)));
         assertThat(plan.routesByModel().get("modelB").size(), is(equalTo(1)));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="totalEstimatedSeconds">
     @Test
-    public void totalEstimatedSecondsSumsAllEntries() {
+    public void totalEstimatedSeconds_threeRoutes_sumsAllEntries() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
         plan.addRoute("modelA", Paths.get("a/Foo.java"), rule("p1"), 60);
         plan.addRoute("modelA", Paths.get("a/Bar.java"), rule("p1"), 120);
         plan.addRoute("modelB", Paths.get("b/Baz.java"), rule("p2"), 30);
 
+        // act, assert
         assertThat(plan.totalEstimatedSeconds(), is(equalTo(210L)));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="renderMarkdown">
     @Test
-    public void renderMarkdown_containsModelSectionsFilesAndTotals() {
+    public void renderMarkdown_routedSkippedAndUnmatchedFiles_containsModelSectionsFilesAndTotals() {
+        // arrange
         final Path base = Paths.get("");
         final IndexPlan plan = new IndexPlan();
         plan.addRoute("modelA", Paths.get("Foo.java"), rule("java-small", "file-body-java"), 60);
         plan.addSkipped(Paths.get("Generated.java"));
         plan.addUnmatched(Paths.get("weird.txt"));
 
+        // act
         final String md = plan.renderMarkdown(base);
 
+        // assert
         assertThat(md, containsString("## AI index plan"));
         assertThat(md, containsString("**Total:**"));
         assertThat(md, containsString("### Model `modelA`"));
@@ -103,14 +120,17 @@ public class IndexPlanTest {
 
     /** A calibrated model's times are its own; the others' are the built-in estimate, and the header says which. */
     @Test
-    public void renderMarkdown_namesTheBasisOfEachModelsTime() {
+    public void renderMarkdown_calibratedAndUncalibratedModel_namesTheBasisOfEachModelsTime() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
         plan.addRoute("local", Paths.get("A.java"), rule("p1"), 600);
         plan.addRoute("remote", Paths.get("B.java"), rule("p1"), 9);
         plan.markCalibrated("local");
 
+        // act
         final String md = plan.renderMarkdown(Paths.get(""));
 
+        // assert
         assertThat(
                 md,
                 containsString(
@@ -122,40 +142,17 @@ public class IndexPlanTest {
     }
 
     @Test
-    public void windowExceededCount_countsOnlyOverWindowEntries() {
-        final IndexPlan plan = new IndexPlan();
-        // fits: source 1000 <= budget 5000
-        plan.addRoute("modelA", Paths.get("Small.java"), rule("p1"), 10, 1000L, 5000L);
-        // exceeds: source 9000 > budget 5000
-        plan.addRoute("modelA", Paths.get("Huge.java"), rule("p1"), 20, 9000L, 5000L);
-        // unchecked (4-arg) never counts as over-window
-        plan.addRoute("modelB", Paths.get("Plain.java"), rule("p2"), 5);
-
-        assertThat(plan.windowExceededCount(), is(equalTo(1)));
-        assertThat(plan.routesByModel().get("modelA").get(0).exceedsWindow(), is(false));
-        assertThat(plan.routesByModel().get("modelA").get(1).exceedsWindow(), is(true));
-        assertThat(plan.routesByModel().get("modelB").get(0).windowChecked(), is(false));
-    }
-
-    @Test
-    public void exceedsWindow_aSourceThatFillsTheWindowExactly_fits() {
-        final IndexPlan plan = new IndexPlan();
-        plan.addRoute("modelA", Paths.get("Exact.java"), rule("p1"), 10, 5000L, 5000L);
-        plan.addRoute("modelA", Paths.get("OneMore.java"), rule("p1"), 10, 5001L, 5000L);
-
-        assertThat(plan.routesByModel().get("modelA").get(0).exceedsWindow(), is(false));
-        assertThat(plan.routesByModel().get("modelA").get(1).exceedsWindow(), is(true));
-    }
-
-    @Test
-    public void renderMarkdown_flagsOverWindowFilesAndCells() {
+    public void renderMarkdown_overWindowFile_flagsOverWindowFilesAndCells() {
+        // arrange
         final Path base = Paths.get("");
         final IndexPlan plan = new IndexPlan();
         plan.addRoute("modelA", Paths.get("Small.java"), rule("r1", "p1"), 10, 1000L, 5000L);
         plan.addRoute("modelA", Paths.get("Huge.java"), rule("r1", "p1"), 20, 9000L, 5000L);
 
+        // act
         final String md = plan.renderMarkdown(base);
 
+        // assert
         assertThat(md, containsString("1 over window"));
         assertThat(md, containsString("ok")); // the fitting file's window cell
         assertThat(md, containsString("(!) 9000>5000")); // the over-window file's window cell
@@ -164,15 +161,61 @@ public class IndexPlanTest {
     }
 
     @Test
-    public void renderMarkdown_noWindowSectionWhenNothingExceeds() {
+    public void renderMarkdown_nothingExceeds_noWindowSection() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
         plan.addRoute("modelA", Paths.get("Small.java"), rule("r1", "p1"), 10, 1000L, 5000L);
 
+        // act
         final String md = plan.renderMarkdown(Paths.get(""));
 
+        // assert
         assertThat(md, containsString("0 over window"));
         assertThat(md.contains("### (!) Over window"), is(false));
     }
+
+    @Test
+    public void renderMarkdown_windowCheckedRoutes_tokensPerFilePerModelAndPerDirectory() {
+        // arrange
+        final Path base = Paths.get("base");
+        final IndexPlan plan = new IndexPlan();
+        plan.addRoute("modelA", base.resolve("a/A1.java"), rule("p1"), 10, 4_000L, 9_000L, 1_000L);
+        plan.addRoute("modelA", base.resolve("a/A2.java"), rule("p1"), 10, 2_000L, 9_000L, 500L);
+        plan.addRoute("modelB", base.resolve("b/c/B.java"), rule("p2"), 10, 800L, 9_000L, 200L);
+        plan.addRoute("modelB", base.resolve("Root.java"), rule("p2"), 10, 40L, 9_000L, 10L);
+        // no window check: no tokens, and no part of the sums
+        plan.addRoute("modelB", base.resolve("b/c/Plain.java"), rule("p2"), 10);
+
+        // act
+        final String md = plan.renderMarkdown(base);
+
+        // assert
+        assertThat(
+                md,
+                containsString(
+                        "### Model `modelA` - 2 file(s), ~1500 source tokens (~1500 sent), est. ~20 s (based on GPT-6 Luna)\n"));
+        assertThat(
+                md,
+                containsString(
+                        "### Model `modelB` - 3 file(s), ~210 source tokens (~210 sent), est. ~30 s (based on GPT-6 Luna)\n"));
+        assertThat(md, containsString("| ~1000 |"));
+        assertThat(
+                md,
+                containsString("### Source tokens by directory\n\n| Directory | Files | Tokens |\n|---|---|---|\n"
+                        + "| . | 1 | ~10 |\n| a | 2 | ~1500 |\n| b/c | 1 | ~200 |\n"));
+    }
+
+    @Test
+    public void renderMarkdown_noWindowCheckedRoute_noTokenSection() {
+        // arrange
+        final IndexPlan plan = new IndexPlan();
+        plan.addRoute("modelA", Paths.get("Foo.java"), rule("p1"), 10);
+
+        // act, assert
+        assertThat(plan.renderMarkdown(Paths.get("")).contains("Source tokens by directory"), is(false));
+    }
+
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="oversize rendering and path display">
 
@@ -287,50 +330,52 @@ public class IndexPlanTest {
 
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="windowExceededCount">
     @Test
-    public void renderMarkdown_tokensPerFilePerModelAndPerDirectory() {
-        final Path base = Paths.get("base");
+    public void windowExceededCount_mixedEntries_countsOnlyOverWindowEntries() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
-        plan.addRoute("modelA", base.resolve("a/A1.java"), rule("p1"), 10, 4_000L, 9_000L, 1_000L);
-        plan.addRoute("modelA", base.resolve("a/A2.java"), rule("p1"), 10, 2_000L, 9_000L, 500L);
-        plan.addRoute("modelB", base.resolve("b/c/B.java"), rule("p2"), 10, 800L, 9_000L, 200L);
-        plan.addRoute("modelB", base.resolve("Root.java"), rule("p2"), 10, 40L, 9_000L, 10L);
-        // no window check: no tokens, and no part of the sums
-        plan.addRoute("modelB", base.resolve("b/c/Plain.java"), rule("p2"), 10);
+        // fits: source 1000 <= budget 5000
+        plan.addRoute("modelA", Paths.get("Small.java"), rule("p1"), 10, 1000L, 5000L);
+        // exceeds: source 9000 > budget 5000
+        plan.addRoute("modelA", Paths.get("Huge.java"), rule("p1"), 20, 9000L, 5000L);
+        // unchecked (4-arg) never counts as over-window
+        plan.addRoute("modelB", Paths.get("Plain.java"), rule("p2"), 5);
 
-        final String md = plan.renderMarkdown(base);
-
-        assertThat(
-                md,
-                containsString(
-                        "### Model `modelA` - 2 file(s), ~1500 source tokens (~1500 sent), est. ~20 s (based on GPT-6 Luna)\n"));
-        assertThat(
-                md,
-                containsString(
-                        "### Model `modelB` - 3 file(s), ~210 source tokens (~210 sent), est. ~30 s (based on GPT-6 Luna)\n"));
-        assertThat(md, containsString("| ~1000 |"));
-        assertThat(
-                md,
-                containsString("### Source tokens by directory\n\n| Directory | Files | Tokens |\n|---|---|---|\n"
-                        + "| . | 1 | ~10 |\n| a | 2 | ~1500 |\n| b/c | 1 | ~200 |\n"));
+        // act, assert
+        assertThat(plan.windowExceededCount(), is(equalTo(1)));
+        assertThat(plan.routesByModel().get("modelA").get(0).exceedsWindow(), is(false));
+        assertThat(plan.routesByModel().get("modelA").get(1).exceedsWindow(), is(true));
+        assertThat(plan.routesByModel().get("modelB").get(0).windowChecked(), is(false));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="exceedsWindow">
     @Test
-    public void renderMarkdown_noWindowCheckedRoute_noTokenSection() {
+    public void exceedsWindow_aSourceThatFillsTheWindowExactly_fits() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
-        plan.addRoute("modelA", Paths.get("Foo.java"), rule("p1"), 10);
+        plan.addRoute("modelA", Paths.get("Exact.java"), rule("p1"), 10, 5000L, 5000L);
+        plan.addRoute("modelA", Paths.get("OneMore.java"), rule("p1"), 10, 5001L, 5000L);
 
-        assertThat(plan.renderMarkdown(Paths.get("")).contains("Source tokens by directory"), is(false));
+        // act, assert
+        assertThat(plan.routesByModel().get("modelA").get(0).exceedsWindow(), is(false));
+        assertThat(plan.routesByModel().get("modelA").get(1).exceedsWindow(), is(true));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="addRoute">
     @Test
     public void addRoute_withoutTokens_estimatesThemAtTheDefaultRatio() {
+        // arrange
         final IndexPlan plan = new IndexPlan();
         plan.addRoute("modelA", Paths.get("Foo.java"), rule("p1"), 10, 41L, 9_000L);
 
+        // act, assert
         // 41 characters at 4.0 per token are 10.25, rounded up
         assertThat(plan.routesByModel().get("modelA").get(0).sourceTokens(), is(11L));
         assertThat(IndexPlan.estimatedTokens(48L, 4.8d), is(10L));
         assertThat(IndexPlan.estimatedTokens(0L, 3.0d), is(0L));
     }
+    // </editor-fold>
 }

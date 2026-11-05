@@ -82,6 +82,7 @@ public class OpenAiCompatibleLiveTest {
             + "    }\n"
             + "}\n";
 
+    // <editor-fold defaultstate="collapsed" desc="generateWithTimings">
     @Test
     public void generateWithTimings_nativeServer_describesTheFile() throws Exception {
         // arrange
@@ -102,28 +103,35 @@ public class OpenAiCompatibleLiveTest {
             final String baseUrl = "http://127.0.0.1:" + port + "/v1";
             awaitHealthy("http://127.0.0.1:" + port + "/health", server);
 
-            // act + assert
+            // act, assert
             describeGreeter(baseUrl, "", "");
         }
     }
 
     @Test
     public void generateWithTimings_runningServer_describesTheFile() throws Exception {
+        // arrange
         final String baseUrl = System.getProperty(BASE_URL_PROPERTY, "");
         Assumptions.assumeTrue(!baseUrl.trim().isEmpty(), "-D" + BASE_URL_PROPERTY + " is not set");
+
+        // act, assert
         describeGreeter(baseUrl, System.getProperty(MODEL_PROPERTY, ""), System.getProperty(API_KEY_ENV_PROPERTY, ""));
     }
 
     @Test
     public void generateWithTimings_openRouter_describesTheFile() throws Exception {
+        // arrange
         final String model = System.getProperty(OPENROUTER_MODEL_PROPERTY, "");
         Assumptions.assumeTrue(!model.trim().isEmpty(), "-D" + OPENROUTER_MODEL_PROPERTY + " is not set");
         final String key = System.getenv(OPENROUTER_KEY_ENV);
         Assumptions.assumeTrue(
                 key != null && !key.trim().isEmpty(),
                 OPENROUTER_KEY_ENV + " is not set (a pull request from a fork or from Dependabot gets no secret)");
+
+        // act, assert
         describeGreeter(ModelDefinition.DEFAULT_BASE_URL, model, OPENROUTER_KEY_ENV);
     }
+    // </editor-fold>
 
     /**
      * Asks the server to describe a small class, through the factory as an engine would, and checks

@@ -101,6 +101,7 @@ public class OpsFactPatternsTest {
 
     @Test
     public void openapi_yaml_countsPathsOperationsAndSchemasAndNotADescription() {
+        // act, assert
         assertThat(count(OPENAPI, "paths", OPENAPI_YAML), is(2));
         assertThat(count(OPENAPI, "operations (approx)", OPENAPI_YAML), is(3));
         assertThat(count(OPENAPI, "operationIds", OPENAPI_YAML), is(3));
@@ -113,9 +114,12 @@ public class OpsFactPatternsTest {
 
     @Test
     public void openapi_minifiedJson_countsTheSameKeys() {
+        // arrange
         final String json = "{\"openapi\":\"3.0.3\",\"paths\":{\"/orders\":{\"get\":{\"operationId\":\"listOrders\","
                 + "\"parameters\":[{\"in\":\"query\",\"name\":\"limit\"}]},\"post\":{\"operationId\":\"createOrder\"}}},"
                 + "\"components\":{\"schemas\":{\"Order\":{\"type\":\"object\"}}}}";
+
+        // act, assert
         assertThat(count(OPENAPI, "paths", json), is(1));
         assertThat(count(OPENAPI, "operations (approx)", json), is(2));
         assertThat(count(OPENAPI, "operationIds", json), is(2));
@@ -161,7 +165,8 @@ public class OpsFactPatternsTest {
             + "{{- end }}\n";
 
     @Test
-    public void k8s_countsResourcesAtColumnZeroAndNotACommentOrAQuotedManifest() {
+    public void k8s_manifests_countsResourcesAtColumnZeroAndNotACommentOrAQuotedManifest() {
+        // act, assert
         assertThat(count(K8S, "resources", MANIFEST), is(3));
         assertThat(count(K8S, "workloads", MANIFEST), is(1));
         assertThat(count(K8S, "Services, Ingresses and Routes", MANIFEST), is(1));
@@ -169,7 +174,8 @@ public class OpsFactPatternsTest {
     }
 
     @Test
-    public void k8s_countsContainersAndHelmActionsAndNotAHelmComment() {
+    public void k8s_manifestsAndHelmTemplates_countsContainersAndHelmActionsAndNotAHelmComment() {
+        // act, assert
         assertThat(count(K8S, "container images", MANIFEST), is(1));
         assertThat(count(K8S, "container ports", MANIFEST), is(1));
         assertThat(count(K8S, "probes", MANIFEST), is(1));
@@ -205,7 +211,8 @@ public class OpsFactPatternsTest {
             + "    secrets: inherit\n";
 
     @Test
-    public void actions_countsJobsStepsActionsAndSecretNames() {
+    public void actions_workflow_countsJobsStepsActionsAndSecretNames() {
+        // act, assert
         assertThat(count(ACTIONS, "jobs on a runner", WORKFLOW), is(1));
         assertThat(count(ACTIONS, "reusable workflow calls", WORKFLOW), is(1));
         assertThat(count(ACTIONS, "steps (approx)", WORKFLOW), is(2));
@@ -234,7 +241,8 @@ public class OpsFactPatternsTest {
             + "ENTRYPOINT [\"java\", \"-jar\", \"/app.jar\"]\n";
 
     @Test
-    public void dockerfile_countsInstructionsAtTheStartOfALineInAnyCase() {
+    public void dockerfile_instructionsInAnyCase_countsInstructionsAtTheStartOfALine() {
+        // act, assert
         assertThat(count(DOCKERFILE, "build stages", DOCKERFILE_SOURCE), is(2));
         assertThat(count(DOCKERFILE, "RUN instructions", DOCKERFILE_SOURCE), is(1));
         assertThat(count(DOCKERFILE, "COPY and ADD instructions", DOCKERFILE_SOURCE), is(2));
@@ -280,7 +288,8 @@ public class OpsFactPatternsTest {
             + "      type: scramSha512\n";
 
     @Test
-    public void asyncapi_countsVersionTwoOperationsAndNotTheDescription() {
+    public void asyncapi_versionTwoDocument_countsOperationsAndNotTheDescription() {
+        // act, assert
         assertThat(count(ASYNCAPI, "operations", ASYNCAPI_V2), is(2));
         assertThat(count(ASYNCAPI, "operationIds", ASYNCAPI_V2), is(1));
         assertThat(count(ASYNCAPI, "payloads", ASYNCAPI_V2), is(1));
@@ -295,6 +304,7 @@ public class OpsFactPatternsTest {
 
     @Test
     public void asyncapi_aSchemaPropertyNamedAddress_isNoChannelAddress() {
+        // arrange
         final String schema = "asyncapi: 2.6.0\n"
                 + "components:\n"
                 + "  schemas:\n"
@@ -304,6 +314,7 @@ public class OpsFactPatternsTest {
                 + "          type: string\n"
                 + "        billing: {\"address\": {\"type\": \"string\"}}\n";
 
+        // act, assert
         assertThat(count(ASYNCAPI, "channel addresses (3.x)", schema), is(0));
         assertThat(
                 count(ASYNCAPI, "channel addresses (3.x)", "{\"channels\": {\"a\": {\"address\": \"order/a\"}}}"),
@@ -311,7 +322,8 @@ public class OpsFactPatternsTest {
     }
 
     @Test
-    public void asyncapi_countsVersionThreeChannelsAndActions() {
+    public void asyncapi_versionThreeDocument_countsChannelsAndActions() {
+        // arrange
         final String v3 = "asyncapi: 3.0.0\n"
                 + "channels:\n"
                 + "  placed:\n"
@@ -325,6 +337,7 @@ public class OpsFactPatternsTest {
                 + "    action: send\n"
                 + "    # action: send\n";
 
+        // act, assert
         assertThat(count(ASYNCAPI, "channel addresses (3.x)", v3), is(2));
         assertThat(count(ASYNCAPI, "operations", v3), is(2));
     }
@@ -380,7 +393,8 @@ public class OpsFactPatternsTest {
             + "}\n";
 
     @Test
-    public void terraform_countsTheBlocksAndNotCommentsHeredocsOrAttributes() {
+    public void terraform_configuration_countsTheBlocksAndNotCommentsHeredocsOrAttributes() {
+        // act, assert
         assertThat(count(TERRAFORM, "resources", TERRAFORM_SOURCE), is(1));
         assertThat(count(TERRAFORM, "data sources", TERRAFORM_SOURCE), is(1));
         assertThat(count(TERRAFORM, "modules", TERRAFORM_SOURCE), is(1));
@@ -397,17 +411,20 @@ public class OpsFactPatternsTest {
     }
 
     @Test
-    public void terraform_terragruntBlocksAndAnUnclosedHeredoc() {
+    public void terraform_terragruntBlocksAndAnUnclosedHeredoc_countTheBlocksAndRunToTheEnd() {
+        // arrange
         final String terragrunt = "include \"root\" {\n  path = find_in_parent_folders()\n}\n"
                 + "dependency \"vpc\" {\n  config_path = \"../vpc\"\n}\n";
         final String unclosed = "resource \"a\" \"b\" {\n  x = <<EOT\nresource \"c\" \"d\" {}\n";
 
+        // act, assert
         assertThat(count(TERRAFORM, "Terragrunt includes and dependencies", terragrunt), is(2));
         assertThat(count(TERRAFORM, "resources", unclosed), is(1));
     }
 
     @Test
     public void terraform_referencesOnALineOfTheirOwn_areNoBlocks() {
+        // arrange
         final String references = "resource \"aws_instance\" \"web\" {\n"
                 + "  depends_on = [\n"
                 + "    module.network,\n"
@@ -416,6 +433,7 @@ public class OpsFactPatternsTest {
                 + "  ]\n"
                 + "}\n";
 
+        // act, assert
         assertThat(count(TERRAFORM, "resources", references), is(1));
         assertThat(count(TERRAFORM, "modules", references), is(0));
         assertThat(count(TERRAFORM, "data sources", references), is(0));
@@ -461,7 +479,8 @@ public class OpsFactPatternsTest {
             + "- import_playbook: monitoring.yml\n";
 
     @Test
-    public void ansible_countsPlaysTasksAndModulesAndNotTheScriptBody() {
+    public void ansible_playbook_countsPlaysTasksAndModulesAndNotTheScriptBody() {
+        // act, assert
         assertThat(count(ANSIBLE, "plays", PLAYBOOK), is(1));
         assertThat(count(ANSIBLE, "named tasks, handlers and plays", PLAYBOOK), is(6));
         assertThat(count(ANSIBLE, "FQCN module calls", PLAYBOOK), is(6));
@@ -515,7 +534,8 @@ public class OpsFactPatternsTest {
             + "    file: ./db_password.txt\n";
 
     @Test
-    public void compose_countsServicesAndTheirKeysAndNotComments() {
+    public void compose_composeFile_countsServicesAndTheirKeysAndNotComments() {
+        // act, assert
         assertThat(count(COMPOSE, "services with an image", COMPOSE_SOURCE), is(2));
         assertThat(count(COMPOSE, "services built here", COMPOSE_SOURCE), is(1));
         assertThat(count(COMPOSE, "port lists", COMPOSE_SOURCE), is(1));
@@ -575,7 +595,8 @@ public class OpsFactPatternsTest {
             + "      - to: direct:create\n";
 
     @Test
-    public void camelYaml_countsRoutesAndEipsAndNotTheScripts() {
+    public void camelYaml_routes_countsRoutesAndEipsAndNotTheScripts() {
+        // act, assert
         assertThat(count(CAMEL_YAML, "routes", CAMEL_ROUTES), is(2));
         assertThat(count(CAMEL_YAML, "route templates", CAMEL_ROUTES), is(1));
         assertThat(count(CAMEL_YAML, "consumers (from)", CAMEL_ROUTES), is(2));
@@ -636,7 +657,8 @@ public class OpsFactPatternsTest {
             + "}\n";
 
     @Test
-    public void gradle_countsAGroovyBuildScript() {
+    public void gradle_groovyBuildScript_countsItsDeclarations() {
+        // act, assert
         assertThat(count(GRADLE, "plugins", GROOVY_BUILD), is(4));
         assertThat(count(GRADLE, "dependency declarations", GROOVY_BUILD), is(6));
         assertThat(count(GRADLE, "project dependencies", GROOVY_BUILD), is(1));
@@ -647,12 +669,14 @@ public class OpsFactPatternsTest {
     }
 
     @Test
-    public void gradle_countsAKotlinBuildScriptAndASettingsScript() {
+    public void gradle_kotlinBuildScriptAndSettingsScript_countsTheirDeclarations() {
+        // arrange
         final String settings = "rootProject.name = \"shop\"\n"
                 + "include(\"core\", \"web\")\n"
                 + "include ':cli'\n"
                 + "includeBuild(\"build-logic\")\n";
 
+        // act, assert
         assertThat(count(GRADLE, "plugins", KOTLIN_BUILD), is(3));
         assertThat(count(GRADLE, "dependency declarations", KOTLIN_BUILD), is(3));
         assertThat(count(GRADLE, "project dependencies", KOTLIN_BUILD), is(1));
@@ -664,7 +688,8 @@ public class OpsFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="properties-facts">
     @Test
-    public void properties_countsKeysAndNotComments() {
+    public void properties_propertiesFile_countsKeysAndNotComments() {
+        // arrange
         final String properties = "# server.port=1\n"
                 + "! legacy=1\n"
                 + "server.port=8080\n"
@@ -674,6 +699,7 @@ public class OpsFactPatternsTest {
                 + "greeting=Hello\n"
                 + "\n";
 
+        // act, assert
         assertThat(count(PROPERTIES, "keys (approx)", properties), is(5));
         assertThat(count(PROPERTIES, "keys naming a secret", properties), is(2));
         assertThat(count(PROPERTIES, "placeholders", properties), is(1));
@@ -712,7 +738,8 @@ public class OpsFactPatternsTest {
             + "FUNCTION helper { }\n";
 
     @Test
-    public void powershell_countsFunctionsAndRequirementsAndNotHelpOrStrings() {
+    public void powershell_script_countsFunctionsAndRequirementsAndNotHelpOrStrings() {
+        // act, assert
         assertThat(count(POWERSHELL, "requirements", POWERSHELL_SCRIPT), is(2));
         assertThat(count(POWERSHELL, "functions", POWERSHELL_SCRIPT), is(2));
         assertThat(count(POWERSHELL, "advanced functions", POWERSHELL_SCRIPT), is(1));
@@ -730,7 +757,8 @@ public class OpsFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="batch-facts">
     @Test
-    public void batch_countsLabelsCallsAndVariablesAndNotComments() {
+    public void batch_script_countsLabelsCallsAndVariablesAndNotComments() {
+        // arrange
         final String script = "@echo off\n"
                 + "setlocal enabledelayedexpansion\n"
                 + "REM goto :old\n"
@@ -751,6 +779,7 @@ public class OpsFactPatternsTest {
                 + "echo usage: build.bat target\n"
                 + "EXIT /B 2\n";
 
+        // act, assert
         assertThat(count(BATCH, "labels", script), is(2));
         assertThat(count(BATCH, "calls", script), is(2));
         assertThat(count(BATCH, "gotos", script), is(2));
@@ -789,8 +818,8 @@ public class OpsFactPatternsTest {
             + "}\n";
 
     @Test
-    public void npm_countsTheEntriesOfEachObject() {
-        // act + assert
+    public void npm_packageJson_countsTheEntriesOfEachObject() {
+        // act, assert
         assertThat(count(NPM, "scripts", PACKAGE_JSON), is(4));
         assertThat(count(NPM, "dependencies", PACKAGE_JSON), is(2));
         assertThat(count(NPM, "dev dependencies", PACKAGE_JSON), is(3));
@@ -801,11 +830,11 @@ public class OpsFactPatternsTest {
     }
 
     @Test
-    public void npm_theCountStopsAtTheObjectsEnd() {
+    public void npm_nestedObject_countStopsAtTheObjectsEnd() {
         // arrange: the entry after the scripts object follows its }, not a comma between its entries
         final String nested = "{\"tool\": {\"scripts\": {\"a\": \"x\"}, \"after\": \"y\"}}";
 
-        // act + assert
+        // act, assert
         assertThat(count(NPM, "scripts", nested), is(1));
     }
     // </editor-fold>

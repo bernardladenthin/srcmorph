@@ -17,6 +17,7 @@ public class IncompleteAnswerActionTest {
         return new IncompleteAnswerException(reason, "detail", partialText);
     }
 
+    // <editor-fold defaultstate="collapsed" desc="of">
     @Test
     public void of_aPartCutOffWithText_isKeptAsAPart() {
         // act
@@ -28,7 +29,7 @@ public class IncompleteAnswerActionTest {
     }
 
     @Test
-    public void of_aFinalAnswerCutOffWithText_underKeep_isKept() {
+    public void of_aFinalAnswerCutOffWithTextUnderKeep_isKept() {
         // act
         final IncompleteAnswerAction action =
                 IncompleteAnswerAction.of(answer(Reason.TRUNCATED, "text"), false, IncompleteStrategy.KEEP, 1);
@@ -38,11 +39,11 @@ public class IncompleteAnswerActionTest {
     }
 
     @Test
-    public void of_aFinalAnswerCutOffWithText_underRetryOnce_isAskedAgainOnceThenFails() {
+    public void of_aFinalAnswerCutOffWithTextUnderRetryOnce_isAskedAgainOnceThenFails() {
         // arrange
         final IncompleteAnswerException cut = answer(Reason.TRUNCATED, "text");
 
-        // act + assert
+        // act, assert
         assertThat(
                 IncompleteAnswerAction.of(cut, false, IncompleteStrategy.RETRY_ONCE, 1),
                 is(IncompleteAnswerAction.ASK_AGAIN));
@@ -66,7 +67,7 @@ public class IncompleteAnswerActionTest {
         // arrange
         final IncompleteAnswerException blank = answer(Reason.TRUNCATED, "  \n");
 
-        // act + assert
+        // act, assert
         assertThat(IncompleteAnswerAction.of(blank, true, IncompleteStrategy.KEEP, 1), is(IncompleteAnswerAction.FAIL));
         assertThat(
                 IncompleteAnswerAction.of(blank, true, IncompleteStrategy.RETRY_ONCE, 1),
@@ -74,12 +75,13 @@ public class IncompleteAnswerActionTest {
     }
 
     @Test
-    public void of_anAnswerNotCutOff_isNeverKept_evenWithText() {
+    public void of_anAnswerNotCutOffEvenWithText_isNeverKept() {
         // arrange
         final IncompleteAnswerException aborted = answer(Reason.ABORTED, "text");
 
-        // act + assert
+        // act, assert
         assertThat(
                 IncompleteAnswerAction.of(aborted, true, IncompleteStrategy.KEEP, 1), is(IncompleteAnswerAction.FAIL));
     }
+    // </editor-fold>
 }

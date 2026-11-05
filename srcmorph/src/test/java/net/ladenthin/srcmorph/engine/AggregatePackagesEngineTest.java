@@ -9,6 +9,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -44,50 +45,43 @@ public class AggregatePackagesEngineTest {
         return definition;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="execute">
     @Test
-    public void execute_missingOutputDirectoryReturnsZeroWithoutError() throws Exception {
+    public void execute_missingOutputDirectory_returnsZeroWithoutError() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(tempDir.resolve("out-does-not-exist").toFile());
         config.setGenerationProvider("mock");
         config.setRules(CommonTestFixtures.createPackageRules());
 
+        // act
         final int aggregated = new AggregatePackagesEngine(config).execute();
 
+        // assert
         assertThat(aggregated, is(0));
     }
 
     @Test
     public void execute_missingOutputDirectory_stillFailsAMissingRule() {
+        // arrange
         // the rule is checked first, so a fresh tree does not hide a wrong configuration
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setBaseDirectory(tempDir.toFile());
         config.setOutputDirectory(tempDir.resolve("out-does-not-exist").toFile());
         config.setGenerationProvider("mock");
+        final AggregatePackagesEngine engine = new AggregatePackagesEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new AggregatePackagesEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
-        assertThat(thrown.getMessage(), org.hamcrest.CoreMatchers.containsString("takes exactly one rule"));
+        // assert
+        assertThat(thrown.getMessage(), containsString("takes exactly one rule"));
     }
 
     @Test
-    public void check_aRuleThatSamplesWithoutMaxChunks_isRefused() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
-        config.setBaseDirectory(tempDir.toFile());
-        config.setOutputDirectory(tempDir.resolve("out").toFile());
-        config.setGenerationProvider("mock");
-        config.setRules(CommonTestFixtures.createPackageRules());
-        config.getRules().get(0).setOnOversize("sampleChunks");
-
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new AggregatePackagesEngine(config).check());
-
-        assertThat(thrown.getMessage(), org.hamcrest.CoreMatchers.containsString("Invalid rule of aggregate-packages"));
-    }
-
-    @Test
-    public void execute_aggregatesOneChildIntoPackageAiMd() throws Exception {
+    public void execute_oneChildSummary_aggregatesIntoPackageAiMd() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         final Path packageDirectory = outputRoot.resolve("com/example");
         final Path childAiFile = packageDirectory.resolve("Test.java.ai.md");
@@ -114,8 +108,10 @@ public class AggregatePackagesEngineTest {
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
         config.setRules(CommonTestFixtures.createPackageRules());
 
+        // act
         final int aggregated = new AggregatePackagesEngine(config).execute();
 
+        // assert
         // One package.ai.md per directory from the output root down to the child's own package
         // (root "ai/", "com/", and "com/example/"), matching PackageIndexer's recursive aggregation.
         assertThat(aggregated, is(equalTo(3)));
@@ -164,13 +160,14 @@ public class AggregatePackagesEngineTest {
         // assert: the package summary read every chunk of its input, and says so
         final String written = new String(
                 Files.readAllBytes(packageDirectory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)),
-                java.nio.charset.StandardCharsets.UTF_8);
+                StandardCharsets.UTF_8);
         assertThat(written, containsString("**Coverage:** "));
         assertThat(written.contains("(sampled"), is(false));
     }
 
     @Test
     public void execute_twoRules_areRefusedBeforeAnyPackageIsWritten() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         final Path packageDirectory = Files.createDirectories(outputRoot.resolve("com/example"));
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
@@ -182,11 +179,34 @@ public class AggregatePackagesEngineTest {
         // the file rules of a run used to reach this phase too: every package was generated once per rule
         config.setRules(Arrays.asList(
                 CommonTestFixtures.createPackageFieldGeneration(), CommonTestFixtures.createPackageFieldGeneration()));
+        final AggregatePackagesEngine engine = new AggregatePackagesEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new AggregatePackagesEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(thrown.getMessage(), containsString("aggregate-packages takes exactly one rule"));
         assertThat(Files.exists(packageDirectory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)), is(false));
     }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="check">
+    @Test
+    public void check_aRuleThatSamplesWithoutMaxChunks_isRefused() {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(tempDir.toFile());
+        config.setOutputDirectory(tempDir.resolve("out").toFile());
+        config.setGenerationProvider("mock");
+        config.setRules(CommonTestFixtures.createPackageRules());
+        config.getRules().get(0).setOnOversize("sampleChunks");
+        final AggregatePackagesEngine engine = new AggregatePackagesEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::check);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("Invalid rule of aggregate-packages"));
+    }
+    // </editor-fold>
 }

@@ -55,8 +55,10 @@ public class ShellFactPatternsTest {
         return count;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="profile">
     @Test
-    public void profile_hasTheseCountersInThisOrder() {
+    public void profile_counterLabels_areTheseInThisOrder() {
+        // act, assert
         assertThat(
                 new ArrayList<>(ProfileFactPatterns.counts(COUNTERS, "").keySet()),
                 is(Arrays.asList(
@@ -76,10 +78,12 @@ public class ShellFactPatternsTest {
                         "typeset and declare declarations",
                         "ksh discipline functions")));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="functions">
     @Test
     public void functions_everyDefinitionForm_counts() {
+        // act, assert
         assertThat(
                 count(
                         "functions",
@@ -90,21 +94,25 @@ public class ShellFactPatternsTest {
 
     @Test
     public void functions_emptyArrayAndAQuotedPair_doNotCount() {
+        // act, assert
         assertThat(count("functions", "arr=()\nfoo\necho \"bar() {\"\nfoo() ifx\n"), is(0));
     }
 
     @Test
     public void functions_insideAHeredocOrACommentLine_doNotCount() {
+        // act, assert
         assertThat(count("functions", "cat <<EOF\nfake() {\nEOF\n# old() {\nreal() {\n}\n"), is(1));
     }
 
     @Test
     public void functions_quotedAndTabIndentedHeredoc_isBlankedToItsEndMarker() {
+        // act, assert
         assertThat(count("functions", "cat <<-'END'\n\tfake() {\n\tEND\nreal() {\n}\n"), is(1));
     }
 
     @Test
     public void functions_heredocWithAnyEndWord_isBlanked() {
+        // act, assert
         assertThat(count("functions", "cat <<!\nfake() {\nexit 1\n!\nreal() {\n}\n"), is(1));
         assertThat(count("functions", "psql <<'END-OF-SQL'\nfake() {\nEND-OF-SQL\nreal() {\n}\n"), is(1));
         assertThat(count("functions", "cat <<\\EOF\nfake() {\nEOF\nreal() {\n}\n"), is(1));
@@ -112,6 +120,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void functions_heredocEndMarker_standsAloneAfterTabsOnlyForDash() {
+        // act, assert
         // an indented marker does not end a plain heredoc, nor a space-indented one a <<- heredoc
         assertThat(count("functions", "cat <<EOF\nfake() {\n  EOF\nother() {\nEOF\nreal() {\n}\n"), is(1));
         assertThat(count("functions", "cat <<-EOF\n\tfake() {\n  EOF\n\tother() {\n\tEOF\nreal() {\n}\n"), is(1));
@@ -119,21 +128,25 @@ public class ShellFactPatternsTest {
 
     @Test
     public void functions_heredocMarkerInsideAComment_opensNothing() {
+        // act, assert
         assertThat(count("functions", "# see cat <<EOF below\na() {\n}\ncat <<EOF\nfake() {\nEOF\nb() {\n}\n"), is(2));
     }
 
     @Test
     public void functions_heredocWithCrLfLineEnds_isBlanked() {
+        // act, assert
         assertThat(count("functions", "cat <<EOF\r\nfake() {\r\nEOF\r\nreal() {\r\n}\r\n"), is(1));
     }
 
     @Test
     public void functions_hereString_isNoHeredoc() {
+        // act, assert
         assertThat(count("functions", "read x <<< \"$y\"\nf() {\n}\n"), is(1));
     }
 
     @Test
     public void functions_arithmeticShift_opensNoHeredoc() {
+        // act, assert
         // each shift would otherwise open a heredoc ending at the line "4", "n", "2" or "="
         assertThat(count("functions", "x=$((1 << 4))\nf() {\n}\n4\ng() {\n}\n"), is(2));
         assertThat(
@@ -147,6 +160,7 @@ public class ShellFactPatternsTest {
     /** Several groups, a nested ((a)) and a group with one of its own before the shift: still arithmetic. */
     @Test
     public void functions_arithmeticShiftAfterSeveralOrNestedGroups_opensNoHeredoc() {
+        // act, assert
         assertThat(
                 count(
                         "functions",
@@ -157,6 +171,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void functions_heredocMarkerInsideAString_opensNothing() {
+        // act, assert
         assertThat(count("functions", "echo \"usage: cat <<EOF\"\nf() {\n}\nEOF\ng() {\n}\n"), is(2));
         assertThat(count("functions", "grep -c '<<EOF' x\nf() {\n}\nEOF\ng() {\n}\n"), is(2));
         assertThat(count("functions", "echo \"a <<EOF\" \"b\"\nf() {\n}\nEOF\ng() {\n}\n"), is(2));
@@ -164,6 +179,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void functions_heredocAfterQuotedWordsAndBeforeAComment_isBlanked() {
+        // act, assert
         assertThat(
                 count(
                         "functions",
@@ -174,31 +190,44 @@ public class ShellFactPatternsTest {
 
     @Test
     public void functions_unclosedHeredoc_isBlankedToTheEnd() {
+        // act, assert
         // bash reads the rest of the file as the heredoc's body ("delimited by end-of-file")
         assertThat(count("functions", "f() {\n}\ncat <<EOF\ng() {\n}\n"), is(1));
     }
 
     @Test
     public void ignore_manyArithmeticShifts_stayLinear() {
+        // arrange
         final String source = functionThenLines("x=$((1 << 4))");
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
     }
 
     @Test
     public void ignore_manyHeredocMarkersInStrings_stayLinear() {
+        // arrange
         final String source = functionThenLines("echo \"cat <<EOF here\"");
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
     }
 
     @Test
     public void ignore_manyUnclosedHeredocs_stayLinear() {
+        // arrange
         final String source = functionThenLines("cat <<EOF >> out.txt");
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
     }
 
     @Test
     public void ignore_trailingComment_isBlanked() {
+        // arrange
         final String source = "do_it # formerly exit 1 and getopts here\nfoo # bar() {\n";
+
+        // act, assert
         assertThat(count("getopts loops", source), is(0));
         assertThat(count("getopts option letters", source), is(0));
         assertThat(count("exit statements with a status", source), is(0));
@@ -207,6 +236,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void ignore_hashOfParameterCountLengthAndQuotedPatterns_isNoComment() {
+        // act, assert
         assertThat(count("exit statements with a status", "[ $# -eq 0 ] && exit 2\nn=${#arr[@]}\n"), is(1));
         assertThat(
                 count(
@@ -217,12 +247,14 @@ public class ShellFactPatternsTest {
 
     @Test
     public void ignore_blankAndHashInsideAString_readsAsAComment() {
+        // act, assert
         // the accepted limit: the shell knows the quotes, the regex does not, so OTHER is lost
         assertThat(count("exported variables", "export MSG=\"a # b\" OTHER=1\n"), is(1));
     }
 
     @Test
     public void functions_compoundCommandBodies_count() {
+        // act, assert
         assertThat(
                 count(
                         "functions",
@@ -236,6 +268,7 @@ public class ShellFactPatternsTest {
     // <editor-fold defaultstate="collapsed" desc="options and arguments">
     @Test
     public void getoptsLoops_quotedAndBareOptionStrings_count() {
+        // act, assert
         assertThat(
                 count("getopts loops", "while getopts \":hv:o:\" opt; do\ndone\nwhile getopts ab: o; do :; done\n"),
                 is(2));
@@ -243,6 +276,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void getoptsOptionLetters_everyLetterOfTheOptionString_counts() {
+        // act, assert
         assertThat(
                 count(
                         "getopts option letters",
@@ -253,6 +287,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void dashOptionCaseArms_dashOptions_countAndBareWordsAndCatchAllsDoNot() {
+        // act, assert
         assertThat(
                 count(
                         "dash-option case arms",
@@ -263,6 +298,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void namedPositionalParameters_assignmentsWithAndWithoutExpansionFlags_count() {
+        // act, assert
         assertThat(
                 count(
                         "named positional parameters",
@@ -275,6 +311,7 @@ public class ShellFactPatternsTest {
     // <editor-fold defaultstate="collapsed" desc="variables">
     @Test
     public void exportedVariables_exportAndDeclareX_countAndFunctionsDoNot() {
+        // act, assert
         assertThat(
                 count(
                         "exported variables",
@@ -285,6 +322,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void exportedVariables_everyNameOfALine_counts() {
+        // act, assert
         assertThat(
                 count(
                         "exported variables",
@@ -294,6 +332,7 @@ public class ShellFactPatternsTest {
 
     @Test
     public void readonlyVariables_readonlyDeclareRAndTypesetR_count() {
+        // act, assert
         assertThat(
                 count(
                         "readonly variables",
@@ -304,11 +343,13 @@ public class ShellFactPatternsTest {
 
     @Test
     public void readonlyVariables_everyNameAndLocalR_countAndFunctionsDoNot() {
+        // act, assert
         assertThat(count("readonly variables", "readonly A B C\nreadonly -f fn\nlocal -r x=1\n"), is(4));
     }
 
     @Test
-    public void defaultedVariables_namedDefaultsCountPositionalOnesDoNot() {
+    public void defaultedVariables_namedAndPositionalDefaults_countOnlyTheNamedOnes() {
+        // act, assert
         assertThat(
                 count(
                         "defaulted variables",
@@ -317,12 +358,14 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void scriptLevelAssignments_onlyAtColumnZero() {
+    public void scriptLevelAssignments_atColumnZeroAndIndented_countOnlyAtColumnZero() {
+        // act, assert
         assertThat(count("script-level assignments", "LOG_DIR=/var/log\nverbose=0\nf() {\n  inner=1\n}\n"), is(2));
     }
 
     @Test
     public void scriptLevelAssignments_environmentPrefixesOfACommand_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         "script-level assignments",
@@ -336,12 +379,14 @@ public class ShellFactPatternsTest {
     /** A ${...} with a blank inside is one word of the value, not the end of an environment prefix. */
     @Test
     public void scriptLevelAssignments_aDefaultWithABlank_countsAndAPrefixStaysOne() {
+        // act, assert
         assertThat(count("script-level assignments", "MSG=${MSG:-a b}\nN=${N:-$(date)}\n"), is(2));
         assertThat(count("script-level assignments", "MSG=${MSG:-a b} cmd\nA=${X:-1} B=${Y:-c d} make\n"), is(0));
     }
 
     @Test
     public void scriptLevelAssignments_aContinuedLine_counts() {
+        // act, assert
         assertThat(
                 count(
                         "script-level assignments",
@@ -353,6 +398,7 @@ public class ShellFactPatternsTest {
     // <editor-fold defaultstate="collapsed" desc="control">
     @Test
     public void sourcedFiles_sourceAndDot_countAndARelativeCommandDoesNot() {
+        // act, assert
         assertThat(
                 count(
                         "sourced files",
@@ -362,17 +408,20 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void traps_settingOnesCountAndListingDoesNot() {
+    public void traps_settingAndListing_countOnlyTheSettingOnes() {
+        // act, assert
         assertThat(count("traps", "trap cleanup EXIT\ntrap 'rm -f \"$tmp\"' INT TERM\ntrap -p\n"), is(2));
     }
 
     @Test
     public void setE_shortAndLongForms_countAndOtherFlagsDoNot() {
+        // act, assert
         assertThat(count("set -e", "set -euo pipefail\nset -o errexit\nset -x\nset +e\n"), is(2));
     }
 
     @Test
     public void setE_afterOtherOptionWords_counts() {
+        // act, assert
         assertThat(
                 count(
                         "set -e",
@@ -382,12 +431,14 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void exitStatementsWithAStatus_onlyLiteralStatuses() {
+    public void exitStatementsWithAStatus_literalAndVariableStatuses_countOnlyLiteralStatuses() {
+        // act, assert
         assertThat(count("exit statements with a status", "exit 0\n[ -f x ] || exit 2\nexit \"$rc\"\nexit\n"), is(2));
     }
 
     @Test
     public void sourcedFiles_afterAndThenSemicolonElseDoAndABrace_count() {
+        // act, assert
         assertThat(
                 count(
                         "sourced files",
@@ -401,7 +452,8 @@ public class ShellFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="ksh">
     @Test
-    public void typesetAndDeclareDeclarations_atAnyIndent() {
+    public void typesetAndDeclareDeclarations_atAnyIndent_count() {
+        // act, assert
         assertThat(
                 count(
                         "typeset and declare declarations",
@@ -410,7 +462,8 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void kshDisciplineFunctions_getSetUnsetAppend() {
+    public void kshDisciplineFunctions_getSetUnsetAppendDisciplines_count() {
+        // act, assert
         assertThat(
                 count(
                         "ksh discipline functions",
@@ -420,7 +473,8 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void kshDisciplineFunctions_getnCountsAndOtherDottedNamesDoNot() {
+    public void kshDisciplineFunctions_getnAndOtherDottedNames_countOnlyGetn() {
+        // act, assert
         assertThat(
                 count(
                         "ksh discipline functions",
@@ -431,8 +485,11 @@ public class ShellFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="the benchmark's language corpus">
     @Test
-    public void corpus_deployReleaseSh() {
+    public void corpus_deployReleaseSh_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/shell/deploy_release.sh");
+
+        // act, assert
         assertThat(count("functions", source), is(8));
         assertThat(count("getopts loops", source), is(1));
         // e, t, n, p and h; the options are getopts letters, so no case arm starts with a dash
@@ -454,8 +511,11 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void corpus_nightlyExtractKsh() {
+    public void corpus_nightlyExtractKsh_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/shell/nightly_extract.ksh");
+
+        // act, assert
         assertThat(count("functions", source), is(5));
         assertThat(count("getopts loops", source), is(1));
         assertThat(count("getopts option letters", source), is(2));
@@ -473,8 +533,11 @@ public class ShellFactPatternsTest {
     }
 
     @Test
-    public void corpus_healthcheckSh() {
+    public void corpus_healthcheckSh_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/shell/healthcheck.sh");
+
+        // act, assert
         assertThat(count("functions", source), is(4));
         assertThat(count("defaulted variables", source), is(2));
         assertThat(count("script-level assignments", source), is(4));
@@ -486,11 +549,14 @@ public class ShellFactPatternsTest {
 
     @Test
     public void counts_aLongScript_stayLinear() {
+        // arrange
         final String script = ProfileFactPatterns.languageCorpusFile("other/shell/deploy_release.sh");
         final StringBuilder source = new StringBuilder();
         for (int i = 0; i < LONG_INPUT_COPIES; i++) {
             source.append(script);
         }
+
+        // act, assert
         assertThat(
                 assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("getopts option letters", source.toString())),
                 is(5 * LONG_INPUT_COPIES));

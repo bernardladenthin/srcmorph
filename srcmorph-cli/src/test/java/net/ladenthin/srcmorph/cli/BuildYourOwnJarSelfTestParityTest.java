@@ -89,51 +89,75 @@ public class BuildYourOwnJarSelfTestParityTest {
         return selftest.getSrcMorph();
     }
 
+    // <editor-fold defaultstate="collapsed" desc="command">
     @Test
-    public void command_isThePlan() {
+    public void command_buildYourOwnJarExample_isThePlan() {
+        // act, assert
         assertThat(example.command, is(CCommand.Plan));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="selftest">
     @Test
-    public void selftest_leftNoPropertyUnfilled() throws IOException {
+    public void selftest_pomPropertiesApplied_leavesNoPropertyUnfilled() throws IOException {
+        // act, assert
         assertThat(json(selftest).contains("${"), is(false));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="models">
     @Test
-    public void models_matchTheSelfTest() throws IOException {
+    public void models_buildYourOwnJarExample_matchTheSelfTest() throws IOException {
+        // act, assert
         assertThat(json(exampleRun().getAiDefinitions()), is(json(selftestRun().getAiDefinitions())));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="profileDirectory">
     @Test
-    public void profileDirectory_isTheSameSet() throws IOException {
+    public void profileDirectory_buildYourOwnJarExample_isTheSameSet() throws IOException {
+        // act, assert
         assertThat(
                 Objects.requireNonNull(exampleRun().getProfileDirectory()).getCanonicalFile(),
                 is(Objects.requireNonNull(selftestRun().getProfileDirectory()).getCanonicalFile()));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="promptsAndFacts">
     @Test
-    public void promptsAndFacts_comeFromTheProfileOnly() {
+    public void promptsAndFacts_exampleAndSelfTest_comeFromTheProfileOnly() {
+        // act, assert
         assertThat(exampleRun().getPromptDefinitions(), is(nullValue()));
         assertThat(exampleRun().getFactDefinitions(), is(nullValue()));
         assertThat(selftestRun().getPromptDefinitions(), is(nullValue()));
         assertThat(selftestRun().getFactDefinitions(), is(nullValue()));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="scope">
     @Test
-    public void scope_matchesTheSelfTest() {
+    public void scope_buildYourOwnJarExample_matchesTheSelfTest() {
+        // act, assert
         assertThat(exampleRun().getFileExtensions(), is(selftestRun().getFileExtensions()));
         assertThat(exampleRun().getExcludes(), is(selftestRun().getExcludes()));
         assertThat(exampleRun().getGenerationProvider(), is(selftestRun().getGenerationProvider()));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="fileRules">
     @Test
-    public void fileRules_matchTheSelfTest() throws IOException {
+    public void fileRules_buildYourOwnJarExample_matchTheSelfTest() throws IOException {
+        // act, assert
         assertThat(json(exampleRun().getRules()), is(json(selftestRun().getRules())));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="phaseRules">
     @Test
-    public void phaseRules_matchTheSelfTest() throws IOException {
+    public void phaseRules_buildYourOwnJarExample_matchTheSelfTest() throws IOException {
+        // act, assert
         assertThat(json(example.packageRules), is(json(selftest.getPackageRules())));
         assertThat(json(example.projectRules), is(json(selftest.getProjectRules())));
     }
+    // </editor-fold>
 }

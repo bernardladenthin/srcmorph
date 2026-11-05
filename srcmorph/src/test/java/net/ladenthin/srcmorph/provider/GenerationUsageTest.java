@@ -26,10 +26,13 @@ public class GenerationUsageTest {
                 "{}");
     }
 
+    // <editor-fold defaultstate="collapsed" desc="of">
     @Test
-    public void of_readsTheUsageAndTheFinishReason() {
+    public void of_responseWithUsage_readsTheUsageAndTheFinishReason() {
+        // act
         final GenerationUsage usage = GenerationUsage.of(response("length"));
 
+        // assert
         assertThat(usage.calls(), is(1));
         assertThat(usage.promptTokens(), is(120L));
         assertThat(usage.completionTokens(), is(30L));
@@ -39,20 +42,26 @@ public class GenerationUsageTest {
 
     @Test
     public void of_noChoiceOrNoReason_isAnEmptyReason() {
+        // arrange
         final ChatResponse noChoice =
                 new ChatResponse("id", Collections.<ChatChoice>emptyList(), new Usage(1, 2), null, "{}");
 
+        // act, assert
         assertThat(GenerationUsage.of(noChoice).finishReason(), is(equalTo("")));
         assertThat(GenerationUsage.of(response(null)).finishReason(), is(equalTo("")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="withCall">
     @Test
-    public void withCall_sumsTheTokens_countsTheCall_keepsTheLastReason() {
+    public void withCall_severalCalls_sumsTokensCountsCallsAndKeepsLastReason() {
+        // act
         final GenerationUsage sum = GenerationUsage.NONE
                 .withCall(new GenerationUsage(1, 10, 2, 5, "length"))
                 .withCall(new GenerationUsage(1, 20, 3, 0, "stop"))
                 .withCall(GenerationUsage.NONE);
 
+        // assert
         // the third call's provider knew no usage: the call is counted, its tokens are none
         assertThat(sum, is(equalTo(new GenerationUsage(3, 30, 5, 5, ""))));
         assertThat(
@@ -65,11 +74,15 @@ public class GenerationUsageTest {
     /** A sum of two calls would be counted as one, so it is refused. */
     @Test
     public void withCall_theSumOfSeveralCalls_isRefused() {
+        // arrange
         final GenerationUsage two = new GenerationUsage(2, 10, 2, 0, "stop");
 
+        // act
         final IllegalArgumentException thrown =
                 assertThrows(IllegalArgumentException.class, () -> GenerationUsage.NONE.withCall(two));
 
+        // assert
         assertThat(thrown.getMessage(), is(equalTo("withCall takes the usage of one call, not of 2")));
     }
+    // </editor-fold>
 }

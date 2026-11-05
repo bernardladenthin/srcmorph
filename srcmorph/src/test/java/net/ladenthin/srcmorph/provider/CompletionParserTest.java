@@ -139,23 +139,26 @@ public class CompletionParserTest {
         // assert
         assertThat(result, is(equalTo(answer)));
     }
-    // </editor-fold>
 
     // <think> blocks, as DeepSeek-R1 and Qwen3 write them
     @Test
     public void parseCompletion_leadingThinkTag_isStripped() throws Exception {
+        // act
         final String result =
                 new CompletionParser().parseCompletion("  <think>\nweighing it up\n</think>\n\nactual answer  ");
 
+        // assert
         assertThat(result, is(equalTo("actual answer")));
     }
 
     @Test
     public void parseCompletion_unclosedThinkTag_isATruncatedAnswer() {
+        // act
         final IncompleteAnswerException thrown = assertThrows(
                 IncompleteAnswerException.class,
                 () -> new CompletionParser().parseCompletion("<think>still weighing it up"));
 
+        // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
         assertThat(thrown.getMessage(), containsString(CompletionParser.THINK_TAG_START_MARKER));
         assertThat(thrown.getMessage(), containsString(CompletionParser.THINK_TAG_END_MARKER));
@@ -163,8 +166,10 @@ public class CompletionParserTest {
 
     @Test
     public void parseCompletion_thinkTagQuotedInTheAnswer_isKept() throws Exception {
+        // arrange
         final String response = "The parser strips a leading <think> ... </think> block.";
 
+        // act, assert
         assertThat(new CompletionParser().parseCompletion(response), is(equalTo(response)));
     }
 
@@ -174,6 +179,7 @@ public class CompletionParserTest {
      */
     @Test
     public void parseCompletion_reasoningClosedByATagTheTemplateOpened_isStripped() throws Exception {
+        // act, assert
         assertThat(
                 parser.parseCompletion("Let me read the file first.\n</think>\n\n> The lead.\nThe body."),
                 is(equalTo("> The lead.\nThe body.")));
@@ -182,14 +188,18 @@ public class CompletionParserTest {
     /** No reasoning at all before the template's block was closed: the answer is what follows. */
     @Test
     public void parseCompletion_aResponseStartingWithTheClosingTag_isTheTextAfterIt() throws Exception {
+        // act, assert
         assertThat(parser.parseCompletion("</think>\n> The lead."), is(equalTo("> The lead.")));
     }
 
     /** A closing tag quoted in backticks is the answer writing about it, so nothing is stripped. */
     @Test
     public void parseCompletion_aClosingTagQuotedInBackticks_isKept() throws Exception {
+        // arrange
         final String response = "> The lead.\nThe block ends at `</think>`, the answer follows.";
 
+        // act, assert
         assertThat(parser.parseCompletion(response), is(equalTo(response)));
     }
+    // </editor-fold>
 }

@@ -20,64 +20,94 @@ public class InputWindowCalculatorTest {
         return config;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="EOF_MARKER_LENGTH">
     @Test
-    public void eofMarkerLengthAssumptionForConcreteCases() {
-        // The concrete numbers in maxInputChars_computesFromContextWindow assume this length; this guard
-        // makes any future EOF-marker change fail loudly here rather than silently shift the math.
+    public void eofMarkerLength_assumedByTheConcreteCases_isThirtyFive() {
+        // act, assert
+        // The concrete numbers in maxInputChars_concreteWindow_computesFromContextWindow assume this length;
+        // this guard makes any future EOF-marker change fail loudly here rather than silently shift the math.
         assertThat(PromptPreparer.EOF_MARKER_LENGTH, is(35));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="maxInputChars">
     @Test
     public void maxInputChars_charsPerTokenZero_usesStaticFallback() {
+        // arrange
         final ModelDefinition config = config(2048, 0, 128);
+
+        // act, assert
         // charsPerToken <= 0 -> the static fallback is returned verbatim.
         assertThat(InputWindowCalculator.maxInputChars(config, 999), is(ModelDefinition.DEFAULT_MAX_INPUT_CHARS));
     }
 
     @Test
-    public void maxInputChars_computesFromContextWindow() {
+    public void maxInputChars_concreteWindow_computesFromContextWindow() {
+        // arrange
         // total = 1000 * 4 = 4000; overhead = base 165 + EOF 35 + output 100*4=400 + safety 500 = 1100;
         // available = 2900; rounded down to a 100-multiple = 2900.
         final ModelDefinition config = config(1000, 4, 100);
+
+        // act, assert
         assertThat(InputWindowCalculator.maxInputChars(config, 165), is(2900));
     }
 
     @Test
-    public void maxInputChars_roundsDownAndCountsEveryOverheadTerm() {
+    public void maxInputChars_budgetNotAHundredMultiple_roundsDownAndCountsEveryOverheadTerm() {
+        // arrange
         // total = 1000*4 = 4000; overhead = base 105 + EOF 35 + output 400 + safety 500 = 1040;
         // available = 2960 (NOT a 100-multiple) -> rounded down to 2900. The non-multiple value makes the
         // rounding observable, and 2960 sits so that dropping/flipping the 35-char EOF term (a +-70 shift)
         // crosses the 100-boundary to 3000 -> any such mutation changes the result and is killed.
         final ModelDefinition config = config(1000, 4, 100);
+
+        // act, assert
         assertThat(InputWindowCalculator.maxInputChars(config, 105), is(2900));
     }
 
     @Test
     public void maxInputChars_neverNegative_whenOverheadExceedsWindow() {
+        // arrange
         // Tiny context: overhead dwarfs the window, so the budget clamps to 0 (not negative).
         final ModelDefinition config = config(10, 4, 100);
+
+        // act, assert
         assertThat(InputWindowCalculator.maxInputChars(config, 165), is(0));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="availableSourceChars">
     @Test
-    public void availableSourceChars_isBudgetMinusBasePrompt() {
+    public void availableSourceChars_concreteWindow_isBudgetMinusBasePrompt() {
+        // arrange
         // maxInputChars 2900 - basePromptLength 165 = 2735.
         final ModelDefinition config = config(1000, 4, 100);
+
+        // act, assert
         assertThat(InputWindowCalculator.availableSourceChars(config, 165), is(2735L));
     }
 
     @Test
-    public void availableSourceChars_neverNegative() {
+    public void availableSourceChars_overheadExceedsWindow_neverNegative() {
+        // arrange
         // maxInputChars clamps to 0; subtracting basePromptLength still clamps to 0 (not negative).
         final ModelDefinition config = config(10, 4, 100);
+
+        // act, assert
         assertThat(InputWindowCalculator.availableSourceChars(config, 165), is(0L));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="exceedsWindow">
     @Test
-    public void exceedsWindow_isTrueOnlyAboveTheSourceBudget() {
+    public void exceedsWindow_atAndAboveTheSourceBudget_isTrueOnlyAbove() {
+        // arrange
         // availableSourceChars = 2735 here.
         final ModelDefinition config = config(1000, 4, 100);
+
+        // act, assert
         assertThat(InputWindowCalculator.exceedsWindow(config, 165, 2735L), is(false));
         assertThat(InputWindowCalculator.exceedsWindow(config, 165, 2736L), is(true));
     }
+    // </editor-fold>
 }

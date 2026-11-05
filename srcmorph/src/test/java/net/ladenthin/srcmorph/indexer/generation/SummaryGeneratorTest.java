@@ -10,6 +10,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.endsWith;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ch.qos.logback.classic.Level;
@@ -40,6 +41,7 @@ import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
 import net.ladenthin.srcmorph.provider.ContextOverflowException;
 import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationUsage;
 import net.ladenthin.srcmorph.provider.IncompleteAnswerException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -335,6 +337,7 @@ public class SummaryGeneratorTest {
 
     @Test
     public void onOversize_deterministic_skipsModelAndEmitsMetadataBody() throws Exception {
+        // arrange
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
@@ -343,15 +346,18 @@ public class SummaryGeneratorTest {
         };
         final SummaryGenerator support = supportWith(provider, "m");
 
+        // act
         final SummaryResult result =
                 support.generate((oversizeRule("m", "deterministic", 0)), contextFile, "file", largeSource(500));
 
+        // assert
         assertThat(calls.get(), is(equalTo(0)));
         assertThat(result.body(), containsString("deterministically (no AI)"));
     }
 
     @Test
     public void onOversize_mapReduce_callsModelPerChunkPlusReduce() throws Exception {
+        // arrange
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
@@ -360,26 +366,32 @@ public class SummaryGeneratorTest {
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
+        // act
         // ~70 KB over a window of about 7 KB -> several chunks that fit; sampleChunks 2 maps 2 of them + 1 reduce.
         final SummaryResult result =
                 support.generate((oversizeRule("m", "sampleChunks", 2)), contextFile, "file", largeSource(7000));
 
+        // assert
         assertThat(calls.get(), is(equalTo(3)));
         assertThat(result.body(), startsWith("**Coverage:** 2 of "));
         assertThat(result.body(), containsString(" chunks summarized (sampled)\n\nPARTIAL"));
     }
 
     @Test
-    public void onOversize_mapReduce_readsEveryChunk_andSaysSo() throws Exception {
+    public void onOversize_mapReduce_readsEveryChunkAndSaysSo() throws Exception {
+        // arrange
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return "PARTIAL";
         };
+
+        // act
         // a maxChunks of the rule does not sample under mapReduce
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((oversizeRule("m", "mapReduce", 2)), tempFile("Huge", ".java"), "file", largeSource(7000));
 
+        // assert
         final long mapped = getCapturedInfos().stream()
                 .filter(m -> m.contains("summarized ("))
                 .count();
@@ -391,26 +403,8 @@ public class SummaryGeneratorTest {
     }
 
     @Test
-    public void parts_ofAMapReduce_areEveryMapAndReduceAnswer_andAOnePieceCallHasNone() throws Exception {
+    public void onOversize_mapReduceWithFacts_prependsExactWholeFileCountsToBody() throws Exception {
         // arrange
-        final AtomicInteger calls = new AtomicInteger();
-        final GenerationProvider provider = request -> "ANSWER " + calls.incrementAndGet();
-        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
-
-        // act
-        support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
-        final String chunked = support.parts();
-        support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Small", ".java"), "file", "class Small {}");
-
-        // assert
-        assertThat(chunked, startsWith("## Chunk 1 of 2, sampled from "));
-        assertThat(chunked, containsString("\n\nANSWER 1\n\n## Chunk 2 of 2, sampled from "));
-        assertThat(chunked, endsWith("\n\nANSWER 2\n\n## Reduce round 1, batch 1 of 1 (2 parts)\n\nANSWER 3\n\n"));
-        assertThat(support.parts(), is(""));
-    }
-
-    @Test
-    public void onOversize_mapReduce_withFacts_prependsExactWholeFileCountsToBody() throws Exception {
         final Path contextFile = tempFile("Huge", ".java");
         final GenerationProvider provider = request -> "PARTIAL";
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
@@ -421,17 +415,20 @@ public class SummaryGeneratorTest {
         counter.setPattern("(?m)^line ");
         rule.setFacts(Collections.singletonList(counter));
 
+        // act
         // largeSource(7000) has exactly 7000 lines beginning with "line "; no call of the mock sees them all,
         // but the deterministic facts block counts every one over the FULL source and is prepended.
         final SummaryResult result = support.generate((rule), contextFile, "file", largeSource(7000));
 
+        // assert
         assertThat(result.body(), startsWith(FactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("lines: 7000"));
         assertThat(result.body(), containsString("PARTIAL"));
     }
 
     @Test
-    public void facts_prependedOnNonOversizeFile() throws Exception {
+    public void facts_nonOversizeFile_arePrepended() throws Exception {
+        // arrange
         // A small source that fits the window (NOT oversize) still gets the exact facts block prepended,
         // so downstream agents get authoritative counts in every summary, not just huge-file ones.
         final Path contextFile = tempFile("Small", ".java");
@@ -446,8 +443,10 @@ public class SummaryGeneratorTest {
         counter.setPattern("\\bboolean\\b");
         rule.setFacts(Collections.singletonList(counter));
 
+        // act
         final SummaryResult result = support.generate((rule), contextFile, "file", "boolean a; boolean b; int c;");
 
+        // assert
         assertThat(result.body(), startsWith(FactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("boolean fields: 2"));
         assertThat(result.body(), containsString("AI SUMMARY"));
@@ -501,6 +500,7 @@ public class SummaryGeneratorTest {
 
     @Test
     public void generate_contextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
+        // arrange
         final Path contextFile = tempFile("Dense", ".sql");
         final AtomicInteger calls = new AtomicInteger();
         // Fits the char window but the provider rejects the first prompt as over-context (token-dense);
@@ -513,14 +513,17 @@ public class SummaryGeneratorTest {
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
+        // act
         final SummaryResult result = support.generate((plainRoute("m")), contextFile, "file", "small source");
 
+        // assert
         assertThat(result.body(), is(equalTo("OK")));
         assertThat(calls.get(), is(equalTo(2)));
     }
 
     @Test
     public void generate_remoteContextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
+        // arrange
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
             if (calls.incrementAndGet() == 1) {
@@ -528,15 +531,19 @@ public class SummaryGeneratorTest {
             }
             return "OK";
         };
+
+        // act
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", null)), tempFile("Test", ".java"), "file", "public class Test {}");
 
+        // assert
         assertThat(calls.get(), is(equalTo(2)));
         assertThat(result.body(), is(equalTo("OK")));
     }
 
     @Test
     public void generate_persistentContextOverflow_rethrowsAfterRetrying() throws Exception {
+        // arrange
         final Path contextFile = tempFile("Dense", ".sql");
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
@@ -544,15 +551,19 @@ public class SummaryGeneratorTest {
             throw new RuntimeException("request exceeds the available context size (16384 tokens)");
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+        final RoutingRule route = plainRoute("m");
 
-        assertThrows(
-                RuntimeException.class, () -> support.generate((plainRoute("m")), contextFile, "file", "small source"));
+        // act
+        assertThrows(RuntimeException.class, () -> support.generate(route, contextFile, "file", "small source"));
+
+        // assert
         // Retried before giving up (more than the single initial attempt).
         assertThat(calls.get() > 1, is(true));
     }
 
     @Test
     public void generate_nonOverflowRuntimeException_propagatesWithoutRetry() throws Exception {
+        // arrange
         final Path contextFile = tempFile("X", ".sql");
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
@@ -560,14 +571,18 @@ public class SummaryGeneratorTest {
             throw new RuntimeException("some unrelated failure");
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+        final RoutingRule route = plainRoute("m");
 
-        assertThrows(
-                RuntimeException.class, () -> support.generate((plainRoute("m")), contextFile, "file", "small source"));
+        // act
+        assertThrows(RuntimeException.class, () -> support.generate(route, contextFile, "file", "small source"));
+
+        // assert
         assertThat(calls.get(), is(equalTo(1)));
     }
 
     @Test
-    public void onOversize_mapReduce_unbounded_reducesHierarchicallyInMultipleRounds() throws Exception {
+    public void onOversize_mapReduceUnbounded_reducesHierarchicallyInMultipleRounds() throws Exception {
+        // arrange
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
@@ -576,11 +591,13 @@ public class SummaryGeneratorTest {
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
+        // act
         // maxChunks=0 (unbounded) over a large source -> far more than MAX_REDUCE_FANIN chunks, so the
         // reduce cannot combine every partial in one call and must recurse: a second reduce round appears.
         final SummaryResult result =
                 support.generate((oversizeRule("m", "mapReduce", 0)), contextFile, "file", largeSource(30000));
 
+        // assert
         final List<String> infos = getCapturedInfos();
         final long mapChunks =
                 infos.stream().filter(m -> m.contains("summarized (")).count();
@@ -597,7 +614,7 @@ public class SummaryGeneratorTest {
     }
 
     @Test
-    public void onOversize_mapReduce_aWindowWithoutRoomForAChunk_failsTheFileNamingTheRoom() throws Exception {
+    public void onOversize_mapReduceInAWindowWithoutRoomForAChunk_failsTheFileNamingTheRoom() throws Exception {
         // arrange: the tiny window holds less than the minimum chunk next to the prompts, so every chunk call
         // would be cut and most of the source never read
         final AtomicInteger calls = new AtomicInteger();
@@ -607,12 +624,13 @@ public class SummaryGeneratorTest {
                     return "PARTIAL";
                 },
                 "m");
+        final RoutingRule rule = oversizeRule("m", "mapReduce", 0);
+        final Path contextFile = tempFile("Huge", ".java");
+        final String source = largeSource(600);
 
         // act
-        final java.io.IOException failed = org.junit.jupiter.api.Assertions.assertThrows(
-                java.io.IOException.class,
-                () -> support.generate(
-                        (oversizeRule("m", "mapReduce", 0)), tempFile("Huge", ".java"), "file", largeSource(600)));
+        final IOException failed =
+                assertThrows(IOException.class, () -> support.generate((rule), contextFile, "file", source));
 
         // assert
         assertThat(failed.getMessage(), containsString("next to its map and reduce prompts, fewer than 1000"));
@@ -626,16 +644,17 @@ public class SummaryGeneratorTest {
         final String source = largeSource(600);
         final GenerationProvider provider = request -> {
             if (request.sourceText().length() > source.length() - 1000) {
-                throw new java.io.IOException("the request exceeds the available context size");
+                throw new IOException("the request exceeds the available context size");
             }
             return "BODY";
         };
+        final SummaryGenerator failing = supportWithModels(provider, normalWindowModel("m"));
+        final RoutingRule failRule = oversizeRule("m", "fail", 0);
+        final Path fileA = tempFile("A", ".java");
 
         // act
-        final java.io.IOException failed = org.junit.jupiter.api.Assertions.assertThrows(
-                java.io.IOException.class,
-                () -> supportWithModels(provider, normalWindowModel("m"))
-                        .generate(oversizeRule("m", "fail", 0), tempFile("A", ".java"), "file", source));
+        final IOException failed =
+                assertThrows(IOException.class, () -> failing.generate(failRule, fileA, "file", source));
         final SummaryResult sampled = supportWithModels(provider, normalWindowModel("m"))
                 .generate(oversizeRule("m", "sample", 0), tempFile("B", ".java"), "file", source);
 
@@ -648,6 +667,7 @@ public class SummaryGeneratorTest {
 
     @Test
     public void onOversize_sample_singleCallOnTrimmedHead() throws Exception {
+        // arrange
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
@@ -656,14 +676,59 @@ public class SummaryGeneratorTest {
         };
         final SummaryGenerator support = supportWith(provider, "m");
 
+        // act
         final SummaryResult result =
                 support.generate((oversizeRule("m", "sample", 0)), contextFile, "file", largeSource(500));
 
+        // assert
         assertThat(calls.get(), is(equalTo(1)));
         assertThat(result.body(), startsWith("**Coverage:** the first "));
         assertThat(result.body(), endsWith(" of 4390 characters (sampled head)\n\nSAMPLED"));
     }
 
+    @Test
+    public void onOversize_failAtRunTime_isAnErrorNotATrimmedSummary() throws Exception {
+        // arrange
+        final AtomicInteger calls = new AtomicInteger();
+        final GenerationProvider provider = request -> {
+            calls.incrementAndGet();
+            return "MODEL OUTPUT";
+        };
+        final SummaryGenerator support = supportWith(provider, "m");
+        final RoutingRule rule = oversizeRule("m", "fail", 0);
+        final Path contextFile = tempFile("Huge", ".java");
+        final String source = largeSource(500);
+
+        // act
+        final IOException thrown =
+                assertThrows(IOException.class, () -> support.generate((rule), contextFile, "file", source));
+
+        // assert
+        assertThat(calls.get(), is(equalTo(0)));
+        assertThat(thrown.getMessage(), containsString("onOversize: fail"));
+    }
+
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="parts">
+    @Test
+    public void parts_aMapReduceThenAOnePieceCall_areEveryMapAndReduceAnswerThenNone() throws Exception {
+        // arrange
+        final AtomicInteger calls = new AtomicInteger();
+        final GenerationProvider provider = request -> "ANSWER " + calls.incrementAndGet();
+        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+
+        // act
+        support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
+        final String chunked = support.parts();
+        support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Small", ".java"), "file", "class Small {}");
+
+        // assert
+        assertThat(chunked, startsWith("## Chunk 1 of 2, sampled from "));
+        assertThat(chunked, containsString("\n\nANSWER 1\n\n## Chunk 2 of 2, sampled from "));
+        assertThat(chunked, endsWith("\n\nANSWER 2\n\n## Reduce round 1, batch 1 of 1 (2 parts)\n\nANSWER 3\n\n"));
+        assertThat(support.parts(), is(""));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">
@@ -710,23 +775,27 @@ public class SummaryGeneratorTest {
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
-        // act + assert
+        // act, assert
         final SummaryResult result = assertDoesNotThrowGenerate(support);
         assertThat(result.complete(), is(false));
     }
 
     private SummaryResult assertDoesNotThrowGenerate(final SummaryGenerator support) {
-        return org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> support.generate(
+        return assertDoesNotThrow(() -> support.generate(
                 oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000)));
     }
 
     @Test
     public void incomplete_retryOnce_asksAgainAndTakesTheSecondAnswer() throws Exception {
+        // arrange
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> calls.incrementAndGet() == 1 ? "" : "A summary.";
+
+        // act
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "retryOnce")), tempFile("Test", ".java"), "file", "public class Test {}");
 
+        // assert
         assertThat(calls.get(), is(equalTo(2)));
         assertThat(result.complete(), is(true));
         assertThat(result.body(), is(equalTo("A summary.")));
@@ -736,26 +805,34 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_retryOnce_secondIncompleteAnswerFails() throws Exception {
+        // arrange
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return " ";
         };
+
+        // act
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "retryOnce")), tempFile("Test", ".java"), "file", "public class Test {}");
 
+        // assert
         assertThat(calls.get(), is(equalTo(2)));
         assertThat(result.complete(), is(false));
     }
 
     @Test
     public void incomplete_failByDefault_cutOffAnswerIsNotTaken() throws Exception {
+        // arrange
         final GenerationProvider provider = request -> {
             throw cutOff("half a sum");
         };
+
+        // act
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", null)), tempFile("Test", ".java"), "file", "public class Test {}");
 
+        // assert
         assertThat(result.complete(), is(false));
         assertThat(result.incompleteReason(), is(equalTo("cut off")));
         assertThat(
@@ -765,12 +842,16 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_keep_takesTheTextOfACutOffAnswer() throws Exception {
+        // arrange
         final GenerationProvider provider = request -> {
             throw cutOff("half a sum");
         };
+
+        // act
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "keep")), tempFile("Test", ".java"), "file", "public class Test {}");
 
+        // assert
         assertThat(result.complete(), is(true));
         // the summary says that it stops early
         assertThat(result.body(), is(equalTo("half a sum" + SummaryGenerator.KEPT_CUT_NOTE)));
@@ -779,10 +860,13 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_keep_cutOffAnswerWithoutTextAndAnEmptyAnswerStillFail() throws Exception {
+        // arrange
         final GenerationProvider cutOffEmpty = request -> {
             throw cutOff(" ");
         };
         final GenerationProvider empty = request -> "";
+
+        // act, assert
         for (final GenerationProvider provider : Arrays.asList(cutOffEmpty, empty)) {
             final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                     .generate((normalRule("m", "keep")), tempFile("Test", ".java"), "file", "public class Test {}");
@@ -792,14 +876,18 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_responseWithoutAnswer_isIncompleteAndNotRetriedUnderFail() throws Exception {
+        // arrange
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             throw new IncompleteAnswerException(IncompleteAnswerException.Reason.NO_ANSWER, "no choice");
         };
+
+        // act
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "fail")), tempFile("Test", ".java"), "file", "public class Test {}");
 
+        // assert
         assertThat(calls.get(), is(equalTo(1)));
         assertThat(result.complete(), is(false));
         assertThat(result.incompleteReason(), is(equalTo("no choice")));
@@ -810,7 +898,7 @@ public class SummaryGeneratorTest {
 
         /** The answer to one call. */
         interface Script {
-            String answer(int call) throws java.io.IOException;
+            String answer(int call) throws IOException;
         }
 
         private final Script script;
@@ -821,7 +909,7 @@ public class SummaryGeneratorTest {
         }
 
         @Override
-        public String generate(final GenerationRequest request) throws java.io.IOException {
+        public String generate(final GenerationRequest request) throws IOException {
             generated.add(request);
             return script.answer(generated.size());
         }
@@ -899,37 +987,27 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_withFacts_theFactsLineDoesNotMaskAnEmptyAnswer() throws Exception {
+        // arrange
         final RoutingRule rule = normalRule("m", null);
         final FactCounter counter = new FactCounter();
         counter.setLabel("classes");
         counter.setPattern("\\bclass\\b");
         rule.setFacts(Collections.singletonList(counter));
+
+        // act
         final SummaryResult result = supportWithModels(request -> "", normalWindowModel("m"))
                 .generate((rule), tempFile("Test", ".java"), "file", "public class Test {}");
 
+        // assert
         assertThat(result.complete(), is(false));
         assertThat(result.body(), is(equalTo("")));
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="window">
     @Test
-    public void onOversize_failAtRunTime_isAnErrorNotATrimmedSummary() throws Exception {
-        final AtomicInteger calls = new AtomicInteger();
-        final GenerationProvider provider = request -> {
-            calls.incrementAndGet();
-            return "MODEL OUTPUT";
-        };
-        final java.io.IOException thrown = assertThrows(
-                java.io.IOException.class,
-                () -> supportWith(provider, "m")
-                        .generate((oversizeRule("m", "fail", 0)), tempFile("Huge", ".java"), "file", largeSource(500)));
-
-        assertThat(calls.get(), is(equalTo(0)));
-        assertThat(thrown.getMessage(), containsString("onOversize: fail"));
-    }
-
-    @Test
-    public void window_isComputedForEveryFile_fromItsOwnName() throws Exception {
+    public void window_aShortNameAfterALongOne_isComputedForEveryFileFromItsOwnName() throws Exception {
+        // arrange
         // The prompt contains the file name, so a long name leaves less room for the source. A short-named
         // file whose source fills exactly its own budget is not trimmed, even after a long-named one.
         final ModelRegistry models = normalWindowModel("m");
@@ -943,51 +1021,87 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(request -> "OK", models);
         final RoutingRule rule = normalRule("m", null);
 
+        // act
         support.generate((rule), longName, "file", "x");
         final String fits = largeSource(budget).substring(0, budget);
         final SummaryResult result = support.generate((rule), shortName, "file", fits);
 
+        // assert
         assertThat(result.body(), is(equalTo("OK")));
         for (final String warning : getCapturedWarnings()) {
             assertThat(warning.contains("Trimmed AI input"), is(false));
         }
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="takeUsage">
     @Test
-    public void takeUsage_sumsTheCallsOfAFile_andStartsAnew() throws Exception {
+    public void takeUsage_aChunkedFile_sumsItsCallsAndStartsAnew() throws Exception {
+        // arrange
         final GenerationProvider provider = new GenerationProvider() {
             @Override
-            public String generate(final net.ladenthin.srcmorph.prompt.GenerationRequest request) {
+            public String generate(final GenerationRequest request) {
                 return "PARTIAL";
             }
 
             @Override
-            public net.ladenthin.srcmorph.provider.GenerationUsage lastUsage() {
-                return new net.ladenthin.srcmorph.provider.GenerationUsage(1, 100, 10, 0, "stop");
+            public GenerationUsage lastUsage() {
+                return new GenerationUsage(1, 100, 10, 0, "stop");
             }
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
+        // act
         support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
-        final net.ladenthin.srcmorph.provider.GenerationUsage usage = support.takeUsage();
+        final GenerationUsage usage = support.takeUsage();
 
+        // assert
         // two chunks and one reduce
         assertThat(usage.calls(), is(3));
         assertThat(usage.promptTokens(), is(300L));
         assertThat(usage.completionTokens(), is(30L));
         assertThat(usage.finishReason(), is(equalTo("stop")));
-        assertThat(support.takeUsage(), is(net.ladenthin.srcmorph.provider.GenerationUsage.NONE));
+        assertThat(support.takeUsage(), is(GenerationUsage.NONE));
     }
 
     @Test
     public void takeUsage_anEmptyAnswer_stillCounts() throws Exception {
+        // arrange
         final SummaryGenerator support = supportWithModels(request -> "", normalWindowModel("m"));
 
+        // act
         support.generate(normalRule("m", null), tempFile("Small", ".java"), "file", "x");
 
+        // assert
         // the empty answer was one call; a lambda provider reports no tokens
         assertThat(support.takeUsage().calls(), is(1));
     }
+
+    @Test
+    public void takeUsage_aFailedCall_stillCounts() throws Exception {
+        // arrange: the request fails, its usage was reported
+        final GenerationProvider provider = new GenerationProvider() {
+            @Override
+            public String generate(final GenerationRequest request) throws IOException {
+                throw new IOException("the server is down");
+            }
+
+            @Override
+            public GenerationUsage lastUsage() {
+                return new GenerationUsage(1, 100, 0, 0, "");
+            }
+        };
+        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+        final RoutingRule rule = normalRule("m", null);
+        final Path contextFile = tempFile("Small", ".java");
+
+        // act
+        assertThrows(IOException.class, () -> support.generate(rule, contextFile, "file", "x"));
+
+        // assert
+        assertThat(support.takeUsage().promptTokens(), is(100L));
+    }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="map and reduce prompts">
     private static PromptDefinition prompt(final String key, final String template) {
@@ -1016,7 +1130,7 @@ public class SummaryGeneratorTest {
     }
 
     @Test
-    public void mapReduce_mapCallsTakeTheMapPromptAndAChunkLabel() throws Exception {
+    public void mapReduce_mapCalls_takeTheMapPromptAndAChunkLabel() throws Exception {
         // act
         final List<GenerationRequest> requests = mapReduceRequests("map", "reduce");
 
@@ -1028,7 +1142,7 @@ public class SummaryGeneratorTest {
     }
 
     @Test
-    public void mapReduce_reduceCallsTakeTheReducePromptAndThePartSummaries() throws Exception {
+    public void mapReduce_reduceCalls_takeTheReducePromptAndThePartSummaries() throws Exception {
         // act
         final List<GenerationRequest> requests = mapReduceRequests("map", "reduce");
 
@@ -1252,12 +1366,13 @@ public class SummaryGeneratorTest {
         // arrange: every prompt counts far over the limit, however small its window; sample may cut the source
         final CountingProvider provider = new CountingProvider(r -> 1_000_000);
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+        final RoutingRule rule = oversizeRule("m", "sample", 0);
+        final Path contextFile = tempFile("Dense", ".java");
+        final String source = largeSource(300);
 
         // act
-        final java.io.IOException failed = org.junit.jupiter.api.Assertions.assertThrows(
-                java.io.IOException.class,
-                () -> support.generate(
-                        oversizeRule("m", "sample", 0), tempFile("Dense", ".java"), "file", largeSource(300)));
+        final IOException failed =
+                assertThrows(IOException.class, () -> support.generate(rule, contextFile, "file", source));
 
         // assert
         assertThat(failed.getMessage(), containsString("; not sent"));
@@ -1316,7 +1431,7 @@ public class SummaryGeneratorTest {
      * keep its text is not the model's finished answer, unlike one cut at the output budget.
      */
     @Test
-    public void incomplete_keep_anAnswerTheProviderStopped_isNotWritten() throws Exception {
+    public void incomplete_keepAndAnAnswerTheProviderStopped_isNotWritten() throws Exception {
         // arrange
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
@@ -1379,8 +1494,9 @@ public class SummaryGeneratorTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="test review">
     @Test
-    public void sampleChunks_theReduceReadsThatThePartsAreASample() throws Exception {
+    public void sampleChunks_theReduce_readsThatThePartsAreASample() throws Exception {
         // arrange
         final List<GenerationRequest> requests = new ArrayList<>();
         final GenerationProvider provider = request -> {
@@ -1396,32 +1512,6 @@ public class SummaryGeneratorTest {
         final GenerationRequest reduce = requests.get(requests.size() - 1);
         assertThat(reduce.sourceText(), startsWith("**Sample:** the parts summarize 2 of "));
         assertThat(reduce.sourceText(), containsString(MapReduceMath.PART_LABEL + "2:"));
-    }
-
-    // <editor-fold defaultstate="collapsed" desc="test review">
-    @Test
-    public void takeUsage_aFailedCall_stillCounts() throws Exception {
-        // arrange: the request fails, its usage was reported
-        final GenerationProvider provider = new GenerationProvider() {
-            @Override
-            public String generate(final GenerationRequest request) throws java.io.IOException {
-                throw new java.io.IOException("the server is down");
-            }
-
-            @Override
-            public net.ladenthin.srcmorph.provider.GenerationUsage lastUsage() {
-                return new net.ladenthin.srcmorph.provider.GenerationUsage(1, 100, 0, 0, "");
-            }
-        };
-        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
-
-        // act
-        assertThrows(
-                java.io.IOException.class,
-                () -> support.generate(normalRule("m", null), tempFile("Small", ".java"), "file", "x"));
-
-        // assert
-        assertThat(support.takeUsage().promptTokens(), is(100L));
     }
 
     @Test
@@ -1443,7 +1533,7 @@ public class SummaryGeneratorTest {
     }
 
     @Test
-    public void sampleChunks_labelsEveryChunkWithTheSample() throws Exception {
+    public void sampleChunks_everyChunk_isLabelledWithTheSample() throws Exception {
         // arrange
         final List<GenerationRequest> requests = new ArrayList<>();
         final GenerationProvider provider = request -> {
@@ -1462,19 +1552,20 @@ public class SummaryGeneratorTest {
     }
 
     @Test
-    public void countedTokens_aPromptAtTheLimit_isSent_oneAboveIsNot() throws Exception {
+    public void countedTokens_aPromptAtOrAboveTheLimit_isSentOnlyAtTheLimit() throws Exception {
         // arrange
         final CountingProvider atLimit = new CountingProvider(r -> NORMAL_WINDOW_TOKEN_LIMIT);
         final CountingProvider aboveLimit = new CountingProvider(r -> NORMAL_WINDOW_TOKEN_LIMIT + 1);
         final String source = largeSource(300);
+        final SummaryGenerator aboveLimitSupport = supportWithModels(aboveLimit, normalWindowModel("m"));
+        final RoutingRule sampleRule = oversizeRule("m", "sample", 0);
+        final Path contextFile = tempFile("Small", ".java");
 
         // act
         supportWithModels(atLimit, normalWindowModel("m"))
                 .generate(normalRule("m", null), tempFile("Small", ".java"), "file", source);
-        final java.io.IOException failed = assertThrows(
-                java.io.IOException.class,
-                () -> supportWithModels(aboveLimit, normalWindowModel("m"))
-                        .generate(oversizeRule("m", "sample", 0), tempFile("Small", ".java"), "file", source));
+        final IOException failed = assertThrows(
+                IOException.class, () -> aboveLimitSupport.generate(sampleRule, contextFile, "file", source));
 
         // assert
         assertThat(atLimit.generated.size(), is(1));

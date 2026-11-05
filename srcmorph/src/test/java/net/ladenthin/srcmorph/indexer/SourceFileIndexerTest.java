@@ -11,9 +11,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -117,41 +122,49 @@ public class SourceFileIndexerTest {
 
     // <editor-fold defaultstate="collapsed" desc="collectCandidates">
     @Test
-    public void collectCandidates_returnsMatchingJavaFile() throws Exception {
+    public void collectCandidates_oneJavaFile_returnsMatchingJavaFile() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path sourceRoot = temp.resolve("src/main/java");
         writeJava(sourceRoot.resolve("com/example/Foo.java"), "class Foo {}\n");
 
+        // act
         final List<Path> candidates = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .collectCandidates(sourceRoot);
 
+        // assert
         assertThat(candidates.size(), is(equalTo(1)));
         assertThat(candidates.get(0).getFileName().toString(), is(equalTo("Foo.java")));
     }
 
     @Test
-    public void collectCandidates_excludesGlobAndSizeBand() throws Exception {
+    public void collectCandidates_excludeGlobAndMaxSize_excludesGlobAndSizeBand() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path sourceRoot = temp.resolve("src/main/java");
         writeJava(sourceRoot.resolve("com/example/Foo.java"), "class Foo {}\n");
         writeJava(sourceRoot.resolve("com/example/package-info.java"), "package com.example;\n");
         writeSizedJava(sourceRoot.resolve("com/example/Big.java"), 5000);
 
+        // act
         // exclude package-info, and a max band of 1000 bytes drops Big.java
         final List<Path> candidates = indexer(
                         temp, temp.resolve("out"), Arrays.asList("**/package-info.java"), 0L, 1000L)
                 .collectCandidates(sourceRoot);
 
+        // assert
         assertThat(candidates.size(), is(equalTo(1)));
         assertThat(candidates.get(0).getFileName().toString(), is(equalTo("Foo.java")));
     }
 
     @Test
-    public void collectCandidates_sizeBandBoundaryMinExclusiveMaxInclusive() throws Exception {
+    public void collectCandidates_fileAtTheSizeBandBoundary_minExclusiveMaxInclusive() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path sourceRoot = temp.resolve("src/main/java");
         writeSizedJava(sourceRoot.resolve("com/example/Edge.java"), 1000);
 
+        // act, assert
         // max=1000 includes it (inclusive); min=1000 excludes it (exclusive)
         assertThat(
                 indexer(temp, temp.resolve("a"), Collections.<String>emptyList(), 0L, 1000L)
@@ -168,7 +181,8 @@ public class SourceFileIndexerTest {
 
     // <editor-fold defaultstate="collapsed" desc="classify">
     @Test
-    public void classify_routesByExtensionToPrompt() throws Exception {
+    public void classify_javaRule_routesByExtensionToPrompt() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "class Foo {}\n");
@@ -176,9 +190,11 @@ public class SourceFileIndexerTest {
         final List<RoutingRule> rules =
                 Arrays.asList(rule("java", Arrays.asList(".java"), false, false), rule("fallback", null, false, true));
 
+        // act
         final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(foo), rules);
 
+        // assert
         assertThat(plan.unmatched().isEmpty(), is(true));
         assertThat(plan.routedCount(), is(equalTo(1)));
         assertThat(
@@ -191,7 +207,8 @@ public class SourceFileIndexerTest {
     }
 
     @Test
-    public void classify_skipRuleSendsFileToSkipped() throws Exception {
+    public void classify_skipRule_sendsFileToSkipped() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path generated = temp.resolve("src/main/java/com/example/Generated.java");
         writeJava(generated, "class Generated {}\n");
@@ -200,24 +217,29 @@ public class SourceFileIndexerTest {
                 rule(null, Arrays.asList(".java"), true, false), // skip all .java
                 rule("fallback", null, false, true));
 
+        // act
         final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(generated), rules);
 
+        // assert
         assertThat(plan.skipped(), hasItem(generated));
         assertThat(plan.routedCount(), is(equalTo(0)));
     }
 
     @Test
     public void classify_noRuleAndNoFallback_recordsUnmatched() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "class Foo {}\n");
 
         final List<RoutingRule> rules = Collections.singletonList(rule("sql", Arrays.asList(".sql"), false, false));
 
+        // act
         final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(foo), rules);
 
+        // assert
         assertThat(plan.unmatched(), hasItem(foo));
         assertThat(plan.routedCount(), is(equalTo(0)));
     }
@@ -226,6 +248,7 @@ public class SourceFileIndexerTest {
     // <editor-fold defaultstate="collapsed" desc="indexFile">
     @Test
     public void indexFile_writesAiMd_thenSkipsUnchanged() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path outputRoot = temp.resolve("src/site/ai");
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
@@ -235,10 +258,12 @@ public class SourceFileIndexerTest {
         final RoutingRule rule = CommonTestFixtures.createFileRules().get(0);
         final SummaryGenerator support = mockSupport();
 
+        // act
         // first write
         final IndexOutcome wrote = indexer.indexFile(foo, rule, support, "", "", "");
         final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
 
+        // assert
         assertThat(wrote, is(IndexOutcome.WRITTEN));
         assertThat(Files.exists(aiFile), is(true));
         final AiMdDocument document = documentCodec.read(aiFile);
@@ -246,8 +271,11 @@ public class SourceFileIndexerTest {
         assertThat(document.header().title(), is(equalTo("Foo.java")));
         assertThat(document.body().trim().isEmpty(), is(false));
 
+        // act
         // second write — unchanged source, so it is skipped
         final IndexOutcome wroteAgain = indexer.indexFile(foo, rule, support, "", "", "");
+
+        // assert
         assertThat(wroteAgain, is(IndexOutcome.UNCHANGED));
     }
 
@@ -527,15 +555,26 @@ public class SourceFileIndexerTest {
         Files.write(file, bytes);
     }
 
+    private static List<String> names(final List<Path> files) {
+        final List<String> names = new ArrayList<>();
+        for (final Path file : files) {
+            names.add(String.valueOf(file.getFileName()));
+        }
+        names.sort(null);
+        return names;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="constructor -- fileNames and fileInterpreters">
     @Test
     public void constructor_aFileNameWithADirectory_fails() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
+        final List<String> fileNames = Arrays.asList("Jenkinsfile", "docker/Dockerfile");
 
         // act
-        final IllegalArgumentException thrown = assertThrows(
-                IllegalArgumentException.class,
-                () -> indexerWithNames(temp, Arrays.asList("Jenkinsfile", "docker/Dockerfile")));
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> indexerWithNames(temp, fileNames));
 
         // assert
         assertThat(
@@ -543,6 +582,42 @@ public class SourceFileIndexerTest {
                 is("fileNames match a file's name without its directory, not 'docker/Dockerfile'; use pathGlob"));
     }
 
+    @Test
+    public void constructor_contentHeadCharsBelowAShebangLine_isRefused() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final List<String> none = Collections.<String>emptyList();
+
+        // act
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> indexer(temp, none, none, 255, 0L));
+
+        // assert
+        assertThat(
+                thrown.getMessage(), is(equalTo("contentHeadChars must be at least 256 (a whole #! line), not 255")));
+        assertDoesNotThrow(
+                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 256, 0L));
+    }
+
+    @Test
+    public void constructor_interpreterWithItsDirectory_isRefused() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final List<String> fileNames = Collections.<String>emptyList();
+        final List<String> interpreters = Arrays.asList("/bin/bash");
+
+        // act
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> indexer(temp, fileNames, interpreters, 256, 0L));
+
+        // assert
+        assertThat(
+                thrown.getMessage(),
+                is(equalTo("an interpreter is named without its directory (bash, not /bin/bash): '/bin/bash'")));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="collectCandidates -- fileNames and fileInterpreters">
     @Test
     public void collectCandidates_fileNames_selectFilesWithoutAnExtensionInAnyCase() throws Exception {
         // arrange
@@ -567,6 +642,7 @@ public class SourceFileIndexerTest {
 
     @Test
     public void collectCandidates_withoutFileNames_takesTheExtensionsOnly() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         writeJava(temp.resolve("Foo.java"), "class Foo {}\n");
         writeJava(temp.resolve("Dockerfile"), "FROM eclipse-temurin:21\n");
@@ -587,6 +663,7 @@ public class SourceFileIndexerTest {
                 new RegenerateOn(),
                 SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
 
+        // act, assert
         assertThat(withNull.collectCandidates(temp).size(), is(1));
     }
 
@@ -617,17 +694,54 @@ public class SourceFileIndexerTest {
 
     @Test
     public void collectCandidates_fileInterpreters_keepTheSizeBand() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         writeJava(temp.resolve("bin/small"), "#!/bin/bash\n");
         writeJava(temp.resolve("bin/large"), "#!/bin/bash\n" + "x".repeat(200));
 
+        // act
         final List<String> selected =
                 names(indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 256, 100L)
                         .collectCandidates(temp));
 
+        // assert
         assertThat(selected, is(equalTo(Arrays.asList("small"))));
     }
 
+    @Test
+    public void collectCandidates_aFileWithoutAnExtensionThatCannotBeRead_isSkippedAndTheWalkGoesOn() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path locked = temp.resolve("bin/locked");
+        writeJava(locked, "#!/bin/bash\n");
+        writeJava(temp.resolve("bin/deploy"), "#!/bin/bash\n");
+        final SourceFileIndexer indexer =
+                indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 256, 0L);
+
+        // act
+        final List<String> selected;
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            // no read permission (the test does not run as root)
+            Files.setPosixFilePermissions(locked, Collections.emptySet());
+            try {
+                selected = names(indexer.collectCandidates(temp));
+            } finally {
+                Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("rw-------"));
+            }
+        } else {
+            // Windows refuses a read of a range another handle locks
+            try (FileChannel channel = FileChannel.open(locked, StandardOpenOption.WRITE);
+                    FileLock lock = channel.lock()) {
+                selected = names(indexer.collectCandidates(temp));
+            }
+        }
+
+        // assert
+        assertThat(selected, is(equalTo(Arrays.asList("deploy"))));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="classify -- fileInterpreters and contentMatches">
     @Test
     public void classify_interpretersRule_routesAScriptByItsFirstLine() throws Exception {
         // arrange
@@ -668,7 +782,7 @@ public class SourceFileIndexerTest {
         final SourceFileIndexer shortOne =
                 indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 299, 0L);
 
-        // act and assert: the start alone, and the whole source a lines rule reads
+        // act, assert: the start alone, and the whole source a lines rule reads
         assertThat(promptKeyOf(reach.classify(Arrays.asList(file), contentOnly), file), is(equalTo("marked")));
         assertThat(promptKeyOf(shortOne.classify(Arrays.asList(file), contentOnly), file), is(equalTo("fallback")));
         assertThat(promptKeyOf(reach.classify(Arrays.asList(file), withLines), file), is(equalTo("marked")));
@@ -676,21 +790,8 @@ public class SourceFileIndexerTest {
     }
 
     @Test
-    public void constructor_contentHeadCharsBelowAShebangLine_isRefused() throws Exception {
-        final Path temp = Files.createTempDirectory("ai-index-test");
-
-        final IllegalArgumentException thrown = assertThrows(
-                IllegalArgumentException.class,
-                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 255, 0L));
-
-        assertThat(
-                thrown.getMessage(), is(equalTo("contentHeadChars must be at least 256 (a whole #! line), not 255")));
-        assertDoesNotThrow(
-                () -> indexer(temp, Collections.<String>emptyList(), Collections.<String>emptyList(), 256, 0L));
-    }
-
-    @Test
     public void classify_aContentHeadCharsLargerThanTheFile_readsNoMoreThanTheFile() throws Exception {
+        // arrange
         // Integer.MAX_VALUE characters would be an 8 GB buffer; the file's size bounds it
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path file = temp.resolve("src/Small.java");
@@ -698,64 +799,13 @@ public class SourceFileIndexerTest {
         final List<RoutingRule> rules =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
 
+        // act
         final IndexPlan plan = indexer(
                         temp, Collections.<String>emptyList(), Collections.<String>emptyList(), Integer.MAX_VALUE, 0L)
                 .classify(Arrays.asList(file), rules);
 
+        // assert
         assertThat(promptKeyOf(plan, file), is(equalTo("marked")));
-    }
-
-    @Test
-    public void collectCandidates_aFileWithoutAnExtensionThatCannotBeRead_isSkippedAndTheWalkGoesOn() throws Exception {
-        final Path temp = Files.createTempDirectory("ai-index-test");
-        final Path locked = temp.resolve("bin/locked");
-        writeJava(locked, "#!/bin/bash\n");
-        writeJava(temp.resolve("bin/deploy"), "#!/bin/bash\n");
-        final SourceFileIndexer indexer =
-                indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 256, 0L);
-
-        final List<String> selected;
-        if (java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
-            // no read permission (the test does not run as root)
-            Files.setPosixFilePermissions(locked, java.util.Collections.emptySet());
-            try {
-                selected = names(indexer.collectCandidates(temp));
-            } finally {
-                Files.setPosixFilePermissions(
-                        locked, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
-            }
-        } else {
-            // Windows refuses a read of a range another handle locks
-            try (java.nio.channels.FileChannel channel =
-                            java.nio.channels.FileChannel.open(locked, java.nio.file.StandardOpenOption.WRITE);
-                    java.nio.channels.FileLock lock = channel.lock()) {
-                selected = names(indexer.collectCandidates(temp));
-            }
-        }
-
-        assertThat(selected, is(equalTo(Arrays.asList("deploy"))));
-    }
-
-    @Test
-    public void constructor_interpreterWithItsDirectory_isRefused() throws Exception {
-        final Path temp = Files.createTempDirectory("ai-index-test");
-
-        final IllegalArgumentException thrown = assertThrows(
-                IllegalArgumentException.class,
-                () -> indexer(temp, Collections.<String>emptyList(), Arrays.asList("/bin/bash"), 256, 0L));
-
-        assertThat(
-                thrown.getMessage(),
-                is(equalTo("an interpreter is named without its directory (bash, not /bin/bash): '/bin/bash'")));
-    }
-
-    private static List<String> names(final List<Path> files) {
-        final List<String> names = new java.util.ArrayList<>();
-        for (final Path file : files) {
-            names.add(String.valueOf(file.getFileName()));
-        }
-        names.sort(null);
-        return names;
     }
 
     @Test
@@ -808,6 +858,7 @@ public class SourceFileIndexerTest {
 
     @Test
     public void classify_contentMatches_readsAMultiByteHeadWhole() throws Exception {
+        // arrange
         // 16,384 characters of three bytes each are 49,152 bytes: the head reads them all
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path wide = temp.resolve("src/Wide.java");
@@ -816,9 +867,11 @@ public class SourceFileIndexerTest {
         final List<RoutingRule> rules =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
 
+        // act
         final IndexPlan plan =
                 indexerWithNames(temp, Collections.<String>emptyList()).classify(Arrays.asList(wide), rules);
 
+        // assert
         assertThat(promptKeyOf(plan, wide), is(equalTo("marked")));
     }
 
@@ -850,7 +903,9 @@ public class SourceFileIndexerTest {
         assertThat(promptKeyOf(headOnly, bom), is(equalTo("first")));
         assertThat(promptKeyOf(wholeSource, bom), is(equalTo("first")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="indexFile -- byte order marks">
     @Test
     public void indexFile_sourceWithAByteOrderMark_countsFromItsFirstWord() throws Exception {
         // arrange
@@ -903,14 +958,17 @@ public class SourceFileIndexerTest {
 
     @Test
     public void indexFile_incompleteAnswer_writesNothing() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path outputRoot = temp.resolve("src/site/ai");
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "package com.example;\nclass Foo {}\n");
 
+        // act
         final IndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
                 .indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "", "");
 
+        // assert
         // the facts line alone is no summary: nothing is written, so the next run tries again
         assertThat(outcome, is(IndexOutcome.FAILED));
         assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Foo.java.ai.md")), is(false));
@@ -918,6 +976,7 @@ public class SourceFileIndexerTest {
 
     @Test
     public void indexFile_incompleteAnswerForAChangedSource_keepsTheOlderSummary() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path outputRoot = temp.resolve("src/site/ai");
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
@@ -927,27 +986,35 @@ public class SourceFileIndexerTest {
         assertThat(indexer.indexFile(foo, ruleWithFacts(), mockSupport(), "", "", ""), is(IndexOutcome.WRITTEN));
         final byte[] older = Files.readAllBytes(aiFile);
 
+        // act
         writeJava(foo, "package com.example;\nclass Foo { int x; }\n");
         final IndexOutcome outcome = indexer.indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "", "");
 
+        // assert
         assertThat(outcome, is(IndexOutcome.FAILED));
         assertThat(Arrays.equals(Files.readAllBytes(aiFile), older), is(true));
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="targetFile">
     @Test
-    public void targetFile_isTheSourcePathBelowSrcPlusAiMd() throws Exception {
+    public void targetFile_sourceFile_isTheSourcePathBelowSrcPlusAiMd() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path outputRoot = temp.resolve("src/site/ai");
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
 
+        // act, assert
         assertThat(
                 indexer.targetFile(temp.resolve("src/main/java/com/example/Foo.java")),
                 is(equalTo(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="indexFile -- what reaches the model">
     @Test
     public void indexFile_crLfSource_reachesTheModelAndTheChunksWithLineFeedsOnly() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path big = temp.resolve("src/main/java/com/example/Big.java");
         final StringBuilder source = new StringBuilder();
@@ -972,9 +1039,11 @@ public class SourceFileIndexerTest {
         rule.setOnOversize("sampleChunks");
         rule.setMaxChunks(3);
 
+        // act
         final IndexOutcome outcome = indexer(temp, temp.resolve("src/site/ai"), Collections.<String>emptyList(), 0L, 0L)
                 .indexFile(big, rule, recording, "", "", "");
 
+        // assert
         assertThat(outcome, is(IndexOutcome.WRITTEN));
         // three chunks and one reduce
         assertThat(sent.size(), is(4));
@@ -984,7 +1053,8 @@ public class SourceFileIndexerTest {
     }
 
     @Test
-    public void indexFile_theModelReadsThePathBelowTheBaseDirectory() throws Exception {
+    public void indexFile_sourceBelowTheBaseDirectory_theModelReadsThePathBelowTheBaseDirectory() throws Exception {
+        // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path web = temp.resolve("billing/src/main/webapp/WEB-INF/web.xml");
         writeJava(web, "<web-app/>");
@@ -1002,10 +1072,13 @@ public class SourceFileIndexerTest {
                 new PromptPreparer(prompts),
                 new ModelRegistry(Collections.singletonList(model)));
 
+        // act
         final IndexOutcome outcome = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .indexFile(web, CommonTestFixtures.createFileFieldGeneration(), recording, "", "", "");
 
+        // assert
         assertThat(outcome, is(IndexOutcome.WRITTEN));
         assertThat(heads, is(equalTo(Arrays.asList("billing/src/main/webapp/WEB-INF/web.xml"))));
     }
+    // </editor-fold>
 }

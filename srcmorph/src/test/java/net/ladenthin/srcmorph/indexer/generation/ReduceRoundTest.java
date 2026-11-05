@@ -22,6 +22,7 @@ public class ReduceRoundTest {
         return new String(chars);
     }
 
+    // <editor-fold defaultstate="collapsed" desc="of">
     @Test
     public void of_partialsThatFitOneBatch_areOneBatchOfTheFinalAnswer() {
         // arrange
@@ -70,9 +71,11 @@ public class ReduceRoundTest {
         assertThat(round.shortenedParts(), is(0));
         assertThat(round.passesOn(partials), is(false));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="passesOn">
     @Test
-    public void passesOn_aBatchOfOnePartialInARoundOfSeveralBatches() {
+    public void passesOn_aBatchOfOnePartialInARoundOfSeveralBatches_isTrue() {
         // arrange
         final String x = text('x', 600);
         final List<String> rest = Arrays.asList(text('y', 600), "z", "w");
@@ -86,13 +89,17 @@ public class ReduceRoundTest {
         assertThat(round.passesOn(Collections.singletonList(x)), is(true));
         assertThat(round.passesOn(rest), is(false));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="batches">
     @Test
-    public void batches_cannotBeChanged() {
+    public void batches_addCalled_throwsException() {
         // arrange
         final ReduceRound round = ReduceRound.of(Arrays.asList("a", "b"), BUDGET);
+        final List<List<String>> batches = round.batches();
 
-        // act + assert
-        assertThrows(UnsupportedOperationException.class, () -> round.batches().add(Collections.<String>emptyList()));
+        // act, assert
+        assertThrows(UnsupportedOperationException.class, () -> batches.add(Collections.<String>emptyList()));
     }
+    // </editor-fold>
 }

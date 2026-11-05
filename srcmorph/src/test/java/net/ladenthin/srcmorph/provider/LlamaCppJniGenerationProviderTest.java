@@ -63,6 +63,7 @@ public class LlamaCppJniGenerationProviderTest {
     // <editor-fold defaultstate="collapsed" desc="generate">
     @Test
     public void generate_realProviderAtATinyBudget_refusesTheCutOffAnswerWithWhatItWrote() throws Exception {
+        // arrange
         NativeLlamaAvailability.assumeAvailable();
         final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         final String source = """
@@ -80,8 +81,11 @@ public class LlamaCppJniGenerationProviderTest {
         // hands over what was written, so a real run never stores it as a summary.
         try (LlamaCppJniGenerationProvider provider =
                 new LlamaCppJniGenerationProvider(config(32768, 8), promptSupport)) {
+            // act
             final IncompleteAnswerException thrown =
                     assertThrows(IncompleteAnswerException.class, () -> provider.generate(request(source)));
+
+            // assert
             assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
             assertThat(thrown.partialText().trim().isEmpty(), is(false));
         }
@@ -91,6 +95,7 @@ public class LlamaCppJniGenerationProviderTest {
     // <editor-fold defaultstate="collapsed" desc="generateWithTimings">
     @Test
     public void generateWithTimings_realProvider_reportsEngineTimingsThatScaleWithPromptSize() throws Exception {
+        // arrange
         NativeLlamaAvailability.assumeAvailable();
         final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         final StringBuilder large = new StringBuilder("package com.example;\npublic class Big {\n");
@@ -105,9 +110,11 @@ public class LlamaCppJniGenerationProviderTest {
 
         try (LlamaCppJniGenerationProvider provider =
                 new LlamaCppJniGenerationProvider(config(4096, 16), promptSupport)) {
+            // act
             final TimedGeneration small = provider.generateWithTimings(request("class A {}"));
             final TimedGeneration big = provider.generateWithTimings(request(large.toString()));
 
+            // assert
             // Real engine timings (not zero-rate default), so the plan gets exact throughput.
             assertThat(small.prefillTokensPerSecond() > 0.0d, is(true));
             assertThat(small.decodeTokensPerSecond() > 0.0d, is(true));
@@ -128,15 +135,18 @@ public class LlamaCppJniGenerationProviderTest {
     // <editor-fold defaultstate="collapsed" desc="promptTokens">
     @Test
     public void promptTokens_realProvider_areTheTokensTheCallsPrefillReads() throws Exception {
+        // arrange
         NativeLlamaAvailability.assumeAvailable();
         final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         final GenerationRequest request = request("SELECT 1, 2, 3 FROM dual WHERE x = 'a,b;c';\n");
 
         try (LlamaCppJniGenerationProvider provider =
                 new LlamaCppJniGenerationProvider(config(4096, 16), promptSupport)) {
+            // act
             final int counted = provider.promptTokens(request).getAsInt();
             final TimedGeneration generated = provider.generateWithTimings(request);
 
+            // assert
             // the count is the prompt the call reads, chat template included, before any call is made
             assertThat(counted, is(generated.totalPromptTokens()));
         }

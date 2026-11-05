@@ -52,8 +52,10 @@ public class SummaryGeneratorRealModelTest {
         return sb.toString();
     }
 
+    // <editor-fold defaultstate="collapsed" desc="generate">
     @Test
     public void mapReduceWithFacts_realModel_producesFactsPlusSummary() throws Exception {
+        // arrange
         NativeLlamaAvailability.assumeAvailable();
 
         final ModelDefinition def = new ModelDefinition();
@@ -92,8 +94,11 @@ public class SummaryGeneratorRealModelTest {
 
         try (LlamaCppJniGenerationProvider provider = new LlamaCppJniGenerationProvider(jniConfig, promptSupport)) {
             final SummaryGenerator support = new SummaryGenerator(provider, prep, models);
+
+            // act
             final SummaryResult result = support.generate((rule), contextFile, "file", source);
 
+            // assert
             // The exact facts (counted over the whole source) lead the body; the map-reduced AI summary
             // follows. This proves the real-model chunk -> hierarchical-reduce path completes end-to-end.
             assertThat(result.body(), startsWith(FactExtractor.FACTS_HEADER));
@@ -104,4 +109,5 @@ public class SummaryGeneratorRealModelTest {
                     is(true));
         }
     }
+    // </editor-fold>
 }

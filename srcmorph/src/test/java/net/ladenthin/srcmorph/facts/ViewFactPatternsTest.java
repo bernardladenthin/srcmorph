@@ -49,6 +49,7 @@ public class ViewFactPatternsTest {
 
     @Test
     public void jsp_directivesAndServerCode_countAndAJspCommentDoesNot() {
+        // act, assert
         assertThat(count(JSP, "page directives", PAGE), is(1));
         assertThat(count(JSP, "taglib directives", PAGE), is(1));
         assertThat(count(JSP, "includes and forwards", PAGE), is(2));
@@ -60,7 +61,8 @@ public class ViewFactPatternsTest {
     }
 
     @Test
-    public void jsp_dataTagsAndForms() {
+    public void jsp_dataTagsAndForms_countEach() {
+        // act, assert
         assertThat(count(JSP, "EL expressions", PAGE), is(3));
         assertThat(count(JSP, "prefixed tags", PAGE), is(5));
         assertThat(count(JSP, "forms", PAGE), is(2));
@@ -69,7 +71,8 @@ public class ViewFactPatternsTest {
     }
 
     @Test
-    public void jsp_tagFileAttributes_andAnUnclosedCommentRunsToTheEnd() {
+    public void jsp_tagFileAttributesAndAnUnclosedComment_countTheAttributeAndRunToTheEnd() {
+        // act, assert
         assertThat(count(JSP, "tag file attributes", "<%@ attribute name=\"total\" required=\"true\" %>\n"), is(1));
         assertThat(count(JSP, "scriptlets", "<% a(); %>\n<%-- <% b(); %>\n<% c(); %>\n"), is(1));
     }
@@ -85,7 +88,8 @@ public class ViewFactPatternsTest {
             + "</ui:composition>\n";
 
     @Test
-    public void facelets_countsBindingsFormsAndTemplatesAndNotAComment() {
+    public void facelets_viewWithComment_countsBindingsFormsAndTemplatesAndNotAComment() {
+        // act, assert
         assertThat(count(FACELETS, "EL expressions", VIEW), is(4));
         assertThat(count(FACELETS, "forms", VIEW), is(1));
         assertThat(count(FACELETS, "input fields", VIEW), is(2));

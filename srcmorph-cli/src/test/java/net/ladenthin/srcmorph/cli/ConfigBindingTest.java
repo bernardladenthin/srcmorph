@@ -34,25 +34,36 @@ public class ConfigBindingTest {
     private static final Path MINIMAL_GENERATE_JSON = Path.of("src/test/resources/test-fixtures/minimal-generate.json");
     private static final Path MINIMAL_GENERATE_YAML = Path.of("src/test/resources/test-fixtures/minimal-generate.yaml");
 
+    // <editor-fold defaultstate="collapsed" desc="fromJson">
     @Test
-    public void jsonFixture_bindsExpectedObjectGraph() throws IOException {
+    public void fromJson_minimalGenerateFixture_bindsExpectedObjectGraph() throws IOException {
+        // act
         final CConfiguration configuration = Main.fromJson(Main.readString(MINIMAL_GENERATE_JSON));
 
+        // assert
         assertConfigurationMatchesFixture(configuration);
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="fromYaml">
     @Test
-    public void yamlFixture_bindsExpectedObjectGraph() throws IOException {
+    public void fromYaml_minimalGenerateFixture_bindsExpectedObjectGraph() throws IOException {
+        // act
         final CConfiguration configuration = Main.fromYaml(Main.readString(MINIMAL_GENERATE_YAML));
 
+        // assert
         assertConfigurationMatchesFixture(configuration);
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="fromJsonAndFromYaml">
     @Test
-    public void jsonAndYamlFixtures_bindToEquivalentConfigurations() throws IOException {
+    public void fromJsonAndFromYaml_minimalGenerateFixtures_bindToEquivalentConfigurations() throws IOException {
+        // act
         final CConfiguration fromJson = Main.fromJson(Main.readString(MINIMAL_GENERATE_JSON));
         final CConfiguration fromYaml = Main.fromYaml(Main.readString(MINIMAL_GENERATE_YAML));
 
+        // assert
         assertThat(fromJson.command, is(equalTo(fromYaml.command)));
         assertThat(fromJson.srcMorph.getGenerationProvider(), is(equalTo(fromYaml.srcMorph.getGenerationProvider())));
         assertThat(
@@ -65,6 +76,7 @@ public class ConfigBindingTest {
                 fromJson.srcMorph.getRules().get(0).getPromptKey(),
                 is(equalTo(fromYaml.srcMorph.getRules().get(0).getPromptKey())));
     }
+    // </editor-fold>
 
     private static void assertConfigurationMatchesFixture(final CConfiguration configuration) {
         assertThat(configuration.command, is(equalTo(CCommand.GenerateFileIndex)));

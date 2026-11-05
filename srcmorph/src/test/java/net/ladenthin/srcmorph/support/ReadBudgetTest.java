@@ -11,36 +11,43 @@ import org.junit.jupiter.api.Test;
 
 public class ReadBudgetTest {
 
+    // <editor-fold defaultstate="collapsed" desc="limit">
     @Test
-    public void limit_isTwoThousandCharactersPerCharacterPlusAMillion() {
-        // act + assert
+    public void limit_textLength_isTwoThousandCharactersPerCharacterPlusAMillion() {
+        // act, assert
         assertThat(ReadBudget.limit(0), is(1_000_000L));
         assertThat(ReadBudget.limit(10), is(1_020_000L));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="charAt">
     @Test
-    public void charAt_readsItsBudgetAndStopsTheReadAfter() {
+    public void charAt_budgetOfThree_readsItsBudgetAndStopsTheReadAfter() {
         // arrange
         final ReadBudget text = new ReadBudget("abcd", 3);
 
-        // act + assert
+        // act, assert
         assertThat(text.charAt(0), is('a'));
         assertThat(text.charAt(1), is('b'));
         assertThat(text.charAt(3), is('d'));
         assertThrows(ReadBudget.Exhausted.class, () -> text.charAt(2));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="length, subSequence, toString">
     @Test
-    public void lengthSubSequenceToString_areThoseOfTheWrappedText() {
+    public void lengthSubSequenceToString_zeroBudget_areThoseOfTheWrappedText() {
         // arrange
         final ReadBudget text = new ReadBudget("abcd", 0);
 
-        // act + assert
+        // act, assert
         assertThat(text.length(), is(4));
         assertThat(text.subSequence(1, 3).toString(), is("bc"));
         assertThat(text.toString(), is("abcd"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="over">
     @Test
     public void over_aText_hasTheLimitOfItsLength() {
         // arrange
@@ -54,4 +61,5 @@ public class ReadBudgetTest {
         // assert
         assertThrows(ReadBudget.Exhausted.class, () -> text.charAt(0));
     }
+    // </editor-fold>
 }

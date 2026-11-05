@@ -62,7 +62,8 @@ public class HeaderHashesTest {
 
     // <editor-fold defaultstate="collapsed" desc="model">
     @Test
-    public void model_isTheKeyTheRemoteModelAndTheModelFileName() {
+    public void model_keyRemoteModelAndModelFile_hashesTheKeyTheRemoteModelAndTheModelFileName() {
+        // act, assert
         assertThat(
                 HeaderHashes.model("luna", model("gpt-6-luna", "/models/a.gguf")),
                 is(CHECKSUMS.calculateCrc32Hex("luna\u0000gpt-6-luna\u0000a.gguf")));
@@ -70,8 +71,10 @@ public class HeaderHashesTest {
 
     @Test
     public void model_anotherKeyRemoteModelOrModelFile_changesIt() {
+        // arrange
         final String base = HeaderHashes.model("luna", model("gpt-6-luna", "/models/a.gguf"));
 
+        // act, assert
         assertThat(
                 HeaderHashes.model("oss", model("gpt-6-luna", "/models/a.gguf")).equals(base), is(false));
         assertThat(
@@ -86,16 +89,20 @@ public class HeaderHashesTest {
 
     @Test
     public void model_aMovedModelDirectory_keepsIt() {
+        // arrange
         final String base = HeaderHashes.model("local", model("", "/models/a.gguf"));
 
+        // act, assert
         assertThat(HeaderHashes.model("local", model("", "C:\\other\\a.gguf")), is(base));
         assertThat(HeaderHashes.model("local", model("", "a.gguf")), is(base));
     }
 
     @Test
     public void model_withoutAModelPath_hashesAnEmptyFileName() {
+        // arrange
         final ModelDefinition remote = model("gpt-6-luna", null);
 
+        // act, assert
         assertThat(HeaderHashes.model("luna", remote), is(CHECKSUMS.calculateCrc32Hex("luna\u0000gpt-6-luna\u0000")));
     }
     // </editor-fold>
@@ -103,11 +110,13 @@ public class HeaderHashesTest {
     // <editor-fold defaultstate="collapsed" desc="children">
     @Test
     public void children_withoutSummaries_isEmpty() {
+        // act, assert
         assertThat(HeaderHashes.children(Collections.<String>emptyList()), is(""));
     }
 
     @Test
-    public void children_isEverySummaryInOrderEachClosed() {
+    public void children_summaries_hashesEverySummaryInOrderEachClosed() {
+        // act, assert
         assertThat(HeaderHashes.children(Arrays.asList("a", "b")), is(CHECKSUMS.calculateCrc32Hex("a\u0000b\u0000")));
         assertThat(
                 HeaderHashes.children(Arrays.asList("b", "a")).equals(HeaderHashes.children(Arrays.asList("a", "b"))),

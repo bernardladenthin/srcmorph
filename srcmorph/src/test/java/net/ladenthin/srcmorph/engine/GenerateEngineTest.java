@@ -13,11 +13,15 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,19 +29,28 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import net.ladenthin.srcmorph.CommonTestFixtures;
+import net.ladenthin.srcmorph.config.FactCounter;
 import net.ladenthin.srcmorph.config.FactDefinition;
 import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.PromptDefinition;
 import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.RuleCondition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.indexer.HeaderHashes;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.provider.GenerationProvider;
 import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
+import net.ladenthin.srcmorph.support.ChecksumSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -98,27 +111,36 @@ public class GenerateEngineTest {
         return config;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="execute">
     @Test
-    public void execute_missingFieldGenerationsThrowsSrcMorphException() throws IOException {
+    public void execute_missingFieldGenerations_throwsSrcMorphException() throws IOException {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setRules(null);
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(e.getMessage(), containsString("No rules configured"));
     }
 
     @Test
     public void execute_unclosedGlobInFileNamesOrExcludes_throwsSrcMorphException() throws IOException {
+        // arrange
         final SrcMorphConfiguration names = baseConfig();
         names.setFileNames(Collections.singletonList("Dockerfile.{dev"));
         final SrcMorphConfiguration excludes = baseConfig();
         excludes.setExcludes(Collections.singletonList("**/{target/**"));
+        final GenerateEngine byNameEngine = new GenerateEngine(names);
+        final GenerateEngine byExcludeEngine = new GenerateEngine(excludes);
 
-        final SrcMorphException byName =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(names).execute());
-        final SrcMorphException byExclude =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(excludes).execute());
+        // act
+        final SrcMorphException byName = assertThrows(SrcMorphException.class, byNameEngine::execute);
+        final SrcMorphException byExclude = assertThrows(SrcMorphException.class, byExcludeEngine::execute);
 
+        // assert
         assertThat(
                 byName.getMessage(),
                 containsString("Invalid excludes, fileNames, fileInterpreters or contentHeadChars: the glob"
@@ -131,23 +153,27 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_invalidInterpreterOrContentHeadChars_throwsSrcMorphException() throws IOException {
+        // arrange
         final SrcMorphConfiguration interpreter = baseConfig();
         interpreter.setFileInterpreters(Collections.singletonList("/bin/bash"));
         final SrcMorphConfiguration head = baseConfig();
         head.setContentHeadChars(0);
+        final GenerateEngine byInterpreterEngine = new GenerateEngine(interpreter);
+        final GenerateEngine byHeadEngine = new GenerateEngine(head);
 
-        final SrcMorphException byInterpreter =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(interpreter).execute());
-        final SrcMorphException byHead =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(head).execute());
+        // act
+        final SrcMorphException byInterpreter = assertThrows(SrcMorphException.class, byInterpreterEngine::execute);
+        final SrcMorphException byHead = assertThrows(SrcMorphException.class, byHeadEngine::execute);
 
+        // assert
         assertThat(byInterpreter.getMessage(), containsString("(bash, not /bin/bash): '/bin/bash'"));
         assertThat(
                 byHead.getMessage(), containsString("contentHeadChars must be at least 256 (a whole #! line), not 0"));
     }
 
     @Test
-    public void execute_fileInterpretersIndexAScriptWithoutAnExtension() throws Exception {
+    public void execute_fileInterpreters_indexAScriptWithoutAnExtension() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final Path script = tempDir.resolve("src/main/java/com/example/deploy");
         Files.write(script, "#!/usr/bin/env bash\necho deploy\n".getBytes(StandardCharsets.UTF_8));
@@ -158,14 +184,17 @@ public class GenerateEngineTest {
         fallback.setFallback(true);
         config.setRules(Arrays.asList(javaFileRule(), fallback));
 
+        // act
         final GenerateResult result = new GenerateEngine(config).execute();
 
+        // assert
         assertThat(result.written(), is(2));
         assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/deploy.ai.md")), is(true));
     }
 
     @Test
-    public void execute_fileNamesIndexAFileWithoutAnExtension() throws Exception {
+    public void execute_fileNames_indexAFileWithoutAnExtension() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final Path dockerfile = tempDir.resolve("src/main/java/com/example/Dockerfile");
         Files.write(dockerfile, "FROM eclipse-temurin:21\n".getBytes(StandardCharsets.UTF_8));
@@ -176,30 +205,38 @@ public class GenerateEngineTest {
         fallback.setFallback(true);
         config.setRules(Arrays.asList(javaFileRule(), fallback));
 
+        // act
         final GenerateResult result = new GenerateEngine(config).execute();
 
+        // assert
         assertThat(result.written(), is(2));
         assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Dockerfile.ai.md")), is(true));
     }
 
     @Test
-    public void execute_planOnlyStopsBeforeGenerating() throws Exception {
+    public void execute_planOnly_stopsBeforeGenerating() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setPlanOnly(true);
 
+        // act
         final GenerateResult result = new GenerateEngine(config).execute();
 
+        // assert
         assertThat(result.planOnly(), is(true));
         assertThat(result.written(), is(0));
         assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     @Test
-    public void execute_writesMatchedFileAndReportsCounts() throws Exception {
+    public void execute_matchedFile_writesItAndReportsCounts() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
 
+        // act
         final GenerateResult result = new GenerateEngine(config).execute();
 
+        // assert
         assertThat(result.planOnly(), is(false));
         assertThat(result.written(), is(1));
         assertThat(result.unchanged(), is(0));
@@ -209,18 +246,22 @@ public class GenerateEngineTest {
     }
 
     @Test
-    public void execute_secondRunWithoutForceReportsUnchanged() throws Exception {
+    public void execute_secondRunWithoutForce_reportsUnchanged() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         new GenerateEngine(config).execute();
 
+        // act
         final GenerateResult second = new GenerateEngine(config).execute();
 
+        // assert
         assertThat(second.written(), is(0));
         assertThat(second.unchanged(), is(1));
     }
 
     @Test
-    public void execute_unmatchedFileWithNoFallbackThrowsSrcMorphException() throws IOException {
+    public void execute_unmatchedFileWithNoFallback_throwsSrcMorphException() throws IOException {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final RoutingRule onlyMatchesTxt = new RoutingRule();
         onlyMatchesTxt.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
@@ -229,13 +270,18 @@ public class GenerateEngineTest {
         condition.setExtensions(Arrays.asList(".txt"));
         onlyMatchesTxt.setCondition(condition);
         config.setRules(Arrays.asList(onlyMatchesTxt));
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(e.getMessage(), containsString("matched no rule and no fallback"));
     }
 
     @Test
-    public void execute_oversizeFailThrowsSrcMorphException() throws Exception {
+    public void execute_oversizeFail_throwsSrcMorphException() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
 
         // Force the routed model's window to be smaller than the source, with the default
@@ -247,10 +293,15 @@ public class GenerateEngineTest {
         tinyWindow.setContextSize(1);
         tinyWindow.setMaxOutputTokens(0);
         config.setAiDefinitions(Collections.singletonList(tinyWindow));
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(e.getMessage(), containsString("exceed their routed model's context window"));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="user-facing failure paths">
 
@@ -307,12 +358,15 @@ public class GenerateEngineTest {
      */
     @Test
     public void execute_configuredSubtreeDoesNotExist_failsNamingIt() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setSubtrees(Collections.singletonList("does/not/exist"));
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(thrown.getMessage(), containsString("Subtree 'does/not/exist' does not exist"));
         assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
@@ -353,10 +407,10 @@ public class GenerateEngineTest {
         final RoutingRule rule = javaFileRule();
         rule.setFactsKey("no-such-group");
         config.setRules(Collections.singletonList(rule));
+        final GenerateEngine engine = new GenerateEngine(config);
 
         // act
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
         // assert
         assertThat(thrown.getMessage(), containsString("Invalid factDefinitions/factsKey configuration"));
@@ -408,10 +462,10 @@ public class GenerateEngineTest {
         final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
         config.setRules(Collections.singletonList(rule));
+        final GenerateEngine engine = new GenerateEngine(config);
 
         // act
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
         // assert
         assertThat(thrown.getMessage(), containsString("Invalid factDefinitions/factsKey configuration"));
@@ -429,10 +483,10 @@ public class GenerateEngineTest {
         final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
         config.setRules(Collections.singletonList(rule));
+        final GenerateEngine engine = new GenerateEngine(config);
 
         // act
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
         // assert
         assertThat(thrown.getMessage(), containsString("cannot be read"));
@@ -484,55 +538,14 @@ public class GenerateEngineTest {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setGenerationProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        final GenerateEngine engine = new GenerateEngine(config);
 
         // act
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
         // assert
         assertThat(thrown.getMessage(), containsString("does not exist"));
         assertThat(thrown.getMessage(), containsString("mock.gguf"));
-    }
-
-    /**
-     * Where check() differs from the plan: planOnly does not apply to it, so the missing model file the
-     * plan-only run above passes fails the check, before any model loads.
-     *
-     * @throws IOException if the fixture cannot be built
-     */
-    @Test
-    public void check_planOnlyAndAMissingModel_failsOnTheModel() throws IOException {
-        // arrange
-        final SrcMorphConfiguration config = baseConfig();
-        config.setGenerationProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
-        config.setPlanOnly(true);
-
-        // act
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).check());
-
-        // assert
-        assertThat(thrown.getMessage(), containsString("mock.gguf"));
-        assertThat(thrown.getMessage(), containsString("does not exist"));
-    }
-
-    /**
-     * A check that passes writes nothing and reports a plan, also without planOnly.
-     *
-     * @throws Exception if the check fails
-     */
-    @Test
-    public void check_aConfigurationInOrder_passesAndWritesNothing() throws Exception {
-        // arrange
-        final SrcMorphConfiguration config = baseConfig();
-
-        // act
-        final GenerateResult result = new GenerateEngine(config).check();
-
-        // assert
-        assertThat(result.planOnly(), is(true));
-        assertThat(result.written(), is(0));
-        assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     // </editor-fold>
@@ -540,6 +553,7 @@ public class GenerateEngineTest {
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">
     @Test
     public void execute_fileWithAnIncompleteAnswer_writesTheOthersAndFailsAtTheEnd() throws Exception {
+        // arrange
         // a loopback OpenAI-compatible stub: an empty answer for Bar.java, a summary for every other file
         final HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/v1/chat/completions", exchange -> {
@@ -565,10 +579,12 @@ public class GenerateEngineTest {
             remote.setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
             remote.setRemoteModel("stub");
             config.setAiDefinitions(Collections.singletonList(remote));
+            final GenerateEngine engine = new GenerateEngine(config);
 
-            final SrcMorphException thrown =
-                    assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+            // act
+            final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+            // assert
             assertThat(thrown.getMessage(), containsString("1 file(s) were not written"));
             assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
             assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Bar.java.ai.md")), is(false));
@@ -580,6 +596,7 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_fileWhoseRequestFails_writesTheOthersAndFailsAtTheEnd() throws Exception {
+        // arrange
         // a loopback stub that refuses every request for Bar.java (401, not retried) and answers the others
         final HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/v1/chat/completions", exchange -> {
@@ -606,10 +623,12 @@ public class GenerateEngineTest {
             remote.setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
             remote.setRemoteModel("stub");
             config.setAiDefinitions(Collections.singletonList(remote));
+            final GenerateEngine engine = new GenerateEngine(config);
 
-            final SrcMorphException thrown =
-                    assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+            // act
+            final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+            // assert
             assertThat(thrown.getMessage(), containsString("1 file(s) were not written"));
             assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
             assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Bar.java.ai.md")), is(false));
@@ -620,6 +639,7 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_twoSourcesWithTheSameSummary_failNamingBoth() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         // src/main/java/com/example/Foo.java (from baseConfig) and main/java/com/example/Foo.java both
         // become main/java/com/example/Foo.java.ai.md
@@ -627,16 +647,19 @@ public class GenerateEngineTest {
         Files.createDirectories(twin.getParent());
         Files.write(twin, "class Foo {}\n".getBytes(StandardCharsets.UTF_8));
         config.setSubtrees(Arrays.asList("src/main/java", "main/java"));
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(thrown.getMessage(), containsString("would both be summarized into"));
         assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     @Test
     public void execute_promptThatFillsTheWindow_failsNamingModelAndPrompt() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final ModelDefinition tiny = mockModelDefinition();
         tiny.setContextSize(1);
@@ -644,12 +667,15 @@ public class GenerateEngineTest {
         config.setAiDefinitions(Collections.singletonList(tiny));
         // sample, so the over-window check of the plan lets the file through to this one
         config.getRules().get(0).setOnOversize("sample");
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(thrown.getMessage(), containsString("leaves no room for the source in the window of model"));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="oversize strategies, from the plan to the written file">
 
@@ -698,8 +724,10 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_deterministic_writesTheBodyWithoutAModel() throws Exception {
+        // act
         final GenerateResult result = new GenerateEngine(oversizeConfig("deterministic")).execute();
 
+        // assert
         assertThat(result.written(), is(2));
         assertThat(writtenBody("Big.java"), containsString("summarized deterministically (no AI)"));
         assertThat(writtenBody("Big.java"), containsString("First 20 lines"));
@@ -708,8 +736,10 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_sample_writesTheSummaryOfTheTrimmedHead() throws Exception {
+        // act
         final GenerateResult result = new GenerateEngine(oversizeConfig("sample")).execute();
 
+        // assert
         assertThat(result.written(), is(2));
         assertThat(writtenBody("Big.java"), containsString("Mock summary for Big.java"));
         assertThat(logged(Level.WARN, "Trimmed AI input for file"), is(true));
@@ -717,8 +747,10 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_mapReduce_summarizesTheChunksAndReducesThem() throws Exception {
+        // act
         final GenerateResult result = new GenerateEngine(oversizeConfig("mapReduce")).execute();
 
+        // assert
         assertThat(result.written(), is(2));
         assertThat(writtenBody("Big.java"), containsString("Mock summary for Big.java"));
         // every chunk of the file, so as many summarized as there are
@@ -779,32 +811,43 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_sampleChunks_readsMaxChunksAndSaysSo() throws Exception {
+        // act
         final GenerateResult result = new GenerateEngine(oversizeConfig("sampleChunks")).execute();
 
+        // assert
         assertThat(result.written(), is(2));
         assertThat(writtenBody("Big.java"), containsString("**Coverage:** 2 of 4 chunks summarized (sampled)\n\n"));
     }
 
     @Test
     public void execute_maxChunksWithoutSampleChunks_isAConfigurationError() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = oversizeConfig("mapReduce");
         config.getRules().get(0).setMaxChunks(6);
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(thrown.getMessage(), containsString("Invalid rules: maxChunks applies only to"));
     }
 
     @Test
     public void execute_fail_stopsAtThePlan() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = oversizeConfig("fail");
+        final GenerateEngine engine = new GenerateEngine(config);
 
-        assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).execute());
+        // act
+        assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="line endings">
     /**
      * A working copy with {@code \r\n} line endings (Windows with {@code core.autocrlf}) has the
      * checksum of one with {@code \n}: a run over it after a run over the {@code \n} copy finds the
@@ -814,17 +857,25 @@ public class GenerateEngineTest {
      */
     @Test
     public void execute_aCrLfCopyOfASummarizedSource_isUnchanged() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
+
+        // pre-assert
         assertThat(new GenerateEngine(config).execute().written(), is(1));
+
+        // arrange
         Files.write(
                 tempDir.resolve("src/main/java/com/example/Foo.java"),
                 "class Foo {}\r\n".getBytes(StandardCharsets.UTF_8));
 
+        // act
         final GenerateResult again = new GenerateEngine(config).execute();
 
+        // assert
         assertThat(again.written(), is(0));
         assertThat(again.unchanged(), is(1));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="run record">
     /** A factory whose providers summarize every file but one, for which they throw {@code failure}. */
@@ -832,9 +883,7 @@ public class GenerateEngineTest {
         return new GenerationProviderFactory() {
             @Override
             public GenerationProvider create(
-                    final String providerName,
-                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
+                    final String providerName, final ProviderConfig providerConfig, final PromptCatalog promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals(fileName)) {
                         throw failure;
@@ -846,7 +895,7 @@ public class GenerateEngineTest {
     }
 
     @Test
-    public void execute_anUncheckedProviderError_failsThatFileOnly_andTheRecordHasIt() throws Exception {
+    public void execute_anUncheckedProviderError_failsThatFileOnlyAndTheRecordHasIt() throws Exception {
         // arrange: the llama.cpp binding throws unchecked exceptions only
         final SrcMorphConfiguration config = baseConfig();
         Files.write(
@@ -854,12 +903,11 @@ public class GenerateEngineTest {
                 "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
+        final GenerateEngine engine =
+                new GenerateEngine(config, failingFor("Bar.java", new IllegalStateException("native")));
 
         // act
-        final SrcMorphException thrown = assertThrows(
-                SrcMorphException.class,
-                () -> new GenerateEngine(config, failingFor("Bar.java", new IllegalStateException("native")))
-                        .execute());
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
         // assert
         assertThat(thrown.getMessage(), containsString("1 file(s) were not written"));
@@ -879,9 +927,7 @@ public class GenerateEngineTest {
         final GenerationProviderFactory loading = new GenerationProviderFactory() {
             @Override
             public GenerationProvider create(
-                    final String providerName,
-                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
+                    final String providerName, final ProviderConfig providerConfig, final PromptCatalog promptSupport) {
                 return new GenerationProvider() {
                     private long load = 3_000_000_000L;
 
@@ -904,8 +950,7 @@ public class GenerateEngineTest {
         new GenerateEngine(config, loading).execute();
 
         // assert: the model's load in the totals, the file's own time without it
-        final com.fasterxml.jackson.databind.JsonNode json =
-                new com.fasterxml.jackson.databind.ObjectMapper().readTree(recordFile.toFile());
+        final JsonNode json = new ObjectMapper().readTree(recordFile.toFile());
         assertThat(
                 json.get("totals")
                         .get("modelLoadSeconds")
@@ -928,23 +973,22 @@ public class GenerateEngineTest {
         final GenerationProviderFactory aborting = new GenerationProviderFactory() {
             @Override
             public GenerationProvider create(
-                    final String providerName,
-                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
+                    final String providerName, final ProviderConfig providerConfig, final PromptCatalog promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
                         // what an interrupted blocking call does: the thread's flag is set, then it throws
                         Thread.currentThread().interrupt();
-                        throw new java.io.InterruptedIOException("interrupted");
+                        throw new InterruptedIOException("interrupted");
                     }
                     return "A summary.";
                 };
             }
         };
+        final GenerateEngine engine = new GenerateEngine(config, aborting);
 
         // act
         try {
-            assertThrows(java.io.InterruptedIOException.class, () -> new GenerateEngine(config, aborting).execute());
+            assertThrows(InterruptedIOException.class, engine::execute);
         } finally {
             // the test thread goes on, without the flag
             Thread.interrupted();
@@ -967,21 +1011,19 @@ public class GenerateEngineTest {
         final GenerationProviderFactory timingOut = new GenerationProviderFactory() {
             @Override
             public GenerationProvider create(
-                    final String providerName,
-                    final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
+                    final String providerName, final ProviderConfig providerConfig, final PromptCatalog promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
-                        throw new java.net.SocketTimeoutException("Read timed out");
+                        throw new SocketTimeoutException("Read timed out");
                     }
                     return "A summary.";
                 };
             }
         };
+        final GenerateEngine engine = new GenerateEngine(config, timingOut);
 
         // act
-        final SrcMorphException failed =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config, timingOut).execute());
+        final SrcMorphException failed = assertThrows(SrcMorphException.class, engine::execute);
 
         // assert: the run went on to the other file, and failed at its end naming the one
         assertThat(failed.getMessage(), containsString("1 file(s) were not written"));
@@ -991,18 +1033,19 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_runRecordFile_recordsEveryRoutedFile() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final Path recordFile = tempDir.resolve("records/run.json");
         config.setRunRecordFile(recordFile.toFile());
 
+        // act
         new GenerateEngine(config).execute();
-        final com.fasterxml.jackson.databind.JsonNode first =
-                new com.fasterxml.jackson.databind.ObjectMapper().readTree(recordFile.toFile());
+        final JsonNode first = new ObjectMapper().readTree(recordFile.toFile());
         new GenerateEngine(config).execute();
-        final com.fasterxml.jackson.databind.JsonNode second =
-                new com.fasterxml.jackson.databind.ObjectMapper().readTree(recordFile.toFile());
+        final JsonNode second = new ObjectMapper().readTree(recordFile.toFile());
 
-        final com.fasterxml.jackson.databind.JsonNode file = first.get("files").get(0);
+        // assert
+        final JsonNode file = first.get("files").get(0);
         assertThat(file.get("file").asText(), is("src/main/java/com/example/Foo.java"));
         assertThat(file.get("promptKey").asText(), is(CommonTestFixtures.PROMPT_KEY_FILE_BODY));
         assertThat(file.get("model").asText(), is(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT));
@@ -1024,7 +1067,7 @@ public class GenerateEngineTest {
         config.getRegenerateOn().setPrompt(false);
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
-        final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        final ObjectMapper json = new ObjectMapper();
 
         // act: write, change the prompt, run again (unchanged), then force
         new GenerateEngine(config).execute();
@@ -1035,7 +1078,7 @@ public class GenerateEngineTest {
                 .asText();
         config.getPromptDefinitions().get(0).setTemplate("Another prompt.\n\nFile: %s\n\nSource:\n%s\n");
         new GenerateEngine(config).execute();
-        final com.fasterxml.jackson.databind.JsonNode unchanged =
+        final JsonNode unchanged =
                 json.readTree(recordFile.toFile()).get("files").get(0);
         config.setForce(true);
         new GenerateEngine(config).execute();
@@ -1061,7 +1104,7 @@ public class GenerateEngineTest {
         final SrcMorphConfiguration config = baseConfig();
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
-        final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        final ObjectMapper json = new ObjectMapper();
         new GenerateEngine(config).execute();
         final String written = json.readTree(recordFile.toFile())
                 .get("files")
@@ -1072,7 +1115,7 @@ public class GenerateEngineTest {
         // act
         config.getPromptDefinitions().get(0).setTemplate("Another prompt.\n\nFile: %s\n\nSource:\n%s\n");
         final GenerateResult result = new GenerateEngine(config).execute();
-        final com.fasterxml.jackson.databind.JsonNode rewritten =
+        final JsonNode rewritten =
                 json.readTree(recordFile.toFile()).get("files").get(0);
         final GenerateResult again = new GenerateEngine(config).execute();
 
@@ -1089,63 +1132,61 @@ public class GenerateEngineTest {
 
     @Test
     public void execute_noRunRecordFile_writesNoRecord() throws Exception {
+        // act
         new GenerateEngine(baseConfig()).execute();
 
-        try (java.util.stream.Stream<Path> files = Files.walk(tempDir)) {
+        // assert
+        try (Stream<Path> files = Files.walk(tempDir)) {
             assertThat(files.anyMatch(p -> p.toString().endsWith(".json")), is(false));
         }
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="factsHash">
     @Test
-    public void factsHash_changesWithEveryPartOfACounter() {
-        final net.ladenthin.srcmorph.config.FactCounter counter = new net.ladenthin.srcmorph.config.FactCounter();
+    public void factsHash_everyPartOfACounterChanged_changesTheHash() {
+        // arrange
+        final FactCounter counter = new FactCounter();
         counter.setLabel("tables");
         counter.setPattern("CREATE TABLE");
-        final String plain = net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
+
+        // act
+        final String plain = FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(true);
-        final String ignored = net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
+        final String ignored = FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(false);
         counter.setPattern("CREATE VIEW");
-        final String otherPattern =
-                net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
+        final String otherPattern = FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setLabel("views");
-        final String otherLabel =
-                net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
+        final String otherLabel = FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setRaw(true);
-        final String raw = net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
+        final String raw = FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setRaw(false);
         counter.setDistinct(true);
-        final String distinct =
-                net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
+        final String distinct = FactExtractor.factsHash(Collections.singletonList(counter));
 
+        // assert
         assertThat(plain.matches("[0-9A-F]{8}"), is(true));
-        assertThat(
-                new java.util.HashSet<>(Arrays.asList(plain, ignored, otherPattern, otherLabel, raw, distinct)).size(),
-                is(6));
+        assertThat(new HashSet<>(Arrays.asList(plain, ignored, otherPattern, otherLabel, raw, distinct)).size(), is(6));
         // a counter without raw and distinct hashes as before they existed: its summaries stay current
-        assertThat(
-                plain,
-                is(new net.ladenthin.srcmorph.support.ChecksumSupport()
-                        .calculateCrc32Hex("tables\tCREATE TABLE\tfalse\n")));
-        assertThat(net.ladenthin.srcmorph.facts.FactExtractor.factsHash(null), is(""));
-        assertThat(net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.emptyList()), is(""));
+        assertThat(plain, is(new ChecksumSupport().calculateCrc32Hex("tables\tCREATE TABLE\tfalse\n")));
+        assertThat(FactExtractor.factsHash(null), is(""));
+        assertThat(FactExtractor.factsHash(Collections.emptyList()), is(""));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="prompt hash and prompt check">
-    private static net.ladenthin.srcmorph.config.PromptDefinition promptOf(final String key, final String template) {
-        final net.ladenthin.srcmorph.config.PromptDefinition definition =
-                new net.ladenthin.srcmorph.config.PromptDefinition();
+    // <editor-fold defaultstate="collapsed" desc="promptHash">
+    private static PromptDefinition promptOf(final String key, final String template) {
+        final PromptDefinition definition = new PromptDefinition();
         definition.setKey(key);
         definition.setTemplate(template);
         return definition;
     }
 
     @Test
-    public void promptHash_tellsTheMapPromptFromTheReducePrompt_andFromNone() {
+    public void promptHash_mapOrReducePromptOrNone_tellsThemApart() {
         // arrange
-        final net.ladenthin.srcmorph.prompt.PromptCatalog prompts = new net.ladenthin.srcmorph.prompt.PromptCatalog(
-                java.util.Arrays.asList(promptOf("body", "BODY"), promptOf("x", "X")));
+        final PromptCatalog prompts = new PromptCatalog(Arrays.asList(promptOf("body", "BODY"), promptOf("x", "X")));
         final RoutingRule plain = new RoutingRule();
         plain.setPromptKey("body");
         final RoutingRule mapped = plain.copy();
@@ -1154,15 +1195,58 @@ public class GenerateEngineTest {
         reduced.setReducePromptKey("x");
 
         // act
-        final String none = net.ladenthin.srcmorph.indexer.HeaderHashes.prompt(prompts, plain);
-        final String map = net.ladenthin.srcmorph.indexer.HeaderHashes.prompt(prompts, mapped);
-        final String reduce = net.ladenthin.srcmorph.indexer.HeaderHashes.prompt(prompts, reduced);
+        final String none = HeaderHashes.prompt(prompts, plain);
+        final String map = HeaderHashes.prompt(prompts, mapped);
+        final String reduce = HeaderHashes.prompt(prompts, reduced);
 
         // assert
         assertThat(map.equals(reduce), is(false));
         assertThat(map.equals(none), is(false));
         assertThat(reduce.equals(none), is(false));
-        assertThat(none, is(new net.ladenthin.srcmorph.support.ChecksumSupport().calculateCrc32Hex("BODY")));
+        assertThat(none, is(new ChecksumSupport().calculateCrc32Hex("BODY")));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="check">
+    /**
+     * Where check() differs from the plan: planOnly does not apply to it, so the missing model file the
+     * plan-only run above passes fails the check, before any model loads.
+     *
+     * @throws IOException if the fixture cannot be built
+     */
+    @Test
+    public void check_planOnlyAndAMissingModel_failsOnTheModel() throws IOException {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        config.setGenerationProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        config.setPlanOnly(true);
+        final GenerateEngine engine = new GenerateEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::check);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("mock.gguf"));
+        assertThat(thrown.getMessage(), containsString("does not exist"));
+    }
+
+    /**
+     * A check that passes writes nothing and reports a plan, also without planOnly.
+     *
+     * @throws Exception if the check fails
+     */
+    @Test
+    public void check_aConfigurationInOrder_passesAndWritesNothing() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).check();
+
+        // assert
+        assertThat(result.planOnly(), is(true));
+        assertThat(result.written(), is(0));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     @Test
@@ -1172,10 +1256,10 @@ public class GenerateEngineTest {
         final RoutingRule rule = config.getRules().get(0);
         rule.setOnOversize("mapReduce");
         rule.setMapPromptKey("no-such-prompt");
+        final GenerateEngine engine = new GenerateEngine(config);
 
         // act
-        final SrcMorphException failed =
-                assertThrows(SrcMorphException.class, () -> new GenerateEngine(config).check());
+        final SrcMorphException failed = assertThrows(SrcMorphException.class, engine::check);
 
         // assert
         assertThat(failed.getMessage(), containsString("no-such-prompt"));

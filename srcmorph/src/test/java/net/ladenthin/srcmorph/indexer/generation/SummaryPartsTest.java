@@ -10,9 +10,10 @@ import org.junit.jupiter.api.Test;
 
 public class SummaryPartsTest {
 
+    // <editor-fold defaultstate="collapsed" desc="text">
     @Test
     public void text_noAnswer_isEmpty() {
-        // act + assert
+        // act, assert
         assertThat(new SummaryParts().text(), is(""));
     }
 
@@ -33,7 +34,9 @@ public class SummaryPartsTest {
                         + "## Chunk 2 of 2, half 1\n\nsecond\n\n"
                         + "## Reduce round 1, batch 1 of 1 (2 parts)\n\nmerged\n\n"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="map">
     @Test
     public void map_aLabelWithoutItsEnd_isTheHeadingAsItIs() {
         // arrange
@@ -45,4 +48,5 @@ public class SummaryPartsTest {
         // assert
         assertThat(parts.text(), is("## Chunk 1 of 1\n\nonly\n\n"));
     }
+    // </editor-fold>
 }

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 public class UrlUserInfoTest {
 
+    // <editor-fold defaultstate="collapsed" desc="mask">
     @Test
     public void mask_urlsWithUserInfo_masksTheUserInfoOfEveryUrl() {
         // act
@@ -24,7 +25,8 @@ public class UrlUserInfoTest {
         // arrange
         final String text = "https://h/v1/@scope/pkg?by=a@b#x@y and mail me@example.org";
 
-        // act + assert
+        // act, assert
         assertThat(UrlUserInfo.mask(text), is(text));
     }
+    // </editor-fold>
 }

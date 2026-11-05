@@ -21,7 +21,7 @@ public class GeneratorVersionTest {
     // <editor-fold defaultstate="collapsed" desc="version">
     /** The build filled the resource in: a version, not the placeholder. */
     @Test
-    public void version_isTheBuildsVersion() {
+    public void version_filledInByTheBuild_isTheBuildsVersion() {
         // act
         final String version = new GeneratorVersion().version();
 
@@ -33,16 +33,19 @@ public class GeneratorVersionTest {
     // <editor-fold defaultstate="collapsed" desc="read">
     @Test
     public void read_theVersionKey_isTrimmed() {
+        // act, assert
         assertThat(GeneratorVersion.read(stream("# a comment\nversion = 1.5.0 \n")), is("1.5.0"));
     }
 
     @Test
     public void read_noStream_isUnknown() {
+        // act, assert
         assertThat(GeneratorVersion.read(null), is(""));
     }
 
     @Test
     public void read_noVersionKey_isUnknown() {
+        // act, assert
         assertThat(GeneratorVersion.read(stream("other=1\n")), is(""));
     }
 

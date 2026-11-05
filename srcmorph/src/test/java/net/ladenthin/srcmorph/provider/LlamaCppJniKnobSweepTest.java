@@ -53,7 +53,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * ~90&nbsp;MB and the budget here is a handful of output tokens, so a case is a few seconds) and
  * name the culprit in the test name.</p>
  *
- * <p><b>No silent gaps.</b> {@link #everyKnob_isSweptOrExplicitlyExcluded()} reflects over
+ * <p><b>No silent gaps.</b> {@link #knobs_everyProviderConfigField_isSweptOrExplicitlyExcluded()} reflects over
  * {@link ProviderConfig}'s fields and fails when a knob is neither swept nor listed in
  * {@link #NOT_SWEPT} with a reason. A knob added later therefore reds this class until somebody
  * decides how it is covered, which is the part a hand-maintained list cannot promise.</p>
@@ -184,6 +184,7 @@ public class LlamaCppJniKnobSweepTest {
      * @param mutation applies that knob's non-default value to the baseline builder
      * @throws Exception if the provider fails to close
      */
+    // <editor-fold defaultstate="collapsed" desc="knob">
     @ParameterizedTest(name = "{0}")
     @MethodSource("knobs")
     public void knob_atNonDefaultValue_stillProducesOutput(
@@ -210,6 +211,7 @@ public class LlamaCppJniKnobSweepTest {
         assertThat(
                 "knob " + knobName + " produced an empty response", body.trim().isEmpty(), is(false));
     }
+    // </editor-fold>
 
     /**
      * Fails when a knob exists that is neither swept nor listed in {@link #NOT_SWEPT}.
@@ -219,17 +221,21 @@ public class LlamaCppJniKnobSweepTest {
      * cannot notice it. Static and synthetic fields are skipped so an instrumented run (JaCoCo adds
      * {@code $jacocoData}) does not read as a missing knob.</p>
      */
+    // <editor-fold defaultstate="collapsed" desc="knobs">
     @Test
-    public void everyKnob_isSweptOrExplicitlyExcluded() {
+    public void knobs_everyProviderConfigField_isSweptOrExplicitlyExcluded() {
+        // arrange
         final Set<String> declared = Arrays.stream(ProviderConfig.class.getDeclaredFields())
                 .filter(f -> !f.isSynthetic())
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
                 .map(Field::getName)
                 .collect(Collectors.toCollection(TreeSet::new));
 
+        // act
         final Set<String> covered = new LinkedHashSet<>(NOT_SWEPT.keySet());
         knobs().map(a -> (String) a.get()[0]).forEach(covered::add);
 
+        // assert
         final Set<String> uncovered = new TreeSet<>(declared);
         uncovered.removeAll(covered);
         assertThat(
@@ -247,4 +253,5 @@ public class LlamaCppJniKnobSweepTest {
         final List<String> swept = knobs().map(a -> (String) a.get()[0]).collect(Collectors.toList());
         assertThat(swept.size(), is(declared.size() - NOT_SWEPT.size()));
     }
+    // </editor-fold>
 }

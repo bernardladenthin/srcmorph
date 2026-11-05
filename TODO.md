@@ -95,17 +95,17 @@ breaking change, the CHANGELOG's Upgrading section names each one)
 comments, folds, no fully qualified names; the test style findings of SonarCloud: package-private
 test methods, one call in an `assertThrows` lambda)
 
-- [ ] B1 `support` (14 files)
-- [ ] B2 `config` (15)
-- [ ] B3 `facts` (16), `routing` (3)
-- [ ] B4 `document` (7), `prompt` (4)
-- [ ] B5 `provider` (20)
-- [ ] B6 `indexer` (9)
-- [ ] B7 `indexer.generation` (15)
-- [ ] B8 `engine` (12)
-- [ ] B9 `srcmorph-cli` (6), `srcmorph-maven-plugin` (8)
+- [x] B1 `support` (14 files)
+- [x] B2 `config` (15)
+- [x] B3 `facts` (16), `routing` (3)
+- [x] B4 `document` (7), `prompt` (4)
+- [x] B5 `provider` (20)
+- [x] B6 `indexer` (9)
+- [x] B7 `indexer.generation` (15)
+- [x] B8 `engine` (12)
+- [x] B9 `srcmorph-cli` (6), `srcmorph-maven-plugin` (8)
 - [ ] B10 PIT at 100 in all three modules; the counts in this file's sections are deleted
-- [ ] B11 `TEST_WRITING_GUIDE.md` says what the tests do: the SPDX header (not the old license
+- [x] B11 `TEST_WRITING_GUIDE.md` says what the tests do: the SPDX header (not the old license
   block), SLF4J and logback's `ListAppender` (not a Maven `Log`), the current class and package names.
   SonarCloud's "test methods should not be public" is not followed: the owner's guides write
   `public` test classes and methods

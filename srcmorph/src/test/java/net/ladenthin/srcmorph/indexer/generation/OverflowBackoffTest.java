@@ -14,18 +14,21 @@ public class OverflowBackoffTest {
 
     // <editor-fold defaultstate="collapsed" desc="nextWindow">
     @Test
-    public void nextWindow_isThreeQuartersOfTheLastOne() {
+    public void nextWindow_aWindowAboveTheMinimum_isThreeQuartersOfTheLastOne() {
+        // act, assert
         assertThat(OverflowBackoff.nextWindow(0, 8_000), is(6_000));
         assertThat(OverflowBackoff.nextWindow(2, 6_000), is(4_500));
     }
 
     @Test
-    public void nextWindow_notBelowTheMinimum() {
+    public void nextWindow_threeQuartersBelowTheMinimum_isNotBelowTheMinimum() {
+        // act, assert
         assertThat(OverflowBackoff.nextWindow(0, 1_200), is(OverflowBackoff.MIN_WINDOW_CHARS));
     }
 
     @Test
     public void nextWindow_atTheMinimum_thereIsNoSmallerOne() {
+        // act, assert
         assertThat(
                 OverflowBackoff.nextWindow(0, OverflowBackoff.MIN_WINDOW_CHARS), is(OverflowBackoff.NO_SMALLER_WINDOW));
         assertThat(OverflowBackoff.nextWindow(0, 500), is(OverflowBackoff.NO_SMALLER_WINDOW));
@@ -33,15 +36,23 @@ public class OverflowBackoffTest {
 
     @Test
     public void nextWindow_afterTheLastRetry_thereIsNoSmallerOne() {
+        // act, assert
         assertThat(OverflowBackoff.nextWindow(OverflowBackoff.MAX_RETRIES - 1, 8_000), is(6_000));
         assertThat(
                 OverflowBackoff.nextWindow(OverflowBackoff.MAX_RETRIES, 8_000), is(OverflowBackoff.NO_SMALLER_WINDOW));
+    }
+
+    @Test
+    public void nextWindow_ofAHugeWindow_doesNotOverflow() {
+        // act, assert
+        assertThat(OverflowBackoff.nextWindow(0, 40_000_000), is(30_000_000));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="isContextOverflow">
     @Test
-    public void isContextOverflow_theLocalModelsMessage() {
+    public void isContextOverflow_theLocalModelsMessage_isTrue() {
+        // act, assert
         assertThat(
                 OverflowBackoff.isContextOverflow(new IllegalStateException(
                         "request (9000 tokens) exceeds the available context size (8192 tokens)")),
@@ -49,28 +60,27 @@ public class OverflowBackoffTest {
     }
 
     @Test
-    public void isContextOverflow_aRemoteOverflow() {
+    public void isContextOverflow_aRemoteOverflow_isTrue() {
+        // act, assert
         assertThat(OverflowBackoff.isContextOverflow(new ContextOverflowException("too long")), is(true));
     }
 
     @Test
-    public void isContextOverflow_anywhereInTheCauseChain() {
+    public void isContextOverflow_anywhereInTheCauseChain_isTrue() {
+        // arrange
         final RuntimeException wrapped = new RuntimeException(
                 "generation failed", new IOException("x", new ContextOverflowException("too long")));
 
+        // act, assert
         assertThat(OverflowBackoff.isContextOverflow(wrapped), is(true));
     }
 
     @Test
-    public void isContextOverflow_otherErrors_andNone() {
+    public void isContextOverflow_otherErrorsAndNone_isFalse() {
+        // act, assert
         assertThat(OverflowBackoff.isContextOverflow(new IOException("connection reset")), is(false));
         assertThat(OverflowBackoff.isContextOverflow(new IOException((String) null)), is(false));
         assertThat(OverflowBackoff.isContextOverflow(null), is(false));
     }
     // </editor-fold>
-
-    @Test
-    public void nextWindow_ofAHugeWindow_doesNotOverflow() {
-        assertThat(OverflowBackoff.nextWindow(0, 40_000_000), is(30_000_000));
-    }
 }

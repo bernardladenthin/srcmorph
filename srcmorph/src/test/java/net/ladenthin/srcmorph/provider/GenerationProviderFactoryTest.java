@@ -20,67 +20,89 @@ public class GenerationProviderFactoryTest {
         return ProviderConfig.builder().modelPath("model.gguf").build();
     }
 
+    // <editor-fold defaultstate="collapsed" desc="create">
     @Test
-    public void blankProviderNameDefaultsToMock() {
+    public void create_blankProviderName_returnsMockProvider() {
+        // act, assert
         assertThat(factory.create("   ", jniConfig(), promptSupport), is(instanceOf(MockGenerationProvider.class)));
     }
 
     @Test
-    public void mockProviderNameReturnsMock() {
+    public void create_mockProviderName_returnsMockProvider() {
+        // act, assert
         assertThat(factory.create("mock", jniConfig(), promptSupport), is(instanceOf(MockGenerationProvider.class)));
     }
 
     @Test
-    public void llamacppJniProviderNameReturnsJniProvider() {
+    public void create_llamacppJniProviderName_returnsJniProvider() {
         // Lazy model loading means this constructs without touching the native lib / GGUF,
         // so the factory's jni branch is covered without a model on disk.
+        // act, assert
         assertThat(
                 factory.create("llamacpp-jni", jniConfig(), promptSupport),
                 is(instanceOf(LlamaCppJniGenerationProvider.class)));
     }
 
     @Test
-    public void unknownProviderNameThrows() {
-        assertThrows(IllegalArgumentException.class, () -> factory.create("nope", jniConfig(), promptSupport));
+    public void create_unknownProviderName_throwsException() {
+        // arrange
+        final ProviderConfig config = jniConfig();
+
+        // act, assert
+        assertThrows(IllegalArgumentException.class, () -> factory.create("nope", config, promptSupport));
     }
 
     @Test
-    public void openAiCompatibleProviderNameReturnsTheHttpProvider() {
+    public void create_openAiCompatibleProviderName_returnsHttpProvider() {
+        // act, assert
         assertThat(
                 factory.create(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, jniConfig(), promptSupport),
                 is(instanceOf(OpenAiCompatibleGenerationProvider.class)));
     }
 
     @Test
-    public void theModelsOwnProviderOverridesTheRunsProvider() {
+    public void create_modelHasOwnProvider_overridesRunsProvider() {
+        // arrange
         final ProviderConfig remote = ProviderConfig.builder()
                 .modelPath("")
                 .provider(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
                 .build();
+
+        // act, assert
         assertThat(
                 factory.create(GenerationProviderFactory.PROVIDER_MOCK, remote, promptSupport),
                 is(instanceOf(OpenAiCompatibleGenerationProvider.class)));
     }
 
     @Test
-    public void anUnknownProviderOfTheModelIsNamedInTheError() {
+    public void create_unknownModelProvider_throwsExceptionNamingIt() {
+        // arrange
         final ProviderConfig remote =
                 ProviderConfig.builder().modelPath("").provider("nope-model").build();
+
+        // act
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class,
                 () -> factory.create(GenerationProviderFactory.PROVIDER_MOCK, remote, promptSupport));
+
+        // assert
         assertThat(thrown.getMessage(), is("Unsupported AI provider: nope-model"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="effectiveProvider">
     @Test
-    public void effectiveProvider_aBlankModelProviderKeepsTheRunsProvider() {
+    public void effectiveProvider_blankModelProvider_returnsRunsProvider() {
+        // act, assert
         assertThat(GenerationProviderFactory.effectiveProvider("mock", null), is("mock"));
         assertThat(GenerationProviderFactory.effectiveProvider("mock", ""), is("mock"));
         assertThat(GenerationProviderFactory.effectiveProvider("mock", "   "), is("mock"));
     }
 
     @Test
-    public void effectiveProvider_aModelProviderWinsAndIsTrimmed() {
+    public void effectiveProvider_modelProviderGiven_returnsTrimmedModelProvider() {
+        // act, assert
         assertThat(GenerationProviderFactory.effectiveProvider("mock", " openai-compatible "), is("openai-compatible"));
     }
+    // </editor-fold>
 }

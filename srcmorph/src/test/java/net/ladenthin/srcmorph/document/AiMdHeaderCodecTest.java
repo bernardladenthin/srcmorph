@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.document;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -62,10 +63,7 @@ public class AiMdHeaderCodecTest {
         final AiMdHeader decoded = headerCodec.read(Arrays.asList(encoded.split("\\R")));
 
         // assert
-        assertThat(
-                encoded,
-                org.hamcrest.CoreMatchers.containsString(
-                        "- X: file\n- P: 0A1B2C3D\n- N: 4E5F6071\n- M: 8A9B0C1D\n- K: 2E3F4A5B\n"));
+        assertThat(encoded, containsString("- X: file\n- P: 0A1B2C3D\n- N: 4E5F6071\n- M: 8A9B0C1D\n- K: 2E3F4A5B\n"));
         assertThat(decoded, is(equalTo(original)));
         assertThat(decoded.promptHash(), is("0A1B2C3D"));
         assertThat(decoded.factsHash(), is("4E5F6071"));
@@ -75,14 +73,17 @@ public class AiMdHeaderCodecTest {
 
     @Test
     public void write_withoutHashes_writesNoPOrNLine() {
+        // arrange
         final AiMdHeader header = new AiMdHeader(
                         "A.java", "1.0", "C", "D", "T", "G", "A", AiMdHeaderCodec.NODE_TYPE_FILE)
                 .withHashes("", "4E5F6071", "", "");
 
+        // act
         final String encoded = headerCodec.write(header);
 
+        // assert
         assertThat(encoded.contains("- P:"), is(false));
-        assertThat(encoded, org.hamcrest.CoreMatchers.endsWith("- X: file\n- N: 4E5F6071\n"));
+        assertThat(encoded, endsWith("- X: file\n- N: 4E5F6071\n"));
         assertThat(
                 headerCodec
                         .write(new AiMdHeader("A.java", "1.0", "C", "D", "T", "G", "A", "file"))
@@ -120,7 +121,7 @@ public class AiMdHeaderCodecTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="child links (F)">
+    // <editor-fold defaultstate="collapsed" desc="write: child links (F)">
     @Test
     public void write_headerWithChildren_emitsOneChildLinkLinePerChild() {
         // arrange
@@ -144,6 +145,30 @@ public class AiMdHeaderCodecTest {
     }
 
     @Test
+    public void write_headerWithChildren_roundtripsToEqualHeader() {
+        // arrange
+        final AiMdHeader original = new AiMdHeader(
+                "main/java/com/example",
+                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                "9863444A",
+                "2026-03-15T18:33:50Z",
+                "2026-03-15T18:34:26Z",
+                "1.0.0",
+                "0.0.0",
+                AiMdHeaderCodec.NODE_TYPE_PACKAGE,
+                Arrays.asList("[Foo.java](Foo.java.ai.md)", "[sub/](sub/package.ai.md)"));
+
+        // act
+        final String encoded = headerCodec.write(original);
+        final AiMdHeader decoded = headerCodec.read(Arrays.asList(encoded.split("\\R")));
+
+        // assert
+        assertThat(decoded, is(equalTo(original)));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="read: child links (F)">
+    @Test
     public void read_childLinkLines_collectedIntoChildrenInOrder() {
         // arrange
         final List<String> lines = Arrays.asList(
@@ -165,28 +190,6 @@ public class AiMdHeaderCodecTest {
         assertThat(
                 decoded.children(),
                 is(equalTo(Arrays.asList("[Foo.java](Foo.java.ai.md)", "[sub/](sub/package.ai.md)"))));
-    }
-
-    @Test
-    public void write_read_headerWithChildren_roundtripsToEqualHeader() {
-        // arrange
-        final AiMdHeader original = new AiMdHeader(
-                "main/java/com/example",
-                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                "9863444A",
-                "2026-03-15T18:33:50Z",
-                "2026-03-15T18:34:26Z",
-                "1.0.0",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE,
-                Arrays.asList("[Foo.java](Foo.java.ai.md)", "[sub/](sub/package.ai.md)"));
-
-        // act
-        final String encoded = headerCodec.write(original);
-        final AiMdHeader decoded = headerCodec.read(Arrays.asList(encoded.split("\\R")));
-
-        // assert
-        assertThat(decoded, is(equalTo(original)));
     }
     // </editor-fold>
 

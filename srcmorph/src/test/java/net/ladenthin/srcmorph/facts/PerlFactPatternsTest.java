@@ -49,8 +49,10 @@ public class PerlFactPatternsTest {
         return count;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="profile">
     @Test
-    public void profile_hasTheseCountersInThisOrder() {
+    public void profile_counterLabels_areTheseInThisOrder() {
+        // act, assert
         assertThat(
                 new ArrayList<>(ProfileFactPatterns.counts(COUNTERS, "").keySet()),
                 is(Arrays.asList(
@@ -65,15 +67,18 @@ public class PerlFactPatternsTest {
                         "GetOptions calls",
                         "die, croak and confess")));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="packages and subs">
     @Test
     public void packages_statementAndBlockForms_countAndAStringDoesNot() {
+        // act, assert
         assertThat(count("packages", "package Foo::Bar;\npackage Baz 1.2 {\n}\nmy $s = 'package Foo';\n"), is(2));
     }
 
     @Test
     public void subs_namedLexicalSignatureAndAttributeForms_count() {
+        // act, assert
         assertThat(
                 count(
                         "subs",
@@ -83,11 +88,13 @@ public class PerlFactPatternsTest {
 
     @Test
     public void subs_anonymousSubsForwardDeclarationsAndHashKeys_doNotCount() {
+        // act, assert
         assertThat(count("subs", "my $cb = sub { 1 };\nsub fwd;\n$h{sub} = 1;\n"), is(0));
     }
 
     @Test
     public void subs_inPodAHeredocACommentOrAfterEnd_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         "subs",
@@ -98,43 +105,51 @@ public class PerlFactPatternsTest {
 
     @Test
     public void subs_heredocMarkerInsideAComment_opensNothing() {
+        // act, assert
         assertThat(count("subs", "# usage: print <<EOF\nsub a {}\nprint <<EOF;\nx\nEOF\nsub b {}\n"), is(2));
     }
 
     @Test
     public void subs_podAndEndInsideAHeredoc_areHeredocText() {
+        // act, assert
         assertThat(count("subs", "print <<'EOP';\n=head1 NAME\n\nfoo\n\nEOP\nsub real {}\nsub real2 {}\n"), is(2));
         assertThat(count("subs", "print <<'EOT';\n__END__\nEOT\nsub after {}\n"), is(1));
     }
 
     @Test
     public void subs_backslashHeredoc_isBlanked() {
+        // act, assert
         assertThat(count("subs", "print <<\\EOT;\nsub nope {\nEOT\nsub real {}\n"), is(1));
     }
 
     @Test
     public void subs_shiftWithASpaceBeforeAWord_isNoHeredoc() {
+        // act, assert
         assertThat(count("subs", "my $x = 1 << SHIFT;\nsub a {}\nSHIFT\nsub b {}\n"), is(2));
     }
 
     @Test
     public void subs_attributesBeforeASignatureAndNestedParentheses_count() {
+        // act, assert
         assertThat(
                 count("subs", "sub f :prototype($$) ($x, $y) {\nsub g ($x = default()) {\nsub h ($x, $y) {\n"), is(3));
     }
 
     @Test
     public void subs_podWithoutCut_isBlankedToTheEnd() {
+        // act, assert
         assertThat(count("subs", "sub real {}\n=pod\n\nsub in_pod {}\n"), is(1));
     }
 
     @Test
     public void subs_shiftOperator_isNoHeredoc() {
+        // act, assert
         assertThat(count("subs", "my $x = 1 << 3;\nsub after {\n}\nmy $y = $a<<2;\n"), is(1));
     }
 
     @Test
     public void subs_shiftByAConstantAfterATerm_isNoHeredoc() {
+        // act, assert
         // each shift would otherwise open a heredoc ending at the line "SHIFT", "FLAG", "BITS" or "X"
         assertThat(
                 count(
@@ -146,7 +161,8 @@ public class PerlFactPatternsTest {
 
     /** A hash element or a dereference before << is a value, so it is a shift; a {$fh} block is not. */
     @Test
-    public void subs_shiftAfterAHashElement_opensNoHeredoc_aBlockFilehandleDoes() {
+    public void subs_shiftAfterAHashElementOrABlockFilehandle_opensAHeredocOnlyAfterTheFilehandle() {
+        // act, assert
         assertThat(
                 count("subs", "my $b = $h{x} <<BITS;\nmy $c = $r->{k}{j} << K;\nsub a {}\nBITS\nK\nsub b {}\n"), is(2));
         assertThat(count("subs", "print {$fh} <<EOT;\nsub no {}\nEOT\nsub yes {}\n"), is(1));
@@ -155,6 +171,7 @@ public class PerlFactPatternsTest {
     /** A << inside a quote-like operator or a regex is text, not a heredoc. */
     @Test
     public void subs_heredocMarkerInsideAQuoteLikeOperatorOrARegex_opensNothing() {
+        // act, assert
         assertThat(
                 count(
                         "subs",
@@ -165,12 +182,14 @@ public class PerlFactPatternsTest {
 
     @Test
     public void subs_heredocMarkerInsideAStringOrATrailingComment_opensNothing() {
+        // act, assert
         assertThat(count("subs", "print \"cat <<EOF\\n\";\nsub a {}\nEOF\nsub b {}\n"), is(2));
         assertThat(count("subs", "foo(); # print <<EOF\nsub a {}\nEOF\nsub b {}\n"), is(2));
     }
 
     @Test
     public void subs_heredocToAFilehandleAndWithASpaceBeforeTheQuote_isBlanked() {
+        // act, assert
         assertThat(
                 count(
                         "subs",
@@ -182,35 +201,52 @@ public class PerlFactPatternsTest {
 
     @Test
     public void subs_unclosedHeredoc_isBlankedToTheEnd() {
+        // act, assert
         // perl refuses the file ("Can't find string terminator"); the rest counts as the heredoc's body
         assertThat(count("subs", "sub a {}\nprint <<EOF;\nsub b {}\n"), is(1));
     }
 
     @Test
     public void ignore_manyShiftsByAConstant_stayLinear() {
+        // arrange
         final String source = subThenLines("my $x = $y <<SHIFT;");
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", source)), is(1));
     }
 
     @Test
     public void ignore_manyHeredocMarkersInStringsAndTrailingComments_stayLinear() {
+        // arrange
         final String strings = subThenLines("print \"cat <<EOF here\\n\";");
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", strings)), is(1));
+
+        // arrange
         final String comments = subThenLines("foo(); # see <<EOF");
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", comments)), is(1));
     }
 
     @Test
     public void ignore_manyUnclosedHeredocs_stayLinear() {
+        // arrange
         final String source = subThenLines("print <<EOF;");
+
+        // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("subs", source)), is(1));
     }
 
     @Test
     public void packagesAndSubs_perl538ClassAndMethod_count() {
+        // arrange
         final String source = "use v5.38;\nuse experimental 'class';\nclass Point {\n    field $x :param = 0;\n"
                 + "    field $y :param = 0;\n    method coords { return ($x, $y) }\n    method move ($dx, $dy) {\n    }\n}\n"
                 + "class Point3D :isa(Point) {\n}\nmy %h = (class => 'x', method => 'y');\n";
+
+        // act, assert
         assertThat(count("packages", source), is(2));
         assertThat(count("subs", source), is(2));
     }
@@ -218,7 +254,8 @@ public class PerlFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="modules, constants and variables">
     @Test
-    public void modulesUsed_capitalizedModulesCountPragmasAndVersionsDoNot() {
+    public void modulesUsed_modulesPragmasAndVersions_countOnlyTheCapitalizedModules() {
+        // act, assert
         assertThat(
                 count(
                         "modules used",
@@ -228,7 +265,8 @@ public class PerlFactPatternsTest {
     }
 
     @Test
-    public void modulesRequired_moduleAndFileFormsCountAVersionDoesNot() {
+    public void modulesRequired_moduleFileAndVersionForms_countTheModuleAndFileFormsOnly() {
+        // act, assert
         assertThat(
                 count(
                         "modules required",
@@ -238,6 +276,7 @@ public class PerlFactPatternsTest {
 
     @Test
     public void useConstantStatements_scalarAndHashForms_countOnceEach() {
+        // act, assert
         assertThat(
                 count(
                         "use constant statements",
@@ -247,13 +286,15 @@ public class PerlFactPatternsTest {
 
     @Test
     public void packageVariables_scalarArrayAndList_count() {
+        // act, assert
         assertThat(
                 count("package variables (our)", "our $VERSION = '1.0';\nour @EXPORT_OK = qw(a b);\nour ($x, $y);\n"),
                 is(3));
     }
 
     @Test
-    public void fileScopeLexicals_onlyAtColumnZero() {
+    public void fileScopeLexicals_atColumnZeroAndIndented_countOnlyAtColumnZero() {
+        // act, assert
         assertThat(
                 count(
                         "file-scope lexicals (my at column 0)",
@@ -263,6 +304,7 @@ public class PerlFactPatternsTest {
 
     @Test
     public void environmentVariablesRead_bareQuotedAndDashedKeys_countAndALocalWriteDoesNot() {
+        // act, assert
         assertThat(
                 count(
                         "environment variables read",
@@ -271,7 +313,8 @@ public class PerlFactPatternsTest {
     }
 
     @Test
-    public void environmentVariablesRead_readsCountAndWritesDoNot() {
+    public void environmentVariablesRead_readsAndWrites_countOnlyTheReads() {
+        // act, assert
         assertThat(
                 count(
                         "environment variables read",
@@ -282,7 +325,8 @@ public class PerlFactPatternsTest {
     }
 
     @Test
-    public void getOptionsCalls_allVariantsCountAndTheImportDoesNot() {
+    public void getOptionsCalls_variantsAndTheImport_countAllVariantsButNotTheImport() {
+        // act, assert
         assertThat(
                 count(
                         "GetOptions calls",
@@ -292,7 +336,8 @@ public class PerlFactPatternsTest {
     }
 
     @Test
-    public void dieCroakAndConfess_callsCountAndTheImportDoesNot() {
+    public void dieCroakAndConfess_callsAndTheImport_countTheCallsButNotTheImport() {
+        // act, assert
         assertThat(
                 count(
                         "die, croak and confess",
@@ -304,6 +349,7 @@ public class PerlFactPatternsTest {
 
     @Test
     public void dieCroakAndConfess_theWordInAMessageAHashKeyAndAMethod_doNotCount() {
+        // act, assert
         assertThat(
                 count(
                         "die, croak and confess",
@@ -313,6 +359,7 @@ public class PerlFactPatternsTest {
 
     @Test
     public void modulesUsed_parentAndBase_countAndOtherPragmasDoNot() {
+        // act, assert
         assertThat(
                 count(
                         "modules used",
@@ -324,8 +371,11 @@ public class PerlFactPatternsTest {
 
     // <editor-fold defaultstate="collapsed" desc="the benchmark's language corpus">
     @Test
-    public void corpus_logDigestPm() {
+    public void corpus_logDigestPm_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/perl/LogDigest.pm");
+
+        // act, assert
         assertThat(count("packages", source), is(1));
         // the sub named in the POD after __END__ is not one
         assertThat(count("subs", source), is(6));
@@ -339,8 +389,11 @@ public class PerlFactPatternsTest {
     }
 
     @Test
-    public void corpus_logDigestPl() {
+    public void corpus_logDigestPl_countsItsFacts() {
+        // arrange
         final String source = ProfileFactPatterns.languageCorpusFile("other/perl/log_digest.pl");
+
+        // act, assert
         assertThat(count("packages", source), is(0));
         // the sub-like line of the usage heredoc is not one
         assertThat(count("subs", source), is(3));

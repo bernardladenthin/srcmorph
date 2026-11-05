@@ -77,25 +77,31 @@ public class LlamaCppJniProviderSupportTest {
         return new GenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), source);
     }
 
+    // <editor-fold defaultstate="collapsed" desc="lazyMode">
     @Test
-    public void lazyMode_mapsEveryDeclaredCliString() {
+    public void lazyMode_everyDeclaredCliString_mapsToItsMode() {
         // Every mode the binding declares must resolve; a new upstream mode is then covered for free.
+        // act, assert
         for (final LazyMode mode : LazyMode.values()) {
             assertThat(LlamaCppJniProviderSupport.lazyMode(mode.getArgValue()), is(mode));
         }
     }
 
     @Test
-    public void lazyMode_isCaseInsensitive() {
+    public void lazyMode_mixedCaseValue_isCaseInsensitive() {
+        // act, assert
         assertThat(LlamaCppJniProviderSupport.lazyMode("ON"), is(LazyMode.ON));
         assertThat(LlamaCppJniProviderSupport.lazyMode("Auto"), is(LazyMode.AUTO));
     }
 
     @Test
-    public void lazyMode_rejectsUnknownValueAndNamesTheAcceptedOnes() {
+    public void lazyMode_unknownValue_throwsExceptionNamingTheAcceptedOnes() {
         // A typo must fail loud rather than be dropped, and the message must name what is accepted.
+        // act
         final IllegalArgumentException thrown = Assertions.assertThrows(
                 IllegalArgumentException.class, () -> LlamaCppJniProviderSupport.lazyMode("lazy"));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("lazy"));
         assertThat(thrown.getMessage(), containsString("off, auto, on"));
         // Anchored to the "expected one of: " prefix on purpose: the renderer emits its separator
@@ -103,33 +109,41 @@ public class LlamaCppJniProviderSupportTest {
         // stray ", " that a containsString on the middle of the list cannot see.
         assertThat(thrown.getMessage(), containsString("expected one of: off"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="cacheType">
     @Test
-    public void cacheType_mapsEveryDeclaredCliString() {
+    public void cacheType_everyDeclaredCliString_mapsToItsType() {
         // Every cache type the binding declares must resolve; a type upstream adds is covered for free.
+        // act, assert
         for (final CacheType type : CacheType.values()) {
             assertThat(LlamaCppJniProviderSupport.cacheType("cacheTypeK", type.getArgValue()), is(type));
         }
     }
 
     @Test
-    public void cacheType_isCaseInsensitive() {
+    public void cacheType_mixedCaseValue_isCaseInsensitive() {
+        // act, assert
         assertThat(LlamaCppJniProviderSupport.cacheType("cacheTypeK", "Q8_0"), is(CacheType.Q8_0));
         assertThat(LlamaCppJniProviderSupport.cacheType("cacheTypeV", "F16"), is(CacheType.F16));
     }
 
     @Test
-    public void cacheType_rejectsUnknownValueAndNamesBothTheKnobAndTheAcceptedOnes() {
+    public void cacheType_unknownValue_throwsExceptionNamingTheKnobAndTheAcceptedOnes() {
         // A typo must fail loud rather than be dropped. The knob name is in the message because the same
         // resolver serves cacheTypeK and cacheTypeV -- without it the user cannot tell which one is wrong.
+        // act
         final IllegalArgumentException thrown = Assertions.assertThrows(
                 IllegalArgumentException.class, () -> LlamaCppJniProviderSupport.cacheType("cacheTypeV", "q3_k"));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("cacheTypeV"));
         assertThat(thrown.getMessage(), containsString("q3_k"));
         assertThat(thrown.getMessage(), containsString("f32, f16, bf16, q8_0"));
         // Same anchor as lazyMode above, for the same separator boundary.
         assertThat(thrown.getMessage(), containsString("expected one of: f32"));
     }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="buildInferenceParameters: negative-sentinel guards">
 
@@ -156,7 +170,7 @@ public class LlamaCppJniProviderSupportTest {
         final ProviderConfig defaults =
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build();
 
-        // act / assert
+        // act, assert
         Assertions.assertDoesNotThrow(() -> providerWith(defaults).buildInferenceParameters(request("class A {}")));
     }
 
@@ -302,7 +316,7 @@ public class LlamaCppJniProviderSupportTest {
 
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="truncationWarning / logPromptCacheReuse">
+    // <editor-fold defaultstate="collapsed" desc="truncationWarning">
 
     /** Builds a response carrying just the one field each of these two helpers reads. */
     private static ChatResponse responseWith(final String finishReason, final Usage usage) {
@@ -361,9 +375,11 @@ public class LlamaCppJniProviderSupportTest {
      */
     @Test
     public void truncationWarning_finishReasonStop_isNone() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
+        // act, assert
         assertThat(
                 provider.truncationWarning(request("class A {}"), responseWith("stop", new Usage(1, 1))),
                 is(nullValue()));
@@ -372,9 +388,11 @@ public class LlamaCppJniProviderSupportTest {
     /** The calibration's answer the provider stopped is named with its reason, not as a budget cut. */
     @Test
     public void truncationWarning_finishReasonError_namesTheReason() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
+        // act, assert
         assertThat(
                 provider.truncationWarning(request("class A {}"), responseWith("error", new Usage(1, 1))),
                 is("Generated text for Test.java ended with finish reason 'error': the provider stopped it, not"
@@ -384,48 +402,63 @@ public class LlamaCppJniProviderSupportTest {
     /** No choices means nothing to judge; reading {@code get(0)} anyway would throw. */
     @Test
     public void truncationWarning_noChoices_isNone() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
         final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
 
+        // act, assert
         assertThat(provider.truncationWarning(request("class A {}"), empty), is(nullValue()));
     }
+
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="requireCompleteAnswer">
 
     // requireCompleteAnswer: what generate refuses to return as a summary
     @Test
     public void requireCompleteAnswer_finishedAnswerWithText_passes() throws Exception {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
+        // act, assert
         provider.requireCompleteAnswer(request("class A {}"), responseWith("stop", new Usage(1, 1)), "A summary.");
     }
 
     @Test
     public void requireCompleteAnswer_noChoice_isNoAnswer() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
         final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
+        final GenerationRequest generationRequest = request("class A {}");
 
+        // act
         final IncompleteAnswerException thrown = assertThrows(
-                IncompleteAnswerException.class,
-                () -> provider.requireCompleteAnswer(request("class A {}"), empty, ""));
+                IncompleteAnswerException.class, () -> provider.requireCompleteAnswer(generationRequest, empty, ""));
 
+        // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.NO_ANSWER));
         assertThat(thrown.getMessage(), is("The response for Test.java has no answer (no choice)"));
     }
 
     @Test
     public void requireCompleteAnswer_cutOffAtTheBudget_isTruncatedWithTheBudgetAndTheText() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(ProviderConfig.builder()
                 .modelPath("/does/not/exist.gguf")
                 .maxOutputTokens(128)
                 .build());
+        final GenerationRequest generationRequest = request("class A {}");
+        final ChatResponse response = responseWith("length", new Usage(1, 1));
 
+        // act
         final IncompleteAnswerException thrown = assertThrows(
                 IncompleteAnswerException.class,
-                () -> provider.requireCompleteAnswer(
-                        request("class A {}"), responseWith("length", new Usage(1, 1)), "half a sum"));
+                () -> provider.requireCompleteAnswer(generationRequest, response, "half a sum"));
 
+        // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
         assertThat(thrown.getMessage(), containsString("Test.java was cut off at the 128-token output budget"));
         assertThat(thrown.partialText(), is("half a sum"));
@@ -433,14 +466,18 @@ public class LlamaCppJniProviderSupportTest {
 
     @Test
     public void requireCompleteAnswer_finishReasonError_isAbortedWithTheReasonAndTheText() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
+        final GenerationRequest generationRequest = request("class A {}");
+        final ChatResponse response = responseWith("error", new Usage(1, 1));
 
+        // act
         final IncompleteAnswerException thrown = assertThrows(
                 IncompleteAnswerException.class,
-                () -> provider.requireCompleteAnswer(
-                        request("class A {}"), responseWith("error", new Usage(1, 1)), "- test paging ("));
+                () -> provider.requireCompleteAnswer(generationRequest, response, "- test paging ("));
 
+        // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
         assertThat(
                 thrown.getMessage(),
@@ -451,14 +488,18 @@ public class LlamaCppJniProviderSupportTest {
 
     @Test
     public void requireCompleteAnswer_finishReasonContentFilter_isAborted() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
+        final GenerationRequest generationRequest = request("class A {}");
+        final ChatResponse response = responseWith("content_filter", new Usage(1, 1));
 
+        // act
         final IncompleteAnswerException thrown = assertThrows(
                 IncompleteAnswerException.class,
-                () -> provider.requireCompleteAnswer(
-                        request("class A {}"), responseWith("content_filter", new Usage(1, 1)), "A summ"));
+                () -> provider.requireCompleteAnswer(generationRequest, response, "A summ"));
 
+        // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
         assertThat(thrown.getMessage(), containsString("finish reason 'content_filter'"));
     }
@@ -466,9 +507,11 @@ public class LlamaCppJniProviderSupportTest {
     /** A server's own word for a finished answer (TGI's {@code eos_token}) or none at all is the model's. */
     @Test
     public void requireCompleteAnswer_anotherOrNoFinishReason_passes() throws Exception {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
+        // act, assert
         provider.requireCompleteAnswer(request("class A {}"), responseWith("eos_token", new Usage(1, 1)), "A summary.");
         provider.requireCompleteAnswer(request("class A {}"), responseWith(null, new Usage(1, 1)), "A summary.");
         assertThat(LlamaCppJniProviderSupport.stoppedByProvider(null), is(false));
@@ -476,19 +519,27 @@ public class LlamaCppJniProviderSupportTest {
 
     @Test
     public void requireCompleteAnswer_finishedButBlank_isEmpty() {
+        // arrange
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
+        final GenerationRequest generationRequest = request("class A {}");
+        final ChatResponse response = responseWith("stop", new Usage(1, 1));
 
+        // act
         final IncompleteAnswerException thrown = assertThrows(
                 IncompleteAnswerException.class,
-                () -> provider.requireCompleteAnswer(
-                        request("class A {}"), responseWith("stop", new Usage(1, 1)), " \n"));
+                () -> provider.requireCompleteAnswer(generationRequest, response, " \n"));
 
+        // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.EMPTY));
         assertThat(
                 thrown.getMessage(),
                 is("The model answered nothing for Test.java (an empty or reasoning-only answer)"));
     }
+
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="logPromptCacheReuse">
 
     /** The cache line reports all three counts, so a transposition of two of them is visible. */
     @Test
@@ -530,6 +581,8 @@ public class LlamaCppJniProviderSupportTest {
             detachAppender(appender);
         }
     }
+
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="buildChatTemplateKwargs: opt-in kwargs">
 
@@ -694,8 +747,6 @@ public class LlamaCppJniProviderSupportTest {
         assertThat(kwargs.size(), is(1));
         assertThat(kwargs.get(KWARG_ENABLE_THINKING), is("false"));
     }
-
-    // </editor-fold>
 
     // </editor-fold>
 }

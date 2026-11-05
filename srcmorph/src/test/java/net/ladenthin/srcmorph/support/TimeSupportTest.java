@@ -13,9 +13,13 @@ public class TimeSupportTest {
 
     private final TimeSupport timeSupport = new TimeSupport();
 
+    // <editor-fold defaultstate="collapsed" desc="formatInstant">
     @Test
-    public void formatInstant_formatsAsIso8601WithSecondPrecision() {
+    public void formatInstant_instantWithMillis_formatsAsIso8601WithSecondPrecision() {
+        // arrange
         Instant instant = Instant.parse("2026-01-02T03:04:05.678Z");
+
+        // act, assert
         assertThat(timeSupport.formatInstant(instant), is("2026-01-02T03:04:05Z"));
     }
 
@@ -25,11 +29,16 @@ public class TimeSupportTest {
         // constant (used as a fold seed by PackageIndexer/ProjectIndexer, where no instance-bound
         // formatInstant call is convenient), formatInstant is the instance-bound formatter every other
         // timestamp in a .ai.md header goes through. Both must agree.
+        // act, assert
         assertThat(timeSupport.formatInstant(Instant.EPOCH), is(TimeSupport.EPOCH_DATE));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="EPOCH_DATE">
     @Test
-    public void epochDate_isTheUnixEpochInIso8601() {
+    public void epochDate_constant_isTheUnixEpochInIso8601() {
+        // act, assert
         assertThat(TimeSupport.EPOCH_DATE, is("1970-01-01T00:00:00Z"));
     }
+    // </editor-fold>
 }

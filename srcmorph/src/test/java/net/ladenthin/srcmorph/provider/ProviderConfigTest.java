@@ -45,7 +45,7 @@ public class ProviderConfigTest {
 
     @Test
     public void constructor_nullDrySequenceBreakers_normalisedToEmptyList() {
-        // arrange / act
+        // act
         final ProviderConfig config = configWithLists(null, Arrays.asList("<end>"));
 
         // assert
@@ -54,7 +54,7 @@ public class ProviderConfigTest {
 
     @Test
     public void constructor_nullStopStrings_normalisedToEmptyList() {
-        // arrange / act
+        // act
         final ProviderConfig config = configWithLists(Arrays.asList("\n"), null);
 
         // assert
@@ -63,7 +63,7 @@ public class ProviderConfigTest {
 
     @Test
     public void constructor_nonNullLists_areKept() {
-        // arrange / act
+        // act
         final ProviderConfig config = configWithLists(Arrays.asList("\n", "."), Arrays.asList("<end>"));
 
         // assert
@@ -73,27 +73,30 @@ public class ProviderConfigTest {
 
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="accessor views and required arguments">
+    // <editor-fold defaultstate="collapsed" desc="drySequenceBreakers">
 
     @Test
-    public void drySequenceBreakers_returnsUnmodifiableView() {
+    public void drySequenceBreakers_listGiven_returnsUnmodifiableView() {
         // arrange
         final ProviderConfig config = configWithLists(Arrays.asList("\n"), Collections.<String>emptyList());
+        final List<String> drySequenceBreakers = config.drySequenceBreakers();
 
-        // act / assert
-        Assertions.assertThrows(
-                UnsupportedOperationException.class,
-                () -> config.drySequenceBreakers().add("x"));
+        // act, assert
+        Assertions.assertThrows(UnsupportedOperationException.class, () -> drySequenceBreakers.add("x"));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="stopStrings">
+
     @Test
-    public void stopStrings_returnsUnmodifiableView() {
+    public void stopStrings_listGiven_returnsUnmodifiableView() {
         // arrange
         final ProviderConfig config = configWithLists(Collections.<String>emptyList(), Arrays.asList("<end>"));
+        final List<String> stopStrings = config.stopStrings();
 
-        // act / assert
-        Assertions.assertThrows(
-                UnsupportedOperationException.class, () -> config.stopStrings().add("x"));
+        // act, assert
+        Assertions.assertThrows(UnsupportedOperationException.class, () -> stopStrings.add("x"));
     }
 
     // </editor-fold>
@@ -106,7 +109,7 @@ public class ProviderConfigTest {
      * {@code 0}/{@code false}/{@code null} instead of what {@code ModelDefinition} says it should be.
      */
     @Test
-    public void builder_leavesEveryUnsetValueAtItsDefinitionDefault() {
+    public void builder_onlyModelPathSet_leavesEveryUnsetValueAtItsDefinitionDefault() {
         // act -- name nothing but the one required value
         final ProviderConfig config =
                 ProviderConfig.builder().modelPath("model.gguf").build();
@@ -163,7 +166,7 @@ public class ProviderConfigTest {
      * positional constructor ({@code swaFull}, {@code flashAttn}) are given opposite values.
      */
     @Test
-    public void builder_everySetterWritesItsOwnField() {
+    public void builder_everySetterCalled_writesItsOwnField() {
         // act
         final ProviderConfig config = ProviderConfig.builder()
                 .modelPath("model.gguf")
@@ -308,6 +311,10 @@ public class ProviderConfigTest {
         // assert
         assertThat(config.modelPath(), is(nullValue()));
     }
+
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="build">
 
     /** A builder is reusable: {@code build()} snapshots it, so a later setter cannot reach back. */
     @Test

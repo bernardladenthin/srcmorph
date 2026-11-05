@@ -49,9 +49,10 @@ public class ProfileFactPatternsLinearityTest {
         return cases.stream();
     }
 
+    // <editor-fold defaultstate="collapsed" desc="measure">
     @ParameterizedTest(name = "{0}: {1}")
     @MethodSource("patterns")
-    public void everyPattern_readsLinearlyOverEveryRepeatedLine(
+    public void measure_everyPatternOfTheProfile_readsLinearlyOverEveryRepeatedLine(
             final String key, final String label, final String pattern) {
         // act
         final List<String> failures =
@@ -79,6 +80,7 @@ public class ProfileFactPatternsLinearityTest {
         // assert
         assertThat(FactPatternLinearity.MAX_GROWTH * shortReads, lessThanOrEqualTo(longReads));
     }
+    // </editor-fold>
 
     /**
      * Patterns known to be quadratic over unclosed comments, so the measure itself is checked: the lazy

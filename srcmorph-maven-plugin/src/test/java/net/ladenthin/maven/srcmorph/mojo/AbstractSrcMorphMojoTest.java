@@ -67,40 +67,53 @@ public class AbstractSrcMorphMojoTest {
     // <editor-fold defaultstate="collapsed" desc="the file">
     @Test
     public void buildConfiguration_noFile_namesWhereItLooked() {
-        final MojoExecutionException thrown =
-                assertThrows(MojoExecutionException.class, () -> mojo().buildConfiguration(RuleSection.FILES));
+        // arrange
+        final TestMojo mojo = mojo();
 
+        // act
+        final MojoExecutionException thrown =
+                assertThrows(MojoExecutionException.class, () -> mojo.buildConfiguration(RuleSection.FILES));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("No srcmorph configuration file at "));
         assertThat(thrown.getMessage(), containsString("srcmorph.yaml"));
     }
 
     @Test
     public void buildConfiguration_anUnknownKey_namesTheFileAndTheKey() throws IOException {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  subtree: [\"src\"]\n");
+        final TestMojo mojo = mojo();
 
+        // act
         final MojoExecutionException thrown =
-                assertThrows(MojoExecutionException.class, () -> mojo().buildConfiguration(RuleSection.FILES));
+                assertThrows(MojoExecutionException.class, () -> mojo.buildConfiguration(RuleSection.FILES));
 
+        // assert
         assertThat(thrown.getMessage(), containsString("Cannot read the srcmorph configuration file"));
         assertThat(thrown.getMessage(), containsString("subtree"));
     }
 
     @Test
     public void buildConfiguration_aFileWithAnotherExtension_isRefused() throws IOException {
+        // arrange
         final Path file = Files.write(project.resolve("srcmorph.txt"), new byte[0]);
         final TestMojo mojo = mojo();
         mojo.configurationFile = file.toFile();
 
+        // act, assert
         assertThrows(MojoExecutionException.class, () -> mojo.buildConfiguration(RuleSection.FILES));
     }
 
     @Test
-    public void buildConfiguration_eachSectionTakesItsRules() throws Exception {
+    public void buildConfiguration_eachSection_takesItsRules() throws Exception {
+        // arrange
         writeConfiguration(
                 project,
                 MOCK_CONFIGURATION.replace(
                         "projectRules:\n  - promptKey: file-body\n", "projectRules:\n  - promptKey: project-body\n"));
 
+        // act, assert
         assertThat(
                 mojo().buildConfiguration(RuleSection.FILES).getRules().get(0).isFallback(), is(true));
         assertThat(
@@ -112,8 +125,10 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void buildConfiguration_aSectionTheFileLacks_isNull() throws Exception {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
 
+        // act, assert
         assertThat(mojo().buildConfiguration(RuleSection.PACKAGE).getRules(), is(nullValue()));
     }
     // </editor-fold>
@@ -146,6 +161,7 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void buildConfiguration_whatTheFileLeavesUnset_comesFromTheProject() throws Exception {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
         final Path sources = Files.createDirectories(project.resolve("src/main/java"));
         final Path resources = Files.createDirectories(project.resolve("src/main/resources"));
@@ -156,8 +172,10 @@ public class AbstractSrcMorphMojoTest {
                 resource(project.resolve("src/main/missing")), // missing: left out
                 resource(project.getParent())); // outside the base directory: left out
 
+        // act
         final SrcMorphConfiguration config = mojo.buildConfiguration(RuleSection.FILES);
 
+        // assert
         assertThat(config.getBaseDirectory(), is(equalTo(project.toFile())));
         assertThat(
                 config.getOutputDirectory(),
@@ -174,6 +192,7 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void buildConfiguration_aResourceDirectoryHoldingTheSources_isNoSubtree() throws Exception {
+        // arrange
         // a POM that packs files of the project directory itself: indexing it would index the whole project
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
         final Path sources = Files.createDirectories(project.resolve("src/main/java"));
@@ -183,6 +202,7 @@ public class AbstractSrcMorphMojoTest {
         mojo.setLog(log);
         mojo.resources = Arrays.asList(resource(project), resource(resources), resource(project.resolve("src")));
 
+        // act, assert
         assertThat(
                 mojo.buildConfiguration(RuleSection.FILES).getSubtrees(),
                 is(equalTo(Arrays.asList(
@@ -199,12 +219,14 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void buildConfiguration_noSourceDirectory_theResourcesAreTheSubtrees() throws Exception {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
         final Path resources = Files.createDirectories(project.resolve("src/main/resources"));
         final TestMojo mojo = mojo();
         mojo.sourceDirectory = null;
         mojo.resources = Collections.singletonList(resource(resources));
 
+        // act, assert
         assertThat(
                 mojo.buildConfiguration(RuleSection.FILES).getSubtrees(),
                 is(equalTo(Collections.singletonList(resources.toFile().getAbsolutePath()))));
@@ -212,24 +234,29 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void buildConfiguration_noSourceDirectoryAndNoResources_noSubtrees() throws Exception {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  generationProvider: mock\n");
         final TestMojo mojo = mojo();
         mojo.sourceDirectory = null;
         mojo.resources = null;
 
+        // act, assert
         assertThat(mojo.buildConfiguration(RuleSection.FILES).getSubtrees(), is(equalTo(Collections.emptyList())));
     }
 
     @Test
     public void buildConfiguration_whatTheFileSets_staysAsItIs() throws Exception {
+        // arrange
         Files.createDirectories(project.resolve("src/main/java"));
         writeConfiguration(
                 project,
                 "srcMorph:\n  subtrees: [\"lib\"]\n  projectName: \"from-the-file\"\n"
                         + "  generatorVersion: \"9.9.9\"\n  force: true\n");
 
+        // act
         final SrcMorphConfiguration config = mojo().buildConfiguration(RuleSection.FILES);
 
+        // assert
         assertThat(config.getSubtrees(), is(equalTo(Collections.singletonList("lib"))));
         assertThat(config.getProjectName(), is(equalTo("from-the-file")));
         assertThat(config.getGeneratorVersion(), is(equalTo("9.9.9")));
@@ -239,17 +266,20 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void buildConfiguration_srcmorphForce_overridesTheFile() throws Exception {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  force: false\n");
         final TestMojo mojo = mojo();
         mojo.force = true;
 
+        // act, assert
         assertThat(mojo.buildConfiguration(RuleSection.FILES).isForce(), is(true));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="${...} from the Maven properties">
+    // <editor-fold defaultstate="collapsed" desc="properties">
     @Test
-    public void buildConfiguration_propertiesFillTheFile_commandLineOverProjectOverSystem() throws Exception {
+    public void properties_propertiesFillTheFile_commandLineOverProjectOverSystem() throws Exception {
+        // arrange
         writeConfiguration(project, "modelFilter: \"${fixture.a}|${fixture.b}|${fixture.c}|${java.version}\"\n");
         final TestMojo mojo = mojo();
         final Properties projectProperties = new Properties();
@@ -261,6 +291,7 @@ public class AbstractSrcMorphMojoTest {
         mojo.projectProperties = projectProperties;
         mojo.userProperties = userProperties;
 
+        // act, assert
         assertThat(mojo.properties().get("fixture.a"), is(equalTo("user-a")));
         assertThat(mojo.properties().get("fixture.b"), is(equalTo("project-b")));
         assertThat(mojo.properties().get("java.version"), is(equalTo("project-java")));
@@ -270,13 +301,16 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void properties_theProjectsValues_areNamedAsInAPom() throws Exception {
+        // arrange
         final TestMojo mojo = mojo();
         mojo.buildDirectory = project.resolve("target").toFile();
         mojo.groupId = "com.example";
         mojo.artifactId = "fixture";
 
+        // act
         final Map<String, String> properties = mojo.properties();
 
+        // assert
         final String basedir = project.toFile().getAbsolutePath();
         assertThat(properties.get("basedir"), is(equalTo(basedir)));
         assertThat(properties.get("project.basedir"), is(equalTo(basedir)));
@@ -294,27 +328,35 @@ public class AbstractSrcMorphMojoTest {
 
     @Test
     public void properties_aProjectValueMavenLeavesUnset_isNoProperty() throws Exception {
+        // arrange
         final TestMojo mojo = mojo();
         mojo.sourceDirectory = null;
 
+        // act
         final Map<String, String> properties = mojo.properties();
 
+        // assert
         assertThat(properties.containsKey("project.build.directory"), is(false));
         assertThat(properties.containsKey("project.build.sourceDirectory"), is(false));
         assertThat(properties.containsKey("project.groupId"), is(false));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="${...} from the Maven properties">
     @Test
-    public void buildConfiguration_projectBasedirReachesAPath() throws Exception {
+    public void buildConfiguration_projectBasedirProperty_reachesAPath() throws Exception {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  outputDirectory: \"${project.basedir}/docs/ai\"\n");
 
+        // act, assert
         assertThat(
                 mojo().buildConfiguration(RuleSection.FILES).getOutputDirectory(),
                 is(equalTo(project.resolve("docs/ai").toFile())));
     }
 
     @Test
-    public void buildConfiguration_aPropertyReachesTheFile() throws Exception {
+    public void buildConfiguration_aUserProperty_reachesTheFile() throws Exception {
+        // arrange
         writeConfiguration(project, "srcMorph:\n  projectName: \"${fixture.name}\"\n");
         final TestMojo mojo = mojo();
         final Properties userProperties = new Properties();
@@ -322,30 +364,38 @@ public class AbstractSrcMorphMojoTest {
         mojo.userProperties = userProperties;
         mojo.projectProperties = null;
 
+        // act, assert
         assertThat(
                 mojo.buildConfiguration(RuleSection.FILES).getProjectName(), is(equalTo("named-on-the-command-line")));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="messages">
+    // <editor-fold defaultstate="collapsed" desc="messageOf">
     @Test
     public void messageOf_exceptionWithMessage_returnsThatMessage() {
+        // act, assert
         assertThat(AbstractSrcMorphMojo.messageOf(new SrcMorphException("boom")), is(equalTo("boom")));
     }
 
     @Test
     public void messageOf_exceptionWithNullMessage_fallsBackToToString() {
+        // arrange
         final SrcMorphException noMessage = new SrcMorphException((String) null);
 
+        // act, assert
         assertThat(AbstractSrcMorphMojo.messageOf(noMessage), is(equalTo(noMessage.toString())));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="ioMessage">
     @Test
-    public void ioMessage_namesWhatFailedAndWhere() {
+    public void ioMessage_anIOException_namesWhatFailedAndWhere() {
+        // arrange
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setBaseDirectory(new File("base"));
         config.setOutputDirectory(new File("out"));
 
+        // act, assert
         assertThat(
                 AbstractSrcMorphMojo.ioMessage("write it", config, new IOException("disk full")),
                 is(equalTo("Failed to write it under out from base base: disk full")));

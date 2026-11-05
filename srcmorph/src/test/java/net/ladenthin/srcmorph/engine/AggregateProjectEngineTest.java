@@ -59,16 +59,20 @@ public class AggregateProjectEngineTest {
         documentCodec.write(packageFile, new AiMdDocument(header, body));
     }
 
+    // <editor-fold defaultstate="collapsed" desc="execute">
     @Test
-    public void execute_missingOutputDirectoryReturnsZero() throws Exception {
+    public void execute_missingOutputDirectory_returnsZero() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(tempDir.resolve("out-does-not-exist").toFile());
 
+        // act, assert
         assertThat(new AggregateProjectEngine(config).execute(), is(0));
     }
 
     @Test
     public void execute_deterministicNoOverview_writesProjectIndex() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(
                 outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Handles the example domain.\n");
@@ -79,8 +83,10 @@ public class AggregateProjectEngineTest {
         config.setAiVersion("0.0.0");
         config.setProjectName("my-project");
 
+        // act
         final int written = new AggregateProjectEngine(config).execute();
 
+        // assert
         assertThat(written, is(equalTo(1)));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         assertThat(Files.exists(projectFile), is(true));
@@ -90,7 +96,8 @@ public class AggregateProjectEngineTest {
     }
 
     @Test
-    public void execute_blankProjectNameFallsBackToDefaultTitle() throws Exception {
+    public void execute_blankProjectName_fallsBackToDefaultTitle() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Lead.\n");
 
@@ -100,14 +107,17 @@ public class AggregateProjectEngineTest {
         config.setAiVersion("0.0.0");
         config.setProjectName("   ");
 
+        // act
         new AggregateProjectEngine(config).execute();
 
+        // assert
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.header().title(), is(equalTo("project")));
     }
 
     @Test
     public void execute_withOverviewFieldGeneration_generatesOverviewSection() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Handles billing.\n");
 
@@ -124,14 +134,17 @@ public class AggregateProjectEngineTest {
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         config.setRules(Collections.singletonList(overview));
 
+        // act
         new AggregateProjectEngine(config).execute();
 
+        // assert
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString("#### Overview"));
     }
 
     @Test
     public void execute_twoRules_areRefused() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Handles billing.\n");
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
@@ -143,11 +156,14 @@ public class AggregateProjectEngineTest {
         overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         config.setRules(Arrays.asList(overview, overview));
+        final AggregateProjectEngine engine = new AggregateProjectEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new AggregateProjectEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(thrown.getMessage(), containsString("aggregate-project takes at most one rule"));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
+    // </editor-fold>
 }

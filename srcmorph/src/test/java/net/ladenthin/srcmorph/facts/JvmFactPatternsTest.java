@@ -83,7 +83,8 @@ public class JvmFactPatternsTest {
             + "fun interface Handler { fun handle() }\n";
 
     @Test
-    public void kotlinProfile_hasTheseCountersInThisOrder() {
+    public void kotlinProfile_counterLabels_areTheseInThisOrder() {
+        // act, assert
         assertThat(
                 new ArrayList<>(ProfileFactPatterns.counts(KOTLIN, "").keySet()),
                 is(Arrays.asList(
@@ -102,7 +103,8 @@ public class JvmFactPatternsTest {
     }
 
     @Test
-    public void kotlin_typesCountAndCommentsKdocAndStringsDoNot() {
+    public void kotlin_sourceWithCommentsKdocAndStrings_countsTypesAndNotThem() {
+        // act, assert
         // value class, data class, sealed interface, object, class, fun interface
         assertThat(count(KOTLIN, "type declarations", KOTLIN_SOURCE), is(6));
         assertThat(count(KOTLIN, "companion objects", KOTLIN_SOURCE), is(1));
@@ -111,7 +113,8 @@ public class JvmFactPatternsTest {
     }
 
     @Test
-    public void kotlin_functionsCountAtTheStartOfALineAndAFunInterfaceDoesNot() {
+    public void kotlin_functionsAndAFunInterface_countFunctionsAtALineStartAndNotTheInterface() {
+        // act, assert
         // size, load, toString, normalized, total, retry; not "fun interface", not a fun mid-line
         assertThat(count(KOTLIN, "functions (approx)", KOTLIN_SOURCE), is(6));
         assertThat(count(KOTLIN, "extension functions", KOTLIN_SOURCE), is(2));
@@ -119,7 +122,8 @@ public class JvmFactPatternsTest {
     }
 
     @Test
-    public void kotlin_constructorsAndProperties() {
+    public void kotlin_constructorsAndProperties_count() {
+        // act, assert
         assertThat(count(KOTLIN, "secondary constructors", KOTLIN_SOURCE), is(1));
         // raw, id, total, note, repo
         assertThat(count(KOTLIN, "constructor properties (approx)", KOTLIN_SOURCE), is(5));
@@ -130,6 +134,7 @@ public class JvmFactPatternsTest {
 
     @Test
     public void kotlin_unclosedRawStringAndBlockComment_areBlankedToTheEnd() {
+        // act, assert
         assertThat(count(KOTLIN, "functions (approx)", "fun a() = 1\nval s = \"\"\"\nfun b() = 2\n"), is(1));
         assertThat(count(KOTLIN, "functions (approx)", "fun a() = 1\n/* /* */\nfun b() = 2\n"), is(1));
     }
@@ -179,7 +184,8 @@ public class JvmFactPatternsTest {
             + "\"\"\"\n";
 
     @Test
-    public void groovyProfile_hasTheseCountersInThisOrder() {
+    public void groovyProfile_counterLabels_areTheseInThisOrder() {
+        // act, assert
         assertThat(
                 new ArrayList<>(ProfileFactPatterns.counts(GROOVY, "").keySet()),
                 is(Arrays.asList(
@@ -193,20 +199,23 @@ public class JvmFactPatternsTest {
     }
 
     @Test
-    public void groovy_typesAndMethodsCountAndStringsCommentsAndRegexesDoNot() {
+    public void groovy_sourceWithStringsCommentsAndRegexes_countsTypesAndMethodsAndNotThem() {
+        // act, assert
         assertThat(count(GROOVY, "type declarations", GROOVY_SOURCE), is(2));
         // helper and the def method audit; not the feature methods, not a call, not the GString's def
         assertThat(count(GROOVY, "methods (approx)", GROOVY_SOURCE), is(2));
     }
 
     @Test
-    public void groovy_spockFeaturesNamedByStringsAndTheirBlocks() {
+    public void groovy_spockFeaturesNamedByStringsAndTheirBlocks_count() {
+        // act, assert
         assertThat(count(GROOVY, "Spock feature methods", GROOVY_SOURCE), is(2));
         assertThat(count(GROOVY, "Spock blocks", GROOVY_SOURCE), is(5));
     }
 
     @Test
-    public void groovy_closuresStaticCheckingAndImports() {
+    public void groovy_closuresStaticCheckingAndImports_count() {
+        // act, assert
         assertThat(count(GROOVY, "closures with parameters (approx)", GROOVY_SOURCE), is(1));
         assertThat(count(GROOVY, "static type checking", GROOVY_SOURCE), is(1));
         assertThat(count(GROOVY, "imports", GROOVY_SOURCE), is(2));
@@ -214,6 +223,7 @@ public class JvmFactPatternsTest {
 
     @Test
     public void groovy_shebangAndDollarSlashyString_areBlanked() {
+        // act, assert
         assertThat(count(GROOVY, "type declarations", "#!/bin/class X\nclass A {}\n"), is(1));
         assertThat(count(GROOVY, "type declarations", "def s = $/\nclass B {}\n/$\nclass A {}\n"), is(1));
     }
@@ -251,11 +261,14 @@ public class JvmFactPatternsTest {
             + "@javax.inject.Singleton class S {}\n";
 
     @Test
-    public void javaEeProfile_startsWithTheJavaCountersAndAddsItsOwn() {
+    public void javaEeProfile_counterLabels_startWithTheJavaCountersAndAddItsOwn() {
+        // act
         final List<String> labels =
                 new ArrayList<>(ProfileFactPatterns.counts(JAVA_EE, "").keySet());
         final List<String> java =
                 new ArrayList<>(ProfileFactPatterns.counts(JAVA, "").keySet());
+
+        // assert
         assertThat(labels.subList(0, java.size()), is(java));
         assertThat(
                 labels.subList(java.size(), labels.size()),
@@ -278,7 +291,8 @@ public class JvmFactPatternsTest {
     }
 
     @Test
-    public void javaEe_componentsCountAndProseAndOtherPackagesDoNot() {
+    public void javaEe_componentsProseAndOtherPackages_countsTheComponentsAndNotTheRest() {
+        // act, assert
         assertThat(count(JAVA_EE, "EJB session beans", JAVA_EE_SOURCE), is(1));
         assertThat(count(JAVA_EE, "message-driven beans", JAVA_EE_SOURCE), is(1));
         assertThat(count(JAVA_EE, "JPA entities and embeddables", JAVA_EE_SOURCE), is(1));
@@ -288,7 +302,8 @@ public class JvmFactPatternsTest {
     }
 
     @Test
-    public void javaEe_wiringCountsAfterOtherAnnotationsAndNotInAComment() {
+    public void javaEe_wiringAfterOtherAnnotations_countsAndNotInAComment() {
+        // act, assert
         // foo, bar (after @Named), em, baz; not the commented-out @Inject
         assertThat(count(JAVA_EE, "injection points", JAVA_EE_SOURCE), is(4));
         assertThat(count(JAVA_EE, "JAX-RS resource paths", JAVA_EE_SOURCE), is(2));
@@ -332,7 +347,8 @@ public class JvmFactPatternsTest {
             + "opaque type Money = BigDecimal\n";
 
     @Test
-    public void scala_countsDeclarationsAndNotCommentsOrStrings() {
+    public void scala_sourceWithCommentsAndStrings_countsDeclarationsAndNotCommentsOrStrings() {
+        // act, assert
         // Event, Placed, Cancelled, OrderService, OrderService (companion), Status
         assertThat(count(SCALA, "type declarations", SCALA_SOURCE), is(6));
         assertThat(count(SCALA, "case classes and case objects", SCALA_SOURCE), is(2));
@@ -348,7 +364,8 @@ public class JvmFactPatternsTest {
     }
 
     @Test
-    public void scala_anUnclosedNestedCommentRunsToTheEnd() {
+    public void scala_unclosedNestedComment_runsToTheEnd() {
+        // act, assert
         assertThat(count(SCALA, "type declarations", "class A\n/* /* nested */ still open\nclass B\n"), is(1));
     }
     // </editor-fold>

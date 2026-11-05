@@ -11,16 +11,26 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import net.ladenthin.srcmorph.CommonTestFixtures;
@@ -32,6 +42,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 /**
  * Drives the provider against an in-process stub server ({@code com.sun.net.httpserver}) that
@@ -80,7 +91,7 @@ public class OpenAiCompatibleGenerationProviderTest {
     private int status;
 
     /** Statuses answered before {@link #status}, one per request; empty after they are used up. */
-    private final java.util.Deque<Integer> firstStatuses = new java.util.ArrayDeque<>();
+    private final Deque<Integer> firstStatuses = new ArrayDeque<>();
 
     /** The {@code Retry-After} header sent with a status of {@link #firstStatuses}, or {@code null}. */
     private @Nullable String retryAfter;
@@ -98,14 +109,14 @@ public class OpenAiCompatibleGenerationProviderTest {
     private String requestMethod;
     private String requestPath;
     private String requestBody;
-    private Map<String, java.util.List<String>> requestHeaders;
+    private Map<String, List<String>> requestHeaders;
 
     /** When set, the server answers with these Server-Sent Events instead of {@link #answer}. */
-    private java.util.@Nullable List<String> events;
+    private @Nullable List<String> events;
 
     /** An event stream of the same answer {@link #completion} gives, split into two tokens. */
-    private static java.util.List<String> streamed(final String first, final String second, final String finishReason) {
-        return java.util.Arrays.asList(
+    private static List<String> streamed(final String first, final String second, final String finishReason) {
+        return Arrays.asList(
                 ": ping\n\n",
                 "data: {\"id\":\"gen-1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":"
                         + "{\"role\":\"assistant\",\"content\":" + quote(first) + "},\"finish_reason\":null}]}\n\n",
@@ -128,7 +139,7 @@ public class OpenAiCompatibleGenerationProviderTest {
             requestPath = exchange.getRequestURI().getPath();
             requestHeaders = exchange.getRequestHeaders();
             try (InputStream in = exchange.getRequestBody()) {
-                final java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
                 final byte[] chunk = new byte[4096];
                 int n;
                 while ((n = in.read(chunk)) != -1) {
@@ -210,70 +221,12 @@ public class OpenAiCompatibleGenerationProviderTest {
     /** Longer than {@link #SHORT_READ_TIMEOUT}: the server stalls past it. */
     private static final int STALL = 1_500;
 
-    // <editor-fold defaultstate="collapsed" desc="timeouts">
-    @Test
-    public void generate_noAnswerWithinTheReadTimeout_isNotSentAgain() {
-        // arrange: the request was sent and may be billed; the server does not answer in time
-        stallBeforeAnswer = STALL;
-
-        // act
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(3))
-                        .generate(REQUEST));
-
-        // assert
-        assertThat(thrown.getMessage(), containsString("the request is not sent again"));
-        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
-        assertThat(requests, is(1));
-        assertThat(waits.isEmpty(), is(true));
-    }
-
-    @Test
-    public void generate_anAnswerThatStopsWhileRead_isNotSentAgain() {
-        // arrange: the answer starts, then stalls
-        stallInAnswer = STALL;
-
-        // act
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(3))
-                        .generate(REQUEST));
-
-        // assert
-        assertThat(thrown.getMessage(), containsString("stopped answering"));
-        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
-        assertThat(requests, is(1));
-        // no wait for a second attempt: the one-threaded stub could not count one in time
-        assertThat(waits.isEmpty(), is(true));
-    }
-
-    @Test
-    public void listModels_aTimeout_isRetried_andEndsAsAPlainIOException() {
-        // arrange: a GET may be sent again; every attempt times out
-        stallBeforeAnswer = STALL;
-
-        // act
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(1))
-                        .listModels());
-
-        // assert: two attempts, one wait, and no InterruptedIOException that would end a whole run (the
-        // one-threaded stub is still asleep in the first exchange when the second attempt gives up, so the
-        // attempts are counted by the provider's message, not by the server)
-        assertThat(thrown.getMessage(), containsString("timed out 2 times"));
-        assertThat(thrown instanceof java.io.InterruptedIOException, is(false));
-        assertThat(waits.size(), is(1));
-    }
-    // </editor-fold>
-
     private String baseUrl() {
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/";
     }
 
     /** The waits a provider made between attempts; a test waits for nothing. */
-    private final java.util.List<Long> waits = new java.util.ArrayList<>();
+    private final List<Long> waits = new ArrayList<>();
 
     private OpenAiCompatibleGenerationProvider provider(
             final ProviderConfig.Builder builder, final Function<String, @Nullable String> environment) {
@@ -282,13 +235,13 @@ public class OpenAiCompatibleGenerationProviderTest {
     }
 
     private @Nullable String header(final String name) {
-        final java.util.List<String> values = requestHeaders.get(name);
+        final List<String> values = requestHeaders.get(name);
         return values == null ? null : values.get(0);
     }
 
     // <editor-fold defaultstate="collapsed" desc="generate">
     @Test
-    public void generate_postsTheChatRequestAndReturnsTheAnswer() throws Exception {
+    public void generate_remoteModelSet_postsTheChatRequestAndReturnsTheAnswer() throws Exception {
         // act
         final String text = provider(ProviderConfig.builder().modelPath("").remoteModel("stub/model"), NO_ENVIRONMENT)
                 .generate(REQUEST);
@@ -308,25 +261,34 @@ public class OpenAiCompatibleGenerationProviderTest {
 
     @Test
     public void generate_keySet_sendsItAsBearer() throws Exception {
+        // act
         provider(
                         ProviderConfig.builder().modelPath("").apiKeyEnv("OPENROUTER_API_KEY"),
                         name -> "OPENROUTER_API_KEY".equals(name) ? "sk-stub" : null)
                 .generate(REQUEST);
+
+        // assert
         assertThat(header("Authorization"), is("Bearer sk-stub"));
     }
 
     @Test
     public void generate_noKey_sendsNoAuthorization() throws Exception {
+        // act
         provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generate(REQUEST);
+
+        // assert
         assertThat(header("Authorization"), is(nullValue()));
     }
 
     @Test
     public void generate_thinkingBlock_isStrippedLikeTheJniProviderDoes() throws Exception {
+        // arrange
         answer = completion(
                 CompletionParser.THINKING_BLOCK_START_MARKER + "hmm" + CompletionParser.THINKING_BLOCK_END_MARKER
                         + "\nThe answer.",
                 "stop");
+
+        // act, assert
         assertThat(
                 provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generate(REQUEST), is("The answer."));
     }
@@ -336,12 +298,11 @@ public class OpenAiCompatibleGenerationProviderTest {
         // arrange
         status = 403;
         answer = "{\"error\":{\"message\":\"No auth credentials found\",\"code\":403}}";
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
         // act
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 403"));
@@ -353,12 +314,11 @@ public class OpenAiCompatibleGenerationProviderTest {
         // arrange: a POST goes in streaming mode, where a 401's body cannot be read
         status = 401;
         answer = "{\"error\":{\"message\":\"No auth credentials found\",\"code\":401}}";
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
         // act
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 401"));
@@ -368,28 +328,33 @@ public class OpenAiCompatibleGenerationProviderTest {
 
     @Test
     public void generate_rateLimitedTwice_retriesAfterTheServersRetryAfterAndSucceeds() throws Exception {
+        // arrange
         firstStatuses.add(429);
         firstStatuses.add(503);
         retryAfter = "2";
 
+        // act
         final String text =
                 provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generate(REQUEST);
 
+        // assert
         assertThat(text, is("A tiny test class."));
         assertThat(requests, is(3));
-        assertThat(waits, is(java.util.Arrays.asList(2_000L, 2_000L)));
+        assertThat(waits, is(Arrays.asList(2_000L, 2_000L)));
     }
 
     @Test
     public void generate_serverErrorBeyondMaxRetries_failsWithTheLastAnswer() {
+        // arrange
         firstStatuses.add(502);
         firstStatuses.add(502);
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath("").maxRetries(1), NO_ENVIRONMENT);
 
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath("").maxRetries(1), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
 
+        // assert
         assertThat(thrown.getMessage(), containsString("answered HTTP 502"));
         assertThat(requests, is(2));
         assertThat(waits.size(), is(1));
@@ -397,28 +362,33 @@ public class OpenAiCompatibleGenerationProviderTest {
 
     @Test
     public void generate_clientError_isNotRetried() {
+        // arrange
         status = 401;
         answer = "{\"error\":\"no key\"}";
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
-        assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        // act
+        assertThrows(IOException.class, () -> provider.generate(REQUEST));
 
+        // assert
         assertThat(requests, is(1));
         assertThat(waits.isEmpty(), is(true));
     }
 
     @Test
     public void generate_promptLongerThanTheContext_isAContextOverflow() {
+        // arrange
         status = 400;
         answer = "{\"error\":{\"message\":\"This endpoint's maximum context length is 131072 tokens\"}}";
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
-        final ContextOverflowException thrown = assertThrows(
-                ContextOverflowException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        // act
+        final ContextOverflowException thrown =
+                assertThrows(ContextOverflowException.class, () -> provider.generate(REQUEST));
 
+        // assert
         assertThat(thrown.getMessage(), containsString("answered HTTP 400"));
         assertThat(requests, is(1));
     }
@@ -443,8 +413,8 @@ public class OpenAiCompatibleGenerationProviderTest {
         Thread.currentThread().interrupt();
         try {
             // act
-            final java.io.InterruptedIOException thrown =
-                    assertThrows(java.io.InterruptedIOException.class, () -> realWaiter.generate(REQUEST));
+            final InterruptedIOException thrown =
+                    assertThrows(InterruptedIOException.class, () -> realWaiter.generate(REQUEST));
 
             // assert
             assertThat(thrown.getMessage(), is("interrupted while waiting to retry a request"));
@@ -457,12 +427,16 @@ public class OpenAiCompatibleGenerationProviderTest {
 
     @Test
     public void generate_errorStatusWithoutBody_throwsWithTheStatus() {
+        // arrange
         status = 503;
         answer = "";
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath("").maxRetries(0), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath("").maxRetries(0), NO_ENVIRONMENT);
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("answered HTTP 503: "));
     }
 
@@ -470,12 +444,12 @@ public class OpenAiCompatibleGenerationProviderTest {
     public void generate_truncatedAnswer_isRefusedWithWhatWasWritten() {
         // arrange
         answer = completion("cut off", "length");
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
         // act
-        final IncompleteAnswerException thrown = assertThrows(
-                IncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IncompleteAnswerException thrown =
+                assertThrows(IncompleteAnswerException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
@@ -492,12 +466,12 @@ public class OpenAiCompatibleGenerationProviderTest {
     public void generate_answerTheProviderStoppedWithAnError_isRefusedWithWhatWasWritten() {
         // arrange
         answer = completion("- test paging (", "error");
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
         // act
-        final IncompleteAnswerException thrown = assertThrows(
-                IncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IncompleteAnswerException thrown =
+                assertThrows(IncompleteAnswerException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
@@ -509,12 +483,12 @@ public class OpenAiCompatibleGenerationProviderTest {
     public void generate_streamTheProviderStoppedWithAnError_isRefused() {
         // arrange
         events = streamed("- test ", "paging (", "error");
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT);
 
         // act
-        final IncompleteAnswerException thrown = assertThrows(
-                IncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IncompleteAnswerException thrown =
+                assertThrows(IncompleteAnswerException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
@@ -525,12 +499,12 @@ public class OpenAiCompatibleGenerationProviderTest {
     public void generate_emptyAnswer_isRefused() {
         // arrange
         answer = completion("", "stop");
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
         // act
-        final IncompleteAnswerException thrown = assertThrows(
-                IncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IncompleteAnswerException thrown =
+                assertThrows(IncompleteAnswerException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.EMPTY));
@@ -541,65 +515,56 @@ public class OpenAiCompatibleGenerationProviderTest {
     public void generate_successWithoutAChoice_isRefusedWithTheBody() {
         // arrange: a 2xx answer carrying an error object instead of a completion
         answer = "{\"error\":{\"message\":\"upstream overloaded\"}}";
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
         // act
-        final IncompleteAnswerException thrown = assertThrows(
-                IncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IncompleteAnswerException thrown =
+                assertThrows(IncompleteAnswerException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.NO_ANSWER));
         assertThat(thrown.getMessage(), containsString("answered without a completion for "));
         assertThat(thrown.getMessage(), containsString("upstream overloaded"));
     }
-    // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="generateWithTimings">
+    // timeouts
     @Test
-    public void generateWithTimings_reportsTheServersUsage() throws Exception {
+    public void generate_noAnswerWithinTheReadTimeout_isNotSentAgain() {
+        // arrange: the request was sent and may be billed; the server does not answer in time
+        stallBeforeAnswer = STALL;
+        final OpenAiCompatibleGenerationProvider provider =
+                impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(3));
+
         // act
-        final TimedGeneration timings =
-                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generateWithTimings(REQUEST);
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
 
         // assert
-        assertThat(timings.text(), is("A tiny test class."));
-        assertThat(timings.promptTokens(), is(42));
-        assertThat(timings.cachedPromptTokens(), is(40));
-        assertThat(timings.predictedTokens(), is(7));
-        assertThat(timings.prefillTokensPerSecond(), is(0.0d));
-        assertThat(timings.decodeTokensPerSecond(), is(greaterThan(0.0d)));
+        assertThat(thrown.getMessage(), containsString("the request is not sent again"));
+        assertThat(thrown instanceof InterruptedIOException, is(false));
+        assertThat(requests, is(1));
+        assertThat(waits.isEmpty(), is(true));
     }
 
-    /** A calibration answer cut at the budget is warned about under this provider's logger, not llama.cpp's. */
     @Test
-    public void generateWithTimings_anAnswerCutAtTheBudget_warnsUnderTheRemoteProvidersLogger() throws Exception {
-        // arrange
-        answer = completion("cut off", "length");
-        final ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger)
-                org.slf4j.LoggerFactory.getLogger(OpenAiCompatibleGenerationProvider.class);
-        final ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
-                new ch.qos.logback.core.read.ListAppender<>();
-        appender.start();
-        logger.addAppender(appender);
-        try {
-            // act
-            provider(ProviderConfig.builder().modelPath("").maxOutputTokens(64), NO_ENVIRONMENT)
-                    .generateWithTimings(REQUEST);
+    public void generate_anAnswerThatStopsWhileRead_isNotSentAgain() {
+        // arrange: the answer starts, then stalls
+        stallInAnswer = STALL;
+        final OpenAiCompatibleGenerationProvider provider =
+                impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(3));
 
-            // assert
-            assertThat(appender.list.size(), is(1));
-            assertThat(
-                    appender.list.get(0).getFormattedMessage(),
-                    startsWith("Generated text for Test.java was cut off at the 64-token output budget"));
-        } finally {
-            logger.detachAppender(appender);
-            appender.stop();
-        }
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("stopped answering"));
+        assertThat(thrown instanceof InterruptedIOException, is(false));
+        assertThat(requests, is(1));
+        // no wait for a second attempt: the one-threaded stub could not count one in time
+        assertThat(waits.isEmpty(), is(true));
     }
-    // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="stream">
+    // stream
     @Test
     public void generate_stream_requestsAndAssemblesTheEventStream() throws Exception {
         // arrange
@@ -618,26 +583,15 @@ public class OpenAiCompatibleGenerationProviderTest {
     }
 
     @Test
-    public void generateWithTimings_stream_reportsTheUsageChunk() throws Exception {
-        events = streamed("A tiny ", "test class.", "stop");
-        final TimedGeneration timings = provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
-                .generateWithTimings(REQUEST);
-        assertThat(timings.text(), is("A tiny test class."));
-        assertThat(timings.promptTokens(), is(42));
-        assertThat(timings.cachedPromptTokens(), is(40));
-        assertThat(timings.predictedTokens(), is(7));
-    }
-
-    @Test
     public void generate_streamCutOff_isRefusedWithWhatWasWritten() {
         // arrange
         events = streamed("cut ", "off", "length");
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT);
 
         // act
-        final IncompleteAnswerException thrown = assertThrows(
-                IncompleteAnswerException.class,
-                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final IncompleteAnswerException thrown =
+                assertThrows(IncompleteAnswerException.class, () -> provider.generate(REQUEST));
 
         // assert
         assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
@@ -646,37 +600,103 @@ public class OpenAiCompatibleGenerationProviderTest {
 
     @Test
     public void generate_streamWithoutDone_fails() {
-        events = java.util.Arrays.asList(
+        // arrange
+        events = Arrays.asList(
                 "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"half\"},\"finish_reason\":null}]}\n\n");
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT);
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
+
+        // assert
         assertThat(thrown.getMessage(), startsWith("The stream ended without 'data: [DONE]' after "));
     }
 
     @Test
     public void generate_streamErrorStatus_throwsWithStatusAndBody() {
         // a server refuses before the stream starts with a plain JSON error, as the gateway's 429 does
+        // arrange
         status = 429;
         answer = "{\"error\":{\"message\":\"Too many concurrent requests\"}}";
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
-                        .generate(REQUEST));
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT);
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("answered HTTP 429"));
         assertThat(thrown.getMessage(), containsString("Too many concurrent requests"));
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="generateWithTimings">
+    @Test
+    public void generateWithTimings_completion_reportsTheServersUsage() throws Exception {
+        // act
+        final TimedGeneration timings =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generateWithTimings(REQUEST);
+
+        // assert
+        assertThat(timings.text(), is("A tiny test class."));
+        assertThat(timings.promptTokens(), is(42));
+        assertThat(timings.cachedPromptTokens(), is(40));
+        assertThat(timings.predictedTokens(), is(7));
+        assertThat(timings.prefillTokensPerSecond(), is(0.0d));
+        assertThat(timings.decodeTokensPerSecond(), is(greaterThan(0.0d)));
+    }
+
+    /** A calibration answer cut at the budget is warned about under this provider's logger, not llama.cpp's. */
+    @Test
+    public void generateWithTimings_anAnswerCutAtTheBudget_warnsUnderTheRemoteProvidersLogger() throws Exception {
+        // arrange
+        answer = completion("cut off", "length");
+        final Logger logger = (Logger) LoggerFactory.getLogger(OpenAiCompatibleGenerationProvider.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            // act
+            provider(ProviderConfig.builder().modelPath("").maxOutputTokens(64), NO_ENVIRONMENT)
+                    .generateWithTimings(REQUEST);
+
+            // assert
+            assertThat(appender.list.size(), is(1));
+            assertThat(
+                    appender.list.get(0).getFormattedMessage(),
+                    startsWith("Generated text for Test.java was cut off at the 64-token output budget"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
+    public void generateWithTimings_stream_reportsTheUsageChunk() throws Exception {
+        // arrange
+        events = streamed("A tiny ", "test class.", "stop");
+
+        // act
+        final TimedGeneration timings = provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
+                .generateWithTimings(REQUEST);
+
+        // assert
+        assertThat(timings.text(), is("A tiny test class."));
+        assertThat(timings.promptTokens(), is(42));
+        assertThat(timings.cachedPromptTokens(), is(40));
+        assertThat(timings.predictedTokens(), is(7));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="listModels">
     @Test
-    public void listModels_getsTheModelListWithoutABodyAndParsesIt() throws Exception {
+    public void listModels_copilotGatewayAnswer_getsTheModelListWithoutABodyAndParsesIt() throws Exception {
         // arrange
         answer = ModelListFixtures.COPILOT_GATEWAY;
 
         // act
-        final java.util.List<RemoteModel> models = provider(
+        final List<RemoteModel> models = provider(
                         ProviderConfig.builder().modelPath("").apiKeyEnv("COPILOT_GATEWAY_API_KEY").stream(true),
                         name -> "COPILOT_GATEWAY_API_KEY".equals(name) ? "gw-key" : null)
                 .listModels();
@@ -694,7 +714,62 @@ public class OpenAiCompatibleGenerationProviderTest {
     }
 
     @Test
-    public void requestsPerMinute_countsEveryRequestInTheServersSharedWindow() throws Exception {
+    public void listModels_errorStatus_throwsWithStatusAndBody() {
+        // arrange
+        status = 401;
+        answer = "{\"error\":\"Unauthorized\"}";
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, provider::listModels);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("/v1/models answered HTTP 401: {\"error\":\"Unauthorized\"}"));
+    }
+
+    @Test
+    public void listModels_keyForAnotherHostOverPlainHttp_isRefusedBeforeConnecting() {
+        // arrange
+        final OpenAiCompatibleGenerationProvider provider = new OpenAiCompatibleGenerationProvider(
+                ProviderConfig.builder()
+                        .modelPath("")
+                        .baseUrl("http://192.0.2.1:3030/v1")
+                        .apiKeyEnv("K")
+                        .build(),
+                PROMPT_SUPPORT,
+                name -> "key");
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, provider::listModels);
+
+        // assert
+        assertThat(thrown.getMessage(), startsWith("Refusing to send the API key from K in cleartext to 192.0.2.1"));
+        assertThat(requestPath, is(nullValue()));
+    }
+
+    @Test
+    public void listModels_aTimeout_isRetriedAndEndsAsAPlainIOException() {
+        // arrange: a GET may be sent again; every attempt times out
+        stallBeforeAnswer = STALL;
+        final OpenAiCompatibleGenerationProvider provider =
+                impatientProvider(ProviderConfig.builder().modelPath("").maxRetries(1));
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, provider::listModels);
+
+        // assert: two attempts, one wait, and no InterruptedIOException that would end a whole run (the
+        // one-threaded stub is still asleep in the first exchange when the second attempt gives up, so the
+        // attempts are counted by the provider's message, not by the server)
+        assertThat(thrown.getMessage(), containsString("timed out 2 times"));
+        assertThat(thrown instanceof InterruptedIOException, is(false));
+        assertThat(waits.size(), is(1));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="requestsPerMinute">
+    @Test
+    public void requestsPerMinute_listModelsThenGenerate_countsEveryRequestInTheServersSharedWindow() throws Exception {
         // arrange
         answer = ModelListFixtures.JLLAMA;
         final OpenAiCompatibleGenerationProvider provider =
@@ -710,62 +785,53 @@ public class OpenAiCompatibleGenerationProviderTest {
         // assert
         assertThat(shared.startedInWindow(), is(2));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="close">
     @Test
-    public void listModels_errorStatus_throwsWithStatusAndBody() {
-        status = 401;
-        answer = "{\"error\":\"Unauthorized\"}";
-        final IOException thrown = assertThrows(
-                IOException.class,
-                () -> provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT)
-                        .listModels());
-        assertThat(thrown.getMessage(), containsString("/v1/models answered HTTP 401: {\"error\":\"Unauthorized\"}"));
-    }
-
-    @Test
-    public void listModels_keyForAnotherHostOverPlainHttp_isRefusedBeforeConnecting() {
+    public void close_newProvider_isANoOp() throws Exception {
+        // arrange
         final OpenAiCompatibleGenerationProvider provider = new OpenAiCompatibleGenerationProvider(
-                ProviderConfig.builder()
-                        .modelPath("")
-                        .baseUrl("http://192.0.2.1:3030/v1")
-                        .apiKeyEnv("K")
-                        .build(),
-                PROMPT_SUPPORT,
-                name -> "key");
-        final IOException thrown = assertThrows(IOException.class, provider::listModels);
-        assertThat(thrown.getMessage(), startsWith("Refusing to send the API key from K in cleartext to 192.0.2.1"));
-        assertThat(requestPath, is(nullValue()));
+                ProviderConfig.builder().modelPath("").build(), PROMPT_SUPPORT);
+
+        // act
+        provider.close();
+
+        // assert
+        assertThat(provider.toString(), containsString("OpenAiCompatibleGenerationProvider"));
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="lastUsage">
     @Test
-    public void close_isANoOp() throws Exception {
-        final OpenAiCompatibleGenerationProvider provider = new OpenAiCompatibleGenerationProvider(
-                ProviderConfig.builder().modelPath("").build(), PROMPT_SUPPORT);
-        provider.close();
-        assertThat(provider.toString(), containsString("OpenAiCompatibleGenerationProvider"));
-    }
-
-    @Test
-    public void lastUsage_isTheUsageOfTheLastAnswer() throws Exception {
+    public void lastUsage_afterGenerate_isTheUsageOfTheLastAnswer() throws Exception {
+        // arrange
         final OpenAiCompatibleGenerationProvider provider =
                 provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
+
+        // pre-assert
         assertThat(provider.lastUsage(), is(GenerationUsage.NONE));
 
+        // act
         provider.generate(REQUEST);
 
+        // assert
         assertThat(provider.lastUsage(), is(new GenerationUsage(1, 42, 7, 40, "stop")));
     }
 
     @Test
     public void lastUsage_ofACutOffAnswer_isKeptAlthoughTheCallThrows() throws Exception {
+        // arrange
         answer = completion("half an answ", "length");
         final OpenAiCompatibleGenerationProvider provider =
                 provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
 
-        org.junit.jupiter.api.Assertions.assertThrows(java.io.IOException.class, () -> provider.generate(REQUEST));
+        // act
+        assertThrows(IOException.class, () -> provider.generate(REQUEST));
 
+        // assert
         assertThat(provider.lastUsage().finishReason(), is("length"));
         assertThat(provider.lastUsage().completionTokens(), is(7L));
     }
+    // </editor-fold>
 }

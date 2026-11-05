@@ -78,49 +78,59 @@ public class ConfiguredPathResolutionTest {
         return definition;
     }
 
-    // <editor-fold defaultstate="collapsed" desc="absolute paths win over every directory">
+    // <editor-fold defaultstate="collapsed" desc="modelPath (buildAiModelDefinitionSupport)">
     @ParameterizedTest
     @MethodSource("directories")
     public void modelPath_absolute_isUsedAsItIs(final Function<Path, @Nullable File> directory) throws Exception {
+        // arrange
         final String absolute =
                 tempDir.resolve("elsewhere").resolve("model.gguf").toString();
 
+        // act
         final ModelRegistry support = EngineSupport.buildAiModelDefinitionSupport(
                 Collections.singletonList(model(absolute)), directory.apply(tempDir));
 
+        // assert
         assertThat(support.definition("model").getModelPath(), is(absolute));
     }
 
-    @ParameterizedTest
-    @MethodSource("directories")
-    public void templateFile_absolute_isReadAsItIs(final Function<Path, @Nullable File> directory) throws Exception {
-        final List<PromptDefinition> prompts = Collections.singletonList(promptFile(absolutePrompt.toString()));
-
-        assertThat(
-                EngineSupport.buildPromptSupport(prompts, directory.apply(tempDir), null)
-                        .systemPrompt("file-body-java"),
-                is(PROMPT));
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="an absolute directory makes relative paths absolute">
     @Test
     public void modelPath_relativeBelowAnAbsoluteDirectory_becomesAbsolute() throws Exception {
+        // arrange
         final File modelDirectory = tempDir.resolve("models").toFile();
 
+        // act
         final String resolved = EngineSupport.buildAiModelDefinitionSupport(
                         Collections.singletonList(model("sub/model.gguf")), modelDirectory)
                 .definition("model")
                 .getModelPath();
 
+        // assert
         assertThat(resolved, is(new File(modelDirectory, "sub/model.gguf").getPath()));
         assertThat(new File(resolved).isAbsolute(), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="templateFile (buildPromptSupport)">
+    @ParameterizedTest
+    @MethodSource("directories")
+    public void templateFile_absolute_isReadAsItIs(final Function<Path, @Nullable File> directory) throws Exception {
+        // arrange
+        final List<PromptDefinition> prompts = Collections.singletonList(promptFile(absolutePrompt.toString()));
+
+        // act, assert
+        assertThat(
+                EngineSupport.buildPromptSupport(prompts, directory.apply(tempDir), null)
+                        .systemPrompt("file-body-java"),
+                is(PROMPT));
     }
 
     @Test
     public void templateFile_relativeBelowAnAbsoluteDirectory_isReadFromThere() throws Exception {
+        // arrange
         final List<PromptDefinition> prompts = Collections.singletonList(promptFile("file-body-java.md"));
 
+        // act, assert
         assertThat(
                 EngineSupport.buildPromptSupport(
                                 prompts, absolutePrompt.getParent().toFile(), null)
