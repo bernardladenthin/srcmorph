@@ -16,7 +16,7 @@ run needs, bound by Jackson or set in plain Java. The CLI and the Maven plugin r
 configuration file, JSON or YAML, through `SrcMorphConfigurationFileLoader`, into a
 `SrcMorphConfigurationFile` (`srcMorph`, `packageFieldGenerations`, `projectFieldGenerations`, and the
 CLI's `command` / `modelFilter`): the extension picks the parser, a `${name}` in a value is the
-caller's property, an unknown key fails, and relative paths resolve against the file's directory:
+caller's property (`$${name}` a literal `${name}`), an unknown key fails, and relative paths resolve against the file's directory:
 the directories and `runRecordFile` directly, a `modelPath`, `templateFile` or `factsFile` through
 `modelDirectory` / `profileDirectory`, which the loader sets to the file's directory when they are
 unset. A `SrcMorphConfiguration` built in code resolves its relative paths against the working

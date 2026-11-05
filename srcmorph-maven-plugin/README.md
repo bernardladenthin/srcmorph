@@ -143,7 +143,8 @@ Relative paths in the file resolve against the file's directory: the directories
 and a `modelPath`, `templateFile` or `factsFile` through `modelDirectory` / `profileDirectory`,
 which are the file's directory when unset. A `${name}` in a value is a Maven property (the command
 line's `-D`, then the project's `<properties>`, then the project's own values as a POM names them,
-then the system's), so `gpuLayers: ${ai.gpuLayers}` takes `-Dai.gpuLayers=12`. The project's values
+then the system's), so `gpuLayers: ${ai.gpuLayers}` takes `-Dai.gpuLayers=12`; `$${name}` writes a
+literal `${name}` (a shell variable in an inline prompt). The project's values
 are `basedir`, `project.basedir`, `project.build.directory`, `project.build.sourceDirectory`,
 `project.groupId`, `project.artifactId`, `project.version` and `project.name`. An unknown one stays as
 it is, except in a directory, `runRecordFile` or a subtree, where it fails the goal. Every goal takes

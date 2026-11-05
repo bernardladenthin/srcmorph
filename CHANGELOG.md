@@ -34,6 +34,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Added
 
+- **`$${name}` writes a literal `${name}`** in a configuration value, whether a property of that
+  name exists or not: an inline prompt can show a shell variable (`$${HOME}`) that `-DHOME=...` or a
+  Maven property would otherwise replace. In a path it still fails the load, as an unreplaced
+  reference does.
 - **TypeScript takes `file-body-oop`:** a rule for `.ts`, `.mts` and `.cts` in `run.py` and in the
   Luna example (no counters of its own). Measured on 2026-11-05 on a TypeScript repository,
   internally: with the oop prompt both models named more of the exported API than with the

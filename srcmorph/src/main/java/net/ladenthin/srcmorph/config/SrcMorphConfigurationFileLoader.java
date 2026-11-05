@@ -37,7 +37,8 @@ import org.jspecify.annotations.Nullable;
  *       subtree, where it fails the load instead of naming a directory {@code ${name}}. It is replaced
  *       after parsing, in the parsed
  *       values, so a value with backslashes or quotes (a Windows path) needs no escaping, and a number
- *       written as {@code ${name}} binds as the number it becomes.</li>
+ *       written as {@code ${name}} binds as the number it becomes. {@code $${name}} writes a literal
+ *       {@code ${name}} that no property replaces (in a path it still fails the load).</li>
  *   <li>The values bind strictly: an unknown key fails, naming it.</li>
  *   <li>Relative directories resolve against the directory of the file, so the file names the same
  *       tree whatever directory it is run from: {@code baseDirectory} (unset, the caller's default),
@@ -85,6 +86,15 @@ public final class SrcMorphConfigurationFileLoader {
 
     /** A property reference: {@code ${name}}. */
     private static final Pattern PROPERTY_REFERENCE = Pattern.compile("\\$\\{([^}]+)}");
+
+    /**
+     * A property reference, {@code ${name}}, or an escaped one, {@code $${name}}, which writes a literal
+     * {@code ${name}}; group 1 is the name.
+     */
+    private static final Pattern ESCAPABLE_REFERENCE = Pattern.compile("\\$?\\$\\{([^}]+)}");
+
+    /** How an escaped reference starts: a second dollar sign in front of the reference. */
+    private static final String ESCAPED_OPENER = "$${";
 
     /** Utility class; not instantiable. */
     private SrcMorphConfigurationFileLoader() {
@@ -204,22 +214,23 @@ public final class SrcMorphConfigurationFileLoader {
     }
 
     /**
-     * Replaces every {@code ${name}} whose {@code name} is a known property by its value.
+     * Replaces every {@code ${name}} whose {@code name} is a known property by its value, and every
+     * escaped {@code $${name}} by the literal {@code ${name}} (an inline prompt that shows a shell
+     * variable, say), whether a property of that name exists or not.
      *
      * @param text       the text
      * @param properties the properties
-     * @return the text with the known references replaced
+     * @return the text with the known references replaced and the escaped ones unescaped
      */
     static String substitute(final String text, final Map<String, String> properties) {
-        if (properties.isEmpty()) {
-            return text;
-        }
-        final Matcher matcher = PROPERTY_REFERENCE.matcher(text);
+        final Matcher matcher = ESCAPABLE_REFERENCE.matcher(text);
         final StringBuffer result = new StringBuffer(text.length());
         while (matcher.find()) {
+            final boolean escaped = matcher.group().startsWith(ESCAPED_OPENER);
+            final String reference = escaped ? matcher.group().substring(1) : matcher.group();
             final String name = matcher.group(1);
-            final String value = name == null ? null : properties.get(name);
-            matcher.appendReplacement(result, Matcher.quoteReplacement(value != null ? value : matcher.group()));
+            final String value = escaped || name == null ? null : properties.get(name);
+            matcher.appendReplacement(result, Matcher.quoteReplacement(value != null ? value : reference));
         }
         matcher.appendTail(result);
         return result.toString();

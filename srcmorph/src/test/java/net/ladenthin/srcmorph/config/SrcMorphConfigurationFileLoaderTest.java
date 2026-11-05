@@ -149,6 +149,20 @@ public class SrcMorphConfigurationFileLoaderTest {
         assertThat(SrcMorphConfigurationFileLoader.substitute("m: ${ai.model}", NO_PROPERTIES), is("m: ${ai.model}"));
     }
 
+    /** $${name} writes a literal ${name}, also where a property of that name exists. */
+    @Test
+    public void substitute_anEscapedReference_isTheLiteralReference() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put("user.home", "/home/me");
+
+        assertThat(
+                SrcMorphConfigurationFileLoader.substitute("echo $${user.home} in ${user.home}", properties),
+                is(equalTo("echo ${user.home} in /home/me")));
+        assertThat(
+                SrcMorphConfigurationFileLoader.substitute("echo $${HOME} costs $5", NO_PROPERTIES),
+                is(equalTo("echo ${HOME} costs $5")));
+    }
+
     @Test
     public void load_aPropertyWithBackslashesAndQuotes_needsNoEscaping() throws IOException {
         final Path file = write(

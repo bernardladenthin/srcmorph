@@ -46,7 +46,7 @@ same one the Maven plugin reads (since 1.4.0), through the same loader
 (`SrcMorphConfigurationFileLoader`): an unknown key fails the run immediately rather than being
 silently ignored, a `${name}` in a value is the Java system property `name` (`java -Dname=value -jar
 ...`; an unknown one stays as it is, except in a directory, `runRecordFile` or a subtree, where it fails
-the run), and **relative paths resolve against the directory of the file**,
+the run; `$${name}` writes a literal `${name}`), and **relative paths resolve against the directory of the file**,
 so a configuration names the same tree whatever directory you start the CLI in. On startup the CLI
 logs the parsed configuration back to you (re-serialized as both JSON and YAML, its paths resolved) so
 you can confirm exactly what will run before any model loads or file is written.
