@@ -243,6 +243,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
+- **A template that opens the thinking block itself leaves no reasoning in the summary.** Qwen3 and
+  DeepSeek-R1 templates put `<think>` into the prompt, so the answer starts with the reasoning and
+  holds only `</think>`; `AiCompletionParser` kept all of it. A first `</think>` with no `<think>`
+  before it, and not quoted in backticks, now ends the reasoning.
 - **The benchmark's scorer** (`score.py`, `report.py`; the card's published numbers stay until it is
   re-rendered): an everyday word between two backtick spans no longer counts as marked as code, one
   in a column listing with its type (`email VARCHAR(254)`) does; a reasoning marker in backticks is

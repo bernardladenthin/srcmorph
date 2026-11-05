@@ -167,4 +167,29 @@ public class AiCompletionParserTest {
 
         assertThat(new AiCompletionParser().parseCompletion(response), is(equalTo(response)));
     }
+
+    /**
+     * A chat template that opens the thinking block itself (Qwen3, DeepSeek-R1) leaves the answer with only
+     * the closing tag: the reasoning before it is no part of the answer.
+     */
+    @Test
+    public void parseCompletion_reasoningClosedByATagTheTemplateOpened_isStripped() throws Exception {
+        assertThat(
+                parser.parseCompletion("Let me read the file first.\n</think>\n\n> The lead.\nThe body."),
+                is(equalTo("> The lead.\nThe body.")));
+    }
+
+    /** No reasoning at all before the template's block was closed: the answer is what follows. */
+    @Test
+    public void parseCompletion_aResponseStartingWithTheClosingTag_isTheTextAfterIt() throws Exception {
+        assertThat(parser.parseCompletion("</think>\n> The lead."), is(equalTo("> The lead.")));
+    }
+
+    /** A closing tag quoted in backticks is the answer writing about it, so nothing is stripped. */
+    @Test
+    public void parseCompletion_aClosingTagQuotedInBackticks_isKept() throws Exception {
+        final String response = "> The lead.\nThe block ends at `</think>`, the answer follows.";
+
+        assertThat(parser.parseCompletion(response), is(equalTo(response)));
+    }
 }

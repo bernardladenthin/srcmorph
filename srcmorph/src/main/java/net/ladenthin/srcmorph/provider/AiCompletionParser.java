@@ -53,6 +53,9 @@ public class AiCompletionParser {
     /** Closes a {@link #THINK_TAG_START_MARKER} block. */
     public static final String THINK_TAG_END_MARKER = "</think>";
 
+    /** The backtick of a Markdown code span: a marker right after one is quoted, not emitted. */
+    private static final char CODE_QUOTE = '`';
+
     /** The kinds of thinking block, in the order they are tried. */
     private enum ThinkingBlock {
         /** Gemma 4's channel markers. */
@@ -81,6 +84,10 @@ public class AiCompletionParser {
      *   <li>If it starts with a start marker whose end marker is absent, the token budget was exhausted
      *       while the model was still reasoning, and an {@link AiIncompleteAnswerException} says so
      *       rather than letting the reasoning be stored as the answer.</li>
+     *   <li>If a chat template opened the block itself (Qwen3, DeepSeek-R1), the response holds only the
+     *       closing {@link #THINK_TAG_END_MARKER}: a first one with no {@link #THINK_TAG_START_MARKER}
+     *       before it and not quoted in backticks ends the reasoning, and the trimmed text after it is
+     *       returned.</li>
      *   <li>Otherwise the response is returned trimmed, any marker in it kept as text.</li>
      *   <li>{@code null} input is treated as an empty response.</li>
      * </ul>
@@ -112,6 +119,15 @@ public class AiCompletionParser {
                                 + response.length() + " chars)");
             }
             return thinking.substring(thinkingEnd + end.length()).trim();
+        }
+        // a template that opened the block itself (Qwen3, DeepSeek-R1) leaves only the closing tag: a first
+        // </think> with no <think> before it, and not quoted in backticks, ends the reasoning
+        final int injectedEnd = trimmed.indexOf(THINK_TAG_END_MARKER);
+        if (injectedEnd >= 0
+                && trimmed.lastIndexOf(THINK_TAG_START_MARKER, injectedEnd) < 0
+                && (injectedEnd == 0 || trimmed.charAt(injectedEnd - 1) != CODE_QUOTE)) {
+            return trimmed.substring(injectedEnd + THINK_TAG_END_MARKER.length())
+                    .trim();
         }
         return trimmed;
     }

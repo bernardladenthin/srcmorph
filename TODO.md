@@ -56,7 +56,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 24 | Fact counter gaps: shell `((a))`, Perl `<<` after `}` / in a regex / `q{}`, SQL strings and comments, the smaller ones | Claude | done 2026-11-05 | — |
 | 25 | `score.py` and `report.py`: `LEAK` in backticks, a summary after `<think>`, words, backtick spans, thousands separators, weighted kinds | Claude | done 2026-11-05 | — |
 | 26 | Benchmark meta (srcmorph commit, Python, corpus hash), `large.py` golden hash, non-UTF-8 sources, the tools' mutations | Claude | open | Review of 2026-11-02 |
-| 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | open | Review of 2026-11-02, core |
+| 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | done 2026-11-05 | — |
 | 28 | Run record totals (skipped, wall time), plan tokens by oversize strategy, the first file's model load | Claude | open | Review of 2026-11-02, core |
 | 29 | Test upkeep: guide drift, logger levels, the 2000-character chunk, the byte checksum, the calibration block through the loader, the fb-contrib match per class | Claude | open | Review of 2026-11-02, tests |
 | 30 | API reviews: null-safety, package hierarchy, naming (`code-quality-todos.md`) | Claude | open | Other open items |
@@ -186,8 +186,7 @@ Unreleased) except:
   the loop in `acquire()` re-checks the window after every wake-up; the owner dismisses it.
 - Smaller: the plan's token figures ignore the oversize strategy; the reduce estimate
   assumes a fan-in of 16; the per-file time of a local group's first file includes the model load;
-  the record's totals have no skipped count and no run wall time; `AiCompletionParser` keeps
-  reasoning when the template injected the opening `<think>`.
+  the record's totals have no skipped count and no run wall time.
 
 **Benchmark tooling (after the runs, which read `run.py` and `search.py`):**
 
