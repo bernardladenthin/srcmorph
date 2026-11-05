@@ -69,6 +69,18 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(files["srcMorph"]["runRecordFile"], "r.json")
         self.assertNotIn("runRecordFile", packages["srcMorph"])
 
+    def test_thePartsDirectory_onlyInTheFilePhaseAndOnlyWhenAsked(self):
+        definition = {"key": "m", "provider": "mock"}
+        files = run.phase_config("GenerateFileIndex", Path("w"), Path("o"), run.PROFILES / "v3", definition,
+                                 parts=Path("p"))
+        packages = run.phase_config("AggregatePackages", Path("w"), Path("o"), run.PROFILES / "v3", definition,
+                                    parts=Path("p"))
+        unasked = run.phase_config("GenerateFileIndex", Path("w"), Path("o"), run.PROFILES / "v3", definition)
+
+        self.assertEqual(files["srcMorph"]["partsDirectory"], "p")
+        self.assertNotIn("partsDirectory", packages["srcMorph"])
+        self.assertNotIn("partsDirectory", unasked["srcMorph"])
+
     def test_theAggregationPhases_takeTheirRuleWhereTheCliReadsIt(self):
         definition = {"key": "m", "provider": "mock"}
         packages = run.phase_config("AggregatePackages", Path("w"), Path("o"), run.PROFILES / "v3", definition)

@@ -35,7 +35,8 @@ Options: --profile <profile under profiles/> (default v3; it needs the five prom
          --chars-per-token <n> (replaces every model's estimate: a data file such as a SQL dump has
          fewer characters per token than code, and a window filled at 4 is refused by the provider),
          --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
-         --commit <git rev of the Java snapshot>, --seed <n> (every model's seed, for repeat runs;
+         --parts <dir> (keeps every map and reduce answer of a chunked file below <dir>/<model key>/,
+         srcmorph's partsDirectory), --commit <git rev of the Java snapshot>, --seed <n> (every model's seed, for repeat runs;
          the OpenAI-compatible provider sends it too), --out (a model's earlier summaries there are
          deleted, a directory holding anything but .ai.md files is refused), --meta, --work (created
          by run.py and marked so; an existing directory without the marker is refused, never deleted).
@@ -242,7 +243,7 @@ def file_rules(profile, key, facts=False, oversize=None, max_chunks=None, java_p
 
 
 def phase_config(phase, work, out_dir, profile, definition, facts=False, oversize=None, max_chunks=None,
-                 run_record=None, java_prompt=JAVA_PROMPT):
+                 run_record=None, java_prompt=JAVA_PROMPT, parts=None):
     """The CLI configuration of one phase. The file phase's rules are srcMorph's rules; the
     package and project phases take their one rule from packageRules and
     projectRules, as the CLI reads them."""
@@ -274,6 +275,8 @@ def phase_config(phase, work, out_dir, profile, definition, facts=False, oversiz
              **chunk_prompts(profile)}]
     if run_record is not None and phase == "GenerateFileIndex":
         config["srcMorph"]["runRecordFile"] = str(run_record)
+    if parts is not None and phase == "GenerateFileIndex":
+        config["srcMorph"]["partsDirectory"] = str(parts)
     return config
 
 
@@ -465,7 +468,8 @@ def run_model(args, models, profile, model):
         config_path = log_dir / f"config_{phase}.json"
         config_path.write_text(json.dumps(phase_config(phase, Path(args.work), out_dir, profile, definition,
                                                        args.facts, args.oversize or None, args.max_chunks,
-                                                       run_record, args.java_prompt),
+                                                       run_record, args.java_prompt,
+                                                       Path(args.parts) / model["key"] if args.parts else None),
                                           indent=1), encoding="utf-8")
         start = time.time()
         with open(log_dir / f"{phase}.log", "w", encoding="utf-8") as log:
@@ -542,9 +546,10 @@ def main():
     parser.add_argument("--max-chunks", type=int, default=None)
     parser.add_argument("--chars-per-token", type=float, default=None)
     parser.add_argument("--java-prompt", default=JAVA_PROMPT)
+    parser.add_argument("--parts", default="")
     args = parser.parse_args()
     # srcmorph resolves a relative path against the configuration file's directory, not the working one
-    for name in ("work", "out", "meta"):
+    for name in ("work", "out", "meta", "parts"):
         if getattr(args, name, None):
             setattr(args, name, str(Path(getattr(args, name)).resolve()))
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))

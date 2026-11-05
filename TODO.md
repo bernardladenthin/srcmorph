@@ -104,7 +104,7 @@ test methods, one call in an `assertThrows` lambda)
 - [x] B7 `indexer.generation` (15)
 - [x] B8 `engine` (12)
 - [x] B9 `srcmorph-cli` (6), `srcmorph-maven-plugin` (8)
-- [ ] B10 PIT at 100 in all three modules; the counts in this file's sections are deleted
+- [x] B10 PIT at 100 in all three modules; the counts in this file's sections are deleted
 - [x] B11 `TEST_WRITING_GUIDE.md` says what the tests do: the SPDX header (not the old license
   block), SLF4J and logback's `ListAppender` (not a Maven `Log`), the current class and package names.
   SonarCloud's "test methods should not be public" is not followed: the owner's guides write
@@ -177,17 +177,13 @@ with the code, not with the run's conclusions)
 - Card text (with the next re-render): the correlation −0.46 is from an older population (today
   −0.18), the BM25 range "67 to 86 %" ends at 91 %, the Fisher test with 3 against 3 runs can never
   reach p < 0.1.
-- Tests (row 29): drift from TEST_WRITING_GUIDE in older tests: 433 test names of two parts and 221
-  of one where the guide wants three, tests without arrange/act/assert comments or outside folds,
-  195 fully qualified names (counted 2026-11-05); a sweep renames about 650 tests, which CLAUDE.md
-  counts as a large refactor to report, not to apply.
 - CodeQL #270 (`RequestRateLimiter`: the return value of `awaitNanos` ignored) is a false positive:
   the loop in `acquire()` re-checks the window after every wake-up; the owner dismisses it.
-- SonarCloud (row 3): the 98 issues of `main` are not readable through the API. Of the 159 code
-  smells of PR #269 left are the test style ones (public test methods, a lambda with several calls
-  in `assertThrows`, many assertions in one test), the cognitive complexity of nine methods and an
-  eight-parameter method (refactors to report, not to apply), and a few false positives (comments
-  read as code).
+- SonarCloud (row 3): the 98 issues of `main` are not readable through the API. Of the code smells
+  of PR #269 the test style ones are done in phase B (one call per `assertThrows` lambda), except
+  "test methods should not be public", which the owner's guides decide the other way; left are the
+  cognitive complexity of nine methods and an eight-parameter method (refactors to report, not to
+  apply), and a few false positives (comments read as code).
 
 ### Other open items
 
