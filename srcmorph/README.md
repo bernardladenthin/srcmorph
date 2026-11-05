@@ -143,7 +143,7 @@ net.ladenthin.srcmorph/
 ```
 
 See [`../CLAUDE.md`](../CLAUDE.md) for the full architecture rules (`CoreArchitectureTest`), the
-layered-package dependency direction, and the PIT mutation-testing scope (currently 83 classes at
+layered-package dependency direction, and the PIT mutation-testing scope (currently 84 classes at
 100%).
 
 ## Testing

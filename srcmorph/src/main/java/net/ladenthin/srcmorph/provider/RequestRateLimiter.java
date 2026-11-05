@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongSupplier;
@@ -61,7 +62,7 @@ final class RequestRateLimiter {
 
     private final String server;
     /** How many requests may start within the window: the smallest limit a provider of the server named. */
-    private volatile int perMinute;
+    private final AtomicInteger perMinute;
 
     private final long windowNanos;
 
@@ -96,7 +97,7 @@ final class RequestRateLimiter {
             final LongSupplier clock,
             final @Nullable Waiter waiter) {
         this.server = Objects.requireNonNull(server, "server");
-        this.perMinute = perMinute;
+        this.perMinute = new AtomicInteger(perMinute);
         this.windowNanos = windowNanos;
         this.clock = Objects.requireNonNull(clock, "clock");
         // the loop in acquire() re-checks the window after every wake-up, spurious ones included
@@ -124,12 +125,7 @@ final class RequestRateLimiter {
      * @param limit the limit a provider of this server names
      */
     void lowerLimitTo(final int limit) {
-        lock.lock();
-        try {
-            perMinute = Math.min(perMinute, limit);
-        } finally {
-            lock.unlock();
-        }
+        perMinute.accumulateAndGet(limit, Math::min);
     }
 
     /**
@@ -143,7 +139,8 @@ final class RequestRateLimiter {
         try {
             for (long now = clock.getAsLong(); ; now = clock.getAsLong()) {
                 dropOlderThanTheWindow(now);
-                if (starts.size() < perMinute) {
+                final int limit = perMinute.get();
+                if (starts.size() < limit) {
                     starts.addLast(now);
                     return;
                 }
@@ -155,7 +152,7 @@ final class RequestRateLimiter {
                         server,
                         wait / (double) TimeUnit.SECONDS.toNanos(1),
                         starts.size(),
-                        perMinute));
+                        limit));
                 await(wait);
             }
         } finally {
