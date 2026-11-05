@@ -40,6 +40,7 @@ Usage: python score.py --work <prepared corpus dir> [--out ...] [--scores ...] [
        [--meta <runs dir>]
 """
 import argparse
+import codecs
 import json
 import re
 from collections import Counter, defaultdict
@@ -317,12 +318,30 @@ def cut_off_of(meta_dir, model):
     return {f for phase in phases.values() for f in phase.get("cutOff", [])}
 
 
+def source_text(path):
+    """A source as srcmorph reads it (AiSourceLines.decode): UTF-8, or UTF-16 after its byte order
+    mark, without the mark; a byte that is not valid in the encoding reads as U+FFFD."""
+    data = path.read_bytes()
+    for mark, encoding in ((codecs.BOM_UTF8, "utf-8"), (codecs.BOM_UTF16_LE, "utf-16-le"),
+                           (codecs.BOM_UTF16_BE, "utf-16-be")):
+        if data.startswith(mark):
+            return data[len(mark):].decode(encoding, errors="replace")
+    return data.decode("utf-8", errors="replace")
+
+
+def indexed(path):
+    """Whether srcmorph indexes a file of the corpus as run.py configures it: by its extension or its
+    name. A file it leaves out is no missing summary."""
+    import run  # noqa: PLC0415 (run.py's constants; run.py does not import this module)
+    return path.suffix in run.EXTENSIONS or path.name in run.FILE_NAMES
+
+
 def score_model(model_dir, work, facts, cut_off=frozenset()):
     rows = []
-    for source_path in sorted(p for p in work.rglob("*") if p.is_file()):
+    for source_path in sorted(p for p in work.rglob("*") if p.is_file() and indexed(p)):
         rel = source_path.relative_to(work).as_posix()
         out = model_dir / (rel + ".ai.md")
-        source = source_path.read_text(encoding="utf-8")
+        source = source_text(source_path)
         ids, numbers, everyday = expected_ids(rel, source, facts)
         if not out.exists():
             rows.append({"file": rel, "kind": kind_of(source_path), "missing": True, "failed": "missing",

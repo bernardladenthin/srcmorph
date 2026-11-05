@@ -6,8 +6,9 @@
 Replaces the text between '<!-- generated:begin -->' and '<!-- generated:end -->' in
 ../MODEL-CARD.md, so the hand-written assessment around the tables stays untouched.
 
-Usage: python report.py
+Usage: python report.py [--card <MODEL-CARD.md>]
 """
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -32,10 +33,8 @@ def fmt(value, pattern="{:.2f}", missing="–"):
     return missing if value is None else pattern.format(value)
 
 
-def main():
-    models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))["models"]
-    summary = json.loads((HERE / "scores" / "summary.json").read_text(encoding="utf-8"))
-    runs = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted((HERE / "runs").glob("*.json"))}
+def generated_block(models, summary, runs):
+    """The generated tables of the card, from the models, the scores' summary and the runs' meta."""
 
     overview = ["| Model | Backend | Files | Time (min) | s/file | Cost (USD) | Cut off |",
                 "|---|---|---|---|---|---|---|"]
@@ -104,10 +103,22 @@ def main():
         "¹ also in the June 2026 benchmark ([COMPARISON.md](COMPARISON.md)).",
         END,
     ])
-    text = CARD.read_text(encoding="utf-8")
+    return generated
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Renders the generated tables of the model card.")
+    parser.add_argument("--card", default=str(CARD), help="the card whose generated block is replaced")
+    args = parser.parse_args()
+    models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))["models"]
+    summary = json.loads((HERE / "scores" / "summary.json").read_text(encoding="utf-8"))
+    runs = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted((HERE / "runs").glob("*.json"))}
+    card = Path(args.card)
+    text = card.read_text(encoding="utf-8")
     start, end = text.index(BEGIN), text.index(END) + len(END)
-    CARD.write_text(text[:start] + generated + text[end:], encoding="utf-8", newline="\n")
-    print(f"updated {CARD}")
+    card.write_text(text[:start] + generated_block(models, summary, runs) + text[end:], encoding="utf-8",
+                    newline="\n")
+    print(f"updated {card}")
 
 
 if __name__ == "__main__":

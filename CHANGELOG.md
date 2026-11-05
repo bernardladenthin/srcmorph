@@ -159,6 +159,13 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The benchmark's runs and tools are pinned better.** `run.py`'s meta records the srcmorph commit
+  (`+dirty` with local changes), the Python version and a SHA-256 over the corpus; a test pins the
+  bytes `large.py` writes at `--scale 1.0`, so a Python whose `random` draws differently fails it.
+  `score.py` scores only the files srcmorph indexes and reads a source as srcmorph decodes it (UTF-8,
+  UTF-16 after a byte order mark, U+FFFD for an invalid byte); `report.py` takes `--card` and a
+  `--help` that does not render. A mutation pass over the tools found most of their logic untested:
+  `score.py` now has 20 of 114 mutants surviving (41 before), `report.py` 5 of 17 (15).
 - **The run record and the plan say more of where the time and the tokens go.** The record's totals
   name the files the plan skipped (`skipped`), the run's wall time (`wallSeconds`) and each model's
   load time (`modelLoadSeconds`): a local model loads on its first file, whose own seconds leave the

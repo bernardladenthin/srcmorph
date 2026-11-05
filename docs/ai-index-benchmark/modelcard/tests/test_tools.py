@@ -294,6 +294,46 @@ class LargeTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--scale must be above 0", result.stderr)
 
+    def test_theMeasuredCorpus_isTheSameBytes(self):
+        # the large corpus of the 2026-11 runs (--scale 1.0, Python 3.12): a Python whose random draws
+        # differently writes another corpus, and the runs measured on it are not comparable any more
+        golden = {"sql/ledger/ledger_dump.sql": "a805309ebab7bf2f91d4d18a700fae646099c465a59e1bb6abf7cb90888fe04d",
+                  "other/catalog/catalog.xml": "88b5017de0f759537aaba872011e668aece0d3e3e72f3d8c7fa04e66479446a5",
+                  "java/errors/PlatformErrorCode.java":
+                      "0f950b74d1372eae4b6971f86e7e77879b95c0ae66eea905b9a533a66e233ed6"}
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "large"
+            subprocess.run([sys.executable, "-I", str(HERE / "large.py"), "--out", str(out), "--scale", "1.0"],
+                           check=True, capture_output=True)
+
+            self.assertEqual({rel: run.sha256_of(out / rel) for rel in golden}, golden)
+
+
+class MetaTest(unittest.TestCase):
+
+    def test_treeHash_readsPathsAndBytesInPathOrder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a, b = Path(tmp) / "a", Path(tmp) / "b"
+            for root, order in ((a, ("x/1.sh", "y.sql")), (b, ("y.sql", "x/1.sh"))):
+                for rel in order:
+                    (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                    (root / rel).write_text(rel, encoding="utf-8")
+            same = run.tree_hash(a) == run.tree_hash(b)
+            (b / "y.sql").write_text("changed", encoding="utf-8")
+            changed = run.tree_hash(a) != run.tree_hash(b)
+            (b / "y.sql").rename(b / "z.sql")
+            (b / "z.sql").write_text("y.sql", encoding="utf-8")
+            renamed = run.tree_hash(a) != run.tree_hash(b)
+
+        self.assertTrue(same)
+        self.assertTrue(changed)
+        self.assertTrue(renamed)
+
+    def test_srcmorphCommit_isTheCheckoutsHead(self):
+        head = subprocess.run(["git", "-C", str(run.REPO), "rev-parse", "HEAD"], capture_output=True, text=True)
+
+        self.assertTrue(run.srcmorph_commit().startswith(head.stdout.strip()))
+
 
 
 class CutOffTest(unittest.TestCase):
@@ -339,6 +379,46 @@ class ReportTest(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             report.invented_per_100([{"inventedPer100": 3.0}])
+
+    def test_theGeneratedBlock_holdsARowPerModelAndTheirFigures(self):
+        import report
+
+        kind = {"files": 2, "compaction": 3.456, "recall": 0.9876, "numbers": "1/2", "ticked": 10, "invented": 1,
+                "noLead": 1, "badHeadings": 2, "fences": 3, "leaks": 4, "cutOff": 1, "failed": {"empty": 1}}
+        models = [{"key": "a", "name": "Model A", "backend": "openrouter", "origin": "june"},
+                  {"key": "b", "name": "Model B", "backend": "local"},
+                  {"key": "c", "name": "Model C", "backend": "copilot"}]
+        summary = {"a": {"java": kind, "sql": kind, "other": kind}, "b": {"java": kind}}
+        runs = {"a": {"backend": "openrouter", "files": 6, "costUsd": 0.12345,
+                      "phases": {"GenerateFileIndex": {"exit": 0, "seconds": 120.0, "cutOff": ["sql/x.sql"]},
+                                 "AggregatePackages": {"exit": 1, "seconds": 60.0}}},
+                "b": {"backend": "local", "files": 2, "phases": {"GenerateFileIndex": {"exit": 0, "seconds": 30.0}}}}
+
+        block = report.generated_block(models, summary, runs)
+
+        self.assertTrue(block.startswith(report.BEGIN) and block.endswith(report.END))
+        self.assertIn("| Model A ¹ | OpenRouter | 6 (failed: AggregatePackages) | 3.0 | 20.0 | 0.1235 | 1 (`sql/x.sql`) |",
+                      block)
+        self.assertIn("| Model B | local GGUF (RTX 3070) | 2 | 0.5 | 15.0 | 0 (local) | 0 |", block)
+        self.assertIn("| Model C | Copilot API Gateway | not run | | | | |", block)
+        self.assertIn("| Model A ¹ | 3.46 | 99% | 3.46 | 99% | 1/2 | 3.46 | 99% | 10.0 |", block)
+        self.assertIn("| Model B | 3.46 | 99% | – | – | – | – | – | 10.0 |", block)
+        self.assertIn("| Model A ¹ | 3 | 6 | 9 | 12 | 3 (empty 3) | 3 |", block)
+        self.assertIn("### Format discipline (all 2/6 `.ai.md` per model)", block)
+
+    def test_main_replacesOnlyTheGeneratedBlockOfTheCardItIsGiven(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            card = Path(tmp) / "card.md"
+            card.write_text("before\n<!-- generated:begin -->\nold\n<!-- generated:end -->\nafter\n", encoding="utf-8")
+
+            result = subprocess.run([sys.executable, str(HERE / "report.py"), "--card", str(card)],
+                                    capture_output=True, text=True)
+            text = card.read_text(encoding="utf-8")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(text.startswith("before\n<!-- generated:begin -->\n### Run overview\n"))
+        self.assertTrue(text.endswith("<!-- generated:end -->\nafter\n"))
+        self.assertNotIn("\nold\n", text)
 
 if __name__ == "__main__":
     unittest.main()

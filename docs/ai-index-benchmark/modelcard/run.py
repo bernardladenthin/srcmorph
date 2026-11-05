@@ -55,6 +55,7 @@ import hashlib
 import json
 import math
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -303,6 +304,27 @@ def cli_jar(classpath):
     return None
 
 
+def srcmorph_commit():
+    """The commit of the repository the run is measured from, with "+dirty" when its tree has changes
+    (the profile, the tools and the corpus are read from it); None outside a git checkout."""
+    head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True)
+    if head.returncode != 0:
+        return None
+    dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True, text=True)
+    return head.stdout.strip() + ("+dirty" if dirty.stdout.strip() else "")
+
+
+def tree_hash(directory):
+    """One SHA-256 over every file of a directory, by its path below it and its bytes, in path order:
+    two runs over the same corpus have the same hash."""
+    digest = hashlib.sha256()
+    for path in sorted((p for p in Path(directory).rglob("*") if p.is_file()),
+                       key=lambda p: p.relative_to(directory).as_posix()):
+        digest.update(path.relative_to(directory).as_posix().encode("utf-8") + b"\0")
+        digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
+
+
 def java_version(java):
     result = subprocess.run([java, "-version"], capture_output=True, text=True)
     return (result.stderr or result.stdout).splitlines()[0] if (result.stderr or result.stdout) else None
@@ -430,7 +452,8 @@ def run_model(args, models, profile, model):
             "profile": args.profile, "javaPrompt": args.java_prompt, "facts": args.facts,
             "oversize": args.oversize or None, "onIncomplete": ON_INCOMPLETE,
             "maxChunks": args.max_chunks, "profileHashes": profile_hashes(profile, rules),
-            "cli": cli_jar(classpath), "java": java_version(args.java), "startedAt": utc_now(),
+            "cli": cli_jar(classpath), "java": java_version(args.java), "python": platform.python_version(),
+            "srcmorphCommit": srcmorph_commit(), "corpusHash": tree_hash(Path(args.work)), "startedAt": utc_now(),
             "phases": {}}
     run_record = log_dir / "run-record.json"
     if run_record.exists():

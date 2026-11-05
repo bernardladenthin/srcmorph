@@ -55,7 +55,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 |---|---|---|---|---|
 | 24 | Fact counter gaps: shell `((a))`, Perl `<<` after `}` / in a regex / `q{}`, SQL strings and comments, the smaller ones | Claude | done 2026-11-05 | — |
 | 25 | `score.py` and `report.py`: `LEAK` in backticks, a summary after `<think>`, words, backtick spans, thousands separators, weighted kinds | Claude | done 2026-11-05 | — |
-| 26 | Benchmark meta (srcmorph commit, Python, corpus hash), `large.py` golden hash, non-UTF-8 sources, the tools' mutations | Claude | open | Review of 2026-11-02 |
+| 26 | Benchmark meta (srcmorph commit, Python, corpus hash), `large.py` golden hash, non-UTF-8 sources, the tools' mutations | Claude | done 2026-11-05 (run.py's orchestration stays tested by runs only) | — |
 | 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | done 2026-11-05 | — |
 | 28 | Run record totals (skipped, wall time), plan tokens by oversize strategy, the first file's model load | Claude | done 2026-11-05 | — |
 | 29 | Test upkeep: guide drift, logger levels, the 2000-character chunk, the byte checksum, the calibration block through the loader, the fb-contrib match per class | Claude | open | Review of 2026-11-02, tests |
@@ -167,9 +167,7 @@ Unreleased) except:
   rate is taken inside backticks only and by substring; recall counts names, not faithfulness (a bare
   name list scores 100 %, wrong claims are not measured); with three runs against three a Fisher test
   cannot reach 0.05, and hit@1 is compared unpaired (McNemar fits); every prompt version was tuned on
-  the corpus it is scored on; the meta lacks the srcmorph commit, the Python version and a corpus
-  hash, and `large.py`'s `random` is not guaranteed across Python versions (pin a golden hash); `score.py`
-  scores files srcmorph does not index and fails on non-UTF-8 sources; 21 of 21 mutations of the tools went unnoticed by their tests.
+  the corpus it is scored on.
 
 - Tests (the test review): `AiFieldGenerationSupport` holds most of the pure map-reduce logic off the
   PIT gate; split it the way `LlamaCppJniProviderSupport` was. The checksum over bytes has no

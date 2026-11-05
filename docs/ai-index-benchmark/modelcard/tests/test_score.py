@@ -191,6 +191,29 @@ class FailureTest(unittest.TestCase):
         self.assertEqual(summary["java"]["failed"], {"missing": 1})
         self.assertEqual(summary["java"]["cutOff"], 1)
 
+    def test_scoreModel_aFileSrcmorphDoesNotIndex_isNoMissingSummary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "other").mkdir(parents=True)
+            (work / "other" / "notes.txt").write_text("not indexed", encoding="utf-8")
+            (work / "other" / "a.sh").write_text("echo a", encoding="utf-8")
+            out.mkdir()
+
+            rows = score.score_model(out, work, {})
+
+        self.assertEqual([r["file"] for r in rows], ["other/a.sh"])
+
+    def test_sourceText_readsAsSrcmorphDecodes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            latin, bom, utf16 = Path(tmp) / "a", Path(tmp) / "b", Path(tmp) / "c"
+            latin.write_bytes("Grüße".encode("latin-1"))
+            bom.write_bytes(b"\xef\xbb\xbfclass A {}")
+            utf16.write_bytes(b"\xff\xfe" + "x = 1".encode("utf-16-le"))
+
+            self.assertEqual(score.source_text(latin), "Gr��e")
+            self.assertEqual(score.source_text(bom), "class A {}")
+            self.assertEqual(score.source_text(utf16), "x = 1")
+
     def test_scoreModel_aSecretTheFactsMark_countsWhenCopied(self):
         with tempfile.TemporaryDirectory() as tmp:
             work, out = Path(tmp) / "work", Path(tmp) / "out"
@@ -276,6 +299,116 @@ class MiddleTest(unittest.TestCase):
 
     def test_aQualifiedMiddleName_countsAsASubstring(self):
         self.assertEqual(score.middle_found(["inv:recall"], "an `inv:recall` element"), ["inv:recall"])
+
+
+class BoundaryTest(unittest.TestCase):
+    """The limits of the measures, each at and beside its edge."""
+
+    def test_aBodyOfExactlyTheMinimum_isNotTooShort(self):
+        exact = "> " + "x" * (score.MIN_BODY_BYTES - 2)
+
+        self.assertEqual(score.score_file("", exact, [], [])["failed"], "")
+        self.assertEqual(score.score_file("", exact[:-1], [], [])["failed"], "too-short")
+
+    def test_aFenceHalfOfWhoseLinesAreTheSources_isACopy(self):
+        source = "int Foo = 1;\n"
+        half = score.score_file(source, body("```\nint Foo = 1;\nBar is mine\n```\n"), ["Bar"], [])
+        less = score.score_file(source, body("```\nint Foo = 1;\nBar is mine\nand so is this\n```\n"), ["Bar"], [])
+
+        self.assertEqual(half["idsFound"], 0)
+        self.assertEqual(less["idsFound"], 1)
+
+    def test_aLongNumber_groupsByThreeFromTheRight(self):
+        for n, text in ((1234, "1,234"), (12345, "12,345"), (123456, "123 456"), (1234567, "1,234,567")):
+            self.assertTrue(score.number_pattern(n).search(f"has {text} rows"), text)
+        self.assertFalse(score.number_pattern(1234567).search("has 12,34,567 rows"))
+
+    def test_theRowFields(self):
+        invented = " ".join(f"`name{i:02d}x`" for i in range(10))
+        row = score.score_file("", body("# One\n## Two\n### Three\n#### Four\n" + invented), [], [])
+        empty = score.score_file("", "", [], [])
+
+        self.assertEqual(row["badHeadings"], 3)
+        self.assertEqual(row["invented"], 10)
+        self.assertEqual(row["inventedNames"], [f"name{i:02d}x" for i in range(8)])
+        self.assertFalse(row["empty"])
+        self.assertTrue(empty["empty"])
+
+    def test_onlyTheFirstReasoningBlock_isTheLeadingOne(self):
+        row = score.score_file("", "<think>a</think><think>b</think>\n" + body("Fine."), [], [])
+
+        self.assertFalse(row["lead"])
+
+    def test_cutOffOf_noMetaOrNoFile_isNothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(score.cut_off_of(None, "m"), set())
+            self.assertEqual(score.cut_off_of(tmp, "m"), set())
+
+
+class MainTest(unittest.TestCase):
+    """score.py as the card runs it: two models over a corpus of every kind, into a scores directory
+    that does not exist yet."""
+
+    def test_main_writesTheSummaryAndTheRowsOfEveryModel(self):
+        import json
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            work, out, meta, scores = tmp / "work", tmp / "out", tmp / "meta", tmp / "a" / "scores"
+            for rel, text in (("java/A.java", "public class A { public int size() { return 0; } }"),
+                              ("sql/s.sql", "CREATE TABLE loans (id INT);\n"),
+                              ("other/x.sh", "MAX=3\n")):
+                (work / rel).parent.mkdir(parents=True, exist_ok=True)
+                (work / rel).write_text(text, encoding="utf-8")
+            facts = tmp / "facts.json"
+            facts.write_text(json.dumps({"sql/s.sql": {"ids": ["loans"], "numbers": [3]},
+                                         "other/x.sh": {"ids": ["MAX"]}}), encoding="utf-8")
+            summaries = {"m1": {"java/A.java": body("`A` has `size`, also `ghost`."),
+                                "sql/s.sql": body("Creates LOANS with 3 rows."),
+                                "java/package.ai.md": body("`Unknown` lives here."),
+                                "project.ai.md": "No lead line here." + LONG},
+                         "m2": {"java/A.java": "", "sql/s.sql": "<think>x</think>"}}
+            for model, files in summaries.items():
+                for rel, text in files.items():
+                    target = out / model / (rel if rel.endswith(".ai.md") else rel + ".ai.md")
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text("h: 1\n---\n" + text, encoding="utf-8")
+            meta.mkdir()
+            (meta / "m1.json").write_text(json.dumps({"phases": {"GenerateFileIndex": {"cutOff": ["sql/s.sql"]}}}),
+                                          encoding="utf-8")
+
+            result = subprocess.run([sys.executable, str(Path(score.__file__)), "--work", str(work), "--out", str(out),
+                                     "--scores", str(scores), "--facts", str(facts), "--meta", str(meta)],
+                                    capture_output=True, text=True)
+            summary_text = (scores / "summary.json").read_text(encoding="utf-8")
+            rows = (scores / "files.tsv").read_text(encoding="utf-8").splitlines()
+            missing_work = subprocess.run([sys.executable, str(Path(score.__file__)), "--out", str(out)],
+                                          capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(summary_text.startswith('{\n "m1": {\n  "'))
+        summary = json.loads(summary_text)
+        m1, m2 = summary["m1"], summary["m2"]
+        self.assertEqual(m1["java"]["recall"], 1.0)
+        self.assertEqual((m1["java"]["ticked"], m1["java"]["invented"], m1["java"]["inventedPer100"]), (2, 1, 50.0))
+        source_bytes = len("public class A { public int size() { return 0; } }")
+        self.assertEqual(m1["java"]["compaction"],
+                         round(source_bytes / len(body("`A` has `size`, also `ghost`.").strip()), 2))
+        self.assertEqual((m1["sql"]["recall"], m1["sql"]["numbers"], m1["sql"]["cutOff"]), (1.0, "1/1", 1))
+        self.assertEqual(m1["other"]["missing"], 1)
+        self.assertEqual(m1["other"]["failed"], {"missing": 1})
+        self.assertEqual((m1["package"]["files"], m1["project"]["noLead"]), (1, 1))
+        self.assertEqual(m2["java"]["failed"], {"empty": 1})
+        self.assertEqual((m2["sql"]["failed"], m2["sql"]["leaks"], m2["sql"]["compaction"]), ({"leak-only": 1}, 2, None))
+        self.assertEqual(m2["java"]["recall"], 0)
+        self.assertEqual(rows[0].split("\t"), score.TSV_COLUMNS)
+        a = next(r.split("\t") for r in rows if r.startswith("m1\tjava/A.java\t"))
+        self.assertEqual(a[score.TSV_COLUMNS.index("inventedNames")], "ghost")
+        self.assertEqual(a[score.TSV_COLUMNS.index("idsFound")], "2")
+        # the header, m1: three files, its package and its project; m2: three files
+        self.assertEqual(len(rows), 1 + 5 + 3)
+        self.assertNotEqual(missing_work.returncode, 0)
 
 if __name__ == "__main__":
     unittest.main()
