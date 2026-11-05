@@ -12,8 +12,8 @@ import java.util.Locale;
 import java.util.Objects;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.RemoteModel;
 import org.jspecify.annotations.Nullable;
 
@@ -153,7 +153,7 @@ public final class ModelListReport {
         out.append("  - key: ")
                 .append(quote(listing.key() + KEY_SEPARATOR + model.id()))
                 .append('\n');
-        appendField(out, "provider", quote(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE));
+        appendField(out, "provider", quote(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE));
         appendField(out, "baseUrl", quote(listing.baseUrl()));
         appendField(out, "remoteModel", quote(model.id()));
         if (!listing.apiKeyEnv().trim().isEmpty()) {
@@ -168,7 +168,7 @@ public final class ModelListReport {
         appendField(out, "contextSize", Integer.toString(contextSize(listing.contextSize(), model.contextLength())));
         appendField(out, "maxOutputTokens", Integer.toString(listing.maxOutputTokens()));
         appendField(out, "temperature", Float.toString(listing.temperature()));
-        if (!AiModelDefinition.DEFAULT_REASONING_EFFORT.equals(listing.reasoningEffort())) {
+        if (!ModelDefinition.DEFAULT_REASONING_EFFORT.equals(listing.reasoningEffort())) {
             appendField(out, "reasoningEffort", quote(listing.reasoningEffort()));
         }
     }
@@ -222,7 +222,7 @@ public final class ModelListReport {
 
         private Listing(
                 final String key,
-                final AiModelDefinition pattern,
+                final ModelDefinition pattern,
                 final int listed,
                 final Collection<RemoteModel> models) {
             this.key = Objects.requireNonNull(key, "key");
@@ -249,7 +249,7 @@ public final class ModelListReport {
          */
         static Listing of(
                 final String key,
-                final AiModelDefinition pattern,
+                final ModelDefinition pattern,
                 final int listed,
                 final Collection<RemoteModel> models) {
             return new Listing(key, pattern, listed, models);

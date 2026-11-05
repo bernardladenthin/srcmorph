@@ -18,8 +18,8 @@ import java.util.Map;
 import java.util.function.LongSupplier;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
-import net.ladenthin.srcmorph.provider.AiGenerationUsage;
+import net.ladenthin.srcmorph.indexer.IndexOutcome;
+import net.ladenthin.srcmorph.provider.GenerationUsage;
 
 /**
  * The record of one {@code generate} run: one entry per routed file with its rule, prompt and model,
@@ -102,9 +102,9 @@ public final class RunRecord {
 
         private final String model;
 
-        private final AiIndexOutcome outcome;
+        private final IndexOutcome outcome;
 
-        private final AiGenerationUsage usage;
+        private final GenerationUsage usage;
 
         private final long nanos;
 
@@ -130,8 +130,8 @@ public final class RunRecord {
                 final String rule,
                 final String promptKey,
                 final String model,
-                final AiIndexOutcome outcome,
-                final AiGenerationUsage usage,
+                final IndexOutcome outcome,
+                final GenerationUsage usage,
                 final long nanos,
                 final String promptHash,
                 final String factsHash) {
@@ -160,7 +160,7 @@ public final class RunRecord {
          *
          * @return the outcome
          */
-        public AiIndexOutcome outcome() {
+        public IndexOutcome outcome() {
             return outcome;
         }
 
@@ -169,7 +169,7 @@ public final class RunRecord {
          *
          * @return the usage
          */
-        public AiGenerationUsage usage() {
+        public GenerationUsage usage() {
             return usage;
         }
     }
@@ -206,7 +206,7 @@ public final class RunRecord {
         root.put("generatorVersion", generatorVersion);
         final ObjectNode totals = root.putObject("totals");
         final ArrayNode files = root.putArray("files");
-        AiGenerationUsage sum = AiGenerationUsage.NONE;
+        GenerationUsage sum = GenerationUsage.NONE;
         int calls = 0;
         long nanos = 0;
         int written = 0;
@@ -227,7 +227,7 @@ public final class RunRecord {
             node.put("seconds", entry.nanos / NANOS_PER_SECOND);
             node.put("promptHash", entry.promptHash);
             node.put("factsHash", entry.factsHash);
-            sum = new AiGenerationUsage(
+            sum = new GenerationUsage(
                     0,
                     sum.promptTokens() + entry.usage.promptTokens(),
                     sum.completionTokens() + entry.usage.completionTokens(),
@@ -235,9 +235,9 @@ public final class RunRecord {
                     "");
             calls += entry.usage.calls();
             nanos += entry.nanos;
-            if (entry.outcome == AiIndexOutcome.WRITTEN) {
+            if (entry.outcome == IndexOutcome.WRITTEN) {
                 written++;
-            } else if (entry.outcome == AiIndexOutcome.UNCHANGED) {
+            } else if (entry.outcome == IndexOutcome.UNCHANGED) {
                 unchanged++;
             } else {
                 failed++;

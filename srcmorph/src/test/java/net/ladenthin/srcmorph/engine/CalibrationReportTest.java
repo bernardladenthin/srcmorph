@@ -18,16 +18,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiCalibration;
+import net.ladenthin.srcmorph.config.Calibration;
 import net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader;
-import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
+import net.ladenthin.srcmorph.indexer.CalibrationMeasurement;
 import org.junit.jupiter.api.Test;
 
 public class CalibrationReportTest {
 
     @Test
     public void modelMeasurement_accessorsReflectConstructorArguments() {
-        final AiCalibrationMeasurement measurement = new AiCalibrationMeasurement(1.5d, 100.0d, 50.0d, 4.0d, 90.0d, 16);
+        final CalibrationMeasurement measurement = new CalibrationMeasurement(1.5d, 100.0d, 50.0d, 4.0d, 90.0d, 16);
         final CalibrationReport.ModelMeasurement m = new CalibrationReport.ModelMeasurement("my-model", measurement);
 
         assertThat(m.modelKey(), is("my-model"));
@@ -37,9 +37,9 @@ public class CalibrationReportTest {
     @Test
     public void measurements_returnsDefensiveCopyInOrder() {
         final CalibrationReport.ModelMeasurement m1 = new CalibrationReport.ModelMeasurement(
-                "a", new AiCalibrationMeasurement(1.0d, 1.0d, 1.0d, 1.0d, 1.0d, 1));
+                "a", new CalibrationMeasurement(1.0d, 1.0d, 1.0d, 1.0d, 1.0d, 1));
         final CalibrationReport.ModelMeasurement m2 = new CalibrationReport.ModelMeasurement(
-                "b", new AiCalibrationMeasurement(2.0d, 2.0d, 2.0d, 2.0d, 2.0d, 2));
+                "b", new CalibrationMeasurement(2.0d, 2.0d, 2.0d, 2.0d, 2.0d, 2));
         final List<CalibrationReport.ModelMeasurement> source = new ArrayList<>(Arrays.asList(m1, m2));
         final CalibrationReport report = new CalibrationReport(source);
 
@@ -55,7 +55,7 @@ public class CalibrationReportTest {
         try {
             report.measurements()
                     .add(new CalibrationReport.ModelMeasurement(
-                            "x", new AiCalibrationMeasurement(0.0d, 0.0d, 0.0d, 0.0d, 0.0d, 0)));
+                            "x", new CalibrationMeasurement(0.0d, 0.0d, 0.0d, 0.0d, 0.0d, 0)));
             org.junit.jupiter.api.Assertions.fail("expected UnsupportedOperationException");
         } catch (final UnsupportedOperationException expected) {
             // expected: measurements() must not allow external mutation
@@ -70,10 +70,9 @@ public class CalibrationReportTest {
 
     @Test
     public void renderPasteBlock_rendersOneBlockPerModelInOrder() {
-        final AiCalibrationMeasurement measurementA =
-                new AiCalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128);
-        final AiCalibrationMeasurement measurementB =
-                new AiCalibrationMeasurement(2.0d, 500.0d, 100.0d, 3.0d, 450.0d, 64);
+        final CalibrationMeasurement measurementA =
+                new CalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128);
+        final CalibrationMeasurement measurementB = new CalibrationMeasurement(2.0d, 500.0d, 100.0d, 3.0d, 450.0d, 64);
         final CalibrationReport report = new CalibrationReport(Arrays.asList(
                 new CalibrationReport.ModelMeasurement("model-a", measurementA),
                 new CalibrationReport.ModelMeasurement("model-b", measurementB)));
@@ -97,7 +96,7 @@ public class CalibrationReportTest {
     public void renderPasteBlock_pastedIntoAModelsEntry_bindsThroughTheStrictLoader() throws IOException {
         // arrange
         final CalibrationReport report = new CalibrationReport(Arrays.asList(new CalibrationReport.ModelMeasurement(
-                "model-a", new AiCalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128))));
+                "model-a", new CalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128))));
         final StringBuilder yaml =
                 new StringBuilder("srcMorph:\n  aiDefinitions:\n    - key: model-a\n      modelPath: a.gguf\n");
         for (final String line : report.renderPasteBlock().split("\n")) {
@@ -105,7 +104,7 @@ public class CalibrationReportTest {
         }
 
         // act
-        final AiCalibration calibration = SrcMorphConfigurationFileLoader.parse(yaml.toString(), true)
+        final Calibration calibration = SrcMorphConfigurationFileLoader.parse(yaml.toString(), true)
                 .getSrcMorph()
                 .getAiDefinitions()
                 .get(0)
@@ -168,7 +167,7 @@ public class CalibrationReportTest {
             }
             final CalibrationReport report =
                     new CalibrationReport(Collections.singletonList(new CalibrationReport.ModelMeasurement(
-                            "model-a", new AiCalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128))));
+                            "model-a", new CalibrationMeasurement(1.234d, 1000.5d, 200.3d, 4.57d, 900.0d, 128))));
             System.out.write(report.renderPasteBlock().getBytes(StandardCharsets.UTF_8));
             System.out.flush();
         }
@@ -177,7 +176,7 @@ public class CalibrationReportTest {
     @Test
     public void toString_containsModelKey() {
         final CalibrationReport report = new CalibrationReport(Arrays.asList(new CalibrationReport.ModelMeasurement(
-                "unique-model-key", new AiCalibrationMeasurement(0.0d, 0.0d, 0.0d, 0.0d, 0.0d, 0))));
+                "unique-model-key", new CalibrationMeasurement(0.0d, 0.0d, 0.0d, 0.0d, 0.0d, 0))));
         assertThat(report.toString(), org.hamcrest.CoreMatchers.containsString("unique-model-key"));
     }
 
@@ -189,7 +188,7 @@ public class CalibrationReportTest {
 
     private static CalibrationReport.ModelMeasurement entry(final String key) {
         return new CalibrationReport.ModelMeasurement(
-                key, new AiCalibrationMeasurement(1.2345d, 1234.56d, 45.67d, 3.214d, 1200.4d, 128));
+                key, new CalibrationMeasurement(1.2345d, 1234.56d, 45.67d, 3.214d, 1200.4d, 128));
     }
 
     /**

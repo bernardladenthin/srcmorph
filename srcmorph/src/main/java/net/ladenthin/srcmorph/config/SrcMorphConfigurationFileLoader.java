@@ -22,7 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.ladenthin.srcmorph.support.AiSourceLines;
+import net.ladenthin.srcmorph.support.SourceLines;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -156,7 +156,7 @@ public final class SrcMorphConfigurationFileLoader {
             final Path file, final File defaultBaseDirectory, final Map<String, String> properties) throws IOException {
         final ObjectMapper mapper = mapperFor(file);
         // a byte order mark (Windows PowerShell 5.1 writes one) is not part of the text
-        final JsonNode parsed = mapper.readTree(AiSourceLines.decode(Files.readAllBytes(file)));
+        final JsonNode parsed = mapper.readTree(SourceLines.decode(Files.readAllBytes(file)));
         final JsonNode tree = parsed == null ? null : substituted(parsed, properties);
         // an empty file is a configuration with every default
         final SrcMorphConfigurationFile bound =

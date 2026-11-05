@@ -15,9 +15,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.PromptDefinition;
 import net.ladenthin.srcmorph.support.AbsolutePathRequirement;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,15 +64,15 @@ public class ConfiguredPathResolutionTest {
                 temp -> temp.resolve("missing").resolve("directory").toFile());
     }
 
-    private static AiModelDefinition model(final String modelPath) {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelDefinition model(final String modelPath) {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("model");
         definition.setModelPath(modelPath);
         return definition;
     }
 
-    private static AiPromptDefinition promptFile(final String templateFile) {
-        final AiPromptDefinition definition = new AiPromptDefinition();
+    private static PromptDefinition promptFile(final String templateFile) {
+        final PromptDefinition definition = new PromptDefinition();
         definition.setKey("file-body-java");
         definition.setTemplateFile(templateFile);
         return definition;
@@ -85,16 +85,16 @@ public class ConfiguredPathResolutionTest {
         final String absolute =
                 tempDir.resolve("elsewhere").resolve("model.gguf").toString();
 
-        final AiModelDefinitionSupport support = EngineSupport.buildAiModelDefinitionSupport(
+        final ModelRegistry support = EngineSupport.buildAiModelDefinitionSupport(
                 Collections.singletonList(model(absolute)), directory.apply(tempDir));
 
-        assertThat(support.getConfig("model").getModelPath(), is(absolute));
+        assertThat(support.definition("model").getModelPath(), is(absolute));
     }
 
     @ParameterizedTest
     @MethodSource("directories")
     public void templateFile_absolute_isReadAsItIs(final Function<Path, @Nullable File> directory) throws Exception {
-        final List<AiPromptDefinition> prompts = Collections.singletonList(promptFile(absolutePrompt.toString()));
+        final List<PromptDefinition> prompts = Collections.singletonList(promptFile(absolutePrompt.toString()));
 
         assertThat(
                 EngineSupport.buildPromptSupport(prompts, directory.apply(tempDir), null)
@@ -110,7 +110,7 @@ public class ConfiguredPathResolutionTest {
 
         final String resolved = EngineSupport.buildAiModelDefinitionSupport(
                         Collections.singletonList(model("sub/model.gguf")), modelDirectory)
-                .getConfig("model")
+                .definition("model")
                 .getModelPath();
 
         assertThat(resolved, is(new File(modelDirectory, "sub/model.gguf").getPath()));
@@ -119,7 +119,7 @@ public class ConfiguredPathResolutionTest {
 
     @Test
     public void templateFile_relativeBelowAnAbsoluteDirectory_isReadFromThere() throws Exception {
-        final List<AiPromptDefinition> prompts = Collections.singletonList(promptFile("file-body-java.md"));
+        final List<PromptDefinition> prompts = Collections.singletonList(promptFile("file-body-java.md"));
 
         assertThat(
                 EngineSupport.buildPromptSupport(

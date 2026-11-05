@@ -12,13 +12,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
  * Validates the SQL fact counters of the current profile ({@code profiles/v3/sql-facts.tsv}, read
  * through {@link ProfileFactPatterns}, so the shipped file is what is tested) on PostgreSQL, MySQL and
- * T-SQL shapes, in the real {@link java.util.regex} engine {@code AiFactExtractor} uses. Each counter
+ * T-SQL shapes, in the real {@link java.util.regex} engine {@code FactExtractor} uses. Each counter
  * gets the forms it has to see and the near misses it must not count; the approximate one ("VALUES
  * rows (approx)") gets its known over- and undercount pinned, so a change to it is a decision. The
  * {@code [ignore]} line reads the file as a lexer does; the last tests pin its regions and that a
@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
  */
 public class SqlFactPatternsTest {
 
-    private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("sql-facts");
+    private static final List<FactCounter> COUNTERS = ProfileFactPatterns.counters("sql-facts");
 
     /** Lines of the long inputs of the run-time tests. */
     private static final int LONG_INPUT_LINES = 40_000;

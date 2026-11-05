@@ -10,17 +10,17 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Arrays;
 import java.util.Collections;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import org.junit.jupiter.api.Test;
 
 public class ProviderConfigFactoryTest {
 
     /**
      * Every field set to a distinct, distinguishable value so a mutant that swaps two getters (or drops
-     * an argument) in {@link ProviderConfigFactory#fromGenerationConfig} is killed.
+     * an argument) in {@link ProviderConfigFactory#from} is killed.
      */
-    private static AiModelDefinition fullConfig() {
-        final AiModelDefinition config = new AiModelDefinition();
+    private static ModelDefinition fullConfig() {
+        final ModelDefinition config = new ModelDefinition();
         config.setModelPath("model.gguf");
         config.setContextSize(1111);
         config.setMaxOutputTokens(222);
@@ -70,7 +70,7 @@ public class ProviderConfigFactoryTest {
 
     @Test
     public void fromGenerationConfig_threadsEveryFieldThrough() {
-        final ProviderConfig result = ProviderConfigFactory.fromGenerationConfig(fullConfig());
+        final ProviderConfig result = ProviderConfigFactory.from(fullConfig());
 
         assertThat(result.modelPath(), is("model.gguf"));
         assertThat(result.contextSize(), is(1111));
@@ -126,11 +126,11 @@ public class ProviderConfigFactoryTest {
         // factory never sees a null here. It proves the empty list survives the mapping, NOT that the
         // factory itself guards against null -- that guard lives in ProviderConfig's constructor
         // and is pinned by ProviderConfigTest.
-        final AiModelDefinition config = fullConfig();
+        final ModelDefinition config = fullConfig();
         config.setStopStrings(null);
         config.setDrySequenceBreakers(null);
 
-        final ProviderConfig result = ProviderConfigFactory.fromGenerationConfig(config);
+        final ProviderConfig result = ProviderConfigFactory.from(config);
 
         assertThat(result.stopStrings(), is(Collections.<String>emptyList()));
         assertThat(result.drySequenceBreakers(), is(Collections.<String>emptyList()));
@@ -139,12 +139,12 @@ public class ProviderConfigFactoryTest {
     @Test
     public void fromGenerationConfig_noModelPath_hasNone() {
         // arrange: a remote (openai-compatible) definition names no model file
-        final AiModelDefinition config = new AiModelDefinition();
+        final ModelDefinition config = new ModelDefinition();
         config.setModelPath(null);
         config.setProvider("openai-compatible");
 
         // act
-        final ProviderConfig result = ProviderConfigFactory.fromGenerationConfig(config);
+        final ProviderConfig result = ProviderConfigFactory.from(config);
 
         // assert
         assertThat(result.modelPath(), is(nullValue()));

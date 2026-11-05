@@ -23,11 +23,11 @@ import java.util.List;
 import java.util.Objects;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
+import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
@@ -133,7 +133,7 @@ public class ExamplesConfigBindingTest {
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getGenerationProvider(), is(equalTo("openai-compatible")));
         assertThat(srcMorph.getAiDefinitions().size(), is(1));
-        final AiModelDefinition model = srcMorph.getAiDefinitions().get(0);
+        final ModelDefinition model = srcMorph.getAiDefinitions().get(0);
         assertThat(model.getProvider(), is(equalTo("openai-compatible")));
         assertThat(model.getBaseUrl(), is(equalTo("http://127.0.0.1:3030/v1")));
         assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
@@ -161,7 +161,7 @@ public class ExamplesConfigBindingTest {
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getAiDefinitions().size(), is(1));
-        final AiModelDefinition model = srcMorph.getAiDefinitions().get(0);
+        final ModelDefinition model = srcMorph.getAiDefinitions().get(0);
         assertThat(model.getRemoteModel(), is(equalTo("gpt-6-luna")));
         assertThat(model.getBaseUrl(), is(equalTo("http://127.0.0.1:3030/v1")));
         assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
@@ -175,16 +175,16 @@ public class ExamplesConfigBindingTest {
 
         final Path profileDirectory = directory.resolve(
                 Objects.requireNonNull(srcMorph.getProfileDirectory()).getPath());
-        final List<AiFieldGenerationConfig> rules = new ArrayList<>();
-        final List<AiFieldGenerationConfig> skipped = new ArrayList<>();
-        for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
+        final List<RoutingRule> rules = new ArrayList<>();
+        final List<RoutingRule> skipped = new ArrayList<>();
+        for (final RoutingRule rule : srcMorph.getFieldGenerations()) {
             (rule.isSkip() ? skipped : rules).add(rule);
         }
         assertThat("the credentials rule", skipped.size(), is(1));
         assertThat(skipped.get(0).getId(), is(equalTo("secrets")));
         rules.addAll(Objects.requireNonNull(configuration.packageFieldGenerations));
         rules.addAll(Objects.requireNonNull(configuration.projectFieldGenerations));
-        for (final AiFieldGenerationConfig rule : rules) {
+        for (final RoutingRule rule : rules) {
             final String label = "rule " + rule.getPromptKey();
             assertThat(label, rule.getAiDefinitionKey(), is(equalTo(model.getKey())));
             assertThat(label + " reads every chunk", rule.getOnOversize(), is(equalTo("mapReduce")));
@@ -194,7 +194,7 @@ public class ExamplesConfigBindingTest {
                     label, Files.isRegularFile(profileDirectory.resolve(rule.getReducePromptKey() + ".md")), is(true));
         }
         final List<String> withoutFacts = new ArrayList<>();
-        for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
+        for (final RoutingRule rule : srcMorph.getFieldGenerations()) {
             final String label = "rule " + rule.getId();
             if (rule.isSkip()) {
                 continue;
@@ -241,17 +241,17 @@ public class ExamplesConfigBindingTest {
         for (final Path config : List.of(
                 EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml"),
                 EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml"))) {
-            final List<AiFieldGenerationConfig> rules =
+            final List<RoutingRule> rules =
                     Main.fromYaml(Main.readString(config)).srcMorph.getFieldGenerations();
-            final net.ladenthin.srcmorph.routing.AiFieldGenerationSelector selector =
-                    new net.ladenthin.srcmorph.routing.AiFieldGenerationSelector();
+            final net.ladenthin.srcmorph.routing.RuleSelector selector =
+                    new net.ladenthin.srcmorph.routing.RuleSelector();
             selector.validate(rules);
             for (final String name : secrets) {
-                final AiFieldGenerationConfig rule = selector.select(rules, context(name));
+                final RoutingRule rule = selector.select(rules, context(name));
                 assertThat(config + ": " + name, rule != null && rule.isSkip(), is(true));
             }
             for (final String name : sources) {
-                final AiFieldGenerationConfig rule = selector.select(rules, context(name));
+                final RoutingRule rule = selector.select(rules, context(name));
                 assertThat(config + ": " + name, rule != null && !rule.isSkip(), is(true));
             }
         }
@@ -259,12 +259,11 @@ public class ExamplesConfigBindingTest {
 
     @Test
     public void lunaExample_routesEveryKindToItsRule() throws Exception {
-        final List<AiFieldGenerationConfig> rules = Main.fromYaml(
+        final List<RoutingRule> rules = Main.fromYaml(
                         Main.readString(EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml")))
                 .srcMorph
                 .getFieldGenerations();
-        final net.ladenthin.srcmorph.routing.AiFieldGenerationSelector selector =
-                new net.ladenthin.srcmorph.routing.AiFieldGenerationSelector();
+        final net.ladenthin.srcmorph.routing.RuleSelector selector = new net.ladenthin.srcmorph.routing.RuleSelector();
         selector.validate(rules);
         final String[][] cases = {
             {"src/main/java/shop/Order.java", "package shop;\nclass Order {}\n", "java"},
@@ -333,14 +332,14 @@ public class ExamplesConfigBindingTest {
         for (final String[] c : cases) {
             final String path = c[0];
             final String name = path.substring(path.lastIndexOf('/') + 1);
-            final AiFieldGenerationConfig rule = selector.select(
-                    rules, new net.ladenthin.srcmorph.routing.AiFileContext(name, path, 100L, 3, 0L, c[1]));
+            final RoutingRule rule = selector.select(
+                    rules, new net.ladenthin.srcmorph.routing.FileContext(name, path, 100L, 3, 0L, c[1]));
             assertThat(path, rule == null ? null : rule.getId(), is(equalTo(c[2])));
         }
     }
 
-    private static net.ladenthin.srcmorph.routing.AiFileContext context(final String name) {
-        return new net.ladenthin.srcmorph.routing.AiFileContext(name, "src/" + name, 100L, 3, 0L);
+    private static net.ladenthin.srcmorph.routing.FileContext context(final String name) {
+        return new net.ladenthin.srcmorph.routing.FileContext(name, "src/" + name, 100L, 3, 0L);
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {
@@ -393,23 +392,21 @@ public class ExamplesConfigBindingTest {
                 is(nullValue()));
         assertThat(label + ": profileDirectory must be set", srcMorph.getProfileDirectory(), is(notNullValue()));
         final List<@Nullable String> usedKeys = new ArrayList<>();
-        for (final @Nullable List<AiFieldGenerationConfig> rules :
-                Arrays.<@Nullable List<AiFieldGenerationConfig>>asList(
-                        srcMorph.getFieldGenerations(),
-                        configuration.packageFieldGenerations,
-                        configuration.projectFieldGenerations)) {
+        for (final @Nullable List<RoutingRule> rules : Arrays.<@Nullable List<RoutingRule>>asList(
+                srcMorph.getFieldGenerations(),
+                configuration.packageFieldGenerations,
+                configuration.projectFieldGenerations)) {
             if (rules != null) {
-                for (final AiFieldGenerationConfig rule : rules) {
+                for (final RoutingRule rule : rules) {
                     usedKeys.add(rule.getPromptKey());
                 }
             }
         }
         final Path profileDirectory = runDirectory.resolve(
                 Objects.requireNonNull(srcMorph.getProfileDirectory()).getPath());
-        final List<AiPromptDefinition> loaded =
-                new AiPromptTemplateLoader(profileDirectory.toFile()).load(null, usedKeys);
+        final List<PromptDefinition> loaded = new PromptTemplateLoader(profileDirectory.toFile()).load(null, usedKeys);
         assertThat(label + ": the rules must use at least one prompt", loaded, is(not(empty())));
-        for (final AiPromptDefinition definition : loaded) {
+        for (final PromptDefinition definition : loaded) {
             assertThat(
                     label + ": " + definition.getKey() + " must load one of the measured prompts",
                     definition.getTemplate(),

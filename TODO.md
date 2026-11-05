@@ -73,20 +73,13 @@ breaking change, the CHANGELOG's Upgrading section names each one)
 - [x] A3 (6300ad9) N8 `AiIndexPlan.Entry` to `Route`, `RunRecord.Entry` to `FileRecord`, a `RecordedHashes`
   value instead of `Map.Entry<String, String>`
 - [x] A4 (9f2546e) N9 `pluginVersion` to `generatorVersion` (configuration key, bean, `RunRecord`)
-- [x] A5 N10 drop `AiGenerationConfig`: the model registry builds `ProviderConfig` from the
+- [x] A5 (a058ad2) N10 drop `AiGenerationConfig`: the model registry builds `ProviderConfig` from the
   `AiModelDefinition` directly
-- [ ] A6 N4a, N6 and N7 in one pass per package, each class renamed once (the `Ai` prefix goes but
+- [x] A6 N4a, N6 and N7 in one pass (per package was dropped: the references cross every package, so the steps would touch the same files again), each class renamed once (the `Ai` prefix goes but
   on `AiMd*`; `RoutingRule`, `RuleSelector`, `ModelRegistry`, `PromptCatalog`, `PromptPreparer`,
   `FactGroups`, `AiMdRewritePolicy` with `shouldRewrite`, `MapReduceMath`; `AiCondition` to
   `RuleCondition`, `AiPathSupport` to `SourcePaths`); the test classes, PIT's `targetClasses`,
   `spotbugs-exclude.xml`, ArchUnit and CLAUDE.md move with them
-  - [ ] A6a `support`
-  - [ ] A6b `config`
-  - [ ] A6c `facts`, `routing`
-  - [ ] A6d `prompt`, `document`
-  - [ ] A6e `provider`
-  - [ ] A6f `indexer`, `indexer.generation`
-  - [ ] A6g `engine`, the CLI, the plugin
 - [ ] A7 N4b the configuration keys `rules`, `packageRules`, `projectRules` (the loader, the CLI,
   the plugin, `examples/`, the profile's configurations, the plugin-it fixture, the benchmark's
   `run.py`, the READMEs)

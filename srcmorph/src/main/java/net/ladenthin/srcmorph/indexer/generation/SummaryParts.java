@@ -14,7 +14,7 @@ import lombok.ToString;
 @ToString
 final class SummaryParts {
 
-    /** The end of a chunk label line ({@link AiMapReduceSupport#chunkLabel}), left out of the heading. */
+    /** The end of a chunk label line ({@link MapReduceMath#chunkLabel}), left out of the heading. */
     private static final String LABEL_END = ":\n";
 
     private final StringBuilder text = new StringBuilder();

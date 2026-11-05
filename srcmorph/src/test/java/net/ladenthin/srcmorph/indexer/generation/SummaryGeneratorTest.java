@@ -29,18 +29,18 @@ import java.util.function.ToIntFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFactCounter;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiPromptDefinition;
-import net.ladenthin.srcmorph.facts.AiFactExtractor;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiContextOverflowException;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
+import net.ladenthin.srcmorph.config.FactCounter;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.ContextOverflowException;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.IncompleteAnswerException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -131,11 +131,11 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsNonEmpty_noWarningLogged() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AiGenerationProvider nonEmptyProvider = request -> "A real summary.";
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        final GenerationProvider nonEmptyProvider = request -> "A real summary.";
         final SummaryGenerator support = new SummaryGenerator(
                 nonEmptyProvider,
-                new AiPromptPreparationSupport(promptSupport),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
@@ -148,20 +148,17 @@ public class SummaryGeneratorTest {
     @Test
     public void generate_providerReturnsEmpty_warningContainsContextFile() throws Exception {
         // arrange
-        final Path contextFile = tempFile("AiModelDefinition", ".java");
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AiGenerationProvider emptyProvider = request -> "";
+        final Path contextFile = tempFile("ModelDefinition", ".java");
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        final GenerationProvider emptyProvider = request -> "";
         final SummaryGenerator support = new SummaryGenerator(
                 emptyProvider,
-                new AiPromptPreparationSupport(promptSupport),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
         support.generate(
-                CommonTestFixtures.createFileFieldGeneration(),
-                contextFile,
-                "file",
-                "public class AiModelDefinition {}");
+                CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class ModelDefinition {}");
 
         // assert
         assertThat(getCapturedWarnings().size(), is(equalTo(1)));
@@ -172,11 +169,11 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_warningContainsPromptKey() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AiGenerationProvider emptyProvider = request -> "";
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        final GenerationProvider emptyProvider = request -> "";
         final SummaryGenerator support = new SummaryGenerator(
                 emptyProvider,
-                new AiPromptPreparationSupport(promptSupport),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
@@ -191,15 +188,15 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_resultBodyIsEmpty() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AiGenerationProvider emptyProvider = request -> "";
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        final GenerationProvider emptyProvider = request -> "";
         final SummaryGenerator support = new SummaryGenerator(
                 emptyProvider,
-                new AiPromptPreparationSupport(promptSupport),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class Test {}");
 
         // assert -- an empty answer is no summary: nothing to write, and the result says why
@@ -212,24 +209,24 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_callsProviderOnceWarnsOnceAndBodyEmpty() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         final AtomicInteger callCount = new AtomicInteger(0);
         // The retry mechanism was removed: an empty body now fails fast with a single warning
         // instead of re-inferring (see docs/ai-index-benchmark/gpt-oss-tuning.md, E2).
-        final AiGenerationProvider alwaysEmptyProvider = new AiGenerationProvider() {
+        final GenerationProvider alwaysEmptyProvider = new GenerationProvider() {
             @Override
-            public String generate(final AiGenerationRequest request) {
+            public String generate(final GenerationRequest request) {
                 callCount.incrementAndGet();
                 return "";
             }
         };
         final SummaryGenerator support = new SummaryGenerator(
                 alwaysEmptyProvider,
-                new AiPromptPreparationSupport(promptSupport),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 CommonTestFixtures.createFileFieldGeneration(), contextFile, "file", "public class Test {}");
 
         // assert — provider invoked exactly once (no retries), one warning, empty body
@@ -242,16 +239,16 @@ public class SummaryGeneratorTest {
     public void generate_providerReturnsEmpty_logsProcessingAndGenerationButNoGeneratedLine() throws Exception {
         // arrange
         final Path contextFile = tempFile("Test", ".java");
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AiGenerationProvider alwaysEmptyProvider = new AiGenerationProvider() {
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        final GenerationProvider alwaysEmptyProvider = new GenerationProvider() {
             @Override
-            public String generate(final AiGenerationRequest request) {
+            public String generate(final GenerationRequest request) {
                 return "";
             }
         };
         final SummaryGenerator support = new SummaryGenerator(
                 alwaysEmptyProvider,
-                new AiPromptPreparationSupport(promptSupport),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act
@@ -288,41 +285,39 @@ public class SummaryGeneratorTest {
     // <editor-fold defaultstate="collapsed" desc="onOversize strategies">
 
     /** A model whose tiny static input window forces every non-trivial source to be over-window. */
-    private static AiModelDefinitionSupport tinyWindowModel(final String key) {
-        final AiModelDefinition def = new AiModelDefinition();
+    private static ModelRegistry tinyWindowModel(final String key) {
+        final ModelDefinition def = new ModelDefinition();
         def.setKey(key);
         def.setModelPath("unused.gguf");
         // contextSize 1 x charsPerToken 1 minus overhead -> computed maxInputChars clamps to 0, so any
         // non-empty source is over-window and triggers the onOversize strategy.
         def.setContextSize(1);
         def.setCharsPerToken(1);
-        return new AiModelDefinitionSupport(Arrays.asList(def));
+        return new ModelRegistry(Arrays.asList(def));
     }
 
-    private SummaryGenerator supportWith(final AiGenerationProvider provider, final String modelKey) {
+    private SummaryGenerator supportWith(final GenerationProvider provider, final String modelKey) {
         return supportWithModels(provider, tinyWindowModel(modelKey));
     }
 
-    private SummaryGenerator supportWithModels(
-            final AiGenerationProvider provider, final AiModelDefinitionSupport models) {
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        return new SummaryGenerator(provider, new AiPromptPreparationSupport(promptSupport), models);
+    private SummaryGenerator supportWithModels(final GenerationProvider provider, final ModelRegistry models) {
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        return new SummaryGenerator(provider, new PromptPreparer(promptSupport), models);
     }
 
     /** A model with a normal window, so a small source fits and is NOT treated as over-window. */
-    private static AiModelDefinitionSupport normalWindowModel(final String key) {
-        final AiModelDefinition def = new AiModelDefinition();
+    private static ModelRegistry normalWindowModel(final String key) {
+        final ModelDefinition def = new ModelDefinition();
         def.setKey(key);
         def.setModelPath("unused.gguf");
         def.setContextSize(2048);
         def.setCharsPerToken(4);
         def.setMaxOutputTokens(64);
-        return new AiModelDefinitionSupport(Arrays.asList(def));
+        return new ModelRegistry(Arrays.asList(def));
     }
 
-    private static AiFieldGenerationConfig oversizeRule(
-            final String modelKey, final String onOversize, final int maxChunks) {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule oversizeRule(final String modelKey, final String onOversize, final int maxChunks) {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(modelKey);
         rule.setOnOversize(onOversize);
@@ -342,13 +337,13 @@ public class SummaryGeneratorTest {
     public void onOversize_deterministic_skipsModelAndEmitsMetadataBody() throws Exception {
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return "MODEL OUTPUT";
         };
         final SummaryGenerator support = supportWith(provider, "m");
 
-        final AiGenerationResult result =
+        final SummaryResult result =
                 support.generate((oversizeRule("m", "deterministic", 0)), contextFile, "file", largeSource(500));
 
         assertThat(calls.get(), is(equalTo(0)));
@@ -359,14 +354,14 @@ public class SummaryGeneratorTest {
     public void onOversize_mapReduce_callsModelPerChunkPlusReduce() throws Exception {
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return "PARTIAL";
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // ~70 KB over a window of about 7 KB -> several chunks that fit; sampleChunks 2 maps 2 of them + 1 reduce.
-        final AiGenerationResult result =
+        final SummaryResult result =
                 support.generate((oversizeRule("m", "sampleChunks", 2)), contextFile, "file", largeSource(7000));
 
         assertThat(calls.get(), is(equalTo(3)));
@@ -377,12 +372,12 @@ public class SummaryGeneratorTest {
     @Test
     public void onOversize_mapReduce_readsEveryChunk_andSaysSo() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return "PARTIAL";
         };
         // a maxChunks of the rule does not sample under mapReduce
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((oversizeRule("m", "mapReduce", 2)), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         final long mapped = getCapturedInfos().stream()
@@ -399,7 +394,7 @@ public class SummaryGeneratorTest {
     public void parts_ofAMapReduce_areEveryMapAndReduceAnswer_andAOnePieceCallHasNone() throws Exception {
         // arrange
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> "ANSWER " + calls.incrementAndGet();
+        final GenerationProvider provider = request -> "ANSWER " + calls.incrementAndGet();
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
@@ -417,20 +412,20 @@ public class SummaryGeneratorTest {
     @Test
     public void onOversize_mapReduce_withFacts_prependsExactWholeFileCountsToBody() throws Exception {
         final Path contextFile = tempFile("Huge", ".java");
-        final AiGenerationProvider provider = request -> "PARTIAL";
+        final GenerationProvider provider = request -> "PARTIAL";
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
-        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
-        final AiFactCounter counter = new AiFactCounter();
+        final RoutingRule rule = oversizeRule("m", "mapReduce", 0);
+        final FactCounter counter = new FactCounter();
         counter.setLabel("lines");
         counter.setPattern("(?m)^line ");
         rule.setFacts(Collections.singletonList(counter));
 
         // largeSource(7000) has exactly 7000 lines beginning with "line "; no call of the mock sees them all,
         // but the deterministic facts block counts every one over the FULL source and is prepended.
-        final AiGenerationResult result = support.generate((rule), contextFile, "file", largeSource(7000));
+        final SummaryResult result = support.generate((rule), contextFile, "file", largeSource(7000));
 
-        assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
+        assertThat(result.body(), startsWith(FactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("lines: 7000"));
         assertThat(result.body(), containsString("PARTIAL"));
     }
@@ -440,26 +435,26 @@ public class SummaryGeneratorTest {
         // A small source that fits the window (NOT oversize) still gets the exact facts block prepended,
         // so downstream agents get authoritative counts in every summary, not just huge-file ones.
         final Path contextFile = tempFile("Small", ".java");
-        final AiGenerationProvider provider = request -> "AI SUMMARY";
+        final GenerationProvider provider = request -> "AI SUMMARY";
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey("m");
-        final AiFactCounter counter = new AiFactCounter();
+        final FactCounter counter = new FactCounter();
         counter.setLabel("boolean fields");
         counter.setPattern("\\bboolean\\b");
         rule.setFacts(Collections.singletonList(counter));
 
-        final AiGenerationResult result = support.generate((rule), contextFile, "file", "boolean a; boolean b; int c;");
+        final SummaryResult result = support.generate((rule), contextFile, "file", "boolean a; boolean b; int c;");
 
-        assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
+        assertThat(result.body(), startsWith(FactExtractor.FACTS_HEADER));
         assertThat(result.body(), containsString("boolean fields: 2"));
         assertThat(result.body(), containsString("AI SUMMARY"));
     }
 
-    private static AiFieldGenerationConfig plainRoute(final String modelKey) {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule plainRoute(final String modelKey) {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(modelKey);
         return rule;
@@ -473,7 +468,7 @@ public class SummaryGeneratorTest {
     public void generate_contextOverflow_theRetrySendsTheSmallerWindow() throws Exception {
         // arrange
         final List<Integer> sent = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             sent.add(request.sourceText().length());
             if (sent.size() == 1) {
                 throw new RuntimeException("request (2100 tokens) exceeds the available context size (2048 tokens)");
@@ -483,7 +478,7 @@ public class SummaryGeneratorTest {
         final String source = largeSource(7000).substring(0, 6500);
 
         // act
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(oversizeRule("m", "sample", 0), tempFile("Dense", ".sql"), "file", source);
 
         // assert: the first call fits whole, the second at most the window the warning names, three
@@ -499,7 +494,7 @@ public class SummaryGeneratorTest {
         assertThat(windows.find(), is(true));
         final int before = Integer.parseInt(windows.group(1));
         final int after = Integer.parseInt(windows.group(2));
-        assertThat(after, is(before * AiOverflowBackoff.BACKOFF_PERCENT / 100));
+        assertThat(after, is(before * OverflowBackoff.BACKOFF_PERCENT / 100));
         assertThat(sent.get(1) <= after, is(true));
         assertThat(sent.get(1) < sent.get(0), is(true));
     }
@@ -510,7 +505,7 @@ public class SummaryGeneratorTest {
         final AtomicInteger calls = new AtomicInteger();
         // Fits the char window but the provider rejects the first prompt as over-context (token-dense);
         // the retry with a smaller window then succeeds.
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             if (calls.getAndIncrement() == 0) {
                 throw new RuntimeException("request (16549 tokens) exceeds the available context size (16384 tokens)");
             }
@@ -518,7 +513,7 @@ public class SummaryGeneratorTest {
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
-        final AiGenerationResult result = support.generate((plainRoute("m")), contextFile, "file", "small source");
+        final SummaryResult result = support.generate((plainRoute("m")), contextFile, "file", "small source");
 
         assertThat(result.body(), is(equalTo("OK")));
         assertThat(calls.get(), is(equalTo(2)));
@@ -527,13 +522,13 @@ public class SummaryGeneratorTest {
     @Test
     public void generate_remoteContextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             if (calls.incrementAndGet() == 1) {
-                throw new AiContextOverflowException("http://h answered HTTP 413: ");
+                throw new ContextOverflowException("http://h answered HTTP 413: ");
             }
             return "OK";
         };
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", null)), tempFile("Test", ".java"), "file", "public class Test {}");
 
         assertThat(calls.get(), is(equalTo(2)));
@@ -544,7 +539,7 @@ public class SummaryGeneratorTest {
     public void generate_persistentContextOverflow_rethrowsAfterRetrying() throws Exception {
         final Path contextFile = tempFile("Dense", ".sql");
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             throw new RuntimeException("request exceeds the available context size (16384 tokens)");
         };
@@ -560,7 +555,7 @@ public class SummaryGeneratorTest {
     public void generate_nonOverflowRuntimeException_propagatesWithoutRetry() throws Exception {
         final Path contextFile = tempFile("X", ".sql");
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             throw new RuntimeException("some unrelated failure");
         };
@@ -575,7 +570,7 @@ public class SummaryGeneratorTest {
     public void onOversize_mapReduce_unbounded_reducesHierarchicallyInMultipleRounds() throws Exception {
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return "PARTIAL";
         };
@@ -583,7 +578,7 @@ public class SummaryGeneratorTest {
 
         // maxChunks=0 (unbounded) over a large source -> far more than MAX_REDUCE_FANIN chunks, so the
         // reduce cannot combine every partial in one call and must recurse: a second reduce round appears.
-        final AiGenerationResult result =
+        final SummaryResult result =
                 support.generate((oversizeRule("m", "mapReduce", 0)), contextFile, "file", largeSource(30000));
 
         final List<String> infos = getCapturedInfos();
@@ -629,7 +624,7 @@ public class SummaryGeneratorTest {
         // arrange: the source fits the window by characters, but the provider refuses it as a context
         // overflow until a smaller window has cut a thousand characters off
         final String source = largeSource(600);
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             if (request.sourceText().length() > source.length() - 1000) {
                 throw new java.io.IOException("the request exceeds the available context size");
             }
@@ -641,7 +636,7 @@ public class SummaryGeneratorTest {
                 java.io.IOException.class,
                 () -> supportWithModels(provider, normalWindowModel("m"))
                         .generate(oversizeRule("m", "fail", 0), tempFile("A", ".java"), "file", source));
-        final AiGenerationResult sampled = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult sampled = supportWithModels(provider, normalWindowModel("m"))
                 .generate(oversizeRule("m", "sample", 0), tempFile("B", ".java"), "file", source);
 
         // assert: fail refuses instead of writing a cut summary; sample says how much of the head it read
@@ -655,13 +650,13 @@ public class SummaryGeneratorTest {
     public void onOversize_sample_singleCallOnTrimmedHead() throws Exception {
         final Path contextFile = tempFile("Huge", ".java");
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return "SAMPLED";
         };
         final SummaryGenerator support = supportWith(provider, "m");
 
-        final AiGenerationResult result =
+        final SummaryResult result =
                 support.generate((oversizeRule("m", "sample", 0)), contextFile, "file", largeSource(500));
 
         assertThat(calls.get(), is(equalTo(1)));
@@ -672,23 +667,23 @@ public class SummaryGeneratorTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">
-    private static AiFieldGenerationConfig normalRule(final String modelKey, final String onIncomplete) {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule normalRule(final String modelKey, final String onIncomplete) {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(modelKey);
         rule.setOnIncomplete(onIncomplete);
         return rule;
     }
 
-    private static AiIncompleteAnswerException cutOff(final String partialText) {
-        return new AiIncompleteAnswerException(AiIncompleteAnswerException.Reason.TRUNCATED, "cut off", partialText);
+    private static IncompleteAnswerException cutOff(final String partialText) {
+        return new IncompleteAnswerException(IncompleteAnswerException.Reason.TRUNCATED, "cut off", partialText);
     }
 
     @Test
     public void mapReduce_aPartSummaryCutAtTheOutputBudget_isKeptAndNamed() throws Exception {
         // arrange: every map answer is cut off (a model listing entries one by one); the reduce answers
-        final AiGenerationProvider provider = request -> {
-            if (!request.sourceText().contains(AiMapReduceSupport.PART_LABEL + "1:")) {
+        final GenerationProvider provider = request -> {
+            if (!request.sourceText().contains(MapReduceMath.PART_LABEL + "1:")) {
                 throw cutOff("- `A_00001` -> one\n- `A_00002` -> two");
             }
             return "FINAL";
@@ -696,7 +691,7 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert
@@ -707,8 +702,8 @@ public class SummaryGeneratorTest {
     @Test
     public void mapReduce_aFinalAnswerCutAtTheOutputBudget_stillFailsTheFile() {
         // arrange: the parts are complete, the final reduce is cut off
-        final AiGenerationProvider provider = request -> {
-            if (request.sourceText().contains(AiMapReduceSupport.PART_LABEL + "1:")) {
+        final GenerationProvider provider = request -> {
+            if (request.sourceText().contains(MapReduceMath.PART_LABEL + "1:")) {
                 throw cutOff("half a summ");
             }
             return "PARTIAL";
@@ -716,11 +711,11 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act + assert
-        final AiGenerationResult result = assertDoesNotThrowGenerate(support);
+        final SummaryResult result = assertDoesNotThrowGenerate(support);
         assertThat(result.complete(), is(false));
     }
 
-    private AiGenerationResult assertDoesNotThrowGenerate(final SummaryGenerator support) {
+    private SummaryResult assertDoesNotThrowGenerate(final SummaryGenerator support) {
         return org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> support.generate(
                 oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000)));
     }
@@ -728,8 +723,8 @@ public class SummaryGeneratorTest {
     @Test
     public void incomplete_retryOnce_asksAgainAndTakesTheSecondAnswer() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> calls.incrementAndGet() == 1 ? "" : "A summary.";
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final GenerationProvider provider = request -> calls.incrementAndGet() == 1 ? "" : "A summary.";
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "retryOnce")), tempFile("Test", ".java"), "file", "public class Test {}");
 
         assertThat(calls.get(), is(equalTo(2)));
@@ -742,11 +737,11 @@ public class SummaryGeneratorTest {
     @Test
     public void incomplete_retryOnce_secondIncompleteAnswerFails() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return " ";
         };
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "retryOnce")), tempFile("Test", ".java"), "file", "public class Test {}");
 
         assertThat(calls.get(), is(equalTo(2)));
@@ -755,10 +750,10 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_failByDefault_cutOffAnswerIsNotTaken() throws Exception {
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             throw cutOff("half a sum");
         };
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", null)), tempFile("Test", ".java"), "file", "public class Test {}");
 
         assertThat(result.complete(), is(false));
@@ -770,10 +765,10 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_keep_takesTheTextOfACutOffAnswer() throws Exception {
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             throw cutOff("half a sum");
         };
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "keep")), tempFile("Test", ".java"), "file", "public class Test {}");
 
         assertThat(result.complete(), is(true));
@@ -784,12 +779,12 @@ public class SummaryGeneratorTest {
 
     @Test
     public void incomplete_keep_cutOffAnswerWithoutTextAndAnEmptyAnswerStillFail() throws Exception {
-        final AiGenerationProvider cutOffEmpty = request -> {
+        final GenerationProvider cutOffEmpty = request -> {
             throw cutOff(" ");
         };
-        final AiGenerationProvider empty = request -> "";
-        for (final AiGenerationProvider provider : Arrays.asList(cutOffEmpty, empty)) {
-            final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final GenerationProvider empty = request -> "";
+        for (final GenerationProvider provider : Arrays.asList(cutOffEmpty, empty)) {
+            final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                     .generate((normalRule("m", "keep")), tempFile("Test", ".java"), "file", "public class Test {}");
             assertThat(result.complete(), is(false));
         }
@@ -798,11 +793,11 @@ public class SummaryGeneratorTest {
     @Test
     public void incomplete_responseWithoutAnswer_isIncompleteAndNotRetriedUnderFail() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
-            throw new AiIncompleteAnswerException(AiIncompleteAnswerException.Reason.NO_ANSWER, "no choice");
+            throw new IncompleteAnswerException(IncompleteAnswerException.Reason.NO_ANSWER, "no choice");
         };
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate((normalRule("m", "fail")), tempFile("Test", ".java"), "file", "public class Test {}");
 
         assertThat(calls.get(), is(equalTo(1)));
@@ -811,7 +806,7 @@ public class SummaryGeneratorTest {
     }
 
     /** Records every request and answers the n-th (from 1) as the script says. */
-    private static final class ScriptedProvider implements AiGenerationProvider {
+    private static final class ScriptedProvider implements GenerationProvider {
 
         /** The answer to one call. */
         interface Script {
@@ -819,14 +814,14 @@ public class SummaryGeneratorTest {
         }
 
         private final Script script;
-        private final List<AiGenerationRequest> generated = new ArrayList<>();
+        private final List<GenerationRequest> generated = new ArrayList<>();
 
         ScriptedProvider(final Script script) {
             this.script = script;
         }
 
         @Override
-        public String generate(final AiGenerationRequest request) throws java.io.IOException {
+        public String generate(final GenerationRequest request) throws java.io.IOException {
             generated.add(request);
             return script.answer(generated.size());
         }
@@ -845,7 +840,7 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: the chunk was read again as its two halves, and every answer reached the reduce
@@ -872,7 +867,7 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert
@@ -889,7 +884,7 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: each call read the first half of the one before, down to a piece too small to split
@@ -897,19 +892,19 @@ public class SummaryGeneratorTest {
         final int calls = provider.generated.size();
         for (int call = 2; call <= calls; call++) {
             assertThat(provider.chunkOf(call - 1), startsWith(provider.chunkOf(call)));
-            assertThat(provider.chunkOf(call - 1).length() >= 2 * AiMapReduceSupport.MIN_CHUNK_CHARS, is(true));
+            assertThat(provider.chunkOf(call - 1).length() >= 2 * MapReduceMath.MIN_CHUNK_CHARS, is(true));
         }
-        assertThat(provider.chunkOf(calls).length() < 2 * AiMapReduceSupport.MIN_CHUNK_CHARS, is(true));
+        assertThat(provider.chunkOf(calls).length() < 2 * MapReduceMath.MIN_CHUNK_CHARS, is(true));
     }
 
     @Test
     public void incomplete_withFacts_theFactsLineDoesNotMaskAnEmptyAnswer() throws Exception {
-        final AiFieldGenerationConfig rule = normalRule("m", null);
-        final AiFactCounter counter = new AiFactCounter();
+        final RoutingRule rule = normalRule("m", null);
+        final FactCounter counter = new FactCounter();
         counter.setLabel("classes");
         counter.setPattern("\\bclass\\b");
         rule.setFacts(Collections.singletonList(counter));
-        final AiGenerationResult result = supportWithModels(request -> "", normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(request -> "", normalWindowModel("m"))
                 .generate((rule), tempFile("Test", ".java"), "file", "public class Test {}");
 
         assertThat(result.complete(), is(false));
@@ -920,7 +915,7 @@ public class SummaryGeneratorTest {
     @Test
     public void onOversize_failAtRunTime_isAnErrorNotATrimmedSummary() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
             return "MODEL OUTPUT";
         };
@@ -937,20 +932,20 @@ public class SummaryGeneratorTest {
     public void window_isComputedForEveryFile_fromItsOwnName() throws Exception {
         // The prompt contains the file name, so a long name leaves less room for the source. A short-named
         // file whose source fills exactly its own budget is not trimmed, even after a long-named one.
-        final AiModelDefinitionSupport models = normalWindowModel("m");
-        final AiPromptPreparationSupport preparation =
-                new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions()));
+        final ModelRegistry models = normalWindowModel("m");
+        final PromptPreparer preparation =
+                new PromptPreparer(new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions()));
         final Path shortName = tempFile("A", ".java");
         final Path longName = tempFile("A_very_long_file_name_that_eats_into_the_prompt_budget", ".java");
-        final int budget = (int) AiInputWindowCalculator.availableSourceChars(
-                models.getConfig("m"),
+        final int budget = (int) InputWindowCalculator.availableSourceChars(
+                models.definition("m"),
                 preparation.basePromptLength(CommonTestFixtures.PROMPT_KEY_FILE_BODY, shortName));
         final SummaryGenerator support = supportWithModels(request -> "OK", models);
-        final AiFieldGenerationConfig rule = normalRule("m", null);
+        final RoutingRule rule = normalRule("m", null);
 
         support.generate((rule), longName, "file", "x");
         final String fits = largeSource(budget).substring(0, budget);
-        final AiGenerationResult result = support.generate((rule), shortName, "file", fits);
+        final SummaryResult result = support.generate((rule), shortName, "file", fits);
 
         assertThat(result.body(), is(equalTo("OK")));
         for (final String warning : getCapturedWarnings()) {
@@ -960,28 +955,28 @@ public class SummaryGeneratorTest {
 
     @Test
     public void takeUsage_sumsTheCallsOfAFile_andStartsAnew() throws Exception {
-        final AiGenerationProvider provider = new AiGenerationProvider() {
+        final GenerationProvider provider = new GenerationProvider() {
             @Override
-            public String generate(final net.ladenthin.srcmorph.prompt.AiGenerationRequest request) {
+            public String generate(final net.ladenthin.srcmorph.prompt.GenerationRequest request) {
                 return "PARTIAL";
             }
 
             @Override
-            public net.ladenthin.srcmorph.provider.AiGenerationUsage lastUsage() {
-                return new net.ladenthin.srcmorph.provider.AiGenerationUsage(1, 100, 10, 0, "stop");
+            public net.ladenthin.srcmorph.provider.GenerationUsage lastUsage() {
+                return new net.ladenthin.srcmorph.provider.GenerationUsage(1, 100, 10, 0, "stop");
             }
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
-        final net.ladenthin.srcmorph.provider.AiGenerationUsage usage = support.takeUsage();
+        final net.ladenthin.srcmorph.provider.GenerationUsage usage = support.takeUsage();
 
         // two chunks and one reduce
         assertThat(usage.calls(), is(3));
         assertThat(usage.promptTokens(), is(300L));
         assertThat(usage.completionTokens(), is(30L));
         assertThat(usage.finishReason(), is(equalTo("stop")));
-        assertThat(support.takeUsage(), is(net.ladenthin.srcmorph.provider.AiGenerationUsage.NONE));
+        assertThat(support.takeUsage(), is(net.ladenthin.srcmorph.provider.GenerationUsage.NONE));
     }
 
     @Test
@@ -995,25 +990,25 @@ public class SummaryGeneratorTest {
     }
 
     // <editor-fold defaultstate="collapsed" desc="map and reduce prompts">
-    private static AiPromptDefinition prompt(final String key, final String template) {
-        final AiPromptDefinition definition = new AiPromptDefinition();
+    private static PromptDefinition prompt(final String key, final String template) {
+        final PromptDefinition definition = new PromptDefinition();
         definition.setKey(key);
         definition.setTemplate(template);
         return definition;
     }
 
-    private List<AiGenerationRequest> mapReduceRequests(final String mapKey, final String reduceKey) throws Exception {
-        final List<AiGenerationRequest> requests = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+    private List<GenerationRequest> mapReduceRequests(final String mapKey, final String reduceKey) throws Exception {
+        final List<GenerationRequest> requests = new ArrayList<>();
+        final GenerationProvider provider = request -> {
             requests.add(request);
             return "S";
         };
-        final List<AiPromptDefinition> prompts = new ArrayList<>(CommonTestFixtures.createFilePromptDefinitions());
+        final List<PromptDefinition> prompts = new ArrayList<>(CommonTestFixtures.createFilePromptDefinitions());
         prompts.add(prompt("map", "MAP"));
         prompts.add(prompt("reduce", "REDUCE"));
-        final SummaryGenerator support = new SummaryGenerator(
-                provider, new AiPromptPreparationSupport(new AiPromptSupport(prompts)), normalWindowModel("m"));
-        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
+        final SummaryGenerator support =
+                new SummaryGenerator(provider, new PromptPreparer(new PromptCatalog(prompts)), normalWindowModel("m"));
+        final RoutingRule rule = oversizeRule("m", "mapReduce", 0);
         rule.setMapPromptKey(mapKey);
         rule.setReducePromptKey(reduceKey);
         support.generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000));
@@ -1023,10 +1018,10 @@ public class SummaryGeneratorTest {
     @Test
     public void mapReduce_mapCallsTakeTheMapPromptAndAChunkLabel() throws Exception {
         // act
-        final List<AiGenerationRequest> requests = mapReduceRequests("map", "reduce");
+        final List<GenerationRequest> requests = mapReduceRequests("map", "reduce");
 
         // assert: the first call maps chunk 1, every map call is labelled
-        final AiGenerationRequest first = requests.get(0);
+        final GenerationRequest first = requests.get(0);
         assertThat(first.promptKey(), is(equalTo(CommonTestFixtures.PROMPT_KEY_FILE_BODY + "+map")));
         assertThat(first.sourceText(), startsWith("Chunk 1 of "));
         assertThat(first.sourceText(), containsString("\nline 0\n"));
@@ -1035,21 +1030,21 @@ public class SummaryGeneratorTest {
     @Test
     public void mapReduce_reduceCallsTakeTheReducePromptAndThePartSummaries() throws Exception {
         // act
-        final List<AiGenerationRequest> requests = mapReduceRequests("map", "reduce");
+        final List<GenerationRequest> requests = mapReduceRequests("map", "reduce");
 
         // assert: the last call reduces
-        final AiGenerationRequest last = requests.get(requests.size() - 1);
+        final GenerationRequest last = requests.get(requests.size() - 1);
         assertThat(last.promptKey(), is(equalTo(CommonTestFixtures.PROMPT_KEY_FILE_BODY + "+reduce")));
-        assertThat(last.sourceText(), startsWith(AiMapReduceSupport.PART_LABEL + "1:\nS\n"));
+        assertThat(last.sourceText(), startsWith(MapReduceMath.PART_LABEL + "1:\nS\n"));
     }
 
     @Test
     public void mapReduce_withoutMapAndReducePrompts_takesTheRulePromptForEveryCall() throws Exception {
         // act
-        final List<AiGenerationRequest> requests = mapReduceRequests(null, null);
+        final List<GenerationRequest> requests = mapReduceRequests(null, null);
 
         // assert
-        for (final AiGenerationRequest request : requests) {
+        for (final GenerationRequest request : requests) {
             assertThat(request.promptKey(), is(equalTo(CommonTestFixtures.PROMPT_KEY_FILE_BODY)));
         }
         assertThat(requests.get(0).sourceText(), startsWith("Chunk 1 of "));
@@ -1058,29 +1053,29 @@ public class SummaryGeneratorTest {
 
     // <editor-fold defaultstate="collapsed" desc="counted prompt tokens">
     /** A provider that counts a prompt's tokens with {@code tokens} and records every request it answers. */
-    private static final class CountingProvider implements AiGenerationProvider {
+    private static final class CountingProvider implements GenerationProvider {
 
-        private final ToIntFunction<AiGenerationRequest> tokens;
-        private final List<AiGenerationRequest> generated = new ArrayList<>();
+        private final ToIntFunction<GenerationRequest> tokens;
+        private final List<GenerationRequest> generated = new ArrayList<>();
 
-        CountingProvider(final ToIntFunction<AiGenerationRequest> tokens) {
+        CountingProvider(final ToIntFunction<GenerationRequest> tokens) {
             this.tokens = tokens;
         }
 
         @Override
-        public String generate(final AiGenerationRequest request) {
+        public String generate(final GenerationRequest request) {
             generated.add(request);
             return "S";
         }
 
         @Override
-        public OptionalInt promptTokens(final AiGenerationRequest request) {
+        public OptionalInt promptTokens(final GenerationRequest request) {
             return OptionalInt.of(tokens.applyAsInt(request));
         }
     }
 
     /** The prompt tokens a call of {@link #normalWindowModel} may take: its 2048 less its 64 of answer. */
-    private static final int NORMAL_WINDOW_TOKEN_LIMIT = 2048 - 64 - AiTokenWindow.UNCOUNTED_TOKENS;
+    private static final int NORMAL_WINDOW_TOKEN_LIMIT = 2048 - 64 - TokenWindow.UNCOUNTED_TOKENS;
 
     @Test
     public void countedTokens_aSourceOverTheEstimateThatFitsInTokens_takesOneCall() throws Exception {
@@ -1092,7 +1087,7 @@ public class SummaryGeneratorTest {
         final String source = largeSource(1_500);
 
         // act
-        final AiGenerationResult result =
+        final SummaryResult result =
                 support.generate(oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", source);
 
         // assert
@@ -1110,13 +1105,13 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", largeSource(400));
 
         // assert: the file is map-reduced, and every call the provider answered fits
         assertThat(result.complete(), is(true));
         assertThat(provider.generated.size() > 1, is(true));
-        for (final AiGenerationRequest request : provider.generated) {
+        for (final GenerationRequest request : provider.generated) {
             assertThat(request.sourceText().length() <= NORMAL_WINDOW_TOKEN_LIMIT, is(true));
         }
     }
@@ -1133,7 +1128,7 @@ public class SummaryGeneratorTest {
         support.generate(oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", largeSource(1_000));
 
         // assert: no map call needed a smaller window, so every chunk read the whole of itself
-        for (final AiGenerationRequest request : provider.generated) {
+        for (final GenerationRequest request : provider.generated) {
             assertThat(request.sourceText().length() <= NORMAL_WINDOW_TOKEN_LIMIT, is(true));
             assertThat(request.sourceText().contains("[EOF - source was truncated]"), is(false));
         }
@@ -1142,8 +1137,8 @@ public class SummaryGeneratorTest {
     @Test
     public void countedTokens_aProviderThatCannotCount_sendsASourceThatFitsTheEstimateWhole() throws Exception {
         // arrange: the default promptTokens is empty
-        final List<AiGenerationRequest> requests = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+        final List<GenerationRequest> requests = new ArrayList<>();
+        final GenerationProvider provider = request -> {
             requests.add(request);
             return "S";
         };
@@ -1163,14 +1158,14 @@ public class SummaryGeneratorTest {
     @Test
     public void mapReduce_everyReduceCallReadsTheFactsOfTheWholeSource_noMapCall() throws Exception {
         // arrange
-        final List<AiGenerationRequest> requests = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+        final List<GenerationRequest> requests = new ArrayList<>();
+        final GenerationProvider provider = request -> {
             requests.add(request);
             return "S";
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
-        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
-        final AiFactCounter counter = new AiFactCounter();
+        final RoutingRule rule = oversizeRule("m", "mapReduce", 0);
+        final FactCounter counter = new FactCounter();
         counter.setLabel("lines");
         counter.setPattern("(?m)^line ");
         rule.setFacts(Collections.singletonList(counter));
@@ -1179,10 +1174,10 @@ public class SummaryGeneratorTest {
         support.generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: the map calls read their chunk, the reduce call the facts, then the parts
-        final AiGenerationRequest reduce = requests.get(requests.size() - 1);
-        assertThat(reduce.sourceText(), startsWith(AiFactExtractor.FACTS_HEADER + "lines: 7000"));
-        assertThat(reduce.sourceText(), containsString(AiMapReduceSupport.PART_LABEL + "1:\nS\n"));
-        for (final AiGenerationRequest map : requests.subList(0, requests.size() - 1)) {
+        final GenerationRequest reduce = requests.get(requests.size() - 1);
+        assertThat(reduce.sourceText(), startsWith(FactExtractor.FACTS_HEADER + "lines: 7000"));
+        assertThat(reduce.sourceText(), containsString(MapReduceMath.PART_LABEL + "1:\nS\n"));
+        for (final GenerationRequest map : requests.subList(0, requests.size() - 1)) {
             assertThat(map.sourceText(), startsWith("Chunk "));
         }
     }
@@ -1200,9 +1195,9 @@ public class SummaryGeneratorTest {
     @Test
     public void reduce_partsTooLongToPair_areShortenedAndAllRead() throws Exception {
         // arrange: every map answer is longer than half a reduce batch, so no two fit one; the reduce answers
-        final List<AiGenerationRequest> requests = new ArrayList<>();
+        final List<GenerationRequest> requests = new ArrayList<>();
         final AtomicInteger maps = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             requests.add(request);
             return request.sourceText().startsWith("Chunk ")
                     ? "MAP" + maps.incrementAndGet() + "\n" + linesOf(4_000)
@@ -1211,16 +1206,16 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: the first reduce reads two shortened parts, and the coverage line counts them
-        final AiGenerationRequest firstReduce = requests.stream()
-                .filter(r -> r.sourceText().startsWith(AiMapReduceSupport.PART_LABEL))
+        final GenerationRequest firstReduce = requests.stream()
+                .filter(r -> r.sourceText().startsWith(MapReduceMath.PART_LABEL))
                 .findFirst()
                 .orElseThrow(AssertionError::new);
-        assertThat(firstReduce.sourceText(), containsString(AiMapReduceSupport.PART_LABEL + "2:"));
-        assertThat(firstReduce.sourceText(), containsString(AiMapReduceSupport.SHORTENED_MARKER));
+        assertThat(firstReduce.sourceText(), containsString(MapReduceMath.PART_LABEL + "2:"));
+        assertThat(firstReduce.sourceText(), containsString(MapReduceMath.SHORTENED_MARKER));
         assertThat(result.complete(), is(true));
         assertThat(result.body(), containsString(" part summaries shortened to fit the reduce)"));
         // every map answer reached a reduce
@@ -1239,13 +1234,13 @@ public class SummaryGeneratorTest {
     @Test
     public void mapReduce_aSingleChunkCutAtTheOutputBudget_isTheFinalAnswerAndFailsTheFile() throws Exception {
         // arrange: one chunk is read, so its answer is the final one; it is cut off
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             throw cutOff("half a summ");
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        final AiGenerationResult result = support.generate(
+        final SummaryResult result = support.generate(
                 oversizeRule("m", "sampleChunks", 1), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert
@@ -1284,13 +1279,13 @@ public class SummaryGeneratorTest {
         final String source = largeSource(3000) + dense + "\n" + largeSource(3000);
 
         // act
-        final AiGenerationResult result =
+        final SummaryResult result =
                 support.generate(oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", source);
 
         // assert: the dense chunk went in two halves, nothing was cut
         assertThat(provider.generated.stream().anyMatch(r -> r.sourceText().contains(", half 1:\n")), is(true));
         assertThat(provider.generated.stream().anyMatch(r -> r.sourceText().contains(", half 2:\n")), is(true));
-        for (final AiGenerationRequest request : provider.generated) {
+        for (final GenerationRequest request : provider.generated) {
             assertThat(request.sourceText().contains("[EOF - source was truncated]"), is(false));
         }
         assertThat(result.body().contains("cut to fit the window"), is(false));
@@ -1299,17 +1294,17 @@ public class SummaryGeneratorTest {
     @Test
     public void incomplete_keep_countsThePartSummariesCutAtTheOutputBudget() throws Exception {
         // arrange: under keep every map answer is cut, the reduce answers
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             if (request.sourceText().startsWith("Chunk ")) {
                 throw cutOff("- a part");
             }
             return "FINAL";
         };
-        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
+        final RoutingRule rule = oversizeRule("m", "mapReduce", 0);
         rule.setOnIncomplete("keep");
 
         // act
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert
@@ -1324,14 +1319,14 @@ public class SummaryGeneratorTest {
     public void incomplete_keep_anAnswerTheProviderStopped_isNotWritten() throws Exception {
         // arrange
         final AtomicInteger calls = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             calls.incrementAndGet();
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.ABORTED, "ended with finish reason 'error'", "- test paging (");
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.ABORTED, "ended with finish reason 'error'", "- test paging (");
         };
 
         // act
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(normalRule("m", "keep"), tempFile("Paging", ".ts"), "file", "export class Paging {}");
 
         // assert
@@ -1343,7 +1338,7 @@ public class SummaryGeneratorTest {
     public void incomplete_aCutPart_reachesTheReduceWithoutItsCutLineAndMarked() throws Exception {
         // arrange: every map answer is cut in its third line
         final List<String> reduces = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             if (request.sourceText().startsWith("Chunk ")) {
                 throw cutOff("- one\n- two\n- thr");
             }
@@ -1356,7 +1351,7 @@ public class SummaryGeneratorTest {
                 .generate(oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert
-        assertThat(reduces.get(0), containsString("- one\n- two" + AiMapReduceSupport.SHORTENED_MARKER));
+        assertThat(reduces.get(0), containsString("- one\n- two" + MapReduceMath.SHORTENED_MARKER));
         assertThat(reduces.get(0), not(containsString("- thr")));
     }
 
@@ -1364,18 +1359,18 @@ public class SummaryGeneratorTest {
     public void incomplete_retryOnce_keepsACutPartWithoutAskingAgain() throws Exception {
         // arrange
         final AtomicInteger maps = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             if (request.sourceText().startsWith("Chunk ")) {
                 maps.incrementAndGet();
                 throw cutOff("- a part");
             }
             return "FINAL";
         };
-        final AiFieldGenerationConfig rule = oversizeRule("m", "mapReduce", 0);
+        final RoutingRule rule = oversizeRule("m", "mapReduce", 0);
         rule.setOnIncomplete("retryOnce");
 
         // act
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: one call per chunk, as many as the coverage line names
@@ -1387,8 +1382,8 @@ public class SummaryGeneratorTest {
     @Test
     public void sampleChunks_theReduceReadsThatThePartsAreASample() throws Exception {
         // arrange
-        final List<AiGenerationRequest> requests = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+        final List<GenerationRequest> requests = new ArrayList<>();
+        final GenerationProvider provider = request -> {
             requests.add(request);
             return "S";
         };
@@ -1398,24 +1393,24 @@ public class SummaryGeneratorTest {
                 .generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert
-        final AiGenerationRequest reduce = requests.get(requests.size() - 1);
+        final GenerationRequest reduce = requests.get(requests.size() - 1);
         assertThat(reduce.sourceText(), startsWith("**Sample:** the parts summarize 2 of "));
-        assertThat(reduce.sourceText(), containsString(AiMapReduceSupport.PART_LABEL + "2:"));
+        assertThat(reduce.sourceText(), containsString(MapReduceMath.PART_LABEL + "2:"));
     }
 
     // <editor-fold defaultstate="collapsed" desc="test review">
     @Test
     public void takeUsage_aFailedCall_stillCounts() throws Exception {
         // arrange: the request fails, its usage was reported
-        final AiGenerationProvider provider = new AiGenerationProvider() {
+        final GenerationProvider provider = new GenerationProvider() {
             @Override
-            public String generate(final AiGenerationRequest request) throws java.io.IOException {
+            public String generate(final GenerationRequest request) throws java.io.IOException {
                 throw new java.io.IOException("the server is down");
             }
 
             @Override
-            public net.ladenthin.srcmorph.provider.AiGenerationUsage lastUsage() {
-                return new net.ladenthin.srcmorph.provider.AiGenerationUsage(1, 100, 0, 0, "");
+            public net.ladenthin.srcmorph.provider.GenerationUsage lastUsage() {
+                return new net.ladenthin.srcmorph.provider.GenerationUsage(1, 100, 0, 0, "");
             }
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
@@ -1432,14 +1427,14 @@ public class SummaryGeneratorTest {
     @Test
     public void countedTokens_aProviderThatCannotCount_chunksByTheEstimate() throws Exception {
         // arrange
-        final List<AiGenerationRequest> requests = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+        final List<GenerationRequest> requests = new ArrayList<>();
+        final GenerationProvider provider = request -> {
             requests.add(request);
             return "S";
         };
 
         // act
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: chunks of the estimated window, none cut
@@ -1450,14 +1445,14 @@ public class SummaryGeneratorTest {
     @Test
     public void sampleChunks_labelsEveryChunkWithTheSample() throws Exception {
         // arrange
-        final List<AiGenerationRequest> requests = new ArrayList<>();
-        final AiGenerationProvider provider = request -> {
+        final List<GenerationRequest> requests = new ArrayList<>();
+        final GenerationProvider provider = request -> {
             requests.add(request);
             return "S";
         };
 
         // act
-        final AiGenerationResult result = supportWithModels(provider, normalWindowModel("m"))
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: two chunks sampled from all of them, as the coverage line names them
@@ -1492,25 +1487,25 @@ public class SummaryGeneratorTest {
     public void coverage_ofTheNextFile_startsCountingAnew() throws Exception {
         // arrange: the first file's map answers are cut, the second file's are not
         final AtomicInteger file = new AtomicInteger();
-        final AiGenerationProvider provider = request -> {
+        final GenerationProvider provider = request -> {
             if (file.get() == 0 && request.sourceText().startsWith("Chunk ")) {
                 throw cutOff("- a part");
             }
             return "S";
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
-        final AiGenerationResult first = support.generate(
+        final SummaryResult first = support.generate(
                 oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000));
         file.incrementAndGet();
 
         // act
-        final AiGenerationResult second = support.generate(
+        final SummaryResult second = support.generate(
                 oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert
         assertThat(first.body(), containsString("cut at the output budget"));
         assertThat(second.body().contains("cut at the output budget"), is(false));
-        assertThat(second.body(), startsWith(AiMapReduceSupport.COVERAGE_HEADER));
+        assertThat(second.body(), startsWith(MapReduceMath.COVERAGE_HEADER));
     }
     // </editor-fold>
 }

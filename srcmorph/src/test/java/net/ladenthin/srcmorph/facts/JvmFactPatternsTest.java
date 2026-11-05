@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -23,17 +23,17 @@ import org.junit.jupiter.api.Test;
  */
 public class JvmFactPatternsTest {
 
-    private static final List<AiFactCounter> KOTLIN = ProfileFactPatterns.counters("kotlin-facts");
+    private static final List<FactCounter> KOTLIN = ProfileFactPatterns.counters("kotlin-facts");
 
-    private static final List<AiFactCounter> GROOVY = ProfileFactPatterns.counters("groovy-facts");
+    private static final List<FactCounter> GROOVY = ProfileFactPatterns.counters("groovy-facts");
 
-    private static final List<AiFactCounter> JAVA_EE = ProfileFactPatterns.counters("java-ee-facts");
+    private static final List<FactCounter> JAVA_EE = ProfileFactPatterns.counters("java-ee-facts");
 
-    private static final List<AiFactCounter> JAVA = ProfileFactPatterns.counters("java-facts");
+    private static final List<FactCounter> JAVA = ProfileFactPatterns.counters("java-facts");
 
-    private static final List<AiFactCounter> SCALA = ProfileFactPatterns.counters("scala-facts");
+    private static final List<FactCounter> SCALA = ProfileFactPatterns.counters("scala-facts");
 
-    private static int count(final List<AiFactCounter> counters, final String label, final String source) {
+    private static int count(final List<FactCounter> counters, final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
         final Integer count = counts.get(label);
         if (count == null) {

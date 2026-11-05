@@ -15,7 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import net.ladenthin.srcmorph.support.ReadBudget;
 
 /**
@@ -190,7 +190,7 @@ public final class FactPatternLinearity {
         final List<String> failures = new ArrayList<>();
         int patterns = 0;
         for (final String key : keys(directory)) {
-            for (final AiFactCounter counter : counters(directory, key)) {
+            for (final FactCounter counter : counters(directory, key)) {
                 patterns++;
                 failures.addAll(
                         failures(key, String.valueOf(counter.getLabel()), String.valueOf(counter.getPattern())));
@@ -228,8 +228,8 @@ public final class FactPatternLinearity {
      * @return the counters in file order
      * @throws IOException if the file cannot be read
      */
-    static List<AiFactCounter> counters(final Path directory, final String key) throws IOException {
-        final List<AiFactCounter> facts = new AiFactDefinitionLoader(directory.toFile())
+    static List<FactCounter> counters(final Path directory, final String key) throws IOException {
+        final List<FactCounter> facts = new FactDefinitionLoader(directory.toFile())
                 .load(null, Collections.singletonList(key))
                 .get(0)
                 .getFacts();
@@ -293,7 +293,7 @@ public final class FactPatternLinearity {
     static long reads(final Pattern pattern, final String text) {
         final CountingSequence sequence = new CountingSequence(text);
         final Matcher matcher = pattern.matcher(sequence);
-        // find every match, as AiFactExtractor counts them
+        // find every match, as FactExtractor counts them
         boolean found = matcher.find();
         while (found) {
             found = matcher.find();

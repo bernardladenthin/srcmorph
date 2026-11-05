@@ -14,7 +14,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -36,8 +36,8 @@ public class AggregatePackagesEngineTest {
      * {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object, which requires a
      * non-null model path.
      */
-    private static AiModelDefinition mockModelDefinition() {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelDefinition mockModelDefinition() {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         definition.setModelPath("mock.gguf");
         definition.setCharsPerToken(0);
@@ -144,7 +144,7 @@ public class AggregatePackagesEngineTest {
             documentCodec.write(
                     packageDirectory.resolve("Child" + i + ".java.ai.md"), new AiMdDocument(header, body.toString()));
         }
-        final AiModelDefinition smallWindow = mockModelDefinition();
+        final ModelDefinition smallWindow = mockModelDefinition();
         smallWindow.setContextSize(2048);
         smallWindow.setCharsPerToken(4);
         smallWindow.setMaxOutputTokens(64);

@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.provider.ModelListFixtures;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
@@ -43,9 +43,9 @@ public class ListModelsEngineTest {
         return MODELS;
     }
 
-    private static AiModelDefinition definition(
+    private static ModelDefinition definition(
             final String key, final String provider, final String baseUrl, final String apiKeyEnv) {
-        final AiModelDefinition definition = new AiModelDefinition();
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(key);
         definition.setProvider(provider);
         definition.setBaseUrl(baseUrl);
@@ -53,8 +53,7 @@ public class ListModelsEngineTest {
         return definition;
     }
 
-    private static SrcMorphConfiguration configuration(
-            final String runProvider, final AiModelDefinition... definitions) {
+    private static SrcMorphConfiguration configuration(final String runProvider, final ModelDefinition... definitions) {
         final SrcMorphConfiguration configuration = new SrcMorphConfiguration();
         configuration.setGenerationProvider(runProvider);
         configuration.setAiDefinitions(new ArrayList<>(Arrays.asList(definitions)));
@@ -70,7 +69,7 @@ public class ListModelsEngineTest {
     @Test
     public void execute_asksEveryOpenAiCompatibleServerOnce_perBaseUrlAndKey() throws Exception {
         // arrange
-        final AiModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
+        final ModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
         local.setModelPath("model.gguf");
         final SrcMorphConfiguration configuration = configuration(
                 "llamacpp-jni",
@@ -107,7 +106,7 @@ public class ListModelsEngineTest {
 
     @Test
     public void execute_noOpenAiCompatibleDefinition_fails() {
-        final AiModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
+        final ModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
         local.setModelPath("model.gguf");
         final SrcMorphException thrown =
                 assertThrows(SrcMorphException.class, () -> execute(configuration("openai-compatible", local), ""));
@@ -128,7 +127,7 @@ public class ListModelsEngineTest {
 
     @Test
     public void execute_aDefinitionWithoutKey_failsAsAConfigurationError() {
-        final AiModelDefinition keyless = new AiModelDefinition();
+        final ModelDefinition keyless = new ModelDefinition();
         keyless.setProvider("openai-compatible");
         assertThrows(SrcMorphException.class, () -> execute(configuration("openai-compatible", keyless), ""));
     }

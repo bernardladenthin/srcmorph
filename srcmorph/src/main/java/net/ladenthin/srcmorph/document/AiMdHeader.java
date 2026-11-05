@@ -53,7 +53,7 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
  * <ul>
  *   <li>A rewrite is decided by the header version, the node type, the title and the AI version,
  *       always, and by the checksum and the four hashes as the configuration's {@code regenerateOn}
- *       switches say ({@link AiMdHeaderSupport}); the source date, the generation time and the
+ *       switches say ({@link AiMdRewritePolicy}); the source date, the generation time and the
  *       generator version are recorded only.</li>
  *   <li>Package aggregation must be deterministic. Child traversal order must therefore be stable,
  *       typically ascending by child file name or relative path.</li>

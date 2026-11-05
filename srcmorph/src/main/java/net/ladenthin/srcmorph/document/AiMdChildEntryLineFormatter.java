@@ -14,10 +14,10 @@ import lombok.ToString;
  * the lines in deterministic order and uses the concatenated string as the input to the parent's
  * CRC32 checksum, so a changed checksum below changes every one above.</p>
  *
- * <p>Kept separate from {@link AiMdHeaderSupport} because the use case is
+ * <p>Kept separate from {@link AiMdRewritePolicy} because the use case is
  * narrow (only {@link net.ladenthin.srcmorph.indexer.PackageIndexer} and
  * {@link net.ladenthin.srcmorph.indexer.ProjectIndexer} call this) and unrelated to the
- * rewrite-decision logic that lives on {@code AiMdHeaderSupport}.</p>
+ * rewrite-decision logic that lives on {@code AiMdRewritePolicy}.</p>
  *
  * @see net.ladenthin.srcmorph.indexer.PackageIndexer
  * @see net.ladenthin.srcmorph.indexer.ProjectIndexer

@@ -16,15 +16,15 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.MockGenerationProvider;
 import org.junit.jupiter.api.Test;
 
 public class ProjectIndexerTest {
@@ -48,13 +48,13 @@ public class ProjectIndexerTest {
                 "> Creates and sends invoices.\n\n#### Purpose\n- billing\n");
 
         final ProjectIndexer indexer = new ProjectIndexer(
-                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn());
+                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn());
 
         // act
-        final AiIndexOutcome written = indexer.aggregate(outputRoot);
+        final IndexOutcome written = indexer.aggregate(outputRoot);
 
         // pre-assert
-        assertThat(written, is(AiIndexOutcome.WRITTEN));
+        assertThat(written, is(IndexOutcome.WRITTEN));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         assertThat(Files.exists(projectFile), is(true));
 
@@ -92,13 +92,13 @@ public class ProjectIndexerTest {
         Files.createDirectories(outputRoot);
 
         final ProjectIndexer indexer = new ProjectIndexer(
-                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn());
+                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn());
 
         // act
-        final AiIndexOutcome written = indexer.aggregate(outputRoot);
+        final IndexOutcome written = indexer.aggregate(outputRoot);
 
         // assert
-        assertThat(written, is(AiIndexOutcome.UNCHANGED));
+        assertThat(written, is(IndexOutcome.UNCHANGED));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
     // </editor-fold>
@@ -120,17 +120,17 @@ public class ProjectIndexerTest {
                                 "1.0.0",
                                 "0.0.0",
                                 false,
-                                new net.ladenthin.srcmorph.config.AiRegenerateOn())
+                                new net.ladenthin.srcmorph.config.RegenerateOn())
                         .aggregate(outputRoot),
-                is(AiIndexOutcome.WRITTEN));
+                is(IndexOutcome.WRITTEN));
 
         // act: a second run over the same packages must detect no change
-        final AiIndexOutcome second = new ProjectIndexer(
-                        PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn())
+        final IndexOutcome second = new ProjectIndexer(
+                        PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn())
                 .aggregate(outputRoot);
 
         // assert
-        assertThat(second, is(AiIndexOutcome.UNCHANGED));
+        assertThat(second, is(IndexOutcome.UNCHANGED));
     }
 
     @Test
@@ -141,16 +141,16 @@ public class ProjectIndexerTest {
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
-        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn())
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn())
                 .aggregate(outputRoot);
 
         // act: force=true rewrites despite no content change
-        final AiIndexOutcome forced = new ProjectIndexer(
-                        PROJECT_TITLE, "1.0.0", "0.0.0", true, new net.ladenthin.srcmorph.config.AiRegenerateOn())
+        final IndexOutcome forced = new ProjectIndexer(
+                        PROJECT_TITLE, "1.0.0", "0.0.0", true, new net.ladenthin.srcmorph.config.RegenerateOn())
                 .aggregate(outputRoot);
 
         // assert
-        assertThat(forced, is(AiIndexOutcome.WRITTEN));
+        assertThat(forced, is(IndexOutcome.WRITTEN));
     }
     // </editor-fold>
 
@@ -162,7 +162,7 @@ public class ProjectIndexerTest {
         writePackageFile(outputRoot.resolve("main/java/com/example/package.ai.md"), "main/java/com/example", "");
 
         final ProjectIndexer indexer = new ProjectIndexer(
-                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn());
+                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn());
 
         // act
         indexer.aggregate(outputRoot);
@@ -183,7 +183,7 @@ public class ProjectIndexerTest {
         writePackageFile(outputRoot.resolve("package.ai.md"), "ai", "> The whole project.\n");
 
         final ProjectIndexer indexer = new ProjectIndexer(
-                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn());
+                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn());
 
         // act
         indexer.aggregate(outputRoot);
@@ -206,10 +206,10 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // act
-        final AiIndexOutcome written = overviewIndexer(false).aggregate(outputRoot);
+        final IndexOutcome written = overviewIndexer(false).aggregate(outputRoot);
 
         // assert: an #### Overview section with the generated text precedes the deterministic listing
-        assertThat(written, is(AiIndexOutcome.WRITTEN));
+        assertThat(written, is(IndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         final String body = document.body();
         assertThat(body, containsString(OVERVIEW_HEADING));
@@ -229,7 +229,7 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // act: the deterministic constructor performs no AI call
-        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn())
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn())
                 .aggregate(outputRoot);
 
         // assert
@@ -247,14 +247,14 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // first run writes the overview
-        assertThat(overviewIndexer(false).aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+        assertThat(overviewIndexer(false).aggregate(outputRoot), is(IndexOutcome.WRITTEN));
 
         // act: a second run over the same packages and same overview config must detect no change
         // (the header records the overview's prompt and model, not the AI output)
-        final AiIndexOutcome second = overviewIndexer(false).aggregate(outputRoot);
+        final IndexOutcome second = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(second, is(AiIndexOutcome.UNCHANGED));
+        assertThat(second, is(IndexOutcome.UNCHANGED));
     }
 
     @Test
@@ -271,23 +271,23 @@ public class ProjectIndexerTest {
                                 "1.0.0",
                                 "0.0.0",
                                 false,
-                                new net.ladenthin.srcmorph.config.AiRegenerateOn())
+                                new net.ladenthin.srcmorph.config.RegenerateOn())
                         .aggregate(outputRoot),
-                is(AiIndexOutcome.WRITTEN));
+                is(IndexOutcome.WRITTEN));
 
         // act: enabling the overview records a prompt and a model hash where there were none -> regenerate
-        final AiIndexOutcome rewritten = overviewIndexer(false).aggregate(outputRoot);
+        final IndexOutcome rewritten = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
+        assertThat(rewritten, is(IndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString(OVERVIEW_HEADING));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="regenerateOn: children, prompt, model">
-    private static net.ladenthin.srcmorph.config.AiRegenerateOn childrenOff() {
-        final net.ladenthin.srcmorph.config.AiRegenerateOn on = new net.ladenthin.srcmorph.config.AiRegenerateOn();
+    private static net.ladenthin.srcmorph.config.RegenerateOn childrenOff() {
+        final net.ladenthin.srcmorph.config.RegenerateOn on = new net.ladenthin.srcmorph.config.RegenerateOn();
         on.setChildren(false);
         return on;
     }
@@ -299,8 +299,8 @@ public class ProjectIndexerTest {
         final Path packageFile = outputRoot.resolve("main/java/com/example/package.ai.md");
         writePackageFile(packageFile, "main/java/com/example", "> Example package.\n");
         final ProjectIndexer indexer = new ProjectIndexer(
-                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn());
-        assertThat(indexer.aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+                PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn());
+        assertThat(indexer.aggregate(outputRoot), is(IndexOutcome.WRITTEN));
         final String firstK = documentCodec
                 .read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME))
                 .header()
@@ -308,14 +308,14 @@ public class ProjectIndexerTest {
         writePackageFile(packageFile, "main/java/com/example", "> Another lead.\n");
 
         // act
-        final AiIndexOutcome frozen =
+        final IndexOutcome frozen =
                 new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, childrenOff()).aggregate(outputRoot);
-        final AiIndexOutcome rewritten = indexer.aggregate(outputRoot);
+        final IndexOutcome rewritten = indexer.aggregate(outputRoot);
 
         // assert
         assertThat(firstK.isEmpty(), is(false));
-        assertThat(frozen, is(AiIndexOutcome.UNCHANGED));
-        assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
+        assertThat(frozen, is(IndexOutcome.UNCHANGED));
+        assertThat(rewritten, is(IndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString("Another lead."));
         assertThat(document.header().childrenHash().equals(firstK), is(false));
@@ -328,18 +328,18 @@ public class ProjectIndexerTest {
         final Path packageFile = outputRoot.resolve("main/java/com/example/package.ai.md");
         writePackageFile(packageFile, "main/java/com/example", "> Example package.\n", "AAAAAAAA");
         final ProjectIndexer frozenChildren = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, childrenOff());
-        assertThat(frozenChildren.aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+        assertThat(frozenChildren.aggregate(outputRoot), is(IndexOutcome.WRITTEN));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         final String firstC = documentCodec.read(projectFile).header().checksum();
-        final AiIndexOutcome unchanged = frozenChildren.aggregate(outputRoot);
+        final IndexOutcome unchanged = frozenChildren.aggregate(outputRoot);
         writePackageFile(packageFile, "main/java/com/example", "> Example package.\n", "BBBBBBBB");
 
         // act
-        final AiIndexOutcome rewritten = frozenChildren.aggregate(outputRoot);
+        final IndexOutcome rewritten = frozenChildren.aggregate(outputRoot);
 
         // assert
-        assertThat(unchanged, is(AiIndexOutcome.UNCHANGED));
-        assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
+        assertThat(unchanged, is(IndexOutcome.UNCHANGED));
+        assertThat(rewritten, is(IndexOutcome.WRITTEN));
         assertThat(documentCodec.read(projectFile).header().checksum().equals(firstC), is(false));
     }
 
@@ -352,7 +352,7 @@ public class ProjectIndexerTest {
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
 
         // act
-        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.AiRegenerateOn())
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new net.ladenthin.srcmorph.config.RegenerateOn())
                 .aggregate(outputRoot);
         final AiMdHeader deterministic = documentCodec.read(projectFile).header();
         overviewIndexer(false).aggregate(outputRoot);
@@ -376,31 +376,31 @@ public class ProjectIndexerTest {
 
     /**
      * Builds a {@link ProjectIndexer} with the AI overview enabled, backed by the deterministic
-     * {@link MockAiGenerationProvider} (which returns {@code "Mock summary for project.ai.md"}).
+     * {@link MockGenerationProvider} (which returns {@code "Mock summary for project.ai.md"}).
      *
      * @param force the force flag to pass through
      * @return an overview-enabled indexer
      */
     private ProjectIndexer overviewIndexer(final boolean force) {
-        return overviewIndexer(force, new MockAiGenerationProvider());
+        return overviewIndexer(force, new MockGenerationProvider());
     }
 
-    private ProjectIndexer overviewIndexer(final boolean force, final AiGenerationProvider provider) {
-        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+    private ProjectIndexer overviewIndexer(final boolean force, final GenerationProvider provider) {
+        final RoutingRule overview = new RoutingRule();
         overview.setPromptKey("project-body");
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
 
-        final AiPromptDefinition prompt = new AiPromptDefinition();
+        final PromptDefinition prompt = new PromptDefinition();
         prompt.setKey("project-body");
         prompt.setTemplate("Write a project overview.\nProject: %s\nLeads:\n%s\n");
-        final AiPromptSupport promptSupport = new AiPromptSupport(Collections.singletonList(prompt));
+        final PromptCatalog promptSupport = new PromptCatalog(Collections.singletonList(prompt));
 
         return new ProjectIndexer(
                 PROJECT_TITLE,
                 "1.0.0",
                 "0.0.0",
                 force,
-                new net.ladenthin.srcmorph.config.AiRegenerateOn(),
+                new net.ladenthin.srcmorph.config.RegenerateOn(),
                 new ProjectOverview(
                         provider, overview, promptSupport, CommonTestFixtures.createDefaultAiModelDefinitionSupport()));
     }
@@ -433,9 +433,9 @@ public class ProjectIndexerTest {
                 "main/java/com/example",
                 "> Example package.\n");
 
-        final AiIndexOutcome outcome = overviewIndexer(false, request -> "").aggregate(outputRoot);
+        final IndexOutcome outcome = overviewIndexer(false, request -> "").aggregate(outputRoot);
 
-        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(outcome, is(IndexOutcome.FAILED));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
 
@@ -447,7 +447,7 @@ public class ProjectIndexerTest {
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
-        assertThat(overviewIndexer(false).aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+        assertThat(overviewIndexer(false).aggregate(outputRoot), is(IndexOutcome.WRITTEN));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         final AiMdDocument complete = documentCodec.read(projectFile);
         final String body = complete.body();
@@ -459,10 +459,10 @@ public class ProjectIndexerTest {
                                 + body.substring(body.indexOf("#### Packages"))));
 
         // act
-        final AiIndexOutcome outcome = overviewIndexer(false).aggregate(outputRoot);
+        final IndexOutcome outcome = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        assertThat(outcome, is(IndexOutcome.WRITTEN));
         assertThat(documentCodec.read(projectFile).body(), containsString(OVERVIEW_HEADING));
     }
     // </editor-fold>

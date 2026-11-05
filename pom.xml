@@ -155,7 +155,7 @@ SPDX-License-Identifier: Apache-2.0
                 matching version — pinning them together here keeps maven-enforcer's
                 dependencyConvergence rule satisfied without needing a separate jackson-core/
                 jackson-annotations/snakeyaml pin. jackson-databind is also used directly by srcmorph's
-                OpenAiCompatibleAiGenerationProvider and transitively by net.ladenthin:llama; this one
+                OpenAiCompatibleGenerationProvider and transitively by net.ladenthin:llama; this one
                 managed version is what all three resolve to.
             -->
             <dependency>

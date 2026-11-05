@@ -22,7 +22,7 @@ import java.util.Map;
 import lombok.ToString;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.config.SrcMorphConfigurationFile;
 import net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader;
@@ -354,12 +354,10 @@ public class Main {
      *                              or {@link CConfiguration#projectFieldGenerations}), or {@code null}
      * @return the configuration to hand the phase's engine
      */
-    private SrcMorphConfiguration forPhase(final @Nullable List<AiFieldGenerationConfig> phaseFieldGenerations) {
+    private SrcMorphConfiguration forPhase(final @Nullable List<RoutingRule> phaseFieldGenerations) {
         final SrcMorphConfiguration copy = deepCopy(configuration.srcMorph);
         copy.setFieldGenerations(
-                phaseFieldGenerations == null
-                        ? Collections.<AiFieldGenerationConfig>emptyList()
-                        : phaseFieldGenerations);
+                phaseFieldGenerations == null ? Collections.<RoutingRule>emptyList() : phaseFieldGenerations);
         return copy;
     }
 

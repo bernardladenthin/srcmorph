@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -42,7 +42,7 @@ public class ProfileFactPatternsLinearityTest {
     static Stream<Arguments> patterns() throws IOException {
         final List<Arguments> cases = new ArrayList<>();
         for (final String key : FactPatternLinearity.keys(ProfileFactPatterns.PROFILE_DIRECTORY)) {
-            for (final AiFactCounter counter : ProfileFactPatterns.counters(key)) {
+            for (final FactCounter counter : ProfileFactPatterns.counters(key)) {
                 cases.add(Arguments.of(key, counter.getLabel(), counter.getPattern()));
             }
         }

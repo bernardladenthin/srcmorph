@@ -168,7 +168,7 @@ The file has three building blocks:
    placeholders**: the file's path below the base directory (a package's name) and the source (for
    packages, the child summaries; for the
    optional project overview, the per-package leads) are sent as a separate user message
-   (`AiPromptSupport`). A `%s` in a prompt reaches the model literally. The measured profile of this
+   (`PromptCatalog`). A `%s` in a prompt reaches the model literally. The measured profile of this
    repository is [`profiles/v3/`](../profiles/README.md); copy it into your project or point at a
    checkout. A `promptDefinitions` entry with an inline `template` (or its own `templateFile`) still
    works and wins over a file of the same key, as does a `factDefinitions` entry for facts.
@@ -460,7 +460,7 @@ part of the text the model and the fact counters see.
 
 Every model knob lives inside its entry of `aiDefinitions` (referenced by `aiDefinitionKey`). Only `key` and `modelPath` are required (`modelPath` not for an `openai-compatible`
 model); everything else has a default. The defaults below are the shipped values
-(`AiModelDefinition.DEFAULT_*`).
+(`ModelDefinition.DEFAULT_*`).
 
 | Key | Default | Description |
 |---|---|---|

@@ -14,35 +14,35 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiCondition;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiOversizeStrategy;
-import net.ladenthin.srcmorph.config.AiRegenerateOn;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.OversizeStrategy;
+import net.ladenthin.srcmorph.config.RegenerateOn;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.config.RuleCondition;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
-import net.ladenthin.srcmorph.indexer.generation.AiGenerationResult;
-import net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator;
-import net.ladenthin.srcmorph.indexer.generation.AiInputWindowCalculator;
-import net.ladenthin.srcmorph.indexer.generation.AiMapReduceSupport;
-import net.ladenthin.srcmorph.indexer.generation.AiRouteEstimator;
+import net.ladenthin.srcmorph.document.AiMdRewritePolicy;
+import net.ladenthin.srcmorph.indexer.generation.GenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.InputWindowCalculator;
+import net.ladenthin.srcmorph.indexer.generation.MapReduceMath;
+import net.ladenthin.srcmorph.indexer.generation.RouteEstimator;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.routing.AiConditionEvaluator;
-import net.ladenthin.srcmorph.routing.AiFieldGenerationSelector;
-import net.ladenthin.srcmorph.routing.AiFileContext;
-import net.ladenthin.srcmorph.support.AiChecksumSupport;
-import net.ladenthin.srcmorph.support.AiPathSupport;
-import net.ladenthin.srcmorph.support.AiShebang;
-import net.ladenthin.srcmorph.support.AiSourceExcludeFilter;
-import net.ladenthin.srcmorph.support.AiSourceLines;
-import net.ladenthin.srcmorph.support.AiTimeSupport;
+import net.ladenthin.srcmorph.indexer.generation.SummaryResult;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.routing.ConditionEvaluator;
+import net.ladenthin.srcmorph.routing.FileContext;
+import net.ladenthin.srcmorph.routing.RuleSelector;
+import net.ladenthin.srcmorph.support.ChecksumSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.support.Shebang;
+import net.ladenthin.srcmorph.support.SourceExcludeFilter;
+import net.ladenthin.srcmorph.support.SourceLines;
+import net.ladenthin.srcmorph.support.SourcePaths;
+import net.ladenthin.srcmorph.support.TimeSupport;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +56,8 @@ import org.slf4j.LoggerFactory;
  *   <li>{@link #collectCandidates(Path)} — walk a source root applying the extension, subtree, exclude
  *       and goal-level size-band filters.</li>
  *   <li>{@link #classify(Collection, List)} — route each candidate to a rule (prompt + model), a skip,
- *       or unmatched, producing an {@link AiIndexPlan}.</li>
- *   <li>{@link #indexFile(Path, AiFieldGenerationConfig, SummaryGenerator, String, String, String)} — write
+ *       or unmatched, producing an {@link IndexPlan}.</li>
+ *   <li>{@link #indexFile(Path, RoutingRule, SummaryGenerator, String, String, String)} — write
  *       one file's {@code .ai.md} with a given rule, using a provider-bearing support (one per model
  *       group).</li>
  * </ol>
@@ -87,21 +87,21 @@ public final class SourceFileIndexer {
     private final String generatorVersion;
     private final String aiVersion;
     private final List<Path> subtrees;
-    private final AiSourceExcludeFilter excludeFilter;
+    private final SourceExcludeFilter excludeFilter;
     private final long minFileSizeBytes;
     private final long maxFileSizeBytes;
     private final boolean force;
 
-    private final AiPathSupport pathSupport = new AiPathSupport();
-    private final AiTimeSupport timeSupport = new AiTimeSupport();
-    private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport;
+    private final SourcePaths pathSupport = new SourcePaths();
+    private final TimeSupport timeSupport = new TimeSupport();
+    private final ChecksumSupport checksumSupport = new ChecksumSupport();
+    private final AiMdRewritePolicy headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
-    private final AiFieldGenerationSelector fieldGenerationSelector = new AiFieldGenerationSelector();
-    private final AiConditionEvaluator conditionEvaluator = new AiConditionEvaluator();
-    private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
-    private final AiRouteEstimator routeEstimator = new AiRouteEstimator();
+    private final RuleSelector fieldGenerationSelector = new RuleSelector();
+    private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
+    private final GenerationTimeEstimator timeEstimator = new GenerationTimeEstimator();
+    private final RouteEstimator routeEstimator = new RouteEstimator();
 
     /**
      * Creates a new {@link SourceFileIndexer}. The AI provider and rules are supplied later
@@ -114,7 +114,7 @@ public final class SourceFileIndexer {
      * @param fileNames        globs over the file name of further files to index, in any case; may be
      *                         {@code null} or empty
      * @param fileInterpreters interpreters whose scripts without an extension are indexed, by their
-     *                         {@code #!} line ({@link AiShebang}); may be {@code null} or empty
+     *                         {@code #!} line ({@link Shebang}); may be {@code null} or empty
      * @param generatorVersion    generator version recorded in headers
      * @param aiVersion        AI summarisation logic version recorded in headers
      * @param subtrees         source subtrees in scope; may be empty
@@ -125,11 +125,11 @@ public final class SourceFileIndexer {
      * @param force            when {@code true}, rewrite every summary, whatever {@code regenerateOn} says
      * @param regenerateOn     which changed header fields rewrite a summary
      * @param contentHeadChars characters of a file the {@code contentMatches} and {@code interpreters}
-     *                         conditions read, at least {@value AiShebang#MAX_LINE_CHARS} (a whole
+     *                         conditions read, at least {@value Shebang#MAX_LINE_CHARS} (a whole
      *                         {@code #!} line)
      * @throws IllegalArgumentException if a file name or exclude is not a valid glob, an interpreter is
      *                                  blank or a path, or {@code contentHeadChars} is below
-     *                                  {@value AiShebang#MAX_LINE_CHARS}
+     *                                  {@value Shebang#MAX_LINE_CHARS}
      */
     public SourceFileIndexer(
             final Path baseDirectory,
@@ -144,7 +144,7 @@ public final class SourceFileIndexer {
             final long minFileSizeBytes,
             final long maxFileSizeBytes,
             final boolean force,
-            final AiRegenerateOn regenerateOn,
+            final RegenerateOn regenerateOn,
             final int contentHeadChars) {
         this.baseDirectory = baseDirectory;
         this.outputRoot = outputRoot;
@@ -154,27 +154,27 @@ public final class SourceFileIndexer {
             for (final String name : fileNames) {
                 final String glob = name != null ? name.trim() : "";
                 if (!glob.isEmpty()) {
-                    this.fileNames.add(AiConditionEvaluator.compileFileName(glob));
+                    this.fileNames.add(ConditionEvaluator.compileFileName(glob));
                 }
             }
         }
         this.fileInterpreters = fileInterpreters != null ? new ArrayList<>(fileInterpreters) : new ArrayList<>();
         if (!this.fileInterpreters.isEmpty()) {
-            AiConditionEvaluator.validateInterpreters(this.fileInterpreters);
+            ConditionEvaluator.validateInterpreters(this.fileInterpreters);
         }
-        if (contentHeadChars < AiShebang.MAX_LINE_CHARS) {
-            throw new IllegalArgumentException("contentHeadChars must be at least " + AiShebang.MAX_LINE_CHARS
+        if (contentHeadChars < Shebang.MAX_LINE_CHARS) {
+            throw new IllegalArgumentException("contentHeadChars must be at least " + Shebang.MAX_LINE_CHARS
                     + " (a whole #! line), not " + contentHeadChars);
         }
         this.contentHeadChars = contentHeadChars;
         this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
         this.subtrees = new ArrayList<>(subtrees);
-        this.excludeFilter = new AiSourceExcludeFilter(excludes);
+        this.excludeFilter = new SourceExcludeFilter(excludes);
         this.minFileSizeBytes = minFileSizeBytes;
         this.maxFileSizeBytes = maxFileSizeBytes;
         this.force = force;
-        this.headerSupport = new AiMdHeaderSupport(
+        this.headerSupport = new AiMdRewritePolicy(
                 regenerateOn.isSource(),
                 regenerateOn.isPrompt(),
                 regenerateOn.isFacts(),
@@ -221,11 +221,11 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Routes each candidate file to a rule, producing the {@link AiIndexPlan}.
+     * Routes each candidate file to a rule, producing the {@link IndexPlan}.
      *
      * <p>For every file the selector picks the winning rule by extension/size/lines and priority; a
-     * skip rule sends the file to {@link AiIndexPlan#skipped()}, no match (and no fallback) to
-     * {@link AiIndexPlan#unmatched()}, otherwise the file is routed under the rule's
+     * skip rule sends the file to {@link IndexPlan#skipped()}, no match (and no fallback) to
+     * {@link IndexPlan#unmatched()}, otherwise the file is routed under the rule's
      * {@code aiDefinitionKey}. Line counts are only computed when some rule actually uses a line filter,
      * so the common size-only configuration does not read file contents during planning.</p>
      *
@@ -234,8 +234,7 @@ public final class SourceFileIndexer {
      * @return the routing plan
      * @throws IOException if a file size or content cannot be read
      */
-    public AiIndexPlan classify(final Collection<Path> candidates, final List<AiFieldGenerationConfig> rules)
-            throws IOException {
+    public IndexPlan classify(final Collection<Path> candidates, final List<RoutingRule> rules) throws IOException {
         return plan(candidates, rules, null, null);
     }
 
@@ -243,7 +242,7 @@ public final class SourceFileIndexer {
      * Plans the run as {@link #classify(Collection, List)} and, when both supports are provided, also
      * computes each routed file's <em>context-window fit</em>: it resolves the routed model's
      * {@code contextSize}/sampling config and the prompt template length, derives the source-character
-     * budget via {@link AiInputWindowCalculator} (the same threshold the run uses to trim), and records
+     * budget via {@link InputWindowCalculator} (the same threshold the run uses to trim), and records
      * whether the file would be trimmed. This lets the plan flag over-window files up front (and the
      * goal fail fast) instead of silently trimming them at run time.
      *
@@ -254,11 +253,11 @@ public final class SourceFileIndexer {
      * @return the routing plan
      * @throws IOException if a file size or content cannot be read
      */
-    public AiIndexPlan classify(
+    public IndexPlan classify(
             final Collection<Path> candidates,
-            final List<AiFieldGenerationConfig> rules,
-            final AiModelDefinitionSupport modelDefinitionSupport,
-            final AiPromptPreparationSupport promptPreparationSupport)
+            final List<RoutingRule> rules,
+            final ModelRegistry modelDefinitionSupport,
+            final PromptPreparer promptPreparationSupport)
             throws IOException {
         return plan(candidates, rules, modelDefinitionSupport, promptPreparationSupport);
     }
@@ -273,22 +272,22 @@ public final class SourceFileIndexer {
      * @return the routing plan
      * @throws IOException if a file size or content cannot be read
      */
-    private AiIndexPlan plan(
+    private IndexPlan plan(
             final Collection<Path> candidates,
-            final List<AiFieldGenerationConfig> rules,
-            final @Nullable AiModelDefinitionSupport modelDefinitionSupport,
-            final @Nullable AiPromptPreparationSupport promptPreparationSupport)
+            final List<RoutingRule> rules,
+            final @Nullable ModelRegistry modelDefinitionSupport,
+            final @Nullable PromptPreparer promptPreparationSupport)
             throws IOException {
         final boolean lineFiltersUsed = anyRuleUsesLines(rules);
         final boolean contentFiltersUsed = anyRuleUsesContent(rules);
-        final AiIndexPlan plan = new AiIndexPlan();
+        final IndexPlan plan = new IndexPlan();
         for (final Path file : candidates) {
             final Path fileNamePath = file.getFileName();
             final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
             final long fileSizeBytes = Files.size(file);
             final boolean routed = modelDefinitionSupport != null && promptPreparationSupport != null;
             final String source = lineFiltersUsed || routed ? readSource(file) : "";
-            final int lineCount = lineFiltersUsed ? AiSourceLines.count(source) : 0;
+            final int lineCount = lineFiltersUsed ? SourceLines.count(source) : 0;
             final String head;
             if (!contentFiltersUsed) {
                 head = "";
@@ -300,20 +299,20 @@ public final class SourceFileIndexer {
             final String relativePath =
                     baseDirectory.relativize(file).toString().replace('\\', '/');
             final long lastModified = Files.getLastModifiedTime(file).toMillis();
-            final AiFileContext context =
-                    new AiFileContext(fileName, relativePath, fileSizeBytes, lineCount, lastModified, head);
+            final FileContext context =
+                    new FileContext(fileName, relativePath, fileSizeBytes, lineCount, lastModified, head);
 
-            final AiFieldGenerationConfig rule = fieldGenerationSelector.select(rules, context);
+            final RoutingRule rule = fieldGenerationSelector.select(rules, context);
             if (rule == null) {
                 plan.addUnmatched(file);
             } else if (rule.isSkip()) {
                 plan.addSkipped(file);
             } else if (modelDefinitionSupport != null && promptPreparationSupport != null) {
-                final AiModelDefinition modelConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
+                final ModelDefinition modelConfig = modelDefinitionSupport.definition(rule.requireAiDefinitionKey());
                 final Path shown = baseDirectory.relativize(file);
                 final int basePromptLength = promptPreparationSupport.basePromptLength(rule.requirePromptKey(), shown);
                 final long availableSourceChars =
-                        AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
+                        InputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = source.length();
                 final long routeSeconds = routeEstimator.estimateRouteSeconds(
                         rule,
@@ -323,12 +322,12 @@ public final class SourceFileIndexer {
                         availableSourceChars,
                         basePromptLength,
                         chunkPromptLength(rule, shown, basePromptLength, promptPreparationSupport));
-                if (AiRouteEstimator.isCalibrated(modelConfig)) {
+                if (RouteEstimator.isCalibrated(modelConfig)) {
                     plan.markCalibrated(rule.requireAiDefinitionKey());
                 }
                 final double charsPerToken = modelConfig.getCharsPerToken() > 0
                         ? modelConfig.getCharsPerToken()
-                        : AiGenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;
+                        : GenerationTimeEstimator.ESTIMATION_CHARS_PER_TOKEN;
                 plan.addRoute(
                         rule.requireAiDefinitionKey(),
                         file,
@@ -336,7 +335,7 @@ public final class SourceFileIndexer {
                         routeSeconds,
                         sourceChars,
                         availableSourceChars,
-                        AiIndexPlan.estimatedTokens(sourceChars, charsPerToken));
+                        IndexPlan.estimatedTokens(sourceChars, charsPerToken));
             } else {
                 final long estimatedSeconds =
                         timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
@@ -384,20 +383,17 @@ public final class SourceFileIndexer {
      * @return the length
      */
     private static int chunkPromptLength(
-            final AiFieldGenerationConfig rule,
-            final Path file,
-            final int basePromptLength,
-            final AiPromptPreparationSupport preparation) {
-        final AiOversizeStrategy strategy = rule.oversizeStrategy();
-        if (strategy != AiOversizeStrategy.MAP_REDUCE && strategy != AiOversizeStrategy.SAMPLE_CHUNKS) {
+            final RoutingRule rule, final Path file, final int basePromptLength, final PromptPreparer preparation) {
+        final OversizeStrategy strategy = rule.oversizeStrategy();
+        if (strategy != OversizeStrategy.MAP_REDUCE && strategy != OversizeStrategy.SAMPLE_CHUNKS) {
             return basePromptLength;
         }
         return Math.max(
                         preparation.basePromptLength(
-                                AiPromptSupport.composedKey(rule.requirePromptKey(), rule.getMapPromptKey()), file),
+                                PromptCatalog.composedKey(rule.requirePromptKey(), rule.getMapPromptKey()), file),
                         preparation.basePromptLength(
-                                AiPromptSupport.composedKey(rule.requirePromptKey(), rule.getReducePromptKey()), file))
-                + AiMapReduceSupport.CHUNK_LABEL_RESERVE;
+                                PromptCatalog.composedKey(rule.requirePromptKey(), rule.getReducePromptKey()), file))
+                + MapReduceMath.CHUNK_LABEL_RESERVE;
     }
 
     /**
@@ -411,16 +407,16 @@ public final class SourceFileIndexer {
      * @param support    the summary generator holding the model group's provider
      * @param promptHash the CRC32 of the rule's prompts, or {@code ""} to write no {@code P}
      * @param factsHash  the CRC32 of the rule's fact counters, or {@code ""} to write no {@code N}
-     * @param modelHash  the CRC32 of the rule's model ({@link AiHeaderHashes#model}), or {@code ""} to write
+     * @param modelHash  the CRC32 of the rule's model ({@link HeaderHashes#model}), or {@code ""} to write
      *                   no {@code M}
-     * @return {@link AiIndexOutcome#WRITTEN}, {@link AiIndexOutcome#UNCHANGED} when it was already up to
-     *         date, or {@link AiIndexOutcome#FAILED} when the model's answer was incomplete and nothing
+     * @return {@link IndexOutcome#WRITTEN}, {@link IndexOutcome#UNCHANGED} when it was already up to
+     *         date, or {@link IndexOutcome#FAILED} when the model's answer was incomplete and nothing
      *         was written
      * @throws IOException if the file cannot be read or written
      */
-    public AiIndexOutcome indexFile(
+    public IndexOutcome indexFile(
             final Path sourceFile,
-            final AiFieldGenerationConfig rule,
+            final RoutingRule rule,
             final SummaryGenerator support,
             final String promptHash,
             final String factsHash,
@@ -438,8 +434,8 @@ public final class SourceFileIndexer {
         // read once, with \n line endings: the prompt and the facts see the same text, and the checksum
         // the same bytes, every one of them, also where a file that is not UTF-8 decodes to U+FFFD
         final byte[] sourceBytes = Files.readAllBytes(sourceFile);
-        final String sourceText = AiSourceLines.normalize(AiSourceLines.decode(sourceBytes));
-        final String checksum = checksumSupport.calculateCrc32Hex(AiSourceLines.normalize(sourceBytes));
+        final String sourceText = SourceLines.normalize(SourceLines.decode(sourceBytes));
+        final String checksum = checksumSupport.calculateCrc32Hex(SourceLines.normalize(sourceBytes));
         final String sourceModified =
                 timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
@@ -455,23 +451,23 @@ public final class SourceFileIndexer {
                         AiMdHeaderCodec.NODE_TYPE_FILE)
                 .withHashes(promptHash, factsHash, modelHash, "");
 
-        if (!headerSupport.shouldWrite(force, targetFile, baseHeader)) {
+        if (!headerSupport.shouldRewrite(force, targetFile, baseHeader)) {
             LOGGER.info("Unchanged AI index file: {}", targetFile);
-            return AiIndexOutcome.UNCHANGED;
+            return IndexOutcome.UNCHANGED;
         }
 
         // the model reads the path below the base directory, so two web.xml of different modules read apart
-        final AiGenerationResult result =
+        final SummaryResult result =
                 support.generate(rule, baseDirectory.relativize(sourceFile), CONTEXT_TYPE_FILE, sourceText);
         if (!result.complete()) {
-            return AiIndexOutcome.FAILED;
+            return IndexOutcome.FAILED;
         }
 
         final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(targetFile, document);
 
         LOGGER.info("Wrote AI index file: {}", targetFile);
-        return AiIndexOutcome.WRITTEN;
+        return IndexOutcome.WRITTEN;
     }
 
     /**
@@ -481,12 +477,12 @@ public final class SourceFileIndexer {
      * @param rules the routing rules
      * @return {@code true} if any rule's condition uses a line count
      */
-    private boolean anyRuleUsesLines(final List<AiFieldGenerationConfig> rules) {
-        for (final AiFieldGenerationConfig rule : rules) {
+    private boolean anyRuleUsesLines(final List<RoutingRule> rules) {
+        for (final RoutingRule rule : rules) {
             if (rule == null) {
                 continue;
             }
-            final AiCondition condition = rule.getCondition();
+            final RuleCondition condition = rule.getCondition();
             if (condition != null && conditionEvaluator.usesLines(condition)) {
                 return true;
             }
@@ -501,12 +497,12 @@ public final class SourceFileIndexer {
      * @param rules the routing rules
      * @return {@code true} if any rule's condition reads the content
      */
-    private boolean anyRuleUsesContent(final List<AiFieldGenerationConfig> rules) {
-        for (final AiFieldGenerationConfig rule : rules) {
+    private boolean anyRuleUsesContent(final List<RoutingRule> rules) {
+        for (final RoutingRule rule : rules) {
             if (rule == null) {
                 continue;
             }
-            final AiCondition condition = rule.getCondition();
+            final RuleCondition condition = rule.getCondition();
             if (condition != null && conditionEvaluator.usesContent(condition)) {
                 return true;
             }
@@ -523,7 +519,7 @@ public final class SourceFileIndexer {
      * @throws IOException if it cannot be read
      */
     private String readSource(final Path file) throws IOException {
-        return AiSourceLines.normalize(AiSourceLines.decode(Files.readAllBytes(file)));
+        return SourceLines.normalize(SourceLines.decode(Files.readAllBytes(file)));
     }
 
     /**
@@ -551,15 +547,15 @@ public final class SourceFileIndexer {
     private boolean namesAnInterpreter(final Path path) {
         final String head;
         try {
-            head = readHead(path, AiShebang.MAX_LINE_CHARS);
+            head = readHead(path, Shebang.MAX_LINE_CHARS);
         } catch (final IOException e) {
             // a file without an extension may be anything (a socket file, one another process locks):
             // one that cannot be read is no script of ours, and the walk goes on
             LOGGER.warn("Cannot read the first line of {}, so it is not indexed: {}", path, e.toString());
             return false;
         }
-        final String interpreter = AiShebang.interpreter(head);
-        return interpreter != null && AiShebang.matches(interpreter, fileInterpreters);
+        final String interpreter = Shebang.interpreter(head);
+        return interpreter != null && Shebang.matches(interpreter, fileInterpreters);
     }
 
     /**
@@ -583,7 +579,7 @@ public final class SourceFileIndexer {
                 read = in.read(buffer, length, buffer.length - length);
             }
         }
-        final String head = AiSourceLines.normalize(AiSourceLines.decode(Arrays.copyOf(buffer, length)));
+        final String head = SourceLines.normalize(SourceLines.decode(Arrays.copyOf(buffer, length)));
         return head.substring(0, Math.min(head.length(), chars));
     }
 
@@ -626,7 +622,7 @@ public final class SourceFileIndexer {
         }
         final String fileName = fileNamePath.toString();
         for (final String extension : fileExtensions) {
-            if (AiPathSupport.hasExtension(fileName, extension)) {
+            if (SourcePaths.hasExtension(fileName, extension)) {
                 return true;
             }
         }

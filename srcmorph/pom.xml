@@ -119,7 +119,7 @@ SPDX-License-Identifier: Apache-2.0
         </dependency>
         <dependency>
             <!--
-                OpenAiCompatibleAiGenerationProvider builds its request JSON with Jackson. Declared
+                OpenAiCompatibleGenerationProvider builds its request JSON with Jackson. Declared
                 explicitly because the provider uses it directly; net.ladenthin:llama depends on the
                 same artifact, and the parent's dependencyManagement keeps both on one version.
             -->
@@ -147,7 +147,7 @@ SPDX-License-Identifier: Apache-2.0
 
                     It also keeps the test classpath single-binding. logback-classic is test-scoped
                     here for the ListAppender capture in SummaryGeneratorTest,
-                    LlamaCppJniAiGenerationProviderTest, EngineSupportTest and GenerateEngineTest;
+                    LlamaCppJniGenerationProviderTest, EngineSupportTest and GenerateEngineTest;
                     with a second provider present those 57 tests die with "class
                     org.slf4j.simple.SimpleLogger cannot be cast to class
                     ch.qos.logback.classic.Logger". A Surefire classpathDependencyExcludes would fix
@@ -678,7 +678,7 @@ SPDX-License-Identifier: Apache-2.0
                   see ../workspace/policies/pit-mutation-testing.md.
                   Repo-specific: targetTests is the whole srcmorph tree (any unit test may
                   kill a mutant); all gated classes are covered by pure-Java tests
-                  (MockAiGenerationProvider - no GGUF model needed). This is the full class
+                  (MockGenerationProvider - no GGUF model needed). This is the full class
                   list moved verbatim from the pre-extraction llamacpp-ai-index-maven-plugin
                   pom (none of the gated classes were mojo-related).
                 -->
@@ -697,7 +697,7 @@ SPDX-License-Identifier: Apache-2.0
                           Classes verified at 100% PIT mutation parity. Expand as more reach it.
 
                           Migration step 5 (engine extraction) additions: SrcMorphConfiguration is a
-                          plain getter/setter JavaBean like AiModelDefinition/AiFieldGenerationConfig
+                          plain getter/setter JavaBean like ModelDefinition/RoutingRule
                           above, so it is fully round-trip-testable and gated at 100% the same way.
                           ProviderConfigFactory (in the provider package) is the pure, exception-free
                           extraction of the old mojo's buildLlamaCppJniConfig field mapping. GenerateResult and
@@ -708,10 +708,10 @@ SPDX-License-Identifier: Apache-2.0
 
                           Deliberately NOT gated: GenerateEngine, AggregatePackagesEngine,
                           AggregateProjectEngine, CalibrateEngine. These are the orchestration classes
-                          that replaced the mojo execute() bodies - they own AiGenerationProvider
+                          that replaced the mojo execute() bodies - they own GenerationProvider
                           try-with-resources lifecycles, multi-step control flow, and logging. They are
                           instead covered by ordinary JUnit tests in engine/*Test.java (planOnly/
-                          unmatched/oversize/exception-path coverage) using MockAiGenerationProvider.
+                          unmatched/oversize/exception-path coverage) using MockGenerationProvider.
 
                           This paragraph used to justify the exclusion by pointing at a comment in the
                           sibling srcmorph-maven-plugin pom saying mojos are integration-tested rather
@@ -724,75 +724,75 @@ SPDX-License-Identifier: Apache-2.0
                           its tests reach every branch without a server (one test asks a stub server
                           through the public constructor).
                         -->
-                        <param>net.ladenthin.srcmorph.config.AiCalibration</param>
-                        <param>net.ladenthin.srcmorph.config.AiCondition</param>
-                        <param>net.ladenthin.srcmorph.routing.AiConditionEvaluator</param>
-                        <param>net.ladenthin.srcmorph.config.AiConditionGroup</param>
-                        <param>net.ladenthin.srcmorph.config.AiFieldGenerationConfig</param>
-                        <param>net.ladenthin.srcmorph.routing.AiFieldGenerationSelector</param>
-                        <param>net.ladenthin.srcmorph.routing.AiFileContext</param>
-                        <param>net.ladenthin.srcmorph.config.AiModelDefinition</param>
-                        <param>net.ladenthin.srcmorph.config.AiRangeCondition</param>
-                        <param>net.ladenthin.srcmorph.config.AiModelDefinitionSupport</param>
-                        <param>net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiInputWindowCalculator</param>
-                        <param>net.ladenthin.srcmorph.indexer.AiIndexPlan</param>
-                        <param>net.ladenthin.srcmorph.indexer.AiHeaderHashes</param>
+                        <param>net.ladenthin.srcmorph.config.Calibration</param>
+                        <param>net.ladenthin.srcmorph.config.RuleCondition</param>
+                        <param>net.ladenthin.srcmorph.routing.ConditionEvaluator</param>
+                        <param>net.ladenthin.srcmorph.config.ConditionGroup</param>
+                        <param>net.ladenthin.srcmorph.config.RoutingRule</param>
+                        <param>net.ladenthin.srcmorph.routing.RuleSelector</param>
+                        <param>net.ladenthin.srcmorph.routing.FileContext</param>
+                        <param>net.ladenthin.srcmorph.config.ModelDefinition</param>
+                        <param>net.ladenthin.srcmorph.config.RangeCondition</param>
+                        <param>net.ladenthin.srcmorph.config.ModelRegistry</param>
+                        <param>net.ladenthin.srcmorph.indexer.CalibrationMeasurement</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.InputWindowCalculator</param>
+                        <param>net.ladenthin.srcmorph.indexer.IndexPlan</param>
+                        <param>net.ladenthin.srcmorph.indexer.HeaderHashes</param>
                         <param>net.ladenthin.srcmorph.indexer.ProjectOverview</param>
                         <param>net.ladenthin.srcmorph.indexer.RecordedHashes</param>
-                        <param>net.ladenthin.srcmorph.indexer.AiIndexPlan$Route</param>
-                        <param>net.ladenthin.srcmorph.indexer.AiIndexTally</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiMapReduceSupport</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiTokenWindow</param>
+                        <param>net.ladenthin.srcmorph.indexer.IndexPlan$Route</param>
+                        <param>net.ladenthin.srcmorph.indexer.IndexTally</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.MapReduceMath</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.TokenWindow</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.ChunkPlan</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.IncompleteAnswerAction</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.ReduceRound</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.SummaryParts</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiOverflowBackoff</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiRouteEstimator</param>
-                        <param>net.ladenthin.srcmorph.prompt.AiGenerationRequest</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiGenerationResult</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.OverflowBackoff</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.RouteEstimator</param>
+                        <param>net.ladenthin.srcmorph.prompt.GenerationRequest</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.SummaryResult</param>
                         <param>net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter</param>
                         <param>net.ladenthin.srcmorph.document.AiMdDocument</param>
                         <param>net.ladenthin.srcmorph.document.AiMdDocumentCodec</param>
                         <param>net.ladenthin.srcmorph.document.AiMdHeader</param>
-                        <param>net.ladenthin.srcmorph.document.AiMdHeaderSupport</param>
+                        <param>net.ladenthin.srcmorph.document.AiMdRewritePolicy</param>
                         <param>net.ladenthin.srcmorph.document.AiMdLeadExtractor</param>
-                        <param>net.ladenthin.srcmorph.prompt.AiPreparedPrompt</param>
-                        <param>net.ladenthin.srcmorph.config.AiPromptDefinition</param>
-                        <param>net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport</param>
-                        <param>net.ladenthin.srcmorph.prompt.AiPromptSupport</param>
-                        <param>net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader</param>
-                        <param>net.ladenthin.srcmorph.provider.AiCompletionParser</param>
-                        <param>net.ladenthin.srcmorph.provider.AiContextOverflowException</param>
-                        <param>net.ladenthin.srcmorph.provider.AiIncompleteAnswerException</param>
+                        <param>net.ladenthin.srcmorph.prompt.PreparedPrompt</param>
+                        <param>net.ladenthin.srcmorph.config.PromptDefinition</param>
+                        <param>net.ladenthin.srcmorph.prompt.PromptPreparer</param>
+                        <param>net.ladenthin.srcmorph.prompt.PromptCatalog</param>
+                        <param>net.ladenthin.srcmorph.prompt.PromptTemplateLoader</param>
+                        <param>net.ladenthin.srcmorph.provider.CompletionParser</param>
+                        <param>net.ladenthin.srcmorph.provider.ContextOverflowException</param>
+                        <param>net.ladenthin.srcmorph.provider.IncompleteAnswerException</param>
                         <param>net.ladenthin.srcmorph.provider.GgufModelInfo</param>
                         <param>net.ladenthin.srcmorph.provider.TimedGeneration</param>
-                        <param>net.ladenthin.srcmorph.provider.AiGenerationUsage</param>
-                        <param>net.ladenthin.srcmorph.provider.AiGenerationProvider</param>
-                        <param>net.ladenthin.srcmorph.provider.AiGenerationProviderFactory</param>
-                        <param>net.ladenthin.srcmorph.provider.MockAiGenerationProvider</param>
+                        <param>net.ladenthin.srcmorph.provider.GenerationUsage</param>
+                        <param>net.ladenthin.srcmorph.provider.GenerationProvider</param>
+                        <param>net.ladenthin.srcmorph.provider.GenerationProviderFactory</param>
+                        <param>net.ladenthin.srcmorph.provider.MockGenerationProvider</param>
                         <param>net.ladenthin.srcmorph.provider.OpenAiCompatibleProviderSupport</param>
-                        <param>net.ladenthin.srcmorph.config.AiOversizeStrategy</param>
-                        <param>net.ladenthin.srcmorph.config.AiIncompleteStrategy</param>
-                        <param>net.ladenthin.srcmorph.config.AiFactCounter</param>
-                        <param>net.ladenthin.srcmorph.config.AiFactDefinition</param>
-                        <param>net.ladenthin.srcmorph.facts.AiFactDefinitionLoader</param>
-                        <param>net.ladenthin.srcmorph.facts.AiFactDefinitionSupport</param>
-                        <param>net.ladenthin.srcmorph.facts.AiFactExtractor</param>
-                        <param>net.ladenthin.srcmorph.config.AiRegenerateOn</param>
-                        <param>net.ladenthin.srcmorph.support.AiChecksumSupport</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiDeterministicSummary</param>
-                        <param>net.ladenthin.srcmorph.support.AiSourceLines</param>
-                        <param>net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator</param>
-                        <param>net.ladenthin.srcmorph.support.AiGlob</param>
-                        <param>net.ladenthin.srcmorph.support.AiPathSupport</param>
-                        <param>net.ladenthin.srcmorph.support.AiShebang</param>
-                        <param>net.ladenthin.srcmorph.support.AiGeneratorVersion</param>
-                        <param>net.ladenthin.srcmorph.support.AiProfileFileSupport</param>
-                        <param>net.ladenthin.srcmorph.engine.AiProgressBar</param>
-                        <param>net.ladenthin.srcmorph.support.AiSourceExcludeFilter</param>
-                        <param>net.ladenthin.srcmorph.support.AiTimeSupport</param>
+                        <param>net.ladenthin.srcmorph.config.OversizeStrategy</param>
+                        <param>net.ladenthin.srcmorph.config.IncompleteStrategy</param>
+                        <param>net.ladenthin.srcmorph.config.FactCounter</param>
+                        <param>net.ladenthin.srcmorph.config.FactDefinition</param>
+                        <param>net.ladenthin.srcmorph.facts.FactDefinitionLoader</param>
+                        <param>net.ladenthin.srcmorph.facts.FactGroups</param>
+                        <param>net.ladenthin.srcmorph.facts.FactExtractor</param>
+                        <param>net.ladenthin.srcmorph.config.RegenerateOn</param>
+                        <param>net.ladenthin.srcmorph.support.ChecksumSupport</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.DeterministicSummary</param>
+                        <param>net.ladenthin.srcmorph.support.SourceLines</param>
+                        <param>net.ladenthin.srcmorph.indexer.generation.GenerationTimeEstimator</param>
+                        <param>net.ladenthin.srcmorph.support.Glob</param>
+                        <param>net.ladenthin.srcmorph.support.SourcePaths</param>
+                        <param>net.ladenthin.srcmorph.support.Shebang</param>
+                        <param>net.ladenthin.srcmorph.support.GeneratorVersion</param>
+                        <param>net.ladenthin.srcmorph.support.ProfileFileSupport</param>
+                        <param>net.ladenthin.srcmorph.engine.ProgressBar</param>
+                        <param>net.ladenthin.srcmorph.support.SourceExcludeFilter</param>
+                        <param>net.ladenthin.srcmorph.support.TimeSupport</param>
                         <param>net.ladenthin.srcmorph.support.ReadBudget</param>
                         <param>net.ladenthin.srcmorph.support.UrlUserInfo</param>
                         <param>net.ladenthin.srcmorph.support.Java8CompatibilityHelper</param>
@@ -839,7 +839,7 @@ SPDX-License-Identifier: Apache-2.0
 
                       The OOM itself is not a defect and is not meant to be fixed. The dump's own
                       thread stack names it: an infinite-loop mutant. PIT mutates the i += 1 that
-                      advances globToRegex's scan loop in AiSourceExcludeFilter (a gated class), the
+                      advances globToRegex's scan loop in SourceExcludeFilter (a gated class), the
                       loop then appends "[^/]" forever, and StringBuilder grows until the heap ends
                       (the surviving array's bytes read literally ^A[^/]A[^/]A[^/]...). timeoutConstant
                       exists for runaway mutants, but this one allocates its way out of a 2 GB heap

@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 
 /**
  * The fact counters of the repository's current profile ({@code profiles/v3/<key>.tsv}), read with the
@@ -38,7 +38,7 @@ final class ProfileFactPatterns {
      */
     static Map<String, String> load(final String key) {
         final Map<String, String> patterns = new LinkedHashMap<>();
-        for (final AiFactCounter counter : counters(key)) {
+        for (final FactCounter counter : counters(key)) {
             patterns.put(counter.getLabel(), counter.getPattern());
         }
         return patterns;
@@ -66,9 +66,9 @@ final class ProfileFactPatterns {
      * @param key the facts key, the file name without {@code .tsv}
      * @return the counters in file order
      */
-    static List<AiFactCounter> counters(final String key) {
+    static List<FactCounter> counters(final String key) {
         try {
-            final List<AiFactCounter> facts = new AiFactDefinitionLoader(PROFILE_DIRECTORY.toFile())
+            final List<FactCounter> facts = new FactDefinitionLoader(PROFILE_DIRECTORY.toFile())
                     .load(null, Collections.singletonList(key))
                     .get(0)
                     .getFacts();
@@ -89,8 +89,8 @@ final class ProfileFactPatterns {
      * @param source   the text
      * @return the count per reported label
      */
-    static Map<String, Integer> counts(final List<AiFactCounter> counters, final String source) {
-        return AiFactExtractor.counts(counters, source);
+    static Map<String, Integer> counts(final List<FactCounter> counters, final String source) {
+        return FactExtractor.counts(counters, source);
     }
 
     /**
@@ -111,7 +111,7 @@ final class ProfileFactPatterns {
     }
 
     /**
-     * Counts the matches the way {@link AiFactExtractor} does.
+     * Counts the matches the way {@link FactExtractor} does.
      *
      * @param pattern the pattern
      * @param source  the text

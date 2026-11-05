@@ -6,7 +6,7 @@ package net.ladenthin.srcmorph.config;
 import java.io.File;
 import java.util.List;
 import lombok.ToString;
-import net.ladenthin.srcmorph.support.AiGeneratorVersion;
+import net.ladenthin.srcmorph.support.GeneratorVersion;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -54,7 +54,7 @@ public class SrcMorphConfiguration {
     private @Nullable File baseDirectory;
     private File outputDirectory = new File(DEFAULT_OUTPUT_DIRECTORY);
     private boolean force;
-    private AiRegenerateOn regenerateOn = new AiRegenerateOn();
+    private RegenerateOn regenerateOn = new RegenerateOn();
     private @Nullable List<String> subtrees;
     private @Nullable List<String> excludes;
     private @Nullable List<String> fileExtensions;
@@ -65,15 +65,15 @@ public class SrcMorphConfiguration {
     private long maxFileSizeBytes;
     private boolean planOnly;
     private String generationProvider = DEFAULT_GENERATION_PROVIDER;
-    private @Nullable List<AiPromptDefinition> promptDefinitions;
-    private @Nullable List<AiModelDefinition> aiDefinitions;
+    private @Nullable List<PromptDefinition> promptDefinitions;
+    private @Nullable List<ModelDefinition> aiDefinitions;
     private @Nullable File modelDirectory;
     private @Nullable File profileDirectory;
     private @Nullable File runRecordFile;
     private @Nullable File partsDirectory;
-    private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
-    private @Nullable List<AiFactDefinition> factDefinitions;
-    private String generatorVersion = new AiGeneratorVersion().version();
+    private @Nullable List<RoutingRule> fieldGenerations;
+    private @Nullable List<FactDefinition> factDefinitions;
+    private String generatorVersion = new GeneratorVersion().version();
     private String aiVersion = DEFAULT_AI_VERSION;
     private @Nullable String projectName;
 
@@ -134,11 +134,11 @@ public class SrcMorphConfiguration {
 
     /**
      * Returns which changes rewrite an existing summary, one switch per header field
-     * ({@link AiRegenerateOn}); {@link #isForce() force} rewrites every summary regardless.
+     * ({@link RegenerateOn}); {@link #isForce() force} rewrites every summary regardless.
      *
      * @return the switches, every one on by default
      */
-    public AiRegenerateOn getRegenerateOn() {
+    public RegenerateOn getRegenerateOn() {
         return regenerateOn;
     }
 
@@ -147,8 +147,8 @@ public class SrcMorphConfiguration {
      *
      * @param regenerateOn the switches; {@code null} (an empty {@code regenerateOn:}) turns every one on
      */
-    public void setRegenerateOn(final @Nullable AiRegenerateOn regenerateOn) {
-        this.regenerateOn = regenerateOn != null ? regenerateOn : new AiRegenerateOn();
+    public void setRegenerateOn(final @Nullable RegenerateOn regenerateOn) {
+        this.regenerateOn = regenerateOn != null ? regenerateOn : new RegenerateOn();
     }
 
     /**
@@ -229,7 +229,7 @@ public class SrcMorphConfiguration {
     /**
      * Returns the interpreters whose scripts are indexed although they have no extension: a file
      * without one whose {@code #!} line names one of them, or a version of one
-     * ({@link net.ladenthin.srcmorph.support.AiShebang}).
+     * ({@link net.ladenthin.srcmorph.support.Shebang}).
      *
      * @return the interpreter names (e.g. {@code bash}, {@code perl}), or {@code null} for none
      */
@@ -348,7 +348,7 @@ public class SrcMorphConfiguration {
      *
      * @return the prompt definitions, or {@code null} when none are configured
      */
-    public @Nullable List<AiPromptDefinition> getPromptDefinitions() {
+    public @Nullable List<PromptDefinition> getPromptDefinitions() {
         return promptDefinitions;
     }
 
@@ -357,7 +357,7 @@ public class SrcMorphConfiguration {
      *
      * @param promptDefinitions the prompt definitions, or {@code null} for none
      */
-    public void setPromptDefinitions(final @Nullable List<AiPromptDefinition> promptDefinitions) {
+    public void setPromptDefinitions(final @Nullable List<PromptDefinition> promptDefinitions) {
         this.promptDefinitions = promptDefinitions;
     }
 
@@ -366,7 +366,7 @@ public class SrcMorphConfiguration {
      *
      * @return the AI model definitions, or {@code null} when none are configured
      */
-    public @Nullable List<AiModelDefinition> getAiDefinitions() {
+    public @Nullable List<ModelDefinition> getAiDefinitions() {
         return aiDefinitions;
     }
 
@@ -375,7 +375,7 @@ public class SrcMorphConfiguration {
      *
      * @param aiDefinitions the AI model definitions, or {@code null} for none
      */
-    public void setAiDefinitions(final @Nullable List<AiModelDefinition> aiDefinitions) {
+    public void setAiDefinitions(final @Nullable List<ModelDefinition> aiDefinitions) {
         this.aiDefinitions = aiDefinitions;
     }
 
@@ -472,7 +472,7 @@ public class SrcMorphConfiguration {
      *
      * @return the field generation rules, or {@code null} when none are configured
      */
-    public @Nullable List<AiFieldGenerationConfig> getFieldGenerations() {
+    public @Nullable List<RoutingRule> getFieldGenerations() {
         return fieldGenerations;
     }
 
@@ -481,7 +481,7 @@ public class SrcMorphConfiguration {
      *
      * @param fieldGenerations the field generation rules, or {@code null} for none
      */
-    public void setFieldGenerations(final @Nullable List<AiFieldGenerationConfig> fieldGenerations) {
+    public void setFieldGenerations(final @Nullable List<RoutingRule> fieldGenerations) {
         this.fieldGenerations = fieldGenerations;
     }
 
@@ -491,7 +491,7 @@ public class SrcMorphConfiguration {
      *
      * @return the fact definitions, or {@code null} when none are configured
      */
-    public @Nullable List<AiFactDefinition> getFactDefinitions() {
+    public @Nullable List<FactDefinition> getFactDefinitions() {
         return factDefinitions;
     }
 
@@ -500,13 +500,13 @@ public class SrcMorphConfiguration {
      *
      * @param factDefinitions the fact definitions, or {@code null} for none
      */
-    public void setFactDefinitions(final @Nullable List<AiFactDefinition> factDefinitions) {
+    public void setFactDefinitions(final @Nullable List<FactDefinition> factDefinitions) {
         this.factDefinitions = factDefinitions;
     }
 
     /**
      * Returns the generator version recorded in every written {@code .ai.md} header ({@code G}): srcmorph's
-     * own version ({@link AiGeneratorVersion}) unless the configuration names another.
+     * own version ({@link GeneratorVersion}) unless the configuration names another.
      *
      * @return the generator version
      */

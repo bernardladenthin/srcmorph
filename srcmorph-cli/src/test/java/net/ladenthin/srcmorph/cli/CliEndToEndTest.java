@@ -23,9 +23,9 @@ import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import org.junit.jupiter.api.Tag;
@@ -55,12 +55,12 @@ public class CliEndToEndTest {
         configuration.srcMorph.setGeneratorVersion("1.0.0-test");
         configuration.srcMorph.setAiVersion("0.0.0");
 
-        final AiPromptDefinition prompt = new AiPromptDefinition();
+        final PromptDefinition prompt = new PromptDefinition();
         prompt.setKey("file-body");
         prompt.setTemplate("Summarize:\n%s");
         configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
 
-        final AiModelDefinition model = new AiModelDefinition();
+        final ModelDefinition model = new ModelDefinition();
         model.setKey("mock-model");
         model.setModelPath("mock.gguf");
         // Disable automatic maxInputChars calculation so the tiny test source never trips the
@@ -68,7 +68,7 @@ public class CliEndToEndTest {
         model.setCharsPerToken(0);
         configuration.srcMorph.setAiDefinitions(Collections.singletonList(model));
 
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey("file-body");
         rule.setAiDefinitionKey("mock-model");
         rule.setFallback(true);
@@ -144,7 +144,7 @@ public class CliEndToEndTest {
         Files.write(
                 profileDirectory.resolve("v1/file-body.md"),
                 "You are a code indexer.\n".getBytes(StandardCharsets.UTF_8));
-        final AiPromptDefinition prompt = new AiPromptDefinition();
+        final PromptDefinition prompt = new PromptDefinition();
         prompt.setKey("file-body");
         prompt.setTemplateFile("v1/file-body.md");
         configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
@@ -171,7 +171,7 @@ public class CliEndToEndTest {
         final Path unrelatedDirectory = tempDir.resolve("unrelated");
         for (final boolean withDirectory : new boolean[] {false, true}) {
             final CConfiguration configuration = buildAllCommandConfiguration();
-            final AiPromptDefinition prompt = new AiPromptDefinition();
+            final PromptDefinition prompt = new PromptDefinition();
             prompt.setKey("file-body");
             prompt.setTemplateFile(absolute.toAbsolutePath().toString());
             configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
@@ -195,7 +195,7 @@ public class CliEndToEndTest {
     @Test
     public void run_allCommand_missingTemplateFile_failsWithItsPath() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
-        final AiPromptDefinition prompt = new AiPromptDefinition();
+        final PromptDefinition prompt = new PromptDefinition();
         prompt.setKey("file-body");
         prompt.setTemplateFile("v1/missing.md");
         configuration.srcMorph.setPromptDefinitions(Collections.singletonList(prompt));
@@ -217,15 +217,15 @@ public class CliEndToEndTest {
         return chain.toString();
     }
 
-    private static AiFieldGenerationConfig phaseRule(final String promptKey) {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule phaseRule(final String promptKey) {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(promptKey);
         rule.setAiDefinitionKey("mock-model");
         return rule;
     }
 
-    private static AiPromptDefinition inlinePrompt(final String key) {
-        final AiPromptDefinition prompt = new AiPromptDefinition();
+    private static PromptDefinition inlinePrompt(final String key) {
+        final PromptDefinition prompt = new PromptDefinition();
         prompt.setKey(key);
         prompt.setTemplate("Summarize.");
         return prompt;
@@ -243,7 +243,7 @@ public class CliEndToEndTest {
         final CConfiguration configuration = buildAllCommandConfiguration();
         configuration.srcMorph.setPromptDefinitions(
                 Arrays.asList(inlinePrompt("file-body"), inlinePrompt("package-body"), inlinePrompt("project-body")));
-        final List<AiFieldGenerationConfig> fileRules = configuration.srcMorph.getFieldGenerations();
+        final List<RoutingRule> fileRules = configuration.srcMorph.getFieldGenerations();
         configuration.packageFieldGenerations = Collections.singletonList(phaseRule("package-body"));
         configuration.projectFieldGenerations = Collections.singletonList(phaseRule("project-body"));
 
@@ -358,7 +358,7 @@ public class CliEndToEndTest {
     public void run_checkCommand_aPackageRuleWithAnUnknownModel_fails() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
         configuration.command = CCommand.Check;
-        final AiFieldGenerationConfig rule = phaseRule("file-body");
+        final RoutingRule rule = phaseRule("file-body");
         rule.setAiDefinitionKey("no-such-model");
         configuration.packageFieldGenerations = Collections.singletonList(rule);
 
@@ -372,7 +372,7 @@ public class CliEndToEndTest {
     public void run_checkCommand_aProjectRuleWithAnUnknownModel_fails() throws Exception {
         final CConfiguration configuration = buildAllCommandConfiguration();
         configuration.command = CCommand.Check;
-        final AiFieldGenerationConfig rule = phaseRule("file-body");
+        final RoutingRule rule = phaseRule("file-body");
         rule.setAiDefinitionKey("no-overview-model");
         configuration.projectFieldGenerations = Collections.singletonList(rule);
 
@@ -604,7 +604,7 @@ public class CliEndToEndTest {
         }
         final SrcMorphConfiguration template = Main.fromYaml(indented.toString()).srcMorph;
         assertThat(template.getAiDefinitions().size(), is(1));
-        final AiModelDefinition entry = template.getAiDefinitions().get(0);
+        final ModelDefinition entry = template.getAiDefinitions().get(0);
         assertThat(entry.getKey(), is("copilot-grok-4.7"));
         assertThat(entry.getProvider(), is("openai-compatible"));
         assertThat(entry.getRemoteModel(), is("grok-4.7"));

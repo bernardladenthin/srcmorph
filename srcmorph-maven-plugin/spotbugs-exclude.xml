@@ -176,7 +176,7 @@ SPDX-License-Identifier: Apache-2.0
         project's resources (Resource.getDirectory(), injected by Maven from the project model) into
         File objects to test whether they exist and lie below the base directory. The paths come from
         the operator's own POM, the same trust boundary as every other configured path (see the
-        srcmorph module's filter on AiPathSupport.resolveAgainst); nothing is opened or read here.
+        srcmorph module's filter on SourcePaths.resolveAgainst); nothing is opened or read here.
         Scoped to the one method.
     -->
     <Match>

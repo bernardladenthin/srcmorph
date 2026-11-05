@@ -10,23 +10,23 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiOversizeStrategy;
-import net.ladenthin.srcmorph.config.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.OversizeStrategy;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.facts.AiFactDefinitionLoader;
-import net.ladenthin.srcmorph.facts.AiFactDefinitionSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.facts.FactDefinitionLoader;
+import net.ladenthin.srcmorph.facts.FactGroups;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.GgufModelInfo;
 import net.ladenthin.srcmorph.provider.GgufModelInspector;
-import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
+import net.ladenthin.srcmorph.provider.OpenAiCompatibleGenerationProvider;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
 import net.ladenthin.srcmorph.provider.ProviderConfigFactory;
-import net.ladenthin.srcmorph.routing.AiFieldGenerationSelector;
+import net.ladenthin.srcmorph.routing.RuleSelector;
 import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -124,8 +124,8 @@ final class EngineSupport {
     }
 
     /**
-     * Builds an {@link AiPromptSupport} from the configured prompt definitions, first reading every
-     * {@code templateFile} ({@link AiPromptTemplateLoader}, relative to {@code profileDirectory}), and
+     * Builds an {@link PromptCatalog} from the configured prompt definitions, first reading every
+     * {@code templateFile} ({@link PromptTemplateLoader}, relative to {@code profileDirectory}), and
      * translating a misconfiguration into a {@link SrcMorphException} so the caller reports it as a
      * configuration error: a missing {@code key}/{@code template}, both {@code template} and
      * {@code templateFile} or an empty template file ({@link IllegalArgumentException}), a template file
@@ -140,14 +140,14 @@ final class EngineSupport {
      * @return prompt support instance backed by the configured definitions
      * @throws SrcMorphException if any prompt definition is misconfigured or its file cannot be read
      */
-    static AiPromptSupport buildPromptSupport(
-            final @Nullable List<AiPromptDefinition> promptDefinitions,
+    static PromptCatalog buildPromptSupport(
+            final @Nullable List<PromptDefinition> promptDefinitions,
             final @Nullable File profileDirectory,
-            final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
+            final @Nullable List<RoutingRule> fieldGenerations)
             throws SrcMorphException {
         final List<@Nullable String> usedKeys = new ArrayList<>();
         if (fieldGenerations != null) {
-            for (final AiFieldGenerationConfig rule : fieldGenerations) {
+            for (final RoutingRule rule : fieldGenerations) {
                 // a null key (a skip rule's prompt, an unset map or reduce prompt) is ignored by the loader
                 usedKeys.add(rule.getPromptKey());
                 usedKeys.add(rule.getMapPromptKey());
@@ -155,14 +155,14 @@ final class EngineSupport {
             }
         }
         try {
-            return new AiPromptSupport(new AiPromptTemplateLoader(profileDirectory).load(promptDefinitions, usedKeys));
+            return new PromptCatalog(new PromptTemplateLoader(profileDirectory).load(promptDefinitions, usedKeys));
         } catch (final IllegalArgumentException | IOException e) {
             throw new SrcMorphException("Invalid configuration: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Builds an {@link AiModelDefinitionSupport} from the configured AI model definitions, translating a
+     * Builds an {@link ModelRegistry} from the configured AI model definitions, translating a
      * misconfiguration ({@link IllegalArgumentException} from a missing or duplicate {@code key}) into a
      * {@link SrcMorphException} so the caller reports it as a configuration error.
      *
@@ -171,11 +171,11 @@ final class EngineSupport {
      * @return model definition support instance backed by the configured definitions
      * @throws SrcMorphException if any AI definition is missing a required field
      */
-    static AiModelDefinitionSupport buildAiModelDefinitionSupport(
-            final @Nullable List<AiModelDefinition> aiDefinitions, final @Nullable File modelDirectory)
+    static ModelRegistry buildAiModelDefinitionSupport(
+            final @Nullable List<ModelDefinition> aiDefinitions, final @Nullable File modelDirectory)
             throws SrcMorphException {
         try {
-            return new AiModelDefinitionSupport(aiDefinitions, modelDirectory);
+            return new ModelRegistry(aiDefinitions, modelDirectory);
         } catch (final IllegalArgumentException e) {
             throw new SrcMorphException("Invalid configuration: " + e.getMessage(), e);
         }
@@ -191,8 +191,8 @@ final class EngineSupport {
      * @return the rule
      * @throws SrcMorphException if not exactly one rule is given, or it names no prompt or no model
      */
-    static AiFieldGenerationConfig requiredPhaseRule(
-            final String phase, final String cliKey, final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
+    static RoutingRule requiredPhaseRule(
+            final String phase, final String cliKey, final @Nullable List<RoutingRule> fieldGenerations)
             throws SrcMorphException {
         return checkedPhaseRule(phase, cliKey, fieldGenerations, "exactly one rule");
     }
@@ -207,8 +207,8 @@ final class EngineSupport {
      * @return the rule, or {@code null} when none is given
      * @throws SrcMorphException if more than one rule is given, or it names no prompt or no model
      */
-    static @Nullable AiFieldGenerationConfig optionalPhaseRule(
-            final String phase, final String cliKey, final @Nullable List<AiFieldGenerationConfig> fieldGenerations)
+    static @Nullable RoutingRule optionalPhaseRule(
+            final String phase, final String cliKey, final @Nullable List<RoutingRule> fieldGenerations)
             throws SrcMorphException {
         if (fieldGenerations == null || fieldGenerations.isEmpty()) {
             return null;
@@ -216,10 +216,10 @@ final class EngineSupport {
         return checkedPhaseRule(phase, cliKey, fieldGenerations, "at most one rule");
     }
 
-    private static AiFieldGenerationConfig checkedPhaseRule(
+    private static RoutingRule checkedPhaseRule(
             final String phase,
             final String cliKey,
-            final @Nullable List<AiFieldGenerationConfig> fieldGenerations,
+            final @Nullable List<RoutingRule> fieldGenerations,
             final String takes)
             throws SrcMorphException {
         if (fieldGenerations == null || fieldGenerations.size() != 1) {
@@ -227,7 +227,7 @@ final class EngineSupport {
                     + (fieldGenerations == null ? 0 : fieldGenerations.size()) + " given; give the phase its own: "
                     + cliKey + " in the configuration file");
         }
-        final AiFieldGenerationConfig rule = fieldGenerations.get(0);
+        final RoutingRule rule = fieldGenerations.get(0);
         if (rule == null || isBlank(rule.getPromptKey()) || isBlank(rule.getAiDefinitionKey())) {
             throw new SrcMorphException("The rule of " + phase + " needs a promptKey and an aiDefinitionKey");
         }
@@ -237,12 +237,12 @@ final class EngineSupport {
         // Unset, a phase reads all of an input over its window: the input is the child summaries, and a
         // part left out (or a failure) would drop a whole subtree from the summary above. A copy, so the
         // configuration stays as it was given.
-        final AiFieldGenerationConfig effective = rule.copy();
+        final RoutingRule effective = rule.copy();
         if (isBlank(effective.getOnOversize())) {
-            effective.setOnOversize(AiOversizeStrategy.MAP_REDUCE.configValue());
+            effective.setOnOversize(OversizeStrategy.MAP_REDUCE.configValue());
         }
         try {
-            new AiFieldGenerationSelector().validateRule(effective);
+            new RuleSelector().validateRule(effective);
         } catch (final IllegalArgumentException e) {
             throw new SrcMorphException("Invalid rule of " + phase + ": " + e.getMessage(), e);
         }
@@ -258,14 +258,14 @@ final class EngineSupport {
      * @throws SrcMorphException if a key is found nowhere, a group is malformed, or a rule names its facts
      *                           twice
      */
-    static void resolveFactsKeys(final SrcMorphConfiguration config, final List<AiFieldGenerationConfig> rules)
+    static void resolveFactsKeys(final SrcMorphConfiguration config, final List<RoutingRule> rules)
             throws SrcMorphException {
         try {
             final List<@Nullable String> usedKeys = new ArrayList<>(rules.size());
-            for (final AiFieldGenerationConfig rule : rules) {
+            for (final RoutingRule rule : rules) {
                 usedKeys.add(rule.getFactsKey());
             }
-            new AiFactDefinitionSupport(new AiFactDefinitionLoader(config.getProfileDirectory())
+            new FactGroups(new FactDefinitionLoader(config.getProfileDirectory())
                             .load(config.getFactDefinitions(), usedKeys))
                     .resolveFactsKeys(rules);
         } catch (final IllegalArgumentException | IOException e) {
@@ -278,7 +278,7 @@ final class EngineSupport {
     }
 
     /**
-     * Resolves the {@link ProviderConfig} for one specific {@link AiModelDefinition}, identified by its
+     * Resolves the {@link ProviderConfig} for one specific {@link ModelDefinition}, identified by its
      * key. Used by {@link GenerateEngine} (one provider per routing group), {@link CalibrateEngine}
      * (one provider per calibrated model) and the aggregation engines (the model of their one rule).
      *
@@ -287,14 +287,14 @@ final class EngineSupport {
      * that gone, passing it here would be an unused parameter.</p>
      *
      * @param modelDefinitionSupport model lookup built from {@link SrcMorphConfiguration#getAiDefinitions()}
-     * @param aiDefinitionKey        the {@link AiModelDefinition} key
+     * @param aiDefinitionKey        the {@link ModelDefinition} key
      * @return the fully populated llama.cpp configuration for that definition
      * @throws IllegalArgumentException if {@code aiDefinitionKey} matches no registered definition
      */
     static ProviderConfig resolveProviderConfig(
-            final AiModelDefinitionSupport modelDefinitionSupport, final String aiDefinitionKey) {
-        final AiModelDefinition modelConfig = modelDefinitionSupport.getConfig(aiDefinitionKey);
-        return ProviderConfigFactory.fromGenerationConfig(modelConfig);
+            final ModelRegistry modelDefinitionSupport, final String aiDefinitionKey) {
+        final ModelDefinition modelConfig = modelDefinitionSupport.definition(aiDefinitionKey);
+        return ProviderConfigFactory.from(modelConfig);
     }
 
     /**
@@ -322,10 +322,10 @@ final class EngineSupport {
      */
     static void validateRoutedModelPaths(
             final String generationProvider,
-            final AiModelDefinitionSupport modelDefinitionSupport,
-            final List<AiFieldGenerationConfig> fieldGenerations)
+            final ModelRegistry modelDefinitionSupport,
+            final List<RoutingRule> fieldGenerations)
             throws SrcMorphException {
-        for (final AiFieldGenerationConfig rule : fieldGenerations) {
+        for (final RoutingRule rule : fieldGenerations) {
             if (rule == null || rule.isSkip()) {
                 continue;
             }
@@ -333,19 +333,19 @@ final class EngineSupport {
             if (aiDefinitionKey == null) {
                 continue;
             }
-            final AiModelDefinition modelConfig = definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
+            final ModelDefinition modelConfig = definedModel(modelDefinitionSupport, rule, aiDefinitionKey);
             final String provider =
-                    AiGenerationProviderFactory.effectiveProvider(generationProvider, modelConfig.getProvider());
-            if (AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)) {
+                    GenerationProviderFactory.effectiveProvider(generationProvider, modelConfig.getProvider());
+            if (GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)) {
                 validateRemoteModel(aiDefinitionKey, modelConfig);
-            } else if (AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
+            } else if (GenerationProviderFactory.PROVIDER_LLAMACPP_JNI.equals(provider)) {
                 validateLocalModel(aiDefinitionKey, modelConfig);
-            } else if (!isBlank(provider) && !AiGenerationProviderFactory.PROVIDER_MOCK.equals(provider)) {
+            } else if (!isBlank(provider) && !GenerationProviderFactory.PROVIDER_MOCK.equals(provider)) {
                 // otherwise the run would fail at this model's group, after the earlier groups generated
                 throw new SrcMorphException("Model '" + aiDefinitionKey + "' has the unknown provider '" + provider
-                        + "'; a provider is " + AiGenerationProviderFactory.PROVIDER_MOCK + ", "
-                        + AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI + " or "
-                        + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+                        + "'; a provider is " + GenerationProviderFactory.PROVIDER_MOCK + ", "
+                        + GenerationProviderFactory.PROVIDER_LLAMACPP_JNI + " or "
+                        + GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
             }
         }
     }
@@ -360,9 +360,9 @@ final class EngineSupport {
      * @throws SrcMorphException if a rule (other than a skip rule) names an undefined model
      */
     static void requireDefinedModels(
-            final AiModelDefinitionSupport modelDefinitionSupport, final List<AiFieldGenerationConfig> fieldGenerations)
+            final ModelRegistry modelDefinitionSupport, final List<RoutingRule> fieldGenerations)
             throws SrcMorphException {
-        for (final AiFieldGenerationConfig rule : fieldGenerations) {
+        for (final RoutingRule rule : fieldGenerations) {
             if (rule == null || rule.isSkip()) {
                 continue;
             }
@@ -373,13 +373,11 @@ final class EngineSupport {
         }
     }
 
-    private static AiModelDefinition definedModel(
-            final AiModelDefinitionSupport modelDefinitionSupport,
-            final AiFieldGenerationConfig rule,
-            final String aiDefinitionKey)
+    private static ModelDefinition definedModel(
+            final ModelRegistry modelDefinitionSupport, final RoutingRule rule, final String aiDefinitionKey)
             throws SrcMorphException {
         try {
-            return modelDefinitionSupport.getConfig(aiDefinitionKey);
+            return modelDefinitionSupport.definition(aiDefinitionKey);
         } catch (final IllegalArgumentException e) {
             final String id = rule.getId();
             throw new SrcMorphException(
@@ -398,16 +396,16 @@ final class EngineSupport {
      * @throws SrcMorphException if the URL is not {@code http(s)}, or the key is missing or would go out
      *                           in cleartext
      */
-    private static void validateRemoteModel(final String aiDefinitionKey, final AiModelDefinition modelConfig)
+    private static void validateRemoteModel(final String aiDefinitionKey, final ModelDefinition modelConfig)
             throws SrcMorphException {
         final String baseUrl = modelConfig.getBaseUrl().trim();
         if (!baseUrl.startsWith(HTTP_SCHEME) && !baseUrl.startsWith(HTTPS_SCHEME)) {
             throw new SrcMorphException("aiDefinition '" + aiDefinitionKey + "' uses the "
-                    + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
+                    + GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE
                     + " provider but its baseUrl is not an http(s) URL: '"
                     + UrlUserInfo.mask(baseUrl) + "'");
         }
-        final String keyProblem = OpenAiCompatibleAiGenerationProvider.keyProblem(baseUrl, modelConfig.getApiKeyEnv());
+        final String keyProblem = OpenAiCompatibleGenerationProvider.keyProblem(baseUrl, modelConfig.getApiKeyEnv());
         if (keyProblem != null) {
             throw new SrcMorphException(
                     "aiDefinition '" + aiDefinitionKey + "': " + keyProblem + " (checked before any request is sent)");
@@ -421,7 +419,7 @@ final class EngineSupport {
      * @param modelConfig     the definition's resolved configuration
      * @throws SrcMorphException if the file is missing, not a GGUF, or not readable
      */
-    private static void validateLocalModel(final String aiDefinitionKey, final AiModelDefinition modelConfig)
+    private static void validateLocalModel(final String aiDefinitionKey, final ModelDefinition modelConfig)
             throws SrcMorphException {
         final String modelPath = modelConfig.getModelPath();
         if (modelPath == null || !new File(modelPath).isFile()) {
@@ -460,7 +458,7 @@ final class EngineSupport {
      * @throws SrcMorphException if the file is not a readable GGUF
      */
     private static void validateAgainstTheModelItself(
-            final String aiDefinitionKey, final AiModelDefinition modelConfig, final Path modelFile)
+            final String aiDefinitionKey, final ModelDefinition modelConfig, final Path modelFile)
             throws SrcMorphException {
         final GgufModelInfo info = new GgufModelInspector().inspect(modelFile);
         if (!info.readable()) {

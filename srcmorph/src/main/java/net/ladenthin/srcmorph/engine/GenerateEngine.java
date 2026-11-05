@@ -14,23 +14,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.facts.AiFactExtractor;
-import net.ladenthin.srcmorph.indexer.AiHeaderHashes;
-import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
-import net.ladenthin.srcmorph.indexer.AiIndexPlan;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.indexer.HeaderHashes;
+import net.ladenthin.srcmorph.indexer.IndexOutcome;
+import net.ladenthin.srcmorph.indexer.IndexPlan;
 import net.ladenthin.srcmorph.indexer.RecordedHashes;
 import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
-import net.ladenthin.srcmorph.indexer.generation.AiGenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.GenerationTimeEstimator;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
-import net.ladenthin.srcmorph.provider.AiGenerationUsage;
-import net.ladenthin.srcmorph.routing.AiFieldGenerationSelector;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import net.ladenthin.srcmorph.provider.GenerationUsage;
+import net.ladenthin.srcmorph.routing.RuleSelector;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -67,7 +67,7 @@ public final class GenerateEngine {
     static final String PARTS_SUFFIX = ".parts.md";
 
     private final SrcMorphConfiguration config;
-    private final AiGenerationProviderFactory providerFactory;
+    private final GenerationProviderFactory providerFactory;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -76,7 +76,7 @@ public final class GenerateEngine {
      * @param config the run configuration
      */
     public GenerateEngine(final SrcMorphConfiguration config) {
-        this(config, new AiGenerationProviderFactory());
+        this(config, new GenerationProviderFactory());
     }
 
     /**
@@ -85,7 +85,7 @@ public final class GenerateEngine {
      * @param config          the run configuration
      * @param providerFactory the factory of each model group's provider
      */
-    GenerateEngine(final SrcMorphConfiguration config, final AiGenerationProviderFactory providerFactory) {
+    GenerateEngine(final SrcMorphConfiguration config, final GenerationProviderFactory providerFactory) {
         this.config = config;
         this.providerFactory = providerFactory;
     }
@@ -126,25 +126,25 @@ public final class GenerateEngine {
 
         logRun(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
-        final List<AiFieldGenerationConfig> configured = config.getFieldGenerations();
+        final List<RoutingRule> configured = config.getFieldGenerations();
         if (configured == null || configured.isEmpty()) {
             throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
                     + " configuration file); nothing to generate.");
         }
         // the run resolves the facts keys into copies: the caller's rules stay as given, so check() and a
         // second execute() of the same configuration read them as the first did
-        final List<AiFieldGenerationConfig> fieldGenerations = copies(configured);
+        final List<RoutingRule> fieldGenerations = copies(configured);
 
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
+        final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
                 config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
-        final AiModelDefinitionSupport modelDefinitionSupport =
+        final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
-        final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
+        final PromptPreparer promptPreparationSupport = new PromptPreparer(promptSupport);
         // Resolve each rule's factsKey to its shared factDefinitions group (copies the counters onto the
         // rule's facts) BEFORE validation, so the resolved fact patterns are validated too.
         EngineSupport.resolveFactsKeys(config, fieldGenerations);
 
-        final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
+        final RuleSelector selector = new RuleSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model), as a
         // configuration error the surfaces report as such.
         try {
@@ -172,8 +172,8 @@ public final class GenerateEngine {
 
         // 2. Plan the run: which model + prompt each file gets (or skip / unmatched), and whether
         //    each file fits its routed model's context window (computed up front, same threshold the
-        //    run uses to trim — see AiInputWindowCalculator).
-        final AiIndexPlan plan =
+        //    run uses to trim — see InputWindowCalculator).
+        final IndexPlan plan =
                 fileIndexer.classify(candidates, fieldGenerations, modelDefinitionSupport, promptPreparationSupport);
         LOGGER.info("AI index plan (Markdown):\n{}", plan.renderMarkdown(basePath));
 
@@ -228,7 +228,7 @@ public final class GenerateEngine {
         //    Progress is the running sum of each finished file's PLAN estimate over the grand total
         //    (no re-estimation), logged as a bar + percent after every file, with the estimated time
         //    left and the actual wall-clock elapsed for comparison.
-        final AiGenerationTimeEstimator estimator = new AiGenerationTimeEstimator();
+        final GenerationTimeEstimator estimator = new GenerationTimeEstimator();
         final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
         final int totalFiles = plan.routedCount();
         final long runStartNanos = System.nanoTime();
@@ -241,31 +241,31 @@ public final class GenerateEngine {
         int failed = 0;
         // the record is written however the run ends, and a failed write never hides why it ended
         try {
-            for (final Map.Entry<String, List<AiIndexPlan.Route>> group :
+            for (final Map.Entry<String, List<IndexPlan.Route>> group :
                     plan.routesByModel().entrySet()) {
                 final String aiDefinitionKey = group.getKey();
                 LOGGER.info(
                         "Loading model '{}' for {} file(s)",
                         aiDefinitionKey,
                         group.getValue().size());
-                try (AiGenerationProvider provider = providerFactory.create(
+                try (GenerationProvider provider = providerFactory.create(
                         config.getGenerationProvider(),
                         EngineSupport.resolveProviderConfig(modelDefinitionSupport, aiDefinitionKey),
                         promptSupport)) {
                     final SummaryGenerator support =
                             new SummaryGenerator(provider, promptPreparationSupport, modelDefinitionSupport);
-                    for (final AiIndexPlan.Route entry : group.getValue()) {
-                        AiIndexOutcome outcome;
+                    for (final IndexPlan.Route entry : group.getValue()) {
+                        IndexOutcome outcome;
                         final long fileStartNanos = System.nanoTime();
                         try {
                             outcome = fileIndexer.indexFile(
                                     entry.file(),
                                     entry.rule(),
                                     support,
-                                    AiHeaderHashes.prompt(promptSupport, entry.rule()),
-                                    AiFactExtractor.factsHash(entry.rule().getFacts()),
-                                    AiHeaderHashes.model(
-                                            aiDefinitionKey, modelDefinitionSupport.getConfig(aiDefinitionKey)));
+                                    HeaderHashes.prompt(promptSupport, entry.rule()),
+                                    FactExtractor.factsHash(entry.rule().getFacts()),
+                                    HeaderHashes.model(
+                                            aiDefinitionKey, modelDefinitionSupport.definition(aiDefinitionKey)));
                         } catch (final InterruptedIOException e) {
                             // an interrupt ends the run, it is not one file's failure; a timeout is one (a
                             // SocketTimeoutException is an InterruptedIOException as well)
@@ -274,13 +274,13 @@ public final class GenerateEngine {
                             }
                             LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
                             LOGGER.debug("Summarizing {} failed", entry.file(), e);
-                            outcome = AiIndexOutcome.FAILED;
+                            outcome = IndexOutcome.FAILED;
                         } catch (final IOException | RuntimeException e) {
                             // one failed request (after its retries) does not end the run, nor does an unchecked
                             // error of a provider (the llama.cpp binding throws only those)
                             LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
                             LOGGER.debug("Summarizing {} failed", entry.file(), e);
-                            outcome = AiIndexOutcome.FAILED;
+                            outcome = IndexOutcome.FAILED;
                         }
                         // a local model loads on the first file that needs it: its own time, not the file's
                         final long loadNanos = provider.takeLoadNanos();
@@ -294,9 +294,9 @@ public final class GenerateEngine {
                                 Math.max(0L, System.nanoTime() - fileStartNanos - loadNanos),
                                 recordedHeader(fileIndexer, entry, outcome, promptSupport)));
                         keepParts(basePath, entry.file(), support.parts());
-                        if (outcome == AiIndexOutcome.WRITTEN) {
+                        if (outcome == IndexOutcome.WRITTEN) {
                             wrote++;
-                        } else if (outcome == AiIndexOutcome.UNCHANGED) {
+                        } else if (outcome == IndexOutcome.UNCHANGED) {
                             unchanged++;
                         } else {
                             failed++;
@@ -307,7 +307,7 @@ public final class GenerateEngine {
                         final long remainingSeconds = Math.max(0L, totalEstimatedSeconds - doneEstimatedSeconds);
                         LOGGER.info(
                                 "{} {}/{} files - est. {}/{} done, {} left (estimate) | {} elapsed (actual)",
-                                AiProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds),
+                                ProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds),
                                 doneFiles,
                                 totalFiles,
                                 estimator.formatDuration(doneEstimatedSeconds),
@@ -411,13 +411,13 @@ public final class GenerateEngine {
      */
     private static RunRecord.FileRecord recordEntry(
             final Path basePath,
-            final AiIndexPlan.Route entry,
+            final IndexPlan.Route entry,
             final String model,
-            final AiIndexOutcome outcome,
-            final AiGenerationUsage usage,
+            final IndexOutcome outcome,
+            final GenerationUsage usage,
             final long nanos,
             final RecordedHashes hashes) {
-        final AiFieldGenerationConfig rule = entry.rule();
+        final RoutingRule rule = entry.rule();
         final String id = rule.getId();
         return new RunRecord.FileRecord(
                 basePath.relativize(entry.file()).toString().replace('\\', '/'),
@@ -437,9 +437,9 @@ public final class GenerateEngine {
      * @param rules the configured rules
      * @return the copies, in order
      */
-    private static List<AiFieldGenerationConfig> copies(final List<AiFieldGenerationConfig> rules) {
-        final List<AiFieldGenerationConfig> copies = new ArrayList<>(rules.size());
-        for (final AiFieldGenerationConfig rule : rules) {
+    private static List<RoutingRule> copies(final List<RoutingRule> rules) {
+        final List<RoutingRule> copies = new ArrayList<>(rules.size());
+        for (final RoutingRule rule : rules) {
             copies.add(rule.copy());
         }
         return copies;
@@ -453,12 +453,12 @@ public final class GenerateEngine {
      * @param rules         the rules
      * @throws SrcMorphException naming the key without a template
      */
-    private static void requirePrompts(final AiPromptSupport promptSupport, final List<AiFieldGenerationConfig> rules)
+    private static void requirePrompts(final PromptCatalog promptSupport, final List<RoutingRule> rules)
             throws SrcMorphException {
-        for (final AiFieldGenerationConfig rule : rules) {
+        for (final RoutingRule rule : rules) {
             if (!rule.isSkip()) {
                 try {
-                    AiHeaderHashes.prompt(promptSupport, rule);
+                    HeaderHashes.prompt(promptSupport, rule);
                 } catch (final IllegalArgumentException e) {
                     throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
                 }
@@ -480,16 +480,16 @@ public final class GenerateEngine {
      */
     private static RecordedHashes recordedHeader(
             final SourceFileIndexer fileIndexer,
-            final AiIndexPlan.Route entry,
-            final AiIndexOutcome outcome,
-            final AiPromptSupport promptSupport)
+            final IndexPlan.Route entry,
+            final IndexOutcome outcome,
+            final PromptCatalog promptSupport)
             throws IOException {
-        if (outcome == AiIndexOutcome.UNCHANGED) {
+        if (outcome == IndexOutcome.UNCHANGED) {
             return fileIndexer.recordedHashes(entry.file());
         }
         return new RecordedHashes(
-                AiHeaderHashes.prompt(promptSupport, entry.rule()),
-                AiFactExtractor.factsHash(entry.rule().getFacts()));
+                HeaderHashes.prompt(promptSupport, entry.rule()),
+                FactExtractor.factsHash(entry.rule().getFacts()));
     }
 
     /**
@@ -500,11 +500,11 @@ public final class GenerateEngine {
      * @param fileIndexer the indexer that names each file's summary
      * @throws SrcMorphException naming the files, or the model and the prompt
      */
-    private static void checkTargetsAndWindows(final AiIndexPlan plan, final SourceFileIndexer fileIndexer)
+    private static void checkTargetsAndWindows(final IndexPlan plan, final SourceFileIndexer fileIndexer)
             throws SrcMorphException {
         final Map<Path, Path> sourceByTarget = new HashMap<>();
-        for (final List<AiIndexPlan.Route> entries : plan.routesByModel().values()) {
-            for (final AiIndexPlan.Route entry : entries) {
+        for (final List<IndexPlan.Route> entries : plan.routesByModel().values()) {
+            for (final IndexPlan.Route entry : entries) {
                 final Path other = sourceByTarget.put(fileIndexer.targetFile(entry.file()), entry.file());
                 if (other != null) {
                     throw new SrcMorphException(entry.file() + " and " + other + " would both be summarized into "

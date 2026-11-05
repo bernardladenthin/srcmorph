@@ -20,7 +20,7 @@ import java.nio.file.Path;
 import java.util.List;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -231,7 +231,7 @@ public class MainTest {
     public void configurationEcho_aBaseUrlWithUserInfo_isEchoedMaskedInBothForms() throws Exception {
         // arrange
         final CConfiguration configuration = new CConfiguration();
-        final AiModelDefinition model = new AiModelDefinition();
+        final ModelDefinition model = new ModelDefinition();
         model.setKey("remote");
         model.setBaseUrl("https://user:secret@example.org/v1");
         configuration.srcMorph.setAiDefinitions(List.of(model));

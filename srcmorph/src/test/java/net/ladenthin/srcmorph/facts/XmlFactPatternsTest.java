@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -31,11 +31,11 @@ public class XmlFactPatternsTest {
     /** Lines of the generated inputs of the run-time tests. */
     private static final int LONG_INPUT_LINES = 20_000;
 
-    private static final List<AiFactCounter> XML = ProfileFactPatterns.counters("xml-facts");
+    private static final List<FactCounter> XML = ProfileFactPatterns.counters("xml-facts");
 
-    private static final List<AiFactCounter> POM = ProfileFactPatterns.counters("pom-facts");
+    private static final List<FactCounter> POM = ProfileFactPatterns.counters("pom-facts");
 
-    private static int count(final List<AiFactCounter> counters, final String label, final String source) {
+    private static int count(final List<FactCounter> counters, final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
         final Integer count = counts.get(label);
         if (count == null) {
@@ -53,7 +53,7 @@ public class XmlFactPatternsTest {
         return source.toString();
     }
 
-    private static int countLong(final List<AiFactCounter> counters, final String label, final String source) {
+    private static int countLong(final List<FactCounter> counters, final String label, final String source) {
         return assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(counters, label, source));
     }
 

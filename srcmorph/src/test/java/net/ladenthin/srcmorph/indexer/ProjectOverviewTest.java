@@ -10,17 +10,17 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.MockGenerationProvider;
 import org.junit.jupiter.api.Test;
 
 public class ProjectOverviewTest {
 
-    private static AiFieldGenerationConfig rule() {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule rule() {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey("project-overview");
         rule.setAiDefinitionKey("default");
         return rule;
@@ -29,9 +29,9 @@ public class ProjectOverviewTest {
     @Test
     public void accessors_returnWhatTheOverviewWasBuiltWith() {
         // arrange
-        final AiGenerationProvider provider = new MockAiGenerationProvider();
-        final AiPromptSupport promptSupport = new AiPromptSupport(Collections.emptyList());
-        final AiModelDefinitionSupport modelSupport = CommonTestFixtures.createDefaultAiModelDefinitionSupport();
+        final GenerationProvider provider = new MockGenerationProvider();
+        final PromptCatalog promptSupport = new PromptCatalog(Collections.emptyList());
+        final ModelRegistry modelSupport = CommonTestFixtures.createDefaultAiModelDefinitionSupport();
 
         // act
         final ProjectOverview overview = new ProjectOverview(provider, rule(), promptSupport, modelSupport);
@@ -47,11 +47,11 @@ public class ProjectOverviewTest {
     @Test
     public void rule_isACopy_soNeitherTheCallerNorAReaderChangesIt() {
         // arrange
-        final AiFieldGenerationConfig given = rule();
+        final RoutingRule given = rule();
         final ProjectOverview overview = new ProjectOverview(
-                new MockAiGenerationProvider(),
+                new MockGenerationProvider(),
                 given,
-                new AiPromptSupport(Collections.emptyList()),
+                new PromptCatalog(Collections.emptyList()),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
 
         // act

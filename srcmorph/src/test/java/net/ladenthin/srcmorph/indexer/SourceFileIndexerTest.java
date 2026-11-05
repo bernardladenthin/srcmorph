@@ -19,22 +19,22 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiCondition;
-import net.ladenthin.srcmorph.config.AiConditionGroup;
-import net.ladenthin.srcmorph.config.AiFactCounter;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiRangeCondition;
-import net.ladenthin.srcmorph.config.AiRegenerateOn;
+import net.ladenthin.srcmorph.config.ConditionGroup;
+import net.ladenthin.srcmorph.config.FactCounter;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RangeCondition;
+import net.ladenthin.srcmorph.config.RegenerateOn;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.config.RuleCondition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.MockGenerationProvider;
 import org.junit.jupiter.api.Test;
 
 public class SourceFileIndexerTest {
@@ -47,7 +47,7 @@ public class SourceFileIndexerTest {
             final List<String> excludes,
             final long minSizeBytes,
             final long maxSizeBytes) {
-        return indexer(baseDirectory, outputRoot, excludes, minSizeBytes, maxSizeBytes, new AiRegenerateOn());
+        return indexer(baseDirectory, outputRoot, excludes, minSizeBytes, maxSizeBytes, new RegenerateOn());
     }
 
     private SourceFileIndexer indexer(
@@ -56,7 +56,7 @@ public class SourceFileIndexerTest {
             final List<String> excludes,
             final long minSizeBytes,
             final long maxSizeBytes,
-            final AiRegenerateOn regenerateOn) {
+            final RegenerateOn regenerateOn) {
         return new SourceFileIndexer(
                 baseDirectory,
                 outputRoot,
@@ -75,10 +75,10 @@ public class SourceFileIndexerTest {
     }
 
     private SummaryGenerator mockSupport() {
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         return new SummaryGenerator(
-                new MockAiGenerationProvider(),
-                new AiPromptPreparationSupport(promptSupport),
+                new MockGenerationProvider(),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
     }
 
@@ -99,16 +99,16 @@ public class SourceFileIndexerTest {
         Files.write(file, sb.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    private static AiFieldGenerationConfig rule(
+    private static RoutingRule rule(
             final String promptKey, final List<String> extensions, final boolean skip, final boolean fallback) {
-        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+        final RoutingRule config = new RoutingRule();
         config.setPromptKey(promptKey);
         config.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         config.setSkip(skip);
         config.setFallback(fallback);
         // fallback rules carry no condition; route/skip rules match by extension
         if (!fallback) {
-            final AiCondition condition = new AiCondition();
+            final RuleCondition condition = new RuleCondition();
             condition.setExtensions(extensions);
             config.setCondition(condition);
         }
@@ -173,10 +173,10 @@ public class SourceFileIndexerTest {
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "class Foo {}\n");
 
-        final List<AiFieldGenerationConfig> rules =
+        final List<RoutingRule> rules =
                 Arrays.asList(rule("java", Arrays.asList(".java"), false, false), rule("fallback", null, false, true));
 
-        final AiIndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+        final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(foo), rules);
 
         assertThat(plan.unmatched().isEmpty(), is(true));
@@ -196,11 +196,11 @@ public class SourceFileIndexerTest {
         final Path generated = temp.resolve("src/main/java/com/example/Generated.java");
         writeJava(generated, "class Generated {}\n");
 
-        final List<AiFieldGenerationConfig> rules = Arrays.asList(
+        final List<RoutingRule> rules = Arrays.asList(
                 rule(null, Arrays.asList(".java"), true, false), // skip all .java
                 rule("fallback", null, false, true));
 
-        final AiIndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+        final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(generated), rules);
 
         assertThat(plan.skipped(), hasItem(generated));
@@ -213,10 +213,9 @@ public class SourceFileIndexerTest {
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "class Foo {}\n");
 
-        final List<AiFieldGenerationConfig> rules =
-                Collections.singletonList(rule("sql", Arrays.asList(".sql"), false, false));
+        final List<RoutingRule> rules = Collections.singletonList(rule("sql", Arrays.asList(".sql"), false, false));
 
-        final AiIndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+        final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(foo), rules);
 
         assertThat(plan.unmatched(), hasItem(foo));
@@ -233,15 +232,14 @@ public class SourceFileIndexerTest {
         writeJava(foo, "package com.example;\nclass Foo {}\n");
 
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final AiFieldGenerationConfig rule =
-                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
         final SummaryGenerator support = mockSupport();
 
         // first write
-        final AiIndexOutcome wrote = indexer.indexFile(foo, rule, support, "", "", "");
+        final IndexOutcome wrote = indexer.indexFile(foo, rule, support, "", "", "");
         final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
 
-        assertThat(wrote, is(AiIndexOutcome.WRITTEN));
+        assertThat(wrote, is(IndexOutcome.WRITTEN));
         assertThat(Files.exists(aiFile), is(true));
         final AiMdDocument document = documentCodec.read(aiFile);
         assertThat(document, is(notNullValue()));
@@ -249,8 +247,8 @@ public class SourceFileIndexerTest {
         assertThat(document.body().trim().isEmpty(), is(false));
 
         // second write — unchanged source, so it is skipped
-        final AiIndexOutcome wroteAgain = indexer.indexFile(foo, rule, support, "", "", "");
-        assertThat(wroteAgain, is(AiIndexOutcome.UNCHANGED));
+        final IndexOutcome wroteAgain = indexer.indexFile(foo, rule, support, "", "", "");
+        assertThat(wroteAgain, is(IndexOutcome.UNCHANGED));
     }
 
     /**
@@ -266,18 +264,17 @@ public class SourceFileIndexerTest {
         Files.createDirectories(foo.getParent());
         Files.write(foo, new byte[] {'c', 'l', 'a', 's', 's', ' ', 'F', (byte) 0xE4, '{', '}', '\n'});
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final AiFieldGenerationConfig rule =
-                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
         final SummaryGenerator support = mockSupport();
-        assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(AiIndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(IndexOutcome.WRITTEN));
 
         // act: another byte that is no UTF-8 either
         Files.write(foo, new byte[] {'c', 'l', 'a', 's', 's', ' ', 'F', (byte) 0xF6, '{', '}', '\n'});
-        final AiIndexOutcome again = indexer.indexFile(foo, rule, support, "", "", "");
+        final IndexOutcome again = indexer.indexFile(foo, rule, support, "", "", "");
 
         // assert
-        assertThat(again, is(AiIndexOutcome.WRITTEN));
-        assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(AiIndexOutcome.UNCHANGED));
+        assertThat(again, is(IndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, rule, support, "", "", ""), is(IndexOutcome.UNCHANGED));
     }
 
     @Test
@@ -288,20 +285,19 @@ public class SourceFileIndexerTest {
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "package com.example;\nclass Foo {}\n");
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final AiFieldGenerationConfig rule =
-                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
         final SummaryGenerator support = mockSupport();
-        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(AiIndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(IndexOutcome.WRITTEN));
 
         // act
-        final AiIndexOutcome samePrompt = indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", "");
-        final AiIndexOutcome newPrompt = indexer.indexFile(foo, rule, support, "CCCC0003", "BBBB0002", "");
-        final AiIndexOutcome newFacts = indexer.indexFile(foo, rule, support, "CCCC0003", "DDDD0004", "");
+        final IndexOutcome samePrompt = indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", "");
+        final IndexOutcome newPrompt = indexer.indexFile(foo, rule, support, "CCCC0003", "BBBB0002", "");
+        final IndexOutcome newFacts = indexer.indexFile(foo, rule, support, "CCCC0003", "DDDD0004", "");
 
         // assert
-        assertThat(samePrompt, is(AiIndexOutcome.UNCHANGED));
-        assertThat(newPrompt, is(AiIndexOutcome.WRITTEN));
-        assertThat(newFacts, is(AiIndexOutcome.WRITTEN));
+        assertThat(samePrompt, is(IndexOutcome.UNCHANGED));
+        assertThat(newPrompt, is(IndexOutcome.WRITTEN));
+        assertThat(newFacts, is(IndexOutcome.WRITTEN));
         final AiMdHeader header = documentCodec
                 .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
                 .header();
@@ -317,18 +313,17 @@ public class SourceFileIndexerTest {
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "package com.example;\nclass Foo {}\n");
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
-        final AiFieldGenerationConfig rule =
-                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
         final SummaryGenerator support = mockSupport();
-        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "", "EEEE0005"), is(AiIndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "", "EEEE0005"), is(IndexOutcome.WRITTEN));
 
         // act
-        final AiIndexOutcome sameModel = indexer.indexFile(foo, rule, support, "AAAA0001", "", "EEEE0005");
-        final AiIndexOutcome otherModel = indexer.indexFile(foo, rule, support, "AAAA0001", "", "FFFF0006");
+        final IndexOutcome sameModel = indexer.indexFile(foo, rule, support, "AAAA0001", "", "EEEE0005");
+        final IndexOutcome otherModel = indexer.indexFile(foo, rule, support, "AAAA0001", "", "FFFF0006");
 
         // assert
-        assertThat(sameModel, is(AiIndexOutcome.UNCHANGED));
-        assertThat(otherModel, is(AiIndexOutcome.WRITTEN));
+        assertThat(sameModel, is(IndexOutcome.UNCHANGED));
+        assertThat(otherModel, is(IndexOutcome.WRITTEN));
         final AiMdHeader header = documentCodec
                 .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
                 .header();
@@ -343,20 +338,19 @@ public class SourceFileIndexerTest {
         final Path outputRoot = temp.resolve("src/site/ai");
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "package com.example;\nclass Foo {}\n");
-        final AiRegenerateOn neither = new AiRegenerateOn();
+        final RegenerateOn neither = new RegenerateOn();
         neither.setPrompt(false);
         neither.setFacts(false);
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L, neither);
-        final AiFieldGenerationConfig rule =
-                CommonTestFixtures.createFileFieldGenerations().get(0);
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
         final SummaryGenerator support = mockSupport();
-        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(AiIndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, rule, support, "AAAA0001", "BBBB0002", ""), is(IndexOutcome.WRITTEN));
 
         // act
-        final AiIndexOutcome outcome = indexer.indexFile(foo, rule, support, "CCCC0003", "DDDD0004", "");
+        final IndexOutcome outcome = indexer.indexFile(foo, rule, support, "CCCC0003", "DDDD0004", "");
 
         // assert
-        assertThat(outcome, is(AiIndexOutcome.UNCHANGED));
+        assertThat(outcome, is(IndexOutcome.UNCHANGED));
         final AiMdHeader header = documentCodec
                 .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
                 .header();
@@ -374,9 +368,8 @@ public class SourceFileIndexerTest {
      * @param maxLines  inclusive upper bound ({@code <= 0} disables it)
      * @return the rule
      */
-    private static AiFieldGenerationConfig lineRangeRule(
-            final String promptKey, final long minLines, final long maxLines) {
-        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+    private static RoutingRule lineRangeRule(final String promptKey, final long minLines, final long maxLines) {
+        final RoutingRule config = new RoutingRule();
         config.setPromptKey(promptKey);
         config.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         // A condition node evaluates exactly ONE leaf and returns on the first one present, with
@@ -384,18 +377,18 @@ public class SourceFileIndexerTest {
         // line range dead. Combining them requires an <and> group, which is also what validate()
         // enforces. Worth stating: the first version of this fixture set both on one node and every
         // file matched on extension alone.
-        final AiCondition extensionLeaf = new AiCondition();
+        final RuleCondition extensionLeaf = new RuleCondition();
         extensionLeaf.setExtensions(Arrays.asList(".java"));
 
-        final AiRangeCondition lines = new AiRangeCondition();
+        final RangeCondition lines = new RangeCondition();
         lines.setMin(minLines);
         lines.setMax(maxLines);
-        final AiCondition lineLeaf = new AiCondition();
+        final RuleCondition lineLeaf = new RuleCondition();
         lineLeaf.setLines(lines);
 
-        final AiConditionGroup both = new AiConditionGroup();
+        final ConditionGroup both = new ConditionGroup();
         both.setConditions(Arrays.asList(extensionLeaf, lineLeaf));
-        final AiCondition condition = new AiCondition();
+        final RuleCondition condition = new RuleCondition();
         condition.setAnd(both);
         config.setCondition(condition);
         return config;
@@ -426,13 +419,13 @@ public class SourceFileIndexerTest {
         manyLines.append("}\n");
         writeJava(large, manyLines.toString());
 
-        final List<AiFieldGenerationConfig> rules = Arrays.asList(
+        final List<RoutingRule> rules = Arrays.asList(
                 lineRangeRule("java-small", 0L, 5L),
                 lineRangeRule("java-large", 5L, 1000L),
                 rule("fallback", null, false, true));
 
         // act
-        final AiIndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+        final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(small, large), rules);
 
         // assert -- both routed, and to the rule matching their own size
@@ -454,11 +447,11 @@ public class SourceFileIndexerTest {
         final Path small = temp.resolve("src/main/java/com/example/Small.java");
         writeJava(small, "class Small {}\n");
 
-        final List<AiFieldGenerationConfig> rules =
+        final List<RoutingRule> rules =
                 Arrays.asList(lineRangeRule("java-huge", 500L, 1000L), rule("fallback", null, false, true));
 
         // act
-        final AiIndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+        final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .classify(Arrays.asList(small), rules);
 
         // assert
@@ -473,9 +466,9 @@ public class SourceFileIndexerTest {
      * @param file the routed file
      * @return the matched rule's prompt key
      */
-    private static String promptKeyOf(final AiIndexPlan plan, final Path file) {
-        for (final List<AiIndexPlan.Route> entries : plan.routesByModel().values()) {
-            for (final AiIndexPlan.Route entry : entries) {
+    private static String promptKeyOf(final IndexPlan plan, final Path file) {
+        for (final List<IndexPlan.Route> entries : plan.routesByModel().values()) {
+            for (final IndexPlan.Route entry : entries) {
                 if (entry.file().equals(file)) {
                     return entry.rule().getPromptKey();
                 }
@@ -515,15 +508,15 @@ public class SourceFileIndexerTest {
                 0L,
                 maxSizeBytes,
                 false,
-                new AiRegenerateOn(),
+                new RegenerateOn(),
                 contentHeadChars);
     }
 
-    private static AiFieldGenerationConfig contentRule(final String promptKey, final String regex) {
-        final AiFieldGenerationConfig config = new AiFieldGenerationConfig();
+    private static RoutingRule contentRule(final String promptKey, final String regex) {
+        final RoutingRule config = new RoutingRule();
         config.setPromptKey(promptKey);
         config.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        final AiCondition condition = new AiCondition();
+        final RuleCondition condition = new RuleCondition();
         condition.setContentMatches(regex);
         config.setCondition(condition);
         return config;
@@ -591,7 +584,7 @@ public class SourceFileIndexerTest {
                 0L,
                 0L,
                 false,
-                new AiRegenerateOn(),
+                new RegenerateOn(),
                 SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
 
         assertThat(withNull.collectCandidates(temp).size(), is(1));
@@ -643,14 +636,14 @@ public class SourceFileIndexerTest {
         final Path other = temp.resolve("bin/report");
         writeJava(script, "#!/bin/ksh\nprint ok\n");
         writeJava(other, "#!/usr/bin/env perl\n");
-        final AiFieldGenerationConfig shell = rule("shell", null, false, false);
-        final AiCondition condition = new AiCondition();
+        final RoutingRule shell = rule("shell", null, false, false);
+        final RuleCondition condition = new RuleCondition();
         condition.setInterpreters(Arrays.asList("bash", "ksh"));
         shell.setCondition(condition);
-        final List<AiFieldGenerationConfig> rules = Arrays.asList(shell, rule("fallback", null, false, true));
+        final List<RoutingRule> rules = Arrays.asList(shell, rule("fallback", null, false, true));
 
         // act
-        final AiIndexPlan plan = indexer(temp, Collections.<String>emptyList(), Arrays.asList("ksh", "perl"), 256, 0L)
+        final IndexPlan plan = indexer(temp, Collections.<String>emptyList(), Arrays.asList("ksh", "perl"), 256, 0L)
                 .classify(Arrays.asList(script, other), rules);
 
         // assert
@@ -664,9 +657,9 @@ public class SourceFileIndexerTest {
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path file = temp.resolve("src/Late.java");
         writeJava(file, "x".repeat(296) + "MARK" + "y".repeat(100));
-        final List<AiFieldGenerationConfig> contentOnly =
+        final List<RoutingRule> contentOnly =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
-        final List<AiFieldGenerationConfig> withLines = Arrays.asList(
+        final List<RoutingRule> withLines = Arrays.asList(
                 contentRule("marked", "MARK"),
                 lineRangeRule("never", 900L, 1000L),
                 rule("fallback", null, false, true));
@@ -702,10 +695,10 @@ public class SourceFileIndexerTest {
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path file = temp.resolve("src/Small.java");
         writeJava(file, "class Small {} // MARK");
-        final List<AiFieldGenerationConfig> rules =
+        final List<RoutingRule> rules =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
 
-        final AiIndexPlan plan = indexer(
+        final IndexPlan plan = indexer(
                         temp, Collections.<String>emptyList(), Collections.<String>emptyList(), Integer.MAX_VALUE, 0L)
                 .classify(Arrays.asList(file), rules);
 
@@ -773,11 +766,11 @@ public class SourceFileIndexerTest {
         final Path plain = temp.resolve("src/Order.java");
         writeJava(bean, "import jakarta.ejb.Stateless;\n@Stateless\npublic class OrderBean {}\n");
         writeJava(plain, "public class Order {}\n");
-        final List<AiFieldGenerationConfig> rules =
+        final List<RoutingRule> rules =
                 Arrays.asList(contentRule("ejb", "(?m)^@Stateless\\b"), rule("fallback", null, false, true));
 
         // act
-        final AiIndexPlan plan =
+        final IndexPlan plan =
                 indexerWithNames(temp, Collections.<String>emptyList()).classify(Arrays.asList(bean, plain), rules);
 
         // assert
@@ -794,17 +787,17 @@ public class SourceFileIndexerTest {
         final int head = SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS;
         writeJava(inside, "x".repeat(head - 4) + "MARK" + "y".repeat(100));
         writeJava(outside, "x".repeat(head - 3) + "MARK" + "y".repeat(100));
-        final List<AiFieldGenerationConfig> contentOnly =
+        final List<RoutingRule> contentOnly =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
-        final List<AiFieldGenerationConfig> withLines = Arrays.asList(
+        final List<RoutingRule> withLines = Arrays.asList(
                 contentRule("marked", "MARK"),
                 lineRangeRule("never", 900L, 1000L),
                 rule("fallback", null, false, true));
         final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
 
         // act: the start alone, and the whole source a lines rule reads
-        final AiIndexPlan headOnly = indexer.classify(Arrays.asList(inside, outside), contentOnly);
-        final AiIndexPlan wholeSource = indexer.classify(Arrays.asList(inside, outside), withLines);
+        final IndexPlan headOnly = indexer.classify(Arrays.asList(inside, outside), contentOnly);
+        final IndexPlan wholeSource = indexer.classify(Arrays.asList(inside, outside), withLines);
 
         // assert
         assertThat(promptKeyOf(headOnly, inside), is(equalTo("marked")));
@@ -820,10 +813,10 @@ public class SourceFileIndexerTest {
         final Path wide = temp.resolve("src/Wide.java");
         final int head = SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS;
         writeJava(wide, "€".repeat(head - 4) + "MARK" + "€".repeat(head));
-        final List<AiFieldGenerationConfig> rules =
+        final List<RoutingRule> rules =
                 Arrays.asList(contentRule("marked", "MARK"), rule("fallback", null, false, true));
 
-        final AiIndexPlan plan =
+        final IndexPlan plan =
                 indexerWithNames(temp, Collections.<String>emptyList()).classify(Arrays.asList(wide), rules);
 
         assertThat(promptKeyOf(plan, wide), is(equalTo("marked")));
@@ -841,17 +834,17 @@ public class SourceFileIndexerTest {
         withMark[2] = (byte) 0xBF;
         System.arraycopy(text, 0, withMark, 3, text.length);
         writeBytes(bom, withMark);
-        final List<AiFieldGenerationConfig> rules =
+        final List<RoutingRule> rules =
                 Arrays.asList(contentRule("first", "\\Apackage a;\\nclass"), rule("fallback", null, false, true));
-        final List<AiFieldGenerationConfig> withLines = Arrays.asList(
+        final List<RoutingRule> withLines = Arrays.asList(
                 contentRule("first", "\\Apackage a;\\nclass"),
                 lineRangeRule("never", 900L, 1000L),
                 rule("fallback", null, false, true));
         final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
 
         // act
-        final AiIndexPlan headOnly = indexer.classify(Arrays.asList(bom), rules);
-        final AiIndexPlan wholeSource = indexer.classify(Arrays.asList(bom), withLines);
+        final IndexPlan headOnly = indexer.classify(Arrays.asList(bom), rules);
+        final IndexPlan wholeSource = indexer.classify(Arrays.asList(bom), withLines);
 
         // assert
         assertThat(promptKeyOf(headOnly, bom), is(equalTo("first")));
@@ -871,19 +864,18 @@ public class SourceFileIndexerTest {
         withMark[2] = (byte) 0xBF;
         System.arraycopy(text, 0, withMark, 3, text.length);
         writeBytes(foo, withMark);
-        final AiFieldGenerationConfig rule =
-                CommonTestFixtures.createFileFieldGenerations().get(0);
-        final AiFactCounter counter = new AiFactCounter();
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final FactCounter counter = new FactCounter();
         counter.setLabel("starts with package");
         counter.setPattern("\\Apackage\\b");
         rule.setFacts(Collections.singletonList(counter));
 
         // act
-        final AiIndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
+        final IndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
                 .indexFile(foo, rule, mockSupport(), "", "", "");
 
         // assert
-        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        assertThat(outcome, is(IndexOutcome.WRITTEN));
         final String body = documentCodec
                 .read(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))
                 .body();
@@ -893,17 +885,16 @@ public class SourceFileIndexerTest {
 
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">
     private SummaryGenerator emptyAnswerSupport() {
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         return new SummaryGenerator(
                 request -> "",
-                new AiPromptPreparationSupport(promptSupport),
+                new PromptPreparer(promptSupport),
                 CommonTestFixtures.createDefaultAiModelDefinitionSupport());
     }
 
-    private static AiFieldGenerationConfig ruleWithFacts() {
-        final AiFieldGenerationConfig rule =
-                CommonTestFixtures.createFileFieldGenerations().get(0);
-        final AiFactCounter counter = new AiFactCounter();
+    private static RoutingRule ruleWithFacts() {
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGenerations().get(0);
+        final FactCounter counter = new FactCounter();
         counter.setLabel("classes");
         counter.setPattern("\\bclass\\b");
         rule.setFacts(Collections.singletonList(counter));
@@ -917,11 +908,11 @@ public class SourceFileIndexerTest {
         final Path foo = temp.resolve("src/main/java/com/example/Foo.java");
         writeJava(foo, "package com.example;\nclass Foo {}\n");
 
-        final AiIndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
+        final IndexOutcome outcome = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L)
                 .indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "", "");
 
         // the facts line alone is no summary: nothing is written, so the next run tries again
-        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(outcome, is(IndexOutcome.FAILED));
         assertThat(Files.exists(outputRoot.resolve("main/java/com/example/Foo.java.ai.md")), is(false));
     }
 
@@ -933,13 +924,13 @@ public class SourceFileIndexerTest {
         writeJava(foo, "package com.example;\nclass Foo {}\n");
         final SourceFileIndexer indexer = indexer(temp, outputRoot, Collections.<String>emptyList(), 0L, 0L);
         final Path aiFile = outputRoot.resolve("main/java/com/example/Foo.java.ai.md");
-        assertThat(indexer.indexFile(foo, ruleWithFacts(), mockSupport(), "", "", ""), is(AiIndexOutcome.WRITTEN));
+        assertThat(indexer.indexFile(foo, ruleWithFacts(), mockSupport(), "", "", ""), is(IndexOutcome.WRITTEN));
         final byte[] older = Files.readAllBytes(aiFile);
 
         writeJava(foo, "package com.example;\nclass Foo { int x; }\n");
-        final AiIndexOutcome outcome = indexer.indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "", "");
+        final IndexOutcome outcome = indexer.indexFile(foo, ruleWithFacts(), emptyAnswerSupport(), "", "", "");
 
-        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        assertThat(outcome, is(IndexOutcome.FAILED));
         assertThat(Arrays.equals(Files.readAllBytes(aiFile), older), is(true));
     }
     // </editor-fold>
@@ -964,7 +955,7 @@ public class SourceFileIndexerTest {
             source.append("int field").append(i).append(" = ").append(i).append(";\r\n");
         }
         writeJava(big, source.toString());
-        final AiModelDefinition small = new AiModelDefinition();
+        final ModelDefinition small = new ModelDefinition();
         small.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         small.setModelPath("mock.gguf");
         small.setCharsPerToken(1);
@@ -975,17 +966,16 @@ public class SourceFileIndexerTest {
                     sent.add(request.sourceText());
                     return "summary";
                 },
-                new AiPromptPreparationSupport(new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions())),
-                new AiModelDefinitionSupport(Collections.singletonList(small)));
-        final AiFieldGenerationConfig rule = CommonTestFixtures.createFileFieldGeneration();
+                new PromptPreparer(new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions())),
+                new ModelRegistry(Collections.singletonList(small)));
+        final RoutingRule rule = CommonTestFixtures.createFileFieldGeneration();
         rule.setOnOversize("sampleChunks");
         rule.setMaxChunks(3);
 
-        final AiIndexOutcome outcome = indexer(
-                        temp, temp.resolve("src/site/ai"), Collections.<String>emptyList(), 0L, 0L)
+        final IndexOutcome outcome = indexer(temp, temp.resolve("src/site/ai"), Collections.<String>emptyList(), 0L, 0L)
                 .indexFile(big, rule, recording, "", "", "");
 
-        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        assertThat(outcome, is(IndexOutcome.WRITTEN));
         // three chunks and one reduce
         assertThat(sent.size(), is(4));
         for (final String text : sent) {
@@ -998,10 +988,10 @@ public class SourceFileIndexerTest {
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path web = temp.resolve("billing/src/main/webapp/WEB-INF/web.xml");
         writeJava(web, "<web-app/>");
-        final AiModelDefinition model = new AiModelDefinition();
+        final ModelDefinition model = new ModelDefinition();
         model.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         model.setModelPath("mock.gguf");
-        final AiPromptSupport prompts = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final PromptCatalog prompts = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         final List<String> heads = new ArrayList<>();
         final SummaryGenerator recording = new SummaryGenerator(
                 request -> {
@@ -1009,13 +999,13 @@ public class SourceFileIndexerTest {
                     heads.add(message.substring(0, message.indexOf('\n')));
                     return "summary";
                 },
-                new AiPromptPreparationSupport(prompts),
-                new AiModelDefinitionSupport(Collections.singletonList(model)));
+                new PromptPreparer(prompts),
+                new ModelRegistry(Collections.singletonList(model)));
 
-        final AiIndexOutcome outcome = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+        final IndexOutcome outcome = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
                 .indexFile(web, CommonTestFixtures.createFileFieldGeneration(), recording, "", "", "");
 
-        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        assertThat(outcome, is(IndexOutcome.WRITTEN));
         assertThat(heads, is(equalTo(Arrays.asList("billing/src/main/webapp/WEB-INF/web.xml"))));
     }
 }

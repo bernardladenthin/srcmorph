@@ -27,8 +27,8 @@ import net.ladenthin.llama.value.Usage;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -36,8 +36,8 @@ public class OpenAiCompatibleProviderSupportTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final AiPromptSupport PROMPT_SUPPORT =
-            new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+    private static final PromptCatalog PROMPT_SUPPORT =
+            new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
 
     private static final Function<String, @Nullable String> NO_ENVIRONMENT = name -> null;
 
@@ -51,8 +51,8 @@ public class OpenAiCompatibleProviderSupportTest {
             "0.0.0",
             AiMdHeaderCodec.NODE_TYPE_FILE);
 
-    private static final AiGenerationRequest REQUEST =
-            new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), "class Test {}");
+    private static final GenerationRequest REQUEST =
+            new GenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), "class Test {}");
 
     private static OpenAiCompatibleProviderSupport support(final ProviderConfig config) {
         return new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, NO_ENVIRONMENT);

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.indexer.generation;
 
-import net.ladenthin.srcmorph.config.AiIncompleteStrategy;
-import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
+import net.ladenthin.srcmorph.config.IncompleteStrategy;
+import net.ladenthin.srcmorph.provider.IncompleteAnswerException;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 
 /** What a call does with an incomplete answer (empty, cut off, aborted or missing). */
@@ -38,16 +38,16 @@ enum IncompleteAnswerAction {
      * @return the action
      */
     static IncompleteAnswerAction of(
-            final AiIncompleteAnswerException answer,
+            final IncompleteAnswerException answer,
             final boolean part,
-            final AiIncompleteStrategy strategy,
+            final IncompleteStrategy strategy,
             final int attempt) {
-        final boolean cutWithText = answer.reason() == AiIncompleteAnswerException.Reason.TRUNCATED
+        final boolean cutWithText = answer.reason() == IncompleteAnswerException.Reason.TRUNCATED
                 && !COMPATIBILITY.isBlank(answer.partialText());
         if (cutWithText && part) {
             return KEEP_PART;
         }
-        if (cutWithText && strategy == AiIncompleteStrategy.KEEP) {
+        if (cutWithText && strategy == IncompleteStrategy.KEEP) {
             return KEEP;
         }
         return attempt >= strategy.attempts() ? FAIL : ASK_AGAIN;

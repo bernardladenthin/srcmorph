@@ -9,7 +9,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -22,21 +22,21 @@ import org.junit.jupiter.api.Test;
  */
 public class EnterpriseXmlFactPatternsTest {
 
-    private static final List<AiFactCounter> XML = ProfileFactPatterns.counters("xml-facts");
+    private static final List<FactCounter> XML = ProfileFactPatterns.counters("xml-facts");
 
-    private static final List<AiFactCounter> JEE = ProfileFactPatterns.counters("jee-facts");
+    private static final List<FactCounter> JEE = ProfileFactPatterns.counters("jee-facts");
 
-    private static final List<AiFactCounter> PERSISTENCE = ProfileFactPatterns.counters("persistence-facts");
+    private static final List<FactCounter> PERSISTENCE = ProfileFactPatterns.counters("persistence-facts");
 
-    private static final List<AiFactCounter> MYBATIS = ProfileFactPatterns.counters("mybatis-facts");
+    private static final List<FactCounter> MYBATIS = ProfileFactPatterns.counters("mybatis-facts");
 
-    private static final List<AiFactCounter> INTEGRATION = ProfileFactPatterns.counters("integration-facts");
+    private static final List<FactCounter> INTEGRATION = ProfileFactPatterns.counters("integration-facts");
 
-    private static final List<AiFactCounter> BPMN = ProfileFactPatterns.counters("bpmn-facts");
+    private static final List<FactCounter> BPMN = ProfileFactPatterns.counters("bpmn-facts");
 
-    private static final List<AiFactCounter> WSDL = ProfileFactPatterns.counters("wsdl-facts");
+    private static final List<FactCounter> WSDL = ProfileFactPatterns.counters("wsdl-facts");
 
-    private static int count(final List<AiFactCounter> counters, final String label, final String source) {
+    private static int count(final List<FactCounter> counters, final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
         final Integer count = counts.get(label);
         if (count == null) {
@@ -45,14 +45,14 @@ public class EnterpriseXmlFactPatternsTest {
         return count;
     }
 
-    private static List<String> labels(final List<AiFactCounter> counters) {
+    private static List<String> labels(final List<FactCounter> counters) {
         return new ArrayList<>(ProfileFactPatterns.counts(counters, "").keySet());
     }
 
     @Test
     public void everyFileButMyBatis_startsWithTheXmlCounters() {
         final List<String> xml = labels(XML);
-        for (final List<AiFactCounter> counters : List.of(JEE, PERSISTENCE, INTEGRATION, BPMN, WSDL)) {
+        for (final List<FactCounter> counters : List.of(JEE, PERSISTENCE, INTEGRATION, BPMN, WSDL)) {
             assertThat(labels(counters).subList(0, xml.size()), is(xml));
         }
         assertThat(labels(MYBATIS).contains("elements"), is(false));
@@ -312,7 +312,7 @@ public class EnterpriseXmlFactPatternsTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="dmn-facts">
-    private static final List<AiFactCounter> DMN = ProfileFactPatterns.counters("dmn-facts");
+    private static final List<FactCounter> DMN = ProfileFactPatterns.counters("dmn-facts");
 
     /** The diagram interchange of {@link #DECISIONS}: shapes and edges, which must not count. */
     private static final String DMN_DIAGRAM = "<dmndi:DMNDI><dmndi:DMNDiagram>\n"

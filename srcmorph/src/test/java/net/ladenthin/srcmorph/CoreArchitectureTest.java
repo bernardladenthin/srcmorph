@@ -213,10 +213,10 @@ public class CoreArchitectureTest {
 
     /**
      * The llama.cpp JNI binding ({@code net.ladenthin.llama..}) may only be referenced from the
-     * {@code provider} package, where {@code LlamaCppJniAiGenerationProvider} wraps it. Every
-     * other layer talks to the model exclusively through the {@code AiGenerationProvider}
+     * {@code provider} package, where {@code LlamaCppJniGenerationProvider} wraps it. Every
+     * other layer talks to the model exclusively through the {@code GenerationProvider}
      * interface, so the indexers and document/prompt/config code carry no JNI dependency and
-     * stay testable with {@code MockAiGenerationProvider}.
+     * stay testable with {@code MockGenerationProvider}.
      */
     @ArchTest
     static final ArchRule jniConfinedToProvider = noClasses()

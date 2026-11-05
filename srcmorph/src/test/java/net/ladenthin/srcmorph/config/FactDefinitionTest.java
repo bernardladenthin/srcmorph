@@ -1,0 +1,49 @@
+// SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+//
+// SPDX-License-Identifier: Apache-2.0
+package net.ladenthin.srcmorph.config;
+
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.util.Collections;
+import org.junit.jupiter.api.Test;
+
+public class FactDefinitionTest {
+
+    @Test
+    public void key_defaultsNullAndRoundTrips() {
+        final FactDefinition d = new FactDefinition();
+        assertThat(d.getKey(), is(nullValue()));
+        d.setKey("java-facts");
+        assertThat(d.getKey(), is(equalTo("java-facts")));
+    }
+
+    @Test
+    public void facts_defaultsNullAndRoundTrips() {
+        final FactDefinition d = new FactDefinition();
+        assertThat(d.getFacts(), is(nullValue()));
+        d.setFacts(Collections.singletonList(new FactCounter()));
+        assertThat(d.getFacts(), is(notNullValue()));
+        assertThat(d.getFacts().size(), is(equalTo(1)));
+    }
+
+    @Test
+    public void factsFile_defaultsNullAndRoundTrips() {
+        final FactDefinition d = new FactDefinition();
+        assertThat(d.getFactsFile(), is(nullValue()));
+        d.setFactsFile("v2/sql-facts.tsv");
+        assertThat(d.getFactsFile(), is(equalTo("v2/sql-facts.tsv")));
+    }
+
+    @Test
+    public void toString_includesKey() {
+        final FactDefinition d = new FactDefinition();
+        d.setKey("sql-facts");
+        assertThat(d.toString(), containsString("sql-facts"));
+    }
+}

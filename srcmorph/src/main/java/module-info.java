@@ -68,7 +68,7 @@ module net.ladenthin.srcmorph {
     // not `requires static`. Not transitive -- see the class javadoc above for why.
     requires net.ladenthin.llama;
 
-    // OpenAiCompatibleAiGenerationProvider writes its request body with Jackson (the version the
+    // OpenAiCompatibleGenerationProvider writes its request body with Jackson (the version the
     // parent pins; net.ladenthin:llama depends on it too, so nothing new reaches a consumer).
     requires com.fasterxml.jackson.databind;
     // SrcMorphConfigurationFileLoader reads the YAML configuration file of the CLI and the plugin.

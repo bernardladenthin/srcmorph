@@ -22,8 +22,8 @@ public class SummaryPartsTest {
         final SummaryParts parts = new SummaryParts();
 
         // act
-        parts.map(AiMapReduceSupport.chunkLabel(1, 2, 2), "first");
-        parts.map(AiMapReduceSupport.halfLabel(AiMapReduceSupport.chunkLabel(2, 2, 2), 1), "second");
+        parts.map(MapReduceMath.chunkLabel(1, 2, 2), "first");
+        parts.map(MapReduceMath.halfLabel(MapReduceMath.chunkLabel(2, 2, 2), 1), "second");
         parts.reduce(1, 1, 1, 2, "merged");
 
         // assert

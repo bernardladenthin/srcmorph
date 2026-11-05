@@ -10,7 +10,7 @@
 > Derived from a full pass over `src/test/java/net/ladenthin/maven/llamacpp/aiindex/`.
 > This file contains only **plugin-specific applications**: Maven `Log`
 > mocking (`org.apache.maven.plugin.logging.Log` via Mockito),
-> `MockAiGenerationProvider` patterns, the bundled
+> `MockGenerationProvider` patterns, the bundled
 > `SmolLM2-135M-Instruct-Q3_K_M.gguf` model used by real-JNI integration
 > tests, and the `LlamaCppJniAvailability.isAvailable()` guard.
 
@@ -166,7 +166,7 @@ public void indexSourceRoot_emptyDirectory_returnsZero() throws Exception {
     final SourceFileIndexer indexer = new SourceFileIndexer(
             new SystemStreamLog(), temp, temp, List.of(".java"),
             "0.1.0", "0.0.0", List.of(), false,
-            new MockAiGenerationProvider(), List.of(), new AiPromptSupport(List.of())
+            new MockGenerationProvider(), List.of(), new PromptCatalog(List.of())
     );
 
     // act
@@ -282,7 +282,7 @@ Use `assertThrows` and inspect the returned exception when the message must be a
 @Test
 public void create_unknownProvider_throwsWithMessage() {
     // arrange
-    final AiGenerationProviderFactory factory = new AiGenerationProviderFactory();
+    final GenerationProviderFactory factory = new GenerationProviderFactory();
 
     // act
     final IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
@@ -376,7 +376,7 @@ assertThat(captor.getValue(), containsString("expected fragment"));
 
 ## 11. LLM Integration Tests (JNI Provider)
 
-Tests that exercise the real `LlamaCppJniAiGenerationProvider` must:
+Tests that exercise the real `LlamaCppJniGenerationProvider` must:
 
 1. Be annotated with a marker (e.g., `@LlamaJniTest` if introduced) or clearly named with `_realProvider_` in the method name.
 2. Guard with an availability check as the first statement, so they skip gracefully when the native library is absent.
@@ -400,7 +400,7 @@ public void generate_realProvider_returnsNonEmptyResponse() {
 }
 ```
 
-All tests that do **not** need real inference must use `MockAiGenerationProvider`.
+All tests that do **not** need real inference must use `MockGenerationProvider`.
 
 ---
 
@@ -534,7 +534,7 @@ public class SourceFileIndexerTest {
         final SourceFileIndexer indexer = new SourceFileIndexer(
                 new SystemStreamLog(), temp, temp, List.of(".java"),
                 GENERATOR_VERSION, AI_VERSION, List.of(), false,
-                new MockAiGenerationProvider(), List.of(), new AiPromptSupport(List.of())
+                new MockGenerationProvider(), List.of(), new PromptCatalog(List.of())
         );
 
         // act

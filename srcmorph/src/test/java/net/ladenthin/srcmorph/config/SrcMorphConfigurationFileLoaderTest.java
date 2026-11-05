@@ -205,7 +205,7 @@ public class SrcMorphConfigurationFileLoaderTest {
                 .getSrcMorph();
 
         assertThat(srcMorph.getFileNames(), is(Arrays.asList("Dockerfile", "Jenkinsfile")));
-        final List<AiCondition> leaves =
+        final List<RuleCondition> leaves =
                 srcMorph.getFieldGenerations().get(0).getCondition().getOr().getConditions();
         assertThat(leaves.get(0).getFileNames(), is(Arrays.asList("Dockerfile.*")));
         assertThat(leaves.get(1).getContentMatches(), is("(?m)^apiVersion:"));
@@ -230,13 +230,13 @@ public class SrcMorphConfigurationFileLoaderTest {
         final Path empty = write("empty.yaml", "srcMorph:\n  regenerateOn:\n");
         final Path off = write("off.yaml", "srcMorph:\n  regenerateOn:\n    prompt: false\n    children: false\n");
 
-        final AiRegenerateOn unsetOn = SrcMorphConfigurationFileLoader.load(unset, defaultBase(), NO_PROPERTIES)
+        final RegenerateOn unsetOn = SrcMorphConfigurationFileLoader.load(unset, defaultBase(), NO_PROPERTIES)
                 .getSrcMorph()
                 .getRegenerateOn();
-        final AiRegenerateOn emptyOn = SrcMorphConfigurationFileLoader.load(empty, defaultBase(), NO_PROPERTIES)
+        final RegenerateOn emptyOn = SrcMorphConfigurationFileLoader.load(empty, defaultBase(), NO_PROPERTIES)
                 .getSrcMorph()
                 .getRegenerateOn();
-        final AiRegenerateOn offOn = SrcMorphConfigurationFileLoader.load(off, defaultBase(), NO_PROPERTIES)
+        final RegenerateOn offOn = SrcMorphConfigurationFileLoader.load(off, defaultBase(), NO_PROPERTIES)
                 .getSrcMorph()
                 .getRegenerateOn();
 
@@ -368,7 +368,7 @@ public class SrcMorphConfigurationFileLoaderTest {
     @Test
     public void echo_carriesTheStrategyTokensOnly_soItReadsBack() throws IOException {
         // arrange
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey("p");
         rule.setOnOversize("mapReduce");
         final SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
@@ -393,12 +393,11 @@ public class SrcMorphConfigurationFileLoaderTest {
         // act
         final SrcMorphConfiguration srcMorph = SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES)
                 .getSrcMorph();
-        final AiModelDefinitionSupport models =
-                new AiModelDefinitionSupport(srcMorph.getAiDefinitions(), srcMorph.getModelDirectory());
+        final ModelRegistry models = new ModelRegistry(srcMorph.getAiDefinitions(), srcMorph.getModelDirectory());
 
         // assert
         assertThat(
-                models.getConfig("m").getModelPath(),
+                models.definition("m").getModelPath(),
                 is(equalTo(file.getParent()
                         .toAbsolutePath()
                         .resolve("models/m.gguf")

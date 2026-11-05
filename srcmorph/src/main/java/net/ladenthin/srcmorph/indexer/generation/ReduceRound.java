@@ -12,8 +12,8 @@ import lombok.ToString;
 
 /**
  * One round of the hierarchical reduce: the partial summaries packed into batches that fit a batch budget
- * (at most {@link AiMapReduceSupport#MAX_REDUCE_FANIN} each). When no two partials fit one batch, each is
- * {@link AiMapReduceSupport#shortened shortened} so two do, and the round counts them: no partial is
+ * (at most {@link MapReduceMath#MAX_REDUCE_FANIN} each). When no two partials fit one batch, each is
+ * {@link MapReduceMath#shortened shortened} so two do, and the round counts them: no partial is
  * dropped. A round with one batch writes the final answer; in the others a batch of a single partial
  * passes it on as it is, since a summary of one summary only loses detail.
  */
@@ -38,22 +38,22 @@ final class ReduceRound {
      * @return the round
      */
     static ReduceRound of(final List<String> partials, final int batchBudget) {
-        final List<List<String>> batches = AiMapReduceSupport.reduceGroups(partials, batchBudget);
+        final List<List<String>> batches = MapReduceMath.reduceGroups(partials, batchBudget);
         if (batches.size() < partials.size()) {
             return new ReduceRound(batches, 0);
         }
         // no two partials fit one batch: shorten each so two do
-        final int maxChars = AiMapReduceSupport.pairablePartChars(batchBudget);
+        final int maxChars = MapReduceMath.pairablePartChars(batchBudget);
         final List<String> shortened = new ArrayList<>(partials.size());
         int count = 0;
         for (final String partial : partials) {
-            final String head = AiMapReduceSupport.shortened(partial, maxChars);
+            final String head = MapReduceMath.shortened(partial, maxChars);
             if (head.length() < partial.length()) {
                 count++;
             }
             shortened.add(head);
         }
-        return new ReduceRound(AiMapReduceSupport.reduceGroups(shortened, batchBudget), count);
+        return new ReduceRound(MapReduceMath.reduceGroups(shortened, batchBudget), count);
     }
 
     /**

@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
  */
 public class ShellFactPatternsTest {
 
-    private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("shell-facts");
+    private static final List<FactCounter> COUNTERS = ProfileFactPatterns.counters("shell-facts");
 
     /** Copies of the deploy script in the run-time test, about 1.5 MB. */
     private static final int LONG_INPUT_COPIES = 300;

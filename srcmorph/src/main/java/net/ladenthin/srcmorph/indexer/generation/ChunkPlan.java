@@ -8,13 +8,13 @@ import java.util.Collections;
 import java.util.List;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiOversizeStrategy;
+import net.ladenthin.srcmorph.config.OversizeStrategy;
 
 /**
  * The chunks a {@code mapReduce} or {@code sampleChunks} rule reads of a source that does not fit its
  * window, and the budgets its map and reduce calls share: one budget sizes the chunks and the reduce
  * batches, against the longer of the two prompts and a chunk's label, in a window shrunk by
- * {@link AiMapReduceSupport#TOKEN_HEADROOM_PERCENT} so a token-dense chunk cannot overflow the model's
+ * {@link MapReduceMath#TOKEN_HEADROOM_PERCENT} so a token-dense chunk cannot overflow the model's
  * context. {@code mapReduce} reads every chunk, {@code sampleChunks} the rule's {@code maxChunks}
  * representative ones.
  */
@@ -50,9 +50,9 @@ final class ChunkPlan {
      * @return the characters, negative when the prompts alone exceed the window
      */
     static int room(final int window, final int mapPromptLength, final int reducePromptLength) {
-        return AiMapReduceSupport.safeWindow(window)
+        return MapReduceMath.safeWindow(window)
                 - Math.max(mapPromptLength, reducePromptLength)
-                - AiMapReduceSupport.CHUNK_LABEL_RESERVE;
+                - MapReduceMath.CHUNK_LABEL_RESERVE;
     }
 
     /**
@@ -67,7 +67,7 @@ final class ChunkPlan {
      * @param maxChunks          the chunks {@code sampleChunks} reads
      * @return the plan
      * @throws IllegalArgumentException if the {@link #room room} for a chunk is below
-     *                                  {@link AiMapReduceSupport#MIN_CHUNK_CHARS}: a chunk of the minimum
+     *                                  {@link MapReduceMath#MIN_CHUNK_CHARS}: a chunk of the minimum
      *                                  would be cut in every call, and most of the source never read
      */
     static ChunkPlan of(
@@ -75,19 +75,19 @@ final class ChunkPlan {
             final int window,
             final int mapPromptLength,
             final int reducePromptLength,
-            final AiOversizeStrategy strategy,
+            final OversizeStrategy strategy,
             final int maxChunks) {
         final int room = room(window, mapPromptLength, reducePromptLength);
-        if (room < AiMapReduceSupport.MIN_CHUNK_CHARS) {
+        if (room < MapReduceMath.MIN_CHUNK_CHARS) {
             throw new IllegalArgumentException("the window leaves " + room + " characters for a chunk, fewer than "
-                    + AiMapReduceSupport.MIN_CHUNK_CHARS);
+                    + MapReduceMath.MIN_CHUNK_CHARS);
         }
         // the room is the budget of a chunk's source and of a reduce batch
-        final List<String> all = AiSourceChunker.chunk(source, room, AiMapReduceSupport.overlap(room), 0);
+        final List<String> all = SourceChunker.chunk(source, room, MapReduceMath.overlap(room), 0);
         final List<String> chunks =
-                strategy == AiOversizeStrategy.SAMPLE_CHUNKS ? AiSourceChunker.select(all, maxChunks) : all;
+                strategy == OversizeStrategy.SAMPLE_CHUNKS ? SourceChunker.select(all, maxChunks) : all;
         return new ChunkPlan(
-                AiMapReduceSupport.safeWindow(window),
+                MapReduceMath.safeWindow(window),
                 room,
                 Collections.unmodifiableList(new ArrayList<>(chunks)),
                 all.size());
@@ -140,13 +140,13 @@ final class ChunkPlan {
     }
 
     /**
-     * Returns the label line of a chunk ({@link AiMapReduceSupport#chunkLabel}).
+     * Returns the label line of a chunk ({@link MapReduceMath#chunkLabel}).
      *
      * @param number the chunk's number among those read, from 1
      * @return the label
      */
     String label(final int number) {
-        return AiMapReduceSupport.chunkLabel(number, chunks.size(), total);
+        return MapReduceMath.chunkLabel(number, chunks.size(), total);
     }
 
     /**
@@ -157,8 +157,8 @@ final class ChunkPlan {
      * @return the text
      */
     String reduceFacts(final String facts) {
-        return AiMapReduceSupport.reduceFacts(facts, sourceBudget / REDUCE_FACTS_SHARE)
-                + AiMapReduceSupport.sampleNote(chunks.size(), total);
+        return MapReduceMath.reduceFacts(facts, sourceBudget / REDUCE_FACTS_SHARE)
+                + MapReduceMath.sampleNote(chunks.size(), total);
     }
 
     /**
@@ -173,7 +173,7 @@ final class ChunkPlan {
     }
 
     /**
-     * Returns the coverage line of the summary ({@link AiMapReduceSupport#chunkCoverage}).
+     * Returns the coverage line of the summary ({@link MapReduceMath#chunkCoverage}).
      *
      * @param cutCalls       the calls whose input a context overflow cut to a smaller window
      * @param cutParts       the part summaries cut off at the output budget and kept
@@ -181,6 +181,6 @@ final class ChunkPlan {
      * @return the line
      */
     String coverage(final int cutCalls, final int cutParts, final int shortenedParts) {
-        return AiMapReduceSupport.chunkCoverage(chunks.size(), total, cutCalls, cutParts, shortenedParts);
+        return MapReduceMath.chunkCoverage(chunks.size(), total, cutCalls, cutParts, shortenedParts);
     }
 }

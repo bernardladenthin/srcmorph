@@ -12,8 +12,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
-import net.ladenthin.srcmorph.provider.AiGenerationUsage;
+import net.ladenthin.srcmorph.indexer.IndexOutcome;
+import net.ladenthin.srcmorph.provider.GenerationUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -35,8 +35,8 @@ public class RunRecordTest {
                 "java",
                 "file-body-java",
                 "m",
-                AiIndexOutcome.WRITTEN,
-                new AiGenerationUsage(2, 100, 20, 80, "stop"),
+                IndexOutcome.WRITTEN,
+                new GenerationUsage(2, 100, 20, 80, "stop"),
                 1_500_000_000L,
                 "AAAA0000",
                 "BBBB1111"));
@@ -45,8 +45,8 @@ public class RunRecordTest {
                 "java",
                 "file-body-java",
                 "m",
-                AiIndexOutcome.UNCHANGED,
-                AiGenerationUsage.NONE,
+                IndexOutcome.UNCHANGED,
+                GenerationUsage.NONE,
                 500_000_000L,
                 "AAAA0000",
                 ""));
@@ -55,8 +55,8 @@ public class RunRecordTest {
                 "sql",
                 "file-body-sql",
                 "n",
-                AiIndexOutcome.FAILED,
-                new AiGenerationUsage(1, 50, 7, 0, "length"),
+                IndexOutcome.FAILED,
+                new GenerationUsage(1, 50, 7, 0, "length"),
                 1_000_000_000L,
                 "CCCC2222",
                 ""));
@@ -114,8 +114,8 @@ public class RunRecordTest {
                 "java",
                 "file-body-java",
                 "m",
-                AiIndexOutcome.UNCHANGED,
-                AiGenerationUsage.NONE,
+                IndexOutcome.UNCHANGED,
+                GenerationUsage.NONE,
                 0L,
                 "AAAA0000",
                 ""));
@@ -143,7 +143,7 @@ public class RunRecordTest {
 
         assertThat(runRecord.entries().size(), is(3));
         assertThat(runRecord.entries().get(2).file(), is(equalTo("src/C.sql")));
-        assertThat(runRecord.entries().get(2).outcome(), is(AiIndexOutcome.FAILED));
+        assertThat(runRecord.entries().get(2).outcome(), is(IndexOutcome.FAILED));
         assertThat(runRecord.entries().get(0).usage().calls(), is(2));
         org.junit.jupiter.api.Assertions.assertThrows(
                 UnsupportedOperationException.class, () -> runRecord.entries().clear());

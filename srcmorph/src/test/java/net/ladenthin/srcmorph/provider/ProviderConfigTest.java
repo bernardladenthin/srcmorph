@@ -10,7 +10,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
  * Direct tests for {@link ProviderConfig}'s own constructor contract.
  *
  * <p>{@link ProviderConfigFactoryTest} exercises this class only through the factory, which never
- * passes a {@code null} list (the {@link AiModelDefinition} setters normalise that away first). The
+ * passes a {@code null} list (the {@link ModelDefinition} setters normalise that away first). The
  * constructor's own null guards and its {@code modelPath} requirement are therefore only reachable
  * from here. That matters beyond coverage bookkeeping: the class carries
  * {@link net.ladenthin.srcmorph.support.ConvertToRecord} for a future Java&nbsp;17+ migration, and a
@@ -102,8 +102,8 @@ public class ProviderConfigTest {
 
     /**
      * The builder's whole point: a value the caller never named is the matching
-     * {@code AiModelDefinition.DEFAULT_*}, not Java's zero: a knob must never arrive as
-     * {@code 0}/{@code false}/{@code null} instead of what {@code AiModelDefinition} says it should be.
+     * {@code ModelDefinition.DEFAULT_*}, not Java's zero: a knob must never arrive as
+     * {@code 0}/{@code false}/{@code null} instead of what {@code ModelDefinition} says it should be.
      */
     @Test
     public void builder_leavesEveryUnsetValueAtItsDefinitionDefault() {
@@ -113,45 +113,45 @@ public class ProviderConfigTest {
 
         // assert
         assertThat(config.modelPath(), is("model.gguf"));
-        assertThat(config.contextSize(), is(AiModelDefinition.DEFAULT_CONTEXT_SIZE));
-        assertThat(config.maxOutputTokens(), is(AiModelDefinition.DEFAULT_MAX_OUTPUT_TOKENS));
-        assertThat(config.temperature(), is(AiModelDefinition.DEFAULT_TEMPERATURE));
-        assertThat(config.threads(), is(AiModelDefinition.DEFAULT_THREADS));
-        assertThat(config.topP(), is(AiModelDefinition.DEFAULT_TOP_P));
-        assertThat(config.topK(), is(AiModelDefinition.DEFAULT_TOP_K));
-        assertThat(config.minP(), is(AiModelDefinition.DEFAULT_MIN_P));
-        assertThat(config.topNSigma(), is(AiModelDefinition.DEFAULT_TOP_N_SIGMA));
-        assertThat(config.repeatPenalty(), is(AiModelDefinition.DEFAULT_REPEAT_PENALTY));
-        assertThat(config.chatTemplateEnableThinking(), is(AiModelDefinition.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
-        assertThat(config.cachePrompt(), is(AiModelDefinition.DEFAULT_CACHE_PROMPT));
-        assertThat(config.swaFull(), is(AiModelDefinition.DEFAULT_SWA_FULL));
-        assertThat(config.cacheReuse(), is(AiModelDefinition.DEFAULT_CACHE_REUSE));
-        assertThat(config.gpuLayers(), is(AiModelDefinition.DEFAULT_GPU_LAYERS));
-        assertThat(config.seed(), is(AiModelDefinition.DEFAULT_SEED));
-        assertThat(config.cpuMoeLayers(), is(AiModelDefinition.DEFAULT_CPU_MOE_LAYERS));
-        assertThat(config.cpuFfnLayers(), is(AiModelDefinition.DEFAULT_CPU_FFN_LAYERS));
-        assertThat(config.kvUnifiedPerSlot(), is(AiModelDefinition.DEFAULT_KV_UNIFIED_PER_SLOT));
-        assertThat(config.lazyMode(), is(AiModelDefinition.DEFAULT_LAZY_MODE));
-        assertThat(config.repeatLastN(), is(AiModelDefinition.DEFAULT_REPEAT_LAST_N));
-        assertThat(config.cacheTypeK(), is(AiModelDefinition.DEFAULT_CACHE_TYPE_K));
-        assertThat(config.cacheTypeV(), is(AiModelDefinition.DEFAULT_CACHE_TYPE_V));
-        assertThat(config.flashAttn(), is(AiModelDefinition.DEFAULT_FLASH_ATTN));
-        assertThat(config.batchSize(), is(AiModelDefinition.DEFAULT_BATCH_SIZE));
-        assertThat(config.ubatchSize(), is(AiModelDefinition.DEFAULT_UBATCH_SIZE));
-        assertThat(config.threadsBatch(), is(AiModelDefinition.DEFAULT_THREADS_BATCH));
-        assertThat(config.mainGpu(), is(AiModelDefinition.DEFAULT_MAIN_GPU));
-        assertThat(config.devices(), is(AiModelDefinition.DEFAULT_DEVICES));
-        assertThat(config.provider(), is(AiModelDefinition.DEFAULT_PROVIDER));
-        assertThat(config.remoteModel(), is(AiModelDefinition.DEFAULT_REMOTE_MODEL));
-        assertThat(config.baseUrl(), is(AiModelDefinition.DEFAULT_BASE_URL));
-        assertThat(config.apiKeyEnv(), is(AiModelDefinition.DEFAULT_API_KEY_ENV));
-        assertThat(config.stream(), is(AiModelDefinition.DEFAULT_STREAM));
-        assertThat(config.reasoningEffort(), is(AiModelDefinition.DEFAULT_REASONING_EFFORT));
-        assertThat(config.reasoningBudgetTokens(), is(AiModelDefinition.DEFAULT_REASONING_BUDGET_TOKENS));
-        assertThat(config.dryMultiplier(), is(AiModelDefinition.DEFAULT_DRY_MULTIPLIER));
-        assertThat(config.dryBase(), is(AiModelDefinition.DEFAULT_DRY_BASE));
-        assertThat(config.dryAllowedLength(), is(AiModelDefinition.DEFAULT_DRY_ALLOWED_LENGTH));
-        assertThat(config.dryPenaltyLastN(), is(AiModelDefinition.DEFAULT_DRY_PENALTY_LAST_N));
+        assertThat(config.contextSize(), is(ModelDefinition.DEFAULT_CONTEXT_SIZE));
+        assertThat(config.maxOutputTokens(), is(ModelDefinition.DEFAULT_MAX_OUTPUT_TOKENS));
+        assertThat(config.temperature(), is(ModelDefinition.DEFAULT_TEMPERATURE));
+        assertThat(config.threads(), is(ModelDefinition.DEFAULT_THREADS));
+        assertThat(config.topP(), is(ModelDefinition.DEFAULT_TOP_P));
+        assertThat(config.topK(), is(ModelDefinition.DEFAULT_TOP_K));
+        assertThat(config.minP(), is(ModelDefinition.DEFAULT_MIN_P));
+        assertThat(config.topNSigma(), is(ModelDefinition.DEFAULT_TOP_N_SIGMA));
+        assertThat(config.repeatPenalty(), is(ModelDefinition.DEFAULT_REPEAT_PENALTY));
+        assertThat(config.chatTemplateEnableThinking(), is(ModelDefinition.DEFAULT_CHAT_TEMPLATE_ENABLE_THINKING));
+        assertThat(config.cachePrompt(), is(ModelDefinition.DEFAULT_CACHE_PROMPT));
+        assertThat(config.swaFull(), is(ModelDefinition.DEFAULT_SWA_FULL));
+        assertThat(config.cacheReuse(), is(ModelDefinition.DEFAULT_CACHE_REUSE));
+        assertThat(config.gpuLayers(), is(ModelDefinition.DEFAULT_GPU_LAYERS));
+        assertThat(config.seed(), is(ModelDefinition.DEFAULT_SEED));
+        assertThat(config.cpuMoeLayers(), is(ModelDefinition.DEFAULT_CPU_MOE_LAYERS));
+        assertThat(config.cpuFfnLayers(), is(ModelDefinition.DEFAULT_CPU_FFN_LAYERS));
+        assertThat(config.kvUnifiedPerSlot(), is(ModelDefinition.DEFAULT_KV_UNIFIED_PER_SLOT));
+        assertThat(config.lazyMode(), is(ModelDefinition.DEFAULT_LAZY_MODE));
+        assertThat(config.repeatLastN(), is(ModelDefinition.DEFAULT_REPEAT_LAST_N));
+        assertThat(config.cacheTypeK(), is(ModelDefinition.DEFAULT_CACHE_TYPE_K));
+        assertThat(config.cacheTypeV(), is(ModelDefinition.DEFAULT_CACHE_TYPE_V));
+        assertThat(config.flashAttn(), is(ModelDefinition.DEFAULT_FLASH_ATTN));
+        assertThat(config.batchSize(), is(ModelDefinition.DEFAULT_BATCH_SIZE));
+        assertThat(config.ubatchSize(), is(ModelDefinition.DEFAULT_UBATCH_SIZE));
+        assertThat(config.threadsBatch(), is(ModelDefinition.DEFAULT_THREADS_BATCH));
+        assertThat(config.mainGpu(), is(ModelDefinition.DEFAULT_MAIN_GPU));
+        assertThat(config.devices(), is(ModelDefinition.DEFAULT_DEVICES));
+        assertThat(config.provider(), is(ModelDefinition.DEFAULT_PROVIDER));
+        assertThat(config.remoteModel(), is(ModelDefinition.DEFAULT_REMOTE_MODEL));
+        assertThat(config.baseUrl(), is(ModelDefinition.DEFAULT_BASE_URL));
+        assertThat(config.apiKeyEnv(), is(ModelDefinition.DEFAULT_API_KEY_ENV));
+        assertThat(config.stream(), is(ModelDefinition.DEFAULT_STREAM));
+        assertThat(config.reasoningEffort(), is(ModelDefinition.DEFAULT_REASONING_EFFORT));
+        assertThat(config.reasoningBudgetTokens(), is(ModelDefinition.DEFAULT_REASONING_BUDGET_TOKENS));
+        assertThat(config.dryMultiplier(), is(ModelDefinition.DEFAULT_DRY_MULTIPLIER));
+        assertThat(config.dryBase(), is(ModelDefinition.DEFAULT_DRY_BASE));
+        assertThat(config.dryAllowedLength(), is(ModelDefinition.DEFAULT_DRY_ALLOWED_LENGTH));
+        assertThat(config.dryPenaltyLastN(), is(ModelDefinition.DEFAULT_DRY_PENALTY_LAST_N));
         assertThat(config.drySequenceBreakers(), is(Collections.<String>emptyList()));
         assertThat(config.stopStrings(), is(Collections.<String>emptyList()));
     }
@@ -291,11 +291,11 @@ public class ProviderConfigTest {
         assertThat(config.cacheTypeK(), is(""));
         assertThat(config.cacheTypeV(), is(""));
         assertThat(config.devices(), is(""));
-        assertThat(config.provider(), is(AiModelDefinition.DEFAULT_PROVIDER));
-        assertThat(config.remoteModel(), is(AiModelDefinition.DEFAULT_REMOTE_MODEL));
-        assertThat(config.baseUrl(), is(AiModelDefinition.DEFAULT_BASE_URL));
-        assertThat(config.apiKeyEnv(), is(AiModelDefinition.DEFAULT_API_KEY_ENV));
-        assertThat(config.reasoningEffort(), is(AiModelDefinition.DEFAULT_REASONING_EFFORT));
+        assertThat(config.provider(), is(ModelDefinition.DEFAULT_PROVIDER));
+        assertThat(config.remoteModel(), is(ModelDefinition.DEFAULT_REMOTE_MODEL));
+        assertThat(config.baseUrl(), is(ModelDefinition.DEFAULT_BASE_URL));
+        assertThat(config.apiKeyEnv(), is(ModelDefinition.DEFAULT_API_KEY_ENV));
+        assertThat(config.reasoningEffort(), is(ModelDefinition.DEFAULT_REASONING_EFFORT));
         assertThat(config.reasoningEffort(), is("low"));
     }
 

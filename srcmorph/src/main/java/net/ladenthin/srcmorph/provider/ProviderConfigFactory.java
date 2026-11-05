@@ -5,11 +5,11 @@ package net.ladenthin.srcmorph.provider;
 
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Pure mapping from a resolved {@link AiModelDefinition} to an immutable {@link ProviderConfig}.
+ * Pure mapping from a resolved {@link ModelDefinition} to an immutable {@link ProviderConfig}.
  *
  * <p>Extracted from what was {@code AbstractAiIndexMojo.buildLlamaCppJniConfig} in the
  * {@code llamacpp-ai-index-maven-plugin} module: the model lookup lives in the {@code engine}
@@ -25,14 +25,14 @@ public final class ProviderConfigFactory {
 
     /**
      * Builds a {@link ProviderConfig} by copying every field from a resolved
-     * {@link AiModelDefinition} (an {@link net.ladenthin.srcmorph.config.AiModelDefinition} looked up by
+     * {@link ModelDefinition} (an {@link net.ladenthin.srcmorph.config.ModelDefinition} looked up by
      * key). An unset list of the definition is an empty one here: no stop strings, the binding's own
      * DRY sequence breakers.
      *
      * @param config      the resolved AI model generation config
      * @return the fully populated llama.cpp configuration
      */
-    public static ProviderConfig fromGenerationConfig(final AiModelDefinition config) {
+    public static ProviderConfig from(final ModelDefinition config) {
         final @Nullable List<String> breakers = config.getDrySequenceBreakers();
         final @Nullable List<String> stopStrings = config.getStopStrings();
         // A remote model (openai-compatible) needs no model file, so its definition may name none.

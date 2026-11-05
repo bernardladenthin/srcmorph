@@ -15,16 +15,16 @@ import net.ladenthin.llama.parameters.InferenceParameters;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Pair;
 import net.ladenthin.llama.value.Usage;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Everything {@link LlamaCppJniAiGenerationProvider} does that does not touch the JNI binding's
- * native side: turning a {@link AiGenerationRequest} plus a {@link ProviderConfig} into
+ * Everything {@link LlamaCppJniGenerationProvider} does that does not touch the JNI binding's
+ * native side: turning a {@link GenerationRequest} plus a {@link ProviderConfig} into
  * {@link InferenceParameters}, resolving configured CLI strings to the binding's enums, and
  * reporting on a {@link ChatResponse} that has already come back.
  *
@@ -88,7 +88,7 @@ final class LlamaCppJniProviderSupport {
     private static final int CHAT_TEMPLATE_KWARG_COUNT = 2;
 
     private final ProviderConfig config;
-    private final AiPromptSupport promptSupport;
+    private final PromptCatalog promptSupport;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -97,7 +97,7 @@ final class LlamaCppJniProviderSupport {
      * @param config        llama.cpp configuration
      * @param promptSupport prompt lookup used to render request prompts
      */
-    LlamaCppJniProviderSupport(final ProviderConfig config, final AiPromptSupport promptSupport) {
+    LlamaCppJniProviderSupport(final ProviderConfig config, final PromptCatalog promptSupport) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
     }
@@ -252,7 +252,7 @@ final class LlamaCppJniProviderSupport {
      * @return the warning, or {@code null} when the model finished the answer (or there is none)
      */
     @Nullable
-    String truncationWarning(final AiGenerationRequest request, final ChatResponse response) {
+    String truncationWarning(final GenerationRequest request, final ChatResponse response) {
         if (response.getChoices().isEmpty()) {
             return null;
         }
@@ -279,34 +279,34 @@ final class LlamaCppJniProviderSupport {
      * @param request  the request whose source file is named in the message
      * @param response the completed chat response
      * @param text     the answer text after the thinking block was stripped
-     * @throws AiIncompleteAnswerException if the answer is one of those
+     * @throws IncompleteAnswerException if the answer is one of those
      */
-    void requireCompleteAnswer(final AiGenerationRequest request, final ChatResponse response, final String text)
-            throws AiIncompleteAnswerException {
+    void requireCompleteAnswer(final GenerationRequest request, final ChatResponse response, final String text)
+            throws IncompleteAnswerException {
         if (response.getChoices().isEmpty()) {
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.NO_ANSWER,
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.NO_ANSWER,
                     "The response for " + request.sourceFile() + " has no answer (no choice)");
         }
         final @Nullable String finishReason = response.getChoices().get(0).getFinishReason();
         if (stoppedByProvider(finishReason)) {
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.ABORTED,
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.ABORTED,
                     "The answer for " + request.sourceFile() + " ended with finish reason '" + finishReason
                             + "': the provider stopped it, not the model",
                     text);
         }
         if (FINISH_REASON_LENGTH.equals(finishReason)) {
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.TRUNCATED,
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.TRUNCATED,
                     "The answer for " + request.sourceFile() + " was cut off at the " + config.maxOutputTokens()
                             + "-token output budget, not finished by the model; raise maxOutputTokens for this"
                             + " model, or shorten the prompt",
                     text);
         }
         if (text.trim().isEmpty()) {
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.EMPTY,
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.EMPTY,
                     "The model answered nothing for " + request.sourceFile() + " (an empty or reasoning-only answer)");
         }
     }
@@ -317,7 +317,7 @@ final class LlamaCppJniProviderSupport {
      * @param request  the request whose source file is named in the line
      * @param response the completed chat response
      */
-    void logPromptCacheReuse(final AiGenerationRequest request, final ChatResponse response) {
+    void logPromptCacheReuse(final GenerationRequest request, final ChatResponse response) {
         if (!LOGGER.isDebugEnabled()) {
             return;
         }
@@ -339,7 +339,7 @@ final class LlamaCppJniProviderSupport {
      * @param request the request to render
      * @return the parameters to hand to the binding
      */
-    InferenceParameters buildInferenceParameters(final AiGenerationRequest request) {
+    InferenceParameters buildInferenceParameters(final GenerationRequest request) {
         // Static instructions go in the SYSTEM message (byte-identical across files, so its KV
         // prefix is reused by cache_prompt); the variable file name + source go in the USER message.
         final String systemPrompt = promptSupport.systemPrompt(request.promptKey());
@@ -375,7 +375,7 @@ final class LlamaCppJniProviderSupport {
         // Pin the RNG seed only when explicitly configured (>= 0). Upstream's default is a random seed
         // per request, so an unconfigured run keeps exactly the behaviour it had; a configured one makes
         // the generated body stable for a given machine and configuration, which is what turns a
-        // re-index into a reviewable diff. Not bit-reproducibility -- see AiModelDefinition.DEFAULT_SEED.
+        // re-index into a reviewable diff. Not bit-reproducibility -- see ModelDefinition.DEFAULT_SEED.
         final InferenceParameters seededParameters =
                 config.seed() >= 0 ? baseParameters.withSeed(config.seed()) : baseParameters;
         // The two penalty windows -- the one the repeat penalty acts on, and DRY's own -- are forwarded

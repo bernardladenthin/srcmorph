@@ -11,18 +11,18 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.Set;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiOversizeStrategy;
-import net.ladenthin.srcmorph.facts.AiFactExtractor;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPreparedPrompt;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationUsage;
-import net.ladenthin.srcmorph.provider.AiIncompleteAnswerException;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.OversizeStrategy;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PreparedPrompt;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationUsage;
+import net.ladenthin.srcmorph.provider.IncompleteAnswerException;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,7 +98,7 @@ public class SummaryGenerator {
 
     /**
      * Suffix on the processing log line of a model without a calibration: the duration is the built-in
-     * estimate (see {@link AiGenerationTimeEstimator}). ASCII-only for CI logs.
+     * estimate (see {@link GenerationTimeEstimator}). ASCII-only for CI logs.
      */
     private static final String PROCESSING_LOG_DISCLAIMER = " (rough; based on GPT-6 Luna)";
 
@@ -130,15 +130,15 @@ public class SummaryGenerator {
      */
     private static final int COUNTED_WINDOWS = 4;
 
-    /** Leading/trailing lines shown in a {@link AiOversizeStrategy#DETERMINISTIC} body. */
+    /** Leading/trailing lines shown in a {@link OversizeStrategy#DETERMINISTIC} body. */
     private static final int DETERMINISTIC_SAMPLE_LINES = 20;
 
-    private final AiGenerationProvider generationProvider;
-    private final AiPromptPreparationSupport promptPreparationSupport;
-    private final AiModelDefinitionSupport modelDefinitionSupport;
+    private final GenerationProvider generationProvider;
+    private final PromptPreparer promptPreparationSupport;
+    private final ModelRegistry modelDefinitionSupport;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
-    private final AiGenerationTimeEstimator timeEstimator = new AiGenerationTimeEstimator();
-    private final AiRouteEstimator routeEstimator = new AiRouteEstimator();
+    private final GenerationTimeEstimator timeEstimator = new GenerationTimeEstimator();
+    private final RouteEstimator routeEstimator = new RouteEstimator();
 
     /**
      * The {@code (aiDefinitionKey, promptKey)} pairs whose {@code maxInputChars} calculation was logged, so
@@ -148,7 +148,7 @@ public class SummaryGenerator {
     private final Set<String> loggedWindows = new HashSet<>();
 
     /** The usage of the calls since the last {@link #takeUsage()}. */
-    private AiGenerationUsage usage = AiGenerationUsage.NONE;
+    private GenerationUsage usage = GenerationUsage.NONE;
 
     /** The source characters the last call read (all of them unless its window cut the source). */
     private int lastReadChars;
@@ -172,7 +172,7 @@ public class SummaryGenerator {
      * Raised inside when a context overflow's smaller window would cut a source its caller does not allow
      * to be cut; the caller's rule decides with {@link #window()}.
      */
-    static final class AiSourceCutException extends IOException {
+    static final class SourceCutException extends IOException {
 
         private static final long serialVersionUID = 1L;
 
@@ -183,7 +183,7 @@ public class SummaryGenerator {
          *
          * @param window the window that would cut the source
          */
-        AiSourceCutException(final int window) {
+        SourceCutException(final int window) {
             super("the source does not fit a window of " + window + " characters");
             this.window = window;
         }
@@ -203,12 +203,12 @@ public class SummaryGenerator {
      *
      * @param generationProvider       AI backend used to generate text for each field
      * @param promptPreparationSupport helper that resolves and prepares prompt templates
-     * @param modelDefinitionSupport   lookup for {@link net.ladenthin.srcmorph.config.AiModelDefinition} by key
+     * @param modelDefinitionSupport   lookup for {@link net.ladenthin.srcmorph.config.ModelDefinition} by key
      */
     public SummaryGenerator(
-            final AiGenerationProvider generationProvider,
-            final AiPromptPreparationSupport promptPreparationSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport) {
+            final GenerationProvider generationProvider,
+            final PromptPreparer promptPreparationSupport,
+            final ModelRegistry modelDefinitionSupport) {
         this.generationProvider = generationProvider;
         this.promptPreparationSupport = promptPreparationSupport;
         this.modelDefinitionSupport = modelDefinitionSupport;
@@ -218,11 +218,11 @@ public class SummaryGenerator {
      * Returns the tokens and the finish reason of every model call since the last call of this method
      * (one file's or package's calls when called after each), and starts counting anew.
      *
-     * @return the summed usage, {@link AiGenerationUsage#NONE} when no call was made
+     * @return the summed usage, {@link GenerationUsage#NONE} when no call was made
      */
-    public AiGenerationUsage takeUsage() {
-        final AiGenerationUsage taken = usage;
-        usage = AiGenerationUsage.NONE;
+    public GenerationUsage takeUsage() {
+        final GenerationUsage taken = usage;
+        usage = GenerationUsage.NONE;
         return taken;
     }
 
@@ -240,13 +240,13 @@ public class SummaryGenerator {
      * Generates the body of one context with one rule.
      *
      * <ol>
-     *   <li>The prompt is prepared via {@link net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport#preparePrompt}.</li>
+     *   <li>The prompt is prepared via {@link net.ladenthin.srcmorph.prompt.PromptPreparer#preparePrompt}.</li>
      *   <li>A trim warning is logged if the source was truncated and
-     *       {@link net.ladenthin.srcmorph.config.AiModelDefinition#isWarnOnTrim()} is {@code true}.</li>
+     *       {@link net.ladenthin.srcmorph.config.ModelDefinition#isWarnOnTrim()} is {@code true}.</li>
      *   <li>The AI provider generates the summary of the whole source, or the rule's {@code onOversize}
      *       handles a source that does not fit.</li>
      *   <li>An incomplete answer (empty, cut off by the output limit, or no answer at all) is logged and
-     *       returned as {@link AiGenerationResult#incomplete(String)}, so nothing is written.</li>
+     *       returned as {@link SummaryResult#incomplete(String)}, so nothing is written.</li>
      * </ol>
      *
      * @param rule        the rule: its prompt, model, facts and oversize strategy
@@ -258,20 +258,17 @@ public class SummaryGenerator {
      * @return the generated body, or an incomplete result
      * @throws IOException              if the AI provider throws during generation, or the rule has
      *                                  {@code onOversize: fail} and the source does not fit
-     * @throws IllegalArgumentException if the rule's {@link net.ladenthin.srcmorph.config.AiFieldGenerationConfig#getAiDefinitionKey()}
-     *                                  does not match any registered {@link net.ladenthin.srcmorph.config.AiModelDefinition}
+     * @throws IllegalArgumentException if the rule's {@link net.ladenthin.srcmorph.config.RoutingRule#getAiDefinitionKey()}
+     *                                  does not match any registered {@link net.ladenthin.srcmorph.config.ModelDefinition}
      */
-    public AiGenerationResult generate(
-            final AiFieldGenerationConfig rule,
-            final Path contextFile,
-            final String contextType,
-            final String sourceText)
+    public SummaryResult generate(
+            final RoutingRule rule, final Path contextFile, final String contextType, final String sourceText)
             throws IOException {
-        final AiModelDefinition generationConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
+        final ModelDefinition generationConfig = modelDefinitionSupport.definition(rule.requireAiDefinitionKey());
         parts = new SummaryParts();
         try {
-            return new AiGenerationResult(generateBody(rule, generationConfig, contextFile, contextType, sourceText));
-        } catch (final AiIncompleteAnswerException e) {
+            return new SummaryResult(generateBody(rule, generationConfig, contextFile, contextType, sourceText));
+        } catch (final IncompleteAnswerException e) {
             LOGGER.warn(
                     INCOMPLETE_WARN_PREFIX + "{} '{}' (field '{}', {}): {}; not written, left for the next run",
                     contextType,
@@ -279,7 +276,7 @@ public class SummaryGenerator {
                     rule.requirePromptKey(),
                     e.reason(),
                     e.detail());
-            return AiGenerationResult.incomplete(e.detail());
+            return SummaryResult.incomplete(e.detail());
         }
     }
 
@@ -293,27 +290,27 @@ public class SummaryGenerator {
      * @param contextType      the context label for the log
      * @param sourceText       the full source text
      * @return the body
-     * @throws AiIncompleteAnswerException if the model's answer stays incomplete
+     * @throws IncompleteAnswerException if the model's answer stays incomplete
      * @throws IOException                 if the provider fails
      */
     private String generateBody(
-            final AiFieldGenerationConfig fieldGeneration,
-            final AiModelDefinition generationConfig,
+            final RoutingRule fieldGeneration,
+            final ModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
             final String sourceText)
             throws IOException {
         final int effectiveMaxInputChars = resolveMaxInputChars(fieldGeneration, generationConfig, contextFile);
 
-        final AiGenerationRequest request =
-                new AiGenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText);
+        final GenerationRequest request =
+                new GenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText);
 
-        final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
+        final PreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(request, effectiveMaxInputChars);
 
         // Deterministic, whole-file "facts" (exact regex counts) are prepended to the body of EVERY
         // file that configures facts - not just oversize ones - so downstream agents get exact
         // structural counts in the summary. Computed once here over the FULL source ("" when unset).
-        final String factsPrefix = AiFactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
+        final String factsPrefix = FactExtractor.factsBlock(fieldGeneration.getFacts(), sourceText);
 
         // Over the window by the estimate, the model's own count decides when the provider has one: the
         // source may fit after all, and if not, its chunks are sized by the density it measured.
@@ -341,7 +338,7 @@ public class SummaryGenerator {
             return factsPrefix
                     + generateLogged(
                             fieldGeneration, generationConfig, contextFile, contextType, sourceText, window, false);
-        } catch (final AiSourceCutException e) {
+        } catch (final SourceCutException e) {
             // the source fits by the character estimate but not in tokens: the context overflow's smaller
             // window would cut it, so the rule's onOversize decides, as for any oversized file
             return factsPrefix
@@ -359,7 +356,7 @@ public class SummaryGenerator {
     /**
      * Returns the window of a source that does not fit its estimated window, from the model's own count of
      * the whole prompt: the tokens the model's window leaves for a prompt, times the prompt's characters per
-     * token ({@link AiTokenWindow#measuredWindow}). The estimate stays when the provider cannot count or the
+     * token ({@link TokenWindow#measuredWindow}). The estimate stays when the provider cannot count or the
      * model's window is not known.
      *
      * @param generationConfig the rule's model configuration
@@ -371,15 +368,15 @@ public class SummaryGenerator {
      * @throws IOException if the provider fails to count
      */
     private int countedWindow(
-            final AiModelDefinition generationConfig,
+            final ModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
-            final AiGenerationRequest request,
+            final GenerationRequest request,
             final int estimate)
             throws IOException {
-        final int tokenLimit = AiTokenWindow.promptTokenLimit(
-                generationConfig.getContextSize(), generationConfig.getMaxOutputTokens());
-        if (tokenLimit == AiTokenWindow.NO_LIMIT) {
+        final int tokenLimit =
+                TokenWindow.promptTokenLimit(generationConfig.getContextSize(), generationConfig.getMaxOutputTokens());
+        if (tokenLimit == TokenWindow.NO_LIMIT) {
             return estimate;
         }
         // the density of a head a few windows long stands for the file: a 50 MB dump is not rendered and
@@ -387,9 +384,9 @@ public class SummaryGenerator {
         final String source = request.sourceText();
         final int length = source.length();
         final int sampleChars = (int) Math.min(length, (long) Math.max(estimate, 1) * COUNTED_WINDOWS);
-        final AiGenerationRequest sample = sampleChars == length
+        final GenerationRequest sample = sampleChars == length
                 ? request
-                : new AiGenerationRequest(request.promptKey(), contextFile, source.substring(0, sampleChars));
+                : new GenerationRequest(request.promptKey(), contextFile, source.substring(0, sampleChars));
         final OptionalInt tokens = generationProvider.promptTokens(sample);
         if (!tokens.isPresent() || tokens.getAsInt() <= 0) {
             return estimate;
@@ -397,7 +394,7 @@ public class SummaryGenerator {
         final int promptChars =
                 promptPreparationSupport.basePromptLength(request.promptKey(), contextFile) + sampleChars;
         final int counted = tokens.getAsInt();
-        final int window = AiTokenWindow.measuredWindow(tokenLimit, promptChars, counted);
+        final int window = TokenWindow.measuredWindow(tokenLimit, promptChars, counted);
         LOGGER.info(
                 "Counted {} '{}': {} prompt tokens for {} chars, the model's window leaves {} tokens: a window of"
                         + " {} chars (estimated {})",
@@ -428,38 +425,38 @@ public class SummaryGenerator {
      * @throws IOException if the strategy is {@code fail} or the provider fails
      */
     private String oversized(
-            final AiFieldGenerationConfig fieldGeneration,
-            final AiModelDefinition generationConfig,
+            final RoutingRule fieldGeneration,
+            final ModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
             final String sourceText,
             final int window,
             final String facts)
             throws IOException {
-        final AiOversizeStrategy oversize = fieldGeneration.oversizeStrategy();
-        if (oversize == AiOversizeStrategy.FAIL) {
-            final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
-                    new AiGenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText), window);
+        final OversizeStrategy oversize = fieldGeneration.oversizeStrategy();
+        if (oversize == OversizeStrategy.FAIL) {
+            final PreparedPrompt prepared = promptPreparationSupport.preparePrompt(
+                    new GenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText), window);
             throw new IOException(contextType + " '" + contextFile + "' (" + sourceText.length()
                     + " chars) exceeds the window of model '" + fieldGeneration.getAiDefinitionKey()
                     + "' (" + prepared.availableSourceChars() + " chars of source) and its rule has"
                     + " onOversize: fail");
         }
-        if (oversize == AiOversizeStrategy.DETERMINISTIC) {
+        if (oversize == OversizeStrategy.DETERMINISTIC) {
             LOGGER.info(
                     "Oversize {} '{}' -> deterministic body (no model), {} chars",
                     contextType,
                     contextFile,
                     sourceText.length());
-            return AiDeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
+            return DeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
         }
-        if (oversize == AiOversizeStrategy.MAP_REDUCE || oversize == AiOversizeStrategy.SAMPLE_CHUNKS) {
+        if (oversize == OversizeStrategy.MAP_REDUCE || oversize == OversizeStrategy.SAMPLE_CHUNKS) {
             return mapReduceSummarize(fieldGeneration, contextFile, sourceText, window, facts);
         }
         final String generated =
                 generateLogged(fieldGeneration, generationConfig, contextFile, contextType, sourceText, window, true);
         // the head was read, as much of it as the last call's window held, and the summary says so
-        return AiMapReduceSupport.headCoverage(lastReadChars, sourceText.length()) + generated;
+        return MapReduceMath.headCoverage(lastReadChars, sourceText.length()) + generated;
     }
 
     /**
@@ -473,21 +470,21 @@ public class SummaryGenerator {
      * @param sourceText       the source text
      * @param window           the window the call's prompt is prepared for
      * @param mayCut           whether the source may be cut to the window ({@code sample}); otherwise a cut
-     *                         raises {@link AiSourceCutException}
+     *                         raises {@link SourceCutException}
      * @return the answer
      * @throws IOException if the provider fails, or the source would be cut and may not be
      */
     private String generateLogged(
-            final AiFieldGenerationConfig fieldGeneration,
-            final AiModelDefinition generationConfig,
+            final RoutingRule fieldGeneration,
+            final ModelDefinition generationConfig,
             final Path contextFile,
             final String contextType,
             final String sourceText,
             final int window,
             final boolean mayCut)
             throws IOException {
-        final AiPreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(
-                new AiGenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText), window);
+        final PreparedPrompt preparedPrompt = promptPreparationSupport.preparePrompt(
+                new GenerationRequest(fieldGeneration.requirePromptKey(), contextFile, sourceText), window);
         if (preparedPrompt.trimmed() && generationConfig.isWarnOnTrim()) {
             LOGGER.warn(
                     "Trimmed AI input for {}" + TRIM_WARN_FIELD_LABEL
@@ -515,7 +512,7 @@ public class SummaryGenerator {
                 sourceSizeKb,
                 timeEstimator.estimatePromptTokens(processedSourceChars),
                 timeEstimator.formatDuration(estimatedSeconds),
-                AiRouteEstimator.isCalibrated(generationConfig)
+                RouteEstimator.isCalibrated(generationConfig)
                         ? PROCESSING_LOG_DISCLAIMER_CALIBRATED
                         : PROCESSING_LOG_DISCLAIMER);
 
@@ -548,9 +545,9 @@ public class SummaryGenerator {
      * prompt (the <em>map</em>), then combine the partial summaries via a {@link #reducePartials hierarchical
      * reduce} with the rule's prompt and its reduce prompt. {@code mapReduce} summarizes every
      * chunk (the whole file); {@code sampleChunks} the rule's {@code maxChunks} representative ones. The
-     * summary starts with the coverage line ({@link AiMapReduceSupport#chunkCoverage}).
+     * summary starts with the coverage line ({@link MapReduceMath#chunkCoverage}).
      *
-     * <p>The chunk window is shrunk by {@link AiMapReduceSupport#TOKEN_HEADROOM_PERCENT} so a token-dense chunk
+     * <p>The chunk window is shrunk by {@link MapReduceMath#TOKEN_HEADROOM_PERCENT} so a token-dense chunk
      * cannot overflow the model's context (see that constant's Javadoc).</p>
      *
      * @param fieldGeneration        the routing rule (prompt key + {@code maxChunks})
@@ -562,24 +559,24 @@ public class SummaryGenerator {
      * @throws IOException if the provider throws during generation
      */
     private String mapReduceSummarize(
-            final AiFieldGenerationConfig fieldGeneration,
+            final RoutingRule fieldGeneration,
             final Path contextFile,
             final String sourceText,
             final int effectiveMaxInputChars,
             final String facts)
             throws IOException {
         final String mapKey =
-                AiPromptSupport.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getMapPromptKey());
+                PromptCatalog.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getMapPromptKey());
         final String reduceKey =
-                AiPromptSupport.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getReducePromptKey());
+                PromptCatalog.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getReducePromptKey());
         final int mapPromptLength = promptPreparationSupport.basePromptLength(mapKey, contextFile);
         final int reducePromptLength = promptPreparationSupport.basePromptLength(reduceKey, contextFile);
         final int room = ChunkPlan.room(effectiveMaxInputChars, mapPromptLength, reducePromptLength);
-        if (room < AiMapReduceSupport.MIN_CHUNK_CHARS) {
+        if (room < MapReduceMath.MIN_CHUNK_CHARS) {
             // a chunk of the minimum would be cut in every call, and most of the source never read
             throw new IOException("The window of model '" + fieldGeneration.getAiDefinitionKey() + "' leaves " + room
                     + " characters for a chunk of '" + contextFile + "' next to its map and reduce prompts, fewer than "
-                    + AiMapReduceSupport.MIN_CHUNK_CHARS + ": give the model a larger contextSize or a smaller"
+                    + MapReduceMath.MIN_CHUNK_CHARS + ": give the model a larger contextSize or a smaller"
                     + " maxOutputTokens");
         }
         final ChunkPlan plan = ChunkPlan.of(
@@ -629,14 +626,14 @@ public class SummaryGenerator {
     /**
      * Summarizes one chunk into {@code partials}. A chunk denser than its window was sized for is split at a
      * line end near its middle, and both halves are summarized, so its tail is read instead of cut; a half
-     * below twice {@link AiMapReduceSupport#MIN_CHUNK_CHARS} is cut to the window instead (and counted).
+     * below twice {@link MapReduceMath#MIN_CHUNK_CHARS} is cut to the window instead (and counted).
      * A chunk whose answer has no text (empty, or cut at the output budget before any) is read again as
      * its two halves the same way; such a piece below twice the minimum fails the file.
      *
      * @param fieldGeneration the rule
      * @param mapKey          the prompt of a map call: the rule's prompt with its map prompt
      * @param contextFile     the source file path
-     * @param label           the chunk's label line ({@link AiMapReduceSupport#chunkLabel})
+     * @param label           the chunk's label line ({@link MapReduceMath#chunkLabel})
      * @param chunk           the chunk
      * @param safeWindow      the per-call window budget
      * @param part            whether the answer is one part of several (one cut off at the output budget is
@@ -645,7 +642,7 @@ public class SummaryGenerator {
      * @throws IOException if the provider fails
      */
     private void mapChunk(
-            final AiFieldGenerationConfig fieldGeneration,
+            final RoutingRule fieldGeneration,
             final String mapKey,
             final Path contextFile,
             final String label,
@@ -654,20 +651,20 @@ public class SummaryGenerator {
             final boolean part,
             final List<String> partials)
             throws IOException {
-        final boolean splittable = AiMapReduceSupport.splittable(chunk.length());
+        final boolean splittable = MapReduceMath.splittable(chunk.length());
         try {
             final String answer = generateComplete(
                             fieldGeneration, mapKey, contextFile, label + chunk, safeWindow, !splittable, part)
                     .trim();
             partials.add(answer);
             parts.map(label, answer);
-        } catch (final AiSourceCutException e) {
+        } catch (final SourceCutException e) {
             LOGGER.info(
                     "  mapReduce chunk of {} chars does not fit the window of {} chars; read in two halves",
                     chunk.length(),
                     e.window());
             mapHalves(fieldGeneration, mapKey, contextFile, label, chunk, safeWindow, partials);
-        } catch (final AiIncompleteAnswerException e) {
+        } catch (final IncompleteAnswerException e) {
             if (!splittable || !compatibilityHelper.isBlank(e.partialText())) {
                 throw e;
             }
@@ -683,7 +680,7 @@ public class SummaryGenerator {
 
     /**
      * Summarizes a chunk as its two halves, split at a line end near its middle
-     * ({@link AiMapReduceSupport#halfSplit}), each one part of several.
+     * ({@link MapReduceMath#halfSplit}), each one part of several.
      *
      * @param fieldGeneration the rule
      * @param mapKey          the prompt of a map call
@@ -695,7 +692,7 @@ public class SummaryGenerator {
      * @throws IOException if the provider fails
      */
     private void mapHalves(
-            final AiFieldGenerationConfig fieldGeneration,
+            final RoutingRule fieldGeneration,
             final String mapKey,
             final Path contextFile,
             final String label,
@@ -703,12 +700,12 @@ public class SummaryGenerator {
             final int safeWindow,
             final List<String> partials)
             throws IOException {
-        final int split = AiMapReduceSupport.halfSplit(chunk);
+        final int split = MapReduceMath.halfSplit(chunk);
         mapChunk(
                 fieldGeneration,
                 mapKey,
                 contextFile,
-                AiMapReduceSupport.halfLabel(label, 1),
+                MapReduceMath.halfLabel(label, 1),
                 chunk.substring(0, split),
                 safeWindow,
                 true,
@@ -717,7 +714,7 @@ public class SummaryGenerator {
                 fieldGeneration,
                 mapKey,
                 contextFile,
-                AiMapReduceSupport.halfLabel(label, 2),
+                MapReduceMath.halfLabel(label, 2),
                 chunk.substring(split),
                 safeWindow,
                 true,
@@ -726,10 +723,10 @@ public class SummaryGenerator {
 
     /**
      * Combines per-chunk partial summaries into one body via a <strong>hierarchical</strong> reduce:
-     * partials are packed into batches that fit the window (each batch at most {@link AiMapReduceSupport#MAX_REDUCE_FANIN}
+     * partials are packed into batches that fit the window (each batch at most {@link MapReduceMath#MAX_REDUCE_FANIN}
      * partials), every batch is summarized, and the process repeats on the batch summaries until a single
      * summary remains. A batch that holds a single partial in a round that is not the last passes it on as it
-     * is. When no two partials fit one batch, each is {@link AiMapReduceSupport#shortened shortened} so two
+     * is. When no two partials fit one batch, each is {@link MapReduceMath#shortened shortened} so two
      * do, and the coverage line counts them: no partial is dropped. Every reduce call reads the exact facts
      * line of the whole source in front of its batch, so the counts it states need no adding up of the
      * parts' counts.
@@ -746,7 +743,7 @@ public class SummaryGenerator {
      * @throws IOException if the provider throws during generation
      */
     private String reducePartials(
-            final AiFieldGenerationConfig fieldGeneration,
+            final RoutingRule fieldGeneration,
             final String reduceKey,
             final Path contextFile,
             final List<String> partials,
@@ -775,7 +772,7 @@ public class SummaryGenerator {
                                 fieldGeneration,
                                 reduceKey,
                                 contextFile,
-                                facts + AiMapReduceSupport.combineAll(batch),
+                                facts + MapReduceMath.combineAll(batch),
                                 safeWindow,
                                 true,
                                 reduce.parts())
@@ -805,11 +802,11 @@ public class SummaryGenerator {
      * @param mayCut          whether the source may be cut to fit the window
      * @param part            whether the answer is a part summary the reduce reads, not the final answer
      * @return the complete answer
-     * @throws AiIncompleteAnswerException if the last attempt's answer is still incomplete
+     * @throws IncompleteAnswerException if the last attempt's answer is still incomplete
      * @throws IOException                 if the provider fails, or the source would be cut and may not be
      */
     private String generateComplete(
-            final AiFieldGenerationConfig fieldGeneration,
+            final RoutingRule fieldGeneration,
             final String promptKey,
             final Path contextFile,
             final String source,
@@ -817,8 +814,8 @@ public class SummaryGenerator {
             final boolean mayCut,
             final boolean part)
             throws IOException {
-        final AiModelDefinition model = modelDefinitionSupport.getConfig(fieldGeneration.requireAiDefinitionKey());
-        final int tokenLimit = AiTokenWindow.promptTokenLimit(model.getContextSize(), model.getMaxOutputTokens());
+        final ModelDefinition model = modelDefinitionSupport.definition(fieldGeneration.requireAiDefinitionKey());
+        final int tokenLimit = TokenWindow.promptTokenLimit(model.getContextSize(), model.getMaxOutputTokens());
         callCut = false;
         try {
             for (int attempt = 1; ; attempt++) {
@@ -826,12 +823,12 @@ public class SummaryGenerator {
                     final String text =
                             generateWithOverflowRetry(promptKey, contextFile, source, window, mayCut, tokenLimit);
                     if (compatibilityHelper.isBlank(text)) {
-                        throw new AiIncompleteAnswerException(
-                                AiIncompleteAnswerException.Reason.EMPTY,
+                        throw new IncompleteAnswerException(
+                                IncompleteAnswerException.Reason.EMPTY,
                                 "The model answered nothing for " + contextFile);
                     }
                     return text;
-                } catch (final AiIncompleteAnswerException e) {
+                } catch (final IncompleteAnswerException e) {
                     final IncompleteAnswerAction action =
                             IncompleteAnswerAction.of(e, part, fieldGeneration.incompleteStrategy(), attempt);
                     if (action == IncompleteAnswerAction.KEEP_PART) {
@@ -840,7 +837,7 @@ public class SummaryGenerator {
                                 contextFile,
                                 e.detail());
                         cutParts++;
-                        return AiMapReduceSupport.cutPart(e.partialText().trim());
+                        return MapReduceMath.cutPart(e.partialText().trim());
                     }
                     if (action == IncompleteAnswerAction.KEEP) {
                         LOGGER.warn(
@@ -868,14 +865,14 @@ public class SummaryGenerator {
 
     /**
      * Trims {@code source} to {@code window} and generates, retrying with a progressively smaller window
-     * (up to {@link AiOverflowBackoff#MAX_RETRIES}) when the provider rejects the prompt for exceeding the model's
+     * (up to {@link OverflowBackoff#MAX_RETRIES}) when the provider rejects the prompt for exceeding the model's
      * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
      * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
      * exception propagates immediately. A provider that counts a prompt's tokens is asked first: a prompt
      * over {@code tokenLimit} is never sent; the window shrinks by the measured density instead
-     * ({@link AiTokenWindow#smallerWindow}), up to {@link AiTokenWindow#MAX_SMALLER_WINDOWS} times, and a
+     * ({@link TokenWindow#smallerWindow}), up to {@link TokenWindow#MAX_SMALLER_WINDOWS} times, and a
      * prompt still over the limit then is refused. A source that the smaller window would cut is cut only
-     * when {@code mayCut} allows it (and marked in {@link #callCut}); otherwise {@link AiSourceCutException}
+     * when {@code mayCut} allows it (and marked in {@link #callCut}); otherwise {@link SourceCutException}
      * hands the window back to the caller, whose rule decides.
      *
      * @param promptKey   the prompt template key
@@ -883,8 +880,8 @@ public class SummaryGenerator {
      * @param source      the source text to trim and summarize
      * @param window      the initial per-call window budget (characters)
      * @param mayCut      whether the source may be cut to fit the window
-     * @param tokenLimit  the tokens a prompt may take ({@link AiTokenWindow#promptTokenLimit}), or
-     *                    {@link AiTokenWindow#NO_LIMIT} to send every prompt unchecked
+     * @param tokenLimit  the tokens a prompt may take ({@link TokenWindow#promptTokenLimit}), or
+     *                    {@link TokenWindow#NO_LIMIT} to send every prompt unchecked
      * @return the provider's generated text
      * @throws IOException if the provider throws an {@link IOException} during generation, the source
      *                     would be cut and may not be, or the prompt stays over the token limit
@@ -901,24 +898,24 @@ public class SummaryGenerator {
         int overflows = 0;
         int smallerWindows = 0;
         while (true) {
-            final AiPreparedPrompt prepared = promptPreparationSupport.preparePrompt(
-                    new AiGenerationRequest(promptKey, contextFile, source), budget);
+            final PreparedPrompt prepared = promptPreparationSupport.preparePrompt(
+                    new GenerationRequest(promptKey, contextFile, source), budget);
             if (prepared.trimmed()) {
                 if (!mayCut) {
-                    throw new AiSourceCutException(budget);
+                    throw new SourceCutException(budget);
                 }
                 callCut = true;
             }
-            final AiGenerationRequest call = new AiGenerationRequest(promptKey, contextFile, prepared.sourceText());
-            final int counted = tokenLimit == AiTokenWindow.NO_LIMIT
+            final GenerationRequest call = new GenerationRequest(promptKey, contextFile, prepared.sourceText());
+            final int counted = tokenLimit == TokenWindow.NO_LIMIT
                     ? 0
                     : generationProvider.promptTokens(call).orElse(0);
             if (counted > tokenLimit) {
-                final int smaller = AiTokenWindow.smallerWindow(
+                final int smaller = TokenWindow.smallerWindow(
                         budget, tokenLimit, prepared.prompt().length(), counted);
-                if (smaller <= 0 || smallerWindows >= AiTokenWindow.MAX_SMALLER_WINDOWS) {
+                if (smaller <= 0 || smallerWindows >= TokenWindow.MAX_SMALLER_WINDOWS) {
                     if (!mayCut) {
-                        throw new AiSourceCutException(Math.max(0, smaller));
+                        throw new SourceCutException(Math.max(0, smaller));
                     }
                     throw new IOException("The prompt for " + contextFile + " still takes " + counted
                             + " tokens after " + smallerWindows + " smaller windows, the model's window leaves "
@@ -944,10 +941,10 @@ public class SummaryGenerator {
             } catch (final IOException | RuntimeException e) {
                 // a call that failed still cost its tokens
                 usage = usage.withCall(generationProvider.lastUsage());
-                final int reduced = AiOverflowBackoff.isContextOverflow(e)
-                        ? AiOverflowBackoff.nextWindow(overflows++, budget)
-                        : AiOverflowBackoff.NO_SMALLER_WINDOW;
-                if (reduced == AiOverflowBackoff.NO_SMALLER_WINDOW) {
+                final int reduced = OverflowBackoff.isContextOverflow(e)
+                        ? OverflowBackoff.nextWindow(overflows++, budget)
+                        : OverflowBackoff.NO_SMALLER_WINDOW;
+                if (reduced == OverflowBackoff.NO_SMALLER_WINDOW) {
                     throw e;
                 }
                 LOGGER.warn(
@@ -975,11 +972,11 @@ public class SummaryGenerator {
     /**
      * Returns the effective {@code maxInputChars} for the given field generation entry.
      *
-     * <p>When the {@link net.ladenthin.srcmorph.config.AiModelDefinition#getCharsPerToken()} value is greater than zero,
+     * <p>When the {@link net.ladenthin.srcmorph.config.ModelDefinition#getCharsPerToken()} value is greater than zero,
      * the maximum is computed for every file, from the prompt rendered with that file's name, by the
-     * calculation the plan uses ({@link AiInputWindowCalculator}), so the plan and the run agree; the
+     * calculation the plan uses ({@link InputWindowCalculator}), so the plan and the run agree; the
      * calculation is logged in detail once per {@code (aiDefinitionKey, promptKey)} pair. When
-     * {@code charsPerToken} is zero, the static {@link net.ladenthin.srcmorph.config.AiModelDefinition#DEFAULT_MAX_INPUT_CHARS}
+     * {@code charsPerToken} is zero, the static {@link net.ladenthin.srcmorph.config.ModelDefinition#DEFAULT_MAX_INPUT_CHARS}
      * fallback is returned instead.</p>
      *
      * @param fieldGeneration  the field configuration identifying the definition and prompt keys
@@ -988,11 +985,9 @@ public class SummaryGenerator {
      * @return effective maximum input characters for this field generation step
      */
     private int resolveMaxInputChars(
-            final AiFieldGenerationConfig fieldGeneration,
-            final AiModelDefinition generationConfig,
-            final Path contextFile) {
+            final RoutingRule fieldGeneration, final ModelDefinition generationConfig, final Path contextFile) {
         if (generationConfig.getCharsPerToken() <= 0) {
-            return AiModelDefinition.DEFAULT_MAX_INPUT_CHARS;
+            return ModelDefinition.DEFAULT_MAX_INPUT_CHARS;
         }
 
         final int basePromptLength =
@@ -1001,7 +996,7 @@ public class SummaryGenerator {
                 fieldGeneration.requireAiDefinitionKey(), fieldGeneration.requirePromptKey()))) {
             logMaxInputChars(generationConfig, basePromptLength);
         }
-        return AiInputWindowCalculator.maxInputChars(generationConfig, basePromptLength);
+        return InputWindowCalculator.maxInputChars(generationConfig, basePromptLength);
     }
 
     /**
@@ -1023,20 +1018,20 @@ public class SummaryGenerator {
      *                        {@code maxOutputTokens}, and {@code charsPerToken}
      * @param basePromptLength character length of the prompt template rendered with empty source
      */
-    private void logMaxInputChars(final AiModelDefinition config, final int basePromptLength) {
+    private void logMaxInputChars(final ModelDefinition config, final int basePromptLength) {
         final int contextSize = config.getContextSize();
         final int charsPerToken = config.getCharsPerToken();
         final int maxOutputTokens = config.getMaxOutputTokens();
 
         final int totalChars = contextSize * charsPerToken;
         final int promptChars = basePromptLength;
-        final int eofChars = AiPromptPreparationSupport.EOF_MARKER_LENGTH;
+        final int eofChars = PromptPreparer.EOF_MARKER_LENGTH;
         final int outputChars = maxOutputTokens * charsPerToken;
-        final int safetyChars = AiModelDefinition.DEFAULT_SAFETY_MARGIN_CHARS;
+        final int safetyChars = ModelDefinition.DEFAULT_SAFETY_MARGIN_CHARS;
         final int overheadTotal = promptChars + eofChars + outputChars + safetyChars;
         final int availableChars = totalChars - overheadTotal;
         // Single source of truth for the threshold shared with the planning path ({@code SourceFileIndexer.classify}).
-        final int finalChars = AiInputWindowCalculator.maxInputChars(config, basePromptLength);
+        final int finalChars = InputWindowCalculator.maxInputChars(config, basePromptLength);
 
         LOGGER.info(
                 "Maximum input characters for source code before trimming. Calculated as: (context_size x {}) -"

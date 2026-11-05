@@ -4,7 +4,7 @@
 package net.ladenthin.maven.srcmorph.mojo;
 
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfigurationFile;
 import org.jspecify.annotations.Nullable;
 
@@ -15,7 +15,7 @@ enum RuleSection {
     FILES {
         @Override
         @Nullable
-        List<AiFieldGenerationConfig> rulesOf(final SrcMorphConfigurationFile file) {
+        List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
             return file.getSrcMorph().getFieldGenerations();
         }
     },
@@ -24,7 +24,7 @@ enum RuleSection {
     PACKAGE {
         @Override
         @Nullable
-        List<AiFieldGenerationConfig> rulesOf(final SrcMorphConfigurationFile file) {
+        List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
             return file.getPackageFieldGenerations();
         }
     },
@@ -33,7 +33,7 @@ enum RuleSection {
     PROJECT {
         @Override
         @Nullable
-        List<AiFieldGenerationConfig> rulesOf(final SrcMorphConfigurationFile file) {
+        List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
             return file.getProjectFieldGenerations();
         }
     };
@@ -44,5 +44,5 @@ enum RuleSection {
      * @param file the content of the configuration file
      * @return the rules, or {@code null} when the file has none there
      */
-    abstract @Nullable List<AiFieldGenerationConfig> rulesOf(SrcMorphConfigurationFile file);
+    abstract @Nullable List<RoutingRule> rulesOf(SrcMorphConfigurationFile file);
 }

@@ -133,7 +133,7 @@ SPDX-License-Identifier: Apache-2.0
         a caller embeds this CLI through without forking a `java -jar` process. The parsing and
         serialization helpers the tests use (readString, fromJson, fromYaml, configurationToJson,
         configurationToYaml) are package-private. Same rationale as every other OPM suppression in this
-        reactor (see srcmorph/spotbugs-exclude.xml's AiProgressBar/AiFactDefinitionSupport entries):
+        reactor (see srcmorph/spotbugs-exclude.xml's ProgressBar/FactGroups entries):
         fb-contrib's bytecode-shape heuristic cannot see cross-source-set (test) call sites.
     -->
     <Match>

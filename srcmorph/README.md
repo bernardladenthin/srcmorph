@@ -26,24 +26,24 @@ Major field groups:
 
 | Group | Fields |
 |---|---|
-| Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `fileNames` (globs over the file name, in any case, for files without an extension), `fileInterpreters` (scripts without an extension, by the interpreter their `#!` line names, `support.AiShebang`), `contentHeadChars` (how much of a file the `contentMatches` and `interpreters` conditions read, default 16,384, at least 256), `minFileSizeBytes`/`maxFileSizeBytes`; a glob takes `*`, `**`, `?` and `{a,b}` (`support.AiGlob`) |
-| Output | `outputDirectory`, `force`, `regenerateOn` (`config.AiRegenerateOn`: `source`, `prompt`, `facts`, `model`, `children`, each `true` by default, each the header field `C`, `P`, `N`, `M` or `K` whose change rewrites a summary; `force` rewrites every one), `planOnly`, `runRecordFile` (the JSON record of a file phase, `engine.RunRecord`) |
-| Routing & prompts | `promptDefinitions` (`List<AiPromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<AiModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<AiFieldGenerationConfig>` — the routing rules), `factDefinitions` (`List<AiFactDefinition>`: a `key` and `facts` or a `factsFile`) |
+| Source selection | `baseDirectory`, `subtrees`, `excludes`, `fileExtensions`, `fileNames` (globs over the file name, in any case, for files without an extension), `fileInterpreters` (scripts without an extension, by the interpreter their `#!` line names, `support.Shebang`), `contentHeadChars` (how much of a file the `contentMatches` and `interpreters` conditions read, default 16,384, at least 256), `minFileSizeBytes`/`maxFileSizeBytes`; a glob takes `*`, `**`, `?` and `{a,b}` (`support.Glob`) |
+| Output | `outputDirectory`, `force`, `regenerateOn` (`config.RegenerateOn`: `source`, `prompt`, `facts`, `model`, `children`, each `true` by default, each the header field `C`, `P`, `N`, `M` or `K` whose change rewrites a summary; `force` rewrites every one), `planOnly`, `runRecordFile` (the JSON record of a file phase, `engine.RunRecord`) |
+| Routing & prompts | `promptDefinitions` (`List<PromptDefinition>`: a `key` and a `template` or a `templateFile`), `profileDirectory` (the profile: a rule's `promptKey` / `factsKey` without a definition is read from `<key>.md` / `<key>.tsv` there, and a relative `templateFile` / `factsFile` resolves against it), `aiDefinitions` (`List<ModelDefinition>`), `modelDirectory` (a relative `modelPath` resolves against it, an absolute one is used as it is), `fieldGenerations` (`List<RoutingRule>` — the routing rules), `factDefinitions` (`List<FactDefinition>`: a `key` and `facts` or a `factsFile`) |
 | AI backend | `generationProvider` (`"mock"`, `"llamacpp-jni"` or `"openai-compatible"`; a model definition's own `provider` overrides it); every model parameter is a field of an `aiDefinitions` entry |
 | Header metadata | `generatorVersion`, `aiVersion`, `projectName` |
 
-Every other `config/` class is a plain, Maven-annotation-free JavaBean too: `AiModelDefinition` (a
-named, complete set of GGUF sampling parameters), `AiPromptDefinition` (a named prompt template —
-its `template` string is the system instructions, used verbatim; `AiPromptSupport` automatically
+Every other `config/` class is a plain, Maven-annotation-free JavaBean too: `ModelDefinition` (a
+named, complete set of GGUF sampling parameters), `PromptDefinition` (a named prompt template —
+its `template` string is the system instructions, used verbatim; `PromptCatalog` automatically
 appends the file's path below the base directory (a package's name) and the source text as a
 separate user message, so a template needs no
-placeholder), `AiFieldGenerationConfig` (one routing rule: a
+placeholder), `RoutingRule` (one routing rule: a
 `condition` tree, `priority`, and either a route, a `skip`, or the explicit `fallback`),
-`AiCondition`/`AiConditionGroup`/`AiRangeCondition` (the composable and/or/not condition tree over
-extensions/size/lines/modified-time/path-glob), `AiFactCounter`/`AiFactDefinition` (deterministic
-regex-count "facts" prepended to a generated body), `AiOversizeStrategy` (`fail`/`sample`/
+`RuleCondition`/`ConditionGroup`/`RangeCondition` (the composable and/or/not condition tree over
+extensions/size/lines/modified-time/path-glob), `FactCounter`/`FactDefinition` (deterministic
+regex-count "facts" prepended to a generated body), `OversizeStrategy` (`fail`/`sample`/
 `mapReduce`/`sampleChunks`/`deterministic` — what a rule does when a file is larger than its model's
-context window), `AiCalibration` (per-machine measured throughput, pasted onto an `AiModelDefinition`).
+context window), `Calibration` (per-machine measured throughput, pasted onto an `ModelDefinition`).
 
 ## The five engines
 
@@ -77,8 +77,8 @@ the plugin's aggregate goals read.
 ```java
 import java.io.File;
 import java.util.Collections;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.GenerateEngine;
 import net.ladenthin.srcmorph.engine.GenerateResult;
@@ -90,15 +90,15 @@ config.setOutputDirectory(new File("target/srcmorph-ai"));
 config.setGenerationProvider("mock"); // or "llamacpp-jni" with a real GGUF model below
 
 // the profile: srcmorph's profiles/v3/ copied into the project; a rule's promptKey names
-// <key>.md there (an AiPromptDefinition with setTemplate("...") writes a prompt inline instead)
+// <key>.md there (an PromptDefinition with setTemplate("...") writes a prompt inline instead)
 config.setProfileDirectory(new File("src/srcmorph/profile"));
 
-AiModelDefinition model = new AiModelDefinition();
+ModelDefinition model = new ModelDefinition();
 model.setKey("coder");
 model.setModelPath("/path/to/model.gguf"); // unused by the mock provider
 config.setAiDefinitions(Collections.singletonList(model));
 
-AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+RoutingRule rule = new RoutingRule();
 rule.setPromptKey("file-body-fallback");
 rule.setAiDefinitionKey("coder");
 rule.setFallback(true);
@@ -114,16 +114,16 @@ try {
 
 ## Provider abstraction
 
-`net.ladenthin.srcmorph.provider.AiGenerationProvider` (a `Closeable`) abstracts the AI backend.
-`AiGenerationProviderFactory` looks up an implementation by name:
+`net.ladenthin.srcmorph.provider.GenerationProvider` (a `Closeable`) abstracts the AI backend.
+`GenerationProviderFactory` looks up an implementation by name:
 
-- `"mock"` (default) — `MockAiGenerationProvider`, deterministic canned responses; no model, no JNI,
+- `"mock"` (default) — `MockGenerationProvider`, deterministic canned responses; no model, no JNI,
   no native library required. Used throughout every module's test suite.
-- `"llamacpp-jni"` — `LlamaCppJniAiGenerationProvider`, backed by
+- `"llamacpp-jni"` — `LlamaCppJniGenerationProvider`, backed by
   [`net.ladenthin:llama`](https://central.sonatype.com/artifact/net.ladenthin/llama) (the llama.cpp
   JNI binding). This is the **only** package in this library that touches the JNI binding
   (`CoreArchitectureTest#jniConfinedToProvider`).
-- `"openai-compatible"` — `OpenAiCompatibleAiGenerationProvider`, HTTP to
+- `"openai-compatible"` — `OpenAiCompatibleGenerationProvider`, HTTP to
   `<baseUrl>/chat/completions` of any OpenAI-compatible API (OpenRouter by default, `llama-server`,
   jllama's `NativeServer`), with the key from the environment variable a model's `apiKeyEnv` names.
 
@@ -148,7 +148,7 @@ layered-package dependency direction, and the PIT mutation-testing scope (curren
 
 ## Testing
 
-Every test in this module is model-free by default (`MockAiGenerationProvider`); a handful of
+Every test in this module is model-free by default (`MockGenerationProvider`); a handful of
 real-model tests are gated on `src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf` and self-skip
 when the native library is unavailable. See the root [`TEST_WRITING_GUIDE.md`](../TEST_WRITING_GUIDE.md)
 for conventions and [`../CLAUDE.md`](../CLAUDE.md) for how to run a single test class.

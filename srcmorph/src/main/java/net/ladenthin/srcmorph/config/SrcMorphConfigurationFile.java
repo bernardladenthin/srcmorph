@@ -22,9 +22,9 @@ public class SrcMorphConfigurationFile {
 
     private SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
 
-    private @Nullable List<AiFieldGenerationConfig> packageFieldGenerations;
+    private @Nullable List<RoutingRule> packageFieldGenerations;
 
-    private @Nullable List<AiFieldGenerationConfig> projectFieldGenerations;
+    private @Nullable List<RoutingRule> projectFieldGenerations;
 
     /** Creates an empty configuration file content, every default applied. */
     public SrcMorphConfigurationFile() {
@@ -91,7 +91,7 @@ public class SrcMorphConfigurationFile {
      *
      * @return the rules, or {@code null} when unset
      */
-    public @Nullable List<AiFieldGenerationConfig> getPackageFieldGenerations() {
+    public @Nullable List<RoutingRule> getPackageFieldGenerations() {
         return packageFieldGenerations;
     }
 
@@ -100,7 +100,7 @@ public class SrcMorphConfigurationFile {
      *
      * @param packageFieldGenerations the rules
      */
-    public void setPackageFieldGenerations(final @Nullable List<AiFieldGenerationConfig> packageFieldGenerations) {
+    public void setPackageFieldGenerations(final @Nullable List<RoutingRule> packageFieldGenerations) {
         this.packageFieldGenerations = packageFieldGenerations;
     }
 
@@ -109,7 +109,7 @@ public class SrcMorphConfigurationFile {
      *
      * @return the rules, or {@code null} when unset
      */
-    public @Nullable List<AiFieldGenerationConfig> getProjectFieldGenerations() {
+    public @Nullable List<RoutingRule> getProjectFieldGenerations() {
         return projectFieldGenerations;
     }
 
@@ -118,7 +118,7 @@ public class SrcMorphConfigurationFile {
      *
      * @param projectFieldGenerations the rules
      */
-    public void setProjectFieldGenerations(final @Nullable List<AiFieldGenerationConfig> projectFieldGenerations) {
+    public void setProjectFieldGenerations(final @Nullable List<RoutingRule> projectFieldGenerations) {
         this.projectFieldGenerations = projectFieldGenerations;
     }
 }

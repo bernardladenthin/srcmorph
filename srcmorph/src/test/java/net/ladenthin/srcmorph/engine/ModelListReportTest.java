@@ -12,14 +12,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.provider.RemoteModel;
 import org.junit.jupiter.api.Test;
 
 public class ModelListReportTest {
 
-    private static AiModelDefinition gatewayPattern() {
-        final AiModelDefinition pattern = new AiModelDefinition();
+    private static ModelDefinition gatewayPattern() {
+        final ModelDefinition pattern = new ModelDefinition();
         pattern.setBaseUrl(" http://127.0.0.1:3030/v1 ");
         pattern.setApiKeyEnv("COPILOT_GATEWAY_API_KEY");
         pattern.setStream(true);
@@ -30,8 +30,8 @@ public class ModelListReportTest {
         return pattern;
     }
 
-    private static AiModelDefinition openRouterPattern() {
-        final AiModelDefinition pattern = new AiModelDefinition();
+    private static ModelDefinition openRouterPattern() {
+        final ModelDefinition pattern = new ModelDefinition();
         pattern.setApiKeyEnv("OPENROUTER_API_KEY");
         pattern.setMaxOutputTokens(4096);
         pattern.setTemperature(0.2f);
@@ -109,7 +109,7 @@ public class ModelListReportTest {
 
     @Test
     public void render_noKeyNoLimitNoStream_leavesThoseFieldsOut() {
-        final AiModelDefinition pattern = new AiModelDefinition();
+        final ModelDefinition pattern = new ModelDefinition();
         pattern.setBaseUrl("http://localhost:8080/v1");
         pattern.setApiKeyEnv("  ");
 
@@ -210,7 +210,7 @@ public class ModelListReportTest {
 
     @Test
     public void listing_copiesThePatternAtCreation() {
-        final AiModelDefinition pattern = gatewayPattern();
+        final ModelDefinition pattern = gatewayPattern();
         final List<RemoteModel> models = new ArrayList<>(GATEWAY_MODELS);
         final ModelListReport.Listing listing = ModelListReport.Listing.of("copilot", pattern, 3, models);
         pattern.setBaseUrl("http://changed");
@@ -224,7 +224,7 @@ public class ModelListReportTest {
         assertThat(listing.contextSize(), is(200000));
         assertThat(listing.maxOutputTokens(), is(2048));
         assertThat(listing.temperature(), is(0.2f));
-        assertThat(listing.reasoningEffort(), is(AiModelDefinition.DEFAULT_REASONING_EFFORT));
+        assertThat(listing.reasoningEffort(), is(ModelDefinition.DEFAULT_REASONING_EFFORT));
         assertThat(listing.listed(), is(3));
         assertThat(listing.models(), is(GATEWAY_MODELS));
         assertThrows(UnsupportedOperationException.class, () -> listing.models().clear());

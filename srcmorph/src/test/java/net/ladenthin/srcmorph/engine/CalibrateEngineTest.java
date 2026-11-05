@@ -13,8 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,8 +27,8 @@ public class CalibrateEngineTest {
      * {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object, which requires a
      * non-null model path.
      */
-    private static AiModelDefinition mockModelDefinition() {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelDefinition mockModelDefinition() {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         definition.setModelPath("mock.gguf");
         definition.setCharsPerToken(0);
@@ -65,7 +65,7 @@ public class CalibrateEngineTest {
     public void execute_noRoutableRuleThrowsSrcMorphException() {
         final SrcMorphConfiguration config = baseConfig();
         // A rule with neither promptKey nor aiDefinitionKey set is not routable.
-        config.setFieldGenerations(Collections.singletonList(new AiFieldGenerationConfig()));
+        config.setFieldGenerations(Collections.singletonList(new RoutingRule()));
 
         final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new CalibrateEngine(config).execute());
         assertThat(e.getMessage(), containsString("No routable"));
@@ -97,10 +97,10 @@ public class CalibrateEngineTest {
     @Test
     public void execute_dedupesMultipleRulesRoutedToTheSameModel() throws Exception {
         final SrcMorphConfiguration config = baseConfig();
-        final AiFieldGenerationConfig ruleA = new AiFieldGenerationConfig();
+        final RoutingRule ruleA = new RoutingRule();
         ruleA.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         ruleA.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        final AiFieldGenerationConfig ruleB = new AiFieldGenerationConfig();
+        final RoutingRule ruleB = new RoutingRule();
         ruleB.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         ruleB.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         config.setFieldGenerations(java.util.Arrays.asList(ruleA, ruleB));

@@ -11,7 +11,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.File;
 import java.util.Arrays;
-import net.ladenthin.srcmorph.support.AiGeneratorVersion;
+import net.ladenthin.srcmorph.support.GeneratorVersion;
 import org.junit.jupiter.api.Test;
 
 public class SrcMorphConfigurationTest {
@@ -27,7 +27,7 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getAiVersion(), is(SrcMorphConfiguration.DEFAULT_AI_VERSION));
         assertThat(c.getMinFileSizeBytes(), is(0L));
         assertThat(c.getMaxFileSizeBytes(), is(0L));
-        assertThat(c.getGeneratorVersion(), is(new AiGeneratorVersion().version()));
+        assertThat(c.getGeneratorVersion(), is(new GeneratorVersion().version()));
     }
 
     @Test
@@ -99,14 +99,14 @@ public class SrcMorphConfigurationTest {
     @Test
     public void regenerateOn_everySwitchOnByDefault_andNullTurnsThemOnAgain() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        final AiRegenerateOn defaults = c.getRegenerateOn();
+        final RegenerateOn defaults = c.getRegenerateOn();
         assertThat(defaults.isSource(), is(true));
         assertThat(defaults.isPrompt(), is(true));
         assertThat(defaults.isFacts(), is(true));
         assertThat(defaults.isModel(), is(true));
         assertThat(defaults.isChildren(), is(true));
 
-        final AiRegenerateOn frozen = new AiRegenerateOn();
+        final RegenerateOn frozen = new RegenerateOn();
         frozen.setSource(false);
         frozen.setPrompt(false);
         frozen.setFacts(false);
@@ -175,7 +175,7 @@ public class SrcMorphConfigurationTest {
     @Test
     public void promptDefinitionsRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        final AiPromptDefinition p = new AiPromptDefinition();
+        final PromptDefinition p = new PromptDefinition();
         p.setKey("k");
         p.setTemplate("t");
         c.setPromptDefinitions(Arrays.asList(p));
@@ -185,7 +185,7 @@ public class SrcMorphConfigurationTest {
     @Test
     public void aiDefinitionsRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        final AiModelDefinition m = new AiModelDefinition();
+        final ModelDefinition m = new ModelDefinition();
         m.setKey("m");
         c.setAiDefinitions(Arrays.asList(m));
         assertThat(c.getAiDefinitions(), hasItem(m));
@@ -194,7 +194,7 @@ public class SrcMorphConfigurationTest {
     @Test
     public void fieldGenerationsRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        final AiFieldGenerationConfig f = new AiFieldGenerationConfig();
+        final RoutingRule f = new RoutingRule();
         f.setPromptKey("p");
         c.setFieldGenerations(Arrays.asList(f));
         assertThat(c.getFieldGenerations(), hasItem(f));
@@ -203,7 +203,7 @@ public class SrcMorphConfigurationTest {
     @Test
     public void factDefinitionsRoundTrips() {
         final SrcMorphConfiguration c = new SrcMorphConfiguration();
-        final AiFactDefinition fd = new AiFactDefinition();
+        final FactDefinition fd = new FactDefinition();
         fd.setKey("fd");
         c.setFactDefinitions(Arrays.asList(fd));
         assertThat(c.getFactDefinitions(), hasItem(fd));

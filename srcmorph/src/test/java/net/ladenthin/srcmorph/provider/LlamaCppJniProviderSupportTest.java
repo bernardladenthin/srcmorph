@@ -26,8 +26,8 @@ import net.ladenthin.llama.value.Usage;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
@@ -73,8 +73,8 @@ public class LlamaCppJniProviderSupportTest {
             "0.0.0",
             AiMdHeaderCodec.NODE_TYPE_FILE);
 
-    private static AiGenerationRequest request(final String source) {
-        return new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), source);
+    private static GenerationRequest request(final String source) {
+        return new GenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), source);
     }
 
     @Test
@@ -141,7 +141,7 @@ public class LlamaCppJniProviderSupportTest {
      */
     private static LlamaCppJniProviderSupport providerWith(final ProviderConfig config) {
         return new LlamaCppJniProviderSupport(
-                config, new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions()));
+                config, new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions()));
     }
 
     /**
@@ -221,7 +221,7 @@ public class LlamaCppJniProviderSupportTest {
     }
 
     /**
-     * The seed sentinel is {@link net.ladenthin.srcmorph.config.AiModelDefinition#DEFAULT_SEED} (-1),
+     * The seed sentinel is {@link net.ladenthin.srcmorph.config.ModelDefinition#DEFAULT_SEED} (-1),
      * meaning "random per request". Forwarding it would pin every run to seed -1 and silently destroy
      * the randomness upstream provides, so an unconfigured run must send nothing at all.
      */
@@ -406,11 +406,11 @@ public class LlamaCppJniProviderSupportTest {
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
         final ChatResponse empty = new ChatResponse("id", Collections.emptyList(), new Usage(1, 1), null, "{}");
 
-        final AiIncompleteAnswerException thrown = assertThrows(
-                AiIncompleteAnswerException.class,
+        final IncompleteAnswerException thrown = assertThrows(
+                IncompleteAnswerException.class,
                 () -> provider.requireCompleteAnswer(request("class A {}"), empty, ""));
 
-        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.NO_ANSWER));
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.NO_ANSWER));
         assertThat(thrown.getMessage(), is("The response for Test.java has no answer (no choice)"));
     }
 
@@ -421,12 +421,12 @@ public class LlamaCppJniProviderSupportTest {
                 .maxOutputTokens(128)
                 .build());
 
-        final AiIncompleteAnswerException thrown = assertThrows(
-                AiIncompleteAnswerException.class,
+        final IncompleteAnswerException thrown = assertThrows(
+                IncompleteAnswerException.class,
                 () -> provider.requireCompleteAnswer(
                         request("class A {}"), responseWith("length", new Usage(1, 1)), "half a sum"));
 
-        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
         assertThat(thrown.getMessage(), containsString("Test.java was cut off at the 128-token output budget"));
         assertThat(thrown.partialText(), is("half a sum"));
     }
@@ -436,12 +436,12 @@ public class LlamaCppJniProviderSupportTest {
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
-        final AiIncompleteAnswerException thrown = assertThrows(
-                AiIncompleteAnswerException.class,
+        final IncompleteAnswerException thrown = assertThrows(
+                IncompleteAnswerException.class,
                 () -> provider.requireCompleteAnswer(
                         request("class A {}"), responseWith("error", new Usage(1, 1)), "- test paging ("));
 
-        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.ABORTED));
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
         assertThat(
                 thrown.getMessage(),
                 is("The answer for Test.java ended with finish reason 'error': the provider stopped it, not the"
@@ -454,12 +454,12 @@ public class LlamaCppJniProviderSupportTest {
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
-        final AiIncompleteAnswerException thrown = assertThrows(
-                AiIncompleteAnswerException.class,
+        final IncompleteAnswerException thrown = assertThrows(
+                IncompleteAnswerException.class,
                 () -> provider.requireCompleteAnswer(
                         request("class A {}"), responseWith("content_filter", new Usage(1, 1)), "A summ"));
 
-        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.ABORTED));
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
         assertThat(thrown.getMessage(), containsString("finish reason 'content_filter'"));
     }
 
@@ -479,12 +479,12 @@ public class LlamaCppJniProviderSupportTest {
         final LlamaCppJniProviderSupport provider = providerWith(
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
 
-        final AiIncompleteAnswerException thrown = assertThrows(
-                AiIncompleteAnswerException.class,
+        final IncompleteAnswerException thrown = assertThrows(
+                IncompleteAnswerException.class,
                 () -> provider.requireCompleteAnswer(
                         request("class A {}"), responseWith("stop", new Usage(1, 1)), " \n"));
 
-        assertThat(thrown.reason(), is(AiIncompleteAnswerException.Reason.EMPTY));
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.EMPTY));
         assertThat(
                 thrown.getMessage(),
                 is("The model answered nothing for Test.java (an empty or reasoning-only answer)"));

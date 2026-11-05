@@ -8,7 +8,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -21,35 +21,35 @@ import org.junit.jupiter.api.Test;
  */
 public class OpsFactPatternsTest {
 
-    private static final List<AiFactCounter> OPENAPI = ProfileFactPatterns.counters("openapi-facts");
+    private static final List<FactCounter> OPENAPI = ProfileFactPatterns.counters("openapi-facts");
 
-    private static final List<AiFactCounter> K8S = ProfileFactPatterns.counters("k8s-facts");
+    private static final List<FactCounter> K8S = ProfileFactPatterns.counters("k8s-facts");
 
-    private static final List<AiFactCounter> ACTIONS = ProfileFactPatterns.counters("actions-facts");
+    private static final List<FactCounter> ACTIONS = ProfileFactPatterns.counters("actions-facts");
 
-    private static final List<AiFactCounter> DOCKERFILE = ProfileFactPatterns.counters("dockerfile-facts");
+    private static final List<FactCounter> DOCKERFILE = ProfileFactPatterns.counters("dockerfile-facts");
 
-    private static final List<AiFactCounter> ASYNCAPI = ProfileFactPatterns.counters("asyncapi-facts");
+    private static final List<FactCounter> ASYNCAPI = ProfileFactPatterns.counters("asyncapi-facts");
 
-    private static final List<AiFactCounter> TERRAFORM = ProfileFactPatterns.counters("terraform-facts");
+    private static final List<FactCounter> TERRAFORM = ProfileFactPatterns.counters("terraform-facts");
 
-    private static final List<AiFactCounter> ANSIBLE = ProfileFactPatterns.counters("ansible-facts");
+    private static final List<FactCounter> ANSIBLE = ProfileFactPatterns.counters("ansible-facts");
 
-    private static final List<AiFactCounter> COMPOSE = ProfileFactPatterns.counters("compose-facts");
+    private static final List<FactCounter> COMPOSE = ProfileFactPatterns.counters("compose-facts");
 
-    private static final List<AiFactCounter> CAMEL_YAML = ProfileFactPatterns.counters("camel-yaml-facts");
+    private static final List<FactCounter> CAMEL_YAML = ProfileFactPatterns.counters("camel-yaml-facts");
 
-    private static final List<AiFactCounter> GRADLE = ProfileFactPatterns.counters("gradle-facts");
+    private static final List<FactCounter> GRADLE = ProfileFactPatterns.counters("gradle-facts");
 
-    private static final List<AiFactCounter> PROPERTIES = ProfileFactPatterns.counters("properties-facts");
+    private static final List<FactCounter> PROPERTIES = ProfileFactPatterns.counters("properties-facts");
 
-    private static final List<AiFactCounter> POWERSHELL = ProfileFactPatterns.counters("powershell-facts");
+    private static final List<FactCounter> POWERSHELL = ProfileFactPatterns.counters("powershell-facts");
 
-    private static final List<AiFactCounter> BATCH = ProfileFactPatterns.counters("batch-facts");
+    private static final List<FactCounter> BATCH = ProfileFactPatterns.counters("batch-facts");
 
-    private static final List<AiFactCounter> NPM = ProfileFactPatterns.counters("npm-facts");
+    private static final List<FactCounter> NPM = ProfileFactPatterns.counters("npm-facts");
 
-    private static int count(final List<AiFactCounter> counters, final String label, final String source) {
+    private static int count(final List<FactCounter> counters, final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
         final Integer count = counts.get(label);
         if (count == null) {

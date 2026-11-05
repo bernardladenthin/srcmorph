@@ -8,7 +8,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,13 +19,13 @@ import org.junit.jupiter.api.Test;
  */
 public class ContractFactPatternsTest {
 
-    private static final List<AiFactCounter> PROTO = ProfileFactPatterns.counters("proto-facts");
+    private static final List<FactCounter> PROTO = ProfileFactPatterns.counters("proto-facts");
 
-    private static final List<AiFactCounter> AVRO = ProfileFactPatterns.counters("avro-facts");
+    private static final List<FactCounter> AVRO = ProfileFactPatterns.counters("avro-facts");
 
-    private static final List<AiFactCounter> GRAPHQL = ProfileFactPatterns.counters("graphql-facts");
+    private static final List<FactCounter> GRAPHQL = ProfileFactPatterns.counters("graphql-facts");
 
-    private static int count(final List<AiFactCounter> counters, final String label, final String source) {
+    private static int count(final List<FactCounter> counters, final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
         final Integer count = counts.get(label);
         if (count == null) {

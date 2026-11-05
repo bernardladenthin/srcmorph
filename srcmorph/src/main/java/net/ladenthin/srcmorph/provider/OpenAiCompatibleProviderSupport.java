@@ -37,15 +37,15 @@ import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.ReplaceWithLibrary;
 import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Everything {@link OpenAiCompatibleAiGenerationProvider} does that needs no network: the request
+ * Everything {@link OpenAiCompatibleGenerationProvider} does that needs no network: the request
  * body, the endpoint, the API key lookup, the status check, the error message and the timings.
  *
  * <p>Split from the provider for the same reason {@link LlamaCppJniProviderSupport} is split from
@@ -236,7 +236,7 @@ final class OpenAiCompatibleProviderSupport {
     private final ProviderConfig config;
 
     @ToString.Exclude
-    private final AiPromptSupport promptSupport;
+    private final PromptCatalog promptSupport;
 
     @ToString.Exclude
     private final Function<String, @Nullable String> environment;
@@ -253,7 +253,7 @@ final class OpenAiCompatibleProviderSupport {
      */
     OpenAiCompatibleProviderSupport(
             final ProviderConfig config,
-            final AiPromptSupport promptSupport,
+            final PromptCatalog promptSupport,
             final Function<String, @Nullable String> environment) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
@@ -272,7 +272,7 @@ final class OpenAiCompatibleProviderSupport {
      * @return the request body
      * @throws IOException if the body cannot be serialised
      */
-    String requestBody(final AiGenerationRequest request) throws IOException {
+    String requestBody(final GenerationRequest request) throws IOException {
         final ObjectNode body = MAPPER.createObjectNode();
         final String remoteModel = config.remoteModel();
         if (!compatibilityHelper.isBlank(remoteModel)) {
@@ -556,7 +556,7 @@ final class OpenAiCompatibleProviderSupport {
      * (a local {@code llama-server} or {@code NativeServer}); anything else fails before a byte is
      * sent. Without that, a model that sets a plain-{@code http} {@code baseUrl} would send the key its
      * {@code apiKeyEnv} names readable to every hop. Which host may receive a key at all is the
-     * model's own decision: no {@code apiKeyEnv}, no key ({@code AiModelDefinition.DEFAULT_API_KEY_ENV}
+     * model's own decision: no {@code apiKeyEnv}, no key ({@code ModelDefinition.DEFAULT_API_KEY_ENV}
      * is empty).
      *
      * @param endpoint the URL the request goes to (from {@link #endpoint()})

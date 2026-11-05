@@ -5,7 +5,7 @@ package net.ladenthin.srcmorph.cli.configuration;
 
 import java.util.List;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import org.jspecify.annotations.Nullable;
 
@@ -53,7 +53,7 @@ public class CConfiguration {
      * package prompt and its model. The phase fails without it; the file rules of
      * {@code srcMorph.fieldGenerations} never reach it.
      */
-    public @Nullable List<AiFieldGenerationConfig> packageFieldGenerations;
+    public @Nullable List<RoutingRule> packageFieldGenerations;
 
     /**
      * The rule of the project phase ({@link CCommand#AggregateProject}, and the project step of
@@ -62,5 +62,5 @@ public class CConfiguration {
      * project-overview prompt and its model.
      * Unset (the default), the project index is written without an overview.
      */
-    public @Nullable List<AiFieldGenerationConfig> projectFieldGenerations;
+    public @Nullable List<RoutingRule> projectFieldGenerations;
 }

@@ -25,8 +25,8 @@ import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -103,7 +103,7 @@ public class LlamaCppJniKnobSweepTest {
             reasons.put(
                     remoteKnob,
                     "a setting of the openai-compatible provider; the llama.cpp JNI provider never reads it "
-                            + "(OpenAiCompatibleAiGenerationProviderTest covers it)");
+                            + "(OpenAiCompatibleGenerationProviderTest covers it)");
         }
         return Collections.unmodifiableMap(reasons);
     }
@@ -173,8 +173,8 @@ public class LlamaCppJniKnobSweepTest {
                 .threads(SWEEP_THREADS);
     }
 
-    private static AiGenerationRequest request() {
-        return new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), SWEEP_SOURCE);
+    private static GenerationRequest request() {
+        return new GenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), SWEEP_SOURCE);
     }
 
     /**
@@ -193,12 +193,12 @@ public class LlamaCppJniKnobSweepTest {
         // arrange
         final ProviderConfig.Builder builder = baseline();
         mutation.accept(builder);
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
 
         // act
         final String body;
-        try (LlamaCppJniAiGenerationProvider provider =
-                new LlamaCppJniAiGenerationProvider(builder.build(), promptSupport)) {
+        try (LlamaCppJniGenerationProvider provider =
+                new LlamaCppJniGenerationProvider(builder.build(), promptSupport)) {
             // generateWithTimings runs the same chat completion but does not judge the answer: at the
             // sweep's tiny output budget every answer is cut off, which generate rightly refuses.
             body = provider.generateWithTimings(request()).text();

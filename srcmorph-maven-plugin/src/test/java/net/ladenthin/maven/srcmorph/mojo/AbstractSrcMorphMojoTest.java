@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Properties;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
-import net.ladenthin.srcmorph.support.AiGeneratorVersion;
+import net.ladenthin.srcmorph.support.GeneratorVersion;
 import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.junit.jupiter.api.Test;
@@ -180,7 +180,7 @@ public class AbstractSrcMorphMojoTest {
                         sources.toFile().getAbsolutePath(), resources.toFile().getAbsolutePath()))));
         assertThat(config.getProjectName(), is(equalTo("fixture-project")));
         // the generator is srcmorph itself, not the project
-        assertThat(config.getGeneratorVersion(), is(equalTo(new AiGeneratorVersion().version())));
+        assertThat(config.getGeneratorVersion(), is(equalTo(new GeneratorVersion().version())));
         assertThat(config.isForce(), is(false));
     }
 

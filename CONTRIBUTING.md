@@ -104,7 +104,7 @@ Consult [CLAUDE.md](./CLAUDE.md) and [CODE_WRITING_GUIDE.md](./CODE_WRITING_GUID
 
 > Every new feature or behavior change MUST include automated tests. Pull requests that add or change functionality without corresponding tests will be asked to add tests before merge. Bug fixes SHOULD include a regression test.
 
-Tests are written with **JUnit 5 (Jupiter)** and **Hamcrest**. Use `MockAiGenerationProvider` (or a lambda `AiGenerationProvider`) for all tests that do not explicitly exercise the llama.cpp JNI backend. Tests that call the real JNI must guard with `NativeLlamaAvailability` (a JUnit assumption) so the suite remains runnable on machines without the native library.
+Tests are written with **JUnit 5 (Jupiter)** and **Hamcrest**. Use `MockGenerationProvider` (or a lambda `GenerationProvider`) for all tests that do not explicitly exercise the llama.cpp JNI backend. Tests that call the real JNI must guard with `NativeLlamaAvailability` (a JUnit assumption) so the suite remains runnable on machines without the native library.
 
 See [TEST_WRITING_GUIDE.md](./TEST_WRITING_GUIDE.md) at the root of the repository for the full test conventions.
 

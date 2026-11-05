@@ -144,7 +144,7 @@ grep -q "^#### Overview" "$OUT/project.ai.md" || fail "the project index has no 
 # ${it.aiVersion} of the file, filled from the fixture pom's property.
 grep -q "^- A: 0.0.0-it$" "$GENERATED" \
     || fail "the pom property did not reach \${it.aiVersion} of the file -- got: $(grep '^- A: ' "$GENERATED" || echo none)"
-# G is srcmorph's own version (support.AiGeneratorVersion), the plugin's, not the fixture pom's 1.0.0.
+# G is srcmorph's own version (support.GeneratorVersion), the plugin's, not the fixture pom's 1.0.0.
 grep -qxF -e "- G: $VERSION" "$GENERATED" \
     || fail "G is not the plugin's version $VERSION -- got: $(grep '^- G: ' "$GENERATED" || echo none)"
 # ${project.name}, which Maven fills.

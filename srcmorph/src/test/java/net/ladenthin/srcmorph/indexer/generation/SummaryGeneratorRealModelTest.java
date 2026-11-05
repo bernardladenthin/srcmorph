@@ -13,14 +13,14 @@ import java.nio.file.Path;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
-import net.ladenthin.srcmorph.config.AiFactCounter;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.facts.AiFactExtractor;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.LlamaCppJniAiGenerationProvider;
+import net.ladenthin.srcmorph.config.FactCounter;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.LlamaCppJniGenerationProvider;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
 import org.junit.jupiter.api.Test;
 
@@ -56,16 +56,16 @@ public class SummaryGeneratorRealModelTest {
     public void mapReduceWithFacts_realModel_producesFactsPlusSummary() throws Exception {
         NativeLlamaAvailability.assumeAvailable();
 
-        final AiModelDefinition def = new AiModelDefinition();
+        final ModelDefinition def = new ModelDefinition();
         def.setKey(MODEL_KEY);
         def.setModelPath(MODEL_PATH);
         def.setContextSize(SMALL_CONTEXT);
         def.setMaxOutputTokens(48);
         def.setCharsPerToken(3);
-        final AiModelDefinitionSupport models = new AiModelDefinitionSupport(Collections.singletonList(def));
+        final ModelRegistry models = new ModelRegistry(Collections.singletonList(def));
 
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
-        final AiPromptPreparationSupport prep = new AiPromptPreparationSupport(promptSupport);
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        final PromptPreparer prep = new PromptPreparer(promptSupport);
         final ProviderConfig jniConfig = ProviderConfig.builder()
                 .modelPath(MODEL_PATH)
                 .contextSize(SMALL_CONTEXT)
@@ -74,14 +74,14 @@ public class SummaryGeneratorRealModelTest {
                 .threads(NativeLlamaAvailability.THREADS)
                 .build();
 
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(MODEL_KEY);
         rule.setOnOversize("sampleChunks");
         rule.setMaxChunks(2);
         // the tiny test model is cut off at the test budget; keep what it wrote, as the path is under test
         rule.setOnIncomplete("keep");
-        final AiFactCounter counter = new AiFactCounter();
+        final FactCounter counter = new FactCounter();
         counter.setLabel("lines");
         counter.setPattern("(?m)^line ");
         rule.setFacts(Collections.singletonList(counter));
@@ -90,18 +90,17 @@ public class SummaryGeneratorRealModelTest {
         final String source = largeSource(lineCount);
         final Path contextFile = Files.createTempFile("Data", ".java");
 
-        try (LlamaCppJniAiGenerationProvider provider = new LlamaCppJniAiGenerationProvider(jniConfig, promptSupport)) {
+        try (LlamaCppJniGenerationProvider provider = new LlamaCppJniGenerationProvider(jniConfig, promptSupport)) {
             final SummaryGenerator support = new SummaryGenerator(provider, prep, models);
-            final AiGenerationResult result = support.generate((rule), contextFile, "file", source);
+            final SummaryResult result = support.generate((rule), contextFile, "file", source);
 
             // The exact facts (counted over the whole source) lead the body; the map-reduced AI summary
             // follows. This proves the real-model chunk -> hierarchical-reduce path completes end-to-end.
-            assertThat(result.body(), startsWith(AiFactExtractor.FACTS_HEADER));
+            assertThat(result.body(), startsWith(FactExtractor.FACTS_HEADER));
             assertThat(result.body(), containsString("lines: " + lineCount));
             assertThat(
                     result.body().length()
-                            > AiFactExtractor.factsBlock(rule.getFacts(), source)
-                                    .length(),
+                            > FactExtractor.factsBlock(rule.getFacts(), source).length(),
                     is(true));
         }
     }

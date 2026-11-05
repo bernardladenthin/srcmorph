@@ -14,8 +14,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -37,8 +37,8 @@ public class AggregateProjectEngineTest {
      * {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object, which requires a
      * non-null model path.
      */
-    private static AiModelDefinition mockModelDefinition() {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelDefinition mockModelDefinition() {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         definition.setModelPath("mock.gguf");
         definition.setCharsPerToken(0);
@@ -119,7 +119,7 @@ public class AggregateProjectEngineTest {
         config.setGenerationProvider("mock");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
-        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+        final RoutingRule overview = new RoutingRule();
         overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         config.setFieldGenerations(Collections.singletonList(overview));
@@ -139,7 +139,7 @@ public class AggregateProjectEngineTest {
         config.setGenerationProvider("mock");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
-        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+        final RoutingRule overview = new RoutingRule();
         overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         config.setFieldGenerations(Arrays.asList(overview, overview));

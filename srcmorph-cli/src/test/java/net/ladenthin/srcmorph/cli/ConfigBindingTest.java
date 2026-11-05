@@ -12,10 +12,10 @@ import java.nio.file.Path;
 import java.util.List;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiFactCounter;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.FactCounter;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -73,12 +73,12 @@ public class ConfigBindingTest {
         assertThat(srcMorph.getGenerationProvider(), is(equalTo("mock")));
 
         assertThat(srcMorph.getPromptDefinitions().size(), is(equalTo(1)));
-        final AiPromptDefinition prompt = srcMorph.getPromptDefinitions().get(0);
+        final PromptDefinition prompt = srcMorph.getPromptDefinitions().get(0);
         assertThat(prompt.getKey(), is(equalTo("file-body")));
         assertThat(prompt.getTemplate(), is(equalTo("Summarize this file:\n%s")));
 
         assertThat(srcMorph.getAiDefinitions().size(), is(equalTo(1)));
-        final AiModelDefinition model = srcMorph.getAiDefinitions().get(0);
+        final ModelDefinition model = srcMorph.getAiDefinitions().get(0);
         assertThat(model.getKey(), is(equalTo("mock-model")));
         assertThat(model.getModelPath(), is(equalTo("unused-with-mock-provider.gguf")));
         assertThat(model.getContextSize(), is(equalTo(2048)));
@@ -86,13 +86,13 @@ public class ConfigBindingTest {
         assertThat(model.getThreads(), is(equalTo(2)));
 
         assertThat(srcMorph.getFieldGenerations().size(), is(equalTo(1)));
-        final AiFieldGenerationConfig rule = srcMorph.getFieldGenerations().get(0);
+        final RoutingRule rule = srcMorph.getFieldGenerations().get(0);
         assertThat(rule.getPromptKey(), is(equalTo("file-body")));
         assertThat(rule.getAiDefinitionKey(), is(equalTo("mock-model")));
         assertThat(rule.isFallback(), is(true));
 
         // ignore binds as a plain property of a counter, true for the first one and false by default
-        final List<AiFactCounter> facts = rule.getFacts();
+        final List<FactCounter> facts = rule.getFacts();
         assertThat(facts.size(), is(equalTo(2)));
         assertThat(facts.get(0).getLabel(), is(equalTo("comments")));
         assertThat(facts.get(0).isIgnore(), is(true));

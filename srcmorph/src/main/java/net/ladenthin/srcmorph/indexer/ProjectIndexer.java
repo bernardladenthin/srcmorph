@@ -11,23 +11,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiRegenerateOn;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RegenerateOn;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
 import net.ladenthin.srcmorph.document.AiMdLeadExtractor;
-import net.ladenthin.srcmorph.facts.AiFactExtractor;
-import net.ladenthin.srcmorph.indexer.generation.AiGenerationResult;
+import net.ladenthin.srcmorph.document.AiMdRewritePolicy;
+import net.ladenthin.srcmorph.facts.FactExtractor;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.support.AiChecksumSupport;
-import net.ladenthin.srcmorph.support.AiTimeSupport;
+import net.ladenthin.srcmorph.indexer.generation.SummaryResult;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.support.ChecksumSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.support.TimeSupport;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +101,7 @@ public class ProjectIndexer {
     private final boolean force;
 
     /** Overview field generation (prompt + model); {@code null} disables the AI overview. */
-    private final @Nullable AiFieldGenerationConfig overviewFieldGeneration;
+    private final @Nullable RoutingRule overviewFieldGeneration;
 
     /** AI generation loop used for the overview; {@code null} when the overview is disabled. */
     private final @Nullable SummaryGenerator summaryGenerator;
@@ -115,9 +115,9 @@ public class ProjectIndexer {
     /** The CRC32 of the overview's model ({@code M}), {@code ""} without an overview. */
     private final String overviewModelHash;
 
-    private final AiTimeSupport timeSupport = new AiTimeSupport();
-    private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport;
+    private final TimeSupport timeSupport = new TimeSupport();
+    private final ChecksumSupport checksumSupport = new ChecksumSupport();
+    private final AiMdRewritePolicy headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final AiMdChildEntryLineFormatter childEntryLineFormatter = new AiMdChildEntryLineFormatter();
     private final AiMdLeadExtractor leadExtractor = new AiMdLeadExtractor();
@@ -137,7 +137,7 @@ public class ProjectIndexer {
             final String generatorVersion,
             final String aiVersion,
             final boolean force,
-            final AiRegenerateOn regenerateOn) {
+            final RegenerateOn regenerateOn) {
         this(projectTitle, generatorVersion, aiVersion, force, regenerateOn, null);
     }
 
@@ -159,13 +159,13 @@ public class ProjectIndexer {
             final String generatorVersion,
             final String aiVersion,
             final boolean force,
-            final AiRegenerateOn regenerateOn,
+            final RegenerateOn regenerateOn,
             final @Nullable ProjectOverview overview) {
         this.projectTitle = projectTitle;
         this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
         this.force = force;
-        this.headerSupport = new AiMdHeaderSupport(
+        this.headerSupport = new AiMdRewritePolicy(
                 regenerateOn.isSource(),
                 regenerateOn.isPrompt(),
                 regenerateOn.isFacts(),
@@ -174,17 +174,17 @@ public class ProjectIndexer {
         if (overview != null) {
             // a copy of every field (copying only the prompt, the model and onIncomplete once made the
             // overview ignore its rule's onOversize and facts)
-            final AiFieldGenerationConfig rule = overview.rule();
-            final AiModelDefinitionSupport modelDefinitionSupport = overview.modelDefinitionSupport();
+            final RoutingRule rule = overview.rule();
+            final ModelRegistry modelDefinitionSupport = overview.modelDefinitionSupport();
             this.overviewFieldGeneration = rule;
             this.summaryGenerator = new SummaryGenerator(
                     overview.generationProvider(),
-                    new AiPromptPreparationSupport(overview.promptSupport()),
+                    new PromptPreparer(overview.promptSupport()),
                     modelDefinitionSupport);
-            this.overviewPromptHash = AiHeaderHashes.prompt(overview.promptSupport(), rule);
-            this.overviewFactsHash = AiFactExtractor.factsHash(rule.getFacts());
-            this.overviewModelHash = AiHeaderHashes.model(
-                    rule.requireAiDefinitionKey(), modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey()));
+            this.overviewPromptHash = HeaderHashes.prompt(overview.promptSupport(), rule);
+            this.overviewFactsHash = FactExtractor.factsHash(rule.getFacts());
+            this.overviewModelHash = HeaderHashes.model(
+                    rule.requireAiDefinitionKey(), modelDefinitionSupport.definition(rule.requireAiDefinitionKey()));
         } else {
             this.overviewFieldGeneration = null;
             this.summaryGenerator = null;
@@ -198,12 +198,12 @@ public class ProjectIndexer {
      * Aggregates every package index beneath {@code rootDirectory} into a single project index file.
      *
      * @param rootDirectory output root directory to walk for {@code package.ai.md} files
-     * @return {@link AiIndexOutcome#WRITTEN}; {@link AiIndexOutcome#UNCHANGED} when there were no package
-     *         index files or the existing file was already up to date; {@link AiIndexOutcome#FAILED} when
+     * @return {@link IndexOutcome#WRITTEN}; {@link IndexOutcome#UNCHANGED} when there were no package
+     *         index files or the existing file was already up to date; {@link IndexOutcome#FAILED} when
      *         the overview's answer was incomplete and nothing was written
      * @throws IOException if the output tree cannot be read or the project index cannot be written
      */
-    public AiIndexOutcome aggregate(final Path rootDirectory) throws IOException {
+    public IndexOutcome aggregate(final Path rootDirectory) throws IOException {
         final List<Path> packageFiles;
         try (Stream<Path> stream = Files.walk(rootDirectory)) {
             packageFiles = compatibilityHelper.toList(
@@ -212,11 +212,11 @@ public class ProjectIndexer {
 
         if (packageFiles.isEmpty()) {
             LOGGER.info("No package index files found under {}; skipping project index.", rootDirectory);
-            return AiIndexOutcome.UNCHANGED;
+            return IndexOutcome.UNCHANGED;
         }
 
         final List<PackageEntry> entries = new ArrayList<>(packageFiles.size());
-        String latestDate = AiTimeSupport.EPOCH_DATE;
+        String latestDate = TimeSupport.EPOCH_DATE;
         for (final Path packageFile : packageFiles) {
             final AiMdDocument document = documentCodec.read(packageFile);
             final String displayPath = displayPath(rootDirectory, packageFile);
@@ -240,7 +240,7 @@ public class ProjectIndexer {
         // C: the packages the project lists and their checksums, so a changed source below shows whatever
         // regenerateOn.children says; K: their leads, which the listing and the overview read; P and M: the
         // overview's prompts and model (empty without an overview)
-        final AiFieldGenerationConfig overview = this.overviewFieldGeneration;
+        final RoutingRule overview = this.overviewFieldGeneration;
         final SummaryGenerator support = this.summaryGenerator;
         final List<String> leads = new ArrayList<>(entries.size());
         final StringBuilder checksumLines = new StringBuilder();
@@ -261,21 +261,21 @@ public class ProjectIndexer {
                         aiVersion,
                         AiMdHeaderCodec.NODE_TYPE_PROJECT,
                         packageLinks)
-                .withHashes(overviewPromptHash, overviewFactsHash, overviewModelHash, AiHeaderHashes.children(leads));
+                .withHashes(overviewPromptHash, overviewFactsHash, overviewModelHash, HeaderHashes.children(leads));
 
         final Path projectFile = rootDirectory.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
 
         final boolean withOverview = overview != null && support != null;
-        if (!headerSupport.shouldWrite(force, projectFile, baseHeader) && !lacksOverview(projectFile, withOverview)) {
+        if (!headerSupport.shouldRewrite(force, projectFile, baseHeader) && !lacksOverview(projectFile, withOverview)) {
             LOGGER.info("Unchanged project index file: {}", projectFile);
-            return AiIndexOutcome.UNCHANGED;
+            return IndexOutcome.UNCHANGED;
         }
 
         final String body;
         if (overview != null && support != null) {
-            final AiGenerationResult overviewResult = generateOverview(support, overview, projectFile, entries);
+            final SummaryResult overviewResult = generateOverview(support, overview, projectFile, entries);
             if (!overviewResult.complete()) {
-                return AiIndexOutcome.FAILED;
+                return IndexOutcome.FAILED;
             }
             body = leadLine + "\n\n" + OVERVIEW_HEADING + "\n"
                     + overviewResult.body().trim() + "\n\n" + packagesSection;
@@ -285,7 +285,7 @@ public class ProjectIndexer {
 
         documentCodec.write(projectFile, new AiMdDocument(baseHeader, body));
         LOGGER.info("Wrote project index file: {} ({} packages)", projectFile, entries.size());
-        return AiIndexOutcome.WRITTEN;
+        return IndexOutcome.WRITTEN;
     }
 
     /**
@@ -362,9 +362,9 @@ public class ProjectIndexer {
      * @return the generated overview, or an incomplete result when the model's answer was incomplete
      * @throws IOException if the AI provider throws during generation
      */
-    private AiGenerationResult generateOverview(
+    private SummaryResult generateOverview(
             final SummaryGenerator support,
-            final AiFieldGenerationConfig overview,
+            final RoutingRule overview,
             final Path projectFile,
             final List<PackageEntry> entries)
             throws IOException {

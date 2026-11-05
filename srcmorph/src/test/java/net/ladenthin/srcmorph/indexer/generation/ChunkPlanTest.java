@@ -9,12 +9,12 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiOversizeStrategy;
+import net.ladenthin.srcmorph.config.OversizeStrategy;
 import org.junit.jupiter.api.Test;
 
 public class ChunkPlanTest {
 
-    /** A window whose safe window (1064) leaves exactly {@link AiMapReduceSupport#MIN_CHUNK_CHARS} for a chunk. */
+    /** A window whose safe window (1064) leaves exactly {@link MapReduceMath#MIN_CHUNK_CHARS} for a chunk. */
     private static final int MIN_WINDOW = 1330;
 
     private static String source(final int lines) {
@@ -33,7 +33,7 @@ public class ChunkPlanTest {
         final int reduceLonger = ChunkPlan.room(10_000, 100, 300);
 
         // assert
-        assertThat(mapLonger, is(8000 - 300 - AiMapReduceSupport.CHUNK_LABEL_RESERVE));
+        assertThat(mapLonger, is(8000 - 300 - MapReduceMath.CHUNK_LABEL_RESERVE));
         assertThat(reduceLonger, is(mapLonger));
     }
     // </editor-fold>
@@ -42,11 +42,11 @@ public class ChunkPlanTest {
     @Test
     public void of_roomOfTheMinimum_isPlanned() {
         // act
-        final ChunkPlan plan = ChunkPlan.of(source(10), MIN_WINDOW, 0, 0, AiOversizeStrategy.MAP_REDUCE, 0);
+        final ChunkPlan plan = ChunkPlan.of(source(10), MIN_WINDOW, 0, 0, OversizeStrategy.MAP_REDUCE, 0);
 
         // assert
-        assertThat(plan.sourceBudget(), is(AiMapReduceSupport.MIN_CHUNK_CHARS));
-        assertThat(plan.safeWindow(), is(AiMapReduceSupport.safeWindow(MIN_WINDOW)));
+        assertThat(plan.sourceBudget(), is(MapReduceMath.MIN_CHUNK_CHARS));
+        assertThat(plan.safeWindow(), is(MapReduceMath.safeWindow(MIN_WINDOW)));
     }
 
     @Test
@@ -54,7 +54,7 @@ public class ChunkPlanTest {
         // act
         final IllegalArgumentException thrown = assertThrows(
                 IllegalArgumentException.class,
-                () -> ChunkPlan.of(source(10), MIN_WINDOW - 2, 0, 0, AiOversizeStrategy.MAP_REDUCE, 0));
+                () -> ChunkPlan.of(source(10), MIN_WINDOW - 2, 0, 0, OversizeStrategy.MAP_REDUCE, 0));
 
         // assert
         assertThat(thrown.getMessage(), is("the window leaves 999 characters for a chunk, fewer than 1000"));
@@ -65,10 +65,10 @@ public class ChunkPlanTest {
         // arrange
         final String source = source(300);
         final int room = ChunkPlan.room(4000, 200, 100);
-        final List<String> all = AiSourceChunker.chunk(source, room, AiMapReduceSupport.overlap(room), 0);
+        final List<String> all = SourceChunker.chunk(source, room, MapReduceMath.overlap(room), 0);
 
         // act
-        final ChunkPlan plan = ChunkPlan.of(source, 4000, 200, 100, AiOversizeStrategy.MAP_REDUCE, 2);
+        final ChunkPlan plan = ChunkPlan.of(source, 4000, 200, 100, OversizeStrategy.MAP_REDUCE, 2);
 
         // assert
         assertThat(all.size(), greaterThan(2));
@@ -83,20 +83,20 @@ public class ChunkPlanTest {
         // arrange
         final String source = source(100);
         final int room = ChunkPlan.room(4000, 0, 0);
-        final List<String> all = AiSourceChunker.chunk(source, room, AiMapReduceSupport.overlap(room), 0);
+        final List<String> all = SourceChunker.chunk(source, room, MapReduceMath.overlap(room), 0);
 
         // act
-        final ChunkPlan plan = ChunkPlan.of(source, 4000, 0, 0, AiOversizeStrategy.SAMPLE_CHUNKS, 2);
+        final ChunkPlan plan = ChunkPlan.of(source, 4000, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
 
         // assert
-        assertThat(plan.chunks(), is(AiSourceChunker.select(all, 2)));
+        assertThat(plan.chunks(), is(SourceChunker.select(all, 2)));
         assertThat(plan.total(), is(all.size()));
     }
 
     @Test
     public void chunks_cannotBeChanged() {
         // arrange
-        final ChunkPlan plan = ChunkPlan.of(source(10), 4000, 0, 0, AiOversizeStrategy.MAP_REDUCE, 0);
+        final ChunkPlan plan = ChunkPlan.of(source(10), 4000, 0, 0, OversizeStrategy.MAP_REDUCE, 0);
 
         // act + assert
         assertThrows(UnsupportedOperationException.class, () -> plan.chunks().add("x"));
@@ -107,7 +107,7 @@ public class ChunkPlanTest {
     @Test
     public void parts_oneChunk_isTheFinalAnswer() {
         // act
-        final ChunkPlan plan = ChunkPlan.of("short", 4000, 0, 0, AiOversizeStrategy.MAP_REDUCE, 0);
+        final ChunkPlan plan = ChunkPlan.of("short", 4000, 0, 0, OversizeStrategy.MAP_REDUCE, 0);
 
         // assert
         assertThat(plan.chunks().size(), is(1));
@@ -117,7 +117,7 @@ public class ChunkPlanTest {
     @Test
     public void parts_twoChunks_areParts() {
         // act
-        final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, AiOversizeStrategy.SAMPLE_CHUNKS, 2);
+        final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
 
         // assert
         assertThat(plan.chunks().size(), is(2));
@@ -127,25 +127,25 @@ public class ChunkPlanTest {
     @Test
     public void label_namesTheChunkAmongThoseReadAndAll() {
         // arrange
-        final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, AiOversizeStrategy.SAMPLE_CHUNKS, 2);
+        final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
 
         // act
         final String label = plan.label(2);
 
         // assert
-        assertThat(label, is(AiMapReduceSupport.chunkLabel(2, 2, plan.total())));
+        assertThat(label, is(MapReduceMath.chunkLabel(2, 2, plan.total())));
     }
 
     @Test
     public void coverage_countsTheChunksReadOfAll() {
         // arrange
-        final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, AiOversizeStrategy.SAMPLE_CHUNKS, 2);
+        final ChunkPlan plan = ChunkPlan.of(source(100), 4000, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
 
         // act
         final String coverage = plan.coverage(1, 2, 3);
 
         // assert
-        assertThat(coverage, is(AiMapReduceSupport.chunkCoverage(2, plan.total(), 1, 2, 3)));
+        assertThat(coverage, is(MapReduceMath.chunkCoverage(2, plan.total(), 1, 2, 3)));
     }
     // </editor-fold>
 
@@ -153,22 +153,20 @@ public class ChunkPlanTest {
     @Test
     public void reduceFacts_cutsTheFactsToAQuarterOfABatch_andNotesTheSample() {
         // arrange
-        final ChunkPlan plan = ChunkPlan.of(source(100), MIN_WINDOW, 0, 0, AiOversizeStrategy.SAMPLE_CHUNKS, 2);
+        final ChunkPlan plan = ChunkPlan.of(source(100), MIN_WINDOW, 0, 0, OversizeStrategy.SAMPLE_CHUNKS, 2);
         final String facts = source(10);
 
         // act
         final String reduceFacts = plan.reduceFacts(facts);
 
         // assert
-        assertThat(
-                reduceFacts,
-                is(AiMapReduceSupport.reduceFacts(facts, 250) + AiMapReduceSupport.sampleNote(2, plan.total())));
+        assertThat(reduceFacts, is(MapReduceMath.reduceFacts(facts, 250) + MapReduceMath.sampleNote(2, plan.total())));
     }
 
     @Test
     public void batchBudget_isTheBudgetLessWhatTheBatchReadsFirst_atLeastOne() {
         // arrange
-        final ChunkPlan plan = ChunkPlan.of(source(10), MIN_WINDOW, 0, 0, AiOversizeStrategy.MAP_REDUCE, 0);
+        final ChunkPlan plan = ChunkPlan.of(source(10), MIN_WINDOW, 0, 0, OversizeStrategy.MAP_REDUCE, 0);
 
         // act + assert
         assertThat(plan.batchBudget(""), is(1000));

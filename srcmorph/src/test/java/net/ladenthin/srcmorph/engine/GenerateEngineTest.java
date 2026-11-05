@@ -28,16 +28,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiCondition;
-import net.ladenthin.srcmorph.config.AiFactDefinition;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.FactDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.config.RuleCondition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
-import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,14 +52,14 @@ public class GenerateEngineTest {
     /**
      * A routable rule matching {@code .java} files, with the {@code default} AI definition key. Unlike
      * {@link CommonTestFixtures#createFileFieldGenerations()} (whose rule carries no condition — fine for
-     * the indexer-level tests that never call {@link net.ladenthin.srcmorph.routing.AiFieldGenerationSelector#validate}),
+     * the indexer-level tests that never call {@link net.ladenthin.srcmorph.routing.RuleSelector#validate}),
      * {@link GenerateEngine#execute()} does call {@code validate}, so the rule here needs a real condition.
      */
-    private static AiFieldGenerationConfig javaFileRule() {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule javaFileRule() {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         rule.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        final AiCondition condition = new AiCondition();
+        final RuleCondition condition = new RuleCondition();
         condition.setExtensions(Arrays.asList(".java"));
         rule.setCondition(condition);
         return rule;
@@ -68,11 +68,11 @@ public class GenerateEngineTest {
     /**
      * A model definition with a (dummy, never loaded) {@code modelPath} set: even with the mock provider,
      * the engine always builds a {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object
-     * before dispatching to {@link net.ladenthin.srcmorph.provider.AiGenerationProviderFactory}, and that
+     * before dispatching to {@link net.ladenthin.srcmorph.provider.GenerationProviderFactory}, and that
      * value object requires a non-null model path.
      */
-    private static AiModelDefinition mockModelDefinition() {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelDefinition mockModelDefinition() {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         definition.setModelPath("mock.gguf");
         // Disable automatic maxInputChars calculation so the 13-byte test source never trips the
@@ -152,7 +152,7 @@ public class GenerateEngineTest {
         final Path script = tempDir.resolve("src/main/java/com/example/deploy");
         Files.write(script, "#!/usr/bin/env bash\necho deploy\n".getBytes(StandardCharsets.UTF_8));
         config.setFileInterpreters(Collections.singletonList("bash"));
-        final AiFieldGenerationConfig fallback = new AiFieldGenerationConfig();
+        final RoutingRule fallback = new RoutingRule();
         fallback.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         fallback.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         fallback.setFallback(true);
@@ -170,7 +170,7 @@ public class GenerateEngineTest {
         final Path dockerfile = tempDir.resolve("src/main/java/com/example/Dockerfile");
         Files.write(dockerfile, "FROM eclipse-temurin:21\n".getBytes(StandardCharsets.UTF_8));
         config.setFileNames(Collections.singletonList("Dockerfile"));
-        final AiFieldGenerationConfig fallback = new AiFieldGenerationConfig();
+        final RoutingRule fallback = new RoutingRule();
         fallback.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         fallback.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         fallback.setFallback(true);
@@ -222,10 +222,10 @@ public class GenerateEngineTest {
     @Test
     public void execute_unmatchedFileWithNoFallbackThrowsSrcMorphException() throws IOException {
         final SrcMorphConfiguration config = baseConfig();
-        final AiFieldGenerationConfig onlyMatchesTxt = new AiFieldGenerationConfig();
+        final RoutingRule onlyMatchesTxt = new RoutingRule();
         onlyMatchesTxt.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         onlyMatchesTxt.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        final AiCondition condition = new AiCondition();
+        final RuleCondition condition = new RuleCondition();
         condition.setExtensions(Arrays.asList(".txt"));
         onlyMatchesTxt.setCondition(condition);
         config.setFieldGenerations(Arrays.asList(onlyMatchesTxt));
@@ -241,7 +241,7 @@ public class GenerateEngineTest {
         // Force the routed model's window to be smaller than the source, with the default
         // onOversize=fail strategy, so the file is a hard failure. The window check happens entirely
         // during planning, before any ProviderConfig/provider is built, so modelPath is irrelevant here.
-        final AiModelDefinition tinyWindow = new AiModelDefinition();
+        final ModelDefinition tinyWindow = new ModelDefinition();
         tinyWindow.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         tinyWindow.setCharsPerToken(1);
         tinyWindow.setContextSize(1);
@@ -350,7 +350,7 @@ public class GenerateEngineTest {
     public void execute_unknownFactsKey_throwsWithTheConfigurationHint() throws IOException {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
-        final AiFieldGenerationConfig rule = javaFileRule();
+        final RoutingRule rule = javaFileRule();
         rule.setFactsKey("no-such-group");
         config.setFieldGenerations(Collections.singletonList(rule));
 
@@ -385,7 +385,7 @@ public class GenerateEngineTest {
         config.setPromptDefinitions(null);
         config.setProfileDirectory(
                 profile("# counters\nclasses\t\\bclass\\s+\\w\n").toFile());
-        final AiFieldGenerationConfig rule = javaFileRule();
+        final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
         config.setFieldGenerations(Collections.singletonList(rule));
 
@@ -405,7 +405,7 @@ public class GenerateEngineTest {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setProfileDirectory(profile("no tab on this line\n").toFile());
-        final AiFieldGenerationConfig rule = javaFileRule();
+        final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
         config.setFieldGenerations(Collections.singletonList(rule));
 
@@ -422,11 +422,11 @@ public class GenerateEngineTest {
     public void execute_unreadableFactsFile_throwsWithTheConfigurationHint() throws IOException {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
-        final AiFactDefinition definition = new AiFactDefinition();
+        final FactDefinition definition = new FactDefinition();
         definition.setKey("java-facts");
         definition.setFactsFile(tempDir.resolve("missing.tsv").toString());
         config.setFactDefinitions(Collections.singletonList(definition));
-        final AiFieldGenerationConfig rule = javaFileRule();
+        final RoutingRule rule = javaFileRule();
         rule.setFactsKey("java-facts");
         config.setFieldGenerations(Collections.singletonList(rule));
 
@@ -461,7 +461,7 @@ public class GenerateEngineTest {
     public void execute_planOnlyWithRealProviderAndMissingModel_stillPlans() throws Exception {
         // arrange -- the real provider name, and a model path that deliberately does not exist
         final SrcMorphConfiguration config = baseConfig();
-        config.setGenerationProvider(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        config.setGenerationProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
         config.setPlanOnly(true);
 
         // act
@@ -483,7 +483,7 @@ public class GenerateEngineTest {
     public void execute_realProviderAndMissingModel_failsFastBeforeLoading() throws IOException {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
-        config.setGenerationProvider(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        config.setGenerationProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
 
         // act
         final SrcMorphException thrown =
@@ -504,7 +504,7 @@ public class GenerateEngineTest {
     public void check_planOnlyAndAMissingModel_failsOnTheModel() throws IOException {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
-        config.setGenerationProvider(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        config.setGenerationProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
         config.setPlanOnly(true);
 
         // act
@@ -560,8 +560,8 @@ public class GenerateEngineTest {
             Files.write(
                     tempDir.resolve("src/main/java/com/example/Bar.java"),
                     "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
-            final AiModelDefinition remote = mockModelDefinition();
-            remote.setProvider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+            final ModelDefinition remote = mockModelDefinition();
+            remote.setProvider(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
             remote.setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
             remote.setRemoteModel("stub");
             config.setAiDefinitions(Collections.singletonList(remote));
@@ -601,8 +601,8 @@ public class GenerateEngineTest {
             Files.write(
                     tempDir.resolve("src/main/java/com/example/Bar.java"),
                     "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
-            final AiModelDefinition remote = mockModelDefinition();
-            remote.setProvider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+            final ModelDefinition remote = mockModelDefinition();
+            remote.setProvider(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
             remote.setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
             remote.setRemoteModel("stub");
             config.setAiDefinitions(Collections.singletonList(remote));
@@ -638,7 +638,7 @@ public class GenerateEngineTest {
     @Test
     public void execute_promptThatFillsTheWindow_failsNamingModelAndPrompt() throws Exception {
         final SrcMorphConfiguration config = baseConfig();
-        final AiModelDefinition tiny = mockModelDefinition();
+        final ModelDefinition tiny = mockModelDefinition();
         tiny.setContextSize(1);
         tiny.setCharsPerToken(1);
         config.setAiDefinitions(Collections.singletonList(tiny));
@@ -660,12 +660,12 @@ public class GenerateEngineTest {
      */
     private SrcMorphConfiguration oversizeConfig(final String onOversize) throws IOException {
         final SrcMorphConfiguration config = baseConfig();
-        final AiModelDefinition small = mockModelDefinition();
+        final ModelDefinition small = mockModelDefinition();
         // a window of about 3 200 characters: 4 000 tokens of one character, less the output and margin
         small.setCharsPerToken(1);
         small.setContextSize(4_000);
         config.setAiDefinitions(Collections.singletonList(small));
-        final AiFieldGenerationConfig rule = javaFileRule();
+        final RoutingRule rule = javaFileRule();
         rule.setOnOversize(onOversize);
         if ("sampleChunks".equals(onOversize)) {
             rule.setMaxChunks(2);
@@ -828,13 +828,13 @@ public class GenerateEngineTest {
 
     // <editor-fold defaultstate="collapsed" desc="run record">
     /** A factory whose providers summarize every file but one, for which they throw {@code failure}. */
-    private static AiGenerationProviderFactory failingFor(final String fileName, final RuntimeException failure) {
-        return new AiGenerationProviderFactory() {
+    private static GenerationProviderFactory failingFor(final String fileName, final RuntimeException failure) {
+        return new GenerationProviderFactory() {
             @Override
-            public AiGenerationProvider create(
+            public GenerationProvider create(
                     final String providerName,
                     final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
+                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals(fileName)) {
                         throw failure;
@@ -876,17 +876,17 @@ public class GenerateEngineTest {
         final SrcMorphConfiguration config = baseConfig();
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
-        final AiGenerationProviderFactory loading = new AiGenerationProviderFactory() {
+        final GenerationProviderFactory loading = new GenerationProviderFactory() {
             @Override
-            public AiGenerationProvider create(
+            public GenerationProvider create(
                     final String providerName,
                     final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
-                return new AiGenerationProvider() {
+                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
+                return new GenerationProvider() {
                     private long load = 3_000_000_000L;
 
                     @Override
-                    public String generate(final AiGenerationRequest request) {
+                    public String generate(final GenerationRequest request) {
                         return "A summary.";
                     }
 
@@ -925,12 +925,12 @@ public class GenerateEngineTest {
                 "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
-        final AiGenerationProviderFactory aborting = new AiGenerationProviderFactory() {
+        final GenerationProviderFactory aborting = new GenerationProviderFactory() {
             @Override
-            public AiGenerationProvider create(
+            public GenerationProvider create(
                     final String providerName,
                     final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
+                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
                         // what an interrupted blocking call does: the thread's flag is set, then it throws
@@ -964,12 +964,12 @@ public class GenerateEngineTest {
                 "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
         final Path recordFile = tempDir.resolve("run.json");
         config.setRunRecordFile(recordFile.toFile());
-        final AiGenerationProviderFactory timingOut = new AiGenerationProviderFactory() {
+        final GenerationProviderFactory timingOut = new GenerationProviderFactory() {
             @Override
-            public AiGenerationProvider create(
+            public GenerationProvider create(
                     final String providerName,
                     final net.ladenthin.srcmorph.provider.ProviderConfig providerConfig,
-                    final net.ladenthin.srcmorph.prompt.AiPromptSupport promptSupport) {
+                    final net.ladenthin.srcmorph.prompt.PromptCatalog promptSupport) {
                 return request -> {
                     if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
                         throw new java.net.SocketTimeoutException("Read timed out");
@@ -1098,26 +1098,25 @@ public class GenerateEngineTest {
 
     @Test
     public void factsHash_changesWithEveryPartOfACounter() {
-        final net.ladenthin.srcmorph.config.AiFactCounter counter = new net.ladenthin.srcmorph.config.AiFactCounter();
+        final net.ladenthin.srcmorph.config.FactCounter counter = new net.ladenthin.srcmorph.config.FactCounter();
         counter.setLabel("tables");
         counter.setPattern("CREATE TABLE");
-        final String plain = net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
+        final String plain = net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(true);
-        final String ignored =
-                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
+        final String ignored = net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setIgnore(false);
         counter.setPattern("CREATE VIEW");
         final String otherPattern =
-                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
+                net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setLabel("views");
         final String otherLabel =
-                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
+                net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setRaw(true);
-        final String raw = net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
+        final String raw = net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
         counter.setRaw(false);
         counter.setDistinct(true);
         final String distinct =
-                net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.singletonList(counter));
+                net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.singletonList(counter));
 
         assertThat(plain.matches("[0-9A-F]{8}"), is(true));
         assertThat(
@@ -1126,17 +1125,17 @@ public class GenerateEngineTest {
         // a counter without raw and distinct hashes as before they existed: its summaries stay current
         assertThat(
                 plain,
-                is(new net.ladenthin.srcmorph.support.AiChecksumSupport()
+                is(new net.ladenthin.srcmorph.support.ChecksumSupport()
                         .calculateCrc32Hex("tables\tCREATE TABLE\tfalse\n")));
-        assertThat(net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(null), is(""));
-        assertThat(net.ladenthin.srcmorph.facts.AiFactExtractor.factsHash(Collections.emptyList()), is(""));
+        assertThat(net.ladenthin.srcmorph.facts.FactExtractor.factsHash(null), is(""));
+        assertThat(net.ladenthin.srcmorph.facts.FactExtractor.factsHash(Collections.emptyList()), is(""));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="prompt hash and prompt check">
-    private static net.ladenthin.srcmorph.config.AiPromptDefinition promptOf(final String key, final String template) {
-        final net.ladenthin.srcmorph.config.AiPromptDefinition definition =
-                new net.ladenthin.srcmorph.config.AiPromptDefinition();
+    private static net.ladenthin.srcmorph.config.PromptDefinition promptOf(final String key, final String template) {
+        final net.ladenthin.srcmorph.config.PromptDefinition definition =
+                new net.ladenthin.srcmorph.config.PromptDefinition();
         definition.setKey(key);
         definition.setTemplate(template);
         return definition;
@@ -1145,32 +1144,32 @@ public class GenerateEngineTest {
     @Test
     public void promptHash_tellsTheMapPromptFromTheReducePrompt_andFromNone() {
         // arrange
-        final net.ladenthin.srcmorph.prompt.AiPromptSupport prompts = new net.ladenthin.srcmorph.prompt.AiPromptSupport(
+        final net.ladenthin.srcmorph.prompt.PromptCatalog prompts = new net.ladenthin.srcmorph.prompt.PromptCatalog(
                 java.util.Arrays.asList(promptOf("body", "BODY"), promptOf("x", "X")));
-        final AiFieldGenerationConfig plain = new AiFieldGenerationConfig();
+        final RoutingRule plain = new RoutingRule();
         plain.setPromptKey("body");
-        final AiFieldGenerationConfig mapped = plain.copy();
+        final RoutingRule mapped = plain.copy();
         mapped.setMapPromptKey("x");
-        final AiFieldGenerationConfig reduced = plain.copy();
+        final RoutingRule reduced = plain.copy();
         reduced.setReducePromptKey("x");
 
         // act
-        final String none = net.ladenthin.srcmorph.indexer.AiHeaderHashes.prompt(prompts, plain);
-        final String map = net.ladenthin.srcmorph.indexer.AiHeaderHashes.prompt(prompts, mapped);
-        final String reduce = net.ladenthin.srcmorph.indexer.AiHeaderHashes.prompt(prompts, reduced);
+        final String none = net.ladenthin.srcmorph.indexer.HeaderHashes.prompt(prompts, plain);
+        final String map = net.ladenthin.srcmorph.indexer.HeaderHashes.prompt(prompts, mapped);
+        final String reduce = net.ladenthin.srcmorph.indexer.HeaderHashes.prompt(prompts, reduced);
 
         // assert
         assertThat(map.equals(reduce), is(false));
         assertThat(map.equals(none), is(false));
         assertThat(reduce.equals(none), is(false));
-        assertThat(none, is(new net.ladenthin.srcmorph.support.AiChecksumSupport().calculateCrc32Hex("BODY")));
+        assertThat(none, is(new net.ladenthin.srcmorph.support.ChecksumSupport().calculateCrc32Hex("BODY")));
     }
 
     @Test
     public void check_aMapPromptWithoutATemplate_failsBeforeAModelLoads() throws Exception {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
-        final AiFieldGenerationConfig rule = config.getFieldGenerations().get(0);
+        final RoutingRule rule = config.getFieldGenerations().get(0);
         rule.setOnOversize("mapReduce");
         rule.setMapPromptKey("no-such-prompt");
 

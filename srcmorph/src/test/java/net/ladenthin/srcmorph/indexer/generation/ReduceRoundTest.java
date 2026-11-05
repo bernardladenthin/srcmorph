@@ -43,7 +43,7 @@ public class ReduceRoundTest {
         final String a = text('a', 600);
         final String b = text('b', 400);
         final String c = text('c', 600);
-        final int maxChars = AiMapReduceSupport.pairablePartChars(BUDGET);
+        final int maxChars = MapReduceMath.pairablePartChars(BUDGET);
 
         // act
         final ReduceRound round = ReduceRound.of(Arrays.asList(a, b, c), BUDGET);
@@ -52,11 +52,8 @@ public class ReduceRoundTest {
         assertThat(round.shortenedParts(), is(2));
         assertThat(
                 round.batches(),
-                is(AiMapReduceSupport.reduceGroups(
-                        Arrays.asList(
-                                AiMapReduceSupport.shortened(a, maxChars),
-                                b,
-                                AiMapReduceSupport.shortened(c, maxChars)),
+                is(MapReduceMath.reduceGroups(
+                        Arrays.asList(MapReduceMath.shortened(a, maxChars), b, MapReduceMath.shortened(c, maxChars)),
                         BUDGET)));
     }
 

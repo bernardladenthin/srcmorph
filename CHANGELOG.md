@@ -79,6 +79,36 @@ The entries below hold the details; what a 1.4.0 user changes:
   `AiModelDefinition` with its model path resolved, `ProviderConfigFactory` builds a `ProviderConfig`
   from it, and the `DEFAULT_*` constants are `AiModelDefinition`'s (`maxInputChars` was never
   configurable: `DEFAULT_MAX_INPUT_CHARS` is the fallback without `charsPerToken`).
+  The `Ai` prefix is gone but on the `AiMd*` classes of the `.ai.md` format, and the `*Support`
+  names that hid a role say it: `AiChecksumSupport` `ChecksumSupport`, `AiGeneratorVersion`
+  `GeneratorVersion`, `AiGlob` `Glob`, `AiPathSupport` `SourcePaths`, `AiProfileFileSupport`
+  `ProfileFileSupport`, `AiShebang` `Shebang`, `AiSourceExcludeFilter` `SourceExcludeFilter`,
+  `AiSourceLines` `SourceLines`, `AiTimeSupport` `TimeSupport`, `AiCalibration` `Calibration`,
+  `AiCondition` `RuleCondition`, `AiConditionGroup` `ConditionGroup`, `AiFactCounter` `FactCounter`,
+  `AiFactDefinition` `FactDefinition`, `AiFieldGenerationConfig` `RoutingRule`,
+  `AiIncompleteStrategy` `IncompleteStrategy`, `AiModelDefinition` `ModelDefinition`,
+  `AiModelDefinitionSupport` `ModelRegistry`, `AiOversizeStrategy` `OversizeStrategy`,
+  `AiPromptDefinition` `PromptDefinition`, `AiRangeCondition` `RangeCondition`, `AiRegenerateOn`
+  `RegenerateOn`, `AiFactDefinitionLoader` `FactDefinitionLoader`, `AiFactDefinitionSupport`
+  `FactGroups`, `AiFactExtractor` `FactExtractor`, `AiConditionEvaluator` `ConditionEvaluator`,
+  `AiFieldGenerationSelector` `RuleSelector`, `AiFileContext` `FileContext`, `AiGenerationRequest`
+  `GenerationRequest`, `AiPreparedPrompt` `PreparedPrompt`, `AiPromptPreparationSupport`
+  `PromptPreparer`, `AiPromptSupport` `PromptCatalog`, `AiPromptTemplateLoader`
+  `PromptTemplateLoader`, `AiMdHeaderSupport` `AiMdRewritePolicy`, `AiCompletionParser`
+  `CompletionParser`, `AiContextOverflowException` `ContextOverflowException`,
+  `AiGenerationProvider` `GenerationProvider`, `AiGenerationProviderFactory`
+  `GenerationProviderFactory`, `AiGenerationUsage` `GenerationUsage`, `AiIncompleteAnswerException`
+  `IncompleteAnswerException`, `LlamaCppJniAiGenerationProvider` `LlamaCppJniGenerationProvider`,
+  `MockAiGenerationProvider` `MockGenerationProvider`, `OpenAiCompatibleAiGenerationProvider`
+  `OpenAiCompatibleGenerationProvider`, `AiCalibrationMeasurement` `CalibrationMeasurement`,
+  `AiCalibrationRunner` `CalibrationRunner`, `AiHeaderHashes` `HeaderHashes`, `AiIndexOutcome`
+  `IndexOutcome`, `AiIndexPlan` `IndexPlan`, `AiIndexTally` `IndexTally`, `AiDeterministicSummary`
+  `DeterministicSummary`, `AiGenerationResult` `SummaryResult`, `AiGenerationTimeEstimator`
+  `GenerationTimeEstimator`, `AiInputWindowCalculator` `InputWindowCalculator`, `AiMapReduceSupport`
+  `MapReduceMath`, `AiOverflowBackoff` `OverflowBackoff`, `AiRouteEstimator` `RouteEstimator`,
+  `AiSourceChunker` `SourceChunker`, `AiTokenWindow` `TokenWindow`, `AiProgressBar` `ProgressBar`.
+  `ModelRegistry.getConfig` is `definition`, `AiMdRewritePolicy.shouldWrite` is `shouldRewrite`,
+  `ProviderConfigFactory.fromGenerationConfig` is `from`.
 
 ### Added
 

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Validates the Java structural fact counters of the current profile ({@code profiles/v3/java-facts.tsv},
  * read through {@link ProfileFactPatterns}, so the shipped file is what is tested), in the real
- * {@link java.util.regex} engine {@code AiFactExtractor} uses, against the tricky-case self-tests. These
+ * {@link java.util.regex} engine {@code FactExtractor} uses, against the tricky-case self-tests. These
  * are deliberately approximate ("methods (approx)", "field declarations") - the tests pin the accepted
  * false-positive/negative boundary so the patterns cannot silently drift.
  */
@@ -164,7 +164,7 @@ public class JavaStructureFactPatternsTest {
     // <editor-fold defaultstate="collapsed" desc="fields">
     @Test
     public void field_multipleDeclarators_countAsOneStatement() {
-        // AiFactExtractor counts matches (statements), so "int a, b, c;" is ONE field declaration.
+        // FactExtractor counts matches (statements), so "int a, b, c;" is ONE field declaration.
         assertThat(count(FIELD_PATTERN, "    private int a, b, c;"), is(1));
     }
 

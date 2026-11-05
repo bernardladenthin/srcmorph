@@ -5,10 +5,10 @@ package net.ladenthin.srcmorph.indexer;
 
 import java.util.Objects;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
 import net.ladenthin.srcmorph.support.ConvertToRecord;
 
 /**
@@ -20,10 +20,10 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
 @ToString
 public final class ProjectOverview {
 
-    private final AiGenerationProvider generationProvider;
-    private final AiFieldGenerationConfig rule;
-    private final AiPromptSupport promptSupport;
-    private final AiModelDefinitionSupport modelDefinitionSupport;
+    private final GenerationProvider generationProvider;
+    private final RoutingRule rule;
+    private final PromptCatalog promptSupport;
+    private final ModelRegistry modelDefinitionSupport;
 
     /**
      * Creates the overview's parts.
@@ -34,10 +34,10 @@ public final class ProjectOverview {
      * @param modelDefinitionSupport the AI model definition lookup
      */
     public ProjectOverview(
-            final AiGenerationProvider generationProvider,
-            final AiFieldGenerationConfig rule,
-            final AiPromptSupport promptSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport) {
+            final GenerationProvider generationProvider,
+            final RoutingRule rule,
+            final PromptCatalog promptSupport,
+            final ModelRegistry modelDefinitionSupport) {
         this.generationProvider = Objects.requireNonNull(generationProvider, "generationProvider");
         // a copy of every field: the rule is a mutable JavaBean owned by the caller
         this.rule = Objects.requireNonNull(rule, "rule").copy();
@@ -50,7 +50,7 @@ public final class ProjectOverview {
      *
      * @return the provider
      */
-    public AiGenerationProvider generationProvider() {
+    public GenerationProvider generationProvider() {
         return generationProvider;
     }
 
@@ -59,7 +59,7 @@ public final class ProjectOverview {
      *
      * @return a copy of the rule
      */
-    public AiFieldGenerationConfig rule() {
+    public RoutingRule rule() {
         return rule.copy();
     }
 
@@ -68,7 +68,7 @@ public final class ProjectOverview {
      *
      * @return the prompt lookup
      */
-    public AiPromptSupport promptSupport() {
+    public PromptCatalog promptSupport() {
         return promptSupport;
     }
 
@@ -77,7 +77,7 @@ public final class ProjectOverview {
      *
      * @return the model lookup
      */
-    public AiModelDefinitionSupport modelDefinitionSupport() {
+    public ModelRegistry modelDefinitionSupport() {
         return modelDefinitionSupport;
     }
 }

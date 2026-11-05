@@ -13,25 +13,25 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.config.AiRegenerateOn;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RegenerateOn;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
-import net.ladenthin.srcmorph.facts.AiFactExtractor;
-import net.ladenthin.srcmorph.indexer.generation.AiGenerationResult;
+import net.ladenthin.srcmorph.document.AiMdRewritePolicy;
+import net.ladenthin.srcmorph.facts.FactExtractor;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.support.AiChecksumSupport;
-import net.ladenthin.srcmorph.support.AiPathSupport;
-import net.ladenthin.srcmorph.support.AiTimeSupport;
+import net.ladenthin.srcmorph.indexer.generation.SummaryResult;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.support.ChecksumSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.support.SourcePaths;
+import net.ladenthin.srcmorph.support.TimeSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,12 +100,12 @@ public class PackageIndexer {
     private final List<Path> aiSubtrees;
     private final boolean force;
 
-    private final AiFieldGenerationConfig rule;
+    private final RoutingRule rule;
 
-    private final AiPathSupport pathSupport = new AiPathSupport();
-    private final AiTimeSupport timeSupport = new AiTimeSupport();
-    private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport;
+    private final SourcePaths pathSupport = new SourcePaths();
+    private final TimeSupport timeSupport = new TimeSupport();
+    private final ChecksumSupport checksumSupport = new ChecksumSupport();
+    private final AiMdRewritePolicy headerSupport;
 
     /** The CRC32 of the rule's prompts ({@code P}). */
     private final String promptHash;
@@ -146,11 +146,11 @@ public class PackageIndexer {
             final String aiVersion,
             final Collection<Path> sourceSubtrees,
             final boolean force,
-            final AiRegenerateOn regenerateOn,
-            final AiGenerationProvider generationProvider,
-            final AiFieldGenerationConfig rule,
-            final AiPromptSupport promptSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport) {
+            final RegenerateOn regenerateOn,
+            final GenerationProvider generationProvider,
+            final RoutingRule rule,
+            final PromptCatalog promptSupport,
+            final ModelRegistry modelDefinitionSupport) {
         this.outputRoot = outputRoot;
         this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
@@ -164,19 +164,19 @@ public class PackageIndexer {
         }
         this.aiSubtrees = ai;
         this.force = force;
-        this.headerSupport = new AiMdHeaderSupport(
+        this.headerSupport = new AiMdRewritePolicy(
                 regenerateOn.isSource(),
                 regenerateOn.isPrompt(),
                 regenerateOn.isFacts(),
                 regenerateOn.isModel(),
                 regenerateOn.isChildren());
         this.rule = rule.copy();
-        this.promptHash = AiHeaderHashes.prompt(promptSupport, rule);
-        this.factsHash = AiFactExtractor.factsHash(rule.getFacts());
-        this.modelHash = AiHeaderHashes.model(
-                rule.requireAiDefinitionKey(), modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey()));
-        this.summaryGenerator = new SummaryGenerator(
-                generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
+        this.promptHash = HeaderHashes.prompt(promptSupport, rule);
+        this.factsHash = FactExtractor.factsHash(rule.getFacts());
+        this.modelHash = HeaderHashes.model(
+                rule.requireAiDefinitionKey(), modelDefinitionSupport.definition(rule.requireAiDefinitionKey()));
+        this.summaryGenerator =
+                new SummaryGenerator(generationProvider, new PromptPreparer(promptSupport), modelDefinitionSupport);
     }
 
     /**
@@ -187,13 +187,13 @@ public class PackageIndexer {
      *         and were not written
      * @throws IOException if the output tree cannot be read or written
      */
-    public AiIndexTally aggregate(final Path rootDirectory) throws IOException {
-        final AiIndexTally tally = new AiIndexTally();
+    public IndexTally aggregate(final Path rootDirectory) throws IOException {
+        final IndexTally tally = new IndexTally();
         aggregateRecursive(rootDirectory, tally);
         return tally;
     }
 
-    private void aggregateRecursive(final Path directory, final AiIndexTally tally) throws IOException {
+    private void aggregateRecursive(final Path directory, final IndexTally tally) throws IOException {
         final List<Path> subDirectories;
         try (Stream<Path> stream = Files.list(directory)) {
             subDirectories =
@@ -205,13 +205,13 @@ public class PackageIndexer {
         }
 
         if (matchesAggregationScope(directory) && shouldCreatePackageFile(directory)) {
-            AiIndexOutcome outcome;
+            IndexOutcome outcome;
             try {
                 outcome = writePackageFile(directory);
             } catch (final IOException e) {
                 // one failed request (after its retries) does not end the pass
                 LOGGER.error("Summarizing the package {} failed: {}", directory, String.valueOf(e.getMessage()));
-                outcome = AiIndexOutcome.FAILED;
+                outcome = IndexOutcome.FAILED;
             }
             tally.add(outcome);
         }
@@ -262,7 +262,7 @@ public class PackageIndexer {
         return Files.exists(directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
     }
 
-    private AiIndexOutcome writePackageFile(final Path directory) throws IOException {
+    private IndexOutcome writePackageFile(final Path directory) throws IOException {
         final List<String> contents = collectContents(directory);
         final List<String> childLinks = collectChildLinks(directory);
         // the child summaries the model reads: their hash (K) tells a file summary rewritten over the same
@@ -291,27 +291,26 @@ public class PackageIndexer {
                         promptHash,
                         factsHash,
                         modelHash,
-                        AiHeaderHashes.children(Collections.singletonList(summaries.toString())));
+                        HeaderHashes.children(Collections.singletonList(summaries.toString())));
 
-        if (!headerSupport.shouldWrite(force, packageFile, baseHeader)) {
+        if (!headerSupport.shouldRewrite(force, packageFile, baseHeader)) {
             LOGGER.info("Unchanged package AI index file: {}", packageFile);
-            return AiIndexOutcome.UNCHANGED;
+            return IndexOutcome.UNCHANGED;
         }
 
         final String sourceText = buildPackageSourceText(baseHeader, contents, summaries, bodyCount);
 
-        final AiGenerationResult result =
-                summaryGenerator.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText);
+        final SummaryResult result = summaryGenerator.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText);
 
         if (!result.complete()) {
-            return AiIndexOutcome.FAILED;
+            return IndexOutcome.FAILED;
         }
 
         final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(packageFile, document);
 
         LOGGER.info("Wrote package AI index file: {}", packageFile);
-        return AiIndexOutcome.WRITTEN;
+        return IndexOutcome.WRITTEN;
     }
 
     private List<String> collectContents(final Path directory) throws IOException {
@@ -407,7 +406,7 @@ public class PackageIndexer {
      * package contents.</p>
      *
      * <p>No explicit length cap is applied here: the combined text is subject to the existing
-     * trim logic in {@link net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport#preparePrompt}, which truncates at a line
+     * trim logic in {@link net.ladenthin.srcmorph.prompt.PromptPreparer#preparePrompt}, which truncates at a line
      * boundary to the computed {@code maxInputChars} budget and triggers the {@code warnOnTrim}
      * warning — so large packages degrade gracefully without a bespoke truncation scheme.</p>
      *
@@ -591,7 +590,7 @@ public class PackageIndexer {
     }
 
     private String calculatePackageDate(final Path directory) throws IOException {
-        String latest = AiTimeSupport.EPOCH_DATE;
+        String latest = TimeSupport.EPOCH_DATE;
 
         try (Stream<Path> stream = Files.list(directory)) {
             for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {

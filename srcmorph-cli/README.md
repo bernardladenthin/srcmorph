@@ -72,8 +72,8 @@ public class CConfiguration {
     public CCommand command = CCommand.Plan;
     public String modelFilter = "";
     public SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
-    public List<AiFieldGenerationConfig> packageFieldGenerations;   // exactly one rule
-    public List<AiFieldGenerationConfig> projectFieldGenerations;   // none or one
+    public List<RoutingRule> packageFieldGenerations;   // exactly one rule
+    public List<RoutingRule> projectFieldGenerations;   // none or one
 }
 ```
 

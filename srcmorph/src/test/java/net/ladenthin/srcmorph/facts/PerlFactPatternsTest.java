@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import net.ladenthin.srcmorph.config.AiFactCounter;
+import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
  */
 public class PerlFactPatternsTest {
 
-    private static final List<AiFactCounter> COUNTERS = ProfileFactPatterns.counters("perl-facts");
+    private static final List<FactCounter> COUNTERS = ProfileFactPatterns.counters("perl-facts");
 
     /** Lines of the generated inputs of the heredoc run-time tests. */
     private static final int LONG_INPUT_LINES = 20_000;
