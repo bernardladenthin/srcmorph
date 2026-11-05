@@ -221,7 +221,7 @@ public class MainTest {
         final CConfiguration original = new CConfiguration();
         original.command = CCommand.Calibrate;
 
-        final String yaml = Main.configurationToYAML(original);
+        final String yaml = Main.configurationToYaml(original);
         final CConfiguration roundTripped = Main.fromYaml(yaml);
 
         assertThat(roundTripped.command, is(equalTo(CCommand.Calibrate)));
@@ -249,7 +249,7 @@ public class MainTest {
     public void logConfigurationTransformation_defaultConfiguration_doesNotThrow() {
         final Main main = new Main(new CConfiguration());
 
-        assertDoesNotThrow(main::logConfigurationTransformation);
+        assertDoesNotThrow(main::logConfigurationEcho);
     }
 
     @Test

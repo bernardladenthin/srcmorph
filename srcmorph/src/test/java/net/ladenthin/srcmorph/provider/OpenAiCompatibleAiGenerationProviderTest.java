@@ -559,7 +559,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void generateWithTimings_reportsTheServersUsage() throws Exception {
         // act
-        final AiGenerationTimings timings =
+        final TimedGeneration timings =
                 provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT).generateWithTimings(REQUEST);
 
         // assert
@@ -620,8 +620,7 @@ public class OpenAiCompatibleAiGenerationProviderTest {
     @Test
     public void generateWithTimings_stream_reportsTheUsageChunk() throws Exception {
         events = streamed("A tiny ", "test class.", "stop");
-        final AiGenerationTimings timings = provider(
-                        ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
+        final TimedGeneration timings = provider(ProviderConfig.builder().modelPath("").stream(true), NO_ENVIRONMENT)
                 .generateWithTimings(REQUEST);
         assertThat(timings.text(), is("A tiny test class."));
         assertThat(timings.promptTokens(), is(42));

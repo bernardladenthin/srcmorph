@@ -257,7 +257,7 @@ CLI driven by a single JSON or YAML configuration file:
   package carve-out), `noSystemExit`, `mavenFree` (must never depend on the Maven Plugin API — that
   boundary belongs to the plugin module), `noTestFrameworksInProduction`, `noInternalJdkImports`,
   `loggersArePrivateStaticFinal`.
-- **Tests**: `MainTest`, `configuration.ConfigBindingTest` (round-trips a private
+- **Tests**: `MainTest`, `ConfigBindingTest` (round-trips a private
   `src/test/resources/test-fixtures/minimal-generate.{json,yaml}` pair through both parsers),
   `ExamplesConfigBindingTest` (sweeps every shipped `examples/config_*.{json,yaml}` fixture — the
   public, documented examples — through the same strict mappers), `CliEndToEndTest` (drives every

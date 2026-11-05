@@ -64,7 +64,7 @@ work shows it should.
 **Phase A: the review's renames and P9** (`docs/code-review-2026-11-05.md` sections 1 and 2; a
 breaking change, the CHANGELOG's Upgrading section names each one)
 
-- [ ] A1 The small ones: N15 the plugin's package Javadoc, N14 the CLI's names (`logConfigurationEcho`,
+- [x] A1 The small ones: N15 the plugin's package Javadoc, N14 the CLI's names (`logConfigurationEcho`,
   `configurationToYaml`, `readString` / `fromJson` / `fromYaml` package-private), N13
   `basePromptLength`, N12 one `UNKNOWN_CONTEXT_LENGTH` value (`-1`), N11 `TimedGeneration`
 - [ ] A2 N5 `AiMdHeader`'s accessors by name (`headerVersion()`, `checksum()`, `sourceDate()`,

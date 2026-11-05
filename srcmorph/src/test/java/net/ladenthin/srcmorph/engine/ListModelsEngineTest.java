@@ -229,7 +229,8 @@ public class ListModelsEngineTest {
             assertThat(paths, is(Collections.singletonList("GET /v1/models")));
             assertThat(
                     report.listings().get(0).models(),
-                    is(Collections.singletonList(new RemoteModel("smollm2", 0, null, null))));
+                    is(Collections.singletonList(
+                            new RemoteModel("smollm2", RemoteModel.UNKNOWN_CONTEXT_LENGTH, null, null))));
         } finally {
             server.stop(0);
         }

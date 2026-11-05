@@ -944,7 +944,7 @@ public class SummaryGeneratorTest {
         final Path longName = tempFile("A_very_long_file_name_that_eats_into_the_prompt_budget", ".java");
         final int budget = (int) AiInputWindowCalculator.availableSourceChars(
                 models.getConfig("m"),
-                preparation.getBasePromptLength(CommonTestFixtures.PROMPT_KEY_FILE_BODY, shortName));
+                preparation.basePromptLength(CommonTestFixtures.PROMPT_KEY_FILE_BODY, shortName));
         final SummaryGenerator support = supportWithModels(request -> "OK", models);
         final AiFieldGenerationConfig rule = normalRule("m", null);
 

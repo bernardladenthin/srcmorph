@@ -21,7 +21,7 @@ public class AiGenerationProviderDefaultTimingsTest {
         // A provider that implements only generate() inherits the interface default, which must return the
         // generated text with zero timings (no measurement available).
         final AiGenerationProvider provider = request -> "TEXT";
-        final AiGenerationTimings timings =
+        final TimedGeneration timings =
                 provider.generateWithTimings(new AiGenerationRequest("summary", Paths.get("Foo.java"), "src"));
 
         assertThat(timings.text(), is("TEXT"));

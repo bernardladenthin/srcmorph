@@ -878,7 +878,7 @@ public class OpenAiCompatibleProviderSupportTest {
                         model("e", 500),
                         model("f", 600),
                         model("g", 700),
-                        model("h", 0))));
+                        model("h", RemoteModel.UNKNOWN_CONTEXT_LENGTH))));
     }
 
     @Test
@@ -903,7 +903,7 @@ public class OpenAiCompatibleProviderSupportTest {
     public void parseModels_anEntryWithoutATextualId_isLeftOut() throws Exception {
         assertThat(
                 parse("{\"object\":\"model\"},{\"id\":7},{\"id\":\"kept\"}"),
-                is(Collections.singletonList(model("kept", 0))));
+                is(Collections.singletonList(model("kept", RemoteModel.UNKNOWN_CONTEXT_LENGTH))));
     }
 
     @Test
@@ -930,7 +930,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void timings_reportUsageAndTheWallClockDecodeRate() {
         // act
-        final AiGenerationTimings timings =
+        final TimedGeneration timings =
                 OpenAiCompatibleProviderSupport.timings("text", responseWith(new Usage(100, 50, 30)), 2.0d);
 
         // assert
@@ -944,7 +944,7 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void timings_zeroSeconds_reportNoRate() {
-        final AiGenerationTimings timings =
+        final TimedGeneration timings =
                 OpenAiCompatibleProviderSupport.timings("text", responseWith(new Usage(1, 5)), 0.0d);
         assertThat(timings.decodeTokensPerSecond(), is(0.0d));
     }

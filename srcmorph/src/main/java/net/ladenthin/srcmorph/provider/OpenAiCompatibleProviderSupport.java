@@ -840,11 +840,11 @@ final class OpenAiCompatibleProviderSupport {
      * @param seconds  wall-clock seconds of the call
      * @return the timings
      */
-    static AiGenerationTimings timings(final String text, final ChatResponse response, final double seconds) {
+    static TimedGeneration timings(final String text, final ChatResponse response, final double seconds) {
         final Usage usage = response.getUsage();
         final int completionTokens = (int) usage.getCompletionTokens();
         final double decodeRate = seconds > 0.0d ? completionTokens / seconds : 0.0d;
-        return new AiGenerationTimings(
+        return new TimedGeneration(
                 text, (int) usage.getPromptTokens(), (int) usage.getCachedTokens(), 0.0d, completionTokens, decodeRate);
     }
 }

@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        CRLF_INJECTION_LOGS on Main.logConfigurationTransformation and Main.run.
+        CRLF_INJECTION_LOGS on Main.logConfigurationEcho and Main.run.
 
         The values logged are: (1) the re-serialized JSON/YAML of the CLI's own configuration
         file, which the operator authored and already handed to the process on the same command
@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        LO_APPENDED_STRING_IN_FORMAT_STRING on Main.logConfigurationTransformation.
+        LO_APPENDED_STRING_IN_FORMAT_STRING on Main.logConfigurationEcho.
 
         The single LOGGER.info call concatenates a fixed banner template around the (already
         CRLF-suppressed, see above) re-serialized JSON/YAML text, rather than using an SLF4J "{}"
@@ -63,7 +63,7 @@ SPDX-License-Identifier: Apache-2.0
     -->
     <Match>
         <Class name="net.ladenthin.srcmorph.cli.Main"/>
-        <Method name="logConfigurationTransformation"/>
+        <Method name="logConfigurationEcho"/>
         <Bug pattern="LO_APPENDED_STRING_IN_FORMAT_STRING"/>
     </Match>
 
@@ -124,15 +124,15 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        OPM_OVERLY_PERMISSIVE_METHOD across Main's public static helpers (readString, fromJson,
-        fromYaml, configurationToJson, configurationToYAML, loadConfiguration,
-        logConfigurationTransformation, run) and its public constructor.
+        OPM_OVERLY_PERMISSIVE_METHOD across Main's public members (loadConfiguration,
+        logConfigurationEcho, run) and its public constructor.
 
         Every one of these is genuinely public API by design: they are exercised directly by
-        MainTest/ConfigBindingTest/CliEndToEndTest (in a separate test-source-set fb-contrib does
-        not include in this analysis) and are the documented, mirror-of-BitcoinAddressFinder's-
-        cli.Main surface a caller embeds this CLI's parsing/serialization logic through without
-        forking a `java -jar` process. Same rationale as every other OPM suppression in this
+        MainTest/CliEndToEndTest (in a separate test-source-set fb-contrib does not include in
+        this analysis) and are the documented, mirror-of-BitcoinAddressFinder's-cli.Main surface
+        a caller embeds this CLI through without forking a `java -jar` process. The parsing and
+        serialization helpers the tests use (readString, fromJson, fromYaml, configurationToJson,
+        configurationToYaml) are package-private. Same rationale as every other OPM suppression in this
         reactor (see srcmorph/spotbugs-exclude.xml's AiProgressBar/AiFactDefinitionSupport entries):
         fb-contrib's bytecode-shape heuristic cannot see cross-source-set (test) call sites.
     -->

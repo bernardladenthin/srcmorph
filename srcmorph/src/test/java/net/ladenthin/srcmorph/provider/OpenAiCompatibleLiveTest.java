@@ -154,7 +154,7 @@ public class OpenAiCompatibleLiveTest {
                 new AiGenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Greeter.java"), SOURCE);
 
         // act
-        final AiGenerationTimings timings;
+        final TimedGeneration timings;
         try (AiGenerationProvider provider = new AiGenerationProviderFactory()
                 .create(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI, config, promptSupport)) {
             timings = provider.generateWithTimings(request);

@@ -27,7 +27,7 @@ public class RemoteModelTest {
     public void prices_mayBeUnknown() {
         final RemoteModel model = new RemoteModel("auto", RemoteModel.UNKNOWN_CONTEXT_LENGTH, null, null);
 
-        assertThat(model.contextLength(), is(0));
+        assertThat(model.contextLength(), is(-1));
         assertThat(model.inputUsdPerMillion(), is(nullValue()));
         assertThat(model.outputUsdPerMillion(), is(nullValue()));
     }

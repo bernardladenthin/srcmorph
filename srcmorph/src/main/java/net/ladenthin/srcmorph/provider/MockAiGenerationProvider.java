@@ -65,9 +65,9 @@ public class MockAiGenerationProvider implements AiGenerationProvider {
     }
 
     @Override
-    public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) throws IOException {
+    public TimedGeneration generateWithTimings(final AiGenerationRequest request) throws IOException {
         final int promptTokens = request.sourceText().length() / MOCK_CHARS_PER_TOKEN;
-        return new AiGenerationTimings(
+        return new TimedGeneration(
                 generate(request),
                 promptTokens,
                 MOCK_CACHED_PROMPT_TOKENS,

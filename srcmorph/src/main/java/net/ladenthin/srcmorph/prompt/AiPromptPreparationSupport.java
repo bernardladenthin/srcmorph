@@ -97,7 +97,7 @@ public class AiPromptPreparationSupport {
      * @return character count of the rendered prompt with an empty source body
      * @throws IllegalArgumentException if no template is registered for {@code promptKey}
      */
-    public int getBasePromptLength(final String promptKey, final java.nio.file.Path contextFile) {
+    public int basePromptLength(final String promptKey, final java.nio.file.Path contextFile) {
         return promptSupport.buildPrompt(promptKey, contextFile, "").length();
     }
 

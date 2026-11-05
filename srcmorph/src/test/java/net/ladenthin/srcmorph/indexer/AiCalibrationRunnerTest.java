@@ -12,8 +12,8 @@ import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.prompt.AiPromptSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationTimings;
 import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
+import net.ladenthin.srcmorph.provider.TimedGeneration;
 import org.junit.jupiter.api.Test;
 
 public class AiCalibrationRunnerTest {
@@ -58,8 +58,8 @@ public class AiCalibrationRunnerTest {
             }
 
             @Override
-            public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
-                return new AiGenerationTimings("t", 0, 0, 0.0d, 0, 0.0d);
+            public TimedGeneration generateWithTimings(final AiGenerationRequest request) {
+                return new TimedGeneration("t", 0, 0, 0.0d, 0, 0.0d);
             }
         };
         final AiCalibrationMeasurement m = new AiCalibrationRunner()
@@ -100,8 +100,8 @@ public class AiCalibrationRunnerTest {
             }
 
             @Override
-            public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
-                return new AiGenerationTimings("", 0, 0, 0.0d, 0, 0.0d);
+            public TimedGeneration generateWithTimings(final AiGenerationRequest request) {
+                return new TimedGeneration("", 0, 0, 0.0d, 0, 0.0d);
             }
         };
 
@@ -133,8 +133,8 @@ public class AiCalibrationRunnerTest {
             }
 
             @Override
-            public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
-                return new AiGenerationTimings("t", 0, 0, 0.0d, 0, 0.0d);
+            public TimedGeneration generateWithTimings(final AiGenerationRequest request) {
+                return new TimedGeneration("t", 0, 0, 0.0d, 0, 0.0d);
             }
         };
 
@@ -173,10 +173,10 @@ public class AiCalibrationRunnerTest {
             }
 
             @Override
-            public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
+            public TimedGeneration generateWithTimings(final AiGenerationRequest request) {
                 final int totalPromptTokens =
                         BASE_PROMPT_TOKENS + request.sourceText().length() / SYNTHETIC_CHARS_PER_TOKEN;
-                return new AiGenerationTimings(
+                return new TimedGeneration(
                         "t", totalPromptTokens - cachedPrefixTokens, cachedPrefixTokens, 1000.0d, 64, 100.0d);
             }
         };
@@ -253,8 +253,8 @@ public class AiCalibrationRunnerTest {
             }
 
             @Override
-            public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
-                return new AiGenerationTimings("t", 0, 0, 1000.0d, 64, 100.0d);
+            public TimedGeneration generateWithTimings(final AiGenerationRequest request) {
+                return new TimedGeneration("t", 0, 0, 1000.0d, 64, 100.0d);
             }
         };
 

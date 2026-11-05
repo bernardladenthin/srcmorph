@@ -59,6 +59,12 @@ The entries below hold the details; what a 1.4.0 user changes:
   `SourceFileIndexer.classify` takes both lookups non-null (the two-argument one skips the window
   check). `AiGenerationProviderFactory.effectiveProvider` takes a non-null run provider and returns a
   non-null key, and `AiPromptTemplateLoader.load(List)` is gone (`load(List, Collection)` remains).
+- **Java callers of the library, the naming review** (`docs/code-review-2026-11-05.md` section 2):
+  `AiGenerationTimings` is `TimedGeneration`; `AiPromptPreparationSupport.getBasePromptLength` is
+  `basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` like
+  `GgufModelInfo.UNKNOWN_CONTEXT_LENGTH` (it was `0`). The CLI's `Main.logConfigurationTransformation`
+  is `logConfigurationEcho`, `configurationToYAML` is `configurationToYaml`, and `readString`,
+  `fromJson`, `fromYaml`, `configurationToJson` and `configurationToYaml` are package-private.
 
 ### Added
 

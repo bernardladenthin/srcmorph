@@ -313,8 +313,7 @@ public final class SourceFileIndexer {
             } else if (modelDefinitionSupport != null && promptPreparationSupport != null) {
                 final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(rule.requireAiDefinitionKey());
                 final Path shown = baseDirectory.relativize(file);
-                final int basePromptLength =
-                        promptPreparationSupport.getBasePromptLength(rule.requirePromptKey(), shown);
+                final int basePromptLength = promptPreparationSupport.basePromptLength(rule.requirePromptKey(), shown);
                 final long availableSourceChars =
                         AiInputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = source.length();
@@ -396,9 +395,9 @@ public final class SourceFileIndexer {
             return basePromptLength;
         }
         return Math.max(
-                        preparation.getBasePromptLength(
+                        preparation.basePromptLength(
                                 AiPromptSupport.composedKey(rule.requirePromptKey(), rule.getMapPromptKey()), file),
-                        preparation.getBasePromptLength(
+                        preparation.basePromptLength(
                                 AiPromptSupport.composedKey(rule.requirePromptKey(), rule.getReducePromptKey()), file))
                 + AiMapReduceSupport.CHUNK_LABEL_RESERVE;
     }

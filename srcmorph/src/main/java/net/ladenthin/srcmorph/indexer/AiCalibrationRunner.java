@@ -11,7 +11,7 @@ import net.ladenthin.srcmorph.indexer.generation.AiInputWindowCalculator;
 import net.ladenthin.srcmorph.prompt.AiGenerationRequest;
 import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
 import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationTimings;
+import net.ladenthin.srcmorph.provider.TimedGeneration;
 
 /**
  * Measures one model's per-machine timing for the {@code srcmorph:calibrate} goal: it triggers the load,
@@ -71,7 +71,7 @@ public final class AiCalibrationRunner {
             final AiPromptPreparationSupport prep)
             throws IOException {
         final Path contextFile = Paths.get(CALIBRATION_CONTEXT_NAME);
-        final int basePromptLength = prep.getBasePromptLength(promptKey, contextFile);
+        final int basePromptLength = prep.basePromptLength(promptKey, contextFile);
         final long availableSourceChars = AiInputWindowCalculator.availableSourceChars(config, basePromptLength);
         final int midChars = clampSourceChars((long) (availableSourceChars * MID_WINDOW_FRACTION));
         final int nearChars = clampSourceChars((long) (availableSourceChars * NEAR_WINDOW_FRACTION));
@@ -84,12 +84,12 @@ public final class AiCalibrationRunner {
         final double loadSeconds = (System.nanoTime() - loadStartNanos) / NANOS_PER_SECOND;
 
         final long midStartNanos = System.nanoTime();
-        final AiGenerationTimings mid = provider.generateWithTimings(
+        final TimedGeneration mid = provider.generateWithTimings(
                 new AiGenerationRequest(promptKey, contextFile, syntheticSource(midChars)));
         final double midWallSeconds = (System.nanoTime() - midStartNanos) / NANOS_PER_SECOND;
 
         final long nearStartNanos = System.nanoTime();
-        final AiGenerationTimings near = provider.generateWithTimings(
+        final TimedGeneration near = provider.generateWithTimings(
                 new AiGenerationRequest(promptKey, contextFile, syntheticSource(nearChars)));
         final double nearWallSeconds = (System.nanoTime() - nearStartNanos) / NANOS_PER_SECOND;
 
@@ -108,7 +108,7 @@ public final class AiCalibrationRunner {
         // (a TINY prompt whose prefill KV is reused from the warmup, so its wall-clock is ~pure decode; its
         // generated text gives the ACTUAL output size).
         final long probeStartNanos = System.nanoTime();
-        final AiGenerationTimings probe =
+        final TimedGeneration probe =
                 provider.generateWithTimings(new AiGenerationRequest(promptKey, contextFile, tinySource));
         final double probeWallSeconds = (System.nanoTime() - probeStartNanos) / NANOS_PER_SECOND;
         return wallClockFallback(
@@ -129,7 +129,7 @@ public final class AiCalibrationRunner {
      *
      * <p>Both runs share the same base prompt, so subtracting them cancels it: the remaining characters
      * ({@code nearChars - midChars}) and the remaining tokens are pure source. The token side must be the
-     * <em>whole</em> prompt ({@link AiGenerationTimings#totalPromptTokens()}, i.e. processed <b>plus</b>
+     * <em>whole</em> prompt ({@link TimedGeneration#totalPromptTokens()}, i.e. processed <b>plus</b>
      * KV-cache-served), never the processed count alone &mdash; the earlier
      * {@code nearChars / near.promptTokens()} form only happened to be right while the base prompt was a
      * cache hit, and nothing in the run enforced or even reported that. With the totals the derivation is
@@ -142,7 +142,7 @@ public final class AiCalibrationRunner {
      * @return characters per token, or {@code 0} when the run reported no prompt tokens at all
      */
     private static double charsPerToken(
-            final int midChars, final AiGenerationTimings mid, final int nearChars, final AiGenerationTimings near) {
+            final int midChars, final TimedGeneration mid, final int nearChars, final TimedGeneration near) {
         final int nearTokens = near.totalPromptTokens();
         final int deltaTokens = nearTokens - mid.totalPromptTokens();
         if (deltaTokens > 0) {
@@ -179,7 +179,7 @@ public final class AiCalibrationRunner {
             final int nearChars,
             final double midWallSeconds,
             final double nearWallSeconds,
-            final AiGenerationTimings probe,
+            final TimedGeneration probe,
             final double probeWallSeconds,
             final AiGenerationConfig config,
             final int cachedPromptTokens) {
@@ -212,7 +212,7 @@ public final class AiCalibrationRunner {
      */
     public long windowChars(
             final AiGenerationConfig config, final String promptKey, final AiPromptPreparationSupport prep) {
-        final int basePromptLength = prep.getBasePromptLength(promptKey, Paths.get(CALIBRATION_CONTEXT_NAME));
+        final int basePromptLength = prep.basePromptLength(promptKey, Paths.get(CALIBRATION_CONTEXT_NAME));
         return AiInputWindowCalculator.availableSourceChars(config, basePromptLength);
     }
 

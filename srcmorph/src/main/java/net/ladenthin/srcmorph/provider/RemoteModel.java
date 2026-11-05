@@ -20,7 +20,7 @@ import org.jspecify.annotations.Nullable;
 public final class RemoteModel {
 
     /** The {@link #contextLength()} of a model whose server names none. */
-    public static final int UNKNOWN_CONTEXT_LENGTH = 0;
+    public static final int UNKNOWN_CONTEXT_LENGTH = -1;
 
     private final String id;
     private final int contextLength;

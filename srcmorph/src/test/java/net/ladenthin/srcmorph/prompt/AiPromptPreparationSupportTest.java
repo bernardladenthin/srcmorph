@@ -114,7 +114,7 @@ public class AiPromptPreparationSupportTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getBasePromptLength">
+    // <editor-fold defaultstate="collapsed" desc="basePromptLength">
     @Test
     public void getBasePromptLength_returnsRenderedBaseLength() {
         final AiPromptSupport promptSupport = createPromptSupport();
@@ -123,7 +123,7 @@ public class AiPromptPreparationSupportTest {
                 .buildPrompt("file-summary", Paths.get("Test.java"), "")
                 .length();
         // Exact, non-zero base length kills the "return 0" primitive-return mutant.
-        assertThat(support.getBasePromptLength("file-summary", Paths.get("Test.java")), is(equalTo(expected)));
+        assertThat(support.basePromptLength("file-summary", Paths.get("Test.java")), is(equalTo(expected)));
         assertThat(expected > 0, is(true));
     }
     // </editor-fold>

@@ -44,7 +44,7 @@ public class MockAiGenerationProviderTest {
         // calibrate run works without a real model.
         final AiGenerationRequest request =
                 new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123456789012345");
-        final AiGenerationTimings timings = provider.generateWithTimings(request);
+        final TimedGeneration timings = provider.generateWithTimings(request);
         assertThat(timings.text(), is("Mock summary for Foo.java"));
         assertThat(timings.promptTokens(), is(4));
         assertThat(timings.prefillTokensPerSecond() > 0.0d, is(true));
@@ -58,9 +58,9 @@ public class MockAiGenerationProviderTest {
      */
     @Test
     public void generateWithTimings_reportsAConstantCachedPrefixIndependentOfSourceSize() throws IOException {
-        final AiGenerationTimings small =
+        final TimedGeneration small =
                 provider.generateWithTimings(new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123"));
-        final AiGenerationTimings large = provider.generateWithTimings(
+        final TimedGeneration large = provider.generateWithTimings(
                 new AiGenerationRequest("summary", Paths.get("Foo.java"), "0123456789012345"));
 
         assertThat(small.cachedPromptTokens(), is(32));

@@ -119,7 +119,8 @@ public class ModelListReportTest {
                                 "local",
                                 pattern,
                                 1,
-                                Collections.singletonList(new RemoteModel("local", 0, null, null)))))
+                                Collections.singletonList(
+                                        new RemoteModel("local", RemoteModel.UNKNOWN_CONTEXT_LENGTH, null, null)))))
                 .render();
 
         assertThat(

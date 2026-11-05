@@ -136,7 +136,9 @@ public final class ModelListReport {
                     Locale.ROOT,
                     row,
                     model.id(),
-                    model.contextLength() > 0 ? Integer.toString(model.contextLength()) : UNKNOWN,
+                    model.contextLength() != RemoteModel.UNKNOWN_CONTEXT_LENGTH
+                            ? Integer.toString(model.contextLength())
+                            : UNKNOWN,
                     price(model.inputUsdPerMillion()),
                     price(model.outputUsdPerMillion())));
         }
@@ -180,7 +182,7 @@ public final class ModelListReport {
      * @return the window of the entry
      */
     static int contextSize(final int patternContextSize, final int modelLimit) {
-        return modelLimit > RemoteModel.UNKNOWN_CONTEXT_LENGTH
+        return modelLimit != RemoteModel.UNKNOWN_CONTEXT_LENGTH
                 ? Math.min(modelLimit, patternContextSize)
                 : patternContextSize;
     }

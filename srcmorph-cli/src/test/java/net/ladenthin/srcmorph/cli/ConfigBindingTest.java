@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 //
 // SPDX-License-Identifier: Apache-2.0
-package net.ladenthin.srcmorph.cli.configuration;
+package net.ladenthin.srcmorph.cli;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -10,7 +10,8 @@ import static org.hamcrest.Matchers.is;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import net.ladenthin.srcmorph.cli.Main;
+import net.ladenthin.srcmorph.cli.configuration.CCommand;
+import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.AiFactCounter;
 import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
 import net.ladenthin.srcmorph.config.AiModelDefinition;

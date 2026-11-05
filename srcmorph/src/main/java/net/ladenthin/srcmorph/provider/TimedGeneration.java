@@ -26,7 +26,7 @@ import net.ladenthin.srcmorph.support.ConvertToRecord;
 @ConvertToRecord
 @ToString
 @EqualsAndHashCode
-public final class AiGenerationTimings {
+public final class TimedGeneration {
 
     private final String text;
     private final int promptTokens;
@@ -36,7 +36,7 @@ public final class AiGenerationTimings {
     private final double decodeTokensPerSecond;
 
     /**
-     * Creates a new {@link AiGenerationTimings}.
+     * Creates a new {@link TimedGeneration}.
      *
      * @param text                   the generated (parsed) text
      * @param promptTokens           number of prompt tokens the model processed (prefill)
@@ -46,7 +46,7 @@ public final class AiGenerationTimings {
      * @param predictedTokens        number of tokens the model generated (decode)
      * @param decodeTokensPerSecond  measured decode throughput (tokens/second)
      */
-    public AiGenerationTimings(
+    public TimedGeneration(
             final String text,
             final int promptTokens,
             final int cachedPromptTokens,

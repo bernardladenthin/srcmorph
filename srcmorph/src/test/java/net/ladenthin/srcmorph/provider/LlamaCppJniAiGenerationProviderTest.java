@@ -105,8 +105,8 @@ public class LlamaCppJniAiGenerationProviderTest {
 
         try (LlamaCppJniAiGenerationProvider provider =
                 new LlamaCppJniAiGenerationProvider(config(4096, 16), promptSupport)) {
-            final AiGenerationTimings small = provider.generateWithTimings(request("class A {}"));
-            final AiGenerationTimings big = provider.generateWithTimings(request(large.toString()));
+            final TimedGeneration small = provider.generateWithTimings(request("class A {}"));
+            final TimedGeneration big = provider.generateWithTimings(request(large.toString()));
 
             // Real engine timings (not zero-rate default), so the plan gets exact throughput.
             assertThat(small.prefillTokensPerSecond() > 0.0d, is(true));
@@ -135,7 +135,7 @@ public class LlamaCppJniAiGenerationProviderTest {
         try (LlamaCppJniAiGenerationProvider provider =
                 new LlamaCppJniAiGenerationProvider(config(4096, 16), promptSupport)) {
             final int counted = provider.promptTokens(request).getAsInt();
-            final AiGenerationTimings generated = provider.generateWithTimings(request);
+            final TimedGeneration generated = provider.generateWithTimings(request);
 
             // the count is the prompt the call reads, chat template included, before any call is made
             assertThat(counted, is(generated.totalPromptTokens()));

@@ -395,7 +395,7 @@ public class SummaryGenerator {
             return estimate;
         }
         final int promptChars =
-                promptPreparationSupport.getBasePromptLength(request.promptKey(), contextFile) + sampleChars;
+                promptPreparationSupport.basePromptLength(request.promptKey(), contextFile) + sampleChars;
         final int counted = tokens.getAsInt();
         final int window = AiTokenWindow.measuredWindow(tokenLimit, promptChars, counted);
         LOGGER.info(
@@ -572,8 +572,8 @@ public class SummaryGenerator {
                 AiPromptSupport.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getMapPromptKey());
         final String reduceKey =
                 AiPromptSupport.composedKey(fieldGeneration.requirePromptKey(), fieldGeneration.getReducePromptKey());
-        final int mapPromptLength = promptPreparationSupport.getBasePromptLength(mapKey, contextFile);
-        final int reducePromptLength = promptPreparationSupport.getBasePromptLength(reduceKey, contextFile);
+        final int mapPromptLength = promptPreparationSupport.basePromptLength(mapKey, contextFile);
+        final int reducePromptLength = promptPreparationSupport.basePromptLength(reduceKey, contextFile);
         final int room = ChunkPlan.room(effectiveMaxInputChars, mapPromptLength, reducePromptLength);
         if (room < AiMapReduceSupport.MIN_CHUNK_CHARS) {
             // a chunk of the minimum would be cut in every call, and most of the source never read
@@ -996,7 +996,7 @@ public class SummaryGenerator {
         }
 
         final int basePromptLength =
-                promptPreparationSupport.getBasePromptLength(fieldGeneration.requirePromptKey(), contextFile);
+                promptPreparationSupport.basePromptLength(fieldGeneration.requirePromptKey(), contextFile);
         if (loggedWindows.add(computeMaxInputCharsKey(
                 fieldGeneration.requireAiDefinitionKey(), fieldGeneration.requirePromptKey()))) {
             logMaxInputChars(generationConfig, basePromptLength);

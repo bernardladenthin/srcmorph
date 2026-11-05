@@ -245,7 +245,7 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
     // Narrows away the interface's checked IOException: the chat path (chatComplete + parse) throws only
     // unchecked exceptions, so declaring IOException here would be bogus (BED).
     @Override
-    public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) {
+    public TimedGeneration generateWithTimings(final AiGenerationRequest request) {
         // chatComplete(...) returns the full OpenAI-compatible JSON, which the server populates with a
         // "timings" object (prompt_n / predicted_n / prompt_per_second / predicted_per_second) for every
         // real generation. chatCompleteText(...) discards it; here we parse it into a ChatResponse and
@@ -255,12 +255,12 @@ public final class LlamaCppJniAiGenerationProvider implements AiGenerationProvid
         final Timings timings = response.getTimings();
         if (timings == null) {
             // A build/response without timings degrades to zero rates so the caller's fallback can act.
-            return new AiGenerationTimings(text, 0, 0, 0.0d, 0, 0.0d);
+            return new TimedGeneration(text, 0, 0, 0.0d, 0, 0.0d);
         }
         // cache_n is the leading prompt slice llama.cpp served straight from the KV cache. It is the only
         // observable the prefix-reuse settings (cachePrompt / cacheReuse / swaFull) produce, so it is
         // surfaced rather than dropped: without it a run pays swaFull's KV memory on faith.
-        return new AiGenerationTimings(
+        return new TimedGeneration(
                 text,
                 (int) timings.getPromptN(),
                 timings.getCacheN(),

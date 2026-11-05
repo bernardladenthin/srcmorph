@@ -79,7 +79,7 @@ public class Main {
      * @return the file contents
      * @throws IOException if the file cannot be read
      */
-    public static String readString(final Path path) throws IOException {
+    static String readString(final Path path) throws IOException {
         return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
     }
 
@@ -91,7 +91,7 @@ public class Main {
      * @throws IOException if the JSON cannot be deserialised, including an unknown property (the
      *                      mapper is strict — see {@link SrcMorphConfigurationFileLoader#newJsonMapper()})
      */
-    public static CConfiguration fromJson(final String configurationString) throws IOException {
+    static CConfiguration fromJson(final String configurationString) throws IOException {
         return fromFile(SrcMorphConfigurationFileLoader.parse(configurationString, false));
     }
 
@@ -103,7 +103,7 @@ public class Main {
      * @throws IOException if the YAML cannot be deserialised, including an unknown property (the
      *                      mapper is strict — see {@link SrcMorphConfigurationFileLoader#newYamlMapper()})
      */
-    public static CConfiguration fromYaml(final String configurationString) throws IOException {
+    static CConfiguration fromYaml(final String configurationString) throws IOException {
         return fromFile(SrcMorphConfigurationFileLoader.parse(configurationString, true));
     }
 
@@ -140,7 +140,7 @@ public class Main {
      * @return the JSON representation
      * @throws IOException if the configuration cannot be serialised
      */
-    public static String configurationToJson(final CConfiguration configuration) throws IOException {
+    static String configurationToJson(final CConfiguration configuration) throws IOException {
         final ObjectMapper mapper = SrcMorphConfigurationFileLoader.newJsonMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         return mapper.writeValueAsString(configuration);
@@ -153,7 +153,7 @@ public class Main {
      * @return the YAML representation
      * @throws IOException if the configuration cannot be serialised
      */
-    public static String configurationToYAML(final CConfiguration configuration) throws IOException {
+    static String configurationToYaml(final CConfiguration configuration) throws IOException {
         final YAMLMapper mapper = SrcMorphConfigurationFileLoader.newYamlMapper();
         return mapper.writeValueAsString(configuration);
     }
@@ -229,7 +229,7 @@ public class Main {
         final Path configurationPath = Paths.get(args[0]);
         final CConfiguration configuration = loadConfiguration(configurationPath);
         final Main main = new Main(configuration);
-        main.logConfigurationTransformation();
+        main.logConfigurationEcho();
         main.run();
     }
 
@@ -239,12 +239,12 @@ public class Main {
      *
      * @throws IOException if the configuration cannot be serialised
      */
-    public void logConfigurationTransformation() throws IOException {
+    public void logConfigurationEcho() throws IOException {
         LOGGER.info(configurationEcho(configuration));
     }
 
     /**
-     * The configuration echo {@link #logConfigurationTransformation()} logs: the JSON and the YAML form,
+     * The configuration echo {@link #logConfigurationEcho()} logs: the JSON and the YAML form,
      * every URL's user info masked, so a password written into a {@code baseUrl} reaches no log line
      * (srcmorph never sends it either).
      *
@@ -262,7 +262,7 @@ public class Main {
                         + "########## END   transformed JSON configuration ##########\n"
                         + "\n"
                         + "########## BEGIN transformed YAML configuration ##########\n"
-                        + configurationToYAML(configuration)
+                        + configurationToYaml(configuration)
                         + "\n"
                         + "########## END   transformed YAML configuration ##########\n");
     }

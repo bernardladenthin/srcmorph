@@ -217,7 +217,7 @@ public final class OpenAiCompatibleAiGenerationProvider implements AiGenerationP
     }
 
     @Override
-    public AiGenerationTimings generateWithTimings(final AiGenerationRequest request) throws IOException {
+    public TimedGeneration generateWithTimings(final AiGenerationRequest request) throws IOException {
         final long start = System.nanoTime();
         final ChatResponse response = chatResponse(request);
         final double seconds = (System.nanoTime() - start) / (double) TimeUnit.SECONDS.toNanos(1);
