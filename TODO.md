@@ -47,7 +47,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 20 | A `baseUrl`'s user info is printed as written | Claude | done 2026-11-05 | — |
 | 21 | `AiGenerationUsage.add` counts `NONE` as a call | Claude | done 2026-11-05 | — |
 | 22 | Tests: `check()` with `planOnly` and model files, the interrupt branch, a changed prompt hash, the smaller window after an overflow, the plugin's base directory | Claude | done 2026-11-05 | — |
-| 23 | SpotBugs: split the `SrcMorphConfigurationFileLoader` match, the stale `NP_NULL_ON_SOME_PATH` | Claude | open | Review of 2026-11-02, tests and gates |
+| 23 | SpotBugs: split the `SrcMorphConfigurationFileLoader` match, the stale `NP_NULL_ON_SOME_PATH` | Claude | done 2026-11-05 | — |
 
 **Wave 3: medium fixes** (each 1 to 3 h)
 
@@ -229,8 +229,6 @@ Unreleased) except:
 
 **Tests and gates:**
 
-- SpotBugs: `SrcMorphConfigurationFileLoader` sits in a Match that suppresses seven patterns for a
-  reason that covers two; a stale `NP_NULL_ON_SOME_PATH` suppression.
 - SonarCloud reports 98 new issues that are not readable without a token.
 
 

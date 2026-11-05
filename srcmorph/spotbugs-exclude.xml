@@ -393,12 +393,6 @@ SPDX-License-Identifier: Apache-2.0
             @NullMarked validation style (see the DCN rationale in the plugin module's filter file);
             the explicit guards are the deliberate fail-fast contract, not dead checks.
 
-        SrcMorphConfigurationFileLoader: newJsonMapper / newYamlMapper are public because the CLI module
-        reads and echoes its configuration with the same strict mappers, which this module's analysis
-        cannot see (OPM); resolve() checks the bound base and output directory for null although the
-        getters are non-null, because a key set to nothing in the file binds null through Jackson,
-        past the annotation (RCN).
-
         Migration step 5 (engine extraction) additions, same rationale class:
           - LlamaCppJniConfigFactory.fromGenerationConfig: the pure field-by-field translation from
             AiGenerationConfig to LlamaCppJniConfig (moved verbatim out of the old
@@ -429,7 +423,6 @@ SPDX-License-Identifier: Apache-2.0
             <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
             <Class name="net.ladenthin.srcmorph.engine.CalibrationReport"/>
             <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
-            <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader"/>
         </Or>
         <Or>
             <Bug pattern="CE_CLASS_ENVY"/>
@@ -717,17 +710,26 @@ SPDX-License-Identifier: Apache-2.0
     </Match>
 
     <!--
-        NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE on EngineSupport.resolveLlamaCppJniConfig(config,
-        modelDefinitionSupport). SpotBugs core's null-flow analysis flags the textbook guard-clause
-        pattern itself (get a possibly-null value, check it, throw if null, otherwise use the
-        now-non-null local) as a "possible null pointer dereference" on the checked variable - a known
-        false-positive shape for this detector. The method is straight-line, three lines long, and the
-        only use of `modelPath` after the guard is unreachable when it is null.
+        SrcMorphConfigurationFileLoader, two findings, each scoped to its methods:
+          - OPM_OVERLY_PERMISSIVE_METHOD: newJsonMapper / newYamlMapper are public because the CLI module
+            reads and echoes its configuration with the same strict mappers, which this module's
+            analysis cannot see.
+          - RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: resolve() checks the bound base and output
+            directory for null although the getters are non-null, because a key set to nothing in the
+            file binds null through Jackson, past the annotation.
     -->
     <Match>
-        <Class name="net.ladenthin.srcmorph.engine.EngineSupport"/>
-        <Method name="resolveLlamaCppJniConfig"/>
-        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+        <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader"/>
+        <Or>
+            <Method name="newJsonMapper"/>
+            <Method name="newYamlMapper"/>
+        </Or>
+        <Bug pattern="OPM_OVERLY_PERMISSIVE_METHOD"/>
+    </Match>
+    <Match>
+        <Class name="net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader"/>
+        <Method name="resolve"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
     </Match>
 
     <!--
