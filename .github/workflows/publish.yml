@@ -522,7 +522,7 @@ jobs:
           set -euo pipefail
           mvn --batch-mode --no-transfer-progress -pl srcmorph -am compile
           mvn --batch-mode --no-transfer-progress -pl srcmorph dependency:build-classpath \
-            -Dmdep.includeScope=runtime -Dmdep.outputFile="$PWD/runtime.classpath"
+            -DincludeScope=runtime -Dmdep.outputFile="$PWD/runtime.classpath"
           javac --release 8 -Xlint:-options -cp srcmorph/target/classes -d linearity \
             srcmorph/src/test/java/net/ladenthin/srcmorph/facts/FactPatternLinearity.java
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
