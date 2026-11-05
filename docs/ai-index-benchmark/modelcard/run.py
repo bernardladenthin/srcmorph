@@ -151,6 +151,8 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("terraform", {"extensions": [".tf", ".hcl"]}, "ops", 0),
              ("gradle", {"extensions": [".gradle"]}, "ops", 10),
              ("properties", {"extensions": [".properties"]}, "ops", 0),
+             # not measured yet (TODO row 13): gpt-oss-20b varied on a package.json with the fallback prompt
+             ("npm", {"fileNames": ["package.json"]}, "ops", 10),
              ("ops", {"extensions": YAML_EXTENSIONS}, "ops", 0))
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 WORK_MARKER = ".srcmorph-benchmark-work"

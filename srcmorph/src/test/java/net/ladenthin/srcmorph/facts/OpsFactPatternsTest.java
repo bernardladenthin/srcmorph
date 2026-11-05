@@ -47,6 +47,8 @@ public class OpsFactPatternsTest {
 
     private static final List<AiFactCounter> BATCH = ProfileFactPatterns.counters("batch-facts");
 
+    private static final List<AiFactCounter> NPM = ProfileFactPatterns.counters("npm-facts");
+
     private static int count(final List<AiFactCounter> counters, final String label, final String source) {
         final Map<String, Integer> counts = ProfileFactPatterns.counts(counters, source);
         final Integer count = counts.get(label);
@@ -758,6 +760,53 @@ public class OpsFactPatternsTest {
         assertThat(count(BATCH, "local scopes", script), is(1));
         assertThat(count(BATCH, "exits", script), is(3));
         assertThat(count(BATCH, "error level checks", script), is(2));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="npm-facts">
+    /**
+     * A {@code package.json} with every counted object, a nested {@code scripts} key that is no npm
+     * script, an escaped quote and an empty object.
+     */
+    private static final String PACKAGE_JSON = "{\n"
+            + "  \"name\": \"demo\",\n"
+            + "  \"workspaces\": [\"packages/*\", \"tools\"],\n"
+            + "  \"scripts\": {\n"
+            + "    \"build\": \"tsc -p .\",\n"
+            + "    \"test\": \"jest --config \\\"jest.json\\\"\",\n"
+            + "    \"lint\" : \"eslint .\"\n"
+            + "  },\n"
+            + "  \"dependencies\": {\"express\": \"^4.19.2\", \"zod\": \"3.23.8\"},\n"
+            + "  \"devDependencies\": {\n"
+            + "    \"typescript\": \"5.6.3\",\n"
+            + "    \"jest\": \"29.7.0\",\n"
+            + "    \"eslint\": \"9.12.0\"\n"
+            + "  },\n"
+            + "  \"peerDependencies\": {\"react\": \">=18\"},\n"
+            + "  \"optionalDependencies\": {},\n"
+            + "  \"engines\": {\"node\": \">=20\", \"npm\": \">=10\"},\n"
+            + "  \"tool\": {\"scripts\": {\"nested\": \"x\"}, \"after\": \"y\"}\n"
+            + "}\n";
+
+    @Test
+    public void npm_countsTheEntriesOfEachObject() {
+        // act + assert
+        assertThat(count(NPM, "scripts", PACKAGE_JSON), is(4));
+        assertThat(count(NPM, "dependencies", PACKAGE_JSON), is(2));
+        assertThat(count(NPM, "dev dependencies", PACKAGE_JSON), is(3));
+        assertThat(count(NPM, "peer dependencies", PACKAGE_JSON), is(1));
+        assertThat(count(NPM, "optional dependencies", PACKAGE_JSON), is(0));
+        assertThat(count(NPM, "engines", PACKAGE_JSON), is(2));
+        assertThat(count(NPM, "workspaces", PACKAGE_JSON), is(2));
+    }
+
+    @Test
+    public void npm_theCountStopsAtTheObjectsEnd() {
+        // arrange: the entry after the scripts object follows its }, not a comma between its entries
+        final String nested = "{\"tool\": {\"scripts\": {\"a\": \"x\"}, \"after\": \"y\"}}";
+
+        // act + assert
+        assertThat(count(NPM, "scripts", nested), is(1));
     }
     // </editor-fold>
 }

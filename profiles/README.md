@@ -40,6 +40,7 @@ handed on as a whole.
 | [`v3/k8s-facts.tsv`](v3/k8s-facts.tsv), [`v3/actions-facts.tsv`](v3/actions-facts.tsv), [`v3/dockerfile-facts.tsv`](v3/dockerfile-facts.tsv) | `factsKey: k8s-facts`, `actions-facts`, `dockerfile-facts` | Kubernetes and Helm; GitHub Actions; Dockerfiles (with `file-body-ops`) |
 | [`v3/compose-facts.tsv`](v3/compose-facts.tsv), [`v3/ansible-facts.tsv`](v3/ansible-facts.tsv), [`v3/terraform-facts.tsv`](v3/terraform-facts.tsv), [`v3/camel-yaml-facts.tsv`](v3/camel-yaml-facts.tsv) | `factsKey: compose-facts`, `ansible-facts`, `terraform-facts`, `camel-yaml-facts` | Docker Compose; Ansible playbooks and roles; Terraform, OpenTofu and Terragrunt; Camel's YAML DSL (with `file-body-ops`) |
 | [`v3/gradle-facts.tsv`](v3/gradle-facts.tsv), [`v3/properties-facts.tsv`](v3/properties-facts.tsv) | `factsKey: gradle-facts`, `properties-facts` | Gradle build and settings scripts, Groovy and Kotlin DSL; Java `.properties` files (with `file-body-ops`) |
+| [`v3/npm-facts.tsv`](v3/npm-facts.tsv) | `factsKey: npm-facts` | npm manifests (`package.json`): scripts, dependencies, engines, workspaces (with `file-body-ops`) |
 | [`v3/powershell-facts.tsv`](v3/powershell-facts.tsv), [`v3/batch-facts.tsv`](v3/batch-facts.tsv) | `factsKey: powershell-facts`, `batch-facts` | PowerShell scripts and modules; Windows batch files (with `file-body-fallback`: no prompt of their own) |
 
 ## Prompt files
@@ -222,7 +223,7 @@ which is why `run.py` and the Luna example route `.ts`, `.mts` and `.cts` there;
 Their counters (`scala-facts`, `proto-facts`,
 `avro-facts`, `graphql-facts`, `asyncapi-facts`, `terraform-facts`, `ansible-facts`,
 `compose-facts`, `camel-yaml-facts`, and `dmn-facts`, `gradle-facts`, `properties-facts`,
-`powershell-facts`, `batch-facts`) are pinned by their tests, not by a model run: a facts line is
+`powershell-facts`, `batch-facts`, `npm-facts`) are pinned by their tests, not by a model run: a facts line is
 written in front of every summary of its rule but reaches the model only in a reduce call, and the
 scores read names, not counts.
 
