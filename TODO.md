@@ -133,9 +133,8 @@ Unreleased) except:
 
 - CodeQL #270 (`RequestRateLimiter`: the return value of `awaitNanos` ignored) is a false positive:
   the loop in `acquire()` re-checks the window after every wake-up; the owner dismisses it.
-- `srcmorph/spotbugs-exclude.xml` still gives "the operator's POM XML" as the reason of about eight
-  suppressions, and the plugin's `spotbugs-exclude.xml` explains its Mojo suppressions with the
-  `<configuration>` block of a POM; both are the configuration file now.
+- `srcmorph/spotbugs-exclude.xml` still gives the operator's POM (XML) as the source of the prompt
+  templates and the model settings in about five suppressions; it is the configuration file now.
 - The configuration echo of the CLI and the messages that name a `baseUrl` (`ListModelsEngine`,
   `EngineSupport`, the provider's endpoint errors, the rate limiter) print it as written, user info
   included. `HttpURLConnection` does not authenticate with a URL's user info, so a key there does not
@@ -153,7 +152,6 @@ Unreleased) except:
   (`$h{x} <<BITS`) and one inside a regex or `q{}` still open a heredoc.
 - `sql-facts.tsv` `[ignore]`: no PostgreSQL `$$`, Oracle `q'[…]'`, MySQL `"…"` strings or `#`
   comments; an apostrophe inside one blanks real statements.
-- `pom-facts.tsv`: an unclosed `<plugin>` in a comment runs the plugin-body region to the end.
 - Smaller: `yield f(x);` and `record X(` count as methods, nested generic bounds and same-line
   annotations are missed, an enum constant with a body counts as a constructor; Javadoc "public"
   counts (Java has no `[ignore]`); `${MSG:-…}` assignments; `VALUES(col)` of `ON DUPLICATE KEY UPDATE` counted as rows;
@@ -178,11 +176,11 @@ Unreleased) except:
 
 - No core test calls an engine's `check()` where it differs from the plan (`planOnly`, model
   files); the provider's interrupt branch has no test; a changed prompt hash in the run record is not
-  asserted; the overflow test does not assert the smaller window; the plugin's base-directory default cannot be told from the file's
-  directory (every fixture puts the file in the project directory).
+  asserted; the overflow test does not assert the smaller window; the plugin's base-directory
+  default cannot be told from the file's directory (every fixture puts the file in the project
+  directory).
 - SpotBugs: `SrcMorphConfigurationFileLoader` sits in a Match that suppresses seven patterns for a
-  reason that covers two; a stale `NP_NULL_ON_SOME_PATH` suppression; the plugin's excludes name
-  removed `@Parameter` fields.
+  reason that covers two; a stale `NP_NULL_ON_SOME_PATH` suppression.
 - CI: the smoke step that counts the planned files runs from `examples/`, where the working directory
   is the file's directory, so it cannot catch a base-directory regression; run it from the root.
 - SonarCloud reports 98 new issues that are not readable without a token.
