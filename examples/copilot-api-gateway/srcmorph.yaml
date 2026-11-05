@@ -57,6 +57,7 @@ srcMorph:
 
   fieldGenerations:
     - promptKey: file-body-oop
+      onIncomplete: retryOnce              # an answer cut off or empty is asked for once more: one more request
       aiDefinitionKey: copilot
       fallback: true                         # the rule for every file no other rule matches
       onOversize: sample                     # default "fail" stops the run on a file larger than the window

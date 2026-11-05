@@ -188,6 +188,7 @@ public class ExamplesConfigBindingTest {
             final String label = "rule " + rule.getPromptKey();
             assertThat(label, rule.getAiDefinitionKey(), is(equalTo(model.getKey())));
             assertThat(label + " reads every chunk", rule.getOnOversize(), is(equalTo("mapReduce")));
+            assertThat(label + " asks once more", rule.getOnIncomplete(), is(equalTo("retryOnce")));
             assertThat(label, Files.isRegularFile(profileDirectory.resolve(rule.getMapPromptKey() + ".md")), is(true));
             assertThat(
                     label, Files.isRegularFile(profileDirectory.resolve(rule.getReducePromptKey() + ".md")), is(true));

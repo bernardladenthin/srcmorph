@@ -73,7 +73,7 @@ class RulesTest(unittest.TestCase):
         packages = run.phase_config("AggregatePackages", Path("w"), Path("o"), run.PROFILES / "v3", definition)
         project = run.phase_config("AggregateProject", Path("w"), Path("o"), run.PROFILES / "v3", definition)
 
-        chunked = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts"}
+        chunked = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts", "onIncomplete": "retryOnce"}
         self.assertEqual(packages["packageFieldGenerations"],
                          [{"promptKey": "package-body", "aiDefinitionKey": "m", **chunked}])
         self.assertNotIn("projectFieldGenerations", packages)
@@ -130,6 +130,15 @@ class RulesTest(unittest.TestCase):
             rules = {r["id"] for r in run.file_rules(Path(tmp), "m", facts=True)}
 
         self.assertEqual(rules, {"java", "sql", "fallback"})
+
+    def test_everyRuleOfEveryPhase_asksOnceMoreOnAnIncompleteAnswer(self):
+        definition = {"key": "m", "provider": "mock"}
+        for phase, section in (("GenerateFileIndex", None), ("AggregatePackages", "packageFieldGenerations"),
+                               ("AggregateProject", "projectFieldGenerations")):
+            config = run.phase_config(phase, Path("w"), Path("o"), run.PROFILES / "v3", definition, facts=True)
+            rules = config["srcMorph"]["fieldGenerations"] + (config[section] if section else [])
+            self.assertTrue(rules)
+            self.assertEqual({r["onIncomplete"] for r in rules if not r.get("skip")}, {"retryOnce"})
 
     def test_aPhaseConfig_indexesFilesWithoutAnExtensionByName(self):
         definition = {"key": "m", "provider": "mock"}

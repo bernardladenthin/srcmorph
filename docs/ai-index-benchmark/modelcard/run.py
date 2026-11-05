@@ -75,6 +75,10 @@ PROMPT_KEYS = ("file-body-sql", "file-body-fallback", "package-body", "project-b
 JAVA_PROMPT = "file-body-oop"
 # The prompts appended to a rule's prompt in a map and a reduce call, when the profile has them.
 CHUNK_PROMPT_KEYS = {"mapPromptKey": "map-chunk", "reducePromptKey": "reduce-parts"}
+# What every rule does with an incomplete answer: ask once more. Since 2026-11-05; the runs before it
+# failed such a file at once (gpt-oss-20b ran away to the output budget on one big file in six, and
+# summarized the same file in the next run).
+ON_INCOMPLETE = "retryOnce"
 
 JAVA_COMMIT = "1e056c23652992a07cca0056d2783cbf6520f5a1"
 JAVA_ROOT = "srcmorph/src/main/java/net/ladenthin/srcmorph/"
@@ -224,6 +228,7 @@ def file_rules(profile, key, facts=False, oversize=None, max_chunks=None, java_p
     rules.append({"id": "fallback", "promptKey": "file-body-fallback", "fallback": True})
     for rule in rules:
         rule["aiDefinitionKey"] = key
+        rule["onIncomplete"] = ON_INCOMPLETE
         if oversize:
             rule["onOversize"] = oversize
             if max_chunks is not None:
@@ -258,10 +263,12 @@ def phase_config(phase, work, out_dir, profile, definition, facts=False, oversiz
     }
     if phase == "AggregatePackages":
         config["packageFieldGenerations"] = [
-            {"promptKey": "package-body", "aiDefinitionKey": key, **chunk_prompts(profile)}]
+            {"promptKey": "package-body", "aiDefinitionKey": key, "onIncomplete": ON_INCOMPLETE,
+             **chunk_prompts(profile)}]
     elif phase == "AggregateProject":
         config["projectFieldGenerations"] = [
-            {"promptKey": "project-body", "aiDefinitionKey": key, **chunk_prompts(profile)}]
+            {"promptKey": "project-body", "aiDefinitionKey": key, "onIncomplete": ON_INCOMPLETE,
+             **chunk_prompts(profile)}]
     if run_record is not None and phase == "GenerateFileIndex":
         config["srcMorph"]["runRecordFile"] = str(run_record)
     return config
@@ -421,7 +428,7 @@ def run_model(args, models, profile, model):
             "javaCommit": None if args.corpus else args.commit,
             "corpus": Path(args.corpus).name if args.corpus else "srcmorph",
             "profile": args.profile, "javaPrompt": args.java_prompt, "facts": args.facts,
-            "oversize": args.oversize or None,
+            "oversize": args.oversize or None, "onIncomplete": ON_INCOMPLETE,
             "maxChunks": args.max_chunks, "profileHashes": profile_hashes(profile, rules),
             "cli": cli_jar(classpath), "java": java_version(args.java), "startedAt": utc_now(),
             "phases": {}}

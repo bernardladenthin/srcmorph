@@ -153,6 +153,12 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The examples, the self-test and `run.py` ask once more on an incomplete answer**
+  (`onIncomplete: retryOnce` on every rule, the package and project rules too). gpt-oss-20b ran
+  away to the output budget on one big TypeScript file in six runs and summarized the same file in
+  the next one; a larger budget only made the runaway dearer (measured on 2026-11-05: finished
+  answers took 1229 to 1618 tokens, the runaway 16384). `run.py` records it in the meta
+  (`onIncomplete`); the runs before failed such a file at once.
 - **The time estimate is based on GPT-6 Luna**, the benchmark's remote model, where it was a local
   CPU (gpt-oss-20b on a Ryzen 7 5800H): `2.1 s + 0.105 ms` per prompt token `+ 6.45 ms` per output
   token, fitted over 1423 calls of the 2026-11 measurements and linear up to their largest prompts

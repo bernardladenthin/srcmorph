@@ -21,12 +21,14 @@ command: Plan
 # not fit the window is read in parts too (the default, fail, would stop the run).
 packageFieldGenerations:
   - promptKey: package-body
+    onIncomplete: retryOnce                # an answer cut off or empty is asked for once more: one more request
     onOversize: mapReduce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: luna
 projectFieldGenerations:
   - promptKey: project-body
+    onIncomplete: retryOnce
     onOversize: mapReduce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
@@ -187,6 +189,7 @@ srcMorph:
           - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env}"
     - id: java
       promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: java-facts
       onOversize: mapReduce
@@ -196,6 +199,7 @@ srcMorph:
         extensions: [".java"]
     - id: sql
       promptKey: file-body-sql
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: sql-facts
       onOversize: mapReduce
@@ -205,6 +209,7 @@ srcMorph:
         extensions: [".sql"]
     - id: shell
       promptKey: file-body-shell
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: shell-facts
       onOversize: mapReduce
@@ -217,6 +222,7 @@ srcMorph:
             - interpreters: ["bash", "sh", "ksh", "zsh", "dash"]
     - id: perl
       promptKey: file-body-perl
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: perl-facts
       onOversize: mapReduce
@@ -229,6 +235,7 @@ srcMorph:
             - interpreters: ["perl"]
     - id: pom                                # matches xml too; the priority gives a POM the Maven counters
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: pom-facts
@@ -239,6 +246,7 @@ srcMorph:
         pathGlob: "**/*pom.xml"
     - id: xml
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: xml-facts
       onOversize: mapReduce
@@ -248,6 +256,7 @@ srcMorph:
         extensions: [".xml", ".xsd", ".xsl", ".xslt"]          # .wsdl and .xhtml have rules of their own
     - id: java-ee                            # Java using Jakarta EE: the EE counters too
       promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: java-ee-facts
@@ -262,6 +271,7 @@ srcMorph:
             - contentMatches: '(?m)(?:^import[ \t]+(?:static[ \t]+)?|@)(?:javax|jakarta)\.(?:ejb|persistence|ws\.rs|servlet|jws|xml\.ws|inject|transaction|enterprise|annotation\.security)\.'
     - id: kotlin                             # the prompt Java, Kotlin, Groovy, Scala share
       promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: kotlin-facts
       onOversize: mapReduce
@@ -271,6 +281,7 @@ srcMorph:
         extensions: [".kt", ".kts"]
     - id: groovy
       promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: groovy-facts
       onOversize: mapReduce
@@ -280,6 +291,7 @@ srcMorph:
         extensions: [".groovy", ".gvy"]
     - id: scala
       promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: scala-facts
       onOversize: mapReduce
@@ -289,6 +301,7 @@ srcMorph:
         extensions: [".scala"]
     - id: typescript                         # the oop prompt names more of a TypeScript file's API than
       promptKey: file-body-oop               # the fallback (measured 2026-11-05); no counters of its own
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       onOversize: mapReduce
       mapPromptKey: map-chunk
@@ -297,6 +310,7 @@ srcMorph:
         extensions: [".ts", ".mts", ".cts"]
     - id: jee                                # Jakarta EE descriptors
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: jee-facts
@@ -307,6 +321,7 @@ srcMorph:
         fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]
     - id: persistence
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: persistence-facts
@@ -317,6 +332,7 @@ srcMorph:
         fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]
     - id: mybatis
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: mybatis-facts
@@ -330,6 +346,7 @@ srcMorph:
             - contentMatches: 'mybatis\.org//DTD Mapper'
     - id: integration                        # Camel, Spring Integration, Mule, Synapse
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: integration-facts
@@ -343,6 +360,7 @@ srcMorph:
             - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
     - id: bpmn
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: bpmn-facts
@@ -353,6 +371,7 @@ srcMorph:
         extensions: [".bpmn"]
     - id: dmn
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: dmn-facts
@@ -363,6 +382,7 @@ srcMorph:
         extensions: [".dmn"]
     - id: wsdl
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: wsdl-facts
@@ -373,6 +393,7 @@ srcMorph:
         extensions: [".wsdl"]
     - id: jsp
       promptKey: file-body-view
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: jsp-facts
       onOversize: mapReduce
@@ -382,6 +403,7 @@ srcMorph:
         extensions: [".jsp", ".jspf", ".jspx", ".tag", ".tagx"]
     - id: facelets
       promptKey: file-body-view
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: facelets-facts
       onOversize: mapReduce
@@ -391,6 +413,7 @@ srcMorph:
         extensions: [".xhtml"]
     - id: openapi
       promptKey: file-body-contract
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: openapi-facts
@@ -407,6 +430,7 @@ srcMorph:
             - fileNames: ["openapi*.json", "swagger*.json"]
     - id: asyncapi
       promptKey: file-body-contract
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: asyncapi-facts
@@ -423,6 +447,7 @@ srcMorph:
             - fileNames: ["asyncapi*.json"]
     - id: proto
       promptKey: file-body-contract
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: proto-facts
       onOversize: mapReduce
@@ -432,6 +457,7 @@ srcMorph:
         extensions: [".proto"]
     - id: avro
       promptKey: file-body-contract
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: avro-facts
       onOversize: mapReduce
@@ -441,6 +467,7 @@ srcMorph:
         extensions: [".avsc"]
     - id: graphql
       promptKey: file-body-contract
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: graphql-facts
       onOversize: mapReduce
@@ -450,6 +477,7 @@ srcMorph:
         extensions: [".graphql", ".graphqls", ".gql"]
     - id: actions
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: actions-facts
@@ -460,6 +488,7 @@ srcMorph:
         pathGlob: "**/.github/{workflows,actions}/**/*.{yml,yaml}"
     - id: camel-yaml                         # Camel routes in the YAML DSL
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: camel-yaml-facts
@@ -473,6 +502,7 @@ srcMorph:
             - contentMatches: '(?m)^-[ \t]+(?:route|routeTemplate|from|rest)[ \t]*:'
     - id: k8s                                # Kubernetes manifests and Helm templates
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 5
       factsKey: k8s-facts
@@ -486,6 +516,7 @@ srcMorph:
             - contentMatches: '(?m)^kind:[ \t]*[A-Z]'
     - id: dockerfile
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: dockerfile-facts
       onOversize: mapReduce
@@ -495,6 +526,7 @@ srcMorph:
         fileNames: ["Dockerfile", "Dockerfile.*", "*.dockerfile", "Containerfile"]
     - id: compose
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: compose-facts
@@ -505,6 +537,7 @@ srcMorph:
         fileNames: ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]
     - id: ansible                            # playbooks and the YAML of a role
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 5
       factsKey: ansible-facts
@@ -521,6 +554,7 @@ srcMorph:
                   - contentMatches: '(?m)^-[ \t]++(?:name[ \t]*+:[^\n]*+\n[ \t]++)?hosts[ \t]*+:'
     - id: terraform
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: terraform-facts
       onOversize: mapReduce
@@ -530,6 +564,7 @@ srcMorph:
         extensions: [".tf", ".hcl"]
     - id: gradle                             # build scripts of both DSLs; .gradle.kts over the Kotlin rule
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: gradle-facts
@@ -543,6 +578,7 @@ srcMorph:
             - fileNames: ["*.gradle.kts"]
     - id: properties
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: properties-facts
       onOversize: mapReduce
@@ -552,6 +588,7 @@ srcMorph:
         extensions: [".properties"]
     - id: powershell                         # no prompt of its own: the fallback prompt with counters
       promptKey: file-body-fallback
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: powershell-facts
       onOversize: mapReduce
@@ -561,6 +598,7 @@ srcMorph:
         extensions: [".ps1", ".psm1"]
     - id: batch
       promptKey: file-body-fallback
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: batch-facts
       onOversize: mapReduce
@@ -570,6 +608,7 @@ srcMorph:
         extensions: [".bat", ".cmd"]
     - id: ops                                # every other YAML, Jenkinsfile
       promptKey: file-body-ops
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       onOversize: mapReduce
       mapPromptKey: map-chunk
@@ -581,6 +620,7 @@ srcMorph:
             - fileNames: ["Jenkinsfile", ".gitlab-ci.yml"]
     - id: fallback                           # every other file; profile v3 has no counters for it
       promptKey: file-body-fallback
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       fallback: true
       onOversize: mapReduce

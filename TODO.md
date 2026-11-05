@@ -23,7 +23,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | 1 | CodeQL #270, `awaitNanos` ignored | false positive: dismiss it on GitHub | Owner | open | Review of 2026-11-02, core |
 | 2 | The Claude Code Review workflow fails on every PR | no budget this month; green again with the next | Owner | done 2026-11-05 | — |
 | 3 | SonarCloud's 98 issues need a token to read | give one, or drop the item | Owner | open | Review of 2026-11-02, tests and gates |
-| 4 | gpt-oss-20b runs away on a big TypeScript file | `onIncomplete: retryOnce` in `run.py` and the examples | Owner | open | TypeScript measurement |
+| 4 | gpt-oss-20b runs away on a big TypeScript file | `onIncomplete: retryOnce` in `run.py` and the examples | Owner | done 2026-11-05 | — |
 | 5 | `G` records the project's version in the plugin | record the plugin's version (`G` names the generator) | Owner | open | Reviews of 2026-11-04 |
 | 6 | `${...}` has no escape | `$${...}` writes a literal `${...}` | Owner | open | Reviews of 2026-11-04 |
 | 7 | The rate limiter keeps a window per server and limit | one window per server, at the smallest limit | Owner | open | Reviews of 2026-11-04 |
@@ -97,16 +97,9 @@ for a decision or an action of the owner (the proposal is the default once the o
 
 ### TypeScript measurement of 2026-11-05 (internal; the data stays out of the repository), open items
 
-Fixed on PR #269: the finish reason `error`, the TypeScript rule, the time estimate's basis. These
-wait for a decision:
+Fixed on PR #269: the finish reason `error`, the TypeScript rule, the time estimate's basis,
+`retryOnce` against gpt-oss-20b's runaways. Open:
 
-- **gpt-oss-20b runs away on a big TypeScript file now and then; a larger budget does not help.** The
-  three files cut at 4096 tokens ran again at 16384 with the oop prompt, two runs per model: every
-  finished answer took 1229 to 1618 tokens (Luna's six, gpt-oss's five), and gpt-oss's sixth ran
-  to 16384 on a file it summarized in the other run. So 4096 stays: a larger budget only makes a
-  runaway dearer (72 s and four times the tokens). What would save the file is `onIncomplete:
-  retryOnce`; decide whether `run.py` (whose budget and strategy the published numbers were measured
-  with) or the examples take it.
 - **`package.json` varies with gpt-oss-20b**: 45, 13, 28 and 15 of its 45 participants, commands,
   tools and dependencies in four runs (Luna 43 to 45 each time), with the fallback prompt. A rule for
   manifests (`package.json`, maybe `pyproject.toml`) with the ops prompt and counters for scripts and
