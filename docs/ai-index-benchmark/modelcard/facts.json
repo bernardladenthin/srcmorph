@@ -13,7 +13,8 @@
   },
   "sql/library/03_routines.sql": {
     "ids": ["loan_audit", "fn_checkout_book", "sp_return_book", "fn_late_fee", "trg_loan_audit_fn", "trg_loan_audit",
-            "p_member_id", "p_book_id", "p_days", "p_loan_id", "copies_free", "returned_on", "CHECKOUT", "RETURN"]
+            "p_member_id", "p_book_id", "p_days", "p_loan_id", "copies_free", "returned_on", "CHECKOUT", "RETURN"],
+    "words": ["CHECKOUT", "RETURN"]
   },
   "sql/library/04_migration_v2.sql": {
     "ids": ["branch", "book_copy", "copy_id", "barcode", "status", "joined_on", "member_since", "home_branch_id",
@@ -32,7 +33,8 @@
   },
   "sql/warehouse/stock_sync_tsql.sql": {
     "ids": ["StockLevel", "SupplierFeed", "SyncLog", "usp_SyncStock", "Since", "WarehouseId", "Sku", "OnHand",
-            "Quantity", "ReceivedAt", "RowsInserted", "RowsUpdated", "ErrorMessage", "PK_StockLevel"]
+            "Quantity", "ReceivedAt", "RowsInserted", "RowsUpdated", "ErrorMessage", "PK_StockLevel"],
+    "words": ["Since"]
   },
   "other/ringbuf/ringbuf.h": {
     "ids": ["ringbuf_t", "ringbuf_status_t", "RINGBUF_OK", "RINGBUF_EINVAL", "RINGBUF_ENOMEM", "ringbuf_init",
@@ -46,7 +48,7 @@
   "other/kernels/histogram.cl": {
     "ids": ["histogram_partial", "histogram_reduce", "BINS", "local_bins", "partial", "histogram", "group_count",
             "atomic_inc", "barrier"],
-    "words": ["partial"]
+    "words": ["partial", "histogram"]
   },
   "other/scripts/sales_report.py": {
     "ids": ["Order", "parse_orders", "revenue_by_month_and_region", "main", "REQUIRED_COLUMNS", "currency",

@@ -243,6 +243,13 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
+- **The benchmark's scorer** (`score.py`, `report.py`; the card's published numbers stay until it is
+  re-rendered): an everyday word between two backtick spans no longer counts as marked as code, one
+  in a column listing with its type (`email VARCHAR(254)`) does; a reasoning marker in backticks is
+  no leak, and a complete summary after a reasoning block is a leak, not a leak-only failure; the
+  card's invented-name rate sums the names of every kind instead of averaging the kinds' rates
+  (`summary.json` carries `ticked` and `invented`; `report.py` refuses one without them);
+  `CHECKOUT`, `RETURN`, `Since` and `histogram` are everyday words of their files.
 - **The fact counters read more of what they count, and less of what they do not** (every facts
   hash of the changed files changes, so `regenerateOn.facts` rewrites their summaries once):
   - shell: a `<<` after up to three groups in parentheses (`$(( (a) + ((b)) << n ))`) is a shift,

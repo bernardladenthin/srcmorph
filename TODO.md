@@ -54,7 +54,7 @@ for a decision or an action of the owner (the proposal is the default once the o
 | # | Item | Who | Status | Details |
 |---|---|---|---|---|
 | 24 | Fact counter gaps: shell `((a))`, Perl `<<` after `}` / in a regex / `q{}`, SQL strings and comments, the smaller ones | Claude | done 2026-11-05 | — |
-| 25 | `score.py` and `report.py`: `LEAK` in backticks, a summary after `<think>`, words, backtick spans, thousands separators, weighted kinds | Claude | open | Review of 2026-11-02, benchmark tooling |
+| 25 | `score.py` and `report.py`: `LEAK` in backticks, a summary after `<think>`, words, backtick spans, thousands separators, weighted kinds | Claude | done 2026-11-05 | — |
 | 26 | Benchmark meta (srcmorph commit, Python, corpus hash), `large.py` golden hash, non-UTF-8 sources, the tools' mutations | Claude | open | Review of 2026-11-02 |
 | 27 | `AiCompletionParser` keeps reasoning when the template opened `<think>` | Claude | open | Review of 2026-11-02, core |
 | 28 | Run record totals (skipped, wall time), plan tokens by oversize strategy, the first file's model load | Claude | open | Review of 2026-11-02, core |
@@ -191,11 +191,6 @@ Unreleased) except:
 
 **Benchmark tooling (after the runs, which read `run.py` and `search.py`):**
 
-- `score.py`: `report.py` averages the kinds unweighted; `LEAK` matches inside
-  backticks (Mistral's `` `<|channel|>` ``), and a complete summary after a `<think>` block counts as
-  leak-only; an everyday word in a column or field listing (`email VARCHAR(254)`, 53 misses) does
-  not count; `facts.json` words lack `histogram`, `CHECKOUT`, `Since`; a backtick span check can match
-  across two spans; thousands separators defeat the numbers check.
 - The language-corpus scores are two-part means no committed command produces (`languages-2026-11/`).
 - Card text (with D2): the correlation −0.46 is from an older population (today −0.18), the BM25 range
   "67 to 86 %" ends at 91 %, the Fisher test with 3 against 3 runs can never reach p < 0.1.

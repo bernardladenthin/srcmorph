@@ -322,5 +322,23 @@ class CutOffTest(unittest.TestCase):
         self.assertTrue(run.files_not_written(self.log("SrcMorphException: 2 file(s) were not written (an incomplete")))
         self.assertFalse(run.files_not_written(self.log("SrcMorphException: Invalid fieldGenerations: two fallbacks")))
 
+
+class ReportTest(unittest.TestCase):
+
+    def test_theInventedRate_weighsEveryBacktickedName(self):
+        import report
+
+        # 1 of 3 and 0 of 3000: one invented name of 3003, not the mean of 33.3 and 0
+        rate = report.invented_per_100([{"ticked": 3, "invented": 1}, {"ticked": 3000, "invented": 0}])
+
+        self.assertAlmostEqual(rate, 100 / 3003)
+        self.assertIsNone(report.invented_per_100([{"ticked": 0, "invented": 0}]))
+
+    def test_aSummaryWithoutTheTotals_isRefused(self):
+        import report
+
+        with self.assertRaises(SystemExit):
+            report.invented_per_100([{"inventedPer100": 3.0}])
+
 if __name__ == "__main__":
     unittest.main()

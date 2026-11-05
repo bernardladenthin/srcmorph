@@ -13,8 +13,9 @@ For every model under <out> (one directory per model key) and every source file 
   not count: a body that pastes the source names every identifier without summarizing it. A fence
   around the model's own text (a signature list, a summary wrapped in ```markdown) counts; the
   format column holds it against the body. A name the facts list under "words" is an everyday
-  word too (`author`, `status`, `main`): it counts only where the body marks it as code (backticks,
-  a call `main(`, bold, qualified, an option, the label of a list item), because prose uses the same
+  word too (`author`, `status`, `main`): it counts only where the body marks it as code (a backtick
+  span, a call `main(`, bold, qualified, an option, the label of a list item, a column with its type
+  `email VARCHAR(254)`), because prose uses the same
   word for something else. The Java names read from the source have no such list, deliberately: a
   Java summary that writes "close releases the model" means the method `close`, and requiring code
   marks there cost more right names than it saved wrong ones. SQL names are matched without regard
@@ -24,9 +25,10 @@ For every model under <out> (one directory per model key) and every source file 
   counts as its last part, and keywords, standard-library types, escapes and format placeholders
   (`\\t`, `YYYY-MM-DD`, `getX`) are no names;
 - numbers = the exact counts of facts.json the body states (the seed-data row counts);
-- format: missing lead line, '#' to '###' headings, code fences, leaked reasoning markers;
-- failed = why a body is not a summary: missing, empty, leak-only, refusal, too-short (under 80
-  bytes); a failed body scores 0 in recall. cutOff = the generation hit maxOutputTokens (from the
+- format: missing lead line, '#' to '###' headings, code fences, leaked reasoning markers (one in
+  backticks is the summary writing about it, no leak);
+- failed = why a body is not a summary: missing, empty, leak-only (reasoning and no lead; a complete
+  summary after a reasoning block is a leak, not a failure), refusal, too-short (under 80 bytes); a failed body scores 0 in recall. cutOff = the generation hit maxOutputTokens (from the
   run's --meta file); such a body may still be complete, so it is reported, not failed.
 The facts and coverage lines srcmorph puts in front of a body are srcmorph's, not the model's: every
 measure is taken on the body without them.
@@ -58,6 +60,9 @@ QUALIFIED = re.compile(r"[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)+")
 # Escapes and the placeholders of a format or an accessor pattern, not names.
 PLACEHOLDER = re.compile(r"\\|YYYY|\b[YMDHSTZ_]{4,}\b|\b(?:get|set|is|with)X(?:xx)?\b")
 LEAK = re.compile(r"</?think>|<\|start\|>|<\|channel\|>|<\|message\|>|<\|end\|>")
+# A reasoning block that opens the body, and an inline code span.
+REASONING_BLOCK = re.compile(r"^\s*<think>.*?</think>", re.S)
+INLINE_CODE = re.compile(r"`[^`\n]*`")
 REFUSAL = re.compile(r"(?i)^\s*(?:i['’]m sorry|i am sorry|i cannot|i can['’]t|as an ai\b)")
 MIN_BODY_BYTES = 80
 # Java comments, strings and char literals are blanked before the declarations are read.
@@ -177,15 +182,27 @@ def ticked_names(prose):
     return names
 
 
+# The column types after which an everyday word is a column or a field ("email VARCHAR(254)").
+COLUMN_TYPES = (r"(?i:VARCHAR2?|NVARCHAR|CHAR|TEXT|CLOB|BLOB|INT(?:EGER)?|BIGINT|SMALLINT|TINYINT|DECIMAL"
+                r"|NUMERIC|NUMBER|REAL|FLOAT|DOUBLE|BOOL(?:EAN)?|DATE|DATETIME|TIME|TIMESTAMPTZ?|SERIAL"
+                r"|BIGSERIAL|UUID|JSONB?|BYTEA|STRING)")
+
+
 def marked_as_code(word, prose, case_insensitive):
-    """Whether the prose marks the word as code: in backticks, as a call, in bold, qualified
-    (`loan.due_on`, `.partial`), as an option or a variable (`--currency`, `$status`), or as the label
-    of a list item ("- author: ...")."""
+    """Whether the prose marks the word as code: in a backtick span (one span, not the prose between two),
+    as a call, in bold, qualified (`loan.due_on`, `.partial`), as an option or a variable
+    (`--currency`, `$status`), as the label of a list item ("- author: ...") or as a column or field
+    with its type ("email VARCHAR(254)", "status: integer")."""
     w = re.escape(word)
-    pattern = (r"`[^`\n]*(?<![\w])" + w + r"(?![\w])[^`\n]*`|(?<![\w])" + w + r"\s*\(|\*\*" + w + r"\*\*"
+    flags = re.M | (re.I if case_insensitive else 0)
+    whole = r"(?<![\w])" + w + r"(?![\w])"
+    if any(re.search(whole, span, flags) for span in BACKTICK.findall(prose)):
+        return True
+    pattern = (r"(?<![\w])" + w + r"\s*\(|\*\*" + w + r"\*\*"
                r"|(?<![\w])" + w + r"\.\w|(?:\.|--|\$\{?)" + w + r"(?![\w])"
-               r"|^[ \t]*(?:[-*+]|\d+\.)[ \t]+(?:\*\*)?" + w + r"(?:\*\*)?[ \t]*[:(\u2013\u2014]")
-    return re.search(pattern, prose, re.M | (re.I if case_insensitive else 0)) is not None
+               r"|^[ \t]*(?:[-*+]|\d+\.)[ \t]+(?:\*\*)?" + w + r"(?:\*\*)?[ \t]*[:(\u2013\u2014]"
+               r"|" + whole + r"[ \t]*[:(]?[ \t]*" + COLUMN_TYPES + r"\b")
+    return re.search(pattern, prose, flags) is not None
 
 
 def names_found(ids, prose, case_insensitive, everyday=()):
@@ -265,8 +282,11 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=()):
     invented = [t for t in ticked if (t.lower() if case_insensitive else t) not in haystack]
     stated = [n for n in numbers if number_pattern(n).search(prose)]
     lines = body.strip().splitlines()
-    lead = bool(lines) and lines[0].startswith(">")
-    leaks = len(LEAK.findall(body))
+    # a reasoning block in front of a complete summary is a leak (counted below), not a missing lead
+    answer = REASONING_BLOCK.sub("", body, count=1).strip().splitlines()
+    lead = bool(answer) and answer[0].startswith(">")
+    # a marker in backticks is the summary writing about it (a file that strips them), not a leak
+    leaks = len(LEAK.findall(INLINE_CODE.sub("", body)))
     return {
         "srcBytes": len(source.encode("utf-8")),
         "bodyBytes": len(body.strip().encode("utf-8")),
@@ -357,6 +377,8 @@ def summarize(rows):
             "bodyBytes": body,
             "compaction": round(src / body, 2) if body and src else None,
             "recall": round(sum(per_file) / len(per_file), 3) if per_file else None,
+            "ticked": ticked,
+            "invented": sum(r.get("invented", 0) for r in answered),
             "inventedPer100": round(100 * sum(r.get("invented", 0) for r in answered) / ticked, 1) if ticked else None,
             "numbers": f"{sum(r.get('numbersStated', 0) for r in answered)}/{sum(r.get('numbersExpected', 0) for r in present)}",
             "noLead": sum(1 for r in answered if not r["lead"]),

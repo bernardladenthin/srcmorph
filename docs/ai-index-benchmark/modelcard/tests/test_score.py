@@ -67,6 +67,20 @@ class NamesFoundTest(unittest.TestCase):
 
         self.assertEqual(row["idsFound"], 0)
 
+    def test_anEverydayWord_betweenTwoBacktickSpans_doesNotCount(self):
+        # the text between the closing backtick of one span and the opening one of the next is prose
+        row = score.score_file("", body("Reads `a` and the author of `b`."), ["author"], [], everyday=["author"])
+
+        self.assertEqual(row["idsFound"], 0)
+
+    def test_anEverydayWord_inAColumnOrFieldListing_counts(self):
+        words = ["email", "status", "name"]
+        row = score.score_file("", body("- email VARCHAR(254) NOT NULL\n- status: integer, defaults to 0\n"
+                                        "Columns name (TEXT) and more."), words, [], case_insensitive=True,
+                               everyday=words)
+
+        self.assertEqual(row["idsFound"], 3)
+
     def test_anIdentifier_countsAsAWholeWordInProse(self):
         row = score.score_file("", body("It holds the ledger_customer, the SrcMorphConfiguration and malloc."),
                                ["ledger_customer", "SrcMorphConfiguration", "malloc", "ledger"], [])
@@ -140,6 +154,18 @@ class FailureTest(unittest.TestCase):
                          "refusal")
         self.assertEqual(score.score_file("", "> Too short.", [], [])["failed"], "too-short")
         self.assertEqual(score.score_file("", body("Fine."), [], [])["failed"], "")
+
+    def test_aCompleteSummaryAfterAReasoningBlock_isNoFailureButALeak(self):
+        row = score.score_file("", "<think>planning the answer</think>\n" + body("Fine."), [], [])
+
+        self.assertEqual(row["failed"], "")
+        self.assertTrue(row["lead"])
+        self.assertEqual(row["leaks"], 2)
+
+    def test_aMarkerInBackticks_isTextNotALeak(self):
+        row = score.score_file("", body("Strips the `<|channel|>` and `<think>` markers."), [], [])
+
+        self.assertEqual(row["leaks"], 0)
 
     def test_scoreModel_missingAndCutOff(self):
         with tempfile.TemporaryDirectory() as tmp:
