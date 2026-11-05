@@ -157,7 +157,16 @@ class RulesTest(unittest.TestCase):
         definition = {"key": "m", "provider": "mock"}
         config = run.phase_config("GenerateFileIndex", Path("w"), Path("o"), run.PROFILES / "v3", definition)
 
-        self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Containerfile"])
+        self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Containerfile", "package.json"])
+
+    def test_everyFileNameRule_namesAFileTheRunIndexes(self):
+        # a rule on a file name the walk never collects never fires (package.json had no extension
+        # of the list and no name either, so its npm rule routed nothing)
+        indexed = set(run.FILE_NAMES)
+        for name, condition, _, _ in run.LANGUAGES:
+            for file_name in condition.get("fileNames", []):
+                if not any(file_name.endswith(extension) for extension in run.EXTENSIONS) and "*" not in file_name:
+                    self.assertIn(file_name, indexed, name)
 
     def test_chunkPrompts_onlyThoseTheProfileHas(self):
         self.assertEqual(run.chunk_prompts(Path("no-such-profile")), {})

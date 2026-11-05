@@ -102,8 +102,8 @@ EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh",
               ".wsdl", ".kt", ".kts", ".groovy", ".scala", ".jsp", ".jspf", ".tag", ".xhtml", ".bpmn", ".dmn",
               ".yml", ".yaml", ".proto", ".avsc", ".graphql", ".graphqls", ".tf", ".hcl", ".gradle", ".properties",
               ".ts", ".mts", ".cts"]
-# Files without an extension the runs index by name.
-FILE_NAMES = ["Dockerfile", "Containerfile"]
+# Files the runs index by name: without an extension, or a manifest no extension of theirs selects.
+FILE_NAMES = ["Dockerfile", "Containerfile", "package.json"]
 # A language gets a rule of its own when the profile has its prompt (file-body-<prompt>.md) or when
 # --facts asks for its counters (<name>-facts.tsv); otherwise the fallback rule summarizes it. A POM
 # matches pom and xml; its priority gives it the Maven counters, with the XML prompt.
