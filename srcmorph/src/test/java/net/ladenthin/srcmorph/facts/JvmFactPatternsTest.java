@@ -522,6 +522,38 @@ public class JvmFactPatternsTest {
     }
 
     @Test
+    public void scala_packageObjectAndInfixDef_count() {
+        // arrange
+        final String source = "package object shop {\n"
+                + "  infix def max(o: Money): Money = o\n"
+                + "  private infix def min(o: Money): Money = o\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(SCALA, "type declarations", source), is(1));
+        assertThat(count(SCALA, "methods (approx)", source), is(2));
+    }
+
+    @Test
+    public void scala_abstractTypeMembers_areNoTypeAliases() {
+        // arrange
+        final String source = "trait Container {\n"
+                + "  type T <: AnyRef\n"
+                + "  type U\n"
+                + "  type V >: Null <: F[A => B]\n"
+                + "  type F[A] = List[A]\n"
+                + "  type G[H[_]] = H[Int]\n"
+                + "  type Handler = Int => Unit\n"
+                + "  type Callback =\n    Int => Unit\n"
+                + "  opaque type Pos <: Int = Int\n"
+                + "}\n";
+
+        // act, assert
+        // F, G, Handler, Callback and Pos; not the abstract T, U and V
+        assertThat(count(SCALA, "type aliases", source), is(5));
+    }
+
+    @Test
     public void scala_unclosedNestedComment_runsToTheEnd() {
         // act, assert
         assertThat(count(SCALA, "type declarations", "class A\n/* /* nested */ still open\nclass B\n"), is(1));
