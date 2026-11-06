@@ -97,8 +97,9 @@ public class CompletionParser {
      *       closing {@link #THINK_TAG_END_MARKER}, and the trimmed text after it is returned. With no
      *       {@link #THINK_TAG_START_MARKER} before it, the first one that stands alone on its line ends the
      *       reasoning, unless a line before it starts like an answer's lead ({@code >}) or it stands inside
-     *       an open code fence (an odd number of fence lines before it); without such a line, the first one that ends its line glued to the reasoning's last
-     *       word ({@code I will write it.</think>}), when no line before it starts like an answer (a
+     *       an open code fence (an odd number of fence lines before it); without such a line, the first one
+     *       that ends its line glued to the reasoning's last word ({@code I will write it.</think>}), when
+     *       no line before it starts like an answer (a
      *       {@code >} lead, a code fence). A tag inside a line, or after a space, a quote or a backtick (in
      *       a sentence, in quotes, after a list item's label) is text the answer or the reasoning writes
      *       about it.</li>

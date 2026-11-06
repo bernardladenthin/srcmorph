@@ -740,8 +740,8 @@ public class OpenAiCompatibleProviderSupportTest {
         // assert
         assertThat(
                 problem,
-                is(
-                        "its baseUrl holds an @ ('https://***'), read as user info, which srcmorph never sends: put the key in the variable apiKeyEnv names"));
+                is("its baseUrl holds an @ ('https://***'), read as user info, which srcmorph never sends: put the"
+                        + " key in the variable apiKeyEnv names"));
     }
 
     @Test

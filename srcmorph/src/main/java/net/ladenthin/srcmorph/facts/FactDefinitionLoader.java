@@ -41,9 +41,9 @@ import org.jspecify.annotations.Nullable;
  * <p>A line {@code [include]<TAB><key>} puts the counters of the facts file {@code <key>.tsv} of the
  * profile directory at its place (without a profile directory a file cannot include), its {@code [ignore]} lines included, so a kind that extends another (Jakarta EE
  * descriptors over XML, EE annotations over Java) adds its own counters without copying the shared
- * ones. An included file may hold {@code [ignore]} lines only (regions several kinds blank), as long as the
- * file that includes it counts something. An included file may include others; a file that includes itself, also through others, is
- * refused, as is a label that two of the files use.</p>
+ * ones. An included file may hold {@code [ignore]} lines only (regions several kinds blank), as long
+ * as the file that includes it counts something. An included file may include others; a file that
+ * includes itself, also through others, is refused, as is a label that two of the files use.</p>
  *
  * <p>Two more markers may open a label, in any order and case: {@code [raw]} counts the source as
  * written, before the {@code [ignore]} lines blank it ({@link FactCounter#isRaw()}), and
