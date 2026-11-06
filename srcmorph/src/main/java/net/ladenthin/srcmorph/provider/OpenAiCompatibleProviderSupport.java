@@ -149,8 +149,11 @@ final class OpenAiCompatibleProviderSupport {
     /** First HTTP status above the success range. */
     private static final int HTTP_OK_END = 300;
 
-    /** What separates a URL's scheme from the rest. */
-    private static final String SCHEME_SEPARATOR = "://";
+    /**
+     * The character that ends a URL's user info. No {@code baseUrl} may hold one: srcmorph never sends
+     * the user info, and one after a {@code /} cannot be told from a password with an unencoded {@code /}.
+     */
+    private static final char USER_INFO_END = '@';
 
     /** The character a URL's query starts with. */
     private static final char QUERY_START = '?';
@@ -464,9 +467,8 @@ final class OpenAiCompatibleProviderSupport {
     }
 
     /**
-     * The problem of a {@code baseUrl} that is no URL, such as one whose password holds an unencoded
-     * {@code /} (the part before it reads as a host and a port that is no number). With an {@code @} in
-     * it nothing after the scheme is shown: it may be the password.
+     * The problem of a {@code baseUrl} that is no URL. It is asked after {@link #userInfoProblem(String)},
+     * so the {@code baseUrl} holds no {@code @} and no password.
      *
      * @param baseUrl the model's {@code baseUrl}, trimmed
      * @return the problem, or {@code null} when it parses as a URL
@@ -491,15 +493,7 @@ final class OpenAiCompatibleProviderSupport {
     }
 
     private static String malformedMessage(final String baseUrl) {
-        if (baseUrl.indexOf('@') < 0) {
-            return "its baseUrl is not a URL: '" + UrlUserInfo.mask(baseUrl) + "'";
-        }
-        // with an @ the part after the scheme may be a password the mask did not recognize
-        final int scheme = baseUrl.indexOf(SCHEME_SEPARATOR);
-        final String shown = scheme < 0 ? "***" : baseUrl.substring(0, scheme + SCHEME_SEPARATOR.length()) + "***";
-        return "its baseUrl is not a URL: '" + shown + "' (a character of the password that a URL does not"
-                + " allow there, such as /, must be percent-encoded; better, put the key in the variable"
-                + " apiKeyEnv names)";
+        return "its baseUrl is not a URL: '" + UrlUserInfo.mask(baseUrl) + "'";
     }
 
     /**
@@ -523,16 +517,19 @@ final class OpenAiCompatibleProviderSupport {
     }
 
     /**
-     * The problem of a {@code baseUrl} that carries user info: srcmorph never sends it, so a key there
-     * would not authenticate, and the run stops before a request instead of failing on the first one.
+     * The problem of a {@code baseUrl} that holds an {@code @}, read as user info: srcmorph never sends
+     * it, so a key there would not authenticate, and the run stops before a request instead of failing on
+     * the first one. Any {@code @} is refused, not only one before the path: a password with an unencoded
+     * {@code /} puts its {@code @} behind the path's first slash ({@code https://u:123/abc@host/v1} even
+     * parses, as host {@code u} and port {@code 123}), so such a URL is shown as its scheme only.
      *
      * @param baseUrl the model's {@code baseUrl}
-     * @return the problem, with the user info masked, or {@code null} when the URL carries none
+     * @return the problem, with the user info masked, or {@code null} when the URL holds no {@code @}
      */
     static @Nullable String userInfoProblem(final String baseUrl) {
-        return UrlUserInfo.carriesUserInfo(baseUrl)
-                ? "its baseUrl carries user info ('" + UrlUserInfo.mask(baseUrl) + "'), which srcmorph never sends:"
-                        + " put the key in the variable apiKeyEnv names"
+        return baseUrl.indexOf(USER_INFO_END) >= 0
+                ? "its baseUrl holds an @ ('" + UrlUserInfo.mask(baseUrl) + "'), read as user info, which srcmorph"
+                        + " never sends: put the key in the variable apiKeyEnv names"
                 : null;
     }
 

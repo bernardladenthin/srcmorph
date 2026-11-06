@@ -375,6 +375,24 @@ public class MainTest {
         assertThat(echo, containsString("\"baseUrl\" : \"https://***@example.org/v1\""));
         assertThat(echo, containsString("baseUrl: \"https://***@example.org/v1\""));
     }
+
+    @Test
+    public void configurationEcho_aPasswordWithASlash_isEchoedWithoutAnythingAfterTheScheme() throws Exception {
+        // arrange: the part before the slash would read as a host and the rest as a path
+        final CConfiguration configuration = new CConfiguration();
+        final ModelDefinition model = new ModelDefinition();
+        model.setKey("remote");
+        model.setBaseUrl("https://user:pa/ss@example.org/v1");
+        configuration.srcMorph.setAiDefinitions(List.of(model));
+
+        // act
+        final String echo = Main.configurationEcho(configuration);
+
+        // assert
+        assertThat(echo.contains("pa/ss"), is(false));
+        assertThat(echo, containsString("\"baseUrl\" : \"https://***\""));
+        assertThat(echo, containsString("baseUrl: \"https://***\""));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="logConfigurationEcho">

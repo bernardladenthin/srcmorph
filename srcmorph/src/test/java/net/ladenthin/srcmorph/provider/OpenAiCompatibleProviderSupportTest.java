@@ -503,8 +503,8 @@ public class OpenAiCompatibleProviderSupportTest {
         // assert
         assertThat(
                 thrown.getMessage(),
-                is("its baseUrl carries user info ('https://***@h/v1'), which srcmorph never sends: put the key"
-                        + " in the variable apiKeyEnv names"));
+                is("its baseUrl holds an @ ('https://***@h/v1'), read as user info, which srcmorph never sends:"
+                        + " put the key in the variable apiKeyEnv names"));
     }
     // </editor-fold>
 
@@ -679,8 +679,8 @@ public class OpenAiCompatibleProviderSupportTest {
         // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.keyProblem(" https://u:secret@openrouter.ai/api/v1 ", " ", KEY_SET),
-                is("its baseUrl carries user info ('https://***@openrouter.ai/api/v1'), which srcmorph never"
-                        + " sends: put the key in the variable apiKeyEnv names"));
+                is("its baseUrl holds an @ ('https://***@openrouter.ai/api/v1'), read as user info, which"
+                        + " srcmorph never sends: put the key in the variable apiKeyEnv names"));
     }
 
     @Test
@@ -717,7 +717,7 @@ public class OpenAiCompatibleProviderSupportTest {
                 OpenAiCompatibleProviderSupport.keyProblem("https://alice:s3cr?t@gw.example.com/v1", " ", KEY_SET);
 
         // assert: refused as user info, and nothing of the password shown
-        assertThat(problem, containsString("carries user info ('https://***@gw.example.com/v1')"));
+        assertThat(problem, containsString("holds an @ ('https://***@gw.example.com/v1')"));
     }
 
     @Test
@@ -727,8 +727,37 @@ public class OpenAiCompatibleProviderSupportTest {
                 OpenAiCompatibleProviderSupport.keyProblem("https://alice:pa/ss@gw.example.com/v1", " ", KEY_SET);
 
         // assert
-        assertThat(problem, containsString("its baseUrl is not a URL: 'https://***'"));
+        assertThat(problem, containsString("its baseUrl holds an @ ('https://***')"));
         assertThat(problem.contains("alice"), is(false));
+    }
+
+    /** {@code new URL} reads the part before the slash as host {@code u} and port {@code 123}. */
+    @Test
+    public void keyProblem_aPasswordWithASlashThatParsesAsAPort_isRefusedWithoutShowingIt() {
+        // act
+        final String problem = OpenAiCompatibleProviderSupport.keyProblem("https://u:123/abc@host/v1", " ", KEY_SET);
+
+        // assert
+        assertThat(
+                problem,
+                is(
+                        "its baseUrl holds an @ ('https://***'), read as user info, which srcmorph never sends: put the key in the variable apiKeyEnv names"));
+    }
+
+    @Test
+    public void keyProblem_anAtInThePath_isRefused() {
+        // act
+        final String problem = OpenAiCompatibleProviderSupport.keyProblem("https://gw/v1/@scope", " ", KEY_SET);
+
+        // assert
+        assertThat(problem, containsString("its baseUrl holds an @ ('https://***')"));
+    }
+
+    @Test
+    public void userInfoProblem_anAtAtTheStart_isNamed() {
+        // act, assert: the bound of the search
+        assertThat(OpenAiCompatibleProviderSupport.userInfoProblem("@x"), containsString("holds an @ ('@x')"));
+        assertThat(OpenAiCompatibleProviderSupport.userInfoProblem("x"), is(nullValue()));
     }
 
     @Test
@@ -737,10 +766,6 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(OpenAiCompatibleProviderSupport.malformedProblem("https://gw:8443/v1"), is(nullValue()));
         assertThat(
                 OpenAiCompatibleProviderSupport.malformedProblem("no url"), is("its baseUrl is not a URL: 'no url'"));
-        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("no url@x"), containsString("'***'"));
-        // an @ and a scheme separator at the very start: the bounds of the two searches
-        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("@x"), containsString("not a URL: '***'"));
-        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("://a@b"), containsString("not a URL: '://***'"));
         assertThat(
                 OpenAiCompatibleProviderSupport.malformedProblem("https:///v1"),
                 is("its baseUrl is not a URL: 'https:///v1'"));
@@ -758,7 +783,23 @@ public class OpenAiCompatibleProviderSupportTest {
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
 
         // assert
-        assertThat(thrown.getMessage(), containsString("is not a URL"));
+        assertThat(thrown.getMessage(), containsString("holds an @ ('https://***')"));
+    }
+
+    @Test
+    public void modelsEndpoint_aPasswordWithASlashThatParsesAsAPort_isRefusedWithoutShowingIt() {
+        // arrange: new URL reads it as host u, port 123
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("m")
+                .baseUrl("https://u:123/abc@host/v1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::modelsEndpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("holds an @ ('https://***')"));
+        assertThat(thrown.getMessage().contains("123"), is(false));
     }
 
     @Test
