@@ -5,8 +5,11 @@
 
 The corpus is 12 Java files of srcmorph itself (taken from a fixed commit with `git archive`) plus
 the SQL and other fixtures under ../corpus. Every model gets the same three phases with the same
-prompts: GenerateFileIndex (prompt routed by extension: .java, .sql, everything else to the
-fallback), AggregatePackages, AggregateProject. The prompts are the files of one profile under the
+prompts: GenerateFileIndex, AggregatePackages, AggregateProject. The file phase routes a file to the
+Java rule (--java-prompt), the SQL rule, a rule per kind of LANGUAGES whose prompt the profile has (for
+profile v3: shell, Perl, the XML kinds, the class-based languages, the views, the contracts and the ops
+files, some by name or content at a higher priority), and everything else to the fallback; a file the
+walk collects by name (FILE_NAMES, globs) takes its rule the same way. The prompts are the files of one profile under the
 repository's profiles/ directory (--profile, default v3, the current one), passed to srcmorph as its
 profileDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
 .ai.md tree goes to <out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
@@ -27,8 +30,10 @@ Options: --profile <profile under profiles/> (default v3; it needs the five prom
          --corpus <directory with java/, sql/, other/> (default: the srcmorph Java snapshot plus
          ../corpus; another corpus of the same layout is scored with score.py --facts; a missing
          kind stays empty),
-         --facts (every file rule names its counters: java-facts, sql-facts, shell-facts,
-         perl-facts, xml-facts; the card ran without them, so such a run is not comparable to it),
+         --facts (the Java and SQL rules name java-facts and sql-facts, every rule of LANGUAGES
+         the <name>-facts.tsv of the profile when it has one, e.g. kotlin-facts, pom-facts, k8s-facts;
+         a kind with counters but no prompt of its own gets a rule with them and the fallback
+         prompt; the card ran without them, so such a run is not comparable to it),
          --oversize <fail|sample|mapReduce|sampleChunks|deterministic> and --max-chunks <n> (the
          strategy for a
          file larger than the model's window, on every file rule; the default fails such a file),
@@ -103,7 +108,36 @@ EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh",
               ".yml", ".yaml", ".proto", ".avsc", ".graphql", ".graphqls", ".tf", ".hcl", ".gradle", ".properties",
               ".ts", ".mts", ".cts"]
 # Files the runs index by name: without an extension, or a manifest no extension of theirs selects.
-FILE_NAMES = ["Dockerfile", "Containerfile", "package.json"]
+# srcmorph reads them as globs over the file name, in any case (the dockerfile rule's Dockerfile.*).
+FILE_NAMES = ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json"]
+
+
+def name_glob(glob):
+    """A fileNames glob as srcmorph compiles it (ConditionEvaluator.compileFileName): over the file name,
+    in any case; `*` and `?` stay inside the name, `{a,b}` is either."""
+    out, depth = "", 0
+    for char in glob:
+        if char == "*":
+            out += "[^/]*"
+        elif char == "?":
+            out += "[^/]"
+        elif char == "{":
+            out, depth = out + "(?:", depth + 1
+        elif char == "}" and depth:
+            out, depth = out + ")", depth - 1
+        elif char == "," and depth:
+            out += "|"
+        else:
+            out += re.escape(char)
+    return re.compile(out, re.I)
+
+
+def indexes(file_name):
+    """Whether the runs' walk collects a file of this name: by an extension of EXTENSIONS or a glob of
+    FILE_NAMES, both in any case, as srcmorph's SourceFileIndexer selects it."""
+    lower = file_name.lower()
+    return (any(lower.endswith(extension.lower()) for extension in EXTENSIONS)
+            or any(name_glob(name).fullmatch(file_name) for name in FILE_NAMES))
 # A language gets a rule of its own when the profile has its prompt (file-body-<prompt>.md) or when
 # --facts asks for its counters (<name>-facts.tsv); otherwise the fallback rule summarizes it. A POM
 # matches pom and xml; its priority gives it the Maven counters, with the XML prompt.
@@ -117,6 +151,10 @@ YAML_EXTENSIONS = [".yml", ".yaml"]
 
 def _and(*conditions):
     return {"and": {"conditions": list(conditions)}}
+
+
+def _or(*conditions):
+    return {"or": {"conditions": list(conditions)}}
 
 
 LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
@@ -135,7 +173,7 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("integration", _and({"extensions": [".xml"]}, {"contentMatches": r"camel\.apache\.org/schema|"
                                   r"springframework\.org/schema/integration|mulesoft\.org/schema/mule|"
                                   r"ws\.apache\.org/ns/synapse"}), "xml", 10),
-             ("bpmn", {"extensions": [".bpmn"]}, "xml", 10),
+             ("bpmn", _or({"extensions": [".bpmn"]}, {"fileNames": ["*.bpmn20.xml"]}), "xml", 10),
              ("dmn", {"extensions": [".dmn"]}, "xml", 10),
              ("wsdl", {"extensions": [".wsdl"]}, "xml", 10),
              ("jsp", {"extensions": [".jsp", ".jspf", ".tag"]}, "view", 0),
@@ -146,7 +184,8 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("avro", {"extensions": [".avsc"]}, "contract", 0),
              ("graphql", {"extensions": [".graphql", ".graphqls"]}, "contract", 0),
              ("actions", {"pathGlob": "**/.github/workflows/*.{yml,yaml}"}, "ops", 10),
-             ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[A-Z]"}), "ops", 5),
+             # the kind as k8s-facts.tsv counts it: quoted or not
+             ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"}), "ops", 5),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
              ("compose", {"fileNames": ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]}, "ops", 10),
              ("terraform", {"extensions": [".tf", ".hcl"]}, "ops", 0),
@@ -423,12 +462,13 @@ def files_not_written(log_path):
     return FILES_NOT_WRITTEN in log_path.read_text(encoding="utf-8", errors="replace")
 
 
-def clear_out(out_dir):
-    """Deletes a model's earlier output, refusing a directory that holds anything but srcmorph's .ai.md
-    summaries: a mistyped --out never deletes a source tree."""
+def clear_out(out_dir, suffix=".ai.md"):
+    """Deletes a model's earlier output, refusing a directory that holds anything but the files srcmorph
+    writes there (summaries; for --parts the .parts.md files): a mistyped --out never deletes a source
+    tree, and a repeat run never mixes its parts with an earlier run's."""
     if not out_dir.exists():
         return
-    foreign = sorted(p for p in out_dir.rglob("*") if p.is_file() and not p.name.endswith(".ai.md"))
+    foreign = sorted(p for p in out_dir.rglob("*") if p.is_file() and not p.name.endswith(suffix))
     if foreign:
         sys.exit(f"{out_dir} holds files srcmorph did not write ({foreign[0]}); refusing to delete it")
     shutil.rmtree(out_dir)
@@ -440,6 +480,8 @@ def run_model(args, models, profile, model):
     rules = file_rules(profile, key, args.facts, args.oversize or None, args.max_chunks, args.java_prompt)
     out_dir = Path(args.out) / key
     clear_out(out_dir)
+    if args.parts:
+        clear_out(Path(args.parts) / key, ".parts.md")
     log_dir = Path(args.work).parent / "logs" / key
     log_dir.mkdir(parents=True, exist_ok=True)
     classpath = Path(args.cp).read_text(encoding="utf-8").strip()

@@ -8,6 +8,7 @@ Run from the repository root: python -m unittest discover -s docs/ai-index-bench
 import argparse
 import io
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -20,6 +21,7 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 import run  # noqa: E402
 import repeat  # noqa: E402
+import score  # noqa: E402
 import search  # noqa: E402
 
 MODELS = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
@@ -68,6 +70,26 @@ class RulesTest(unittest.TestCase):
 
         self.assertEqual(files["srcMorph"]["runRecordFile"], "r.json")
         self.assertNotIn("runRecordFile", packages["srcMorph"])
+
+    def test_clearOut_aPartsDirectory_deletesOnlyPartsFiles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            parts = Path(tmp) / "parts"
+            (parts / "java").mkdir(parents=True)
+            (parts / "java" / "Big.java.parts.md").write_text("# old", encoding="utf-8")
+
+            run.clear_out(parts, ".parts.md")
+
+            self.assertFalse(parts.exists())
+
+    def test_clearOut_aPartsDirectoryWithAForeignFile_refuses(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            parts = Path(tmp) / "parts"
+            parts.mkdir()
+            (parts / "Big.java").write_text("class Big {}", encoding="utf-8")
+
+            with self.assertRaises(SystemExit):
+                run.clear_out(parts, ".parts.md")
+            self.assertTrue((parts / "Big.java").exists())
 
     def test_thePartsDirectory_onlyInTheFilePhaseAndOnlyWhenAsked(self):
         definition = {"key": "m", "provider": "mock"}
@@ -157,16 +179,34 @@ class RulesTest(unittest.TestCase):
         definition = {"key": "m", "provider": "mock"}
         config = run.phase_config("GenerateFileIndex", Path("w"), Path("o"), run.PROFILES / "v3", definition)
 
-        self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Containerfile", "package.json"])
+        self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json"])
 
     def test_everyFileNameRule_namesAFileTheRunIndexes(self):
         # a rule on a file name the walk never collects never fires (package.json had no extension
-        # of the list and no name either, so its npm rule routed nothing)
-        indexed = set(run.FILE_NAMES)
+        # of the list and no name either, so its npm rule routed nothing; Dockerfile.* had no glob)
         for name, condition, _, _ in run.LANGUAGES:
             for file_name in condition.get("fileNames", []):
-                if not any(file_name.endswith(extension) for extension in run.EXTENSIONS) and "*" not in file_name:
-                    self.assertIn(file_name, indexed, name)
+                # a name the glob matches: a wildcard as "x", a choice as its first option
+                sample = re.sub(r"\{([^,}]*)[^}]*\}", r"\1", file_name).replace("*", "x").replace("?", "x")
+                with self.subTest(rule=name, fileName=file_name):
+                    self.assertTrue(run.name_glob(file_name).fullmatch(sample), sample)
+                    self.assertTrue(run.indexes(sample), sample)
+
+    def test_indexes_byExtensionOrNameGlob_inAnyCase(self):
+        for indexed in ("A.java", "A.JAVA", "schema.Sql", "Dockerfile", "dockerfile", "Dockerfile.prod",
+                        "package.json", "Containerfile"):
+            self.assertTrue(run.indexes(indexed), indexed)
+        for other in ("notes.txt", "Dockerfile2", "xpackage.json", "java"):
+            self.assertFalse(run.indexes(other), other)
+        self.assertTrue(run.name_glob("docker-compose*.{yml,yaml}").fullmatch("docker-compose.prod.YAML"))
+
+    def test_theK8sRule_readsAKindQuotedOrNot_asItsFactsDo(self):
+        k8s = next(c for n, c, _, _ in run.LANGUAGES if n == "k8s")
+        pattern = re.compile(next(c["contentMatches"] for c in k8s["and"]["conditions"] if "contentMatches" in c))
+
+        for manifest in ("kind: Deployment\n", 'kind: "Deployment"\n', "kind: 'Service'\n"):
+            self.assertTrue(pattern.search("apiVersion: v1\n" + manifest), manifest)
+        self.assertFalse(pattern.search("kind: deployment\n  kind: Pod\n"))
 
     def test_chunkPrompts_onlyThoseTheProfileHas(self):
         self.assertEqual(run.chunk_prompts(Path("no-such-profile")), {})
@@ -261,6 +301,22 @@ class SearchTest(unittest.TestCase):
 
         self.assertEqual(ranked, ["a/y.java"])
         self.assertEqual(search.bm25_rank({"a": "", "b": ""}, "anything"), [])
+
+    def test_theFiles_areTheSourcesTheRunsIndex_andASummaryIsTheModelsText(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "other").mkdir(parents=True)
+            for name in ("Dockerfile", "a.sh", "notes.txt"):
+                (work / "other" / name).write_text("x", encoding="utf-8")
+            (out / "m" / "other").mkdir(parents=True)
+            (out / "m" / "other" / "a.sh.ai.md").write_text(
+                "h: 1\n---\n**Facts (exact, whole file):** functions: 3\n\n> Rotates the backups.\n", encoding="utf-8")
+
+            files = search.corpus_files(work)
+            docs = search.documents("m", out, work, files)
+
+        self.assertEqual(files, ["other/Dockerfile", "other/a.sh"])
+        self.assertEqual(docs, {"other/Dockerfile": "", "other/a.sh": "> Rotates the backups."})
 
     def test_cacheKey_changesWithTheSystemPrompt(self):
         key = search.cache_key("m", "ctx", "q")
@@ -448,7 +504,7 @@ class RepeatTest(unittest.TestCase):
     @staticmethod
     def row(kind, found, expected, failed=False, lead=True):
         return {"kind": kind, "failed": failed, "idsFound": found, "idsExpected": expected, "lead": lead,
-                "badHeadings": 0, "fences": 0, "leaks": 0}
+                "badHeadings": 0, "fences": 0, "leaks": 0, "recall": score.file_recall(failed, found, expected)}
 
     def test_quality_ofACorpusOfOtherFilesOnly_isRecallAndFormatHalfEach(self):
         rows = [self.row("other", 3, 4), self.row("other", 2, 2, lead=False)]
@@ -458,6 +514,22 @@ class RepeatTest(unittest.TestCase):
         self.assertEqual(result["recall"], {"other": 0.875})
         self.assertEqual(result["format"], 0.5)
         self.assertEqual(result["quality"], round((0.875 + 0.5) / 2, 4))
+
+    def test_quality_aRunWithoutItsPackageAndProjectSummaries_holdsTheFormatOverAllOfThem(self):
+        # one Java file in java/: a full run writes it, java/package.ai.md, package.ai.md and project.ai.md
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "java").mkdir(parents=True)
+            (work / "java" / "A.java").write_text("public class A {}", encoding="utf-8")
+            (out / "java").mkdir(parents=True)
+            (out / "java" / "A.java.ai.md").write_text(
+                "h: 1\n---\n> `A` is the one class of the tree. It holds no state and is read by nothing else here.\n",
+                encoding="utf-8")
+
+            result = repeat.quality(score.score_model(out, work, {}))
+
+        self.assertEqual(result["format"], 0.25)
+        self.assertEqual(result["recall"], {"java": 1.0})
 
     def test_runs_scoresEachRunWithoutTheCardsRun(self):
         with tempfile.TemporaryDirectory() as tmp:

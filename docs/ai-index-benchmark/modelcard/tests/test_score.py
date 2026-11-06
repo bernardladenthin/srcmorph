@@ -132,6 +132,41 @@ class NamesFoundTest(unittest.TestCase):
 
         self.assertEqual(row["idsFound"], 2)
 
+    def test_aSkeletonOfTheModelsOwn_isNoCopyForItsBraces(self):
+        # the class line and the closing brace are the source's; the two signatures are the model's own
+        source = "public class Foo {\n    public void bar() {\n        run();\n    }\n}\n"
+        row = score.score_file(source, body("```java\npublic class Foo {\n    String invent(int a);\n"
+                                             "    void other();\n}\n```\n"), ["Foo"], [])
+
+        self.assertEqual(row["idsFound"], 1)
+
+    def test_anEverydayWordBeforeATypeWordOfTheProse_isNoColumn(self):
+        words = ["author", "book", "loan", "stock"]
+        prose = score.score_file("", body("It keeps the loan date, the book number and the author text."),
+                                 words, [], case_insensitive=True, everyday=words)
+        columns = score.score_file("", body("Columns loan DATE and author: text, then stock int not null."), words,
+                                   [], case_insensitive=True, everyday=words)
+
+        self.assertEqual(prose["idsFound"], 0)
+        # a type in capitals, after a colon, or one that is no English word
+        self.assertEqual(columns["idsFound"], 3)
+
+    def test_aMiddleArea_countsAsThePrefixOfANameInRecallAndInTheMiddleCheck(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "java").mkdir(parents=True)
+            (work / "java" / "E.java").write_text("public enum E { LEDGER_LOCK_02701, AUTH_00001 }", encoding="utf-8")
+            (out / "java").mkdir(parents=True)
+            (out / "java" / "E.java.ai.md").write_text(
+                "h: 1\n---\n" + body("Constants `LEDGER_LOCK_02701..LEDGER_LOCK_03300` and the ledger_x ones."),
+                encoding="utf-8")
+            facts = {"java/E.java": {"ids": ["LEDGER_LOCK", "ledger"], "middle": ["LEDGER_LOCK"]}}
+
+            row = next(r for r in score.score_model(out, work, facts) if r["file"] == "java/E.java")
+
+        # LEDGER_LOCK names the area; "ledger" is no middle name, so not the prefix of ledger_x
+        self.assertEqual((row["idsFound"], row["middleFound"]), (1, 1))
+
     def test_numbers_notInACopiedFence(self):
         row = score.score_file("VALUES (6000);", body("It inserts 4000 rows.\n```\nVALUES (6000);\n```\n"), [],
                                [4000, 6000])
@@ -177,6 +212,28 @@ class InventedTest(unittest.TestCase):
 
         self.assertEqual(row["ticked"], 3)
         self.assertEqual(row["inventedNames"], ["ame"])
+
+    def test_aPieceInsideAWordPart_isNoNameOfTheSource_inSqlEither(self):
+        # matched without regard to case, but a word part still starts at an underscore or a capital
+        row = score.score_file("CREATE TABLE customer_order (id INT, price_cents INT);",
+                               body("`CUSTOMER_ORDER` holds `price_cents` and `Order`; not `custom`, `tome`, `rder`."),
+                               [], [], case_insensitive=True)
+
+        self.assertEqual(row["inventedNames"], ["custom", "rder", "tome"])
+
+    def test_sqlTypesInSmallLetters_areNoNamesEither(self):
+        row = score.score_file("CREATE TABLE t (id INT);", body("Columns `varchar` and `timestamp`, `t_x`."), [], [],
+                               case_insensitive=True)
+
+        self.assertEqual(row["ticked"], 1)
+        self.assertEqual(row["inventedNames"], ["t_x"])
+
+    def test_aFileName_isNoName(self):
+        row = score.score_file("class Bar {}", body("Reads `srcmorph.yaml`, `pom.xml` and `docs/notes.md`; "
+                                                    "calls `x.y.Bar` and `Ghost`."), [], [])
+
+        self.assertEqual(row["ticked"], 2)
+        self.assertEqual(row["inventedNames"], ["Ghost"])
 
     def test_runsOfWordParts_prefixesAndPlurals_nameTheSource(self):
         source = "size_t ringbuf_free_space(void); int DEFAULT_SIZE; class OrderService {}"
@@ -226,10 +283,36 @@ class FailureTest(unittest.TestCase):
         self.assertTrue(row["lead"])
         self.assertEqual(row["leaks"], 2)
 
+    def test_aCompleteSummaryAfterAHarmonyAnalysisBlock_isNoFailureButALeak(self):
+        row = score.score_file("", "<|channel|>analysis<|message|>planning<|end|>"
+                               "<|start|>assistant<|channel|>final<|message|>" + body("Fine."), [], [])
+
+        self.assertEqual(row["failed"], "")
+        self.assertTrue(row["lead"])
+        self.assertEqual(row["leaks"], 6)
+
+    def test_aCompleteSummaryAfterAGemmaThoughtBlock_isNoFailureButALeak(self):
+        row = score.score_file("", "<|channel>thought\nplanning<channel|>" + body("Fine."), [], [])
+
+        self.assertEqual(row["failed"], "")
+        self.assertTrue(row["lead"])
+        self.assertEqual(row["leaks"], 2)
+
+    def test_aHashLineInAFence_isNoHeading(self):
+        row = score.score_file("", body("Run it:\n```sh\n# rotate the logs\n## twice\n```\n## A heading\n"), [], [])
+
+        self.assertEqual(row["badHeadings"], 1)
+        self.assertEqual(row["fences"], 2)
+
     def test_aMarkerInBackticks_isTextNotALeak(self):
         row = score.score_file("", body("Strips the `<|channel|>` and `<think>` markers."), [], [])
 
         self.assertEqual(row["leaks"], 0)
+
+    def test_aQuotedMarker_isTextNotALeak(self):
+        row = score.score_file("", body('Reads "<|channel>thought" and "<channel|>", then <channel|> leaks.'), [], [])
+
+        self.assertEqual(row["leaks"], 1)
 
     def test_scoreModel_missingAndCutOff(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -255,6 +338,81 @@ class FailureTest(unittest.TestCase):
         self.assertEqual(summary["java"]["failed"], {"missing": 1})
         self.assertEqual(summary["java"]["cutOff"], 1)
 
+    def test_scoreModel_aMissingSummary_isCutOffAsTheMetaSaysAndExpectsItsNumbers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "sql").mkdir(parents=True)
+            (work / "sql" / "seed.sql").write_text("INSERT INTO t VALUES (1);", encoding="utf-8")
+            out.mkdir()
+
+            rows = score.score_model(out, work, {"sql/seed.sql": {"ids": ["t"], "numbers": [10, 20, 30, 40]}},
+                                     {"sql/seed.sql"})
+            summary = score.summarize(rows)
+
+        seed = next(r for r in rows if r["file"] == "sql/seed.sql")
+        # under retryOnce a cut-off answer is not written: the missing file is the cut-off one
+        self.assertTrue(seed["cutOff"])
+        self.assertEqual(summary["sql"]["cutOff"], 1)
+        self.assertEqual(summary["sql"]["numbers"], "0/4")
+
+    def test_scoreModel_aFileWithNoNameToExpect_countsInRecall(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "java").mkdir(parents=True)
+            (work / "other").mkdir(parents=True)
+            (work / "java" / "A.java").write_text("public class A { public int size() { return 0; } }", encoding="utf-8")
+            (work / "java" / "Hidden.java").write_text("class Hidden { void run() {} }", encoding="utf-8")
+            (work / "java" / "Quiet.java").write_text("class Quiet {}", encoding="utf-8")
+            (work / "other" / "a.sh").write_text("echo a", encoding="utf-8")
+            (out / "java").mkdir(parents=True)
+            (out / "other").mkdir(parents=True)
+            (out / "java" / "A.java.ai.md").write_text("h: 1\n---\n" + body("`A` has `size`."), encoding="utf-8")
+            (out / "java" / "Quiet.java.ai.md").write_text("h: 1\n---\n" + body("Nothing public."), encoding="utf-8")
+            (out / "other" / "a.sh.ai.md").write_text("h: 1\n---\n" + body("Echoes."), encoding="utf-8")
+
+            rows = score.score_model(out, work, {})
+            summary = score.summarize(rows)
+
+        by_file = {r["file"]: r for r in rows}
+        # A names both (1); the missing Hidden has no public name but costs its 0; Quiet's summary had
+        # nothing to name and is not measured
+        self.assertEqual((by_file["java/Hidden.java"]["recall"], by_file["java/Quiet.java"]["recall"]), (0.0, None))
+        self.assertEqual(summary["java"]["recall"], 0.5)
+        # a file nobody listed names for is not measured
+        self.assertIsNone(by_file["other/a.sh"]["recall"])
+        self.assertIsNone(summary["other"]["recall"])
+
+    def test_scoreModel_theExtensionInAnyCase_asSrcmorphSelectsIt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "java").mkdir(parents=True)
+            (work / "java" / "A.JAVA").write_text("public class A {}", encoding="utf-8")
+            (work / "other").mkdir(parents=True)
+            (work / "other" / "Dockerfile.prod").write_text("FROM x", encoding="utf-8")
+            out.mkdir()
+
+            rows = {r["file"]: r for r in score.score_model(out, work, {})}
+
+        self.assertEqual((rows["java/A.JAVA"]["kind"], rows["java/A.JAVA"]["idsExpected"]), ("java", 1))
+        self.assertIn("other/Dockerfile.prod", rows)
+
+    def test_scoreModel_theAggregatesOfAFullRun_areExpected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "java" / "p").mkdir(parents=True)
+            (work / "java" / "p" / "A.java").write_text("public class A {}", encoding="utf-8")
+            (out / "java" / "p").mkdir(parents=True)
+            (out / "java" / "p" / "A.java.ai.md").write_text("h: 1\n---\n" + body("`A`."), encoding="utf-8")
+            (out / "java" / "package.ai.md").write_text("h: 1\n---\n" + body("The java tree."), encoding="utf-8")
+
+            rows = score.score_model(out, work, {}, {"project.ai.md"})
+
+        aggregates = {r["file"]: (r["missing"], r["cutOff"]) for r in rows if r["kind"] in ("package", "project")}
+        self.assertEqual(aggregates, {"package.ai.md": (True, False), "java/package.ai.md": (False, False),
+                                      "java/p/package.ai.md": (True, False), "project.ai.md": (True, True)})
+        self.assertEqual([r["file"] for r in rows][1:],
+                         ["java/p/package.ai.md", "java/package.ai.md", "package.ai.md", "project.ai.md"])
+
     def test_scoreModel_aFileSrcmorphDoesNotIndex_isNoMissingSummary(self):
         with tempfile.TemporaryDirectory() as tmp:
             work, out = Path(tmp) / "work", Path(tmp) / "out"
@@ -265,7 +423,7 @@ class FailureTest(unittest.TestCase):
 
             rows = score.score_model(out, work, {})
 
-        self.assertEqual([r["file"] for r in rows], ["other/a.sh"])
+        self.assertEqual([r["file"] for r in rows if r["kind"] not in ("package", "project")], ["other/a.sh"])
 
     def test_sourceText_readsAsSrcmorphDecodes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -462,7 +620,8 @@ class MainTest(unittest.TestCase):
         self.assertEqual((m1["sql"]["recall"], m1["sql"]["numbers"], m1["sql"]["cutOff"]), (1.0, "1/1", 1))
         self.assertEqual(m1["other"]["missing"], 1)
         self.assertEqual(m1["other"]["failed"], {"missing": 1})
-        self.assertEqual((m1["package"]["files"], m1["project"]["noLead"]), (1, 1))
+        # java/package.ai.md written; other/, sql/ and the root's missing
+        self.assertEqual((m1["package"]["files"], m1["package"]["missing"], m1["project"]["noLead"]), (4, 3, 1))
         self.assertEqual(m2["java"]["failed"], {"empty": 1})
         self.assertEqual((m2["sql"]["failed"], m2["sql"]["leaks"], m2["sql"]["compaction"]), ({"leak-only": 1}, 2, None))
         self.assertEqual(m2["java"]["recall"], 0)
@@ -470,8 +629,8 @@ class MainTest(unittest.TestCase):
         a = next(r.split("\t") for r in rows if r.startswith("m1\tjava/A.java\t"))
         self.assertEqual(a[score.TSV_COLUMNS.index("inventedNames")], "ghost")
         self.assertEqual(a[score.TSV_COLUMNS.index("idsFound")], "2")
-        # the header, m1: three files, its package and its project; m2: three files
-        self.assertEqual(len(rows), 1 + 5 + 3)
+        # the header, then per model three files, four packages (java, other, sql, the root) and the project
+        self.assertEqual(len(rows), 1 + 8 + 8)
         self.assertNotEqual(missing_work.returncode, 0)
 
 if __name__ == "__main__":

@@ -5,9 +5,10 @@
 
 Every question of search-questions.json names the corpus files that answer it. For each model's
 output tree (one directory per model key under <out>) the 24 file summaries are searched two ways:
-- bm25: BM25 over the summary bodies (the header, which names the file, is left out), with
-  camelCase and snake_case identifiers split into words; deterministic and free;
-- reader: one LLM call per question that sees every summary under its path, as an agent browsing
+- bm25: BM25 over the model's text of each summary (the header, which names the file, and the facts
+  and coverage lines srcmorph writes in front of the body are left out, as score.py measures it),
+  with camelCase and snake_case identifiers split into words; deterministic and free;
+- reader: one LLM call per question that sees the same text of every summary under its path, as an agent browsing
   the index would, and names the three files most likely to answer (OpenRouter, the key from
   OPENROUTER_API_KEY; answers are cached by model, system prompt, parameters, context and question,
   so a rerun only pays for what is new, and a changed prompt is never answered from the cache).
@@ -15,7 +16,8 @@ Two baselines go through the same retrievers: "source" (the source files themsel
 (nothing but the paths). hit@1 / hit@3 count a question as found when an answer file is ranked
 first / among the first three; MRR is the mean reciprocal rank of the first answer file (0 when
 the reader does not name one). BM25 ranks only the files that share a word with the question, so an
-empty index finds nothing instead of the alphabetically first file.
+empty index finds nothing instead of the alphabetically first file. The files are the sources the
+runs index (run.indexes: by extension or by a name such as Dockerfile, in any case).
 
 Writes <scores>/search.json (per run and retriever) and <scores>/search.tsv (per question).
 
@@ -36,8 +38,8 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from run import EXTENSIONS
-from score import body_of
+from run import indexes
+from score import body_of, model_text
 
 HERE = Path(__file__).resolve().parent
 READER = "mistralai/mistral-small-3.2-24b-instruct"
@@ -81,6 +83,11 @@ def bm25_rank(docs, query, k1=1.5, b=0.75):
     return [k for k in sorted(scores, key=lambda k: -scores[k]) if scores[k] > 0]
 
 
+def corpus_files(work):
+    """The corpus's sources as the runs index them (by extension or name), relative, in path order."""
+    return sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file() and indexes(p.name))
+
+
 def documents(run, out, work, files):
     """Path -> searchable text of one run (or baseline)."""
     if run == "source":
@@ -90,7 +97,7 @@ def documents(run, out, work, files):
     docs = {}
     for f in files:
         md = out / run / (f + ".ai.md")
-        docs[f] = body_of(md.read_text(encoding="utf-8")).strip() if md.exists() else ""
+        docs[f] = model_text(body_of(md.read_text(encoding="utf-8"))).strip() if md.exists() else ""
     return docs
 
 
@@ -206,7 +213,7 @@ def main():
 
     work, out = Path(args.work), Path(args.out)
     questions = json.loads((HERE / "search-questions.json").read_text(encoding="utf-8"))["questions"]
-    files = sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file() and p.suffix in EXTENSIONS)
+    files = corpus_files(work)
     for q in questions:
         missing = [a for a in q["answer"] if a not in files]
         assert not missing, f"{q['id']}: {missing} not in the corpus"

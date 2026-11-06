@@ -30,11 +30,13 @@ HERE = Path(__file__).resolve().parent
 
 def quality(rows):
     """Recall per kind (a failed body counts 0), format share and the card's quality score. A kind the
-    corpus has no expected names for (the language corpus has only other files) is left out of the mean."""
+    corpus has no measured file of (the language corpus has only other files) is left out of the mean.
+    The format share is over every row, the missing summaries included: score.py adds a missing row for
+    every package or project summary a full run writes, so a run whose package phase failed does not hold
+    the format over fewer files."""
     recall = {}
     for kind in ("java", "sql", "other"):
-        per_file = [0.0 if r["failed"] else r["idsFound"] / r["idsExpected"]
-                    for r in rows if r["kind"] == kind and r.get("idsExpected")]
+        per_file = [r["recall"] for r in rows if r["kind"] == kind and r.get("recall") is not None]
         if per_file:
             recall[kind] = sum(per_file) / len(per_file)
     clean = sum(1 for r in rows if not r["failed"] and r["lead"]

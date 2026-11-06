@@ -3,10 +3,10 @@
   "runs": [
    {
     "run": "card",
-    "quality": 0.9458,
+    "quality": 0.9426,
     "recall": {
      "java": 0.944,
-     "sql": 0.9325,
+     "sql": 0.9196,
      "other": 0.9068
     },
     "format": 1.0,
@@ -16,10 +16,10 @@
    },
    {
     "run": "run2",
-    "quality": 0.9472,
+    "quality": 0.944,
     "recall": {
      "java": 0.944,
-     "sql": 0.9325,
+     "sql": 0.9196,
      "other": 0.9124
     },
     "format": 1.0,
@@ -29,10 +29,10 @@
    },
    {
     "run": "run3",
-    "quality": 0.9603,
+    "quality": 0.957,
     "recall": {
      "java": 0.944,
-     "sql": 0.9537,
+     "sql": 0.9408,
      "other": 0.9433
     },
     "format": 1.0,
@@ -42,10 +42,10 @@
    }
   ],
   "quality": {
-   "mean": 0.9511,
-   "min": 0.9458,
-   "max": 0.9603,
-   "spread": 0.0145
+   "mean": 0.9479,
+   "min": 0.9426,
+   "max": 0.957,
+   "spread": 0.0144
   },
   "secondsPerFile": {
    "mean": 13.8533,
@@ -64,11 +64,11 @@
   "runs": [
    {
     "run": "card",
-    "quality": 0.9193,
+    "quality": 0.911,
     "recall": {
      "java": 0.997,
-     "sql": 0.9187,
-     "other": 0.7616
+     "sql": 0.9075,
+     "other": 0.7394
     },
     "format": 1.0,
     "secondsPerFile": 11.11,
@@ -77,11 +77,11 @@
    },
    {
     "run": "seed42",
-    "quality": 0.9193,
+    "quality": 0.911,
     "recall": {
      "java": 0.997,
-     "sql": 0.9187,
-     "other": 0.7616
+     "sql": 0.9075,
+     "other": 0.7394
     },
     "format": 1.0,
     "secondsPerFile": 11.43,
@@ -90,11 +90,11 @@
    },
    {
     "run": "seed43",
-    "quality": 0.922,
+    "quality": 0.9137,
     "recall": {
      "java": 0.999,
-     "sql": 0.9275,
-     "other": 0.7616
+     "sql": 0.9163,
+     "other": 0.7394
     },
     "format": 1.0,
     "secondsPerFile": 12.67,
@@ -103,11 +103,11 @@
    },
    {
     "run": "seed44",
-    "quality": 0.9179,
+    "quality": 0.9121,
     "recall": {
      "java": 1.0,
-     "sql": 0.9102,
-     "other": 0.7616
+     "sql": 0.9092,
+     "other": 0.7394
     },
     "format": 1.0,
     "secondsPerFile": 12.5,
@@ -116,10 +116,10 @@
    }
   ],
   "quality": {
-   "mean": 0.9196,
-   "min": 0.9179,
-   "max": 0.922,
-   "spread": 0.0041
+   "mean": 0.912,
+   "min": 0.911,
+   "max": 0.9137,
+   "spread": 0.0027
   },
   "secondsPerFile": {
    "mean": 11.9275,
@@ -255,10 +255,10 @@
   "runs": [
    {
     "run": "card",
-    "quality": 0.9929,
+    "quality": 0.9878,
     "recall": {
      "java": 1.0,
-     "sql": 1.0,
+     "sql": 0.9796,
      "other": 0.9714
     },
     "format": 1.0,
@@ -268,10 +268,10 @@
    },
    {
     "run": "run2",
-    "quality": 1.0,
+    "quality": 0.9923,
     "recall": {
      "java": 1.0,
-     "sql": 1.0,
+     "sql": 0.9694,
      "other": 1.0
     },
     "format": 1.0,
@@ -294,10 +294,10 @@
    }
   ],
   "quality": {
-   "mean": 0.9958,
-   "min": 0.9929,
-   "max": 1.0,
-   "spread": 0.0071
+   "mean": 0.9915,
+   "min": 0.9878,
+   "max": 0.9944,
+   "spread": 0.0066
   },
   "secondsPerFile": {
    "mean": 10.6567,
@@ -329,10 +329,10 @@
    },
    {
     "run": "run2",
-    "quality": 0.9402,
+    "quality": 0.9369,
     "recall": {
      "java": 0.8929,
-     "sql": 0.9632,
+     "sql": 0.9503,
      "other": 0.9044
     },
     "format": 1.0,
@@ -342,10 +342,10 @@
    },
    {
     "run": "run3",
-    "quality": 0.9188,
+    "quality": 0.913,
     "recall": {
      "java": 0.9242,
-     "sql": 0.9721,
+     "sql": 0.949,
      "other": 0.7789
     },
     "format": 1.0,
@@ -355,10 +355,10 @@
    }
   ],
   "quality": {
-   "mean": 0.9252,
-   "min": 0.9165,
-   "max": 0.9402,
-   "spread": 0.0237
+   "mean": 0.9221,
+   "min": 0.913,
+   "max": 0.9369,
+   "spread": 0.0239
   },
   "secondsPerFile": {
    "mean": 10.6033,
@@ -377,10 +377,10 @@
   "runs": [
    {
     "run": "card",
-    "quality": 0.9515,
+    "quality": 0.9464,
     "recall": {
      "java": 0.9697,
-     "sql": 0.9898,
+     "sql": 0.9694,
      "other": 0.8467
     },
     "format": 1.0,
@@ -390,10 +390,10 @@
    },
    {
     "run": "run2",
-    "quality": 0.9536,
+    "quality": 0.9485,
     "recall": {
      "java": 1.0,
-     "sql": 0.9898,
+     "sql": 0.9694,
      "other": 0.8244
     },
     "format": 1.0,
@@ -403,10 +403,10 @@
    },
    {
     "run": "run3",
-    "quality": 0.952,
+    "quality": 0.9469,
     "recall": {
      "java": 1.0,
-     "sql": 0.9612,
+     "sql": 0.9408,
      "other": 0.8467
     },
     "format": 1.0,
@@ -416,9 +416,9 @@
    }
   ],
   "quality": {
-   "mean": 0.9524,
-   "min": 0.9515,
-   "max": 0.9536,
+   "mean": 0.9473,
+   "min": 0.9464,
+   "max": 0.9485,
    "spread": 0.0021
   },
   "secondsPerFile": {
