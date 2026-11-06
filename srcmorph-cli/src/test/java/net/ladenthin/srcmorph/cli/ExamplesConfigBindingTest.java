@@ -239,29 +239,46 @@ public class ExamplesConfigBindingTest {
     @Test
     public void select_credentialsRuleOfEveryProfileConfig_skipsFilesWithSecretsAndNoSource() throws Exception {
         // arrange
-        final List<String> secrets = List.of(
-                ".env",
-                ".env.production",
-                "prod.tfvars",
-                "terraform.tfstate",
-                "settings.xml",
-                "settings-security.xml",
-                "server.pem",
-                "tls.key",
-                "id_rsa",
-                "vault.yml",
-                "db-credentials.yaml",
-                "app-secrets.properties",
-                "Secrets.JSON");
-        final List<String> sources = List.of(
-                "SecretManager.java",
-                "CredentialsProvider.java",
-                "PasswordEncoder.java",
-                "pom.xml",
-                "web.xml",
-                "secrets.sh",
-                "keys.sql",
-                "Settings.java");
+        final String[][] secrets = {
+            {".env", "TOKEN=x\n"},
+            {".env.production", "TOKEN=x\n"},
+            {"prod.tfvars", "password = \"x\"\n"},
+            {"prod.pkrvars.hcl", "password = \"x\"\n"},
+            {"terraform.tfstate", "{}\n"},
+            {"settings.xml", "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\">\n"},
+            {".m2/settings.xml", "<?xml version=\"1.0\"?>\n<settings>\n"},
+            {"settings-security.xml", "<settingsSecurity/>\n"},
+            {"server.pem", "-----BEGIN PRIVATE KEY-----\n"},
+            {"tls.key", "x\n"},
+            {"id_rsa", "x\n"},
+            {"vault.yml", "vault_db_password: x\n"},
+            {"group_vars/all/vault.yaml", "$ANSIBLE_VAULT;1.1;AES256\n"},
+            {"db-credentials.yaml", "password: x\n"},
+            {"app-secrets.properties", "password=x\n"},
+            {"Secrets.JSON", "{}\n"},
+            {"vault/secrets.hcl", "token = \"x\"\n"},
+            {"k8s/secret.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
+            {"charts/shop/templates/db-secret.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
+        };
+        final String[][] sources = {
+            {"SecretManager.java", "class SecretManager {}\n"},
+            {"CredentialsProvider.java", "class CredentialsProvider {}\n"},
+            {"PasswordEncoder.java", "class PasswordEncoder {}\n"},
+            {"pom.xml", "<project/>\n"},
+            {"web.xml", "<web-app/>\n"},
+            {"secrets.sh", "#!/bin/sh\n"},
+            {"keys.sql", "SELECT 1;\n"},
+            {"Settings.java", "class Settings {}\n"},
+            // a CI workflow or action that scans for secrets or logs in to a vault holds none
+            {".github/workflows/secret-scan.yml", "on: push\n"},
+            {".github/workflows/vault.yml", "on: push\n"},
+            // a Helm chart's template names the values it renders
+            {"charts/shop/templates/secret.yaml", "kind: Secret\ndata:\n  password: {{ .Values.password | b64enc }}\n"},
+            // a Kubernetes manifest of another kind
+            {"k8s/vault-deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n"},
+            // an Android preference screen
+            {"app/src/main/res/xml/settings.xml", "<PreferenceScreen xmlns:android=\"x\"/>\n"},
+        };
 
         // act, assert
         for (final Path config : List.of(
@@ -271,13 +288,13 @@ public class ExamplesConfigBindingTest {
                     Main.fromYaml(Main.readString(config)).srcMorph.getRules();
             final RuleSelector selector = new RuleSelector();
             selector.validate(rules);
-            for (final String name : secrets) {
-                final RoutingRule rule = selector.select(rules, context(name));
-                assertThat(config + ": " + name, rule != null && rule.isSkip(), is(true));
+            for (final String[] secret : secrets) {
+                final RoutingRule rule = selector.select(rules, context(secret[0], secret[1]));
+                assertThat(config + ": " + secret[0], rule != null && rule.isSkip(), is(true));
             }
-            for (final String name : sources) {
-                final RoutingRule rule = selector.select(rules, context(name));
-                assertThat(config + ": " + name, rule != null && !rule.isSkip(), is(true));
+            for (final String[] source : sources) {
+                final RoutingRule rule = selector.select(rules, context(source[0], source[1]));
+                assertThat(config + ": " + source[0], rule != null && !rule.isSkip(), is(true));
             }
         }
     }
@@ -323,6 +340,8 @@ public class ExamplesConfigBindingTest {
             {"pom.xml", "<project/>\n", "pom"},
             {"conf/context.xml", "<beans/>\n", "xml"},
             {"webapp/list.jsp", "<%@ page %>\n", "jsp"},
+            {"webapp/order.jspx", "<jsp:root/>\n", "jspx"},
+            {"WEB-INF/tags/total.tagx", "<jsp:root/>\n", "jspx"},
             {"webapp/checkout.xhtml", "<ui:composition/>\n", "facelets"},
             {"api/orders.yaml", "openapi: 3.0.3\n", "openapi"},
             {"api/openapi.json", "{\"openapi\":\"3.0.3\"}", "openapi"},
@@ -366,8 +385,15 @@ public class ExamplesConfigBindingTest {
     }
     // </editor-fold>
 
-    private static FileContext context(final String name) {
-        return new FileContext(name, "src/" + name, 100L, 3, 0L);
+    /**
+     * A file at a path below the base directory, with its text.
+     *
+     * @param path    the base-relative path
+     * @param content the file's text
+     * @return the context a rule reads
+     */
+    private static FileContext context(final String path, final String content) {
+        return new FileContext(path.substring(path.lastIndexOf('/') + 1), path, 100L, 3, 0L, content);
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {

@@ -172,20 +172,45 @@ srcMorph:
       skip: true
       priority: 1000
       condition:
-        fileNames:
-          - ".env"
-          - ".env.*"
-          - "*.tfvars"
-          - "*.tfstate"
-          - "*.tfstate.backup"
-          - "settings.xml"                   # Maven: server passwords
-          - "settings-security.xml"
-          - "*.pem"
-          - "*.key"
-          - "id_rsa*"
-          - "id_ed25519*"
-          - "vault*.{yml,yaml}"
-          - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env}"
+        or:
+          conditions:
+            - fileNames:
+                - ".env"
+                - ".env.*"
+                - "*.tfvars"
+                - "*.pkrvars.hcl"                # Packer's variable values, as Terraform's .tfvars
+                - "*.tfstate"
+                - "*.tfstate.backup"
+                - "settings-security.xml"
+                - "*.pem"
+                - "*.key"
+                - "id_rsa*"
+                - "id_ed25519*"
+            - and:                               # Maven's settings.xml (server passwords) by its root
+                conditions:                      # element, not an Android res/xml/settings.xml
+                  - fileNames: ["settings.xml"]
+                  - contentMatches: '<settings[\s>]'
+            # A file named for a vault, secrets or credentials, but not a CI workflow or action
+            # (secret-scan.yml), a Helm chart's template (it names the values it renders) or a
+            # Kubernetes manifest of another kind than Secret (vault-deployment.yaml).
+            - and:
+                conditions:
+                  - fileNames:
+                      - "vault*.{yml,yaml}"
+                      - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env,hcl}"
+                  - not:
+                      or:
+                        conditions:
+                          - pathGlob: "**/.github/**"
+                          - and:
+                              conditions:
+                                - pathGlob: "**/templates/**"
+                                - contentMatches: '\{\{'
+                          - and:
+                              conditions:
+                                - contentMatches: '(?m)^kind:[ \t]*["'']?[A-Z]'
+                                - not:
+                                    contentMatches: '(?m)^kind:[ \t]*["'']?Secret\b'
     - id: huge-java
       promptKey: file-body-oop
       onIncomplete: retryOnce

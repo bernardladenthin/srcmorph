@@ -55,8 +55,10 @@ shell, Perl and other files; Definitions, Configuration and Dependencies for XML
 only what is literally present" guard for truncated sources. Every file prompt has the same secrets
 rule: a password, private key, token, API key or credentials in a URL is named, its value written as
 `***`. A configuration keeps the files that hold credentials away from the model altogether with a
-`skip` rule; the examples and the self-test carry one (`id: secrets`: `.env`, `*.tfvars`,
-`*.tfstate`, Maven's `settings.xml`, keys, `*secret*` and `*credential*` configuration files).
+`skip` rule; the examples, the self-test and the model-card runs carry one (`id: secrets`: `.env`,
+`*.tfvars`, `*.pkrvars.hcl`, `*.tfstate`, Maven's `settings.xml` by its `<settings>` root, keys, and
+the `vault*`, `*secret*` and `*credential*` configuration files, `.hcl` too, that are no CI workflow
+under `.github/`, no Helm template and no Kubernetes manifest of another kind than `Secret`).
 
 `map-chunk.md` and `reduce-parts.md` (keys `map-chunk`, `reduce-parts`) are not prompts of their own: a rule's `mapPromptKey` and
 `reducePromptKey` append them to its prompt (after a blank line) in the map and the reduce calls of

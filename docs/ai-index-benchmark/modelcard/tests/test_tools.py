@@ -61,7 +61,7 @@ class RulesTest(unittest.TestCase):
     def test_maxChunks_isSetWheneverGiven(self):
         rules = run.file_rules(run.PROFILES / "v3", "m", oversize="sampleChunks", max_chunks=1)
 
-        self.assertTrue(all(r["onOversize"] == "sampleChunks" and r["maxChunks"] == 1 for r in rules))
+        self.assertTrue(all(r["onOversize"] == "sampleChunks" and r["maxChunks"] == 1 for r in rules if not r.get("skip")))
 
     def test_theRunRecord_onlyInTheFilePhase(self):
         definition = {"key": "m", "provider": "mock"}
@@ -123,7 +123,7 @@ class RulesTest(unittest.TestCase):
         sampled = run.file_rules(profile, "m", oversize="sample")
 
         self.assertTrue(all(r["mapPromptKey"] == "map-chunk" and r["reducePromptKey"] == "reduce-parts"
-                            for r in chunked))
+                            for r in chunked if not r.get("skip")))
         self.assertTrue(all("mapPromptKey" not in r and "reducePromptKey" not in r for r in sampled))
 
     def test_javaPrompt_namesTheJavaAndTheJavaEeRule(self):
@@ -166,7 +166,32 @@ class RulesTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             rules = {r["id"] for r in run.file_rules(Path(tmp), "m", facts=True)}
 
-        self.assertEqual(rules, {"java", "sql", "fallback"})
+        self.assertEqual(rules, {"secrets", "java", "sql", "fallback"})
+
+    def test_secretsRule_skipsCredentialFilesBeforeEveryOtherRule(self):
+        rules = run.file_rules(run.PROFILES / "v3", "m", facts=True, oversize="mapReduce")
+        secrets = rules[0]
+        names = self.file_names(secrets["condition"])
+        selftest = (run.REPO / "srcmorph-maven-plugin" / "srcmorph-selftest.yaml").read_text(encoding="utf-8")
+
+        self.assertEqual((secrets["id"], secrets["skip"], secrets["priority"]), ("secrets", True, 1000))
+        # a skip rule names no prompt, model or strategy
+        self.assertEqual(set(secrets), {"id", "skip", "priority", "condition"})
+        for secret in (".env", "prod.tfvars", "prod.pkrvars.hcl", "secrets.hcl", "client_secret.json",
+                       "settings.xml", "vault.yml", "db-credentials.yaml"):
+            self.assertTrue(any(run.name_glob(name).fullmatch(secret) for name in names), secret)
+        # the self-test's rule names the same files
+        for name in names:
+            self.assertIn(f'"{name}"', selftest, name)
+        # the hashes of the files the rules name pass the skip rule by
+        self.assertIn("file-body-oop.md", run.profile_hashes(run.PROFILES / "v3", rules))
+
+    def test_gradleKotlinScripts_takeTheGradleRuleOverKotlin(self):
+        rules = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
+
+        self.assertIn("*.gradle.kts", self.file_names(rules["gradle"]["condition"]))
+        self.assertGreater(rules["gradle"]["priority"], rules["kotlin"].get("priority", 0))
+        self.assertTrue(run.indexes("build.gradle.kts"))
 
     def test_everyRuleOfEveryPhase_asksOnceMoreOnAnIncompleteAnswer(self):
         definition = {"key": "m", "provider": "mock"}

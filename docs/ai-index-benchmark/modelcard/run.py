@@ -190,12 +190,28 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
              ("compose", {"fileNames": ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]}, "ops", 10),
              ("terraform", {"extensions": [".tf", ".hcl"]}, "ops", 0),
-             ("gradle", {"extensions": [".gradle"]}, "ops", 10),
+             # build scripts of both DSLs: a .gradle.kts over the kotlin rule
+             ("gradle", _or({"extensions": [".gradle"]}, {"fileNames": ["*.gradle.kts"]}), "ops", 10),
              ("properties", {"extensions": [".properties"]}, "ops", 0),
              # measured 2026-11-06 on an extension manifest: with the ops prompt's npm line gpt-oss-20b names more
              # than with the fallback (mean 36 of 45 against 25), GPT-6 Luna all of them
              ("npm", {"fileNames": ["package.json"]}, "ops", 10),
              ("ops", {"extensions": YAML_EXTENSIONS}, "ops", 0))
+# Files that hold credentials never reach a model: the secrets rule of the self-test and the examples,
+# at the highest priority, so no other rule takes them.
+SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _or(
+    {"fileNames": [".env", ".env.*", "*.tfvars", "*.pkrvars.hcl", "*.tfstate", "*.tfstate.backup",
+                   "settings-security.xml", "*.pem", "*.key", "id_rsa*", "id_ed25519*"]},
+    # Maven's settings.xml (server passwords) by its root element, not an Android res/xml/settings.xml
+    _and({"fileNames": ["settings.xml"]}, {"contentMatches": r"<settings[\s>]"}),
+    # named for a vault, secrets or credentials, but not a CI workflow or action, a Helm chart's template
+    # or a Kubernetes manifest of another kind than Secret
+    _and({"fileNames": ["vault*.{yml,yaml}",
+                        "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env,hcl}"]},
+         {"not": _or({"pathGlob": "**/.github/**"},
+                     _and({"pathGlob": "**/templates/**"}, {"contentMatches": r"\{\{"}),
+                     _and({"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"},
+                          {"not": {"contentMatches": r"(?m)^kind:[ \t]*[\"']?Secret\b"}}))}))}
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 WORK_MARKER = ".srcmorph-benchmark-work"
 OVERSIZE = ("fail", "sample", "mapReduce", "sampleChunks", "deterministic")
@@ -280,6 +296,8 @@ def file_rules(profile, key, facts=False, oversize=None, max_chunks=None, java_p
                 rule["maxChunks"] = max_chunks
             if oversize in ("mapReduce", "sampleChunks"):
                 rule.update(chunk_prompts(profile))
+    # a skip rule needs no prompt, model or strategy
+    rules.insert(0, json.loads(json.dumps(SECRETS_RULE)))
     return rules
 
 
@@ -329,6 +347,8 @@ def profile_hashes(profile, rules):
     """The SHA-256 of every prompt and fact file a rule names (profile/<key>.md, profile/<key>.tsv)."""
     hashes = {}
     for rule in rules:
+        if rule.get("skip"):
+            continue
         named = [rule["promptKey"] + ".md", rule.get("factsKey", "") and rule["factsKey"] + ".tsv"]
         named += [rule[field] + ".md" for field in CHUNK_PROMPT_KEYS if field in rule]
         for name in named:
