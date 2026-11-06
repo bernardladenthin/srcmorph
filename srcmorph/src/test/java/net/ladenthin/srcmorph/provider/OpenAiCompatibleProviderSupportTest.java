@@ -738,6 +738,9 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(
                 OpenAiCompatibleProviderSupport.malformedProblem("no url"), is("its baseUrl is not a URL: 'no url'"));
         assertThat(OpenAiCompatibleProviderSupport.malformedProblem("no url@x"), containsString("'***'"));
+        // an @ and a scheme separator at the very start: the bounds of the two searches
+        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("@x"), containsString("not a URL: '***'"));
+        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("://a@b"), containsString("not a URL: '://***'"));
         assertThat(
                 OpenAiCompatibleProviderSupport.malformedProblem("https:///v1"),
                 is("its baseUrl is not a URL: 'https:///v1'"));

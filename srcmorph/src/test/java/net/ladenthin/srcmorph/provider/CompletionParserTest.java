@@ -260,6 +260,33 @@ public class CompletionParserTest {
     }
 
     @Test
+    public void parseCompletion_tagAfterASpaceAtALineEndWithoutALead_isKept() throws Exception {
+        // arrange: no lead before, so only the character before the tag tells it from reasoning
+        final String response = "Closing marker: </think>\nThe rest.";
+
+        // act, assert
+        assertThat(new CompletionParser().parseCompletion(response), is(response));
+    }
+
+    @Test
+    public void parseCompletion_tagAfterAQuoteAtALineEndWithoutALead_isKept() throws Exception {
+        // arrange: the first of the characters that mark a named tag, with no lead before
+        final String response = "It strips \"</think>\nThe rest.";
+
+        // act, assert
+        assertThat(new CompletionParser().parseCompletion(response), is(response));
+    }
+
+    @Test
+    public void parseCompletion_gluedTagFollowedByTextWithoutALead_isKept() throws Exception {
+        // arrange: glued to a word, but the line goes on
+        final String response = "It strips x</think> tags.\nThe rest.";
+
+        // act, assert
+        assertThat(new CompletionParser().parseCompletion(response), is(response));
+    }
+
+    @Test
     public void parseCompletion_gluedTagAfterTheLead_isKept() throws Exception {
         // arrange: an answer that names the tag glued to a list item's label
         final String response = "> Strips a template-opened reasoning block.\n\n- End marker:</think>\n- The rest.";

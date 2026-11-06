@@ -173,10 +173,10 @@ public class LlamaCppJniGenerationProviderTest {
 
         try (LlamaCppJniGenerationProvider provider = new LlamaCppJniGenerationProvider(missing, promptSupport)) {
             // act
-            final IllegalStateException first =
-                    assertThrows(IllegalStateException.class, () -> provider.generate(request("class A {}")));
-            final IllegalStateException second =
-                    assertThrows(IllegalStateException.class, () -> provider.generate(request("class B {}")));
+            final GenerationRequest a = request("class A {}");
+            final GenerationRequest b = request("class B {}");
+            final IllegalStateException first = assertThrows(IllegalStateException.class, () -> provider.generate(a));
+            final IllegalStateException second = assertThrows(IllegalStateException.class, () -> provider.generate(b));
 
             // assert: the second call is not a second load, it is the first one's failure
             assertThat(first.getMessage(), containsString("missing.gguf"));
