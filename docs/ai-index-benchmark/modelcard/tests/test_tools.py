@@ -6,8 +6,10 @@
 Run from the repository root: python -m unittest discover -s docs/ai-index-benchmark/modelcard/tests
 """
 import argparse
+import http.client
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -378,6 +380,94 @@ class SearchTest(unittest.TestCase):
             with self.assertRaises(IOError):
                 search.post_with_backoff(object(), sleeps.append)
 
+    def test_backoff_retriesANonJsonOrTruncatedAnswer(self):
+        def answer(text):
+            response = mock.MagicMock()
+            response.__enter__.return_value = io.StringIO(text)
+            return response
+
+        truncated = mock.MagicMock()
+        truncated.__enter__.return_value.read.side_effect = http.client.IncompleteRead(b'{"choi')
+        sleeps = []
+        with mock.patch.object(search.urllib.request, "urlopen",
+                               side_effect=[answer("<html>Bad gateway</html>"), truncated, answer('{"choices": ['),
+                                            answer('{"choices": []}')]):
+            self.assertEqual(search.post_with_backoff(object(), sleeps.append), {"choices": []})
+        self.assertEqual(sleeps, [2, 4, 8])
+
+        with mock.patch.object(search.urllib.request, "urlopen",
+                               side_effect=[answer("not json") for _ in range(search.RETRIES)]):
+            with self.assertRaises(ValueError):
+                search.post_with_backoff(object(), sleeps.append)
+
+    @staticmethod
+    def reply(content, usage=None):
+        return {"choices": [{"message": {"content": content}}], "usage": usage}
+
+    @staticmethod
+    def ask(cache, replies):
+        """A reader's answer to one question over the given cache, its requests and its cost."""
+        with mock.patch.dict(os.environ, {"OPENROUTER_API_KEY": "k"}), \
+                mock.patch.object(search, "post_with_backoff", side_effect=replies) as post:
+            reader = search.Reader("m", cache)
+            return reader.ask("ctx", "q"), post.call_count, reader.cost
+
+    def test_ask_anEmptyReply_isAskedAgain_andNeverCached(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache.jsonl"
+
+            answer, calls, _ = self.ask(cache, [self.reply(""), self.reply('{"files": ["a"]}')])
+            cached, cached_calls, _ = self.ask(cache, [])
+            empty, empty_calls, _ = self.ask(Path(tmp) / "empty.jsonl", [self.reply("  ")] * search.RETRIES)
+
+            self.assertEqual((answer, calls), ('{"files": ["a"]}', 2))
+            self.assertEqual((cached, cached_calls), ('{"files": ["a"]}', 0))
+            self.assertEqual((empty, empty_calls), ("", search.RETRIES))
+            self.assertFalse((Path(tmp) / "empty.jsonl").exists())
+
+    def test_ask_anEmptyAnswerAnOlderRunCached_isAskedAgain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache.jsonl"
+            cache.write_text(json.dumps({"id": search.cache_key("m", "ctx", "q"), "answer": ""}) + "\n",
+                             encoding="utf-8")
+
+            answer, calls, _ = self.ask(cache, [self.reply("x")])
+
+        self.assertEqual((answer, calls), ("x", 1))
+
+    def test_ask_aNullUsageOrCost_stillCachesThePaidAnswer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache.jsonl"
+
+            answer, _, cost = self.ask(cache, [self.reply("x", usage=None)])
+            cached = self.ask(cache, [])[:2]
+            priced, _, priced_cost = self.ask(Path(tmp) / "priced.jsonl", [self.reply("y", {"cost": 0.25})])
+            unpriced, _, unpriced_cost = self.ask(Path(tmp) / "unpriced.jsonl", [self.reply("z", {"cost": None})])
+
+        self.assertEqual((answer, cost), ("x", 0.0))
+        self.assertEqual(cached, ("x", 0))
+        self.assertEqual((priced, priced_cost), ("y", 0.25))
+        self.assertEqual((unpriced, unpriced_cost), ("z", 0.0))
+
+    def test_theCardsScores_withoutTheReaderOrWithAnotherOut_isRefused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for extra in (["--no-reader"], ["--out", tmp], ["--scores", str(HERE / "scores"), "--no-reader"]):
+                with self.subTest(extra=extra):
+                    result = subprocess.run([sys.executable, str(HERE / "search.py"), "--work", tmp] + extra,
+                                            capture_output=True, text=True, cwd=tmp)
+
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn("--scores", result.stderr)
+
+    def test_theCardsRun_orAnotherScoresDirectory_isNotRefused(self):
+        parser = argparse.ArgumentParser()
+        for out, scores, no_reader in ((search.DEFAULT_OUT, search.DEFAULT_SCORES, False),
+                                       (search.DEFAULT_OUT, "elsewhere", True),
+                                       ("other", "elsewhere", False)):
+            with self.subTest(out=out, scores=scores, no_reader=no_reader):
+                search.refuse_replacing_the_cards_scores(
+                    parser, argparse.Namespace(out=str(out), scores=str(scores), no_reader=no_reader))
+
 
 class LargeTest(unittest.TestCase):
 
@@ -519,14 +609,17 @@ class CutOffTest(unittest.TestCase):
 class RunModelTest(unittest.TestCase):
     """run_model's phases against a stand-in for the CLI: no Java, no model."""
 
-    def run_phases(self, failures):
-        """The phases run_model starts when the CLI fails the given phases with the given log text."""
+    def run_phases(self, failures, model=None, envs=None):
+        """The phases run_model starts when the CLI fails the given phases with the given log text (for a
+        local model unless one is given; the CLI's environment of every phase goes to envs)."""
         started = []
 
         def fake_run(command, stdout=None, **kwargs):
             if command[-1].endswith(".json") and "-cp" in command:
                 phase = Path(command[-1]).stem[len("config_"):]
                 started.append(phase)
+                if envs is not None:
+                    envs.append(kwargs.get("env"))
                 text = failures.get(phase)
                 stdout.write(text or "done\n")
                 return subprocess.CompletedProcess(command, 1 if text else 0)
@@ -541,7 +634,7 @@ class RunModelTest(unittest.TestCase):
                 java_prompt=run.JAVA_PROMPT, out=str(tmp / "out"), parts="", work=str(tmp / "work"),
                 cp=str(tmp / "cp.txt"), prepend="", java="java", corpus="", commit=run.JAVA_COMMIT,
                 profile="v3", meta=str(tmp / "meta"))
-            model = next(m for m in MODELS["models"] if m["backend"] == "local")
+            model = model or next(m for m in MODELS["models"] if m["backend"] == "local")
             with mock.patch.object(run.subprocess, "run", side_effect=fake_run), \
                     mock.patch("sys.stdout", new_callable=io.StringIO):
                 meta = run.run_model(options, MODELS, run.PROFILES / "v3", model)
@@ -560,6 +653,29 @@ class RunModelTest(unittest.TestCase):
 
         self.assertEqual(started, ["GenerateFileIndex", "AggregatePackages"])
         self.assertEqual(after_files, list(run.PHASES))
+
+    def test_theCli_getsOnlyTheApiKeyItsOwnModelNames(self):
+        keys = {"OPENROUTER_API_KEY": "o", "HF_TOKEN": "h", "COPILOT_GATEWAY_API_KEY": "c"}
+        copilot = next(m for m in MODELS["models"] if m["backend"] == "copilot")
+        for model, expected in ((copilot, {"COPILOT_GATEWAY_API_KEY": "c"}), (None, {})):
+            with self.subTest(model=model and model["key"]):
+                envs = []
+                with mock.patch.dict(os.environ, {**keys, "KEEP_ME": "1"}):
+                    self.run_phases({}, model, envs)
+
+                self.assertEqual(len(envs), len(run.PHASES))
+                for env in envs:
+                    self.assertEqual({k: v for k, v in env.items() if k in keys}, expected)
+                    self.assertEqual(env.get("KEEP_ME"), "1")
+
+    def test_theCliEnvironment_dropsEveryKeyVariableTheModelsName_butTheModelsOwn(self):
+        models = {"common": {}, "backends": {"a": {"apiKeyEnv": "A_KEY"}, "b": {"apiKeyEnv": "B_KEY"}, "c": {}},
+                  "models": [{"key": "x", "backend": "a", "settings": {"apiKeyEnv": "X_KEY"}}]}
+        environ = {"A_KEY": "a", "B_KEY": "b", "X_KEY": "x", "OPENROUTER_API_KEY": "o", "HF_TOKEN": "h", "PATH": "p"}
+
+        self.assertEqual(run.cli_environment(environ, models, {"apiKeyEnv": "B_KEY"}), {"B_KEY": "b", "PATH": "p"})
+        self.assertEqual(run.cli_environment(environ, models, {"apiKeyEnv": "X_KEY"}), {"X_KEY": "x", "PATH": "p"})
+        self.assertEqual(run.cli_environment(environ, models, {}), {"PATH": "p"})
 
 
 class ReportTest(unittest.TestCase):

@@ -14,8 +14,9 @@ repository's profiles/ directory (--profile, default v3, the current one), passe
 profileDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
 .ai.md tree goes to <out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
 
-API keys are never read from a file here: the caller puts OPENROUTER_API_KEY / HF_TOKEN into the
-environment, and a model only receives the variable its backend names.
+API keys are never read from a file here: the caller puts OPENROUTER_API_KEY / HF_TOKEN /
+COPILOT_GATEWAY_API_KEY into the environment, and a model only receives the variable its own
+definition names (every other apiKeyEnv of models.json is dropped from the CLI's environment).
 
 Usage:
   python run.py --cp <classpath file> --java <java executable> --models gpt-6-luna,gemma-4-31b
@@ -501,6 +502,18 @@ def clear_out(out_dir, suffix=".ai.md"):
     shutil.rmtree(out_dir)
 
 
+def cli_environment(environ, models, definition):
+    """The CLI's environment: every API key variable models.json names (common, backends, a model's
+    settings) is dropped but the one the model's own definition names."""
+    keys = {"OPENROUTER_API_KEY", "HF_TOKEN", models.get("common", {}).get("apiKeyEnv")}
+    keys |= {backend.get("apiKeyEnv") for backend in models["backends"].values()}
+    keys |= {m.get("settings", {}).get("apiKeyEnv") for m in models["models"]}
+    env = {k: v for k, v in environ.items() if k not in keys}
+    if definition.get("apiKeyEnv"):
+        env[definition["apiKeyEnv"]] = environ.get(definition["apiKeyEnv"], "")
+    return env
+
+
 def run_model(args, models, profile, model):
     key = model["key"]
     definition = ai_definition(models, model, args.model_dir, args.seed, args.chars_per_token)
@@ -514,9 +527,7 @@ def run_model(args, models, profile, model):
     classpath = Path(args.cp).read_text(encoding="utf-8").strip()
     if args.prepend:
         classpath = args.prepend + os.pathsep + classpath
-    env = {k: v for k, v in os.environ.items() if k not in ("OPENROUTER_API_KEY", "HF_TOKEN")}
-    if definition.get("apiKeyEnv"):
-        env[definition["apiKeyEnv"]] = os.environ.get(definition["apiKeyEnv"], "")
+    env = cli_environment(os.environ, models, definition)
 
     meta = {"key": key, "name": model["name"], "backend": model["backend"],
             # The GGUF by file name only: where the models sit on the benchmark machine is not data.
