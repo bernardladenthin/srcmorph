@@ -150,27 +150,34 @@ public final class ConditionEvaluator {
         try {
             return pattern.matcher(ReadBudget.over(head)).find();
         } catch (final ReadBudget.Exhausted e) {
-            stopped(contentMatches, context.relativePath(), head.length());
+            stopped(contentMatches, context.relativePath(), head.length(), false);
             return false;
         } catch (final StackOverflowError e) {
-            LOGGER.warn(
-                    "contentMatches '{}' overflowed the stack over the {}-character head of {}: the pattern repeats"
-                            + " a group that recurses once per repetition, so the condition does not match",
-                    contentMatches,
-                    head.length(),
-                    context.relativePath());
+            stopped(contentMatches, context.relativePath(), head.length(), true);
             return false;
         }
     }
 
     /**
-     * Logs that a {@code contentMatches} pattern ran out of its read budget.
+     * Logs that a {@code contentMatches} pattern was stopped: it ran out of its read budget or overflowed the
+     * stack.
      *
      * @param contentMatches the pattern
      * @param relativePath   the file
      * @param length         the characters of its head
+     * @param overflowed     whether it overflowed the stack rather than ran out of its read budget
      */
-    private static void stopped(final String contentMatches, final String relativePath, final int length) {
+    private static void stopped(
+            final String contentMatches, final String relativePath, final int length, final boolean overflowed) {
+        if (overflowed) {
+            LOGGER.warn(
+                    "contentMatches '{}' overflowed the stack over the {}-character head of {}: the pattern repeats"
+                            + " a group that recurses once per repetition, so the condition does not match",
+                    contentMatches,
+                    length,
+                    relativePath);
+            return;
+        }
         LOGGER.warn(
                 "contentMatches '{}' stopped after reading {} characters of the {}-character head of {}: the"
                         + " pattern backtracks too far, so the condition does not match",

@@ -231,10 +231,10 @@ public final class FactExtractor {
                     last = matcher.end();
                 }
             } catch (final ReadBudget.Exhausted e) {
-                stopped(String.valueOf(counter.getLabel()), true, text);
+                stopped(String.valueOf(counter.getLabel()), true, text, false);
                 continue;
             } catch (final StackOverflowError e) {
-                overflowed(String.valueOf(counter.getLabel()), true, text);
+                stopped(String.valueOf(counter.getLabel()), true, text, true);
                 continue;
             }
             text = blanked.append(text, last, text.length()).toString();
@@ -299,10 +299,10 @@ public final class FactExtractor {
             }
             return names.size();
         } catch (final ReadBudget.Exhausted e) {
-            stopped(label, false, text);
+            stopped(label, false, text, false);
             return null;
         } catch (final StackOverflowError e) {
-            overflowed(label, false, text);
+            stopped(label, false, text, true);
             return null;
         }
     }
@@ -319,37 +319,32 @@ public final class FactExtractor {
     }
 
     /**
-     * Logs that a counter's pattern ran out of its time limit.
+     * Logs that a counter's pattern was stopped: it ran out of its time limit or overflowed the stack.
      *
-     * @param label  the counter's label
-     * @param ignore whether it is an ignore counter
-     * @param text   the text it read
+     * @param label      the counter's label
+     * @param ignore     whether it is an ignore counter
+     * @param text       the text it read
+     * @param overflowed whether it overflowed the stack rather than ran out of its time limit
      */
-    private static void stopped(final String label, final boolean ignore, final String text) {
+    private static void stopped(final String label, final boolean ignore, final String text, final boolean overflowed) {
         final int length = text.length();
+        final String outcome = ignore ? "not blanked" : "left out of the facts";
+        if (overflowed) {
+            LOGGER.warn(
+                    "Fact counter '{}' overflowed the stack over a {}-character source: its pattern repeats a group"
+                            + " that recurses once per repetition, so it is {}",
+                    label,
+                    length,
+                    outcome);
+            return;
+        }
         LOGGER.warn(
                 "Fact counter '{}' stopped after reading {} characters of a {}-character source: its pattern"
                         + " backtracks too far, so it is {}",
                 label,
                 ReadBudget.limit(length),
                 length,
-                ignore ? "not blanked" : "left out of the facts");
-    }
-
-    /**
-     * Logs that a counter's pattern overflowed the stack.
-     *
-     * @param label  the counter's label
-     * @param ignore whether it is an ignore counter
-     * @param text   the text it read
-     */
-    private static void overflowed(final String label, final boolean ignore, final String text) {
-        LOGGER.warn(
-                "Fact counter '{}' overflowed the stack over a {}-character source: its pattern repeats a group"
-                        + " that recurses once per repetition, so it is {}",
-                label,
-                text.length(),
-                ignore ? "not blanked" : "left out of the facts");
+                outcome);
     }
 
     /**
