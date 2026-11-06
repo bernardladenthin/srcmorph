@@ -67,7 +67,7 @@ public final class ModelListReport {
      * @param filter   the filter the models were chosen with, blank for none
      * @param listings one listing per server
      */
-    public ModelListReport(final String filter, final Collection<Listing> listings) {
+    ModelListReport(final String filter, final Collection<Listing> listings) {
         this.filter = Objects.requireNonNull(filter, "filter");
         this.listings = new ArrayList<>(listings);
     }
@@ -77,7 +77,7 @@ public final class ModelListReport {
      *
      * @return an unmodifiable view of the listings
      */
-    public List<Listing> listings() {
+    List<Listing> listings() {
         return Collections.unmodifiableList(listings);
     }
 
@@ -235,7 +235,7 @@ public final class ModelListReport {
      */
     @ToString
     @EqualsAndHashCode
-    public static final class Listing {
+    static final class Listing {
         private final String key;
         private final String baseUrl;
         private final String apiKeyEnv;
@@ -288,7 +288,7 @@ public final class ModelListReport {
          *
          * @return the key
          */
-        public String key() {
+        String key() {
             return key;
         }
 
@@ -297,7 +297,7 @@ public final class ModelListReport {
          *
          * @return the base URL
          */
-        public String baseUrl() {
+        String baseUrl() {
             return baseUrl;
         }
 
@@ -306,7 +306,7 @@ public final class ModelListReport {
          *
          * @return the variable name, empty when the pattern sends no key
          */
-        public String apiKeyEnv() {
+        String apiKeyEnv() {
             return apiKeyEnv;
         }
 
@@ -315,7 +315,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code stream}
          */
-        public boolean stream() {
+        boolean stream() {
             return stream;
         }
 
@@ -324,7 +324,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code requestsPerMinute}; {@code 0} or less for none
          */
-        public int requestsPerMinute() {
+        int requestsPerMinute() {
             return requestsPerMinute;
         }
 
@@ -333,7 +333,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code contextSize}
          */
-        public int contextSize() {
+        int contextSize() {
             return contextSize;
         }
 
@@ -342,7 +342,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code maxOutputTokens}
          */
-        public int maxOutputTokens() {
+        int maxOutputTokens() {
             return maxOutputTokens;
         }
 
@@ -351,7 +351,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code temperature}
          */
-        public float temperature() {
+        float temperature() {
             return temperature;
         }
 
@@ -360,7 +360,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code reasoningEffort}
          */
-        public String reasoningEffort() {
+        String reasoningEffort() {
             return reasoningEffort;
         }
 
@@ -369,7 +369,7 @@ public final class ModelListReport {
          *
          * @return the count
          */
-        public int listed() {
+        int listed() {
             return listed;
         }
 
@@ -378,7 +378,7 @@ public final class ModelListReport {
          *
          * @return an unmodifiable view of the models
          */
-        public List<RemoteModel> models() {
+        List<RemoteModel> models() {
             return Collections.unmodifiableList(models);
         }
     }

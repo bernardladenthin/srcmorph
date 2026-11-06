@@ -12,8 +12,9 @@ import lombok.ToString;
 import net.ladenthin.srcmorph.indexer.CalibrationMeasurement;
 
 /**
- * The outcome of one {@link CalibrateEngine#execute()} run: one {@link ModelMeasurement} per distinct
- * routed model, in calibration order.
+ * The outcome of one {@link CalibrateEngine#execute()} run: one measurement per distinct routed model,
+ * in calibration order, read through the three renderings (the measurement type is {@code indexer}'s,
+ * which {@code module-info.java} does not export).
  *
  * <p>{@link #renderPasteBlock()} renders the paste-ready YAML {@code calibration:} block of each model,
  * which the {@code srcmorph:calibrate} goal and the CLI's {@code Calibrate} print for the model's entry
@@ -48,7 +49,7 @@ public final class CalibrationReport {
      *
      * @param measurements one measurement per distinct routed model, in calibration order
      */
-    public CalibrationReport(final List<ModelMeasurement> measurements) {
+    CalibrationReport(final List<ModelMeasurement> measurements) {
         this.measurements = new ArrayList<>(measurements);
     }
 
@@ -57,7 +58,7 @@ public final class CalibrationReport {
      *
      * @return the measurements
      */
-    public List<ModelMeasurement> measurements() {
+    List<ModelMeasurement> measurements() {
         return Collections.unmodifiableList(measurements);
     }
 
@@ -273,7 +274,7 @@ public final class CalibrationReport {
     /** One model's key paired with its {@link CalibrationMeasurement}. */
     @ToString
     @EqualsAndHashCode
-    public static final class ModelMeasurement {
+    static final class ModelMeasurement {
 
         private final String modelKey;
         private final CalibrationMeasurement measurement;
@@ -284,7 +285,7 @@ public final class CalibrationReport {
          * @param modelKey    the {@code aiDefinitionKey} that was calibrated
          * @param measurement the measurement
          */
-        public ModelMeasurement(final String modelKey, final CalibrationMeasurement measurement) {
+        ModelMeasurement(final String modelKey, final CalibrationMeasurement measurement) {
             this.modelKey = modelKey;
             this.measurement = measurement;
         }
@@ -294,7 +295,7 @@ public final class CalibrationReport {
          *
          * @return the {@code aiDefinitionKey}
          */
-        public String modelKey() {
+        String modelKey() {
             return modelKey;
         }
 
@@ -303,7 +304,7 @@ public final class CalibrationReport {
          *
          * @return the calibration measurement
          */
-        public CalibrationMeasurement measurement() {
+        CalibrationMeasurement measurement() {
             return measurement;
         }
     }

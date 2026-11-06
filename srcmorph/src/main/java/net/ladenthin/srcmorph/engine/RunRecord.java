@@ -30,7 +30,7 @@ import net.ladenthin.srcmorph.provider.GenerationUsage;
  * names one.
  */
 @ToString
-public final class RunRecord {
+final class RunRecord {
 
     /** Seconds per nanosecond. */
     private static final double NANOS_PER_SECOND = 1_000_000_000.0d;
@@ -58,7 +58,7 @@ public final class RunRecord {
      * @param generatorVersion the version recorded with it
      * @param skipped       the files the plan skipped
      */
-    public RunRecord(final String generatorVersion, final int skipped) {
+    RunRecord(final String generatorVersion, final int skipped) {
         this(generatorVersion, skipped, System::nanoTime);
     }
 
@@ -83,7 +83,7 @@ public final class RunRecord {
      * @param model the model key
      * @param nanos the load time, {@code 0} or less adds nothing
      */
-    public void addModelLoad(final String model, final long nanos) {
+    void addModelLoad(final String model, final long nanos) {
         if (nanos > 0) {
             modelLoadNanos.merge(model, nanos, Long::sum);
         }
@@ -92,7 +92,7 @@ public final class RunRecord {
     /** One routed file of the run. */
     @ToString
     @EqualsAndHashCode
-    public static final class FileRecord {
+    static final class FileRecord {
 
         private final String file;
 
@@ -125,7 +125,7 @@ public final class RunRecord {
          * @param promptHash the CRC32 of the prompt text
          * @param factsHash  the CRC32 of the fact counters, empty without facts
          */
-        public FileRecord(
+        FileRecord(
                 final String file,
                 final String rule,
                 final String promptKey,
@@ -151,7 +151,7 @@ public final class RunRecord {
          *
          * @return the relative path
          */
-        public String file() {
+        String file() {
             return file;
         }
 
@@ -160,7 +160,7 @@ public final class RunRecord {
          *
          * @return the outcome
          */
-        public IndexOutcome outcome() {
+        IndexOutcome outcome() {
             return outcome;
         }
 
@@ -169,7 +169,7 @@ public final class RunRecord {
          *
          * @return the usage
          */
-        public GenerationUsage usage() {
+        GenerationUsage usage() {
             return usage;
         }
     }
@@ -179,7 +179,7 @@ public final class RunRecord {
      *
      * @param entry the file's entry
      */
-    public void add(final FileRecord entry) {
+    void add(final FileRecord entry) {
         entries.add(entry);
     }
 
@@ -188,7 +188,7 @@ public final class RunRecord {
      *
      * @return an unmodifiable view
      */
-    public List<FileRecord> entries() {
+    List<FileRecord> entries() {
         return Collections.unmodifiableList(entries);
     }
 
@@ -267,7 +267,7 @@ public final class RunRecord {
      * @param file the record file
      * @throws IOException if it cannot be written
      */
-    public void write(final Path file) throws IOException {
+    void write(final Path file) throws IOException {
         final Path parent = file.toAbsolutePath().getParent();
         if (parent != null) {
             Files.createDirectories(parent);

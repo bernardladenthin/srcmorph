@@ -190,7 +190,10 @@ above), `layeredArchitecture` (`engine` on top → `indexer` (with `indexer.gene
 set of layers that use it), `generationDoesNotKnowTheWalkers`, `noPackageCycles`, `loggersArePrivateStaticFinal`, `noSystemExit`,
 `noTestFrameworksInProduction`, `noJavaUtilLogging`, `noSystemOutOrErrInProduction`,
 `noInternalJdkImports`, `noPublicMutableFields`, `noNewRandom`, `noThreadSleep`,
-`jniConfinedToProvider` (only the `provider` package may touch the llama.cpp JNI binding).
+`jniConfinedToProvider` (only the `provider` package may touch the llama.cpp JNI binding),
+`exportedApiNamesNoInternalType` (no public signature of `config` or `engine`, the packages
+`module-info.java` exports, names a type of another package of the library: a module-path consumer
+could not use it).
 
 **Test suite** (`srcmorph/src/test/java/net/ladenthin/srcmorph/`, package-renamed 1:1 with production):
 ~110 test classes, incl. jqwik properties, an ArchUnit suite, a Lincheck race test
@@ -679,6 +682,10 @@ mojos are on their gates.
 
 ## JPMS Module Descriptor
 
+The core's `module-info.java` exports `config` and `engine` only (and `support` to the CLI alone);
+the other packages are the implementation, and `exportedApiNamesNoInternalType` keeps their types out
+of the exported signatures, so a result an engine returns is read through its own methods (the
+reports' renderings), not through an `indexer` or `provider` type.
 Each module ships a `module-info.java` compiled in a separate `release 9` execution, and each module's
 Javadoc runs in **classpath mode** (`<source>` resolves to `8`), which is the *only* thing keeping it
 clear of the JPMS module-mode javadoc trap that bit BAF. **Before raising the Java / javadoc source

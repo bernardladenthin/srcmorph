@@ -542,6 +542,12 @@ SPDX-License-Identifier: Apache-2.0
                                 <arg>-XDcompilePolicy=simple</arg>
                                 <arg>--should-stop=ifError=FLOW</arg>
                                 <arg>-Xplugin:ErrorProne -Xep:NullAway:OFF -Xep:GuardedBy:OFF -Xep:IdentityBinaryExpression:OFF</arg>
+                                <!-- The tests compare the header's G with GeneratorVersion (support). The
+                                     core's module-info.java exports support to the CLI alone; the tests
+                                     compile in module mode (main has a module-info) and run on the
+                                     classpath (useModulePath=false), so only the compiler needs this. -->
+                                <arg>--add-exports</arg>
+                                <arg>net.ladenthin.srcmorph/net.ladenthin.srcmorph.support=net.ladenthin.maven.srcmorph</arg>
                             </compilerArgs>
                             <annotationProcessorPaths combine.children="append">
                                 <path>

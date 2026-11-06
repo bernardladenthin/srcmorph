@@ -137,6 +137,14 @@ The entries below hold the details; what a 1.4.0 user changes:
   `AiSourceChunker` `SourceChunker`, `AiTokenWindow` `TokenWindow`, `AiProgressBar` `ProgressBar`.
   `ModelRegistry.getConfig` is `definition`, `AiMdRewritePolicy.shouldWrite` is `shouldRewrite`,
   `ProviderConfigFactory.fromGenerationConfig` is `from`.
+- **Module-path consumers of the library see `config` and `engine` only**: `module-info.java` exports
+  those two (and `support` to the CLI alone), no longer `document`, `facts`, `indexer`,
+  `indexer.generation`, `prompt`, `provider` and `routing`. The engines' results name none of their
+  types: `CalibrationReport` is read through its three renderings (its constructor, `measurements()`
+  and `ModelMeasurement` are package-private), `ModelListReport` through `render()` (its constructor,
+  `listings()` and `Listing` likewise), and `RunRecord`, which no engine returns, is package-private;
+  `CoreArchitectureTest#exportedApiNamesNoInternalType` keeps it that way. On the classpath (the CLI,
+  the plugin, a Java 8 consumer) nothing changes but these visibilities.
 
 ### Added
 

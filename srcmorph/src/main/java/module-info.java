@@ -5,16 +5,17 @@
 /**
  * JPMS module descriptor for the srcmorph core library.
  *
- * <p>The module exports its ten framework-free packages: {@code config}, {@code document},
- * {@code engine}, {@code facts}, {@code indexer}, {@code indexer.generation}, {@code prompt},
- * {@code provider}, {@code routing} and {@code support}. These hold the configuration model (incl.
- * the shared root {@code SrcMorphConfiguration}), the {@code .ai.md} document codec, the per-phase
- * orchestration engines, the fact counters, the file/package/project indexers, the generation of
- * one summary body, the prompt templating support, the AI generation provider abstraction (incl.
- * the llama.cpp JNI binding), the rule routing, and the shared stateless helpers. The Maven plugin module
- * ({@code net.ladenthin.maven.srcmorph}, in its own reactor module {@code srcmorph-maven-plugin})
- * depends on this module and supplies only the {@code mojo} entry points, which now delegate to the
- * {@code engine} package.</p>
+ * <p>The module exports two packages, the API of the CLI, the Maven plugin and any embedder:
+ * {@code config} (the configuration model, incl. the shared root {@code SrcMorphConfiguration}, and
+ * its file loader) and {@code engine} (one engine per phase, their results and
+ * {@code SrcMorphException}). {@code support} goes to the CLI alone, which masks a URL's user info
+ * with it. The other packages are the implementation: the {@code .ai.md} document codec, the fact
+ * counters, the file/package/project indexers, the generation of one summary body, the prompt
+ * templating, the AI generation providers (incl. the llama.cpp JNI binding) and the rule routing.
+ * {@code CoreArchitectureTest#exportedApiNamesNoInternalType} keeps their types out of every public
+ * signature of the two exported packages. The Maven plugin module ({@code net.ladenthin.maven.srcmorph},
+ * in its own reactor module {@code srcmorph-maven-plugin}) depends on this module and supplies only
+ * the {@code mojo} entry points, which delegate to the {@code engine} package.</p>
  *
  * <p>JSpecify {@code @NullMarked} is declared at the module level here so that no source
  * file compiled at {@code --release 8} references the JSpecify annotation type directly.
@@ -75,13 +76,8 @@ module net.ladenthin.srcmorph {
     requires com.fasterxml.jackson.dataformat.yaml;
 
     exports net.ladenthin.srcmorph.config;
-    exports net.ladenthin.srcmorph.document;
     exports net.ladenthin.srcmorph.engine;
-    exports net.ladenthin.srcmorph.facts;
-    exports net.ladenthin.srcmorph.indexer;
-    exports net.ladenthin.srcmorph.indexer.generation;
-    exports net.ladenthin.srcmorph.prompt;
-    exports net.ladenthin.srcmorph.provider;
-    exports net.ladenthin.srcmorph.routing;
-    exports net.ladenthin.srcmorph.support;
+    // The CLI masks a URL's user info in its configuration echo (UrlUserInfo).
+    exports net.ladenthin.srcmorph.support to
+            net.ladenthin.srcmorph.cli;
 }
