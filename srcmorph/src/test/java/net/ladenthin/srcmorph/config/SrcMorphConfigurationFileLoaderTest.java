@@ -100,7 +100,9 @@ public class SrcMorphConfigurationFileLoaderTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"srcmorph.json", "srcmorph.yaml"})
     public void load_aByteOrderMark_isNotPartOfTheText(final String name) throws IOException {
-        // arrange: what Windows PowerShell 5.1's Out-File -Encoding utf8 writes
+        // arrange: what Windows PowerShell 5.1's Out-File -Encoding utf8 writes. Only the JSON case guards the
+        // loader's own handling of the mark: SnakeYAML skips a leading U+FEFF itself, so the YAML case passed
+        // before it too; it stays as the statement that both formats read such a file
         final String text = name.endsWith(".json") ? "{\"srcMorph\": {\"force\": true}}" : "srcMorph:\n  force: true\n";
         final byte[] body = text.getBytes(StandardCharsets.UTF_8);
         final byte[] bytes = new byte[body.length + 3];
