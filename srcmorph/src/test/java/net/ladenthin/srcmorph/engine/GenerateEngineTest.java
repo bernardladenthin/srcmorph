@@ -1119,6 +1119,28 @@ public class GenerateEngineTest {
     }
 
     @Test
+    public void execute_subtreesListedOutOfPathOrder_summarizesTheFilesInPathOrder() throws Exception {
+        // arrange: the second subtree's file sorts before the first one's
+        final SrcMorphConfiguration config = baseConfig();
+        Files.createDirectories(tempDir.resolve("src/extra/java/com/example"));
+        Files.write(
+                tempDir.resolve("src/extra/java/com/example/Zed.java"),
+                "class Zed {}\n".getBytes(StandardCharsets.UTF_8));
+        config.setSubtrees(Arrays.asList("src/main/java", "src/extra/java"));
+        final Path recordFile = tempDir.resolve("run.json");
+        config.setRunRecordFile(recordFile.toFile());
+
+        // act
+        new GenerateEngine(config).execute();
+
+        // assert: the whole plan in path order, not one subtree after the other
+        final JsonNode files = new ObjectMapper().readTree(recordFile.toFile()).get("files");
+        assertThat(files.size(), is(2));
+        assertThat(files.get(0).get("file").asText(), is("src/extra/java/com/example/Zed.java"));
+        assertThat(files.get(1).get("file").asText(), is("src/main/java/com/example/Foo.java"));
+    }
+
+    @Test
     public void execute_aChangedPromptWithItsSwitchOff_theRecordShowsThePromptThatWroteIt() throws Exception {
         // arrange
         final SrcMorphConfiguration config = baseConfig();

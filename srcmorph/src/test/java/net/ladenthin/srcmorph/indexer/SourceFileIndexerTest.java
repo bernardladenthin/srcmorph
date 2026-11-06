@@ -139,12 +139,16 @@ public class SourceFileIndexerTest {
 
     @Test
     public void collectCandidates_filesInSeveralDirectories_returnsThemSortedByPath() throws Exception {
-        // arrange: written in an order no file system sorts by
+        // arrange: written in an order no file system sorts by, with names a file system lists in another
+        // order than the path sort: NTFS lists a.java before Bar.java (it ignores the case), and a walk takes
+        // example/ before example-x/ (the sort puts '-' before '/')
         final Path temp = Files.createTempDirectory("ai-index-test");
         final Path sourceRoot = temp.resolve("src/main/java");
         writeJava(sourceRoot.resolve("com/example/z/Zed.java"), "class Zed {}\n");
+        writeJava(sourceRoot.resolve("com/example/a.java"), "class a {}\n");
         writeJava(sourceRoot.resolve("com/example/Foo.java"), "class Foo {}\n");
         writeJava(sourceRoot.resolve("com/example/Bar.java"), "class Bar {}\n");
+        writeJava(sourceRoot.resolve("com/example-x/X.java"), "class X {}\n");
         writeJava(sourceRoot.resolve("com/a/Last.java"), "class Last {}\n");
 
         // act
@@ -159,7 +163,12 @@ public class SourceFileIndexerTest {
         assertThat(
                 names,
                 is(equalTo(Arrays.asList(
-                        "com/a/Last.java", "com/example/Bar.java", "com/example/Foo.java", "com/example/z/Zed.java"))));
+                        "com/a/Last.java",
+                        "com/example-x/X.java",
+                        "com/example/Bar.java",
+                        "com/example/Foo.java",
+                        "com/example/a.java",
+                        "com/example/z/Zed.java"))));
     }
 
     @Test

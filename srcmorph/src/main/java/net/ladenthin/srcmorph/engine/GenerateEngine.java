@@ -168,6 +168,8 @@ public final class GenerateEngine {
             }
             candidates.addAll(fileIndexer.collectCandidates(subtree));
         }
+        // the whole plan in path order, not one subtree after the other
+        SourceFileIndexer.sortByPath(candidates);
 
         // 2. Plan the run: which model + prompt each file gets (or skip / unmatched), and whether
         //    each file fits its routed model's context window (computed up front, same threshold the

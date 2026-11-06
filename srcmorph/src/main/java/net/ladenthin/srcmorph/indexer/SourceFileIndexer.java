@@ -70,6 +70,9 @@ public final class SourceFileIndexer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourceFileIndexer.class);
 
+    /** The order of the candidates: by {@link #sortKey(Path)}, their path with {@code /} separators. */
+    private static final Comparator<Path> BY_PATH = Comparator.comparing(SourceFileIndexer::sortKey);
+
     /**
      * Context-type label passed to {@link SummaryGenerator} so that trim-warning
      * log messages read "Trimmed AI input for file field '…'".
@@ -195,6 +198,17 @@ public final class SourceFileIndexer {
     }
 
     /**
+     * Sorts the candidates of several source roots into one list by their path with {@code /} separators
+     * (as {@link #collectCandidates(Path)} sorts one root's), so the plan and the run take the files in path
+     * order, not one root after the other in the order they are configured.
+     *
+     * @param candidates the candidates, sorted in place
+     */
+    public static void sortByPath(final List<Path> candidates) {
+        candidates.sort(BY_PATH);
+    }
+
+    /**
      * Returns every file beneath {@code sourceRoot} that passes the extension, subtree, exclude and
      * size-band filters — the candidate set for routing. A file without an extension that matches no
      * extension or name is a candidate when its {@code #!} line names one of the interpreters; that line
@@ -211,7 +225,7 @@ public final class SourceFileIndexer {
         final List<Path> candidates = new ArrayList<>();
         try (Stream<Path> stream = Files.walk(sourceRoot)) {
             for (final Path path : compatibilityHelper.toList(
-                    stream.filter(Files::isRegularFile).sorted(Comparator.comparing(SourceFileIndexer::sortKey)))) {
+                    stream.filter(Files::isRegularFile).sorted(BY_PATH))) {
                 final boolean byName = matchesExtension(path);
                 if (!byName && !mayNameAnInterpreter(path)) {
                     continue;
