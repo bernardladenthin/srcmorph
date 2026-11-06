@@ -395,6 +395,27 @@ public class JvmFactPatternsTest {
         assertThat(count(JAVA_EE, "security annotations", JAVA_EE_SOURCE), is(1));
     }
 
+    /**
+     * A bare {@code @Singleton} is an EJB only when the file imports {@code javax.ejb.Singleton} or
+     * {@code jakarta.ejb.Singleton}; CDI's, Guice's and Dagger's are written the same. An EJB is a
+     * top-level class, one a file, so the import counts it.
+     */
+    @Test
+    public void javaEe_bareSingleton_countsThroughTheEjbImportOnly() {
+        // arrange
+        final String ejb = "import jakarta.ejb.Singleton;\nimport jakarta.ejb.Startup;\n\n"
+                + "@Startup\n@Singleton\npublic class Boot {}\n";
+        final String cdi = "import javax.inject.Singleton;\n\n@Singleton\npublic class Cache {}\n";
+        final String guice = "import com.google.inject.Singleton;\n\n@Singleton\nclass Module {}\n";
+        final String qualified = "@javax.ejb.Singleton\n@jakarta.inject.Singleton\nclass Both {}\n";
+
+        // act, assert
+        assertThat(count(JAVA_EE, "EJB session beans", ejb), is(1));
+        assertThat(count(JAVA_EE, "EJB session beans", cdi), is(0));
+        assertThat(count(JAVA_EE, "EJB session beans", guice), is(0));
+        assertThat(count(JAVA_EE, "EJB session beans", qualified), is(1));
+    }
+
     @Test
     public void javaEe_schedulesContainer_countsItsTimersAndNotTheContainer() {
         // arrange

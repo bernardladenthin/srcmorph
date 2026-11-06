@@ -10,13 +10,15 @@
 # comments and strings first, and an annotation counts at the start of a line or after other
 # annotations on it, so an "@Stateless" in Javadoc prose or a commented-out one does not count.
 # "EJB timers" counts every @Schedule, the members of a @Schedules container too, and not the
-# container. A bare @Singleton counts as an EJB session bean, though CDI's javax.inject.Singleton and
-# jakarta.inject.Singleton are written the same: a pattern counted per match cannot read which one
-# the file imports (written with its package, @javax.inject.Singleton does not count).
+# container. An EJB singleton counts written with its package (@jakarta.ejb.Singleton) or through
+# its import (import jakarta.ejb.Singleton; or javax.ejb), which an EJB, a top-level class, has once
+# a file; a bare @Singleton does not count, since CDI's, Guice's and Dagger's are written the same
+# and a pattern counted per match cannot read which one the file imports (one imported through
+# javax.ejb.* is not seen, an unused import counts).
 # JvmFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
 # every pattern reads linearly.
 [include]	java-facts
-EJB session beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?(?:Stateless|Stateful|Singleton)\b
+EJB session beans	(?m)^[ \t]*+(?:(?:@[^\n]*?[ \t)])?@(?:(?:(?:javax|jakarta)\.ejb\.)?(?:Stateless|Stateful)|(?:javax|jakarta)\.ejb\.Singleton)\b|import[ \t]++(?:javax|jakarta)\.ejb\.Singleton[ \t]*+;)
 message-driven beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?MessageDriven\b
 JPA entities and embeddables	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.persistence\.)?(?:Entity|Embeddable|MappedSuperclass)\b
 JPA named queries	@(?:(?:javax|jakarta)\.persistence\.)?Named(?:Native|StoredProcedure)?Query\(
