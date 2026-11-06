@@ -96,7 +96,8 @@ public class CompletionParser {
      *   <li>If a chat template opened the block itself (Qwen3, DeepSeek-R1), the response holds only the
      *       closing {@link #THINK_TAG_END_MARKER}, and the trimmed text after it is returned. With no
      *       {@link #THINK_TAG_START_MARKER} before it, the first one that stands alone on its line ends the
-     *       reasoning; without such a line, the first one that ends its line glued to the reasoning's last
+     *       reasoning, unless a line before it starts like an answer's lead ({@code >}) or it stands inside
+     *       an open code fence (an odd number of fence lines before it); without such a line, the first one that ends its line glued to the reasoning's last
      *       word ({@code I will write it.</think>}), when no line before it starts like an answer (a
      *       {@code >} lead, a code fence). A tag inside a line, or after a space, a quote or a backtick (in
      *       a sentence, in quotes, after a list item's label) is text the answer or the reasoning writes
@@ -147,8 +148,8 @@ public class CompletionParser {
 
     /**
      * Finds the closing tag that ends the reasoning a chat template opened: the first one with no
-     * {@link #THINK_TAG_START_MARKER} before it that stands alone on its line, or that ends its line glued
-     * to the word before it.
+     * {@link #THINK_TAG_START_MARKER} before it that stands alone on its line outside an answer, or that
+     * ends its line glued to the word before it.
      *
      * @param text  the response, trimmed
      * @param alone {@code true} for a tag alone on its line, {@code false} for one glued to a line's end
@@ -157,7 +158,9 @@ public class CompletionParser {
     private static int injectedEnd(final String text, final boolean alone) {
         int index = text.indexOf(THINK_TAG_END_MARKER);
         while (index >= 0 && !text.substring(0, index).contains(THINK_TAG_START_MARKER)) {
-            if (alone ? aloneOnItsLine(text, index) : gluedToALineEnd(text, index)) {
+            if (alone
+                    ? aloneOnItsLine(text, index) && !inAnswer(text.substring(0, index))
+                    : gluedToALineEnd(text, index)) {
                 return index;
             }
             index = text.indexOf(THINK_TAG_END_MARKER, index + 1);
@@ -198,6 +201,28 @@ public class CompletionParser {
             }
         }
         return false;
+    }
+
+    /**
+     * Returns whether a tag alone on its line stands in an answer: after a line that starts with the lead's
+     * {@code >}, or inside a code fence the text before it opened and did not close. Reasoning may quote code
+     * in a fence it closes; a tag inside an open one is text the answer quotes.
+     *
+     * @param before the text before the tag
+     * @return {@code true} when the tag follows a lead or stands in an open fence
+     */
+    private static boolean inAnswer(final String before) {
+        boolean openFence = false;
+        for (final String line : before.split("\n", -1)) {
+            final String start = line.trim();
+            if (start.startsWith(LEAD_MARKER)) {
+                return true;
+            }
+            if (start.startsWith(FENCE) || start.startsWith(TILDE_FENCE)) {
+                openFence = !openFence;
+            }
+        }
+        return openFence;
     }
 
     private static String restOfLine(final String text, final int index) {

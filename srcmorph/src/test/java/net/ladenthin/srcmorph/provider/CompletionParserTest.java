@@ -346,5 +346,43 @@ public class CompletionParserTest {
         // act, assert
         assertThat(parser.parseCompletion("Thinking.\n</think>\r\n> The lead."), is(equalTo("> The lead.")));
     }
+
+    @Test
+    public void parseCompletion_tagAloneInAFenceAfterTheLead_isKept() throws Exception {
+        // arrange: a summary that quotes the template's tag in a fence
+        final String response = "> Parses completions.\n\n```text\n</think>\n```\nThe rest.";
+
+        // act, assert
+        assertThat(parser.parseCompletion(response), is(response));
+    }
+
+    @Test
+    public void parseCompletion_tagAloneInAnOpenFence_isKept() throws Exception {
+        // arrange: no lead, but an open fence before the tag, backtick and tilde
+        final String ticks = "```text\n</think>\n```\nThe rest.";
+        final String tildes = "~~~text\n</think>\n~~~\nThe rest.";
+
+        // act, assert
+        assertThat(parser.parseCompletion(ticks), is(ticks));
+        assertThat(parser.parseCompletion(tildes), is(tildes));
+    }
+
+    @Test
+    public void parseCompletion_tagAloneAfterTheLead_isKept() throws Exception {
+        // arrange: the tag stands alone on a line of the answer
+        final String response = "> A parser.\nIt strips this line:\n</think>\nand keeps the rest.";
+
+        // act, assert
+        assertThat(parser.parseCompletion(response), is(response));
+    }
+
+    @Test
+    public void parseCompletion_tagAloneAfterAClosedFenceOfReasoning_isStripped() throws Exception {
+        // arrange: the reasoning quotes code in a fence it closes, then the template's tag ends it
+        final String response = "I look at:\n```java\nint x;\n```\n</think>\n> The lead.";
+
+        // act, assert
+        assertThat(parser.parseCompletion(response), is(equalTo("> The lead.")));
+    }
     // </editor-fold>
 }
