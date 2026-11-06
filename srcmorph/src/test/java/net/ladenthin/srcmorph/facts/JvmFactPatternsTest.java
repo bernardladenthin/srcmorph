@@ -147,6 +147,44 @@ public class JvmFactPatternsTest {
     }
 
     @Test
+    public void kotlin_anonymousObjectAtALineStart_isNoTypeDeclaration() {
+        // arrange
+        final String source = "val listeners = listOf(\n"
+                + "    object : Runnable {\n        override fun run() {}\n    },\n"
+                + "    object: Runnable {\n        override fun run() {}\n    },\n"
+                + ")\n"
+                + "object Registry\n"
+                + "data object Empty\n";
+
+        // act, assert
+        // Registry and Empty; not the two object expressions
+        assertThat(count(KOTLIN, "type declarations", source), is(2));
+    }
+
+    @Test
+    public void kotlin_annotatedSecondaryConstructor_countsAndAPrimaryOneDoesNot() {
+        // arrange
+        final String source = "class Service @Inject constructor(private val repo: Repo) {\n"
+                + "    @Inject constructor(repo: Repo, limit: Int) : this(repo)\n"
+                + "    @JvmOverloads internal constructor(x: Int, y: Int = 0) : this(Repo())\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(KOTLIN, "secondary constructors", source), is(2));
+    }
+
+    @Test
+    public void kotlin_varargAndFinalConstructorProperties_count() {
+        // arrange
+        final String source = "class Tags(vararg val names: String)\n"
+                + "open class Base(final val id: Int, private vararg val rest: String)\n";
+
+        // act, assert
+        // names, id and rest
+        assertThat(count(KOTLIN, "constructor properties (approx)", source), is(3));
+    }
+
+    @Test
     public void kotlin_unclosedRawStringAndBlockComment_areBlankedToTheEnd() {
         // act, assert
         assertThat(count(KOTLIN, "functions (approx)", "fun a() = 1\nval s = \"\"\"\nfun b() = 2\n"), is(1));
