@@ -1082,6 +1082,37 @@ public class OpenAiCompatibleProviderSupportTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="isRedirect">
+    @Test
+    public void isRedirect_statusCodes_trueOnlyForTheThreeHundreds() {
+        // act, assert
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(299), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(300), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(399), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(400), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="redirectMessage">
+    @Test
+    public void redirectMessage_aLocation_isNamedMasked() {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.redirectMessage(
+                        "https://h/v1/models", 302, "https://other/v1/models?key=secret"),
+                is("https://h/v1/models answered HTTP 302, a redirect to https://other/v1/models?***, which srcmorph"
+                        + " does not follow (the key would go along): point baseUrl at the server it redirects to"));
+    }
+
+    @Test
+    public void redirectMessage_noLocation_saysSo() {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.redirectMessage("https://h/v1/models", 301, null),
+                containsString("answered HTTP 301, a redirect to no Location, which srcmorph does not follow"));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="errorMessage">
     @Test
     public void errorMessage_shortBody_isQuotedWhole() {

@@ -42,7 +42,8 @@ import org.slf4j.LoggerFactory;
  * <p>The API key is read from the environment variable {@code apiKeyEnv} names and sent as
  * {@code Authorization: Bearer}; it never sits in a configuration file. No variable, or an empty
  * one, sends no key, which a local server without {@code --api-key} accepts. An answer outside 2xx
- * fails the call with the status and the start of the body. A {@code 408}, {@code 429}, {@code 5xx},
+ * fails the call with the status and the start of the body; a redirect (3xx) is not followed, since the
+ * key would go along, and fails the call naming its {@code Location}. A {@code 408}, {@code 429}, {@code 5xx},
  * a connect timeout or a read timeout of the model list is sent again up to {@code maxRetries} times,
  * after the server's {@code Retry-After} or an exponential backoff with jitter; a chat request that
  * timed out after it was sent is not, since the server may still generate (and bill) it; a prompt the
@@ -352,6 +353,8 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
         final HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
         try {
             connection.setRequestMethod(body == null ? "GET" : "POST");
+            // the request carries the key: a followed redirect would take it to the server the Location names
+            connection.setInstanceFollowRedirects(false);
             connection.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
             connection.setReadTimeout(readTimeoutMillis);
             connection.setRequestProperty("Accept", accept);
@@ -390,6 +393,10 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
                         endpoint + " sent no answer within " + readTimeoutMillis / MILLIS_PER_SECOND
                                 + " s; the request is not sent again",
                         e);
+            }
+            if (OpenAiCompatibleProviderSupport.isRedirect(status)) {
+                throw new IOException(OpenAiCompatibleProviderSupport.redirectMessage(
+                        endpoint, status, connection.getHeaderField("Location")));
             }
             if (!OpenAiCompatibleProviderSupport.isSuccess(status)) {
                 final InputStream error = connection.getErrorStream();

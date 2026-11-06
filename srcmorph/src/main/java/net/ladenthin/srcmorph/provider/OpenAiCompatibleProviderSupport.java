@@ -146,8 +146,11 @@ final class OpenAiCompatibleProviderSupport {
     /** Lowest HTTP status that counts as success. */
     private static final int HTTP_OK_FIRST = 200;
 
-    /** First HTTP status above the success range. */
+    /** First HTTP status above the success range, the first redirect. */
     private static final int HTTP_OK_END = 300;
+
+    /** First HTTP status above the redirect range. */
+    private static final int HTTP_REDIRECT_END = 400;
 
     /**
      * The character that ends a URL's user info. No {@code baseUrl} may hold one: srcmorph never sends
@@ -726,6 +729,33 @@ final class OpenAiCompatibleProviderSupport {
      */
     static boolean isSuccess(final int status) {
         return status >= HTTP_OK_FIRST && status < HTTP_OK_END;
+    }
+
+    /**
+     * Whether the status is a redirect (3xx). srcmorph follows none: the request carries the key, and a
+     * redirect would take it to whatever server the {@code Location} names.
+     *
+     * @param status the HTTP status
+     * @return {@code true} for 300..399
+     */
+    static boolean isRedirect(final int status) {
+        return status >= HTTP_OK_END && status < HTTP_REDIRECT_END;
+    }
+
+    /**
+     * The message of the exception a redirect fails with: endpoint, status and the {@code Location}, its
+     * user info, query and fragment masked.
+     *
+     * @param endpoint the URL that was called
+     * @param status   the HTTP status, a 3xx
+     * @param location the {@code Location} header, {@code null} when the server sent none
+     * @return the message
+     */
+    static String redirectMessage(final String endpoint, final int status, final @Nullable String location) {
+        return endpoint + " answered HTTP " + status + ", a redirect to "
+                + (location == null ? "no Location" : UrlUserInfo.mask(location))
+                + ", which srcmorph does not follow (the key would go along): point baseUrl at the server it"
+                + " redirects to";
     }
 
     /**

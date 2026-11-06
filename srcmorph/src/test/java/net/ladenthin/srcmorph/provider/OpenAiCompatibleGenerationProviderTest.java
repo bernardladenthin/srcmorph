@@ -104,6 +104,15 @@ public class OpenAiCompatibleGenerationProviderTest {
     /** Milliseconds the server waits before it answers at all. */
     private int stallBeforeAnswer;
 
+    /** When positive, a request outside {@link #REDIRECT_TARGET} is answered with it and a {@code Location}. */
+    private int redirectStatus;
+
+    /** The path a redirect of {@link #redirectStatus} points at, on the same server. */
+    private static final String REDIRECT_TARGET = "/elsewhere/v1/models";
+
+    /** The {@code Authorization} header a request to {@link #REDIRECT_TARGET} carried, if one arrived. */
+    private @Nullable String redirectedAuthorization;
+
     /** Milliseconds the server waits after the first part of its answer. */
     private int stallInAnswer;
 
@@ -162,6 +171,17 @@ public class OpenAiCompatibleGenerationProviderTest {
                 return;
             }
             requests++;
+            if (REDIRECT_TARGET.equals(requestPath)) {
+                redirectedAuthorization = exchange.getRequestHeaders().getFirst("Authorization");
+            } else if (redirectStatus > 0) {
+                exchange.getResponseHeaders()
+                        .set(
+                                "Location",
+                                "http://127.0.0.1:" + server.getAddress().getPort() + REDIRECT_TARGET);
+                exchange.sendResponseHeaders(redirectStatus, -1);
+                exchange.close();
+                return;
+            }
             if (stallBeforeAnswer > 0) {
                 sleep(stallBeforeAnswer);
             }
@@ -728,6 +748,42 @@ public class OpenAiCompatibleGenerationProviderTest {
 
         // assert
         assertThat(thrown.getMessage(), containsString("/v1/models answered HTTP 401: {\"error\":\"Unauthorized\"}"));
+    }
+
+    @Test
+    public void listModels_aRedirect_isNotFollowedAndFailsNamingIt() {
+        // arrange: the key goes with the GET, a followed redirect would take it along
+        redirectStatus = 302;
+        answer = ModelListFixtures.JLLAMA;
+        final OpenAiCompatibleGenerationProvider provider = provider(
+                ProviderConfig.builder().modelPath("").apiKeyEnv("REDIRECT_TEST_KEY"),
+                name -> "REDIRECT_TEST_KEY".equals(name) ? "redirect-key" : null);
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, provider::listModels);
+
+        // assert
+        assertThat(
+                thrown.getMessage(), containsString("/v1/models answered HTTP 302, a redirect to http://127.0.0.1:"));
+        assertThat(thrown.getMessage(), containsString("which srcmorph does not follow"));
+        assertThat(requests, is(1));
+        assertThat(redirectedAuthorization, is(nullValue()));
+    }
+
+    @Test
+    public void generate_aRedirect_failsNamingItNotTheKey() {
+        // arrange: a POST in streaming mode cannot follow a redirect; it must not read as a refused key
+        redirectStatus = 307;
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> provider.generate(REQUEST));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("/v1/chat/completions answered HTTP 307, a redirect to"));
+        assertThat(thrown.getMessage().contains("the key was refused"), is(false));
+        assertThat(requests, is(1));
     }
 
     @Test
