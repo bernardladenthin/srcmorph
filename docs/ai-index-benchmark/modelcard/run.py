@@ -152,7 +152,8 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("terraform", {"extensions": [".tf", ".hcl"]}, "ops", 0),
              ("gradle", {"extensions": [".gradle"]}, "ops", 10),
              ("properties", {"extensions": [".properties"]}, "ops", 0),
-             # not measured yet (TODO row 13): gpt-oss-20b varied on a package.json with the fallback prompt
+             # measured 2026-11-06 on an extension manifest: with the ops prompt's npm line gpt-oss-20b names more
+             # than with the fallback (mean 36 of 45 against 25), GPT-6 Luna all of them
              ("npm", {"fileNames": ["package.json"]}, "ops", 10),
              ("ops", {"extensions": YAML_EXTENSIONS}, "ops", 0))
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")

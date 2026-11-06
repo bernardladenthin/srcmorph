@@ -8,7 +8,9 @@
 # directly follows the last (\G), so the count stops at the object's } and an entry after it does not
 # count; a key of that name in another object counts as well (rare in a package.json). "scripts", the
 # dependency objects and "engines" count their "name": "value" entries,
-# "workspaces" the strings of its list. OpsFactPatternsTest pins every case;
+# "workspaces" the strings of its list. A VS Code extension's manifest counts its contributed
+# commands (a "command" directly followed by its "title", which a menu entry has not) and its
+# language model tools (each one's required "modelDescription"). OpsFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 scripts	(?:"scripts"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
 dependencies	(?:"dependencies"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
@@ -17,3 +19,5 @@ peer dependencies	(?:"peerDependencies"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)
 optional dependencies	(?:"optionalDependencies"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
 engines	(?:"engines"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
 workspaces	(?:"workspaces"[ \t\r\n]*+:[ \t\r\n]*+\[|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+contributed commands	"command"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+,[ \t\r\n]*+"title"
+language model tools	"modelDescription"[ \t\r\n]*+:

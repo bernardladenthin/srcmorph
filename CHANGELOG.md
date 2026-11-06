@@ -119,9 +119,14 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **`partsDirectory` keeps the map-reduce answers of each file:** every map answer and every reduce
   batch's answer of a file read in chunks, in `<partsDirectory>/<path below the base>.parts.md`, so a
   measurement can see where a summary loses what a part said (TODO row 32). Unset, nothing is kept.
-- **Fact counters for a `package.json` (`npm-facts`):** the entries of `scripts`, the four dependency
-  objects and `engines`, and the strings of `workspaces`, for a rule with `file-body-ops`; `run.py`
-  routes `package.json` to that rule. Not measured yet (TODO row 13).
+- **A rule for `package.json`: `file-body-ops` with `npm-facts`.** The counters count the entries of
+  `scripts`, the four dependency objects and `engines`, the strings of `workspaces`, and a VS Code
+  extension's contributed commands and language model tools; `file-body-ops` has a line for an npm
+  manifest (scripts, dependencies, engines, workspaces, an extension's commands, chat participants and
+  tools), so every ops file's prompt hash changes once. `run.py` routes `package.json` there. Measured
+  on the manifest of a VS Code extension (internal, three runs each): of its 45 names gpt-oss-20b named
+  45, 28 and 34 (with the fallback prompt 45, 13, 28 and 15; with the rule but the ops prompt as it was
+  21, 21 and 28, without the extension's 17 tools), GPT-6 Luna 45 every time (43 to 45).
 - **The fact counters are measured linear on Java 8 as well:** the `linearity-jdk8` job of
   `publish.yml` runs `FactPatternLinearity`, the measure of `ProfileFactPatternsLinearityTest` written
   in Java 8, on a Java 8 JDK, since the counters' time limit counts the reads of a regex engine that

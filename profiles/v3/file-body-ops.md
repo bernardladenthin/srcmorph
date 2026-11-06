@@ -22,6 +22,7 @@ What the file defines, by the exact names in the source, by kind:
 - Gradle build or settings script: every plugin by its id and version; every dependency by its configuration and its coordinates or catalog alias (`implementation libs.spring.boot.web`), project dependencies and platforms; the repositories; every task it registers or configures by its name and type; the included projects and builds; the Java toolchain or compatibility.
 - Camel YAML route: every route by its id with the endpoint it consumes from, every endpoint it sends to in order, and the processors that decide.
 - systemd / cron: the command it runs, the user, the schedule or trigger, the environment, the restart policy.
+- npm manifest (`package.json`): the package name and version; every script by its name with the command it runs; every dependency, dev, peer and optional dependency with its version range; engines and workspaces; for a VS Code extension every contributed command by its id, every chat participant by its id with its slash commands, every language model tool by its name, and the activation events.
 - Other configuration: the top-level keys and what each configures.
 
 #### Configuration

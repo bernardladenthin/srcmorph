@@ -113,7 +113,7 @@ test methods, one call in an `assertThrows` lambda)
 **Phase C: the measurements** (internal where the data is; OpenRouter runs one at a time, a local
 Granite run may run beside one; the scores go to `scores/`, the model card is not re-rendered)
 
-- [ ] C1 Row 13: the ops prompt with `npm-facts` on `package.json` (gpt-oss-20b and Luna, three runs)
+- [x] C1 Row 13: the ops prompt with `npm-facts` on `package.json` (gpt-oss-20b and Luna, three runs)
 - [ ] C2 Row 32: a large-corpus run of gpt-oss-20b with `partsDirectory`; where the middle is lost,
   and what follows from it for the map or reduce prompt
 - [ ] C3 Row 35: a large POM for `big-pom` / `huge-pom`, three runs each with the local Granite tiers;
@@ -152,7 +152,8 @@ with the code, not with the run's conclusions)
 - **`package.json` varies with gpt-oss-20b**: 45, 13, 28 and 15 of its 45 participants, commands,
   tools and dependencies in four runs (Luna 43 to 45 each time), with the fallback prompt. `run.py`
   routes it to the ops prompt with `npm-facts` (scripts, dependencies, engines, workspaces) now; that
-  rule is the next thing to measure (`pyproject.toml` maybe after it).
+  rule is measured (C1): with a line for a manifest in the ops prompt gpt-oss-20b names 36 of 45 on
+  average (fallback 25), Luna all; `pyproject.toml` is not measured.
 
 ### Audit of 2026-11-01 (PR #261)
 

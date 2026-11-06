@@ -837,5 +837,34 @@ public class OpsFactPatternsTest {
         // act, assert
         assertThat(count(NPM, "scripts", nested), is(1));
     }
+
+    /** A VS Code extension's contributions: two commands, a menu entry naming one of them, two tools. */
+    private static final String EXTENSION_JSON = "{\n"
+            + "  \"contributes\": {\n"
+            + "    \"commands\": [\n"
+            + "      {\"command\": \"demo.open\", \"title\": \"Open\"},\n"
+            + "      {\"command\" : \"demo.close\",\n        \"title\": \"Close \\\"it\\\"\"}\n"
+            + "    ],\n"
+            + "    \"menus\": {\"commandPalette\": [{\"command\": \"demo.open\", \"when\": \"true\"}]},\n"
+            + "    \"languageModelTools\": [\n"
+            + "      {\"name\": \"demo_find\", \"modelDescription\": \"Finds.\"},\n"
+            + "      {\"name\": \"demo_read\", \"modelDescription\" : \"Reads.\"}\n"
+            + "    ]\n"
+            + "  }\n"
+            + "}\n";
+
+    @Test
+    public void npm_vsCodeExtension_countsTheContributedCommandsAndTools() {
+        // act, assert
+        assertThat(count(NPM, "contributed commands", EXTENSION_JSON), is(2));
+        assertThat(count(NPM, "language model tools", EXTENSION_JSON), is(2));
+    }
+
+    @Test
+    public void npm_plainPackage_countsNoContributions() {
+        // act, assert
+        assertThat(count(NPM, "contributed commands", PACKAGE_JSON), is(0));
+        assertThat(count(NPM, "language model tools", PACKAGE_JSON), is(0));
+    }
     // </editor-fold>
 }
