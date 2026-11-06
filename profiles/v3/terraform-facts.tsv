@@ -6,14 +6,15 @@
 # one per line, label TAB pattern (Java regex). The [ignore] line blanks, leftmost region first, #
 # and // comments, block comments, heredocs (<<EOF and <<-EOF up to the marker alone on its line)
 # and string literals, so a "resource" in a description, a policy document or a comment does not
-# count; a block comment or a heredoc that is never closed runs to the end of the file. A string
+# count; a block comment or a heredoc that is never closed runs to the end of the file, a string to
+# the end of its line. A string
 # with an interpolation that holds a quote ("${x == "a"}") ends at that quote, as a regex reads it.
 # A block counts by its keyword at the start of a line, not an attribute of that name (provider =
 # aws.west) nor a reference on a line of its own (module.network, data.aws_ami.base in a depends_on
 # list); "count and for_each" counts both meta-arguments; "refactoring blocks" moved, import and
 # removed. OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
 # pattern reads linearly.
-[ignore] comments, heredocs and strings	(?ms)#[^\n]*+|//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|<<-?([A-Za-z_]\w*+)[ \t]*+\n(?:.*?^[ \t]*+\1[ \t]*+$|.*+)|"(?:[^"\\\n]|\\.)*+"
+[ignore] comments, heredocs and strings	(?ms)#[^\n]*+|//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|<<-?([A-Za-z_]\w*+)[ \t]*+\n(?:.*?^[ \t]*+\1[ \t]*+$|.*+)|"(?:[^"\\\n]|\\.)*+"?+
 resources	(?m)^[ \t]*+resource\b(?![ \t]*+[=.])
 data sources	(?m)^[ \t]*+data\b(?![ \t]*+[=.])
 modules	(?m)^[ \t]*+module\b(?![ \t]*+[=.])

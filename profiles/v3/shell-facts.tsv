@@ -11,7 +11,8 @@
 # line, after tabs only for <<-; a heredoc whose marker never comes runs to the end of the file, as
 # bash reads it. A << inside (( )), $(( )) or $[ ] is a shift (read up to 120 characters back, or
 # over up to three groups in parentheses, each with up to two of its own), and one whose line goes on with an
-# unclosed quote sits inside a string; neither opens a heredoc, so a long file of either stays
+# unclosed quote sits inside a string (the rest of that line is blanked); neither opens a heredoc,
+# so a long file of either stays
 # linear. A function body may be any compound command ({, (, if, for, while, until, case, select,
 # [[). "exported variables" and "readonly variables" count every name of a line
 # (export A=1 B=2 is two), not functions (export -f); "script-level assignments" leaves out the
@@ -20,7 +21,7 @@
 # on one line, a blank and # inside a quoted string (read as a comment), and a value with more than
 # one level of $( ) are not read as the shell reads them. ShellFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern of the profile reads linearly.
-[ignore] comments and heredoc bodies	(?ms)^[ \t]*#[^\n]*|(?<=[ \t])#[^\n]*|(?=<<)(?<!<|\(\([^)\n]{0,120}|\(\([^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\)(?:[^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\))?(?:[^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\))?[^)\n]{0,40}|\$\[[^\]\n]{0,120})<<(?:-[ \t]*(?:(["'])((?:(?!\1)[^\n])+)\1|\\?([^\s<>|&;()'"`]++))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^\t*(?:\2|\3)$|.*)|[ \t]*(?:(["'])((?:(?!\4)[^\n])+)\4|\\?([^\s<>|&;()'"`-][^\s<>|&;()'"`]*+))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+\n(?:.*?^(?:\5|\6)$|.*))
+[ignore] comments and heredoc bodies	(?ms)^[ \t]*#[^\n]*|(?<=[ \t])#[^\n]*|(?=<<)(?<!<|\(\([^)\n]{0,120}|\(\([^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\)(?:[^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\))?(?:[^()\n]{0,40}\([^()\n]{0,20}(?:\([^()\n]{0,20}\)[^()\n]{0,20})?(?:\([^()\n]{0,20}\)[^()\n]{0,20})?\))?[^)\n]{0,40}|\$\[[^\]\n]{0,120})<<(?:-[ \t]*(?:(["'])((?:(?!\1)[^\n])+)\1|\\?([^\s<>|&;()'"`]++))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+(?:\n(?:.*?^\t*(?:\2|\3)$|.*)|[^\n]*+)|[ \t]*(?:(["'])((?:(?!\4)[^\n])+)\4|\\?([^\s<>|&;()'"`-][^\s<>|&;()'"`]*+))(?:[^\s"'`\\#]++|[^\S\n]++(?:#[^\n]*+)?|#|"(?:[^"\\\n]|\\.)*+"|'[^'\n]*+'|`(?:[^`\\\n]|\\.)*+`|\\.)*+(?:\n(?:.*?^(?:\5|\6)$|.*)|[^\n]*+))
 functions	(?m)^[ \t]*(?:function[ \t]+[A-Za-z_][\w.:-]*[ \t]*(?:\([ \t]*\))?|[A-Za-z_][\w.:-]*[ \t]*\([ \t]*\))[ \t]*(?:\{|\(|$|\[\[|(?:if|for|while|until|case|select)\b)
 getopts loops	\bgetopts[ \t]+
 getopts option letters	(?:\bgetopts[ \t]+["']?:?|\G(?<=[:A-Za-z0-9]):?)[A-Za-z0-9]

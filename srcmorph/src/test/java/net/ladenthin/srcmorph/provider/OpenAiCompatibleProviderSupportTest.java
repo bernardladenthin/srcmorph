@@ -711,6 +711,13 @@ public class OpenAiCompatibleProviderSupportTest {
     }
 
     @Test
+    public void queryProblem_markAtTheStart_showsNothingBeforeIt() {
+        // act, assert: the first character is a mark, of either kind
+        assertThat(OpenAiCompatibleProviderSupport.queryProblem("?x"), containsString("('' followed by '?...')"));
+        assertThat(OpenAiCompatibleProviderSupport.queryProblem("#x?y"), containsString("('' followed by '#...')"));
+    }
+
+    @Test
     public void endpoint_baseUrlWithAQuery_isRefused() {
         // arrange
         final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()

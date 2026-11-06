@@ -127,11 +127,18 @@ again from every later opener. A shell or Perl `<<` that is a shift or sits in a
 Perl, now at most 0.2 s), and the Java parameter list is read possessively, one level of parentheses
 deep (the 6 000 constants of the large corpus's enum took 8 s, now 0.1 s); `ShellFactPatternsTest`, `PerlFactPatternsTest` and
 `JavaStructureFactPatternsTest` pin these. `ProfileFactPatternsLinearityTest` measures all of it for
-every pattern of every file here: it repeats 110 adversarial lines (unclosed openers and tags,
-heredoc markers, unbalanced parentheses, runs of one character) and counts the characters the
-matcher reads, which may grow at most six times for four times the input. It found six quadratic
-patterns in the 1.4.0 files (the XML and POM regions, the XSD counter, the Java type arguments and
-field initializer, the shell option arms), all fixed, and measures a new file without a change.
+every pattern of every file here: it repeats 119 adversarial lines (unclosed openers and tags,
+heredoc markers, escaped quotes, unbalanced parentheses, runs of one character), and each of them
+without its line break into one long line, and counts the characters the matcher reads, which may
+grow at most six times for four times the input; a matcher that overflows the stack fails it too.
+It found six quadratic patterns in the 1.4.0 files (the XML and POM regions, the XSD counter, the
+Java type arguments and field initializer, the shell option arms); the one-line inputs found the
+rest: string literals full of escaped quotes in nine files (a literal not closed on its line now
+ends there, a SQL or PowerShell one at the end of the file), the shell and Perl heredoc openers on a
+last line without a line break, the `${`/`#{` placeholders of MyBatis and properties, the secret
+keys of properties, Kotlin's extension functions and the Java modifier lists, which overflowed the
+stack over thousands of annotations on one line. All are fixed, and a new file is measured without a
+change.
 
 The counters are regex heuristics, and their labels say so where they are approximate. The tests read
 these files, not copies, and count through the production extractor, so the ignore lines apply:
@@ -143,7 +150,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `sql-facts` | Counts |
 |---|---|
-| `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL. Also, so an apostrophe in them opens no literal: PostgreSQL's dollar quoting on one line (a multi-line function body stays), Oracle's `q'[...]'`, a `"..."` holding an apostrophe (a quoted identifier stays) and MySQL's `#` comments (not a T-SQL `#temp`). Not seen as written: PostgreSQL's `'C:\'` (the backslash escapes) and nested comments (one ends at its first `*/`) |
+| `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` or `'` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL. Also, so an apostrophe in them opens no literal: PostgreSQL's dollar quoting on one line (a multi-line function body stays), Oracle's `q'[...]'`, a `"..."` holding an apostrophe (a quoted identifier stays) and MySQL's `#` comments (not a T-SQL `#temp`). Not seen as written: PostgreSQL's `'C:\'` (the backslash escapes) and nested comments (one ends at its first `*/`) |
 | `INSERT statements` | `INSERT [INTO]` at the start of a line, also MySQL's `IGNORE` / `LOW_PRIORITY`, an Oracle hint, `INSERT ALL` / `FIRST` and `REPLACE INTO`; not a `MERGE` branch or a trigger's event list |
 | `VALUES rows (approx)` | the row tuples of `VALUES` lists, so a multi-row `INSERT` counts each row, not MySQL's `VALUES(col)` of `ON DUPLICATE KEY UPDATE`; rows an `INSERT ... SELECT` reads from a table are not seen |
 | `tables`, `views`, `indexes` | `CREATE` statements, also `TEMP`/`UNLOGGED`/`FOREIGN` and MariaDB's `OR REPLACE` tables, `MATERIALIZED`, `OR REPLACE`/`OR ALTER`, MySQL's `ALGORITHM` / `DEFINER` / `SQL SECURITY` and Oracle's `FORCE EDITIONABLE` views (not a `MATERIALIZED VIEW LOG`), `UNIQUE`/`CLUSTERED`/`COLUMNSTORE`/`FULLTEXT`/`SPATIAL`/`BITMAP` indexes |
@@ -154,7 +161,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `shell-facts` (Bash, sh, ksh93) | Counts |
 |---|---|
-| `[ignore]` comments and heredoc bodies | a `#` comment, a whole line or after a blank; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-`, without one to the end of the file (as bash reads it); not a shift inside `(( ))`, `$(( ))` or `$[ ]` (also after up to three groups in parentheses, `$(( (a) + ((b)) << n ))`), nor a `<<` whose line goes on with an unclosed quote (inside a string) |
+| `[ignore]` comments and heredoc bodies | a `#` comment, a whole line or after a blank; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-`, without one to the end of the file (as bash reads it); not a shift inside `(( ))`, `$(( ))` or `$[ ]` (also after up to three groups in parentheses, `$(( (a) + ((b)) << n ))`), nor a `<<` whose line goes on with an unclosed quote (inside a string; the rest of that line is blanked) |
 | `functions` | `name()`, `name ()` and `function name` definitions, with any compound command as the body (`{`, `(`, `if`, `for`, `while`, `until`, `case`, `select`, `[[`) |
 | `getopts loops`, `getopts option letters`, `dash-option case arms` | `getopts` calls; each letter of a literal option string; `case` arms of `-x` / `--long` options, as a hand-written option loop has them |
 | `named positional parameters` | an argument assigned to a name (`SRC="$1"`, `local mode=${3:-fast}`) |
@@ -165,7 +172,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `perl-facts` | Counts |
 |---|---|
-| `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<< "END"`, `<<\END`, `<<END`, `<<~END` bodies, without an end marker to the end of the file; not a shift after a variable, a number, `)`, `]` or a hash element (`$x <<BITS`, `$h{x} <<BITS`; `print $fh <<END` and `print {$fh} <<END` are heredocs), nor a `<<` in a trailing comment, a string, a quote-like operator or a regex (`q{...}`, `qq/.../`, `m/.../`, `s/.../.../`); whole-line `#` comments; leftmost first |
+| `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<< "END"`, `<<\END`, `<<END`, `<<~END` bodies, without an end marker to the end of the file; not a shift after a variable, a number, `)`, `]` or a hash element (`$x <<BITS`, `$h{x} <<BITS`; `print $fh <<END` and `print {$fh} <<END` are heredocs), nor a `<<` in a trailing comment, a string, a quote-like operator or a regex (`q{...}`, `qq/.../`, `m/.../`, `s/.../.../`; a `<<` whose line goes on with an unclosed quote blanks the rest of that line); whole-line `#` comments; leftmost first |
 | `packages`, `subs` | `package` statements and blocks and 5.38 `class` blocks; named, lexical (`my sub`), signature and attribute subs (`sub f :prototype($$) ($x, $y)`) and 5.38 `method`s, not anonymous subs or forward declarations |
 | `modules used`, `modules required` | `use Some::Module`, `use parent` / `base` (not other pragmas or versions); `require Module` / `require 'file'` (not versions) |
 | `use constant statements`, `package variables (our)`, `file-scope lexicals (my at column 0)` | each `use constant`; `our` declarations; a `my` at column 0 |

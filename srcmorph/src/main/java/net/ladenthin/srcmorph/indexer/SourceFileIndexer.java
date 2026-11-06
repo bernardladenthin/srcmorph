@@ -242,8 +242,9 @@ public final class SourceFileIndexer {
      * <p>For every file the selector picks the winning rule by extension/size/lines and priority; a
      * skip rule sends the file to {@link IndexPlan#skipped()}, no match (and no fallback) to
      * {@link IndexPlan#unmatched()}, otherwise the file is routed under the rule's
-     * {@code aiDefinitionKey}. Line counts are only computed when some rule actually uses a line filter,
-     * so the common size-only configuration does not read file contents during planning.</p>
+     * {@code aiDefinitionKey}. Every candidate is read whole once: its size, line count and head come
+     * from the text the run will send, and a routed plan needs its length for the window anyway. Line
+     * counts are only computed when some rule uses a line filter.</p>
      *
      * @param candidates the candidate files (typically from {@link #collectCandidates(Path)})
      * @param rules      the routing rules in declaration order
@@ -300,10 +301,11 @@ public final class SourceFileIndexer {
         for (final Path file : candidates) {
             final Path fileNamePath = file.getFileName();
             final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
-            // the size a rule and the plan see is the source as srcmorph reads it (\n line endings, no byte
-            // order mark), in UTF-8 bytes: the same on a CRLF and an LF checkout, as the checksum is
-            final String source = readSource(file);
-            final long fileSizeBytes = SourceLines.utf8Length(source);
+            // the size a rule and the plan see is that of the bytes the checksum is taken over (\n line
+            // endings, no byte order mark): the same on a CRLF and an LF checkout
+            final byte[] bytes = Files.readAllBytes(file);
+            final String source = SourceLines.normalize(SourceLines.decode(bytes));
+            final long fileSizeBytes = SourceLines.size(bytes);
             final int lineCount = lineFiltersUsed ? SourceLines.count(source) : 0;
             final String head =
                     contentFiltersUsed ? source.substring(0, Math.min(source.length(), contentHeadChars)) : "";
@@ -522,18 +524,6 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Reads a source file as the run sees it: UTF-8, with every line ending made {@code \n}, so a
-     * working copy with {@code \r\n} has the checksum, the window and the prompt of one with {@code \n}.
-     *
-     * @param file the source file
-     * @return its text
-     * @throws IOException if it cannot be read
-     */
-    private String readSource(final Path file) throws IOException {
-        return SourceLines.normalize(SourceLines.decode(Files.readAllBytes(file)));
-    }
-
-    /**
      * Returns whether a file could be selected by its {@code #!} line: interpreters are configured and
      * its name has no extension (a leading dot, as in {@code .profile}, opens no extension).
      *
@@ -570,10 +560,10 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Reads the start of a file for a {@code contentMatches} or {@code interpreters} condition: at most
-     * four bytes per character, and never more than the file holds, decoded as {@link #readSource}
-     * decodes the whole file, so a large file is not read to its end during planning and a large
-     * {@code contentHeadChars} costs no more than the file.
+     * Reads the start of a file for the walk's {@code fileInterpreters} check of a file without an
+     * extension: at most four bytes per character, and never more than the file holds, decoded as
+     * the plan decodes the whole file ({@code SourceLines.decode}, {@code \n} line endings), so a large
+     * file is not read to its end to find its {@code #!} line.
      *
      * @param file  the file
      * @param chars the characters to read

@@ -477,13 +477,16 @@ def cut_off_files(log_path, work, out_dir, phase=None):
     return sorted(set(files))
 
 
-# srcmorph's message when a file phase ends with files it did not write; the phases after it still run
-FILES_NOT_WRITTEN = "file(s) were not written"
+# srcmorph's message when a file or package phase ends with summaries it did not write (an incomplete
+# answer or a failed request); the phases after it still run
+NOT_WRITTEN = {"GenerateFileIndex": "file(s) were not written", "AggregatePackages": "package(s) were not written"}
 
 
-def files_not_written(log_path):
-    """Whether a phase ended only because some files were not written (not a configuration error)."""
-    return FILES_NOT_WRITTEN in log_path.read_text(encoding="utf-8", errors="replace")
+def files_not_written(log_path, phase="GenerateFileIndex"):
+    """Whether a phase ended only because some of its summaries were not written (not a configuration
+    error): the file phase's files, the package phase's packages. The project phase reads the
+    package.ai.md files that were written, as a run whose packages are all written does."""
+    return phase in NOT_WRITTEN and NOT_WRITTEN[phase] in log_path.read_text(encoding="utf-8", errors="replace")
 
 
 def clear_out(out_dir, suffix=".ai.md"):
@@ -548,9 +551,10 @@ def run_model(args, models, profile, model):
         if rc != 0:
             meta["phases"][phase]["errorTail"] = scrubbed(last_lines(log_dir / f"{phase}.log"),
                                                           Path(args.work).parent)
-            # a file phase that wrote all but some files still feeds the package and project phases, so a
-            # model's score covers the same summaries as any other run's; any other failure ends the model
-            if not (phase == "GenerateFileIndex" and files_not_written(log_dir / f"{phase}.log")):
+            # a file phase that wrote all but some files still feeds the package and project phases, and a
+            # package phase that wrote all but some packages the project phase, so a model's score covers
+            # the same summaries as any other run's; any other failure ends the model
+            if not files_not_written(log_dir / f"{phase}.log", phase):
                 break
     meta["finishedAt"] = utc_now()
     if run_record.exists():

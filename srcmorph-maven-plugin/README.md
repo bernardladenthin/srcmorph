@@ -175,8 +175,9 @@ The file has three building blocks:
 3. **`rules`** — the routing **rules** of the file phase. Each rule maps a `promptKey` to an
    `aiDefinitionKey` (model id, which carries the full parameter set) and selects files with a
    composable **`condition`** tree: `and`/`or`/`not` over the leaves `extensions`, `size`
-   (`min`/`max` bytes of the source as srcmorph reads it: its UTF-8 length with `\n` line endings and
-   no BOM, not the size on disk), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
+   (`min`/`max` bytes of the source as srcmorph reads it: the file's bytes with `\n` line endings and
+   no BOM, a UTF-16 file its text's UTF-8 length; the run's `minFileSizeBytes`/`maxFileSizeBytes`
+   band takes the size on disk instead, before a file is read), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
    the file's last-modified time), `pathGlob` (base-relative glob, in the case written, so it
    matches the same on every system), `fileNames` (globs over the name without its directory, in any
    case: `Dockerfile`, `Jenkinsfile`, `Dockerfile.*`), `contentMatches` (a Java regular expression

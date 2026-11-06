@@ -8,9 +8,9 @@
 # -- comments, '...' string literals ('' and a backslash escape a quote, as in MySQL) and /* ... */
 # block comments, keeping the line breaks, so a /* inside a string or a -- comment opens nothing. It
 # keeps MySQL's /*! ... */ version comments and Oracle's /*+ ... */ hints, which hold real SQL. A /*
-# that is never closed comments out the rest of the file, as PostgreSQL and MySQL read it; a nested
-# PostgreSQL comment ends at its first */, and PostgreSQL's 'C:\' reads as an unclosed literal (the
-# backslash escapes, as in MySQL). So that an apostrophe in another dialect's quoting opens no
+# or a ' literal that is never closed comments out the rest of the file, as PostgreSQL and MySQL read
+# it (so a file of escaped quotes stays linear); a nested PostgreSQL comment ends at its first */, and
+# PostgreSQL's 'C:\' reads as a literal that the backslash keeps open (as in MySQL). So that an apostrophe in another dialect's quoting opens no
 # literal, it also blanks PostgreSQL's dollar quoting on one line ($$it's$$, $fn$...$fn$; a function
 # body over several lines stays, its statements count), Oracle's q'[...]', q'{...}', q'!...!' and
 # the like (N too), a "..." that holds an apostrophe (a MySQL string; a quoted identifier, which has
@@ -28,7 +28,7 @@
 # VALUES(col) function of MySQL's ON DUPLICATE KEY UPDATE (after an =); rows an INSERT ... SELECT
 # reads from a table are not seen, and a tuple nested inside a row counts once more.
 # SqlFactPatternsTest pins every case.
-[ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\.)*+'|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*
+[ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\.)*+(?:'|\z)|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*
 INSERT statements	(?im)^[ \t]*(?:INSERT(?:\s+/\*\+.*?\*/)?(?:\s+(?:IGNORE|LOW_PRIORITY|DELAYED|HIGH_PRIORITY))*(?:\s+/\*\+.*?\*/)?\s+(?:INTO\b|ALL\b|FIRST\b|(?!(?:VALUES|SELECT|OR|ON|AS|SET|WITH|WHEN|THEN)\b)[A-Za-z_"`\[#@][\w"`\[\].$#@]*)|REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*\s+INTO\b)
 VALUES rows (approx)	(?i)(?:(?<!=[ \t]{0,8})\bVALUES|\),)\s*\(
 tables	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+|FOREIGN\s+)?TABLE\b

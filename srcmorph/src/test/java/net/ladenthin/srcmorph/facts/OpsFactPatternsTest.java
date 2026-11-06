@@ -262,6 +262,22 @@ public class OpsFactPatternsTest {
         // actions/checkout and the action in a path of a repository, github/codeql-action/init
         assertThat(count(ACTIONS, "actions used", workflow), is(2));
     }
+
+    @Test
+    public void actions_secretsAnywhereInAnExpression_countEach() {
+        // arrange
+        final String workflow = "    env:\n"
+                + "      A: ${{ secrets.A }}\n"
+                + "      B: ${{ inputs.token || secrets.B }}\n"
+                + "      C: ${{ secrets['C-KEY'] }}\n"
+                + "      D: ${{ secrets.D && secrets.E }}\n"
+                + "    secrets: inherit\n"
+                + "    run: cat secrets.txt\n";
+
+        // act, assert
+        // A, B, C-KEY, D and E; not the secrets: key nor a file named secrets.txt outside an expression
+        assertThat(count(ACTIONS, "secret references", workflow), is(5));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="dockerfile-facts">
@@ -350,6 +366,52 @@ public class OpsFactPatternsTest {
         // act, assert
         assertThat(count(DOCKERFILE, "RUN instructions", "FROM alpine\nRUN <<EOF\necho\nRUN x\nEOFX\n"), is(1));
         assertThat(count(DOCKERFILE, "RUN instructions", "RUN <<EOF\r\necho\r\nEOF\r\nRUN b\r\n"), is(2));
+    }
+
+    @Test
+    public void dockerfile_shiftInsideAWordOfRun_opensNoHeredoc() {
+        // arrange
+        final String dockerfile = "FROM alpine\nRUN python3 -c \"print(1<<x)\"\nRUN apk add curl\nCOPY a /b\nENV A=1\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "RUN instructions", dockerfile), is(2));
+        assertThat(count(DOCKERFILE, "COPY and ADD instructions", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "environment entries", dockerfile), is(1));
+    }
+
+    @Test
+    public void dockerfile_lessThanLessThanInALabelOrEnvValue_opensNoHeredoc() {
+        // arrange
+        final String label = "FROM alpine\nLABEL note=\"a <<b\"\nRUN apk add curl\nCOPY a /b\n";
+        final String env = "FROM alpine\nENV NOTE=x <<b\nRUN apk add curl\nCOPY a /b\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "RUN instructions", label), is(1));
+        assertThat(count(DOCKERFILE, "COPY and ADD instructions", label), is(1));
+        assertThat(count(DOCKERFILE, "RUN instructions", env), is(1));
+        assertThat(count(DOCKERFILE, "COPY and ADD instructions", env), is(1));
+    }
+
+    @Test
+    public void dockerfile_hereString_opensNoHeredoc() {
+        // act, assert
+        assertThat(
+                count(DOCKERFILE, "RUN instructions", "FROM alpine\nRUN cat <<<word\nUSER app\nRUN apk add x\n"),
+                is(2));
+    }
+
+    @Test
+    public void dockerfile_heredocOnALineARunContinues_doesNotCountItsBody() {
+        // arrange
+        final String indented =
+                "FROM alpine\nRUN apt-get update \\\n && cat <<EOF > /etc/x\nFROM evil\nUSER root\nEOF\nUSER app\n";
+        final String atTheLineStart = "FROM a\nRUN echo \\\n<<EOF\nFROM inner\nEOF\nUSER app\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "build stages", indented), is(1));
+        assertThat(count(DOCKERFILE, "users", indented), is(1));
+        assertThat(count(DOCKERFILE, "build stages", atTheLineStart), is(1));
+        assertThat(count(DOCKERFILE, "users", atTheLineStart), is(1));
     }
     // </editor-fold>
 
@@ -593,6 +655,16 @@ public class OpsFactPatternsTest {
         assertThat(count(ANSIBLE, "vault-encrypted values", PLAYBOOK), is(1));
         assertThat(count(ANSIBLE, "template expressions", PLAYBOOK), is(3));
     }
+
+    @Test
+    public void ansible_becomeQuotedOrCapitalized_countsAsPrivilegeEscalation() {
+        // arrange
+        final String play = "- hosts: a\n  become: \"yes\"\n- hosts: b\n  become: 'true'\n- hosts: c\n  become: Yes\n"
+                + "- hosts: d\n  become: false\n";
+
+        // act, assert
+        assertThat(count(ANSIBLE, "privilege escalation", play), is(3));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="compose-facts">
@@ -661,7 +733,18 @@ public class OpsFactPatternsTest {
                 + "      PRICE: $$${CURRENCY}\n";
 
         // act, assert
-        // ${TAG} and the ${CURRENCY} after the escaped $; not $${NOT_A_VARIABLE}
+        // TAG, and CURRENCY after the escaped dollar sign; the escaped NOT_A_VARIABLE is none
+        assertThat(count(COMPOSE, "variable substitutions", compose), is(2));
+    }
+
+    @Test
+    public void compose_unbracedVariable_isASubstitution() {
+        // arrange
+        final String compose =
+                "services:\n" + "  app:\n" + "    image: app:$TAG\n" + "    command: echo $$HOME $${PATH} $$$USER\n";
+
+        // act, assert
+        // TAG and USER after the escaped dollar sign; not the escaped HOME and PATH
         assertThat(count(COMPOSE, "variable substitutions", compose), is(2));
     }
     // </editor-fold>
@@ -828,6 +911,35 @@ public class OpsFactPatternsTest {
         // tasks.test { }, tasks.jar { }, tasks.getByName
         assertThat(count(GRADLE, "tasks registered, created or configured", build), is(3));
     }
+
+    @Test
+    public void gradle_copySpecAndTestFilterIncludes_areNoIncludedBuilds() {
+        // arrange
+        final String build = "processResources {\n"
+                + "    from('src/extra') {\n"
+                + "        include '**/*.xml'\n"
+                + "    }\n"
+                + "}\n"
+                + "test {\n"
+                + "    include '**/*Test.class'\n"
+                + "    filter { includeTestsMatching 'shop.*' }\n"
+                + "}\n";
+        final String settings =
+                "pluginManagement {\n" + "    includeBuild(\"build-logic\")\n" + "}\n" + "include ':app'\n";
+
+        // act, assert
+        assertThat(count(GRADLE, "include and includeBuild statements", build), is(0));
+        assertThat(count(GRADLE, "include and includeBuild statements", settings), is(2));
+    }
+
+    @Test
+    public void gradle_dependenciesAfterABraceOrSemicolon_count() {
+        // arrange
+        final String build = "dependencies { implementation 'a:b:1'; testImplementation 'c:d:2' }\n";
+
+        // act, assert
+        assertThat(count(GRADLE, "dependency declarations", build), is(2));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="properties-facts">
@@ -848,6 +960,20 @@ public class OpsFactPatternsTest {
         assertThat(count(PROPERTIES, "keys naming a secret", properties), is(2));
         assertThat(count(PROPERTIES, "placeholders", properties), is(1));
         assertThat(count(PROPERTIES, "URLs", properties), is(1));
+    }
+
+    @Test
+    public void properties_keysStartingWithASecretWord_countAsSecrets() {
+        // arrange
+        final String properties = "password=x\n"
+                + "secret.key=abc\n"
+                + "token: t\n"
+                + "credentials.file=/etc/c\n"
+                + "db.password=y\n"
+                + "greeting=the password is not here\n";
+
+        // act, assert
+        assertThat(count(PROPERTIES, "keys naming a secret", properties), is(5));
     }
     // </editor-fold>
 
@@ -915,6 +1041,22 @@ public class OpsFactPatternsTest {
         // $A and $C; not Mandatory=$False
         assertThat(count(POWERSHELL, "mandatory parameters", script), is(2));
     }
+
+    @Test
+    public void powershell_stringOverSeveralLines_blanksItsLines() {
+        // arrange
+        final String script = "$usage = \"Usage:\n"
+                + "function Fake-Double {\n"
+                + "\"\n"
+                + "$note = 'it''s\n"
+                + "function Fake-Single {\n"
+                + "'\n"
+                + "function Real-Thing { }\n"
+                + "# function Commented-Out { }\n";
+
+        // act, assert
+        assertThat(count(POWERSHELL, "functions", script), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="batch-facts">
@@ -951,6 +1093,16 @@ public class OpsFactPatternsTest {
         assertThat(count(BATCH, "local scopes", script), is(1));
         assertThat(count(BATCH, "exits", script), is(3));
         assertThat(count(BATCH, "error level checks", script), is(2));
+    }
+
+    @Test
+    public void batch_remAfterAnAmpersand_isAComment() {
+        // arrange
+        final String script = "call :build & rem call :old\n" + "echo done & REM goto :skip\n";
+
+        // act, assert
+        assertThat(count(BATCH, "calls", script), is(1));
+        assertThat(count(BATCH, "gotos", script), is(0));
     }
     // </editor-fold>
 

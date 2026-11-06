@@ -141,6 +141,13 @@ class NamesFoundTest(unittest.TestCase):
         self.assertEqual(longer["idsFound"], 1)
         self.assertEqual(whole["idsFound"], 7)
 
+    def test_aPerlPackage_beforeItsArrow_isAWholeName(self):
+        row = score.score_file("", body("Builds the encoder with `JSON::PP->new` and reads min-revenue->{cap}."),
+                               ["JSON::PP", "min-revenue"], [])
+        longer = score.score_file("", body("Uses JSON::PP-XS and min-revenue-cap."), ["JSON::PP", "min-revenue"], [])
+
+        self.assertEqual((row["idsFound"], longer["idsFound"]), (2, 0))
+
     def test_aFenceMarkerInsideAProseLine_opensNoFence(self):
         row = score.score_file("", body("It answers in ```json blocks naming Foo and bar.\nThen Baz.\n"),
                                ["Foo", "bar", "Baz"], [])
@@ -150,6 +157,36 @@ class NamesFoundTest(unittest.TestCase):
         self.assertEqual(row["fences"], 0)
         # up to three spaces in front still open and close a fence; its '#' line is no heading
         self.assertEqual((indented["fences"], indented["badHeadings"], indented["idsFound"]), (2, 0, 1))
+
+    def test_aFenceInsideAListItem_isAFence(self):
+        # as gpt-oss-20b wrote ledger_dump.sql.ai.md: the fence indented to the nested item's content column
+        source = "CREATE VIEW ledger_daily_volume AS\nSELECT CAST(booked_at AS DATE) AS day\nFROM ledger_transfer;\n"
+        copied = score.score_file(source, body("- **View**\n  - `ledger_daily_volume`\n    ```sql\n"
+                                               "    SELECT CAST(booked_at AS DATE) AS day\n    FROM ledger_transfer;\n"
+                                               "    ```\n\n#### Reads\n"),
+                                  ["ledger_daily_volume", "ledger_transfer", "booked_at"], [], case_insensitive=True)
+        on_its_line = score.score_file(source, body("- the view:\n  ```sql\n  FROM ledger_transfer;\n  ```\n"
+                                                    "- ```sql\n  SELECT CAST(booked_at AS DATE) AS day\n  ```\n"),
+                                       ["ledger_transfer", "booked_at"], [], case_insensitive=True)
+
+        self.assertEqual((copied["fences"], copied["idsFound"], copied["badHeadings"]), (2, 1, 0))
+        self.assertEqual((on_its_line["fences"], on_its_line["idsFound"]), (4, 0))
+
+    def test_aFenceIndentedPastItsContainer_isNone(self):
+        # four spaces at the top, or past a list item's content column, are no fence (an indented line)
+        top = score.score_file("", body("Run it:\n    ```sh\n    # rotate\n    ```\nThen Baz.\n"), ["Baz"], [])
+        past_item = score.score_file("", body("- item\n      ```sh\n      # rotate\n      ```\n"), [], [])
+        after_item = score.score_file("", body("- item\n\nThe code:\n    ```sh\n    x\n    ```\n"), [], [])
+        prose = score.score_file("", body("- It answers in ```json blocks naming Foo.\n"), ["Foo"], [])
+
+        self.assertEqual((top["fences"], past_item["fences"], after_item["fences"]), (0, 0, 0))
+        self.assertEqual((prose["fences"], prose["idsFound"]), (0, 1))
+
+    def test_aFenceInAListItem_closesAtItsOwnIndentation(self):
+        # a closer further right than three spaces past the item's column is content
+        row = score.score_file("", body("- item\n  ```\n  a\n         ```\n  b\n  ```\nThen Baz.\n"), ["Baz"], [])
+
+        self.assertEqual((row["fences"], row["idsFound"]), (2, 1))
 
     def test_aReasoningBlock_isNoPartOfTheSummarysMeasures(self):
         source = "class Foo { int bar; int baz; }"
@@ -336,6 +373,19 @@ class FailureTest(unittest.TestCase):
         self.assertEqual(row["failed"], "")
         self.assertTrue(row["lead"])
         self.assertEqual(row["leaks"], 2)
+
+    def test_aCompleteSummaryWithoutALeadAfterAReasoningBlock_isNoFailureButALeak(self):
+        row = score.score_file("class Foo { int alpha; int beta; }",
+                               "<think>plan</think>\nFoo has alpha and beta." + LONG, ["Foo", "alpha", "beta"], [])
+
+        self.assertEqual((row["failed"], row["lead"], row["leaks"], row["idsFound"]), ("", False, 2, 3))
+
+    def test_aReasoningBlockThatNeverCloses_isLeakOnly(self):
+        for text in ("<think>Foo has alpha and beta." + LONG, "<|channel>thought\nFoo has alpha." + LONG,
+                     "<|channel|>analysis<|message|>Foo has alpha." + LONG, "<think>plan</think>\n\n"):
+            row = score.score_file("class Foo { int alpha; }", text, ["Foo", "alpha"], [])
+
+            self.assertEqual((row["failed"], row["idsFound"]), ("leak-only", 0), text)
 
     def test_aCompleteSummaryAfterAHarmonyAnalysisBlock_isNoFailureButALeak(self):
         row = score.score_file("", "<|channel|>analysis<|message|>planning<|end|>"

@@ -18,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  *   <li><b>combinators:</b> {@code and} (all children true), {@code or} (any child true),
  *       {@code not} (single child negated);</li>
  *   <li><b>leaves:</b> {@code extensions} (file name ends with any of the listed extensions),
- *       {@code size} ({@link RangeCondition} over file bytes), {@code lines}
+ *       {@code size} ({@link RangeCondition} over the source's bytes, {@code \n} line endings), {@code lines}
  *       ({@link RangeCondition} over line count), {@code modifiedAfter} / {@code modifiedBefore}
  *       (ISO-8601 instant compared to the file's last-modified time), {@code pathGlob} (glob over the
  *       base-relative path, same syntax as {@code excludes}), {@code fileNames} (globs over the file
@@ -138,9 +138,9 @@ public class RuleCondition {
     }
 
     /**
-     * Sets the size range: the source's length in UTF-8 bytes as srcmorph reads it ({@code
-     * } line
-     * endings, no byte order mark), so a CRLF and an LF checkout of a file reach the same rule.
+     * Sets the size range: the size of the source as srcmorph reads it, {@code \n} line endings and no
+     * byte order mark ({@code support.SourceLines.size}), so a CRLF and an LF checkout of a file reach
+     * the same rule.
      *
      * @param size the size range
      */

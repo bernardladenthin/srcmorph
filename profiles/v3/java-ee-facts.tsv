@@ -10,7 +10,10 @@
 # comments and strings first, and an annotation counts at the start of a line or after other
 # annotations on it, so an "@Stateless" in Javadoc prose or a commented-out one does not count.
 # "EJB timers" counts every @Schedule, the members of a @Schedules container too, and not the
-# container. JvmFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
+# container. A bare @Singleton counts as an EJB session bean, though CDI's javax.inject.Singleton and
+# jakarta.inject.Singleton are written the same: a pattern counted per match cannot read which one
+# the file imports (written with its package, @javax.inject.Singleton does not count).
+# JvmFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
 # every pattern reads linearly.
 [include]	java-facts
 EJB session beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?(?:Stateless|Stateful|Singleton)\b

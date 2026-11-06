@@ -16,18 +16,6 @@ import java.util.regex.Pattern;
  */
 public final class SourceLines {
 
-    /** The first character UTF-8 writes in two bytes. */
-    private static final char UTF8_ONE_BYTE_LIMIT = '\u0080';
-
-    /** The first character UTF-8 writes in three bytes. */
-    private static final char UTF8_TWO_BYTE_LIMIT = '\u0800';
-
-    /** The bytes of a character UTF-8 writes in three. */
-    private static final int UTF8_THREE_BYTES = 3;
-
-    /** The bytes of a surrogate pair, one character beyond the basic plane. */
-    private static final int UTF8_PAIR_BYTES = 4;
-
     /** The line feed every line ends with after {@link #normalize(String)}. */
     private static final char LINE_FEED = '\n';
 
@@ -170,32 +158,17 @@ public final class SourceLines {
     }
 
     /**
-     * Returns the length of a text in UTF-8 bytes, without encoding it: one byte per character below
-     * U+0080, two below U+0800, three for the rest of the basic plane and four for a surrogate pair. The
-     * size of a source as srcmorph reads it, so a {@code size} condition measures the same text on a
-     * CRLF and an LF checkout.
+     * Returns the size a {@code size} condition measures: the length of {@link #checksumBytes(byte[])}
+     * without a UTF-8 byte order mark. The bytes on disk with {@code \n} line endings, so a CRLF and an LF
+     * checkout of a file have one size, and a UTF-16 file the UTF-8 length of its text; a file that is not
+     * valid UTF-8 counts its own bytes, not the replacement characters it decodes to.
      *
-     * @param text the text, {@code \n} line endings
-     * @return its UTF-8 length in bytes
+     * @param bytes the file's bytes
+     * @return the size in bytes
      */
-    public static long utf8Length(final String text) {
-        long bytes = 0;
-        for (int i = 0; i < text.length(); i++) {
-            final char c = text.charAt(i);
-            if (c < UTF8_ONE_BYTE_LIMIT) {
-                bytes++;
-            } else if (c < UTF8_TWO_BYTE_LIMIT) {
-                bytes += 2;
-            } else if (Character.isHighSurrogate(c)
-                    && i + 1 < text.length()
-                    && Character.isLowSurrogate(text.charAt(i + 1))) {
-                bytes += UTF8_PAIR_BYTES;
-                i++;
-            } else {
-                bytes += UTF8_THREE_BYTES;
-            }
-        }
-        return bytes;
+    public static long size(final byte[] bytes) {
+        final byte[] measured = checksumBytes(bytes);
+        return startsWith(measured, UTF_8_BOM) ? measured.length - UTF_8_BOM.length : measured.length;
     }
 
     /**

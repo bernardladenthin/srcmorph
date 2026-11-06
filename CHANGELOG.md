@@ -31,41 +31,48 @@ The entries below hold the details; what a 1.4.0 user changes:
   switches on later still finds it missing and rewrites then. `force: true` rewrites everything at once.
 - **Java callers of the library** (the CLI and the plugin need nothing): `AiMdHeader.withHashes`
   takes `(prompt, facts, model, children)`; the `PackageIndexer` and both `ProjectIndexer`
-  constructors take an `AiRegenerateOn` after `force`; the `SourceFileIndexer` constructor takes
-  `fileNames` and `fileInterpreters` (after `fileExtensions`), an `AiRegenerateOn` (after `force`)
+  constructors take a `RegenerateOn` after `force`; the `SourceFileIndexer` constructor takes
+  `fileNames` and `fileInterpreters` (after `fileExtensions`), a `RegenerateOn` (after `force`)
   and `contentHeadChars` (last); `SourceFileIndexer.indexFile` takes a `modelHash` (last);
-  `AiMdHeaderSupport` takes the five switches as booleans (without arguments, all on).
-  `AiGenerationTimeEstimator` is linear: `REQUEST_OVERHEAD_MS`, `PREFILL_MS_PER_TOKEN` and
+  `AiMdHeaderSupport`, now `AiMdRewritePolicy`, takes the five switches as booleans (without
+  arguments, all on).
+  `GenerationTimeEstimator` (was `AiGenerationTimeEstimator`) is linear: `REQUEST_OVERHEAD_MS`, `PREFILL_MS_PER_TOKEN` and
   `DECODE_MS_PER_TOKEN` replace the four CPU coefficients, and `estimateDecodeMillis` takes only the
-  output tokens. `AiIncompleteAnswerException.Reason` has a fourth value, `ABORTED`.
-  `AiGenerationUsage.add` is `withCall` (one call's usage). `RunRecord` takes the skipped count
-  (`new RunRecord(pluginVersion, skipped)`). `AiGenerationProvider` has `takeLoadNanos()`.
+  output tokens. `IncompleteAnswerException.Reason` has a fourth value, `ABORTED`.
+  `AiGenerationUsage.add` is `GenerationUsage.withCall` (one call's usage). `RunRecord` takes the skipped count
+  (`new RunRecord(generatorVersion, skipped)`). `GenerationProvider` has `takeLoadNanos()`.
 - **Java callers of the library, the package restructure** (the configuration file, the CLI's
   commands and the plugin's goals and properties stay as they are; see the entry under Changed):
   fix the imports of the moved classes and rename `LlamaCppJniConfig` to `ProviderConfig`,
   `LlamaCppJniConfigFactory` to `ProviderConfigFactory`, `AiFieldGenerationSupport` to
   `SummaryGenerator` and `EngineSupport.resolveLlamaCppJniConfig` to `resolveProviderConfig`.
-  `AiGenerationRequest` takes three arguments (no header); `SummaryGenerator.generate` takes four
+  `GenerationRequest` takes three arguments (no header); `SummaryGenerator.generate` takes four
   (no header). `AiConditionEvaluator.CONTENT_HEAD_CHARS` is
   `SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS`, `AiFactExtractor.READS_PER_CHAR` and
   `READ_ALLOWANCE` are `ReadBudget`'s, and
   `OpenAiCompatibleAiGenerationProvider.withoutUserInfo(text)` is `UrlUserInfo.mask(text)`. A
   plugin subclass extends `AbstractSrcMorphMojo` instead of `AbstractAiIndexMojo`.
 - **Java callers of the library, the null-safety review** (the configuration file, the CLI and the
-  plugin stay as they are): `AiFieldGenerationConfig.getPromptKey()` / `getAiDefinitionKey()` are
+  plugin stay as they are): `RoutingRule.getPromptKey()` / `getAiDefinitionKey()` (was `AiFieldGenerationConfig`) are
   `@Nullable` (a skip rule has none); a rule that routes gives them through `requirePromptKey()` /
   `requireAiDefinitionKey()`. `SrcMorphConfiguration.getBaseDirectory()` is `@Nullable` until set, and
   an engine without one throws a `SrcMorphException` instead of a `NullPointerException`.
   `ProviderConfig.builder()` takes no argument: `.modelPath(path)` sets the model file, and
   `modelPath()` is `null` rather than `""` for a model without one (a remote model); the llama.cpp JNI
-  provider refuses such a configuration in its constructor. The `getKey()` of `AiModelDefinition`,
-  `AiPromptDefinition` and `AiFactDefinition` and `AiFactCounter.getLabel()` / `getPattern()` are
+  provider refuses such a configuration in its constructor. The `getKey()` of `ModelDefinition`,
+  `PromptDefinition` and `FactDefinition` and `FactCounter.getLabel()` / `getPattern()` are
   `@Nullable`, and a definition without a key throws an `IllegalArgumentException` instead of a
   `NullPointerException`. The overview constructor of `ProjectIndexer` takes one `ProjectOverview`
   (provider, rule, prompt and model lookups) instead of the four values; the four-argument
   `SourceFileIndexer.classify` takes both lookups non-null (the two-argument one skips the window
-  check). `AiGenerationProviderFactory.effectiveProvider` takes a non-null run provider and returns a
-  non-null key, and `AiPromptTemplateLoader.load(List)` is gone (`load(List, Collection)` remains).
+  check). `GenerationProviderFactory.effectiveProvider` takes a non-null run provider and returns a
+  non-null key, and `PromptTemplateLoader.load(List)` is gone (`load(List, Collection)` remains).
+- **A `size` condition measures the source as srcmorph reads it**: the bytes the checksum is taken
+  over, `\n` line endings and no byte order mark (a UTF-16 file: the UTF-8 length of its text), not
+  the bytes on disk. On a CRLF checkout, or for a file with a byte order mark, a file near a tier's
+  bound can reach another rule than in 1.4.0. The run's `minFileSizeBytes` / `maxFileSizeBytes` band
+  stays on the bytes on disk: it filters during the walk, before a file is read. Java callers: `SourceLines.normalize(byte[])` is not public any more
+  (`SourceLines.checksumBytes` and `SourceLines.size` are).
 - **Every configuration file renames three keys**: `fieldGenerations` is `rules` (under `srcMorph`),
   `packageFieldGenerations` is `packageRules` and `projectFieldGenerations` is `projectRules` (the
   loader refuses the old names as unknown keys). The beans' accessors follow (`getRules`,
@@ -78,7 +85,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   `generatorVersion` too, and so are the bean's getter and setter and the `RunRecord` parameter.
 - **Java callers of the library, the naming review** (`docs/code-review-2026-11-05.md` section 2):
   `AiGenerationTimings` is `TimedGeneration`; `AiPromptPreparationSupport.getBasePromptLength` is
-  `basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` like
+  `PromptPreparer.basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` like
   `GgufModelInfo.UNKNOWN_CONTEXT_LENGTH` (it was `0`). The CLI's `Main.logConfigurationTransformation`
   is `logConfigurationEcho`, `configurationToYAML` is `configurationToYaml`, and `readString`,
   `fromJson`, `fromYaml`, `configurationToJson` and `configurationToYaml` are package-private.
@@ -190,8 +197,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   first `contentHeadChars` characters of the file (under `srcMorph`, 16,384 by default, at least 256
   so the `interpreters` condition sees a whole `#!` line; raise it for a marker behind a long license
   header: the head is never read past the file's end), so a Kubernetes manifest, an OpenAPI document and a Camel
-  route, all `.yaml`, take different rules (`(?m)^apiVersion:`). Planning reads only that start of a
-  file unless it reads the whole file anyway; an invalid expression fails the check. The pattern is
+  route, all `.yaml`, take different rules (`(?m)^apiVersion:`). Planning reads each candidate once, whole;
+  an invalid expression fails the check. The pattern is
   compiled once and has the read budget of a fact pattern: one that backtracks past it does not match,
   with a warning, so it cannot hang the plan.
 - **Scripts without an extension can be indexed and routed by their `#!` line**
@@ -282,14 +289,40 @@ The entries below hold the details; what a 1.4.0 user changes:
   property, Java counts an annotation element with a `default` as a method, GitHub Actions no
   longer counts a reusable-workflow call as an action, and Compose no longer counts the `$${X}`
   escape as a variable.
+- **Every fact counter reads linearly within one line too, and more of them count what their label
+  says** (the facts hash of these kinds changes, so their summaries are written again). The linearity
+  test also repeats each adversarial fragment on one long line (`\'`, `#{`, `${`, `rpc a(b`, ...),
+  which found string literals full of escaped quotes, nested placeholders and Java declarations
+  under thousands of annotations reading quadratically or overflowing the stack; a literal not closed
+  on its line is blanked to the line end now (java, kotlin, groovy, gradle, scala, proto, terraform,
+  graphql), an unclosed SQL `'` to the end of the file, a PowerShell string across lines, and the
+  rest of a shell or Perl heredoc-opener line that cannot be read to its end. Counters:
+  integration property placeholders count Mule's and Spring's `${env}`, `${file.dir}` and
+  `${type.handler}` again (only Camel's Simple forms are left out); a Dockerfile heredoc opens only
+  where `<<` starts a word on a RUN, COPY or ADD line (also a continued one); Java methods and
+  constructors count a wrapped `throws` and a brace on the next line, and `@java.lang.Override`;
+  Kotlin extension functions take a nested generic receiver; properties count a secret key that
+  starts with the keyword (`password=`); Gradle's included builds are `include` at a line start,
+  its dependencies count after `{` or `;`; GitHub Actions count every secret in an expression;
+  Compose counts `$NAME`; Ansible counts a quoted `become`; batch blanks `& rem`; proto's streaming
+  rpcs read CRLF files; MyBatis and properties placeholders count the innermost of nested ones.
 - **The model card's scorer reads what the model answered.** `score.py` strips a leading reasoning
   block before recall, invented names, numbers and the format checks (the leak is still counted),
-  matches a path- or colon-like name whole (`/orders` is not found in `/orders/{orderId}`), opens a
-  code fence only at a line start, reads the methods of a static interface and annotation elements,
-  takes no digits stuck to a letter or a date part as a stated number, splits a name after an
-  acronym (`XMLParser`), and takes `order.c` or `item.tag` for a member, not a file. `run.py` maps
-  a package call's log name to its `package.ai.md` again, so a cut package counts as cut. The
-  published numbers do not move: the card's outputs have none of these cases.
+  matches a path- or colon-like name whole (`/orders` is not found in `/orders/{orderId}`; a Perl
+  arrow, `JSON::PP->new`, still ends a name), opens a code fence only where CommonMark does (at a
+  line start, or indented to its list item's content), reads the methods of a static interface and
+  annotation elements, takes no digits stuck to a letter or a date part as a stated number, splits a
+  name after an acronym (`XMLParser`), and takes `order.c` or `item.tag` for a member, not a file. A
+  complete answer after a closed reasoning block is a leak, not a leak-only failure; one whose block
+  never closes is. `run.py` maps a package call's log name to its `package.ai.md` again, so a cut
+  package counts as cut, and runs the project phase after some packages failed; `search.py` reads
+  the answer the same way and keeps a leading dot of a path (`.github/...`). The card's numbers do
+  not move (its outputs have none of these cases). Two published numbers elsewhere differ from a
+  re-score: the generic-prompt languages run 3 gives gpt-oss-20b 94.9 % instead of 95.3 % (the mean
+  95.5 % instead of 95.7 %), because `invoice-service.jar` no longer credits the name
+  `invoice-service`; and the large-corpus run 3 of 2026-11-01 keeps its published 88.3 % (the gpt-oss
+  mean over the three large runs re-scores to 76.0 %, published 78.1 %, a drift of an earlier round's
+  format check). The writeups keep the numbers they were published with.
 - **The self-test routes the new kinds measured on real projects:** TypeScript, the Jakarta EE
   descriptors, MyBatis mappers, BPMN, DMN, JSP, Protocol Buffers, GitHub Actions, Kubernetes
   manifests, Dockerfiles, Terraform, npm manifests and other YAML (`ops`), with the Luna example's
@@ -427,17 +460,17 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **A source file with a byte order mark is read without it**, and one with the UTF-16 mark as
   UTF-16. Before, a UTF-8 file saved with a mark (as some Windows editors do) began with U+FEFF, so
   its first line did not start with its first word for the fact counters and the prompt, and a
-  UTF-16 file read as replacement characters. The checksum is still over the bytes, so such a file
-  is not rewritten for this alone.
+  UTF-16 file read as replacement characters. The checksum of a UTF-8 file is still over its bytes,
+  so such a file is not rewritten for this alone; a UTF-16 file's is over its text (see Fixed).
 
 ### Fixed
 
 - **A `size` condition measures the same file on every checkout.** It read the bytes on disk, so a
   file checked out with CRLF line endings was larger than the same file with LF and could reach
   another size tier, model and summary (a 272 KB Java file, 5000 lines). It measures the source as
-  srcmorph reads it now, `
-` line endings and no byte order mark, in UTF-8 bytes, as the checksum
-  already did; the plan's time estimate of a file that fits does too. The run's `minFileSizeBytes` /
+  srcmorph reads it now: the bytes the checksum is taken over, `\n` line endings and no byte order
+  mark (a UTF-16 file: the UTF-8 length of its text); the plan's time estimate of a file that fits
+  does too. The run's `minFileSizeBytes` /
   `maxFileSizeBytes` band stays a filter on the bytes on disk.
 - **A package's lead in `project.ai.md` is its summary's lead** again for a package read in chunks
   (packages default to `mapReduce`) or with counters: the project listed the coverage or the facts
@@ -451,6 +484,12 @@ The entries below hold the details; what a 1.4.0 user changes:
   YAML line breaks are written as `\uXXXX` in the table and the paste-ready block.
 - **A `baseUrl` with a query or a fragment fails the check**: srcmorph appends `/chat/completions`
   to it, which landed in the query, and the query (possibly a key) was printed with the endpoint.
+  Every URL srcmorph prints (a message, a log line, `ListModels`, the CLI's configuration echo)
+  shows its query and fragment as `?***` now, as it shows user info as `***@`.
+- **A subtree that is `src` itself** (`subtrees: ["src"]`, or a POM's `<sourceDirectory>src`) no
+  longer fails the package phase: its summaries' root is the output directory.
+- **An interrupt ends the package pass**, as it ends the file phase, instead of failing every
+  remaining package; a timeout is still one package's failure.
 - **A request that failed its retries with a timeout last** says "failed N times, the last with a
   timeout", not "timed out N times" after three 503 answers and one timeout.
 - **A long password in a URL is masked too.** The mask of a URL's user info stopped at 256
@@ -498,8 +537,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **A template that opens the thinking block itself leaves no reasoning in the summary.** Qwen3 and
   DeepSeek-R1 templates put `<think>` into the prompt, so the answer starts with the reasoning and
   holds only `</think>`; `AiCompletionParser` kept all of it. The first `</think>` alone on its line,
-  with no `<think>` before it, now ends the reasoning; a tag inside a line (a sentence, quotes, a list
-  item naming it) is text, in the answer or in reasoning that names it before its real end.
+  with no `<think>` before it, now ends the reasoning, and without one the first that ends its line
+  glued to the reasoning's last word (`I will write it.</think>`); a tag inside a line, or after a
+  space, a quote or a backtick (a sentence, quotes, a list item naming it) is text, in the answer or
+  in reasoning that names it before its real end.
 - **The benchmark's scorer** (`score.py`, `report.py`; the card's published numbers stay until it is
   re-rendered): an everyday word between two backtick spans no longer counts as marked as code, one
   in a column listing with its type (`email VARCHAR(254)`) does; a reasoning marker in backticks is

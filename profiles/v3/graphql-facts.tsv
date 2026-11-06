@@ -5,7 +5,8 @@
 # GraphQL counters (.graphql, .graphqls, .gql: a schema in SDL or executable operations), for a rule
 # with the prompt file-body-contract: one per line, label TAB pattern (Java regex). The [ignore] line
 # blanks # comments, block strings ("""...""", descriptions) and strings, leftmost region first, so a
-# "type" in a description does not count; a block string that is never closed runs to the end of the
+# "type" in a description does not count; a string that is never closed runs to the end of its line,
+# a block string to the end of the
 # file. A definition counts at the start of a line, an extension (extend type) too; "object types"
 # leaves out the root types Query, Mutation and Subscription, which have a counter of their own.
 # "fields (approx)" counts a name at the start of an indented line followed by its arguments and a
@@ -13,7 +14,7 @@
 # uses" every @name that is not the directive's own definition; "operations" and "fragments" count at
 # column 0, where an executable document defines them. ContractFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
-[ignore] comments, descriptions and strings	(?s)""".*?(?:"""|\z)|"(?:[^"\\\n]|\\.)*+"|#[^\n]*+
+[ignore] comments, descriptions and strings	(?s)""".*?(?:"""|\z)|"(?:[^"\\\n]|\\.)*+"?+|#[^\n]*+
 object types	(?m)^[ \t]*+(?:extend[ \t]++)?type[ \t]++(?!(?:Query|Mutation|Subscription)\b)[A-Za-z_]
 root operation types	(?m)^[ \t]*+(?:extend[ \t]++)?type[ \t]++(?:Query|Mutation|Subscription)\b
 interfaces	(?m)^[ \t]*+(?:extend[ \t]++)?interface[ \t]++[A-Za-z_]

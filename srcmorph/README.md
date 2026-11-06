@@ -114,7 +114,7 @@ try {
 
 ## Provider abstraction
 
-`net.ladenthin.srcmorph.provider.GenerationProvider` (a `Closeable`) abstracts the AI backend.
+`net.ladenthin.srcmorph.provider.GenerationProvider` (an `AutoCloseable`) abstracts the AI backend.
 `GenerationProviderFactory` looks up an implementation by name:
 
 - `"mock"` (default) — `MockGenerationProvider`, deterministic canned responses; no model, no JNI,
@@ -134,8 +134,11 @@ net.ladenthin.srcmorph/
 ├── config/     mutable JavaBeans; SrcMorphConfiguration is the shared root object
 ├── engine/     GenerateEngine, AggregatePackagesEngine, AggregateProjectEngine, CalibrateEngine,
 │               ListModelsEngine, SrcMorphException, GenerateResult, CalibrationReport,
-│               ModelListReport, EngineSupport
+│               ModelListReport, RunRecord, EngineSupport, ProgressBar
 ├── indexer/    the walk/plan/write orchestration engines delegate to
+│   └── generation/  one summary body: SummaryGenerator + the windows, chunks and map-reduce
+├── routing/    which rule a file, package or project takes (ConditionEvaluator, RuleSelector)
+├── facts/      the fact counters (FactExtractor, FactDefinitionLoader, FactGroups)
 ├── document/   the .ai.md model + codecs (AiMdDocument, AiMdHeader, AiMdDocumentCodec, ...)
 ├── prompt/     prompt template lookup + preparation (trimming to a model's context window)
 ├── provider/   the AI backend abstraction (see above)

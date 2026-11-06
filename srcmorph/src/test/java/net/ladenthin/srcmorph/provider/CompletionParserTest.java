@@ -251,6 +251,51 @@ public class CompletionParserTest {
 
     /** Spaces around the tag on its line do not make it text. */
     @Test
+    public void parseCompletion_reasoningSentenceEndingInTheTag_isStripped() throws Exception {
+        // act
+        final String answer = new CompletionParser().parseCompletion("I will now write it.</think>\n\n> The lead.");
+
+        // assert
+        assertThat(answer, is("> The lead."));
+    }
+
+    @Test
+    public void parseCompletion_tagAloneOnALaterLine_winsOverAGluedOneBefore() throws Exception {
+        // act: the reasoning names the tag glued to a word first, then ends at the tag alone on its line
+        final String answer =
+                new CompletionParser().parseCompletion("It ends with x</think>\nso here:\n</think>\n> The lead.");
+
+        // assert
+        assertThat(answer, is("> The lead."));
+    }
+
+    @Test
+    public void parseCompletion_tagAfterAQuoteAtALineEnd_isKept() throws Exception {
+        // act: a quote before the tag, and a backtick, mark a tag the text names
+        final String quoted = new CompletionParser().parseCompletion("> A parser.\nIt strips \"</think>\n");
+        final String ticked = new CompletionParser().parseCompletion("> A parser.\nIt strips `</think>\n");
+
+        // assert
+        assertThat(quoted, is("> A parser.\nIt strips \"</think>"));
+        assertThat(ticked, is("> A parser.\nIt strips `</think>"));
+    }
+
+    @Test
+    public void parseCompletion_gluedTagFollowedByText_isKept() throws Exception {
+        // act: the tag is glued to a word but the line goes on
+        final String answer = new CompletionParser().parseCompletion("> A parser.\nIt strips x</think> tags.");
+
+        // assert
+        assertThat(answer, is("> A parser.\nIt strips x</think> tags."));
+    }
+
+    @Test
+    public void parseCompletion_onlyTheTag_isEmpty() throws Exception {
+        // act, assert: a tag at the very start is alone on its line
+        assertThat(new CompletionParser().parseCompletion("</think>"), is(""));
+    }
+
+    @Test
     public void parseCompletion_closingTagWithSpacesOnItsLine_isStripped() throws Exception {
         // act, assert
         assertThat(parser.parseCompletion("Thinking.\n  </think>  \n> The lead."), is(equalTo("> The lead.")));

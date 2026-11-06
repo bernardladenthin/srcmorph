@@ -255,7 +255,7 @@ public class EnterpriseXmlFactPatternsTest {
         assertThat(count(INTEGRATION, "Camel consumer endpoints (from)", CAMEL), is(1));
         assertThat(count(INTEGRATION, "Camel producer endpoints", CAMEL), is(4));
         assertThat(count(INTEGRATION, "error handlers", CAMEL), is(1));
-        // {{orders.queue}}; not the Simple expressions ${body.total} and ${header.id}
+        // the one property placeholder of the route, orders.queue; the two Simple expressions are none
         assertThat(count(INTEGRATION, "property placeholders", CAMEL), is(1));
         assertThat(count(INTEGRATION, "Spring beans", CAMEL), is(1));
     }
@@ -265,8 +265,9 @@ public class EnterpriseXmlFactPatternsTest {
         // arrange
         final String simple = "<log message=\"${body} ${bodyAs(String)} ${headers} ${in.header.x} ${out.body}\"/>\n"
                 + "<setHeader name=\"a\"><simple>${exchangeProperty.k} ${exchangeId} ${exception.message}"
-                + " ${date:now:yyyyMMdd} ${routeId} ${camelContext.name} ${sys.user} ${env.HOME}"
-                + " ${bean:svc.run} ${ref:x} ${type:shop.Kind.A} ${id}</simple></setHeader>\n";
+                + " ${date:now:yyyyMMdd} ${routeId} ${camelContext.name} ${env.HOME} ${env:JAVA_HOME}"
+                + " ${sysenv.PATH} ${bean:svc.run} ${ref:x} ${type:shop.Kind.A} ${file:name.noext}"
+                + " ${originalBody} ${prettyBody} ${bodyType}</simple></setHeader>\n";
         final String placeholders = "<bean id=\"ds\"><property name=\"url\" value=\"${db.url}\"/>"
                 + "<property name=\"pool\" value=\"${db.pool:10}\"/><property name=\"i\" value=\"${index}\"/>"
                 + "<property name=\"h\" value=\"${header-size}\"/></bean>\n"
@@ -274,8 +275,41 @@ public class EnterpriseXmlFactPatternsTest {
 
         // act, assert
         assertThat(count(INTEGRATION, "property placeholders", simple), is(0));
-        // ${db.url}, ${db.pool:10}, ${index}, ${header-size}, {{period:1000}}
+        // the five placeholders: db.url, db.pool with its default, index, header-size and period
         assertThat(count(INTEGRATION, "property placeholders", placeholders), is(5));
+    }
+
+    @Test
+    public void integration_simpleRootsThatArePropertyNamesToo_countAsPlaceholders() {
+        // arrange
+        // Simple's ${id} and ${sys.user} have the shape of a property name, which Mule and Spring use too
+        final String ambiguous = "<log message=\"${id} ${sys.user} ${exchange} ${hostname} ${random.int}\"/>\n";
+
+        // act, assert
+        assertThat(count(INTEGRATION, "property placeholders", ambiguous), is(5));
+    }
+
+    @Test
+    public void integration_mulePropertyNames_countAsPlaceholders() {
+        // arrange
+        final String mule = "<configuration-properties file=\"config-${env}.yaml\"/>\n"
+                + "<http:listener-config name=\"l\"><http:listener-connection port=\"${http.port}\"/>"
+                + "</http:listener-config>\n"
+                + "<file:config name=\"f\"><file:connection workingDir=\"${file.workingDir}\"/></file:config>\n";
+
+        // act, assert
+        assertThat(count(INTEGRATION, "property placeholders", mule), is(3));
+    }
+
+    @Test
+    public void integration_springIntegrationPropertyNames_countAsPlaceholders() {
+        // arrange
+        final String springIntegration = "<int-file:inbound-channel-adapter directory=\"${file.input.dir}\"/>\n"
+                + "<int-file:outbound-channel-adapter directory=\"${out.dir}\"/>\n"
+                + "<int:service-activator ref=\"${type.handler}\" method=\"${env.method:handle}\"/>\n";
+
+        // act, assert
+        assertThat(count(INTEGRATION, "property placeholders", springIntegration), is(4));
     }
 
     @Test

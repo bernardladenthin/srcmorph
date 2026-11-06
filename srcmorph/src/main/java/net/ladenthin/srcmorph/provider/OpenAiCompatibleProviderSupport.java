@@ -149,6 +149,12 @@ final class OpenAiCompatibleProviderSupport {
     /** First HTTP status above the success range. */
     private static final int HTTP_OK_END = 300;
 
+    /** The character a URL's query starts with. */
+    private static final char QUERY_START = '?';
+
+    /** The character a URL's fragment starts with. */
+    private static final char FRAGMENT_START = '#';
+
     /** The plain-HTTP scheme prefix a {@code baseUrl} may start with (a local server). */
     static final String HTTP_SCHEME = "http://";
 
@@ -459,16 +465,15 @@ final class OpenAiCompatibleProviderSupport {
      * @return the problem, or {@code null} when the URL has neither
      */
     static @Nullable String queryProblem(final String baseUrl) {
-        int end = baseUrl.indexOf('?');
-        final int fragment = baseUrl.indexOf('#');
-        if (end < 0 || (fragment >= 0 && fragment < end)) {
-            end = fragment;
+        for (int end = 0; end < baseUrl.length(); end++) {
+            final char c = baseUrl.charAt(end);
+            if (c == QUERY_START || c == FRAGMENT_START) {
+                return "its baseUrl has a query or a fragment ('" + UrlUserInfo.mask(baseUrl.substring(0, end))
+                        + "' followed by '" + c + "...'), which would stand in front of the path srcmorph"
+                        + " appends: give the path only, and the key in the variable apiKeyEnv names";
+            }
         }
-        return end < 0
-                ? null
-                : "its baseUrl has a query or a fragment ('" + UrlUserInfo.mask(baseUrl.substring(0, end))
-                        + "' followed by '" + baseUrl.charAt(end) + "...'), which would stand in front of the"
-                        + " path srcmorph appends: give the path only, and the key in the variable apiKeyEnv names";
+        return null;
     }
 
     /**
@@ -479,11 +484,10 @@ final class OpenAiCompatibleProviderSupport {
      * @return the problem, with the user info masked, or {@code null} when the URL carries none
      */
     static @Nullable String userInfoProblem(final String baseUrl) {
-        final String masked = UrlUserInfo.mask(baseUrl);
-        return masked.equals(baseUrl)
-                ? null
-                : "its baseUrl carries user info ('" + masked + "'), which srcmorph never sends: put the key"
-                        + " in the variable apiKeyEnv names";
+        return UrlUserInfo.carriesUserInfo(baseUrl)
+                ? "its baseUrl carries user info ('" + UrlUserInfo.mask(baseUrl) + "'), which srcmorph never sends:"
+                        + " put the key in the variable apiKeyEnv names"
+                : null;
     }
 
     private static String withoutTrailingSlashes(final String url) {

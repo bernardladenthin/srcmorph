@@ -25,10 +25,14 @@ import net.ladenthin.srcmorph.support.ReadBudget;
  * differs between JDKs, so a pattern linear on the JDK of the build is measured on Java 8 as well.
  *
  * <p>Every pattern of every facts file of a profile ({@code [ignore]} lines included) runs over inputs
- * that repeat one adversarial line. The input is a {@link CharSequence} that counts the characters the
- * matcher reads, and a pattern must read at most {@value #MAX_GROWTH} times as many for an input
- * {@value #GROWTH} times as long. A linear pattern reads about {@value #GROWTH} times as many, a quadratic
- * one {@value #GROWTH} squared, so the measure is exact on any machine and under any load.</p>
+ * that repeat one adversarial line, and over inputs that repeat the same line without its line break,
+ * so the whole input is one line: a pattern that rescans to the end of its line from every opener is
+ * quadratic only there. The input is a {@link CharSequence} that counts the characters the matcher
+ * reads, and a pattern must read at most {@value #MAX_GROWTH} times as many for an input {@value #GROWTH}
+ * times as long. A linear pattern reads about {@value #GROWTH} times as many, a quadratic one
+ * {@value #GROWTH} squared, so the measure is exact on any machine and under any load. A run stops once
+ * it has read more than the measure allows, so a quadratic pattern fails fast instead of reading
+ * billions of characters.</p>
  */
 public final class FactPatternLinearity {
 
@@ -130,6 +134,7 @@ public final class FactPatternLinearity {
             "'a\n",
             "message A {\n",
             "rpc A(stream \n",
+            "rpc A(x\n",
             "rpc A(B) returns (\n",
             "\"type\": \n",
             "type A {\n",
@@ -156,6 +161,15 @@ public final class FactPatternLinearity {
             ":: x\n",
             "set /a x=\n",
             "for /f \"x\n",
+            // escapes, unclosed placeholders and the keywords a counter scans for after an opener
+            "\\'\n",
+            "\\\"\n",
+            "#{\n",
+            "${\n",
+            "rpc a(b\n",
+            "<fun \n",
+            "token \n",
+            "password\n",
             // single characters, without a line break
             "x",
             " ",
@@ -169,6 +183,12 @@ public final class FactPatternLinearity {
             "#",
             "=",
             "\n");
+
+    /**
+     * The repeated texts: every line of {@link #LINES}, then every one of them that ends in a line break
+     * without it, so that repeating it gives one long line.
+     */
+    static final List<String> UNITS = units(LINES);
 
     private FactPatternLinearity() {
         // static helpers and the entry point only
@@ -240,32 +260,100 @@ public final class FactPatternLinearity {
     }
 
     /**
-     * Measures one pattern over every line of {@link #LINES}.
+     * Returns the texts to repeat: every line, then every line that ends in a line break without it.
+     *
+     * @param lines the lines
+     * @return the lines and their fragments, in that order
+     */
+    static List<String> units(final List<String> lines) {
+        final List<String> units = new ArrayList<>(lines);
+        for (final String line : lines) {
+            final String fragment = line.endsWith("\n") ? line.substring(0, line.length() - 1) : "";
+            if (!fragment.isEmpty()) {
+                units.add(fragment);
+            }
+        }
+        return Collections.unmodifiableList(units);
+    }
+
+    /**
+     * Measures one pattern over every text of {@link #UNITS}.
      *
      * @param key     the facts key, for the message
      * @param label   the counter's label, for the message
      * @param pattern the pattern
-     * @return one message per line it does not read linearly over, or reads past the time limit of the
+     * @return one message per text it does not read linearly over, or reads past the time limit of the
      *     facts line; empty when it passes
      */
     static List<String> failures(final String key, final String label, final String pattern) {
+        return failures(key, label, pattern, UNITS);
+    }
+
+    /**
+     * Measures one pattern over the given repeated texts.
+     *
+     * @param key     the facts key, for the message
+     * @param label   the counter's label, for the message
+     * @param pattern the pattern
+     * @param units   the texts to repeat, each on its own
+     * @return one message per text it does not read linearly over, or reads past the time limit of the
+     *     facts line; empty when it passes
+     */
+    static List<String> failures(final String key, final String label, final String pattern, final List<String> units) {
         final Pattern compiled = Pattern.compile(pattern);
         final List<String> failures = new ArrayList<>();
-        for (final String line : LINES) {
-            final long shortReads = reads(compiled, repeat(line, SHORT_REPETITIONS));
-            final long longReads = reads(compiled, repeat(line, SHORT_REPETITIONS * GROWTH));
-            if (longReads > MAX_GROWTH * Math.max(shortReads, 1L)) {
-                failures.add(key + " '" + label + "' over the line " + quoted(line) + ": " + shortReads
-                        + " reads, then " + longReads + " for " + GROWTH + " times the input");
-            }
-            // the time limit of the facts line never stops a pattern of the profile
-            final int longLength = line.length() * SHORT_REPETITIONS * GROWTH;
-            if (longReads > ReadBudget.limit(longLength)) {
-                failures.add(key + " '" + label + "' over the line " + quoted(line) + ": " + longReads + " reads of "
-                        + longLength + " characters");
+        for (final String unit : units) {
+            final String where = key + " '" + label + "' over " + described(unit) + ": ";
+            try {
+                measure(compiled, unit, where, failures);
+            } catch (final StackOverflowError e) {
+                // java.util.regex recurses once per repetition of a group that is not possessive
+                failures.add(where + "the matcher overflowed the stack");
             }
         }
         return failures;
+    }
+
+    /**
+     * Measures one pattern over one repeated text and adds a message per failed measurement.
+     *
+     * @param compiled the pattern
+     * @param unit     the text to repeat
+     * @param where    the start of each message
+     * @param failures where the messages go
+     */
+    private static void measure(
+            final Pattern compiled, final String unit, final String where, final List<String> failures) {
+        // the time limit of the facts line never stops a pattern of the profile
+        final int shortLength = unit.length() * SHORT_REPETITIONS;
+        final long shortLimit = ReadBudget.limit(shortLength);
+        final long shortReads = reads(compiled, repeat(unit, SHORT_REPETITIONS), shortLimit);
+        if (shortReads > shortLimit) {
+            failures.add(where + "more than " + shortLimit + " reads of " + shortLength + " characters");
+            return;
+        }
+        final long growthLimit = MAX_GROWTH * Math.max(shortReads, 1L);
+        final int longLength = shortLength * GROWTH;
+        final long longLimit = ReadBudget.limit(longLength);
+        final long cap = Math.max(growthLimit, longLimit);
+        final long longReads = reads(compiled, repeat(unit, SHORT_REPETITIONS * GROWTH), cap);
+        final String longCount = longReads > cap ? "more than " + cap : String.valueOf(longReads);
+        if (longReads > growthLimit) {
+            failures.add(where + shortReads + " reads, then " + longCount + " for " + GROWTH + " times the input");
+        }
+        if (longReads > longLimit) {
+            failures.add(where + longCount + " reads of " + longLength + " characters");
+        }
+    }
+
+    /**
+     * Describes a repeated text for a message.
+     *
+     * @param unit the text
+     * @return "the line ..." for a text that ends in a line break, "one line of ..." otherwise
+     */
+    static String described(final String unit) {
+        return (unit.endsWith("\n") ? "the line " : "one line of ") + quoted(unit);
     }
 
     /**
@@ -291,12 +379,29 @@ public final class FactPatternLinearity {
      * @return the characters the matcher read
      */
     static long reads(final Pattern pattern, final String text) {
-        final CountingSequence sequence = new CountingSequence(text);
+        return reads(pattern, text, Long.MAX_VALUE - 1);
+    }
+
+    /**
+     * Runs {@code pattern} over {@code text} as the facts line does, but stops once it has read more than
+     * {@code limit} characters.
+     *
+     * @param pattern the pattern
+     * @param text    the text
+     * @param limit   the most characters to read
+     * @return the characters the matcher read, or {@code limit + 1} when it was stopped
+     */
+    static long reads(final Pattern pattern, final String text, final long limit) {
+        final CountingSequence sequence = new CountingSequence(text, limit);
         final Matcher matcher = pattern.matcher(sequence);
-        // find every match, as FactExtractor counts them
-        boolean found = matcher.find();
-        while (found) {
-            found = matcher.find();
+        try {
+            // find every match, as FactExtractor counts them
+            boolean found = matcher.find();
+            while (found) {
+                found = matcher.find();
+            }
+        } catch (final Stopped e) {
+            return limit + 1;
         }
         return sequence.reads;
     }
@@ -305,15 +410,28 @@ public final class FactPatternLinearity {
         return "\"" + line.replace("\n", "\\n") + "\"";
     }
 
-    /** A text that counts the characters a matcher reads from it. */
+    /** Thrown by {@link CountingSequence#charAt(int)} once the matcher read past the limit. */
+    private static final class Stopped extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        private Stopped() {
+            super(null, null, false, false);
+        }
+    }
+
+    /** A text that counts the characters a matcher reads from it and stops it past a limit. */
     private static final class CountingSequence implements CharSequence {
 
         private final String text;
 
+        private final long limit;
+
         private long reads;
 
-        private CountingSequence(final String text) {
+        private CountingSequence(final String text, final long limit) {
             this.text = text;
+            this.limit = limit;
         }
 
         @Override
@@ -324,6 +442,9 @@ public final class FactPatternLinearity {
         @Override
         public char charAt(final int index) {
             reads++;
+            if (reads > limit) {
+                throw new Stopped();
+            }
             return text.charAt(index);
         }
 

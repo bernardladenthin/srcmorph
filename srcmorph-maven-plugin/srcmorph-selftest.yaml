@@ -160,8 +160,8 @@ srcMorph:
   # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
   # (~260 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
   # gpt-oss reads about 270,000 characters of source (the 96K window less the output budget and the
-  # prompt), so the tiers start at 260,000 (a size condition measures the source's UTF-8 length with
-  # \n line endings). The kinds without tiers of their own (shell, Perl,
+  # prompt), so the tiers start at 260,000 (a size condition measures the source's bytes with \n
+  # line endings). The kinds without tiers of their own (shell, Perl,
   # TypeScript, ... the fallback) map-reduce on gpt-oss when a file exceeds that window, instead of
   # failing the run.
   rules:

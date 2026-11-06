@@ -9,8 +9,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -468,6 +471,92 @@ public class PackageIndexerTest {
         assertThat(tally.failed(), is(equalTo(1)));
         assertThat(Files.exists(failing.resolve("package.ai.md")), is(false));
         assertThat(Files.exists(working.resolve("package.ai.md")), is(true));
+    }
+
+    @Test
+    public void aggregate_timeoutWithoutAnInterrupt_isCountedAsFailedAndTheOtherPackagesAreWritten() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path failing = outputRoot.resolve("main/java/com/example/failing");
+        final Path working = outputRoot.resolve("main/java/com/example/working");
+        Files.createDirectories(failing);
+        Files.createDirectories(working);
+        writeChildFile(failing.resolve("Foo.java.ai.md"), "Foo.java", "Summary of Foo.");
+        writeChildFile(working.resolve("Bar.java.ai.md"), "Bar.java", "Summary of Bar.");
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new RegenerateOn(),
+                request -> {
+                    // the call names the package by its path below the output root
+                    if (request.sourceFile().equals(Paths.get("main/java/com/example/failing"))) {
+                        throw new SocketTimeoutException("no answer");
+                    }
+                    return "A package summary.";
+                },
+                CommonTestFixtures.createPackageFieldGeneration(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        final IndexTally tally = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(tally.failed(), is(equalTo(1)));
+        assertThat(Files.exists(failing.resolve("package.ai.md")), is(false));
+        assertThat(Files.exists(working.resolve("package.ai.md")), is(true));
+    }
+
+    @Test
+    public void aggregate_interrupt_endsThePass() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path failing = outputRoot.resolve("main/java/com/example/failing");
+        final Path working = outputRoot.resolve("main/java/com/example/working");
+        Files.createDirectories(failing);
+        Files.createDirectories(working);
+        writeChildFile(failing.resolve("Foo.java.ai.md"), "Foo.java", "Summary of Foo.");
+        writeChildFile(working.resolve("Bar.java.ai.md"), "Bar.java", "Summary of Bar.");
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new RegenerateOn(),
+                request -> {
+                    // the call names the package by its path below the output root
+                    if (request.sourceFile().equals(Paths.get("main/java/com/example/failing"))) {
+                        Thread.currentThread().interrupt();
+                        throw new InterruptedIOException("interrupted");
+                    }
+                    return "A package summary.";
+                },
+                CommonTestFixtures.createPackageFieldGeneration(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        final boolean interrupted;
+        try {
+            assertThrows(InterruptedIOException.class, () -> indexer.aggregate(outputRoot));
+        } finally {
+            // the flag the provider set; cleared so it does not reach the next test
+            interrupted = Thread.interrupted();
+        }
+
+        // assert: the interrupt ends the pass instead of failing one package and going on
+        assertThat(interrupted, is(true));
+        assertThat(Files.exists(failing.resolve("package.ai.md")), is(false));
     }
     // </editor-fold>
 }

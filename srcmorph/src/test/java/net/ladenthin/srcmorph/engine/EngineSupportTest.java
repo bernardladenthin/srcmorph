@@ -1068,8 +1068,35 @@ public class EngineSupportTest {
         final SrcMorphException thrown =
                 assertThrows(SrcMorphException.class, () -> EngineSupport.resolveFactsKeys(config, rules));
 
-        // assert
+        // assert: a rule without an id is named by its prompt key
         assertThat(thrown.getMessage(), containsString("broken"));
+        assertThat(thrown.getMessage(), containsString("the facts of rule 'package-body'"));
+    }
+
+    @Test
+    public void resolveFactsKeys_aRuleWithAnIdAndAnInvalidInlinePattern_isNamedByItsId() {
+        // arrange
+        final FactCounter counter = new FactCounter();
+        counter.setLabel("broken");
+        counter.setPattern("(");
+        final FactDefinition definition = new FactDefinition();
+        definition.setKey("pk");
+        definition.setFacts(Collections.singletonList(counter));
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setFactDefinitions(Collections.singletonList(definition));
+        final RoutingRule rule = new RoutingRule();
+        rule.setId("packages");
+        rule.setPromptKey("package-body");
+        rule.setAiDefinitionKey("default");
+        rule.setFactsKey("pk");
+        final List<RoutingRule> rules = Collections.singletonList(rule);
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.resolveFactsKeys(config, rules));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("the facts of rule 'packages'"));
     }
     // </editor-fold>
 }

@@ -5,8 +5,9 @@
 
 Every question of search-questions.json names the corpus files that answer it. For each model's
 output tree (one directory per model key under <out>) the 24 file summaries are searched two ways:
-- bm25: BM25 over the model's text of each summary (the header, which names the file, and the facts
-  and coverage lines srcmorph writes in front of the body are left out, as score.py measures it),
+- bm25: BM25 over the model's answer in each summary (the header, which names the file, the facts
+  and coverage lines srcmorph writes in front of the body and a reasoning block in front of the
+  answer are left out, as score.py measures it: score.answer_of),
   with camelCase and snake_case identifiers split into words; deterministic and free;
 - reader: one LLM call per question that sees the same text of every summary under its path, as an agent browsing
   the index would, and names the three files most likely to answer (OpenRouter, the key from
@@ -39,7 +40,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from run import indexes
-from score import body_of, model_text
+from score import answer_of, body_of, model_text
 
 HERE = Path(__file__).resolve().parent
 READER = "mistralai/mistral-small-3.2-24b-instruct"
@@ -97,7 +98,7 @@ def documents(run, out, work, files):
     docs = {}
     for f in files:
         md = out / run / (f + ".ai.md")
-        docs[f] = model_text(body_of(md.read_text(encoding="utf-8"))).strip() if md.exists() else ""
+        docs[f] = answer_of(model_text(body_of(md.read_text(encoding="utf-8")))).strip() if md.exists() else ""
     return docs
 
 
@@ -174,7 +175,8 @@ def reader_rank(answer, files):
         named = re.findall(r"[\w./-]+\.\w+", answer)
     ranked = []
     for path in named:
-        path = str(path).strip().lstrip("./")
+        path = str(path).strip()
+        path = path[2:] if path.startswith("./") else path
         if path in files and path not in ranked:
             ranked.append(path)
     return ranked

@@ -7,14 +7,15 @@
 # [raw]: #Requires is a comment to the parser. The [ignore] line then blanks, leftmost region first,
 # block comments (<# ... #>), here-strings (@" or @' at the end of a line up to "@ or '@ first on a
 # line), # comments and string literals, so a "function" in a help comment or a string does not
-# count; a block comment or a here-string that is never closed runs to the end of the file.
+# count. A string may span lines, as PowerShell reads it; a block comment, a here-string or a string
+# that is never closed runs to the end of the file.
 # "mandatory parameters" counts Mandatory and Mandatory = $true, not Mandatory = $false; "dot-sourced
 # scripts" a line starting with ". " and a path, a quoted one too (the blanked string leaves the
 # ". " and nothing or the arguments after it). "Verb-Noun command calls (approx)" counts every name of the Verb-Noun shape written with capitals
 # (ForEach-Object, ConvertTo-Json too), the script's own functions too. OpsFactPatternsTest pins
 # every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [raw] requirements	(?im)^#Requires\b
-[ignore] comments, here-strings and strings	(?ims)<#.*?(?:#>|\z)|@(["'])[ \t]*+\n(?:.*?^\1@|.*+)|(?<![\w`$])#[^\n]*+|"(?:[^"`\n]|`.)*+"|'(?:[^'\n]|'')*+'
+[ignore] comments, here-strings and strings	(?ims)<#.*?(?:#>|\z)|@(["'])[ \t]*+\n(?:.*?^\1@|.*+)|(?<![\w`$])#[^\n]*+|"(?:[^"`]++|`.)*+(?:"|\z)|'(?:[^']++|'')*+(?:'|\z)
 functions	(?im)^[ \t]*+(?:function|filter|workflow)[ \t]++[\w-]
 advanced functions	(?i)\[CmdletBinding\b
 parameter blocks	(?i)\bparam[ \t]*+\(

@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.provider;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
@@ -149,6 +152,35 @@ public class LlamaCppJniGenerationProviderTest {
             // assert
             // the count is the prompt the call reads, chat template included, before any call is made
             assertThat(counted, is(generated.totalPromptTokens()));
+        }
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="a model that does not load">
+    @Test
+    public void generate_aModelThatDoesNotLoad_failsEveryCallWithTheFirstError() throws Exception {
+        // arrange: a path no GGUF lies at
+        NativeLlamaAvailability.assumeAvailable();
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
+        final ProviderConfig missing = ProviderConfig.builder()
+                .modelPath(Files.createTempDirectory("no-model")
+                        .resolve("missing.gguf")
+                        .toString())
+                .contextSize(4096)
+                .maxOutputTokens(16)
+                .threads(NativeLlamaAvailability.THREADS)
+                .build();
+
+        try (LlamaCppJniGenerationProvider provider = new LlamaCppJniGenerationProvider(missing, promptSupport)) {
+            // act
+            final IllegalStateException first =
+                    assertThrows(IllegalStateException.class, () -> provider.generate(request("class A {}")));
+            final IllegalStateException second =
+                    assertThrows(IllegalStateException.class, () -> provider.generate(request("class B {}")));
+
+            // assert: the second call is not a second load, it is the first one's failure
+            assertThat(first.getMessage(), containsString("missing.gguf"));
+            assertThat(second, is(sameInstance(first)));
         }
     }
     // </editor-fold>

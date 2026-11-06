@@ -152,6 +152,32 @@ public class JvmFactPatternsTest {
         assertThat(count(KOTLIN, "functions (approx)", "fun a() = 1\nval s = \"\"\"\nfun b() = 2\n"), is(1));
         assertThat(count(KOTLIN, "functions (approx)", "fun a() = 1\n/* /* */\nfun b() = 2\n"), is(1));
     }
+
+    @Test
+    public void kotlin_extensionWithNestedTypeArguments_counts() {
+        // arrange
+        final String source = "fun <T : Comparable<T>> List<T>.top(): T = max()\n"
+                + "fun Map<String, List<Int>>.flat(): List<Int> = values.flatten()\n"
+                + "fun <T> identity(x: T): T = x\n";
+
+        // act, assert
+        // top and flat; identity has no receiver
+        assertThat(count(KOTLIN, "extension functions", source), is(2));
+    }
+
+    @Test
+    public void kotlin_annotationWithNestedParentheses_countsItsDeclaration() {
+        // arrange
+        final String source = "@Deprecated(\"old\", ReplaceWith(\"g()\")) fun f() = 1\n"
+                + "@Suppress(names = arrayOf(\"a\")) class A\n"
+                + "class B(@Named(value = key(1)) val x: Int)\n";
+
+        // act, assert
+        assertThat(count(KOTLIN, "functions (approx)", source), is(1));
+        // A and B
+        assertThat(count(KOTLIN, "type declarations", source), is(2));
+        assertThat(count(KOTLIN, "constructor properties (approx)", source), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="groovy-facts">

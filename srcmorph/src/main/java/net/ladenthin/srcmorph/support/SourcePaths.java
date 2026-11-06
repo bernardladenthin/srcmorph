@@ -37,11 +37,14 @@ public class SourcePaths {
         final Path relative = baseDirectory.relativize(path);
         // the first name element compared as a string, case-sensitively: Path#startsWith ignores the
         // case on Windows, so a leading Src/ would be stripped there and kept on Linux. The empty
-        // relativised path has one empty name, which is not src, so subpath() always has a name to skip.
-        if (SRC_DIRECTORY_NAME.equals(relative.getName(0).toString())) {
-            return relative.subpath(1, relative.getNameCount());
+        // relativised path has one empty name, which is not src; src itself (a subtree "src") is the
+        // empty path, since subpath() needs a name to keep
+        if (!SRC_DIRECTORY_NAME.equals(relative.getName(0).toString())) {
+            return relative;
         }
-        return relative;
+        return relative.getNameCount() == 1
+                ? relative.getFileSystem().getPath("")
+                : relative.subpath(1, relative.getNameCount());
     }
 
     /**

@@ -148,10 +148,13 @@ Package root: `net.ladenthin.srcmorph`.
   files, never copies, and count through `FactExtractor.counts`, so the `[ignore]` lines (regions
   blanked before counting: POD, heredocs, comments) and the `[raw]` and `[distinct]` counters apply
   as in production. `ProfileFactPatternsLinearityTest` runs every pattern of every `.tsv` of the
-  profile over repeated adversarial lines and counts the characters the matcher reads: four times
-  the input may read at most six times as many, so a quadratic pattern fails it on any machine, and
-  none may reach the time limit `support.ReadBudget` gives a pattern (`READS_PER_CHAR` per character
-  plus `READ_ALLOWANCE`). A new facts file is measured without a change to it. The measure is
+  profile over repeated adversarial lines, and over the same lines without their line break repeated
+  into one long line (a pattern that rescans to its line end from every opener is quadratic only
+  there), and counts the characters the matcher reads: four times the input may read at most six
+  times as many, so a quadratic pattern fails it on any machine, none may reach the time limit
+  `support.ReadBudget` gives a pattern (`READS_PER_CHAR` per character plus `READ_ALLOWANCE`), and
+  none may overflow the stack (a group repeated without a possessive or bounded quantifier recurses
+  once per repetition in `java.util.regex`). A new facts file is measured without a change to it. The measure is
   `FactPatternLinearity`, written in Java 8 without JUnit, so the `linearity-jdk8` job of
   `publish.yml` runs it on Java 8 as well (it compiles the one class with `--release 8`): keep that
   class free of anything newer than Java 8.

@@ -55,9 +55,10 @@ For every model under <out> (one directory per model key) and every source file 
 - format: missing lead line, '#' to '###' headings outside code fences, code fence markers (``` and ~~~
   at the start of a line), leaked reasoning markers (`<think>`, gpt-oss's harmony and Gemma's channel
   markers; one in backticks or right after a quote is the summary writing about it, no leak);
-- failed = why a body is not a summary: missing, empty, leak-only (reasoning and no lead; a complete
-  summary after a reasoning block, `<think>`, harmony's analysis channel or Gemma's thought channel,
-  is a leak, not a failure), refusal, too-short (under 80 bytes); a failed body scores 0 in recall.
+- failed = why a body is not a summary: missing, empty, leak-only (a leak and nothing after the leading
+  reasoning block, or one that never closes; a complete summary after a reasoning block, `<think>`,
+  harmony's analysis channel or Gemma's thought channel, with or without its lead, is a leak, not a
+  failure), refusal, too-short (under 80 bytes); a failed body scores 0 in recall.
   The package and project summaries a run writes are expected for every directory that holds an
   indexed source (and the root), so a run whose package or project phase failed has missing rows
   there too. cutOff = the generation hit maxOutputTokens (from the
@@ -89,20 +90,91 @@ import run  # run.py's constants (the extensions and file names it indexes); run
 HERE = Path(__file__).resolve().parent
 KINDS = {".java": "java", ".sql": "sql"}
 IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-# The lines srcmorph writes in front of a body (AiFactExtractor.FACTS_HEADER,
-# AiMapReduceSupport.COVERAGE_HEADER), in this order.
+# The lines srcmorph writes in front of a body (FactExtractor.FACTS_HEADER,
+# AiMdLeadExtractor.COVERAGE_HEADER, which MapReduceMath.COVERAGE_HEADER names), in this order.
 MACHINE_LINES = ("**Facts (exact, whole file):** ", "**Coverage:** ")
-# A fenced block (its opening line with the language, its content), as CommonMark reads one: opened at the
-# start of a line (up to three spaces in front) by three or more backticks or tildes, an info string after
-# backticks without a backtick in it, and closed at the start of a line by a run of the same character at
-# least as long, with nothing but spaces after it; an unclosed one runs to the end. A ``` inside a line of
-# prose ("answers in ```json blocks") opens nothing.
-FENCED = re.compile(r"(?m)^ {0,3}(?P<marker>`{3,}(?=[^`\n]*$)|~{3,})[^\n]*\n?(?P<code>.*?)"
-                    r"(?:^ {0,3}(?P=marker)(?:(?<=`)`*|(?<=~)~*)[ \t]*$|\Z)", re.S)
+# The opening line of a fence (fenced_blocks): three or more backticks or tildes, an info string after
+# backticks without a backtick in it.
+FENCE_OPEN = re.compile(r"(?P<marker>`{3,}(?=[^`]*$)|~{3,})")
+# A list item's marker line: its content starts after the marker and one to four spaces (one when more
+# follow, or nothing), CommonMark's continuation indent of the item.
+LIST_ITEM = re.compile(r"( *)([-*+]|\d{1,9}[.)])( +|$)")
 # An indented code block: lines indented by four spaces or a tab, after a blank line or at the start.
 INDENTED = re.compile(r"(?:\A|(?<=\n\n))(?P<code>(?:(?: {4}|\t)[^\n]*(?:\n|\Z))+)")
-# A fence marker the format column counts: the opening or closing line of a fence, as FENCED reads them.
-FENCE_MARKER = re.compile(r"(?m)^ {0,3}(?:`{3,}(?=[^`\n]*$)|~{3,})")
+
+
+def list_content_column(line):
+    """The column a list item's content starts at, or None for a line that is no list item's marker line."""
+    match = LIST_ITEM.match(line)
+    if not match:
+        return None
+    spaces = len(match.group(3))
+    return match.end(2) + (spaces if 1 <= spaces <= 4 else 1)
+
+
+def fenced_blocks(text):
+    """The fenced blocks of a text as CommonMark reads them, as (start, end, code, markers): opened at the
+    start of a line by three or more backticks or tildes, up to three spaces right of its container's
+    content column (0 at the top; in a list item the item's content column, so a fence indented under
+    `  - item` opens at four spaces), and closed by a run of the same character at least as long, at most
+    three spaces right of that column, with nothing but spaces after it; an unclosed one runs to the end
+    (markers 1). A ``` inside a line of prose ("answers in ```json blocks") opens nothing. A non-blank line
+    left of an item's content column ends the item. start and end span the opening line to the closing one
+    (without its line break), code the lines between them."""
+    blocks, columns = [], []
+    lines = text.split("\n")
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line) + 1)
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        columns = [c for c in columns if c <= indent]
+        item = list_content_column(line)
+        container, rest = (columns[-1] if columns else 0), line[indent:]
+        if item is not None:
+            columns.append(item)
+            # a fence may open on the item's own line ("- ```sql")
+            container, rest = item, line[item:]
+            indent = item
+        opener = FENCE_OPEN.match(rest) if indent - container <= 3 else None
+        if opener is None:
+            i += 1
+            continue
+        char, length = opener.group("marker")[0], len(opener.group("marker"))
+        closer = re.compile(r"( *)" + re.escape(char) + "{" + str(length) + r",}[ \t]*")
+        j = i + 1
+        while j < len(lines):
+            match = closer.fullmatch(lines[j])
+            if match and len(match.group(1)) <= container + 3:
+                break
+            j += 1
+        start = offsets[i]
+        code_start = min(offsets[i + 1], len(text))
+        if j < len(lines):
+            blocks.append((start, offsets[j] + len(lines[j]), text[code_start:offsets[j]], 2))
+        else:
+            blocks.append((start, len(text), text[code_start:], 1))
+        i = j + 1
+    return blocks
+
+
+def sub_fences(text, replace):
+    """The text with every fenced block (fenced_blocks) replaced by replace(code)."""
+    out, last = [], 0
+    for start, end, code, _ in fenced_blocks(text):
+        out += [text[last:start], replace(code)]
+        last = end
+    return "".join(out) + text[last:]
+
+
+def fence_markers(text):
+    """The opening and closing lines of the fences of a text, as fenced_blocks reads them."""
+    return sum(markers for _, _, _, markers in fenced_blocks(text))
 # A word of the prose shaped like code: camelCase, PascalCase with a second capital, or snake_case.
 CODE_SHAPED = re.compile(r"(?<![\w`.$])(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*"
                          r"|[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]*[A-Za-z0-9])(?![\w`$])")
@@ -346,15 +418,15 @@ def marked_as_code(word, prose, case_insensitive):
 def whole_name(name, case_insensitive=False):
     """A path- or colon-like id (`/orders`, `jdbc/ShopDS`, `orders.incoming.queue`, `min-revenue`) as a
     whole name: not after an identifier character when it starts with one, and not going on with an
-    identifier or path character (`/`, `\\`, `@`, `{`, `-`), nor with a dot before an identifier character
-    or a colon before a letter or a slash (`urn:example:statement:v2`), so `/orders/{orderId}/cancel` names
-    neither `/orders` nor `/orders/{orderId}`, and `java:/jdbc/ShopDSX` not `jdbc/ShopDS`; a sentence's
-    period, a label's colon ("erp.host: the ERP"), a port (`erp.host:8080`), a Maven version
-    (`jackson-databind:${jackson.version}`), a comma or a query string (`/orders?page=2`) may follow. What
-    comes in front of one that starts with a path character is left open: `java:/jdbc/ShopDS` names
-    `jdbc/ShopDS`, `--min-revenue` names `min-revenue`."""
+    identifier or path character (`/`, `\\`, `@`, `{`), nor with a hyphen, a dot before an identifier
+    character or a colon before a letter or a slash (`min-revenue-cap`, `urn:example:statement:v2`), so
+    `/orders/{orderId}/cancel` names neither `/orders` nor `/orders/{orderId}`, and `java:/jdbc/ShopDSX` not
+    `jdbc/ShopDS`; a sentence's period, a label's colon ("erp.host: the ERP"), a port (`erp.host:8080`), a
+    Maven version (`jackson-databind:${jackson.version}`), a comma, a query string (`/orders?page=2`) or
+    Perl's arrow (`JSON::PP->new`) may follow. What comes in front of one that starts with a path character
+    is left open: `java:/jdbc/ShopDS` names `jdbc/ShopDS`, `--min-revenue` names `min-revenue`."""
     head = r"(?<![A-Za-z0-9_])" if re.match(r"\w", name) else ""
-    return re.compile(head + re.escape(name) + r"(?![\w/\\@{-])(?!\.\w)(?!:[A-Za-z_/])",
+    return re.compile(head + re.escape(name) + r"(?![\w/\\@{])(?!-(?!>))(?!\.\w)(?!:[A-Za-z_/])",
                       re.I if case_insensitive else 0)
 
 
@@ -400,15 +472,17 @@ def middle_found(middle, prose, case_insensitive=False, everyday=()):
     return names_found(middle, prose, case_insensitive, everyday, prefixes=middle)
 
 
-def failure_of(missing, body, lead, leaks, answer=None):
-    """Why a body is no summary, or "" when it is one: empty and leak-only on the whole body, refusal and
-    too-short on the answer after a leading reasoning block (answer_of; the body when not given)."""
+def failure_of(missing, body, leaks, answer=None):
+    """Why a body is no summary, or "" when it is one: empty on the whole body, leak-only when it leaks
+    and nothing is left after a leading reasoning block (a complete answer after one, with or without a
+    lead, is a summary that leaks), refusal and too-short on the answer after that block (answer_of; the
+    body when not given)."""
     answer = body if answer is None else answer
     if missing:
         return "missing"
     if not body.strip():
         return "empty"
-    if leaks and not lead:
+    if leaks and not answer.strip():
         return "leak-only"
     if REFUSAL.match(answer):
         return "refusal"
@@ -417,9 +491,16 @@ def failure_of(missing, body, lead, leaks, answer=None):
     return ""
 
 
+# A reasoning block that opens the body and never closes (cut off while reasoning): no answer follows it.
+UNCLOSED_REASONING = re.compile(r"^\s*(?:<think>(?!.*</think>)|<\|channel>thought(?!.*<channel\|>)"
+                                r"|(?:<\|start\|>\w*)?<\|channel\|>analysis<\|message\|>(?!.*<\|end\|>))", re.S)
+
+
 def answer_of(text):
     """The model's answer: its text (model_text) without the reasoning block in front of it, which is no
-    part of the summary (a leak, counted on the whole text)."""
+    part of the summary (a leak, counted on the whole text); nothing when that block never closes."""
+    if UNCLOSED_REASONING.match(text):
+        return ""
     return REASONING_BLOCK.sub("", text, count=1)
 
 
@@ -435,13 +516,13 @@ def without_copies(body, source):
         lines = ["".join(line.split()) for line in code.splitlines() if IDENT.search(line)]
         return bool(lines) and sum(1 for line in lines if line in source_lines) >= COPIED_SHARE * len(lines)
 
-    def fence(match):
-        return " " if copies(match.group("code")) else "\n" + match.group("code") + "\n"
+    def fence(code):
+        return " " if copies(code) else "\n" + code + "\n"
 
     def indented(match):
         return " \n" if copies(match.group("code")) else match.group("code")
 
-    return INDENTED.sub(indented, FENCED.sub(fence, body))
+    return INDENTED.sub(indented, sub_fences(body, fence))
 
 
 def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), prefixes=()):
@@ -457,7 +538,7 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), 
     invented = [t for t in ticked if not names_the_source(t, identifiers, case_insensitive)]
     stated = [n for n in numbers if number_pattern(n).search(prose)]
     # a '#' line inside a fence is the fence's content (a shell comment), not a heading of the body
-    outside_fences = FENCED.sub("\n", answer).strip().splitlines()
+    outside_fences = sub_fences(answer, lambda code: "\n").strip().splitlines()
     lines = answer.strip().splitlines()
     lead = bool(lines) and lines[0].startswith(">")
     # a marker in backticks is the summary writing about it (a file that strips them), not a leak
@@ -474,10 +555,10 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), 
         "numbersStated": len(stated),
         "lead": lead,
         "badHeadings": sum(1 for line in outside_fences if re.match(r"^#{1,3}\s", line)),
-        "fences": len(FENCE_MARKER.findall(answer)),
+        "fences": fence_markers(answer),
         "leaks": leaks,
         "empty": not text.strip(),
-        "failed": failure_of(False, text, lead, leaks, answer),
+        "failed": failure_of(False, text, leaks, answer),
     }
 
 
@@ -493,7 +574,7 @@ def cut_off_of(meta_dir, model):
 
 
 def source_text(path):
-    """A source as srcmorph reads it (AiSourceLines.decode): UTF-8, or UTF-16 after its byte order
+    """A source as srcmorph reads it (SourceLines.decode): UTF-8, or UTF-16 after its byte order
     mark, without the mark; a byte that is not valid in the encoding reads as U+FFFD."""
     data = path.read_bytes()
     for mark, encoding in ((codecs.BOM_UTF8, "utf-8"), (codecs.BOM_UTF16_LE, "utf-16-le"),

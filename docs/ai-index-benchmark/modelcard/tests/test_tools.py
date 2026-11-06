@@ -331,6 +331,26 @@ class SearchTest(unittest.TestCase):
         self.assertEqual(files, ["other/Dockerfile", "other/a.sh"])
         self.assertEqual(docs, {"other/Dockerfile": "", "other/a.sh": "> Rotates the backups."})
 
+    def test_aSummary_isTheAnswerAfterALeadingReasoningBlock_asScorePyReadsIt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "other").mkdir(parents=True)
+            (work / "other" / "a.sh").write_text("x", encoding="utf-8")
+            (out / "m" / "other").mkdir(parents=True)
+            (out / "m" / "other" / "a.sh.ai.md").write_text(
+                "h: 1\n---\n<think>about the audit trail</think>\n> Rotates the backups.\n", encoding="utf-8")
+
+            docs = search.documents("m", out, work, search.corpus_files(work))
+
+        self.assertEqual(docs, {"other/a.sh": "> Rotates the backups."})
+
+    def test_readerRank_dropsALeadingDotSlashOnly(self):
+        files = [".github/workflows/ci.yml", "other/a.sh"]
+
+        self.assertEqual(search.reader_rank('{"files": [".github/workflows/ci.yml", "./other/a.sh", "../other/a.sh"]}',
+                                            files), files)
+        self.assertEqual(search.reader_rank("first .github/workflows/ci.yml, then ./other/a.sh", files), files)
+
     def test_cacheKey_changesWithTheSystemPrompt(self):
         key = search.cache_key("m", "ctx", "q")
         with mock.patch.object(search, "SYSTEM", search.SYSTEM + " Be brief."):
@@ -489,6 +509,57 @@ class CutOffTest(unittest.TestCase):
     def test_filesNotWritten_isTheOnlyFailureTheNextPhasesRunAfter(self):
         self.assertTrue(run.files_not_written(self.log("SrcMorphException: 2 file(s) were not written (an incomplete")))
         self.assertFalse(run.files_not_written(self.log("SrcMorphException: Invalid rules: two fallbacks")))
+        packages = self.log("SrcMorphException: 1 package(s) were not written (an incomplete answer")
+        self.assertTrue(run.files_not_written(packages, "AggregatePackages"))
+        # each phase's own message: a package message ends no file phase, and the project phase has no next one
+        self.assertFalse(run.files_not_written(packages, "GenerateFileIndex"))
+        self.assertFalse(run.files_not_written(packages, "AggregateProject"))
+
+
+class RunModelTest(unittest.TestCase):
+    """run_model's phases against a stand-in for the CLI: no Java, no model."""
+
+    def run_phases(self, failures):
+        """The phases run_model starts when the CLI fails the given phases with the given log text."""
+        started = []
+
+        def fake_run(command, stdout=None, **kwargs):
+            if command[-1].endswith(".json") and "-cp" in command:
+                phase = Path(command[-1]).stem[len("config_"):]
+                started.append(phase)
+                text = failures.get(phase)
+                stdout.write(text or "done\n")
+                return subprocess.CompletedProcess(command, 1 if text else 0)
+            return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            (tmp / "work" / "java").mkdir(parents=True)
+            (tmp / "cp.txt").write_text("x.jar", encoding="utf-8")
+            options = argparse.Namespace(
+                model_dir=str(tmp), seed=None, chars_per_token=None, facts=False, oversize="", max_chunks=None,
+                java_prompt=run.JAVA_PROMPT, out=str(tmp / "out"), parts="", work=str(tmp / "work"),
+                cp=str(tmp / "cp.txt"), prepend="", java="java", corpus="", commit=run.JAVA_COMMIT,
+                profile="v3", meta=str(tmp / "meta"))
+            model = next(m for m in MODELS["models"] if m["backend"] == "local")
+            with mock.patch.object(run.subprocess, "run", side_effect=fake_run), \
+                    mock.patch("sys.stdout", new_callable=io.StringIO):
+                meta = run.run_model(options, MODELS, run.PROFILES / "v3", model)
+        return started, {phase: p["exit"] for phase, p in meta["phases"].items()}
+
+    def test_aPackagePhaseThatWroteAllButSomePackages_stillRunsTheProjectPhase(self):
+        started, exits = self.run_phases(
+            {"AggregatePackages": "SrcMorphException: 1 package(s) were not written (an incomplete answer"})
+
+        self.assertEqual(started, list(run.PHASES))
+        self.assertEqual(exits, {"GenerateFileIndex": 0, "AggregatePackages": 1, "AggregateProject": 0})
+
+    def test_anyOtherFailure_endsTheModel(self):
+        started, _ = self.run_phases({"AggregatePackages": "SrcMorphException: Invalid rules: two fallbacks"})
+        after_files, _ = self.run_phases({"GenerateFileIndex": "SrcMorphException: 2 file(s) were not written"})
+
+        self.assertEqual(started, ["GenerateFileIndex", "AggregatePackages"])
+        self.assertEqual(after_files, list(run.PHASES))
 
 
 class ReportTest(unittest.TestCase):

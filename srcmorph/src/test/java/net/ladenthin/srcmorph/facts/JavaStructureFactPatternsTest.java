@@ -202,6 +202,51 @@ public class JavaStructureFactPatternsTest {
         // act, assert
         assertThat(count(METHODS, "    public <K,\n        V> void put(K k, V v) {\n"), is(0));
     }
+
+    @Test
+    public void method_throwsOnTheNextLine_counts() {
+        // arrange
+        final String source = "    public static void main(final String[] args)\n"
+                + "            throws IOException {\n    }\n"
+                + "    void read(int a)\r\n        throws IOException,\r\n            TimeoutException;\r\n";
+
+        // act, assert
+        assertThat(count(METHODS, source), is(2));
+    }
+
+    @Test
+    public void method_braceOnTheNextLine_counts() {
+        // arrange
+        final String source = "    public int size()\n    {\n        return 0;\n    }\n"
+                + "    private void f(int a) throws IOException\n    {\n    }\n";
+
+        // act, assert
+        assertThat(count(METHODS, source), is(2));
+    }
+
+    @Test
+    public void method_controlStructuresWithTheBraceOnTheNextLine_doNotCount() {
+        // act, assert
+        assertThat(count(METHODS, "    if (ready())\n    {\n    }\n    while (more())\n    {\n    }\n"), is(0));
+    }
+
+    @Test
+    public void method_thousandsOfAnnotationsOnOneLine_doNotOverflowTheStack() {
+        // arrange
+        final String some = FactPatternLinearity.repeat("@A @B(x) ", 30);
+        final String thousands = FactPatternLinearity.repeat("@A @B(x) ", 20_000);
+
+        // act, assert
+        // up to 64 modifiers and annotations count with their declaration
+        assertThat(count(METHODS, some + "void run() {\n}\n"), is(1));
+        assertThat(count(FIELDS, some + "private int x;\n"), is(1));
+        assertThat(count(CONSTRUCTORS, some + "public A(int a) {\n}\n"), is(1));
+        // more are read without a stack overflow: a type declaration still counts, the others do not
+        assertThat(count(TYPES, thousands + "class A {\n}\n"), is(1));
+        assertThat(count(METHODS, thousands + "void run() {\n}\n"), is(0));
+        assertThat(count(FIELDS, thousands + "private int x;\n"), is(0));
+        assertThat(count(CONSTRUCTORS, thousands + "public A(int a) {\n}\n"), is(0));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="fields">
@@ -373,6 +418,17 @@ public class JavaStructureFactPatternsTest {
         // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count(CONSTRUCTORS, source)), is(1));
     }
+
+    @Test
+    public void ctor_throwsAndBraceOnTheNextLines_count() {
+        // arrange
+        final String source = "    public Service(final Repo r)\n            throws IOException {\n    }\n"
+                + "    Service(int n)\n    {\n    }\n"
+                + "    protected Service(String s)\r\n        throws IOException\r\n    {\r\n    }\r\n";
+
+        // act, assert
+        assertThat(count(CONSTRUCTORS, source), is(3));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="type declarations">
@@ -473,13 +529,34 @@ public class JavaStructureFactPatternsTest {
     }
 
     @Test
-    public void wholeFile_stringNotClosedOnItsLine_isNotBlanked() {
+    public void wholeFile_stringNotClosedOnItsLine_isBlankedToTheLineEnd() {
         // act
         final Map<String, Integer> counts = ProfileFactPatterns.counts(
-                ProfileFactPatterns.counters("java-facts"), "String s = \"public\npublic class A {\n");
+                ProfileFactPatterns.counters("java-facts"),
+                "String s = \"public\npublic class A {\nchar c = 'public\n");
 
         // assert
-        assertThat(counts.get("public declarations"), is(2));
+        // only the class line: each unclosed literal ends at its line end, so a line of escaped quotes stays linear
+        assertThat(counts.get("public declarations"), is(1));
+    }
+
+    @Test
+    public void wholeFile_overrideAnnotations_countWithOrWithoutThePackage() {
+        // arrange
+        final String source = "class A {\n"
+                + "    @Override\n    public String toString() {\n        return \"@Override\";\n    }\n"
+                + "    @java.lang.Override public int hashCode() {\n        return 0;\n    }\n"
+                + "    // @Override\n"
+                + "    @Overrides void f() {\n    }\n"
+                + "}\n";
+
+        // act
+        final Map<String, Integer> counts =
+                ProfileFactPatterns.counts(ProfileFactPatterns.counters("java-facts"), source);
+
+        // assert
+        // not the one in a string, the commented-out one nor @Overrides
+        assertThat(counts.get("@Override"), is(2));
     }
     // </editor-fold>
 }

@@ -23,14 +23,19 @@
 # profile reads linearly.
 # The [ignore] line blanks what the compiler does not read as code, leftmost region first: line and
 # block comments (Javadoc too), text blocks ("""..."""), string and character literals; a comment or
-# text block that is never closed runs to the end of the file, a quote not closed on its line is no
-# string. So a "public" or "class" in a comment, a Javadoc example or a string does not count.
+# text block that is never closed runs to the end of the file, a string or character literal not
+# closed on its line to the end of its line (so a line of escaped quotes stays linear). So a "public"
+# or "class" in a comment, a Javadoc example or a string does not count.
+# A method's or constructor's throws clause and its opening brace may stand on the lines below its
+# parameters (a wrapped throws, an Allman-style {); "@Override" counts @java.lang.Override too. Up
+# to 64 modifiers and annotations stand before a method, constructor or field (more, on one line, are
+# not read: the bound keeps java.util.regex from overflowing its stack).
 # "TODO/FIXME" is [raw]: it counts the file as written, since the markers live in comments.
-[ignore] comments, text blocks and literals	(?s)//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|"""(?:[^"\\]++|\\.|"(?!""))*+(?:"""|\z)|"(?:[^"\\\n]++|\\.)*+"|'(?:[^'\\\n]++|\\.)*+'
-type declarations	(?m)^[ \t]*(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed|strictfp|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*(?:class|interface|@interface|enum|record)[ \t]+[A-Za-z_$]
+[ignore] comments, text blocks and literals	(?s)//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|"""(?:[^"\\]++|\\.|"(?!""))*+(?:"""|\z)|"(?:[^"\\\n]++|\\.)*+"?+|'(?:[^'\\\n]++|\\.)*+'?+
+type declarations	(?m)^[ \t]*(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed|strictfp|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*+(?:class|interface|@interface|enum|record)[ \t]+[A-Za-z_$]
 public declarations	\bpublic\b
 [raw] TODO/FIXME	\b(?:TODO|FIXME)\b
-@Override	@Override\b
-methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*(?:<(?:[^<>\n]|<(?:[^<>\n]|<[^<>\n]*+>)*+>)*+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw|yield|record)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?(?:[ \t]++default\b[^;\n]*+)?[ \t]*[{;]
-constructors	(?m)^[ \t]*+(?!(?:@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?[ \t]+)*+[A-Z][A-Z0-9_$]*+[ \t]*\([ \t\r\n]*+\))(?:(?:public|private|protected|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*([A-Z][A-Za-z0-9_$]*)[ \t]*\((?=[ \t\n]*+\)|[ \t\n]*+(?:(?:final|@[A-Za-z_$][\w$.]*+(?:\([^()\n]*+\))?)[ \t]+)*(?!new\b)[A-Za-z_$][\w$.]*+(?:<[^()\n]*+>)?(?:\[\])*(?:\.\.\.)?[ \t]+[A-Za-z_$])(?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*throws[ \t][\w$., \t]+)?[ \t]*\{
-field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+)*(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+)*(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]{0,10000}+)?;
+@Override	@(?:java\.lang\.)?Override\b
+methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?:<(?:[^<>\n]|<(?:[^<>\n]|<[^<>\n]*+>)*+>)*+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw|yield|record)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t\r\n]*+throws[ \t\r\n][\w$., \t\r\n]++)?(?:[ \t]++default\b[^;\n]*+)?[ \t\r\n]*+[{;]
+constructors	(?m)^[ \t]*+(?!(?:@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?[ \t]+)*+[A-Z][A-Z0-9_$]*+[ \t]*\([ \t\r\n]*+\))(?:(?:public|private|protected|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}([A-Z][A-Za-z0-9_$]*)[ \t]*\((?=[ \t\n]*+\)|[ \t\n]*+(?:(?:final|@[A-Za-z_$][\w$.]*+(?:\([^()\n]*+\))?)[ \t]+){0,64}(?!new\b)[A-Za-z_$][\w$.]*+(?:<[^()\n]*+>)?(?:\[\])*(?:\.\.\.)?[ \t]+[A-Za-z_$])(?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t\r\n]*+throws[ \t\r\n][\w$., \t\r\n]++)?[ \t\r\n]*+\{
+field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final)[ \t]+){0,64}(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]{0,10000}+)?;

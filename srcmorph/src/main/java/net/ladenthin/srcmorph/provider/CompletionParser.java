@@ -53,6 +53,9 @@ public class CompletionParser {
     /** Closes a {@link #THINK_TAG_START_MARKER} block. */
     public static final String THINK_TAG_END_MARKER = "</think>";
 
+    /** The characters before a closing tag that make it a tag the text names: quotes and a backtick. */
+    private static final String NOT_GLUING = "\"'`";
+
     /** The kinds of thinking block, in the order they are tried. */
     private enum ThinkingBlock {
         /** Gemma 4's channel markers. */
@@ -82,10 +85,12 @@ public class CompletionParser {
      *       while the model was still reasoning, and an {@link IncompleteAnswerException} says so
      *       rather than letting the reasoning be stored as the answer.</li>
      *   <li>If a chat template opened the block itself (Qwen3, DeepSeek-R1), the response holds only the
-     *       closing {@link #THINK_TAG_END_MARKER}: the first one that stands alone on its line, with no
-     *       {@link #THINK_TAG_START_MARKER} before it, ends the reasoning, and the trimmed text after it is
-     *       returned. A tag inside a line (in a sentence, in quotes, after a list item's label) is text the
-     *       answer or the reasoning writes about it.</li>
+     *       closing {@link #THINK_TAG_END_MARKER}, and the trimmed text after it is returned. With no
+     *       {@link #THINK_TAG_START_MARKER} before it, the first one that stands alone on its line ends the
+     *       reasoning; without such a line, the first one that ends its line glued to the reasoning's last
+     *       word ({@code I will write it.</think>}). A tag inside a line, or after a space, a quote or a
+     *       backtick (in a sentence, in quotes, after a list item's label) is text the answer or the
+     *       reasoning writes about it.</li>
      *   <li>Otherwise the response is returned trimmed, any marker in it kept as text.</li>
      *   <li>{@code null} input is treated as an empty response.</li>
      * </ul>
@@ -119,17 +124,58 @@ public class CompletionParser {
             return thinking.substring(thinkingEnd + end.length()).trim();
         }
         // a template that opened the block itself (Qwen3, DeepSeek-R1) leaves only the closing tag: the first
-        // </think> alone on its line, with no <think> before it, ends the reasoning; one inside a line is
-        // text about the tag, in the answer or in the reasoning before the real one
-        int injectedEnd = trimmed.indexOf(THINK_TAG_END_MARKER);
-        while (injectedEnd >= 0 && !trimmed.substring(0, injectedEnd).contains(THINK_TAG_START_MARKER)) {
-            if (aloneOnItsLine(trimmed, injectedEnd)) {
-                return trimmed.substring(injectedEnd + THINK_TAG_END_MARKER.length())
-                        .trim();
-            }
-            injectedEnd = trimmed.indexOf(THINK_TAG_END_MARKER, injectedEnd + 1);
+        // </think> alone on its line, with no <think> before it, ends the reasoning, else the first one glued to
+        // the end of a line of reasoning; one inside a line is text about the tag
+        int injectedEnd = injectedEnd(trimmed, true);
+        if (injectedEnd < 0) {
+            injectedEnd = injectedEnd(trimmed, false);
         }
-        return trimmed;
+        return injectedEnd < 0
+                ? trimmed
+                : trimmed.substring(injectedEnd + THINK_TAG_END_MARKER.length()).trim();
+    }
+
+    /**
+     * Finds the closing tag that ends the reasoning a chat template opened: the first one with no
+     * {@link #THINK_TAG_START_MARKER} before it that stands alone on its line, or that ends its line glued
+     * to the word before it.
+     *
+     * @param text  the response, trimmed
+     * @param alone {@code true} for a tag alone on its line, {@code false} for one glued to a line's end
+     * @return where the tag starts, or {@code -1}
+     */
+    private static int injectedEnd(final String text, final boolean alone) {
+        int index = text.indexOf(THINK_TAG_END_MARKER);
+        while (index >= 0 && !text.substring(0, index).contains(THINK_TAG_START_MARKER)) {
+            if (alone ? aloneOnItsLine(text, index) : gluedToALineEnd(text, index)) {
+                return index;
+            }
+            index = text.indexOf(THINK_TAG_END_MARKER, index + 1);
+        }
+        return -1;
+    }
+
+    /**
+     * Returns whether the closing tag at {@code index} ends its line, but for spaces and tabs, and follows
+     * a character that is no space, quote or backtick: the end of a sentence of reasoning, not a tag the
+     * text names.
+     *
+     * @param text  the response, trimmed
+     * @param index where the tag starts
+     * @return {@code true} when the tag is glued to the end of its line's text
+     */
+    private static boolean gluedToALineEnd(final String text, final int index) {
+        if (index == 0 || !restOfLine(text, index).trim().isEmpty()) {
+            return false;
+        }
+        final char before = text.charAt(index - 1);
+        return !Character.isWhitespace(before) && NOT_GLUING.indexOf(before) < 0;
+    }
+
+    private static String restOfLine(final String text, final int index) {
+        final String after = text.substring(index + THINK_TAG_END_MARKER.length());
+        final int newline = after.indexOf('\n');
+        return newline < 0 ? after : after.substring(0, newline);
     }
 
     /**
@@ -141,11 +187,8 @@ public class CompletionParser {
      * @return {@code true} when nothing else stands on the tag's line
      */
     private static boolean aloneOnItsLine(final String text, final int index) {
-        final int lineStart = text.lastIndexOf('\n', index - 1) + 1;
-        final int afterTag = index + THINK_TAG_END_MARKER.length();
-        final int newline = text.indexOf('\n', afterTag);
-        final int lineEnd = newline < 0 ? text.length() : newline;
-        return text.substring(lineStart, index).trim().isEmpty()
-                && text.substring(afterTag, lineEnd).trim().isEmpty();
+        final String before = text.substring(0, index);
+        return before.substring(before.lastIndexOf('\n') + 1).trim().isEmpty()
+                && restOfLine(text, index).trim().isEmpty();
     }
 }

@@ -8,14 +8,14 @@
 # block comments (nested two levels deep; a third level ends the comment early), triple-quoted
 # strings ("""...""", interpolated or not), string literals and character literals, so a "def" or
 # "class" in a Scaladoc, a string or a commented-out block does not count. A region that is never
-# closed runs to the end of the file; a symbol literal ('name) is no character literal and stays.
+# closed runs to the end of the file, a string literal to the end of its line; a symbol literal ('name) is no character literal and stays.
 # "type declarations" counts every class, trait, object and enum declared at the start of a line,
 # case classes and companions too; "methods (approx)" every def at the start of a line (members,
 # local and extension methods); "givens and implicits" a given instance or an implicit val, def,
 # object or class. Counts are regex heuristics: a declaration after another on the same line is not
 # counted. JvmFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
 # pattern reads linearly.
-[ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*/]++|\*(?!/)|/(?!\*)|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z))*+(?:\*/|\z)|""".*?(?:"""|\z)|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)'
+[ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*/]++|\*(?!/)|/(?!\*)|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z))*+(?:\*/|\z)|""".*?(?:"""|\z)|"(?:[^"\\\n]|\\.)*+"?+|'(?:[^'\\\n]|\\.)'
 type declarations	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:private|protected|final|sealed|abstract|implicit|case|open|transparent|inline|opaque)(?:\[[\w.]*+\])?[ \t]++)*+(?:class|trait|object|enum)[ \t]++[A-Za-z_`]
 case classes and case objects	\bcase[ \t]++(?:class|object)[ \t]++[A-Za-z_`]
 traits	(?m)^[ \t]*+(?:(?:private|protected|sealed|transparent)(?:\[[\w.]*+\])?[ \t]++)*+trait[ \t]++[A-Za-z_`]

@@ -7,11 +7,12 @@
 # [ignore] line blanks comment lines (# or ! first on the line). "keys (approx)" counts a line that
 # starts with a key followed by = or :, so a key separated from its value by a blank alone, and the
 # continuation line of a value that holds = or :, are counted wrongly; "keys naming a secret" a key
-# with password, passwd, secret, token or credential in it, which the prompt names without its value.
+# with password, passwd, secret, token or credential in it (at its start too: password=, db.password=),
+# which the prompt names without its value; "placeholders" a ${name}, the innermost of nested ones.
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
 # reads linearly.
 [ignore] comment lines	(?m)^[ \t]*+[#!][^\n]*+
-keys (approx)	(?m)^[ \t]*+[^\s#!=:][^=:\n]*?[ \t]*+[=:]
-keys naming a secret	(?im)^[ \t]*+[^\s#!=:][^=:\n]*?(?:password|passwd|secret|token|credential)[^=:\n]*?[ \t]*+[=:]
-placeholders	\$\{[^}\n]*+\}
+keys (approx)	(?m)^[ \t]*+[^\s#!=:][^=:\n]*+[=:]
+keys naming a secret	(?im)^[ \t]*+(?=[^\s#!=:])(?=[^=:\n]*+[=:])[^=:\n]*?(?:password|passwd|secret|token|credential)
+placeholders	\$\{[^{}\n]*+\}
 URLs	\b[a-z][a-z0-9+.-]*+://

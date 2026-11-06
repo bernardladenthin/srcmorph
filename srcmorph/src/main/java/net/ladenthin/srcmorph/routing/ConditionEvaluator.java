@@ -31,9 +31,9 @@ import org.slf4j.LoggerFactory;
  * <p>{@link #matches} walks the tree (and/or/not + leaves); {@link #validate} fails fast on a
  * misconfigured node (not exactly one branch set, empty combinator, unbounded range, unparseable
  * date, blank or unclosed glob, invalid regular expression); {@link #usesLines} and {@link #usesContent}
- * report whether any node needs the line count or the start of the text, so the indexer only reads
- * file contents when a {@code lines}, {@code contentMatches} or {@code interpreters} condition is
- * actually used.</p>
+ * report whether any node needs the line count or the start of the text, so the indexer counts lines
+ * and cuts the head only when a {@code lines}, {@code contentMatches} or {@code interpreters} condition
+ * is used.</p>
  */
 @ToString
 public final class ConditionEvaluator {

@@ -185,40 +185,39 @@ public class SourceLinesTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="utf8Length">
+    // <editor-fold defaultstate="collapsed" desc="size">
     @Test
-    public void utf8Length_charactersOfEveryWidth_countTheirUtf8Bytes() {
-        // arrange: one byte, two (é), three (€) and four (a surrogate pair, U+1F600)
-        final String text = "a\n\u00e9\u20ac\ud83d\ude00";
-
-        // act
-        final long length = SourceLines.utf8Length(text);
-
-        // assert: what the encoder writes
-        assertThat(length, is(equalTo((long) text.getBytes(StandardCharsets.UTF_8).length)));
-        assertThat(length, is(equalTo(11L)));
-    }
-
-    @Test
-    public void utf8Length_charactersAtTheWidthLimits_countTheWiderWidth() {
-        // act, assert: U+007F one byte, U+0080 two, U+07FF two, U+0800 three
-        assertThat(SourceLines.utf8Length("\u007f"), is(1L));
-        assertThat(SourceLines.utf8Length("\u0080"), is(2L));
-        assertThat(SourceLines.utf8Length("\u07ff"), is(2L));
-        assertThat(SourceLines.utf8Length("\u0800"), is(3L));
-    }
-
-    @Test
-    public void utf8Length_aLoneSurrogate_countsThreeBytes() {
-        // act, assert: a high surrogate without its low one (as at the end) and a low one alone
-        assertThat(SourceLines.utf8Length("\ud83d"), is(3L));
-        assertThat(SourceLines.utf8Length("\ude00a"), is(4L));
-    }
-
-    @Test
-    public void utf8Length_emptyText_isZero() {
+    public void size_crlfAndLf_areEqual() {
         // act, assert
-        assertThat(SourceLines.utf8Length(""), is(0L));
+        assertThat(SourceLines.size("a\r\nb\r\n".getBytes(StandardCharsets.UTF_8)), is(4L));
+        assertThat(SourceLines.size("a\nb\n".getBytes(StandardCharsets.UTF_8)), is(4L));
+    }
+
+    @Test
+    public void size_utf8ByteOrderMark_isNotCounted() {
+        // act, assert
+        assertThat(SourceLines.size(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF, 'a', '\r', '\n'}), is(2L));
+    }
+
+    @Test
+    public void size_latin1Bytes_countThemselves() {
+        // act, assert: two bytes that are no valid UTF-8, not the six bytes of two replacement characters
+        assertThat(SourceLines.size(new byte[] {'a', (byte) 0xE4, (byte) 0xFC}), is(3L));
+    }
+
+    @Test
+    public void size_utf16_isTheUtf8LengthOfItsText() {
+        // arrange: "\u00e4\r\n" in UTF-16LE with its byte order mark, eight bytes on disk
+        final byte[] bytes = {(byte) 0xFF, (byte) 0xFE, (byte) 0xE4, 0, '\r', 0, '\n', 0};
+
+        // act, assert: two bytes for the umlaut, one for the line feed
+        assertThat(SourceLines.size(bytes), is(3L));
+    }
+
+    @Test
+    public void size_empty_isZero() {
+        // act, assert
+        assertThat(SourceLines.size(new byte[0]), is(0L));
     }
     // </editor-fold>
 

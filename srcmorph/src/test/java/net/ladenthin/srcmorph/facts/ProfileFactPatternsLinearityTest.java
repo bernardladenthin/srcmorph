@@ -4,9 +4,12 @@
 package net.ladenthin.srcmorph.facts;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import java.io.IOException;
@@ -16,6 +19,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import net.ladenthin.srcmorph.config.FactCounter;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -80,6 +84,39 @@ public class ProfileFactPatternsLinearityTest {
         // assert
         assertThat(FactPatternLinearity.MAX_GROWTH * shortReads, lessThanOrEqualTo(longReads));
     }
+
+    @ParameterizedTest(name = "{0} over {1}")
+    @MethodSource("quadraticWithinOneLinePatterns")
+    public void measure_patternQuadraticWithinOneLine_isCaughtOnlyOverOneLongLine(
+            final String pattern, final String line) {
+        // act
+        final List<String> overLines = FactPatternLinearity.failures("k", "l", pattern, List.of(line));
+        final List<String> withinOneLine =
+                FactPatternLinearity.failures("k", "l", pattern, FactPatternLinearity.units(List.of(line)));
+
+        // assert
+        assertThat(overLines, is(empty()));
+        assertThat(withinOneLine, is(not(empty())));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stackOverflowingPatterns")
+    public void measure_patternThatOverflowsTheStack_isCaught(final String pattern) {
+        // act
+        final List<String> failures = FactPatternLinearity.failures("k", "l", pattern, List.of("@a @b "));
+
+        // assert
+        assertThat(failures, hasItem(containsString("overflowed the stack")));
+    }
+
+    @Test
+    public void units_linesWithALineBreak_addTheLineWithoutIt() {
+        // act
+        final List<String> units = FactPatternLinearity.units(List.of("a\n", "b", "\n"));
+
+        // assert
+        assertThat(units, is(List.of("a\n", "b", "\n", "a")));
+    }
     // </editor-fold>
 
     /**
@@ -90,5 +127,32 @@ public class ProfileFactPatternsLinearityTest {
      */
     static Stream<String> quadraticPatterns() {
         return Stream.of("(?s)<!--.*?-->", "(?s)<!--(?:(?!-->).)*-->");
+    }
+
+    /**
+     * Patterns that rescan to the end of their line from every opener, which repeated lines cannot show:
+     * the secret keys of properties-facts, the substitutions of mybatis-facts and the character literals
+     * of java-facts up to 1.4.0, each with the line it was measured over.
+     *
+     * @return one case per pattern and line
+     */
+    static Stream<Arguments> quadraticWithinOneLinePatterns() {
+        return Stream.of(
+                Arguments.of(
+                        "(?im)^[ \\t]*+[^\\s#!=:][^=:\\n]*?(?:password|passwd|secret|token|credential)[^=:\\n]*?[ \\t]*+[=:]",
+                        "password\n"),
+                Arguments.of("\\$\\{[^}\\r\\n]*+\\}", "${\n"),
+                Arguments.of("'(?:[^'\\\\\\n]++|\\\\.)*+'", "\\'\n"));
+    }
+
+    /**
+     * A modifier list repeated without a possessive quantifier, as java-facts' type declarations had it up
+     * to 1.4.0: {@code java.util.regex} recurses once per repetition, so a line of thousands of annotations
+     * overflows the stack.
+     *
+     * @return one case per pattern
+     */
+    static Stream<String> stackOverflowingPatterns() {
+        return Stream.of("(?m)^[ \\t]*(?:(?:public|@[A-Za-z_$][\\w$.]*+)[ \\t]+)*class[ \\t]+[A-Za-z_$]");
     }
 }

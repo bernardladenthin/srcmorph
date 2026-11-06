@@ -9,8 +9,8 @@ import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 
 /**
  * Immutable snapshot of the file facts a {@link RuleCondition} is evaluated against: name, base-relative
- * path ({@code /} separators), size (the source's UTF-8 length with {@code
- * } line endings), line count, and last-modified time. Built by the indexer
+ * path ({@code /} separators), size (the source's bytes with {@code \n} line endings), line count, and
+ * last-modified time. Built by the indexer
  * (the I/O side) and consumed by {@link ConditionEvaluator} (the pure side).
  */
 @ToString

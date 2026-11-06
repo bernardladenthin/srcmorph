@@ -8,7 +8,8 @@
 # first line; the key stays, so "ansible.builtin.shell: |" counts), so a "- name:" in a shell script
 # or a template does not count. "plays" counts a hosts: key, "named tasks, handlers and plays" every
 # list item that starts with name:, "FQCN module calls" a fully qualified module
-# (ansible.builtin.copy:, community.general.ufw:); "loops" loop: and every with_* key.
+# (ansible.builtin.copy:, community.general.ufw:); "loops" loop: and every with_* key; "privilege
+# escalation" a become: true or yes in any case, quoted or not.
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
 # reads linearly.
 [ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
@@ -18,7 +19,7 @@ FQCN module calls	(?m)^[ \t]*+(?:-[ \t]++)?[a-z0-9_]++\.[a-z0-9_]++\.[a-z0-9_]++
 role inclusions	(?m)^[ \t]*+(?:-[ \t]++)?(?:roles|(?:ansible\.builtin\.)?(?:import|include)_role)[ \t]*+:
 task and playbook inclusions	(?m)^[ \t]*+(?:-[ \t]++)?(?:ansible\.builtin\.)?(?:import_tasks|include_tasks|import_playbook)[ \t]*+:
 handler notifications	(?m)^[ \t]*+notify[ \t]*+:
-privilege escalation	(?m)^[ \t]*+become[ \t]*+:[ \t]*+(?:true|yes|True)\b
+privilege escalation	(?m)^[ \t]*+become[ \t]*+:[ \t]*+["']?+(?i:true|yes)\b
 conditionals	(?m)^[ \t]*+when[ \t]*+:
 loops	(?m)^[ \t]*+(?:loop|with_[a-z_]++)[ \t]*+:
 registered results	(?m)^[ \t]*+register[ \t]*+:

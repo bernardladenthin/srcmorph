@@ -8,7 +8,7 @@
 # what the counters read. A region that is never closed runs to the end of the file. "dynamic SQL
 # tags" counts every <if>, <choose>, <when>, <otherwise>, <foreach>, <where>, <set>, <trim> and
 # <bind>; a ${} substitution is spliced into the SQL unescaped, which a reader of the index wants to
-# find. EnterpriseXmlFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
+# find. A #{ or ${ counts up to its } on the same line, without another { before it. EnterpriseXmlFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
 # pattern reads linearly.
 [ignore] comments, processing instructions and the DOCTYPE	(?s)<!--(?:.*?-->|.*+)|<\?(?:.*?\?>|.*+)|<!DOCTYPE[^\[>]*+(?:\[(?:.*?\]|.*+))?[^>]*+>?
 mapper namespaces	<mapper[ \t\r\n]
@@ -18,5 +18,5 @@ result maps	<resultMap[ \t\r\n]
 SQL fragments	<sql[ \t\r\n]
 fragment includes	<include[ \t\r\n]
 dynamic SQL tags	<(?:if|choose|when|otherwise|foreach|where|set|trim|bind)[ \t\r\n>]
-parameters #{}	#\{[^}\r\n]*+\}
-substitutions ${}	\$\{[^}\r\n]*+\}
+parameters #{}	#\{[^{}\r\n]*+\}
+substitutions ${}	\$\{[^{}\r\n]*+\}

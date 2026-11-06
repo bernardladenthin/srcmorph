@@ -261,6 +261,26 @@ public class SqlFactPatternsTest {
     }
 
     @Test
+    public void ignore_unclosedStringLiteral_commentsOutTheRest() {
+        // act, assert
+        assertThat(
+                count(
+                        "INSERT statements",
+                        "INSERT INTO t VALUES (1);\nSELECT 'never closed;\nINSERT INTO t VALUES (2);\n"),
+                is(1));
+    }
+
+    @Test
+    public void ignore_manyEscapedQuotes_stayLinear() {
+        // arrange
+        final String sql = FactPatternLinearity.repeat("\\'\n", LONG_INPUT_LINES) + "INSERT INTO t VALUES (1);\n";
+
+        // act, assert
+        // the first quote opens a literal the escaped ones never close
+        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("INSERT statements", sql)), is(0));
+    }
+
+    @Test
     public void ignore_mySqlVersionCommentAndOracleHint_stay() {
         // arrange
         final String sql = "/*!40101 SET NAMES utf8 */;\n/*!50001 CREATE VIEW v AS SELECT 1 */;\n"

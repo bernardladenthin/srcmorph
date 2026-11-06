@@ -59,8 +59,18 @@ public class SourcePathsTest {
         // act
         final Path relative = pathSupport.relativizeFromSrc(base, path);
 
-        // assert: as a string, since a Windows path compares without case
+        // assert: as a string, since a Windows path compares without case; only a file system that
+        // ignores the case (Windows) can tell this from the old Path#startsWith, so CI on Linux does not
         assertThat(relative.toString().replace('\\', '/'), is("Src/main/Foo.java"));
+    }
+
+    @Test
+    public void relativizeFromSrc_srcItself_isTheEmptyPath() {
+        // arrange: a subtree "src", the package phase's root
+        Path base = Paths.get("/project");
+
+        // act, assert
+        assertThat(pathSupport.relativizeFromSrc(base, base.resolve("src")).toString(), is(""));
     }
 
     @Test

@@ -80,6 +80,17 @@ public class ContractFactPatternsTest {
     }
 
     @Test
+    public void proto_streamingRpcWithReturnsOnTheNextLine_countsWithEitherLineEnding() {
+        // arrange
+        final String source = "service S {\n  rpc Watch(WatchRequest)\n      returns (stream Order);\n"
+                + "  rpc Tail(TailRequest)\r\n      returns (stream Line);\r\n"
+                + "  rpc Get(GetRequest) returns (Order);\n}\n";
+
+        // act, assert
+        assertThat(count(PROTO, "streaming rpcs", source), is(2));
+    }
+
+    @Test
     public void proto_unclosedBlockComment_runsToTheEnd() {
         // act, assert
         assertThat(count(PROTO, "messages", "message A {}\n/* message B {}\nmessage C {}\n"), is(1));

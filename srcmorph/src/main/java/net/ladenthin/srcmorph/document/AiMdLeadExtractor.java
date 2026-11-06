@@ -51,11 +51,8 @@ public class AiMdLeadExtractor {
      */
     public String extractLead(final String body) {
         for (final String rawLine : body.split("\n", -1)) {
-            if (compatibilityHelper.isBlank(rawLine)) {
-                continue;
-            }
             final String line = rawLine.trim();
-            if (line.startsWith(FactExtractor.FACTS_HEADER) || line.startsWith(COVERAGE_HEADER)) {
+            if (compatibilityHelper.isBlank(line) || isSrcmorphsOwnLine(line)) {
                 continue;
             }
             if (line.startsWith(BLOCKQUOTE_MARKER)) {
@@ -64,5 +61,9 @@ public class AiMdLeadExtractor {
             return line;
         }
         return "";
+    }
+
+    private static boolean isSrcmorphsOwnLine(final String line) {
+        return line.startsWith(FactExtractor.FACTS_HEADER) || line.startsWith(COVERAGE_HEADER);
     }
 }
