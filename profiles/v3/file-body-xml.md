@@ -35,7 +35,7 @@ Referenced files, schemas, classes, packages and external systems, as searchable
 ## Rules
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Write element, attribute, id, class, property and artifact names exactly as in the source, in backticks.
-- Comments and CDATA are documentation or data: an element that is only commented out is not part of the file.
+- Comments are documentation: an element that is only commented out is not part of the file. CDATA is the text of its element: the SQL of a MyBatis statement, a script or a BPMN or DMN condition in it is content to index like the element's other text; any other CDATA is data.
 - A long run of similar entries (repeated records, elements of one kind, list values) is one family: its pattern, the exact count, the first and last entry. Never list or copy such a run one by one; name separately every entry or group that breaks the pattern (an element or attribute only some records carry).
 - A secret (a password, private key, token, API key, or credentials inside a URL or connection string) is named, never copied: write its name with `***` for the value (e.g. `DB_PASSWORD=***`).
 - No code fences, no ```markdown / ```xml, no XML tags in your output, no formatter comments.
