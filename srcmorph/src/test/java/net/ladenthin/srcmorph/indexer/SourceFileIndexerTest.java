@@ -138,6 +138,31 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void collectCandidates_filesInSeveralDirectories_returnsThemSortedByPath() throws Exception {
+        // arrange: written in an order no file system sorts by
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        writeJava(sourceRoot.resolve("com/example/z/Zed.java"), "class Zed {}\n");
+        writeJava(sourceRoot.resolve("com/example/Foo.java"), "class Foo {}\n");
+        writeJava(sourceRoot.resolve("com/example/Bar.java"), "class Bar {}\n");
+        writeJava(sourceRoot.resolve("com/a/Last.java"), "class Last {}\n");
+
+        // act
+        final List<Path> candidates = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+                .collectCandidates(sourceRoot);
+
+        // assert
+        final List<String> names = new ArrayList<>();
+        for (final Path candidate : candidates) {
+            names.add(sourceRoot.relativize(candidate).toString().replace('\\', '/'));
+        }
+        assertThat(
+                names,
+                is(equalTo(Arrays.asList(
+                        "com/a/Last.java", "com/example/Bar.java", "com/example/Foo.java", "com/example/z/Zed.java"))));
+    }
+
+    @Test
     public void collectCandidates_excludeGlobAndMaxSize_excludesGlobAndSizeBand() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");

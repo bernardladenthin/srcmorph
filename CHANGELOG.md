@@ -383,6 +383,11 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
+- **Files are planned and summarized in path order, on every machine.** The walk of a subtree came
+  in the file system's order, so the plan, the progress and the run record listed files differently on
+  Linux and Windows, and a test that relied on two files' order failed on one CI runner and not on
+  another. The candidates are sorted by their path with `/` separators now.
+
 - **A template that opens the thinking block itself leaves no reasoning in the summary.** Qwen3 and
   DeepSeek-R1 templates put `<think>` into the prompt, so the answer starts with the reasoning and
   holds only `</think>`; `AiCompletionParser` kept all of it. A first `</think>` with no `<think>`

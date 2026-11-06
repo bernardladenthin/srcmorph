@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -183,19 +184,34 @@ public final class SourceFileIndexer {
     }
 
     /**
+     * Returns the key a candidate is sorted by: its path with {@code /} separators, the same on every
+     * operating system.
+     *
+     * @param path the path
+     * @return the sort key
+     */
+    static String sortKey(final Path path) {
+        return path.toString().replace('\\', '/');
+    }
+
+    /**
      * Returns every file beneath {@code sourceRoot} that passes the extension, subtree, exclude and
      * size-band filters — the candidate set for routing. A file without an extension that matches no
      * extension or name is a candidate when its {@code #!} line names one of the interpreters; that line
      * is read only after the other filters passed it.
      *
+     * <p>The files come sorted by their path with {@code /} separators, not in the order the file system
+     * lists them, so the plan, the run and its record name them in the same order on every machine.</p>
+     *
      * @param sourceRoot source root directory to walk
-     * @return the matching candidate files, in walk order
+     * @return the matching candidate files, sorted by path
      * @throws IOException if the tree cannot be walked or a file size or first line cannot be read
      */
     public List<Path> collectCandidates(final Path sourceRoot) throws IOException {
         final List<Path> candidates = new ArrayList<>();
         try (Stream<Path> stream = Files.walk(sourceRoot)) {
-            for (final Path path : compatibilityHelper.toList(stream.filter(Files::isRegularFile))) {
+            for (final Path path : compatibilityHelper.toList(
+                    stream.filter(Files::isRegularFile).sorted(Comparator.comparing(SourceFileIndexer::sortKey)))) {
                 final boolean byName = matchesExtension(path);
                 if (!byName && !mayNameAnInterpreter(path)) {
                     continue;
