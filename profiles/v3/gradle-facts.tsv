@@ -9,18 +9,22 @@
 # a commented-out dependency does not count; a comment or a triple-quoted string that is never closed
 # runs to the end of the file. A declaration counts by its keyword at the start of a line, not an
 # assignment or a property of that name (implementation.extendsFrom, id = ...). "plugins" counts
-# id, alias, kotlin(...), a backquoted plugin id and apply plugin; "dependency declarations" a
+# id, alias, kotlin(...), a backquoted plugin id, a core plugin the Kotlin DSL names bare (java,
+# application, jacoco, ...; not the java { } block) and apply plugin, at the start of a line or
+# after a { or ; (plugins { java; id("x") } is two); "tasks registered, created or configured" a
+# tasks.register, create, named, withType or getByName, a Kotlin accessor block (tasks.test { }) and
+# Groovy's task name; "dependency declarations" a
 # dependency in one of the standard configurations of the java, kotlin and annotation-processor
 # plugins; "project dependencies" project(...) and Kotlin's projects.name accessors; "include and
 # includeBuild statements" the statements, not the projects one names (include("core", "web") is one).
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
 # reads linearly.
 [ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|""".*?(?:"""|\z)|'''.*?(?:'''|\z)|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)*+'
-plugins	(?m)^[ \t]*+(?:id\b(?![ \t]*+[=.])|alias[ \t]*+\(|apply[ \t]*+\(?[ \t]*+plugin\b|kotlin[ \t]*+\(|`[\w.-]++`[ \t]*+$)
+plugins	(?m)(?:^|[{;])[ \t]*+(?:id\b(?![ \t]*+(?:[=.,]|->))|alias[ \t]*+\(|apply[ \t]*+\(?[ \t]*+plugin\b|kotlin[ \t]*+\(|(?:`[\w.-]++`|java|application|groovy|scala|war|ear|base|jacoco|checkstyle|pmd|codenarc|signing|distribution|idea|eclipse|antlr)[ \t]*+(?=[;}]|$))
 dependency declarations	(?m)^[ \t]*+(?:implementation|api|compileOnly|compileOnlyApi|runtimeOnly|testImplementation|testRuntimeOnly|testCompileOnly|annotationProcessor|testAnnotationProcessor|kapt|ksp|developmentOnly|testFixturesImplementation|testFixturesApi|compile|runtime|testCompile|testRuntime|classpath)\b(?![ \t]*+[=.{])
 project dependencies	\bproject[ \t]*+\(|\bprojects\.[A-Za-z_]
 platforms and BOMs	\b(?:platform|enforcedPlatform)[ \t]*+\(
 repositories	(?m)^[ \t]*+(?:mavenCentral|google|gradlePluginPortal|mavenLocal|jcenter)[ \t]*+\(|^[ \t]*+(?:maven|ivy)[ \t]*+[({]
-tasks registered, created or configured	(?m)\btasks\.(?:register|create|named|withType)\b|^[ \t]*+task[ \t]++[A-Za-z_]
+tasks registered, created or configured	(?m)\btasks\.(?:(?:register|create|named|withType|getByName)\b|[A-Za-z_]\w*+[ \t]*+\{)|^[ \t]*+task[ \t]++[A-Za-z_]
 include and includeBuild statements	(?m)^[ \t]*+include(?:Build)?\b(?![ \t]*+[=.])
 version catalog references	\blibs\.[A-Za-z_][\w.]*+

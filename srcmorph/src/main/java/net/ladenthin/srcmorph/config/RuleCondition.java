@@ -138,7 +138,9 @@ public class RuleCondition {
     }
 
     /**
-     * Sets the size range (bytes).
+     * Sets the size range: the source's length in UTF-8 bytes as srcmorph reads it ({@code
+     * } line
+     * endings, no byte order mark), so a CRLF and an LF checkout of a file reach the same rule.
      *
      * @param size the size range
      */

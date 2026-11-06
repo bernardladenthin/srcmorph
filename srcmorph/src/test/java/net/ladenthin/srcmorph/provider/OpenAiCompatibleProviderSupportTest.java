@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.provider;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -680,6 +681,48 @@ public class OpenAiCompatibleProviderSupportTest {
                 OpenAiCompatibleProviderSupport.keyProblem(" https://u:secret@openrouter.ai/api/v1 ", " ", KEY_SET),
                 is("its baseUrl carries user info ('https://***@openrouter.ai/api/v1'), which srcmorph never"
                         + " sends: put the key in the variable apiKeyEnv names"));
+    }
+
+    @Test
+    public void keyProblem_query_isNamedWithoutIt() {
+        // act
+        final String problem = OpenAiCompatibleProviderSupport.keyProblem("https://gw/v1?api-key=secret", " ", KEY_SET);
+
+        // assert: the part before the query only
+        assertThat(
+                problem,
+                is("its baseUrl has a query or a fragment ('https://gw/v1' followed by '?...'), which"
+                        + " would stand in front of the path srcmorph appends: give the path only, and the key in the"
+                        + " variable apiKeyEnv names"));
+    }
+
+    @Test
+    public void queryProblem_fragmentBeforeAQuestionMark_namesTheFragment() {
+        // act, assert: the first of the two ends the shown part
+        assertThat(
+                OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1#a?b"),
+                containsString("'https://gw/v1' followed by '#...'"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1?a#b"),
+                containsString("'https://gw/v1' followed by '?...'"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1#"), containsString("followed by '#...'"));
+        assertThat(OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1"), is(nullValue()));
+    }
+
+    @Test
+    public void endpoint_baseUrlWithAQuery_isRefused() {
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("m")
+                .baseUrl("https://gw/v1?api-version=1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("query or a fragment"));
     }
 
     @Test

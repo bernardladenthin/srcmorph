@@ -255,8 +255,27 @@ public class EnterpriseXmlFactPatternsTest {
         assertThat(count(INTEGRATION, "Camel consumer endpoints (from)", CAMEL), is(1));
         assertThat(count(INTEGRATION, "Camel producer endpoints", CAMEL), is(4));
         assertThat(count(INTEGRATION, "error handlers", CAMEL), is(1));
-        assertThat(count(INTEGRATION, "property placeholders", CAMEL), is(3));
+        // {{orders.queue}}; not the Simple expressions ${body.total} and ${header.id}
+        assertThat(count(INTEGRATION, "property placeholders", CAMEL), is(1));
         assertThat(count(INTEGRATION, "Spring beans", CAMEL), is(1));
+    }
+
+    @Test
+    public void integration_simpleExpressionsAndPropertyPlaceholders_countsOnlyThePlaceholders() {
+        // arrange
+        final String simple = "<log message=\"${body} ${bodyAs(String)} ${headers} ${in.header.x} ${out.body}\"/>\n"
+                + "<setHeader name=\"a\"><simple>${exchangeProperty.k} ${exchangeId} ${exception.message}"
+                + " ${date:now:yyyyMMdd} ${routeId} ${camelContext.name} ${sys.user} ${env.HOME}"
+                + " ${bean:svc.run} ${ref:x} ${type:shop.Kind.A} ${id}</simple></setHeader>\n";
+        final String placeholders = "<bean id=\"ds\"><property name=\"url\" value=\"${db.url}\"/>"
+                + "<property name=\"pool\" value=\"${db.pool:10}\"/><property name=\"i\" value=\"${index}\"/>"
+                + "<property name=\"h\" value=\"${header-size}\"/></bean>\n"
+                + "<from uri=\"timer:t?period={{period:1000}}\"/>\n";
+
+        // act, assert
+        assertThat(count(INTEGRATION, "property placeholders", simple), is(0));
+        // ${db.url}, ${db.pool:10}, ${index}, ${header-size}, {{period:1000}}
+        assertThat(count(INTEGRATION, "property placeholders", placeholders), is(5));
     }
 
     @Test

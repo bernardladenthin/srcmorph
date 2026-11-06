@@ -199,6 +199,33 @@ final class LlamaCppJniProviderSupport {
     }
 
     /**
+     * What the binding would refuse of a model's enum knobs ({@code lazyMode}, {@code cacheTypeK},
+     * {@code cacheTypeV}), found without loading the model: the message of the first value no enum
+     * declares, or {@code null} when every one is blank or known.
+     *
+     * @param lazyMode   the configured {@code lazyMode}
+     * @param cacheTypeK the configured {@code cacheTypeK}
+     * @param cacheTypeV the configured {@code cacheTypeV}
+     * @return the problem, or {@code null}
+     */
+    static @Nullable String knobProblem(final String lazyMode, final String cacheTypeK, final String cacheTypeV) {
+        try {
+            if (!lazyMode.trim().isEmpty()) {
+                lazyMode(lazyMode);
+            }
+            if (!cacheTypeK.trim().isEmpty()) {
+                cacheType("cacheTypeK", cacheTypeK);
+            }
+            if (!cacheTypeV.trim().isEmpty()) {
+                cacheType("cacheTypeV", cacheTypeV);
+            }
+            return null;
+        } catch (final IllegalArgumentException e) {
+            return e.getMessage();
+        }
+    }
+
+    /**
      * Renders the accepted KV-cache types for an error message.
      *
      * @return the CLI strings the binding's enum declares, comma-separated in declaration order

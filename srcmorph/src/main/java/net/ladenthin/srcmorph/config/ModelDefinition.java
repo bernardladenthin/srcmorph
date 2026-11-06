@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import lombok.ToString;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -502,7 +503,10 @@ public class ModelDefinition {
     private String devices = DEFAULT_DEVICES;
     private String provider = DEFAULT_PROVIDER;
     private String remoteModel = DEFAULT_REMOTE_MODEL;
+
+    @ToString.Exclude
     private String baseUrl = DEFAULT_BASE_URL;
+
     private String apiKeyEnv = DEFAULT_API_KEY_ENV;
     private boolean stream = DEFAULT_STREAM;
     private int requestsPerMinute = DEFAULT_REQUESTS_PER_MINUTE;
@@ -1485,5 +1489,16 @@ public class ModelDefinition {
         copy.setDrySequenceBreakers(getDrySequenceBreakers());
         copy.setCalibration(getCalibration());
         return copy;
+    }
+
+    /**
+     * The {@code baseUrl} as {@code toString} shows it: its user info masked, so a password written into
+     * it reaches no message and no log line that prints this object.
+     *
+     * @return the masked base URL
+     */
+    @ToString.Include(name = "baseUrl")
+    private String maskedBaseUrl() {
+        return UrlUserInfo.mask(baseUrl);
     }
 }

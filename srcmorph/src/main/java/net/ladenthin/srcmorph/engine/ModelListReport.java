@@ -37,6 +37,12 @@ import org.jspecify.annotations.Nullable;
 @EqualsAndHashCode
 public final class ModelListReport {
 
+    /** The Unicode line separator, a line break to YAML. */
+    private static final char LINE_SEPARATOR = '\u2028';
+
+    /** The Unicode paragraph separator, a line break to YAML. */
+    private static final char PARAGRAPH_SEPARATOR = '\u2029';
+
     /** The text of a table cell whose value the server does not state. */
     static final String UNKNOWN = "-";
 
@@ -126,7 +132,7 @@ public final class ModelListReport {
         }
         int idWidth = MODEL_HEADING.length();
         for (final RemoteModel model : models) {
-            idWidth = Math.max(idWidth, model.id().length());
+            idWidth = Math.max(idWidth, escapeLineBreaks(model.id()).length());
         }
         final String row =
                 "#   %-" + idWidth + "s %" + CONTEXT_WIDTH + "s %" + PRICE_WIDTH + "s %" + PRICE_WIDTH + "s\n";
@@ -135,7 +141,7 @@ public final class ModelListReport {
             out.append(String.format(
                     Locale.ROOT,
                     row,
-                    model.id(),
+                    escapeLineBreaks(model.id()),
                     model.contextLength() != RemoteModel.UNKNOWN_CONTEXT_LENGTH
                             ? Integer.toString(model.contextLength())
                             : UNKNOWN,
@@ -192,14 +198,36 @@ public final class ModelListReport {
     }
 
     /**
-     * A double-quoted YAML scalar: backslash and double quote escaped, so any model id or URL reads
-     * back unchanged.
+     * A double-quoted YAML scalar: backslash and double quote escaped, and every control character and
+     * line break as {@code \\uXXXX}, so any model id or URL reads back unchanged and none ends the line.
      *
      * @param text the text
      * @return the quoted scalar
      */
     static String quote(final String text) {
-        return '"' + text.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
+        return '"' + escapeLineBreaks(text.replace("\\", "\\\\").replace("\"", "\\\"")) + '"';
+    }
+
+    /**
+     * Writes every control character and every character YAML reads as a line break ({@code U+0085},
+     * {@code U+2028}, {@code U+2029}) as {@code \\uXXXX}: a model id is the server's text, and one with a
+     * line feed would end the {@code #} comment row it stands in and put its tail into the template.
+     *
+     * @param text the text
+     * @return the text on one line
+     */
+    static String escapeLineBreaks(final String text) {
+        final int length = text.length();
+        final StringBuilder out = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            final char c = text.charAt(i);
+            if (c == LINE_SEPARATOR || c == PARAGRAPH_SEPARATOR || Character.isISOControl(c)) {
+                out.append(String.format(Locale.ROOT, "\\u%04x", (int) c));
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
     }
 
     /**

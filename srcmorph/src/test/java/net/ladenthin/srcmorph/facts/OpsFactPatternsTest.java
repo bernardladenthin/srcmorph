@@ -242,6 +242,26 @@ public class OpsFactPatternsTest {
         assertThat(count(ACTIONS, "matrices", WORKFLOW), is(1));
         assertThat(count(ACTIONS, "permissions blocks", WORKFLOW), is(1));
     }
+
+    @Test
+    public void actions_reusableWorkflowOfAnotherRepository_countsAsACallAndNotAsAnAction() {
+        // arrange
+        final String workflow = "jobs:\n"
+                + "  deploy:\n"
+                + "    uses: shop/shared/.github/workflows/deploy.yml@v1\n"
+                + "  lint:\n"
+                + "    uses: \"shop/shared/.github/workflows/lint.yml@main\"\n"
+                + "  build:\n"
+                + "    runs-on: ubuntu-latest\n"
+                + "    steps:\n"
+                + "      - uses: actions/checkout@v4\n"
+                + "      - uses: github/codeql-action/init@v3\n";
+
+        // act, assert
+        assertThat(count(ACTIONS, "reusable workflow calls", workflow), is(2));
+        // actions/checkout and the action in a path of a repository, github/codeql-action/init
+        assertThat(count(ACTIONS, "actions used", workflow), is(2));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="dockerfile-facts">
@@ -298,6 +318,38 @@ public class OpsFactPatternsTest {
     public void dockerfile_continuedLinesWithWindowsLineBreaks_doNotCountAsInstructions() {
         // act, assert
         assertThat(count(DOCKERFILE, "environment entries", "RUN a \\\r\nenv X=1\r\nENV Y=2\r\n"), is(1));
+    }
+
+    @Test
+    public void dockerfile_buildKitHeredocs_doNotCountTheirBodies() {
+        // arrange
+        final String dockerfile = "# syntax=docker/dockerfile:1\n"
+                + "FROM alpine\n"
+                + "RUN <<EOF\n"
+                + "apk add curl\n"
+                + "FROM inside\n"
+                + "ENV X=1\n"
+                + "EOF\n"
+                + "COPY <<-\"CONF\" /etc/app.conf\n"
+                + "\tUSER app\n"
+                + "\tRUN not-an-instruction\n"
+                + "\tCONF\n"
+                + "USER app\n"
+                + "RUN echo $((1 << 2))\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "build stages", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "RUN instructions", dockerfile), is(2));
+        assertThat(count(DOCKERFILE, "COPY and ADD instructions", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "environment entries", dockerfile), is(0));
+        assertThat(count(DOCKERFILE, "users", dockerfile), is(1));
+    }
+
+    @Test
+    public void dockerfile_unclosedHeredoc_runsToTheEndOfTheFile() {
+        // act, assert
+        assertThat(count(DOCKERFILE, "RUN instructions", "FROM alpine\nRUN <<EOF\necho\nRUN x\nEOFX\n"), is(1));
+        assertThat(count(DOCKERFILE, "RUN instructions", "RUN <<EOF\r\necho\r\nEOF\r\nRUN b\r\n"), is(2));
     }
     // </editor-fold>
 
@@ -597,6 +649,21 @@ public class OpsFactPatternsTest {
         assertThat(count(COMPOSE, "deploy sections", COMPOSE_SOURCE), is(1));
         assertThat(count(COMPOSE, "variable substitutions", COMPOSE_SOURCE), is(1));
     }
+
+    @Test
+    public void compose_escapedDollar_isNoSubstitution() {
+        // arrange
+        final String compose = "services:\n"
+                + "  app:\n"
+                + "    image: app:${TAG}\n"
+                + "    environment:\n"
+                + "      LITERAL: $${NOT_A_VARIABLE}\n"
+                + "      PRICE: $$${CURRENCY}\n";
+
+        // act, assert
+        // ${TAG} and the ${CURRENCY} after the escaped $; not $${NOT_A_VARIABLE}
+        assertThat(count(COMPOSE, "variable substitutions", compose), is(2));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="camel-yaml-facts">
@@ -732,6 +799,35 @@ public class OpsFactPatternsTest {
         // statements, not projects: include("core", "web") is one
         assertThat(count(GRADLE, "include and includeBuild statements", settings), is(3));
     }
+
+    @Test
+    public void gradle_kotlinDslCorePluginsAndAccessorTasks_count() {
+        // arrange
+        final String build = "plugins {\n"
+                + "    java\n"
+                + "    application // the launcher\n"
+                + "    id(\"com.example.x\")\n"
+                + "}\n"
+                + "java {\n"
+                + "    toolchain.languageVersion.set(JavaLanguageVersion.of(21))\n"
+                + "}\n"
+                + "application {\n"
+                + "    mainClass.set(\"shop.Main\")\n"
+                + "}\n"
+                + "tasks.test {\n"
+                + "    useJUnitPlatform()\n"
+                + "}\n"
+                + "tasks.jar { manifest { } }\n"
+                + "tasks.getByName(\"build\")\n"
+                + "val names = listOf(1).map { id -> id }\n";
+
+        // act, assert
+        // java, application, id("com.example.x"); not the java { } and application { } blocks
+        assertThat(count(GRADLE, "plugins", build), is(3));
+        assertThat(count(GRADLE, "plugins", "plugins { java; application; id(\"x\") }\n"), is(3));
+        // tasks.test { }, tasks.jar { }, tasks.getByName
+        assertThat(count(GRADLE, "tasks registered, created or configured", build), is(3));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="properties-facts">
@@ -800,6 +896,24 @@ public class OpsFactPatternsTest {
         assertThat(count(POWERSHELL, "errors raised", POWERSHELL_SCRIPT), is(2));
         // Import-Module, Deploy-Shop, Get-AzStorageAccount, ForEach-Object, ConvertTo-Json, Write-Error
         assertThat(count(POWERSHELL, "Verb-Noun command calls (approx)", POWERSHELL_SCRIPT), is(6));
+    }
+
+    @Test
+    public void powershell_quotedDotSourceAndOptionalParameters_countAsWritten() {
+        // arrange
+        final String script = ". \"$PSScriptRoot/common.ps1\"\n"
+                + ". '.\\lib.ps1' -Verbose\n"
+                + "# . ./old.ps1\n"
+                + "param(\n"
+                + "    [Parameter(Mandatory = $true)] [string] $A,\n"
+                + "    [Parameter(Mandatory=$False)] [string] $B,\n"
+                + "    [Parameter(Mandatory)] [string] $C\n"
+                + ")\n";
+
+        // act, assert
+        assertThat(count(POWERSHELL, "dot-sourced scripts", script), is(2));
+        // $A and $C; not Mandatory=$False
+        assertThat(count(POWERSHELL, "mandatory parameters", script), is(2));
     }
     // </editor-fold>
 

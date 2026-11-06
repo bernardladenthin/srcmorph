@@ -140,6 +140,22 @@ public class JavaStructureFactPatternsTest {
     }
 
     @Test
+    public void method_annotationElementsWithDefaults_count() {
+        // arrange
+        final String annotation = "public @interface Check {\n"
+                + "    String value() default \"\";\n"
+                + "    int max() default 10;\n"
+                + "    Class<?>[] groups() default {};\n"
+                + "    String[] names() default {\"a\", \"b\"};\n"
+                + "    Size size() default @Size(max = 3);\n"
+                + "    Kind kind();\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(METHODS, annotation), is(6));
+    }
+
+    @Test
     public void method_controlStructures_doNotCount() {
         // act, assert
         assertThat(count(METHODS, "if (foo()) { bar(); }"), is(0));

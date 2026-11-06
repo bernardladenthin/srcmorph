@@ -443,7 +443,32 @@ final class OpenAiCompatibleProviderSupport {
         if (userInfo != null) {
             throw new IllegalArgumentException(userInfo);
         }
+        final @Nullable String query = queryProblem(base);
+        if (query != null) {
+            throw new IllegalArgumentException(query);
+        }
         return withoutTrailingSlashes(base);
+    }
+
+    /**
+     * The problem of a {@code baseUrl} with a query or a fragment: srcmorph appends its paths
+     * ({@link #CHAT_COMPLETIONS_PATH}, {@link #MODELS_PATH}) to the URL, so they would land in the query,
+     * and a key there would be printed with the endpoint. Only the part before it is shown.
+     *
+     * @param baseUrl the model's {@code baseUrl}, trimmed
+     * @return the problem, or {@code null} when the URL has neither
+     */
+    static @Nullable String queryProblem(final String baseUrl) {
+        int end = baseUrl.indexOf('?');
+        final int fragment = baseUrl.indexOf('#');
+        if (end < 0 || (fragment >= 0 && fragment < end)) {
+            end = fragment;
+        }
+        return end < 0
+                ? null
+                : "its baseUrl has a query or a fragment ('" + UrlUserInfo.mask(baseUrl.substring(0, end))
+                        + "' followed by '" + baseUrl.charAt(end) + "...'), which would stand in front of the"
+                        + " path srcmorph appends: give the path only, and the key in the variable apiKeyEnv names";
     }
 
     /**
@@ -618,6 +643,10 @@ final class OpenAiCompatibleProviderSupport {
         final @Nullable String userInfo = userInfoProblem(baseUrl.trim());
         if (userInfo != null) {
             return userInfo;
+        }
+        final @Nullable String query = queryProblem(baseUrl.trim());
+        if (query != null) {
+            return query;
         }
         final String name = apiKeyEnv.trim();
         if (name.isEmpty()) {

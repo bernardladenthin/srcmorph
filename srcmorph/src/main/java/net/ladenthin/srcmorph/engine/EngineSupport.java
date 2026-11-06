@@ -24,6 +24,7 @@ import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
 import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.GgufModelInfo;
 import net.ladenthin.srcmorph.provider.GgufModelInspector;
+import net.ladenthin.srcmorph.provider.LlamaCppJniGenerationProvider;
 import net.ladenthin.srcmorph.provider.OpenAiCompatibleGenerationProvider;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
 import net.ladenthin.srcmorph.provider.ProviderConfigFactory;
@@ -416,7 +417,8 @@ final class EngineSupport {
      *
      * @param aiDefinitionKey the definition's key, named in the error
      * @param modelConfig     the definition's resolved configuration
-     * @throws SrcMorphException if the file is missing, not a GGUF, or not readable
+     * @throws SrcMorphException if the file is missing, not a GGUF, or not readable, or a {@code lazyMode}
+     *                           or cache type is one the binding does not know
      */
     private static void validateLocalModel(final String aiDefinitionKey, final ModelDefinition modelConfig)
             throws SrcMorphException {
@@ -426,6 +428,12 @@ final class EngineSupport {
                     + "' does not exist: " + modelPath
                     + " (checked before any model is loaded; fix the modelPath, or set"
                     + " generationProvider to mock for a model-free run)");
+        }
+        final String knobProblem = LlamaCppJniGenerationProvider.knobProblem(
+                modelConfig.getLazyMode(), modelConfig.getCacheTypeK(), modelConfig.getCacheTypeV());
+        if (knobProblem != null) {
+            throw new SrcMorphException(
+                    "aiDefinition '" + aiDefinitionKey + "': " + knobProblem + " (checked before any model is loaded)");
         }
         validateAgainstTheModelItself(aiDefinitionKey, modelConfig, Paths.get(modelPath));
     }

@@ -16,6 +16,18 @@ import java.util.regex.Pattern;
  */
 public final class SourceLines {
 
+    /** The first character UTF-8 writes in two bytes. */
+    private static final char UTF8_ONE_BYTE_LIMIT = '\u0080';
+
+    /** The first character UTF-8 writes in three bytes. */
+    private static final char UTF8_TWO_BYTE_LIMIT = '\u0800';
+
+    /** The bytes of a character UTF-8 writes in three. */
+    private static final int UTF8_THREE_BYTES = 3;
+
+    /** The bytes of a surrogate pair, one character beyond the basic plane. */
+    private static final int UTF8_PAIR_BYTES = 4;
+
     /** The line feed every line ends with after {@link #normalize(String)}. */
     private static final char LINE_FEED = '\n';
 
@@ -86,6 +98,21 @@ public final class SourceLines {
     }
 
     /**
+     * Returns the bytes a source's checksum is taken over: {@link #normalize(byte[])} of the file's bytes,
+     * and for a UTF-16 file (one that starts with its byte order mark) the UTF-8 bytes of its normalized
+     * text, since a line ending there is two bytes that a byte-wise normalization would double.
+     *
+     * @param bytes the file's bytes
+     * @return the bytes to checksum, the same on a CRLF and an LF checkout
+     */
+    public static byte[] checksumBytes(final byte[] bytes) {
+        if (startsWith(bytes, UTF_16LE_BOM) || startsWith(bytes, UTF_16BE_BOM)) {
+            return normalize(decode(bytes)).getBytes(StandardCharsets.UTF_8);
+        }
+        return normalize(bytes);
+    }
+
+    /**
      * Returns the bytes with every {@code \r\n} and every lone {@code \r} replaced by {@code \n}: the
      * line endings of {@link #normalize(String)} on the bytes themselves, so a checksum over them sees
      * every byte of a file that is not valid UTF-8 (whose decoded text has the replacement character
@@ -95,7 +122,7 @@ public final class SourceLines {
      * @param bytes the file's bytes
      * @return the bytes with {@code \n} line endings only (the same array when it has no {@code \r})
      */
-    public static byte[] normalize(final byte[] bytes) {
+    static byte[] normalize(final byte[] bytes) {
         boolean carriageReturn = false;
         for (final byte b : bytes) {
             if (b == '\r') {
@@ -140,6 +167,35 @@ public final class SourceLines {
             }
         }
         return normalized.charAt(normalized.length() - 1) == LINE_FEED ? lineFeeds : lineFeeds + 1;
+    }
+
+    /**
+     * Returns the length of a text in UTF-8 bytes, without encoding it: one byte per character below
+     * U+0080, two below U+0800, three for the rest of the basic plane and four for a surrogate pair. The
+     * size of a source as srcmorph reads it, so a {@code size} condition measures the same text on a
+     * CRLF and an LF checkout.
+     *
+     * @param text the text, {@code \n} line endings
+     * @return its UTF-8 length in bytes
+     */
+    public static long utf8Length(final String text) {
+        long bytes = 0;
+        for (int i = 0; i < text.length(); i++) {
+            final char c = text.charAt(i);
+            if (c < UTF8_ONE_BYTE_LIMIT) {
+                bytes++;
+            } else if (c < UTF8_TWO_BYTE_LIMIT) {
+                bytes += 2;
+            } else if (Character.isHighSurrogate(c)
+                    && i + 1 < text.length()
+                    && Character.isLowSurrogate(text.charAt(i + 1))) {
+                bytes += UTF8_PAIR_BYTES;
+                i++;
+            } else {
+                bytes += UTF8_THREE_BYTES;
+            }
+        }
+        return bytes;
     }
 
     /**

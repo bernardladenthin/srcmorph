@@ -9,6 +9,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.support.ConvertToRecord;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -60,7 +61,10 @@ public final class ProviderConfig {
     private final String devices;
     private final String provider;
     private final String remoteModel;
+
+    @ToString.Exclude
     private final String baseUrl;
+
     private final String apiKeyEnv;
     private final boolean stream;
     private final int requestsPerMinute;
@@ -132,6 +136,17 @@ public final class ProviderConfig {
         this.dryPenaltyLastN = builder.dryPenaltyLastN;
         this.drySequenceBreakers = builder.drySequenceBreakers;
         this.stopStrings = builder.stopStrings;
+    }
+
+    /**
+     * The {@code baseUrl} as {@code toString} shows it: its user info masked, so a password written into
+     * it reaches no message and no log line that prints this object.
+     *
+     * @return the masked base URL
+     */
+    @ToString.Include(name = "baseUrl")
+    private String maskedBaseUrl() {
+        return UrlUserInfo.mask(baseUrl);
     }
 
     /**

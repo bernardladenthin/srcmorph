@@ -175,7 +175,8 @@ The file has three building blocks:
 3. **`rules`** — the routing **rules** of the file phase. Each rule maps a `promptKey` to an
    `aiDefinitionKey` (model id, which carries the full parameter set) and selects files with a
    composable **`condition`** tree: `and`/`or`/`not` over the leaves `extensions`, `size`
-   (`min`/`max` bytes), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
+   (`min`/`max` bytes of the source as srcmorph reads it: its UTF-8 length with `\n` line endings and
+   no BOM, not the size on disk), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
    the file's last-modified time), `pathGlob` (base-relative glob, in the case written, so it
    matches the same on every system), `fileNames` (globs over the name without its directory, in any
    case: `Dockerfile`, `Jenkinsfile`, `Dockerfile.*`), `contentMatches` (a Java regular expression
@@ -364,7 +365,7 @@ files, skip generated sources, and a fallback for everything else:
         and:
           conditions:
             - extensions: [".java"]
-            - size: {min: 49152}
+            - size: {min: 49152, max: 1048576}     # a max: at one priority the first match wins
     - id: java-huge                                  # huge files: chunk over a SMALL fast window + combine
       promptKey: file-body-oop
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
@@ -374,7 +375,7 @@ files, skip generated sources, and a fallback for everything else:
       reducePromptKey: reduce-parts                  # appended in a reduce call: merge the parts
       facts:                                         # exact whole-file counts, prepended to the body
         - {label: boolean fields, pattern: '\bboolean\b'}
-        - {label: methods, pattern: '(?m)^\s+(public|private|protected).*\('}
+        - {label: methods, pattern: '(?m)^[ \t]+(public|private|protected)[^(\n]*+\('}
       condition:
         and:
           conditions:
@@ -387,7 +388,9 @@ files, skip generated sources, and a fallback for everything else:
 ```
 
 Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
-`lines` works the same way; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
+`lines` works the same way; of two matching rules of one priority the one declared first wins, so
+bands of one priority need a `max` each (or the narrower band a higher priority), or a later band is
+never reached; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
 recently changed files. `onOversize` (`fail` *(default)* / `sample` / `mapReduce` / `sampleChunks` / `deterministic` —
 see the context-window note above) chooses what a rule does when a file is still larger than its routed
 model's window; `maxChunks` is how many chunks `sampleChunks` summarizes, `mapPromptKey` and
@@ -484,7 +487,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
 | `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
 | `repeatLastN` | `-1` | Window the `repeatPenalty` above acts on (`--repeat-last-n`); `-1` = leave llama.cpp's own window (64 tokens), `0` = disable the penalty entirely. Configuring a penalty without its range leaves the strength adjustable but the reach fixed, which is why the two belong together |
-| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: one over it is counted whole, goes in one call when it fits after all, and is otherwise chunked by its measured density; a prompt over `contextSize - maxOutputTokens` (less 4 tokens a count does not see) is not sent: its window shrinks by the measured density, up to four times, and a prompt still over the limit then fails its file |
+| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: of one over it the prompt with a head of at most four estimated windows is counted (the whole file when it is shorter), and by that density it goes in one call when it fits after all, and is otherwise chunked; a prompt over `contextSize - maxOutputTokens` (less 4 tokens a count does not see) is not sent: its window shrinks by the measured density, up to four times. Where the source may not be cut (a whole file, a chunk), a window that would cut it hands the file to the rule's `onOversize` (a chunk is read in two halves); only a `sample` head still over the limit after the four smaller windows fails its file |
 | `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
 | `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
 | `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |

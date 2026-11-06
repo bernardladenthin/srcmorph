@@ -8,8 +8,9 @@
 # the key stays), so a key quoted in a command does not count. A service counts by the image: or
 # build: it runs, so "services with an image" and "services built here" together are the services
 # (one with both counts in each); the other keys count wherever they stand (a service's volumes: and
-# the top-level volumes: alike). "variable substitutions" counts every ${NAME}. OpsFactPatternsTest
-# pins every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+# the top-level volumes: alike). "variable substitutions" counts every ${NAME}, not the escape
+# $${NAME}, which Compose writes as a literal ${NAME} ($$${NAME} is a $ and a substitution).
+# OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
 services with an image	(?m)^[ \t]++image[ \t]*+:
 services built here	(?m)^[ \t]++build[ \t]*+:
@@ -23,4 +24,4 @@ secret lists	(?m)^[ \t]*+secrets[ \t]*+:
 restart policies	(?m)^[ \t]++restart[ \t]*+:
 profiles	(?m)^[ \t]++profiles[ \t]*+:
 deploy sections	(?m)^[ \t]++deploy[ \t]*+:
-variable substitutions	\$\{[A-Za-z_]\w*+
+variable substitutions	(?<!\$)(?:\$\$)*+\$\{[A-Za-z_]\w*+

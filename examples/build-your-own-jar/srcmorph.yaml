@@ -9,11 +9,20 @@
 # (aiDefinitionKey). srcmorph sends the prompt as the system message and the file's name and source as
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
 #
-# Three models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
+# Three models: gpt-oss-20b for every file up to ~260 KB, every package and the project overview;
 # IBM Granite 4.0 for larger files - H-Tiny map-reducing over a 64K window up to ~1 MB, H-1B with a
 # 16K window beyond, summarizing a few sampled chunks (sampleChunks). A Java, SQL, shell, Perl or XML
 # summary starts with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables,
 # methods, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
+#
+# What is indexed: only the files below src/main/java (subtrees, as the plugin's self-test reads its
+# compile source roots), so in a standard Maven layout that is the Java sources, and the SQL, XML,
+# POM, CI, Dockerfile, shell and other rules below find nothing: src/main/resources, the pom.xml,
+# .github/ and the scripts lie outside. To index the whole project, set
+#   subtrees: ["."]
+# and add to excludes what is no source, e.g. "**/target/**" (the outputDirectory below lies there),
+# "**/.git/**", "**/.idea/**", "**/node_modules/**"; then every file with one of the fileExtensions
+# or fileNames takes its rule. Run Plan first: it lists every file and its rule.
 #
 # command:
 #   Plan               prints which file gets which model and prompt; loads nothing, writes nothing
@@ -126,7 +135,7 @@ srcMorph:
       minP: 0.05
       repeatPenalty: 1.0
       reasoningEffort: low
-    # ~275 KB .. ~1 MB: Granite 4.0 H-Tiny map-reduces over a 64K window, every chunk read. One pass
+    # ~260 KB .. ~1 MB: Granite 4.0 H-Tiny map-reduces over a 64K window, every chunk read. One pass
     # over a 384K window fits 8 GB (the KV grows only linearly), but over an 870 KB catalog it copied
     # the XML with invented values instead of summarizing it.
     - key: granite-4.0-h-tiny-mapreduce
@@ -159,7 +168,12 @@ srcMorph:
       reasoningEffort: ""
 
   # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
-  # (~275 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
+  # (~260 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
+  # gpt-oss reads about 270,000 characters of source (the 96K window less the output budget and the
+  # prompt), so the tiers start at 260,000 (a size condition measures the source's UTF-8 length with
+  # \n line endings). The kinds without tiers of their own (shell, Perl,
+  # TypeScript, ... the fallback) map-reduce on gpt-oss when a file exceeds that window, instead of
+  # failing the run.
   rules:
     # Files that hold credentials are never sent to a model, whatever their extension: the highest
     # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
@@ -226,7 +240,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".java"]
-            - size: {min: 275000}
+            - size: {min: 260000}
     - id: big-sql
       promptKey: file-body-sql
       onIncomplete: retryOnce
@@ -240,7 +254,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".sql"]
-            - size: {min: 275000}
+            - size: {min: 260000}
     - id: java
       promptKey: file-body-oop
       onIncomplete: retryOnce
@@ -284,7 +298,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
-            - size: {min: 275000}
+            - size: {min: 260000}
     - id: huge-pom                      # a big POM takes the XML tiers one step higher, with the Maven counters
       promptKey: file-body-fallback
       onIncomplete: retryOnce
@@ -313,11 +327,14 @@ srcMorph:
         and:
           conditions:
             - pathGlob: "**/*pom.xml"
-            - size: {min: 275000}
+            - size: {min: 260000}
     - id: shell                         # shell, Perl, XML: a prompt and counts of their own
       promptKey: file-body-shell
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: shell-facts
       condition:
         extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
@@ -325,6 +342,9 @@ srcMorph:
       promptKey: file-body-perl
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: perl-facts
       condition:
         extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
@@ -347,6 +367,9 @@ srcMorph:
       promptKey: file-body-oop               # the fallback (measured 2026-11-05); no counters of its own
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       condition:
         extensions: [".ts", ".mts", ".cts"]
     - id: jee                                # Jakarta EE descriptors
@@ -372,6 +395,9 @@ srcMorph:
       promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: bpmn-facts
       condition:
@@ -383,6 +409,9 @@ srcMorph:
       promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: dmn-facts
       condition:
@@ -391,6 +420,9 @@ srcMorph:
       promptKey: file-body-view
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: jsp-facts
       condition:
         extensions: [".jsp", ".jspf", ".jspx", ".tag", ".tagx"]
@@ -398,6 +430,9 @@ srcMorph:
       promptKey: file-body-contract
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: proto-facts
       condition:
         extensions: [".proto"]
@@ -405,6 +440,9 @@ srcMorph:
       promptKey: file-body-ops
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: actions-facts
       condition:
@@ -413,6 +451,9 @@ srcMorph:
       promptKey: file-body-ops
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 5
       factsKey: k8s-facts
       condition:
@@ -424,6 +465,9 @@ srcMorph:
       promptKey: file-body-ops
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: dockerfile-facts
       condition:
         fileNames: ["Dockerfile", "Dockerfile.*", "*.dockerfile", "Containerfile"]
@@ -431,6 +475,9 @@ srcMorph:
       promptKey: file-body-ops
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: terraform-facts
       condition:
         extensions: [".tf", ".hcl"]
@@ -438,6 +485,9 @@ srcMorph:
       promptKey: file-body-ops               # 2026-11-06 on an extension's manifest)
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: npm-facts
       condition:
@@ -446,6 +496,9 @@ srcMorph:
       promptKey: file-body-ops
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       condition:
         or:
           conditions:
@@ -455,4 +508,7 @@ srcMorph:
       promptKey: file-body-fallback
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       fallback: true

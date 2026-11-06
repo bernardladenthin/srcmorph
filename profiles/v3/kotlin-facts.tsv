@@ -10,7 +10,8 @@
 # A region that is never closed runs to the end of the file. "functions (approx)" counts every fun
 # declared at the start of a line (members, top-level, local and extension functions), not a fun
 # interface; "constructor properties" every val or var after "(" or ",", which is a primary
-# constructor's property and, rarely, a lambda's destructuring. Counts are regex heuristics: a
+# constructor's property and, rarely, a lambda's destructuring, but not the subject of a
+# when (val y = ...). Counts are regex heuristics: a
 # declaration that starts after another on the same line, or a string template nested more than one
 # level, is not read as the compiler reads it. JvmFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
@@ -23,7 +24,7 @@ functions (approx)	(?m)^[ \t]*+(?:@[\w.:]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:pub
 extension functions	\bfun[ \t]++(?:<[^>\n]*+>[ \t]*+)?[A-Za-z_][\w.]*(?:<[^>\n]*+>)?\??\.[A-Za-z_`]
 suspend functions	\bsuspend[ \t]++(?:[a-z]++[ \t]++){0,8}?fun\b
 secondary constructors	(?m)^[ \t]*+(?:(?:public|private|internal|protected)[ \t]++)?constructor[ \t]*+\(
-constructor properties (approx)	[(,][ \t\n]*+(?:@[\w.:]++(?:\([^()\n]*+\))?[ \t\n]++)*+(?:(?:public|private|internal|protected|open|override)[ \t]++)*+(?:val|var)[ \t]++[A-Za-z_`]
+constructor properties (approx)	(?:(?<!\bwhen[ \t]{0,16})\(|,)[ \t\n]*+(?:@[\w.:]++(?:\([^()\n]*+\))?[ \t\n]++)*+(?:(?:public|private|internal|protected|open|override)[ \t]++)*+(?:val|var)[ \t]++[A-Za-z_`]
 const vals	\bconst[ \t]++val\b
 lateinit properties	\blateinit[ \t]++var\b
 imports	(?m)^import[ \t]++

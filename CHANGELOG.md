@@ -265,6 +265,31 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The self-test's large tiers start at ~260 KB, where gpt-oss-20b's window really ends.** They
+  started at 275,000 bytes, but the 96K window leaves about 270,000 characters next to the XML
+  prompt, so a 272 KB Java, SQL, XML or POM file failed the run's plan (`onOversize: fail`). And
+  every other kind the self-test routes (shell, Perl, TypeScript, JSP, BPMN, DMN, Protocol Buffers,
+  GitHub Actions, Kubernetes, Dockerfiles, Terraform, npm, `ops` and the fallback) map-reduces a
+  source over the window now instead of failing the run: one 400 KB OpenAPI file did. The CLI's
+  `build-your-own-jar/srcmorph.yaml` the same; its header says what its one subtree indexes and how
+  to widen it.
+- **Counters closer to the source (the facts hash of these kinds changes, so their summaries are
+  written again):** the integration counter's property placeholders no longer count Camel Simple
+  expressions (`${body}`, `${header.id}`), Facelets input fields no longer count
+  `<f:selectItem(s)>`, Dockerfiles blank BuildKit heredoc bodies, PowerShell counts a quoted
+  dot-source and no `Mandatory = $false`, Gradle reads the Kotlin DSL's bare plugins and
+  `tasks.<name> { }`, Kotlin no longer counts a `when (val x = ...)` subject as a constructor
+  property, Java counts an annotation element with a `default` as a method, GitHub Actions no
+  longer counts a reusable-workflow call as an action, and Compose no longer counts the `$${X}`
+  escape as a variable.
+- **The model card's scorer reads what the model answered.** `score.py` strips a leading reasoning
+  block before recall, invented names, numbers and the format checks (the leak is still counted),
+  matches a path- or colon-like name whole (`/orders` is not found in `/orders/{orderId}`), opens a
+  code fence only at a line start, reads the methods of a static interface and annotation elements,
+  takes no digits stuck to a letter or a date part as a stated number, splits a name after an
+  acronym (`XMLParser`), and takes `order.c` or `item.tag` for a member, not a file. `run.py` maps
+  a package call's log name to its `package.ai.md` again, so a cut package counts as cut. The
+  published numbers do not move: the card's outputs have none of these cases.
 - **The self-test routes the new kinds measured on real projects:** TypeScript, the Jakarta EE
   descriptors, MyBatis mappers, BPMN, DMN, JSP, Protocol Buffers, GitHub Actions, Kubernetes
   manifests, Dockerfiles, Terraform, npm manifests and other YAML (`ops`), with the Luna example's
@@ -383,7 +408,8 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **The model reads a file's path below the base directory**, not its name alone, at the head of the
   user message (`billing/src/main/webapp/WEB-INF/web.xml`), so two files of one name in different
   modules read apart; every file prompt of profile v3 says so in its last paragraph. The plan's
-  window check counts the same line. A package's and the project's message are unchanged.
+  window check counts the same line. A package's message starts with the package's path (see
+  Fixed), the project's with `project.ai.md`.
 - **Profile v3's file prompts ask for more**
   ([`remeasure-2026-11-04b/`](docs/ai-index-benchmark/remeasure-2026-11-04b/README.md): the enterprise
   corpus 97.9 to 99.7 % with gpt-oss-20b, 97.3 to 99.9 % with GPT-6 Luna; the card corpus 99.5 % and
@@ -405,6 +431,40 @@ The entries below hold the details; what a 1.4.0 user changes:
   is not rewritten for this alone.
 
 ### Fixed
+
+- **A `size` condition measures the same file on every checkout.** It read the bytes on disk, so a
+  file checked out with CRLF line endings was larger than the same file with LF and could reach
+  another size tier, model and summary (a 272 KB Java file, 5000 lines). It measures the source as
+  srcmorph reads it now, `
+` line endings and no byte order mark, in UTF-8 bytes, as the checksum
+  already did; the plan's time estimate of a file that fits does too. The run's `minFileSizeBytes` /
+  `maxFileSizeBytes` band stays a filter on the bytes on disk.
+- **A package's lead in `project.ai.md` is its summary's lead** again for a package read in chunks
+  (packages default to `mapReduce`) or with counters: the project listed the coverage or the facts
+  line, which stands in front of the summary, as the package's lead.
+- **A UTF-16 source has one checksum on a CRLF and an LF checkout.** Its line endings were normalized
+  byte by byte, which turns the two bytes of a UTF-16 `\r\n` into two line feeds, so a checkout
+  switch rewrote its summary; its checksum is taken over its normalized text now.
+- **A leading `Src/` stays in the summary's path on every platform**: `Path.startsWith` ignores the
+  case on Windows, so the summary of `Src/main/Foo.java` lost its `Src` there and kept it on Linux.
+- **A model id with a line break cannot break out of `ListModels`' output**: control characters and
+  YAML line breaks are written as `\uXXXX` in the table and the paste-ready block.
+- **A `baseUrl` with a query or a fragment fails the check**: srcmorph appends `/chat/completions`
+  to it, which landed in the query, and the query (possibly a key) was printed with the endpoint.
+- **A request that failed its retries with a timeout last** says "failed N times, the last with a
+  timeout", not "timed out N times" after three 503 answers and one timeout.
+- **A long password in a URL is masked too.** The mask of a URL's user info stopped at 256
+  characters, so a longer token (a JWT) stayed in the message that refuses such a `baseUrl`; an `@`
+  in the password left its tail visible. It masks up to the last `@` before the host now, of any
+  length, and `toString` of a model definition and of a provider's configuration masks the
+  `baseUrl` as well.
+- **A `lazyMode`, `cacheTypeK` or `cacheTypeV` the binding does not know fails the check**, before a
+  model is loaded, instead of the first file's load; and a local model that does not load is tried
+  once per run: every later file fails with the same error at once instead of loading the model
+  again.
+- **One unchecked provider error no longer ends the package pass**: the package is counted as failed
+  and the others are written, as in the file phase (the llama.cpp binding throws only unchecked
+  exceptions, so one context overflow left every later package unwritten).
 
 - **A package call names the package**, as `package-body` and `profiles/README.md` say: its user
   message started with `package.ai.md` (the file name of the absolute path), now with the package's
@@ -430,10 +490,6 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **`partsDirectory` no longer writes a chunked file's answers under the next file's name** when that
   file was unchanged (or failed before it was read): `SummaryGenerator.takeParts()` returns the
   answers once and starts anew (`parts()` is gone).
-- **A `</think>` inside the answer's text is kept**: a closing tag ends a template's reasoning only
-  when it ends its line and stands after no quote, so a summary that names the tag in a sentence or in
-  double quotes is no longer cut before it.
-
 - **Files are planned and summarized in path order, on every machine.** The walk of a subtree came
   in the file system's order, so the plan, the progress and the run record listed files differently on
   Linux and Windows, and a test that relied on two files' order failed on one CI runner and not on
@@ -441,8 +497,9 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 - **A template that opens the thinking block itself leaves no reasoning in the summary.** Qwen3 and
   DeepSeek-R1 templates put `<think>` into the prompt, so the answer starts with the reasoning and
-  holds only `</think>`; `AiCompletionParser` kept all of it. A first `</think>` with no `<think>`
-  before it, and not quoted in backticks, now ends the reasoning.
+  holds only `</think>`; `AiCompletionParser` kept all of it. The first `</think>` alone on its line,
+  with no `<think>` before it, now ends the reasoning; a tag inside a line (a sentence, quotes, a list
+  item naming it) is text, in the answer or in reasoning that names it before its real end.
 - **The benchmark's scorer** (`score.py`, `report.py`; the card's published numbers stay until it is
   re-rendered): an everyday word between two backtick spans no longer counts as marked as code, one
   in a column listing with its type (`email VARCHAR(254)`) does; a reasoning marker in backticks is

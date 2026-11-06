@@ -35,9 +35,10 @@ public class SourcePaths {
      */
     public Path relativizeFromSrc(final Path baseDirectory, final Path path) {
         final Path relative = baseDirectory.relativize(path);
-        // Path#startsWith compares whole name elements, so it is false for the empty
-        // relativised path and needs no separate getNameCount() guard before subpath().
-        if (relative.startsWith(SRC_DIRECTORY_NAME)) {
+        // the first name element compared as a string, case-sensitively: Path#startsWith ignores the
+        // case on Windows, so a leading Src/ would be stripped there and kept on Linux. The empty
+        // relativised path has one empty name, which is not src, so subpath() always has a name to skip.
+        if (SRC_DIRECTORY_NAME.equals(relative.getName(0).toString())) {
             return relative.subpath(1, relative.getNameCount());
         }
         return relative;

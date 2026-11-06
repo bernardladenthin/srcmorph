@@ -44,7 +44,7 @@ final class ChunkPlan {
      * Returns the characters a chunk has in a window next to the longer of the map and reduce prompts and a
      * chunk's label.
      *
-     * @param window             the model's window for the source, in characters
+     * @param window             the budget of a whole call's prompt, in characters
      * @param mapPromptLength    the length of the map prompt with an empty source
      * @param reducePromptLength the length of the reduce prompt with an empty source
      * @return the characters, negative when the prompts alone exceed the window
@@ -59,7 +59,7 @@ final class ChunkPlan {
      * Plans the chunks of a source.
      *
      * @param source             the whole source
-     * @param window             the model's window for the source, in characters
+     * @param window             the budget of a whole call's prompt, in characters
      * @param mapPromptLength    the length of the map prompt with an empty source
      * @param reducePromptLength the length of the reduce prompt with an empty source
      * @param strategy           the rule's {@code onOversize}: {@code sampleChunks} reads {@code maxChunks}

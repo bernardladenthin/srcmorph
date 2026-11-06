@@ -868,6 +868,37 @@ public class EngineSupportTest {
     }
 
     /**
+     * A cache type the binding does not know fails the check, before the model is loaded: llama.cpp
+     * would refuse it at the first file's load.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void validateRoutedModelPaths_unknownCacheType_isRefusedBeforeTheModelLoads() throws Exception {
+        // arrange
+        final Path model = modelDir.resolve("cache-type.gguf");
+        writeGgufDeclaringContextLength(model, 4096);
+        final ModelDefinition definition = new ModelDefinition();
+        definition.setKey("routed");
+        definition.setModelPath(model.toString());
+        definition.setContextSize(4096);
+        definition.setCacheTypeV("q3_k");
+        final ModelRegistry registry = new ModelRegistry(Collections.singletonList(definition));
+
+        // act
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.validateRoutedModelPaths(
+                        GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                        registry,
+                        Arrays.asList(routedRule(false, "routed"))));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("aiDefinition 'routed'"));
+        assertThat(thrown.getMessage(), containsString("cacheTypeV"));
+    }
+
+    /**
      * When the file declares a name, the warning must use it rather than the path — that is the half of
      * the choice the nameless fixture above cannot reach, and a mutant that always picks the path would
      * otherwise survive.

@@ -28,5 +28,24 @@ public class UrlUserInfoTest {
         // act, assert
         assertThat(UrlUserInfo.mask(text), is(text));
     }
+
+    @Test
+    public void mask_aUserInfoOfThreeHundredCharacters_isMasked() {
+        // arrange: a token as long as a JWT
+        final StringBuilder token = new StringBuilder();
+        for (int i = 0; i < 300; i++) {
+            token.append('x');
+        }
+        final String url = "https://user:" + token + "@host/v1";
+
+        // act, assert
+        assertThat(UrlUserInfo.mask(url), is("https://***@host/v1"));
+    }
+
+    @Test
+    public void mask_aPasswordWithAnAt_isMaskedWhole() {
+        // act, assert: up to the last @ before the host, nothing of the password stays
+        assertThat(UrlUserInfo.mask("https://u:p@ss@h/v1"), is("https://***@h/v1"));
+    }
     // </editor-fold>
 }

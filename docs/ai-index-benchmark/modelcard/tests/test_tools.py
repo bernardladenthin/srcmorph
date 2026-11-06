@@ -181,11 +181,24 @@ class RulesTest(unittest.TestCase):
 
         self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json"])
 
+    @staticmethod
+    def file_names(condition):
+        """Every fileNames entry of a condition, through its and / or groups."""
+        names = list(condition.get("fileNames", []))
+        for group in ("and", "or"):
+            for inner in condition.get(group, {}).get("conditions", []):
+                names += RulesTest.file_names(inner)
+        return names
+
+    def test_fileNames_ofAnOrGroup_areFound(self):
+        self.assertEqual(self.file_names(run._or({"extensions": [".bpmn"]}, {"fileNames": ["*.bpmn20.xml"]})),
+                         ["*.bpmn20.xml"])
+
     def test_everyFileNameRule_namesAFileTheRunIndexes(self):
         # a rule on a file name the walk never collects never fires (package.json had no extension
         # of the list and no name either, so its npm rule routed nothing; Dockerfile.* had no glob)
         for name, condition, _, _ in run.LANGUAGES:
-            for file_name in condition.get("fileNames", []):
+            for file_name in self.file_names(condition):
                 # a name the glob matches: a wildcard as "x", a choice as its first option
                 sample = re.sub(r"\{([^,}]*)[^}]*\}", r"\1", file_name).replace("*", "x").replace("?", "x")
                 with self.subTest(rule=name, fileName=file_name):
@@ -435,6 +448,43 @@ class CutOffTest(unittest.TestCase):
             + "' (field 'file-body-sql', EMPTY): The model answered nothing\n")
 
         self.assertEqual(run.cut_off_files(log, work, out), ["java/B.java", "sql/a.sql"])
+
+    def test_aPackageCall_isItsPackageSummary_asScorePyNamesIt(self):
+        # srcmorph's PackageIndexer names a package call by its path below the output root, the root package by
+        # the output directory's name; a file call by its path below the corpus, the project by its file
+        work, out = Path("W"), Path("O") / "model-a"
+        cut = (" (field '{}', TRUNCATED): The answer for x was cut off at the 4096-token output budget; not written,"
+               " left for the next run\n")
+        packages = self.log(
+            "WARN SummaryGenerator - Incomplete answer for package '" + str(Path("java") / "config") + "'"
+            + cut.format("package-body")
+            + "WARN SummaryGenerator - Incomplete answer for package 'model-a'" + cut.format("package-body")
+            + "WARN SummaryGenerator - Incomplete answer for " + str(Path("sql") / "library")
+            + ": The answer for x was cut off at the 4096-token output budget; kept as it is (onIncomplete: keep)\n")
+        files = self.log(
+            "WARN SummaryGenerator - Incomplete answer for file '" + str(Path("java") / "config" / "B.java") + "'"
+            + cut.format("file-body-oop")
+            + "WARN SummaryGenerator - Incomplete answer for " + str(Path("other") / "Dockerfile")
+            + ": The answer for x was cut off at the 4096-token output budget; kept as it is (onIncomplete: keep)\n")
+        project = self.log("WARN SummaryGenerator - Incomplete answer for project '" + str(out / "project.ai.md") + "'"
+                           + cut.format("project-body"))
+
+        self.assertEqual(run.cut_off_files(packages, work, out, "AggregatePackages"),
+                         ["java/config/package.ai.md", "package.ai.md", "sql/library/package.ai.md"])
+        self.assertEqual(run.cut_off_files(files, work, out, "GenerateFileIndex"), ["java/config/B.java", "other/Dockerfile"])
+        self.assertEqual(run.cut_off_files(project, work, out, "AggregateProject"), ["project.ai.md"])
+        # the names score.py expects the aggregates under, so a cut-off package row is found
+        self.assertTrue({"java/config/package.ai.md", "package.ai.md", "sql/library/package.ai.md", "project.ai.md"}
+                        <= set(score.expected_aggregates(["java/config/B.java", "sql/library/a.sql"])))
+
+    def test_anOlderLogsAbsolutePackageSummary_readsAsItIs(self):
+        work, out = Path("W"), Path("O") / "model-a"
+        log = self.log("WARN AiFieldGenerationSupport - Incomplete answer for package '"
+                       + str(out / "java" / "package.ai.md") + "' (field 'package-body', TRUNCATED): cut\n"
+                       "WARN AiFieldGenerationSupport - Incomplete answer for package '" + str(out / "package.ai.md")
+                       + "' (field 'package-body', TRUNCATED): cut\n")
+
+        self.assertEqual(run.cut_off_files(log, work, out, "AggregatePackages"), ["java/package.ai.md", "package.ai.md"])
 
     def test_filesNotWritten_isTheOnlyFailureTheNextPhasesRunAfter(self):
         self.assertTrue(run.files_not_written(self.log("SrcMorphException: 2 file(s) were not written (an incomplete")))

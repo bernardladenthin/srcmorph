@@ -208,6 +208,26 @@ public class ModelListReportTest {
         assertThat(ModelListReport.quote("a\"b\\c"), is("\"a\\\"b\\\\c\""));
         assertThat(ModelListReport.quote(""), is("\"\""));
     }
+
+    @Test
+    public void quote_lineFeedInAnId_isEscapedAndStaysOnOneLine() {
+        // act, assert
+        assertThat(ModelListReport.quote("a\nkey: x"), is("\"a\\u000akey: x\""));
+    }
+
+    @Test
+    public void escapeLineBreaks_everyLineBreakAndControl_isEscaped() {
+        // act, assert: C0, DEL, C1 (U+0085, a YAML line break), the line and paragraph separators
+        assertThat(
+                ModelListReport.escapeLineBreaks("\r\t\u007f\u0085\u2028\u2029"),
+                is("\\u000d\\u0009\\u007f\\u0085\\u2028\\u2029"));
+    }
+
+    @Test
+    public void escapeLineBreaks_printableText_staysAsItIs() {
+        // act, assert: the characters next to the escaped ones stay
+        assertThat(ModelListReport.escapeLineBreaks(" ~\u00a0\u2027\u202a"), is(" ~\u00a0\u2027\u202a"));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="listings">

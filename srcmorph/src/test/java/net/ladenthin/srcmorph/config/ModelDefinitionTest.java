@@ -938,4 +938,20 @@ public class ModelDefinitionTest {
         assertThat(copy.getStopStrings(), is(Arrays.asList("<end>")));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="toString">
+    @Test
+    public void toString_baseUrlWithUserInfo_masksIt() {
+        // arrange
+        final ModelDefinition definition = new ModelDefinition();
+        definition.setBaseUrl("https://user:secret@host/v1");
+
+        // act
+        final String shown = definition.toString();
+
+        // assert
+        assertThat(shown.contains("secret"), is(false));
+        assertThat(shown.contains("baseUrl=https://***@host/v1"), is(true));
+    }
+    // </editor-fold>
 }

@@ -100,5 +100,16 @@ public class ViewFactPatternsTest {
                 count(FACELETS, "composite component interfaces", "<cc:interface><cc:attribute/></cc:interface>"),
                 is(1));
     }
+
+    @Test
+    public void facelets_selectWithItsOptions_countsTheSelectAndNotTheOptions() {
+        // arrange
+        final String view = "<h:selectOneMenu value=\"#{b.kind}\"><f:selectItem itemValue=\"a\"/>"
+                + "<f:selectItems value=\"#{b.kinds}\"/></h:selectOneMenu>\n"
+                + "<h:selectManyCheckbox value=\"#{b.tags}\"><f:selectItems value=\"#{b.all}\" /></h:selectManyCheckbox>\n";
+
+        // act, assert
+        assertThat(count(FACELETS, "input fields", view), is(2));
+    }
     // </editor-fold>
 }

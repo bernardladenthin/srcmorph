@@ -62,7 +62,7 @@ every key. The ones to set:
   where the `.ai.md` files go. Write forward slashes (`C:/work/project`): in a double-quoted YAML
   string, `C:\x` is an escape.
 - **`modelDirectory`** and the GGUF files of the three models under `aiDefinitions` (`modelPath`):
-  gpt-oss-20b for every file up to ~275 KB, every package and the project overview, IBM Granite 4.0
+  gpt-oss-20b for every file up to ~260 KB, every package and the project overview, IBM Granite 4.0
   H-Tiny and H-1B for larger files. gpt-oss-20b takes about 12 GB for the model and up to 11 GB more
   when its 96K window is full; with less memory, lower its `contextSize`, or let the rules'
   `aiDefinitionKey` name `granite-4.0-h-tiny-mapreduce`, the fastest on a CPU in

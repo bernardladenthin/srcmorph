@@ -18,7 +18,8 @@
 command: Plan
 
 # The package maps and the project overview, from the file summaries. A package whose summaries do
-# not fit the window is read in parts too (the default, fail, would stop the run).
+# not fit the window is read in parts too: mapReduce is a phase rule's default as well, written out
+# here so the map and reduce prompts beside it read as what they are for.
 packageRules:
   - promptKey: package-body
     onIncomplete: retryOnce                # an answer cut off or empty is asked for once more: one more request

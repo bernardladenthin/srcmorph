@@ -133,6 +133,20 @@ public class JvmFactPatternsTest {
     }
 
     @Test
+    public void kotlin_whenSubjectVal_isNoConstructorProperty() {
+        // arrange
+        final String source = "class Point(val x: Int, val y: Int)\n"
+                + "fun kind(p: Point) = when (val d = p.x - p.y) {\n"
+                + "    0 -> \"same\"\n"
+                + "    else -> when(val e = d) { else -> \"other\" }\n"
+                + "}\n";
+
+        // act, assert
+        // x and y; not the two when subjects
+        assertThat(count(KOTLIN, "constructor properties (approx)", source), is(2));
+    }
+
+    @Test
     public void kotlin_unclosedRawStringAndBlockComment_areBlankedToTheEnd() {
         // act, assert
         assertThat(count(KOTLIN, "functions (approx)", "fun a() = 1\nval s = \"\"\"\nfun b() = 2\n"), is(1));

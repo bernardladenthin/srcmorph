@@ -42,9 +42,11 @@ import org.slf4j.LoggerFactory;
  * <p>The API key is read from the environment variable {@code apiKeyEnv} names and sent as
  * {@code Authorization: Bearer}; it never sits in a configuration file. No variable, or an empty
  * one, sends no key, which a local server without {@code --api-key} accepts. An answer outside 2xx
- * fails the call with the status and the start of the body. A {@code 408}, {@code 429}, {@code 5xx}
- * or a read timeout is sent again up to {@code maxRetries} times, after the server's
- * {@code Retry-After} or an exponential backoff with jitter; a prompt the server refuses as longer
+ * fails the call with the status and the start of the body. A {@code 408}, {@code 429}, {@code 5xx},
+ * a connect timeout or a read timeout of the model list is sent again up to {@code maxRetries} times,
+ * after the server's {@code Retry-After} or an exponential backoff with jitter; a chat request that
+ * timed out after it was sent is not, since the server may still generate (and bill) it; a prompt the
+ * server refuses as longer
  * than the model's context fails with {@link ContextOverflowException}, so the caller can shrink
  * it.</p>
  *
@@ -296,7 +298,10 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
                 // a timeout that ends the retries is this request's failure, not an interrupt of the run: the
                 // caller treats an InterruptedIOException (a SocketTimeoutException is one) as an interrupt
                 throw failure instanceof SocketTimeoutException
-                        ? new IOException(endpoint + " timed out " + retry + " times: " + failure.getMessage(), failure)
+                        ? new IOException(
+                                endpoint + " failed " + retry + " times, the last with a timeout: "
+                                        + failure.getMessage(),
+                                failure)
                         : failure;
             }
             final long delay = OpenAiCompatibleProviderSupport.retryDelayMillis(

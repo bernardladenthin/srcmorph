@@ -126,6 +126,44 @@ class NamesFoundTest(unittest.TestCase):
 
         self.assertEqual(row["idsFound"], 1)
 
+    def test_aPathLikeId_isAWholeName_notThePrefixOfALongerOne(self):
+        longer = score.score_file("", body("Cancels with `/orders/{orderId}/cancel`; looks up java:/jdbc/ShopDSX, "
+                                           "the min-revenue-cap, erp.hostname and urn:example:statement:v2."),
+                                  ["/orders", "/orders/{orderId}", "/orders/{orderId}/cancel", "jdbc/ShopDS",
+                                   "min-revenue", "erp.host", "urn:example:statement"], [])
+        whole = score.score_file("", body("Reads orders.incoming.queue. Takes --min-revenue and `java:/jdbc/ShopDS`; "
+                                          "GET /orders, then /orders?page=2 and erp.host: the ERP on "
+                                          "backoffice.shop.example:8443, with `com.fasterxml.jackson.core:"
+                                          "jackson-databind:${jackson.version}`."),
+                                 ["orders.incoming.queue", "min-revenue", "jdbc/ShopDS", "/orders", "erp.host",
+                                  "backoffice.shop.example", "jackson-databind"], [])
+
+        self.assertEqual(longer["idsFound"], 1)
+        self.assertEqual(whole["idsFound"], 7)
+
+    def test_aFenceMarkerInsideAProseLine_opensNoFence(self):
+        row = score.score_file("", body("It answers in ```json blocks naming Foo and bar.\nThen Baz.\n"),
+                               ["Foo", "bar", "Baz"], [])
+        indented = score.score_file("", body("Run it:\n   ```sh\n   # rotate\n   ```\nThen Baz.\n"), ["Baz"], [])
+
+        self.assertEqual(row["idsFound"], 3)
+        self.assertEqual(row["fences"], 0)
+        # up to three spaces in front still open and close a fence; its '#' line is no heading
+        self.assertEqual((indented["fences"], indented["badHeadings"], indented["idsFound"]), (2, 0, 1))
+
+    def test_aReasoningBlock_isNoPartOfTheSummarysMeasures(self):
+        source = "class Foo { int bar; int baz; }"
+        row = score.score_file(source, "<think>Foo has bar and baz, 61 of them, and `ghostName`." + LONG
+                               + "\n# Plan\n```\nx\n```\n</think>\n> A small type", ["Foo", "bar", "baz"], [61])
+
+        self.assertEqual((row["idsFound"], row["numbersStated"], row["ticked"]), (0, 0, 0))
+        self.assertEqual((row["badHeadings"], row["fences"]), (0, 0))
+        self.assertEqual(row["bodyBytes"], len("> A small type"))
+        self.assertEqual(row["failed"], "too-short")
+        self.assertTrue(row["lead"])
+        # the leaks are counted on the whole body
+        self.assertEqual(row["leaks"], 2)
+
     def test_sql_namesWithoutRegardToCase(self):
         row = score.score_file("CREATE TABLE author", body("Table `AUTHOR` and LEDGER_ACCOUNT."),
                                ["author", "ledger_account"], [], case_insensitive=True, everyday=["author"])
@@ -259,6 +297,22 @@ class InventedTest(unittest.TestCase):
         row = score.score_file("class OrderService {}", body("It calls app.OrderService and app.missingName."), [], [])
 
         self.assertEqual(row["inventedNames"], ["missingName"])
+
+    def test_aWordPartAfterAnAcronym_namesTheSource(self):
+        row = score.score_file("class XMLParser { HTTPServerConfig config; }",
+                               body("`Parser`, `ServerConfig`, `XML`, `HTTP` and `LParser`."), [], [])
+
+        self.assertEqual(row["inventedNames"], ["LParser"])
+
+    def test_aMemberWithAFileExtension_isAName_aFileWithADirectoryOrAHyphenIsNot(self):
+        # .tag, .cfg, .c, .ts are member names too (`item.tag`, `self.cfg`): a file only with a directory or a
+        # stem no identifier has; a name before a parenthesis is a call, whatever its extension
+        row = score.score_file("class Item { String tag; }",
+                               body("Sets `item.tag` and `self.cfg`; reads `views/order.tag`, `my-order.tag`, "
+                                    "`rotate.sh` and `05_seed.cfg`, and calls `response.json()`."), [], [])
+
+        self.assertEqual(row["ticked"], 3)
+        self.assertEqual(row["inventedNames"], ["cfg", "json"])
 
     def test_namesInACopiedFence_areNotTicked(self):
         row = score.score_file("x = `Invented`", body("```\nx = `Invented`\n```\n"), [], [])
@@ -495,6 +549,25 @@ class JavaNamesTest(unittest.TestCase):
 
         self.assertEqual(score.java_names(source), ["Provider", "generate", "lastUsage", "of"])
 
+    def test_aStaticInterfacesAndAnAnnotationsElements_notAPrivateInterfaceMethod(self):
+        source = """
+            public class Outer {
+                public static interface Listener {
+                    void onEvent(String e);
+                    private void helper() {}
+                    static private int count() { return 0; }
+                }
+                public abstract static strictfp interface Sink { void accept(int v); }
+                public @interface Marker {
+                    String value() default "x";
+                    int[] order() default {};
+                }
+            }
+            """
+
+        self.assertEqual(score.java_names(source),
+                         ["Listener", "Marker", "Outer", "Sink", "accept", "onEvent", "order", "value"])
+
 
 
 class NumbersTest(unittest.TestCase):
@@ -510,6 +583,13 @@ class NumbersTest(unittest.TestCase):
     def test_aSmallNumber_isNotPartOfAGroupedOne(self):
         self.assertTrue(score.number_pattern(61).search("61 INSERT statements"))
         self.assertFalse(score.number_pattern(61).search("1,061 rows"))
+
+    def test_aNumberStuckToALetter_orAPartOfADate_doesNot(self):
+        for n, text in ((3, "uses v3 and S3"), (3, "the 3rd"), (100, "a 100k file"), (2026, "on 2026-11-06"),
+                        (11, "on 2026-11-06"), (6, "on 2026-11-06"), (12, "error ID-12"), (5, "x_5")):
+            self.assertFalse(score.number_pattern(n).search(text), (n, text))
+        for n, text in ((4000, "a 4000-row table"), (3, "(3 rows)"), (3, "rows: 3."), (12, "-12 degrees")):
+            self.assertTrue(score.number_pattern(n).search(text), (n, text))
 
 
 class MiddleTest(unittest.TestCase):

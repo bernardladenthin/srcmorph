@@ -155,7 +155,7 @@ Package root: `net.ladenthin.srcmorph`.
   `FactPatternLinearity`, written in Java 8 without JUnit, so the `linearity-jdk8` job of
   `publish.yml` runs it on Java 8 as well (it compiles the one class with `--release 8`): keep that
   class free of anything newer than Java 8.
-- **`provider/`** — the AI backend abstraction: `GenerationProvider` (`Closeable`),
+- **`provider/`** — the AI backend abstraction: `GenerationProvider` (`AutoCloseable`),
   `GenerationProviderFactory` (looks up `"mock"` / `"llamacpp-jni"` / `"openai-compatible"`; a model
   definition's own `provider` overrides the run's `generationProvider`), `MockGenerationProvider`,
   `LlamaCppJniGenerationProvider`, `OpenAiCompatibleGenerationProvider` (HTTP to
@@ -166,7 +166,7 @@ Package root: `net.ladenthin.srcmorph`.
   `Condition` instead of `Thread.sleep`), `ProviderConfig` (one model's configuration for whichever
   provider runs it, built through `ProviderConfig.builder().modelPath(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching
-  `ModelDefinition.DEFAULT_*`) + `ProviderConfigFactory` (the pure 37-field
+  `ModelDefinition.DEFAULT_*`) + `ProviderConfigFactory` (the pure 44-field
   mapping from a resolved `ModelDefinition` to the native binding's parameter objects — extracted
   from the old mojo so it is unit- and PIT-testable without a Maven runtime), `CompletionParser`.
 - **`support/`** — foundation helpers with no dependency on anything above them: `ChecksumSupport`,
@@ -190,7 +190,7 @@ set of layers that use it), `generationDoesNotKnowTheWalkers`, `noPackageCycles`
 `jniConfinedToProvider` (only the `provider` package may touch the llama.cpp JNI binding).
 
 **Test suite** (`srcmorph/src/test/java/net/ladenthin/srcmorph/`, package-renamed 1:1 with production):
-~95 test files, incl. jqwik properties, an ArchUnit suite, a Lincheck race test
+~110 test classes, incl. jqwik properties, an ArchUnit suite, a Lincheck race test
 (`AtomicCounterLincheckTest`), and the model-backed real tests gated on
 `src/test/resources/SmolLM2-135M-Instruct-Q3_K_M.gguf`. **`LlamaCppJniKnobSweepTest` drives every
 model knob at a non-default value through a real generation** (one case per knob, ~35 s for all of

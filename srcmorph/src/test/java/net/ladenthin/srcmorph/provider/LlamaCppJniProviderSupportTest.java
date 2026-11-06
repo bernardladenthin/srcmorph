@@ -145,6 +145,43 @@ public class LlamaCppJniProviderSupportTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="knobProblem">
+    @Test
+    public void knobProblem_blankAndKnownValues_isNull() {
+        // act, assert
+        assertThat(LlamaCppJniProviderSupport.knobProblem("", " ", ""), is(nullValue()));
+        assertThat(LlamaCppJniProviderSupport.knobProblem("auto", "q8_0", "F16"), is(nullValue()));
+    }
+
+    @Test
+    public void knobProblem_unknownLazyMode_namesIt() {
+        // act
+        final String problem = LlamaCppJniProviderSupport.knobProblem("sometimes", "", "");
+
+        // assert
+        assertThat(problem, containsString("lazyMode"));
+        assertThat(problem, containsString("sometimes"));
+    }
+
+    @Test
+    public void knobProblem_unknownCacheTypeK_namesIt() {
+        // act
+        final String problem = LlamaCppJniProviderSupport.knobProblem("", "q3_k", "");
+
+        // assert
+        assertThat(problem, containsString("cacheTypeK"));
+    }
+
+    @Test
+    public void knobProblem_unknownCacheTypeV_namesIt() {
+        // act
+        final String problem = LlamaCppJniProviderSupport.knobProblem("", "q8_0", "q3_k");
+
+        // assert
+        assertThat(problem, containsString("cacheTypeV"));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="buildInferenceParameters: negative-sentinel guards">
 
     /**

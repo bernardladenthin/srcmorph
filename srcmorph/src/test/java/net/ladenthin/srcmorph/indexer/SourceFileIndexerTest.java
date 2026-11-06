@@ -488,6 +488,48 @@ public class SourceFileIndexerTest {
     }
 
     /**
+     * A size condition measures the source as srcmorph reads it: the same text checked out with CRLF
+     * line endings, ten bytes larger on disk, reaches the same rule as with LF.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void classify_sizeRuleOnACrlfAndAnLfCheckout_routesBothAlike() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path lf = temp.resolve("src/main/java/com/example/Lf.java");
+        final Path crlf = temp.resolve("src/main/java/com/example/Crlf.java");
+        final StringBuilder text = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            text.append("// line ").append(i).append('\n');
+        }
+        writeJava(lf, text.toString());
+        writeJava(crlf, text.toString().replace("\n", "\r\n"));
+        final long lfBytes = Files.size(lf);
+        final RangeCondition size = new RangeCondition();
+        size.setMin(lfBytes + 5);
+        final RuleCondition sizeLeaf = new RuleCondition();
+        sizeLeaf.setSize(size);
+        final RoutingRule big = new RoutingRule();
+        big.setPromptKey("java-big");
+        big.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        big.setPriority(10);
+        big.setCondition(sizeLeaf);
+        final List<RoutingRule> rules = Arrays.asList(big, rule("fallback", null, false, true));
+
+        // pre-assert: on disk the CRLF copy is over the rule's minimum
+        assertThat(Files.size(crlf) > lfBytes + 5, is(true));
+
+        // act
+        final IndexPlan plan = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L)
+                .classify(Arrays.asList(lf, crlf), rules);
+
+        // assert
+        assertThat(promptKeyOf(plan, lf), is(equalTo("fallback")));
+        assertThat(promptKeyOf(plan, crlf), is(equalTo("fallback")));
+    }
+
+    /**
      * The negative counterpart: with a line range no file satisfies, the fallback rule takes over.
      * Without this, a mutant that always matched the first line rule would survive the test above.
      *

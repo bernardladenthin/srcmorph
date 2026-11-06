@@ -184,4 +184,83 @@ public class SourceLinesTest {
         assertThat(SourceLines.decode(bytes(0xEF, 0xBC, 0xBF)), is("＿"));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="utf8Length">
+    @Test
+    public void utf8Length_charactersOfEveryWidth_countTheirUtf8Bytes() {
+        // arrange: one byte, two (é), three (€) and four (a surrogate pair, U+1F600)
+        final String text = "a\n\u00e9\u20ac\ud83d\ude00";
+
+        // act
+        final long length = SourceLines.utf8Length(text);
+
+        // assert: what the encoder writes
+        assertThat(length, is(equalTo((long) text.getBytes(StandardCharsets.UTF_8).length)));
+        assertThat(length, is(equalTo(11L)));
+    }
+
+    @Test
+    public void utf8Length_charactersAtTheWidthLimits_countTheWiderWidth() {
+        // act, assert: U+007F one byte, U+0080 two, U+07FF two, U+0800 three
+        assertThat(SourceLines.utf8Length("\u007f"), is(1L));
+        assertThat(SourceLines.utf8Length("\u0080"), is(2L));
+        assertThat(SourceLines.utf8Length("\u07ff"), is(2L));
+        assertThat(SourceLines.utf8Length("\u0800"), is(3L));
+    }
+
+    @Test
+    public void utf8Length_aLoneSurrogate_countsThreeBytes() {
+        // act, assert: a high surrogate without its low one (as at the end) and a low one alone
+        assertThat(SourceLines.utf8Length("\ud83d"), is(3L));
+        assertThat(SourceLines.utf8Length("\ude00a"), is(4L));
+    }
+
+    @Test
+    public void utf8Length_emptyText_isZero() {
+        // act, assert
+        assertThat(SourceLines.utf8Length(""), is(0L));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="checksumBytes">
+    @Test
+    public void checksumBytes_utf16CrlfAndLf_areEqual() {
+        // arrange: the same UTF-16LE text, with a byte order mark, once with CRLF and once with LF
+        final byte[] crlf = withUtf16LeBom("a\r\nb\r\n");
+        final byte[] lf = withUtf16LeBom("a\nb\n");
+
+        // act, assert
+        assertThat(SourceLines.checksumBytes(crlf), is(equalTo(SourceLines.checksumBytes(lf))));
+        assertThat(SourceLines.checksumBytes(lf), is(equalTo("a\nb\n".getBytes(StandardCharsets.UTF_8))));
+    }
+
+    @Test
+    public void checksumBytes_utf16BigEndian_isItsNormalizedText() {
+        // arrange
+        final byte[] text = "a\r\n".getBytes(StandardCharsets.UTF_16BE);
+        final byte[] bytes = new byte[text.length + 2];
+        bytes[0] = (byte) 0xFE;
+        bytes[1] = (byte) 0xFF;
+        System.arraycopy(text, 0, bytes, 2, text.length);
+
+        // act, assert
+        assertThat(SourceLines.checksumBytes(bytes), is(equalTo("a\n".getBytes(StandardCharsets.UTF_8))));
+    }
+
+    @Test
+    public void checksumBytes_utf8_isItsNormalizedBytes() {
+        // act, assert: a byte that is not valid UTF-8 stays in what the checksum sees
+        final byte[] bytes = {'a', '\r', '\n', (byte) 0xFF};
+        assertThat(SourceLines.checksumBytes(bytes), is(equalTo(new byte[] {'a', '\n', (byte) 0xFF})));
+    }
+
+    private static byte[] withUtf16LeBom(final String text) {
+        final byte[] encoded = text.getBytes(StandardCharsets.UTF_16LE);
+        final byte[] bytes = new byte[encoded.length + 2];
+        bytes[0] = (byte) 0xFF;
+        bytes[1] = (byte) 0xFE;
+        System.arraycopy(encoded, 0, bytes, 2, encoded.length);
+        return bytes;
+    }
+    // </editor-fold>
 }

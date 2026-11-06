@@ -333,4 +333,22 @@ public class ProviderConfigTest {
     }
 
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="toString">
+    @Test
+    public void toString_baseUrlWithUserInfo_masksIt() {
+        // arrange
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("m.gguf")
+                .baseUrl("https://user:secret@host/v1")
+                .build();
+
+        // act
+        final String shown = config.toString();
+
+        // assert
+        assertThat(shown.contains("secret"), is(false));
+        assertThat(shown.contains("baseUrl=https://***@host/v1"), is(true));
+    }
+    // </editor-fold>
 }

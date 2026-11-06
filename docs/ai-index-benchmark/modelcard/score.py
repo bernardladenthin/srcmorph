@@ -8,7 +8,11 @@ For every model under <out> (one directory per model key) and every source file 
   the files that got a body (a failed body is counted under "failed", and against recall);
 - recall = per file the share of the expected identifiers (facts.json; for Java the public types and
   the public/protected methods taken from the source, annotated and multi-line signatures included,
-  and an interface's methods) the body names as a whole word, averaged over the files of a kind.
+  and the methods of a public interface, static or nested, and the elements of an annotation, but not
+  an interface's private methods) the body names as a whole word, averaged over the files of a kind.
+  An id that is no identifier (a path, a JNDI or property name, an option: `/orders`, `jdbc/ShopDS`,
+  `min-revenue`) counts as a whole name too: not where it goes on with an identifier or path character
+  (`/orders/{orderId}` names no `/orders`, `java:/jdbc/ShopDSX` no `jdbc/ShopDS`; whole_name).
   A file known to expect no name (a Java file without a public one, such as the package-private
   OpenAiCompatibleProviderSupport, or a facts entry without ids) is not measured when it got a
   summary, but scores 0 when it failed or is missing, so a failed body costs recall wherever it
@@ -18,8 +22,9 @@ For every model under <out> (one directory per model key) and every source file 
   A code block that copies the source (at least half of its lines that hold an identifier are lines
   of the source, whatever the whitespace in them; a line of braces alone counts on neither side)
   does not count: a body that pastes the source names every identifier
-  without summarizing it. A block is a ``` or ~~~ fence or a run of lines indented by four spaces or
-  a tab after a blank line. A fence around the model's own text (a signature list, a summary wrapped
+  without summarizing it. A block is a ``` or ~~~ fence, opened and closed at the start of a line as
+  CommonMark reads it (a ``` inside a line of prose opens none), or a run of lines indented by four
+  spaces or a tab after a blank line. A fence around the model's own text (a signature list, a summary wrapped
   in ```markdown) counts; the format column holds it against the body. A name the facts list under "words" is an everyday
   word too (`author`, `status`, `main`): it counts only where the body marks it as code (a backtick
   span, a call `main(`, bold, qualified, an option, the label of a list item, a column with its type
@@ -34,19 +39,22 @@ For every model under <out> (one directory per model key) and every source file 
   proxy for hallucinated names, not a full fact check). A name is an identifier in a backtick span,
   or a word of the prose shaped like code: camelCase, PascalCase with a second capital, or with an
   underscore (`orderTotal`, `OrderService`, `order_total`). A name of the source is one of its
-  identifiers or a run of their word parts, split at an underscore or a capital (`free_space` and
-  `used` of `ringbuf_free_space` and `ringbuf_used`, `get` of `getName`, the prefix `DEFAULT_`), or
+  identifiers or a run of their word parts, split at an underscore, a capital or the end of an
+  acronym (`free_space` and `used` of `ringbuf_free_space` and `ringbuf_used`, `get` of `getName`,
+  `Parser` of `XMLParser`, the prefix `DEFAULT_`), or
   their plural; a piece inside a word part (`nam` of `getName`) is none (for SQL the name is matched
   without regard to case, the word-part boundaries are not). A qualified name counts as
   its last part, and keywords, standard-library types (for SQL in any case: `varchar` is VARCHAR),
   the names of languages, tools and products
-  (`JavaBean`, `PostgreSQL`), file names (`pom.xml`, `docs/srcmorph.yaml`), escapes and format
-  placeholders (`\\t`, `YYYY-MM-DD`, `getX`) are no names;
-- numbers = the exact counts of facts.json the body states (the seed-data row counts); a missing
-  summary expects its numbers too;
-- format: missing lead line, '#' to '###' headings outside code fences, code fence markers (``` and ~~~), leaked
-  reasoning markers (`<think>`, gpt-oss's harmony and Gemma's channel markers; one in
-  backticks or right after a quote is the summary writing about it, no leak);
+  (`JavaBean`, `PostgreSQL`), file names (`pom.xml`, `docs/srcmorph.yaml`; with an extension that is a
+  member name too, `.c`, `.h`, `.ts`, `.tag`, `.cmd`, `.cfg`, `.conf`, only with a directory or a stem no
+  identifier has: `item.tag` is the member `tag`, `views/order.tag` a file; MEMBER_EXTENSIONS), escapes
+  and format placeholders (`\\t`, `YYYY-MM-DD`, `getX`) are no names;
+- numbers = the exact counts of facts.json the body states (the seed-data row counts), not stuck to a
+  letter (`v3`, `S3`) and no part of a date (`2026-11-06`); a missing summary expects its numbers too;
+- format: missing lead line, '#' to '###' headings outside code fences, code fence markers (``` and ~~~
+  at the start of a line), leaked reasoning markers (`<think>`, gpt-oss's harmony and Gemma's channel
+  markers; one in backticks or right after a quote is the summary writing about it, no leak);
 - failed = why a body is not a summary: missing, empty, leak-only (reasoning and no lead; a complete
   summary after a reasoning block, `<think>`, harmony's analysis channel or Gemma's thought channel,
   is a leak, not a failure), refusal, too-short (under 80 bytes); a failed body scores 0 in recall.
@@ -58,7 +66,10 @@ For every model under <out> (one directory per model key) and every source file 
 A file is a source of the corpus as run.py configures srcmorph: by its extension or by a name glob,
 both in any case (run.indexes).
 The facts and coverage lines srcmorph puts in front of a body are srcmorph's, not the model's: every
-measure is taken on the body without them.
+measure is taken on the body without them. A reasoning block in front of the answer (`<think>`,
+harmony's analysis channel, Gemma's thought channel) is no part of the summary either: every measure
+but the leaks (recall, invented names, numbers, headings, fences, the lead, the body bytes and the
+too-short and refusal checks) reads the answer after it.
 
 Writes <scores>/files.tsv (one row per model and file) and <scores>/summary.json (per model and kind),
 which MODEL-CARD.md is built from.
@@ -81,13 +92,17 @@ IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # The lines srcmorph writes in front of a body (AiFactExtractor.FACTS_HEADER,
 # AiMapReduceSupport.COVERAGE_HEADER), in this order.
 MACHINE_LINES = ("**Facts (exact, whole file):** ", "**Coverage:** ")
-# A fenced block (its opening line with the language, its content), opened and closed by the same run of
-# three or more backticks or tildes; an unclosed one runs to the end.
-FENCED = re.compile(r"(?P<marker>`{3,}|~{3,})[^\n]*\n?(?P<code>.*?)(?:(?P=marker)|\Z)", re.S)
+# A fenced block (its opening line with the language, its content), as CommonMark reads one: opened at the
+# start of a line (up to three spaces in front) by three or more backticks or tildes, an info string after
+# backticks without a backtick in it, and closed at the start of a line by a run of the same character at
+# least as long, with nothing but spaces after it; an unclosed one runs to the end. A ``` inside a line of
+# prose ("answers in ```json blocks") opens nothing.
+FENCED = re.compile(r"(?m)^ {0,3}(?P<marker>`{3,}(?=[^`\n]*$)|~{3,})[^\n]*\n?(?P<code>.*?)"
+                    r"(?:^ {0,3}(?P=marker)(?:(?<=`)`*|(?<=~)~*)[ \t]*$|\Z)", re.S)
 # An indented code block: lines indented by four spaces or a tab, after a blank line or at the start.
 INDENTED = re.compile(r"(?:\A|(?<=\n\n))(?P<code>(?:(?: {4}|\t)[^\n]*(?:\n|\Z))+)")
-# A fence marker the format column counts.
-FENCE_MARKER = re.compile(r"`{3,}|~{3,}")
+# A fence marker the format column counts: the opening or closing line of a fence, as FENCED reads them.
+FENCE_MARKER = re.compile(r"(?m)^ {0,3}(?:`{3,}(?=[^`\n]*$)|~{3,})")
 # A word of the prose shaped like code: camelCase, PascalCase with a second capital, or snake_case.
 CODE_SHAPED = re.compile(r"(?<![\w`.$])(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*"
                          r"|[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]*[A-Za-z0-9])(?![\w`$])")
@@ -101,8 +116,25 @@ PLACEHOLDER = re.compile(r"\\|YYYY|\b[YMDHSTZ_]{4,}\b|\b(?:get|set|is|with)X(?:x
 FILE_EXTENSIONS = sorted({e.lstrip(".") for e in run.EXTENSIONS} | {
     "md", "json", "txt", "csv", "tsv", "jar", "war", "ear", "html", "htm", "js", "css", "toml", "ini", "cfg",
     "conf", "bat", "cmd", "ps1", "gguf", "zip", "gz", "tar", "png", "svg", "pdf"}, key=lambda e: (-len(e), e))
+# A name before a parenthesis is a call (`response.json()`), whatever it ends with.
 FILE_NAME = re.compile(r"(?<![\w.$/-])(?:[\w.-]+/)*[\w-]+(?:\.[\w-]+)*\.(?i:" + "|".join(FILE_EXTENSIONS)
-                       + r")(?![\w.$/-])")
+                       + r")(?![\w.$/(-])")
+# Extensions that are member names too (`order.c`, `event.ts`, `item.tag`, `self.cfg`): a name ending in one is
+# a file name only with a directory part (`views/order.tag`) or a stem no identifier has (`my-order.tag`,
+# `05_seed.cfg`); otherwise it is the qualified name it reads as and counts as its last part. A short one
+# (`c`, `ts`) is below the three letters a name needs either way; `tag`, `cmd`, `cfg` and `conf` are checked
+# against the source. Extensions a member is rarely called (`json`, `properties`, `txt`, `xml`) stay file
+# names: in the card's outputs every such span was a file (`ringbuf.h`, `05_seed_data.sql`), and a summary of
+# `application.properties` that names its file must not invent `properties`.
+MEMBER_EXTENSIONS = {"c", "h", "ts", "tag", "cmd", "cfg", "conf"}
+
+
+def file_name_or_member(match):
+    """A FILE_NAME match blanked, or kept when it is the qualified name of a member (MEMBER_EXTENSIONS)."""
+    name = match.group(0)
+    if name.rsplit(".", 1)[1].lower() in MEMBER_EXTENSIONS and QUALIFIED.fullmatch(name):
+        return name
+    return " "
 # The reasoning markers: <think>, gpt-oss's harmony channels and Gemma 4's thought channel
 # (srcmorph's CompletionParser strips the last one). A marker right after a quote is the summary quoting
 # it ("<|channel>thought", the constant of a parser), as one in backticks is.
@@ -126,10 +158,12 @@ JAVA_TYPE = re.compile(ANNOTATIONS + r"public\s+(?:(?:static|final|abstract|seal
 JAVA_METHOD = re.compile(ANNOTATIONS + r"(?:public|protected)\s+"
                          r"(?:(?:static|final|abstract|synchronized|default|native|strictfp|@[\w.]+)\s+)*"
                          r"(?:" + GENERICS + r"\s+)?[\w<>\[\],.?@ ]+?\s+(\w+)\s*\(")
-# An interface's methods are public without the modifier.
-INTERFACE_METHOD = re.compile(ANNOTATIONS + r"(?:(?:static|default|abstract|@[\w.]+)\s+)*"
+# An interface's methods and an annotation's elements are public without the modifier; a private one
+# (Java 9) is not.
+INTERFACE_METHOD = re.compile(r"(?![^(]*\bprivate\s)" + ANNOTATIONS + r"(?:(?:static|default|abstract|@[\w.]+)\s+)*"
                               r"(?:" + GENERICS + r"\s+)?[\w<>\[\],.?@ ]+?\s+(\w+)\s*\(")
-JAVA_INTERFACE = re.compile(ANNOTATIONS + r"public\s+(?:sealed\s+|non-sealed\s+)?interface\s+\w+")
+JAVA_INTERFACE = re.compile(ANNOTATIONS + r"public\s+(?:(?:static|abstract|strictfp|sealed|non-sealed)\s+)*"
+                            r"(?:interface|@interface)\s+\w+")
 NOT_A_NAME = {"if", "for", "while", "switch", "return", "catch", "synchronized", "new", "throw", "else",
               "private", "this", "super"}
 # Words a summary may backtick that are neither invented names nor in the source text: keywords,
@@ -240,9 +274,11 @@ def file_recall(failed, found, expected, known=True):
 
 
 # Where a run of word parts of an identifier starts and ends: at the identifier's ends, at an underscore,
-# or where a capital follows a small letter or a digit.
-PART_START = r"(?:(?<![A-Za-z0-9_])|(?<=_)|(?<=[a-z0-9])(?=[A-Z]))"
-PART_END = r"(?:(?![A-Za-z0-9_])|(?=_)|(?<=_)|(?<=[a-z0-9])(?=[A-Z]))"
+# where a capital follows a small letter or a digit, or before the last capital of an acronym that a word
+# goes on from (`XML` and `Parser` of `XMLParser`, as search.py splits it).
+ACRONYM_END = r"(?<=[A-Z])(?=[A-Z][a-z])"
+PART_START = r"(?:(?<![A-Za-z0-9_])|(?<=_)|(?<=[a-z0-9])(?=[A-Z])|" + ACRONYM_END + ")"
+PART_END = r"(?:(?![A-Za-z0-9_])|(?=_)|(?<=_)|(?<=[a-z0-9])(?=[A-Z])|" + ACRONYM_END + ")"
 
 
 def names_the_source(name, identifiers, case_insensitive=False):
@@ -270,7 +306,7 @@ def ticked_names(prose, case_insensitive=False):
     for span in BACKTICK.findall(prose):
         if PLACEHOLDER.search(span):
             continue
-        span = QUALIFIED.sub(lambda m: m.group(0).rsplit(".", 1)[1], FILE_NAME.sub(" ", span))
+        span = QUALIFIED.sub(lambda m: m.group(0).rsplit(".", 1)[1], FILE_NAME.sub(file_name_or_member, span))
         names += [t for t in IDENT.findall(span) if len(t) >= 3 and not generic(t, case_insensitive)]
     unticked = QUALIFIED.sub(lambda m: " " + m.group(0).rsplit(".", 1)[1], INLINE_CODE.sub(" ", prose))
     names += [t for t in CODE_SHAPED.findall(unticked)
@@ -307,16 +343,31 @@ def marked_as_code(word, prose, case_insensitive):
     return re.search(pattern, prose, flags) is not None
 
 
+def whole_name(name, case_insensitive=False):
+    """A path- or colon-like id (`/orders`, `jdbc/ShopDS`, `orders.incoming.queue`, `min-revenue`) as a
+    whole name: not after an identifier character when it starts with one, and not going on with an
+    identifier or path character (`/`, `\\`, `@`, `{`, `-`), nor with a dot before an identifier character
+    or a colon before a letter or a slash (`urn:example:statement:v2`), so `/orders/{orderId}/cancel` names
+    neither `/orders` nor `/orders/{orderId}`, and `java:/jdbc/ShopDSX` not `jdbc/ShopDS`; a sentence's
+    period, a label's colon ("erp.host: the ERP"), a port (`erp.host:8080`), a Maven version
+    (`jackson-databind:${jackson.version}`), a comma or a query string (`/orders?page=2`) may follow. What
+    comes in front of one that starts with a path character is left open: `java:/jdbc/ShopDS` names
+    `jdbc/ShopDS`, `--min-revenue` names `min-revenue`."""
+    head = r"(?<![A-Za-z0-9_])" if re.match(r"\w", name) else ""
+    return re.compile(head + re.escape(name) + r"(?![\w/\\@{-])(?!\.\w)(?!:[A-Za-z_/])",
+                      re.I if case_insensitive else 0)
+
+
 def names_found(ids, prose, case_insensitive, everyday=(), prefixes=()):
     """The expected ids the prose names: an everyday word only where marked as code, another
     identifier as a whole word, one of prefixes also as the prefix of a name (LEDGER_LOCK names the
-    area of LEDGER_LOCK_02701 and LEDGER_LOCK_*), a path- or colon-like id as a substring."""
+    area of LEDGER_LOCK_02701 and LEDGER_LOCK_*), a path- or colon-like id as a whole name (whole_name)."""
     fold = str.lower if case_insensitive else (lambda s: s)
     words = {fold(w) for w in IDENT.findall(prose)}
     found = []
     for i in ids:
         if not IDENT.fullmatch(i):
-            hit = fold(i) in fold(prose)
+            hit = whole_name(i, case_insensitive).search(prose) is not None
         elif i in everyday:
             hit = marked_as_code(i, prose, case_insensitive)
         else:
@@ -332,12 +383,14 @@ THOUSANDS = "[,\u00a0\u2009\u202f' ]?"
 
 def number_pattern(n):
     """A number as prose writes it: 20000, 20,000, 20 000; not inside a longer number or a decimal, but
-    before a sentence's period."""
+    before a sentence's period. Not stuck to a letter or an underscore either (`v3`, `S3`, `3rd`, `100k`,
+    `x_5`), and not a part of a date or a code joined by hyphens (`2026-11-06`, `ID-12`); a hyphen to a
+    word after it is prose ("a 4000-row table"), and one in front of nothing but the number a sign."""
     digits = str(n)
     head = len(digits) % 3 or 3
     groups = [digits[:head]] + [digits[i:i + 3] for i in range(head, len(digits), 3)]
-    return re.compile(r"(?<![\d.,])(?<!\d[ \u00a0\u2009\u202f'])" + THOUSANDS.join(groups)
-                      + r"(?![\d])(?![.,][\d])(?![ \u00a0\u2009\u202f'][\d]{3}(?![\d]))")
+    return re.compile(r"(?<![\d.,])(?<!\d[ \u00a0\u2009\u202f'])(?<![^\W\d])(?<!\w-)" + THOUSANDS.join(groups)
+                      + r"(?![\d])(?![^\W\d])(?!-\d)(?![.,][\d])(?![ \u00a0\u2009\u202f'][\d]{3}(?![\d]))")
 
 
 def middle_found(middle, prose, case_insensitive=False, everyday=()):
@@ -347,19 +400,27 @@ def middle_found(middle, prose, case_insensitive=False, everyday=()):
     return names_found(middle, prose, case_insensitive, everyday, prefixes=middle)
 
 
-def failure_of(missing, body, lead, leaks):
-    """Why a body is no summary, or "" when it is one."""
+def failure_of(missing, body, lead, leaks, answer=None):
+    """Why a body is no summary, or "" when it is one: empty and leak-only on the whole body, refusal and
+    too-short on the answer after a leading reasoning block (answer_of; the body when not given)."""
+    answer = body if answer is None else answer
     if missing:
         return "missing"
     if not body.strip():
         return "empty"
     if leaks and not lead:
         return "leak-only"
-    if REFUSAL.match(body):
+    if REFUSAL.match(answer):
         return "refusal"
-    if len(body.strip().encode("utf-8")) < MIN_BODY_BYTES:
+    if len(answer.strip().encode("utf-8")) < MIN_BODY_BYTES:
         return "too-short"
     return ""
+
+
+def answer_of(text):
+    """The model's answer: its text (model_text) without the reasoning block in front of it, which is no
+    part of the summary (a leak, counted on the whole text)."""
+    return REASONING_BLOCK.sub("", text, count=1)
 
 
 def without_copies(body, source):
@@ -384,8 +445,11 @@ def without_copies(body, source):
 
 
 def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), prefixes=()):
-    body = model_text(body)
-    prose = without_copies(body, source)
+    text = model_text(body)
+    # every measure but the leaks reads the answer: a reasoning block in front of it is no part of the
+    # summary, so its names, numbers, headings and bytes count for nothing (and it is no missing lead)
+    answer = answer_of(text)
+    prose = without_copies(answer, source)
     found = names_found(ids, prose, case_insensitive, everyday, prefixes)
     ticked = ticked_names(prose, case_insensitive)
     # SQL names and keywords are case-insensitive: `integer` names the source's INTEGER.
@@ -393,15 +457,14 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), 
     invented = [t for t in ticked if not names_the_source(t, identifiers, case_insensitive)]
     stated = [n for n in numbers if number_pattern(n).search(prose)]
     # a '#' line inside a fence is the fence's content (a shell comment), not a heading of the body
-    outside_fences = FENCED.sub("\n", body).strip().splitlines()
-    # a reasoning block in front of a complete summary is a leak (counted below), not a missing lead
-    answer = REASONING_BLOCK.sub("", body, count=1).strip().splitlines()
-    lead = bool(answer) and answer[0].startswith(">")
+    outside_fences = FENCED.sub("\n", answer).strip().splitlines()
+    lines = answer.strip().splitlines()
+    lead = bool(lines) and lines[0].startswith(">")
     # a marker in backticks is the summary writing about it (a file that strips them), not a leak
-    leaks = len(LEAK.findall(INLINE_CODE.sub("", body)))
+    leaks = len(LEAK.findall(INLINE_CODE.sub("", text)))
     return {
         "srcBytes": len(source.encode("utf-8")),
-        "bodyBytes": len(body.strip().encode("utf-8")),
+        "bodyBytes": len(answer.strip().encode("utf-8")),
         "idsExpected": len(ids),
         "idsFound": len(found),
         "ticked": len(ticked),
@@ -411,10 +474,10 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), 
         "numbersStated": len(stated),
         "lead": lead,
         "badHeadings": sum(1 for line in outside_fences if re.match(r"^#{1,3}\s", line)),
-        "fences": len(FENCE_MARKER.findall(body)),
+        "fences": len(FENCE_MARKER.findall(answer)),
         "leaks": leaks,
-        "empty": not body.strip(),
-        "failed": failure_of(False, body, lead, leaks),
+        "empty": not text.strip(),
+        "failed": failure_of(False, text, lead, leaks, answer),
     }
 
 
@@ -490,7 +553,7 @@ def score_model(model_dir, work, facts, cut_off=frozenset()):
             row["secretLeaked"] = secret in body
         if middle:
             row["middleExpected"] = len(middle)
-            row["middleFound"] = len(middle_found(middle, without_copies(model_text(body), source),
+            row["middleFound"] = len(middle_found(middle, without_copies(answer_of(model_text(body)), source),
                                                   kind == "sql", everyday))
         row.update({"file": rel, "kind": kind, "missing": False, "cutOff": rel in cut_off})
         rows.append(row)

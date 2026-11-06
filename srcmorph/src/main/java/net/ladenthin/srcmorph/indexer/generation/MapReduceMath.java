@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph.indexer.generation;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.ladenthin.srcmorph.document.AiMdLeadExtractor;
 
 /**
  * The arithmetic and the text of a map-reduce summary, without a model: how large a chunk is, how much
@@ -72,7 +73,7 @@ public final class MapReduceMath {
     private static final int PERCENT = 100;
 
     /** The start of the coverage line in front of the summary of an over-window source. */
-    public static final String COVERAGE_HEADER = "**Coverage:** ";
+    public static final String COVERAGE_HEADER = AiMdLeadExtractor.COVERAGE_HEADER;
 
     /** The end of the coverage line: a blank line before what follows. */
     public static final String COVERAGE_SUFFIX = "\n\n";

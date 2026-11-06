@@ -761,7 +761,7 @@ public class OpenAiCompatibleGenerationProviderTest {
         // assert: two attempts, one wait, and no InterruptedIOException that would end a whole run (the
         // one-threaded stub is still asleep in the first exchange when the second attempt gives up, so the
         // attempts are counted by the provider's message, not by the server)
-        assertThat(thrown.getMessage(), containsString("timed out 2 times"));
+        assertThat(thrown.getMessage(), containsString("failed 2 times, the last with a timeout"));
         assertThat(thrown instanceof InterruptedIOException, is(false));
         assertThat(waits.size(), is(1));
     }

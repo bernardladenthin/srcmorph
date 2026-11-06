@@ -49,6 +49,28 @@ public class SourcePathsTest {
         // act, assert
         assertThat(pathSupport.relativizeFromSrc(base, path), is(Paths.get("main/src/Foo.java")));
     }
+
+    @Test
+    public void relativizeFromSrc_leadingSrcInAnotherCase_keepsItOnEveryPlatform() {
+        // arrange
+        Path base = Paths.get("/project");
+        Path path = Paths.get("/project/Src/main/Foo.java");
+
+        // act
+        final Path relative = pathSupport.relativizeFromSrc(base, path);
+
+        // assert: as a string, since a Windows path compares without case
+        assertThat(relative.toString().replace('\\', '/'), is("Src/main/Foo.java"));
+    }
+
+    @Test
+    public void relativizeFromSrc_theBaseItself_isTheEmptyPath() {
+        // arrange
+        Path base = Paths.get("/project");
+
+        // act, assert
+        assertThat(pathSupport.relativizeFromSrc(base, base).toString(), is(""));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="resolveAgainst">

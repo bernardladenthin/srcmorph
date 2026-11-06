@@ -8,7 +8,9 @@
 # block comments (<# ... #>), here-strings (@" or @' at the end of a line up to "@ or '@ first on a
 # line), # comments and string literals, so a "function" in a help comment or a string does not
 # count; a block comment or a here-string that is never closed runs to the end of the file.
-# "Verb-Noun command calls (approx)" counts every name of the Verb-Noun shape written with capitals
+# "mandatory parameters" counts Mandatory and Mandatory = $true, not Mandatory = $false; "dot-sourced
+# scripts" a line starting with ". " and a path, a quoted one too (the blanked string leaves the
+# ". " and nothing or the arguments after it). "Verb-Noun command calls (approx)" counts every name of the Verb-Noun shape written with capitals
 # (ForEach-Object, ConvertTo-Json too), the script's own functions too. OpsFactPatternsTest pins
 # every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [raw] requirements	(?im)^#Requires\b
@@ -16,10 +18,10 @@
 functions	(?im)^[ \t]*+(?:function|filter|workflow)[ \t]++[\w-]
 advanced functions	(?i)\[CmdletBinding\b
 parameter blocks	(?i)\bparam[ \t]*+\(
-mandatory parameters	(?i)\bMandatory\b
+mandatory parameters	(?i)\bMandatory\b(?![ \t]*+=[ \t]*+\$false\b)
 classes	(?im)^[ \t]*+class[ \t]++\w
 modules imported	(?im)^[ \t]*+(?:Import-Module|using[ \t]++module)\b
-dot-sourced scripts	(?m)^[ \t]*+\.[ \t]++[^\s]
+dot-sourced scripts	(?m)^[ \t]*+\.[ \t]++(?:[^\s]|$)
 try blocks	(?i)\btry[ \t\n]*+\{
 errors raised	(?i)\b(?:throw|Write-Error)\b
 Verb-Noun command calls (approx)	\b[A-Z][a-z]++(?:[A-Z][a-z]++)*+-[A-Z][A-Za-z]++\b

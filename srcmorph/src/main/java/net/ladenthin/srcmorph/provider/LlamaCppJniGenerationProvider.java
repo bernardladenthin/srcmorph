@@ -43,6 +43,13 @@ public final class LlamaCppJniGenerationProvider implements GenerationProvider, 
     @ToString.Exclude
     private @Nullable LlamaModel model;
 
+    /**
+     * Why the model could not be loaded, once it failed: thrown again by every later call instead of a
+     * new load, so a model that does not load costs one attempt per run, not one per file.
+     */
+    @ToString.Exclude
+    private @Nullable IllegalStateException loadFailure;
+
     /** Nanoseconds spent loading the model since {@link #takeLoadNanos()} was last called. */
     private long loadNanos;
 
@@ -86,6 +93,21 @@ public final class LlamaCppJniGenerationProvider implements GenerationProvider, 
 
     /** Loads the GGUF model on first use and caches it for subsequent calls. */
     private LlamaModel model() {
+        final IllegalStateException failed = loadFailure;
+        if (failed != null) {
+            throw failed;
+        }
+        try {
+            return loadedModel();
+        } catch (final RuntimeException e) {
+            final IllegalStateException failure =
+                    new IllegalStateException("The model " + modelPath + " could not be loaded: " + e.getMessage(), e);
+            loadFailure = failure;
+            throw failure;
+        }
+    }
+
+    private LlamaModel loadedModel() {
         LlamaModel current = model;
         if (current == null) {
             final Map<String, String> chatTemplateKwargs = support.buildChatTemplateKwargs();
@@ -187,6 +209,20 @@ public final class LlamaCppJniGenerationProvider implements GenerationProvider, 
             model = current;
         }
         return current;
+    }
+
+    /**
+     * What the binding would refuse of a model's {@code lazyMode}, {@code cacheTypeK} and
+     * {@code cacheTypeV}, found before the model is loaded (the check of a run).
+     *
+     * @param lazyMode   the configured {@code lazyMode}
+     * @param cacheTypeK the configured {@code cacheTypeK}
+     * @param cacheTypeV the configured {@code cacheTypeV}
+     * @return the problem, or {@code null} when there is none
+     */
+    public static @Nullable String knobProblem(
+            final String lazyMode, final String cacheTypeK, final String cacheTypeV) {
+        return LlamaCppJniProviderSupport.knobProblem(lazyMode, cacheTypeK, cacheTypeV);
     }
 
     @Override

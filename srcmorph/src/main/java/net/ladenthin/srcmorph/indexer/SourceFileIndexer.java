@@ -300,18 +300,13 @@ public final class SourceFileIndexer {
         for (final Path file : candidates) {
             final Path fileNamePath = file.getFileName();
             final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
-            final long fileSizeBytes = Files.size(file);
-            final boolean routed = modelDefinitionSupport != null && promptPreparationSupport != null;
-            final String source = lineFiltersUsed || routed ? readSource(file) : "";
+            // the size a rule and the plan see is the source as srcmorph reads it (\n line endings, no byte
+            // order mark), in UTF-8 bytes: the same on a CRLF and an LF checkout, as the checksum is
+            final String source = readSource(file);
+            final long fileSizeBytes = SourceLines.utf8Length(source);
             final int lineCount = lineFiltersUsed ? SourceLines.count(source) : 0;
-            final String head;
-            if (!contentFiltersUsed) {
-                head = "";
-            } else if (lineFiltersUsed || routed) {
-                head = source.substring(0, Math.min(source.length(), contentHeadChars));
-            } else {
-                head = readHead(file, contentHeadChars);
-            }
+            final String head =
+                    contentFiltersUsed ? source.substring(0, Math.min(source.length(), contentHeadChars)) : "";
             final String relativePath =
                     baseDirectory.relativize(file).toString().replace('\\', '/');
             final long lastModified = Files.getLastModifiedTime(file).toMillis();
@@ -451,7 +446,7 @@ public final class SourceFileIndexer {
         // the same bytes, every one of them, also where a file that is not UTF-8 decodes to U+FFFD
         final byte[] sourceBytes = Files.readAllBytes(sourceFile);
         final String sourceText = SourceLines.normalize(SourceLines.decode(sourceBytes));
-        final String checksum = checksumSupport.calculateCrc32Hex(SourceLines.normalize(sourceBytes));
+        final String checksum = checksumSupport.calculateCrc32Hex(SourceLines.checksumBytes(sourceBytes));
         final String sourceModified =
                 timeSupport.formatInstant(Files.getLastModifiedTime(sourceFile).toInstant());
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());

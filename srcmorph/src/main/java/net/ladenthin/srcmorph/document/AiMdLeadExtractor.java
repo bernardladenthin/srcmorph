@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.document;
 
 import lombok.ToString;
+import net.ladenthin.srcmorph.facts.FactExtractor;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 
 /**
@@ -14,8 +15,10 @@ import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
  * essence of the node. The project-level index harvests exactly this line per package, so it can
  * present one navigable sentence per package without re-running the model.</p>
  *
- * <p>Extraction is deterministic and tolerant: leading blank lines are skipped and the first
- * non-blank line is the lead. If that line is a blockquote, the {@value #BLOCKQUOTE_MARKER} marker
+ * <p>Extraction is deterministic and tolerant: leading blank lines are skipped, and so are the lines
+ * srcmorph itself writes in front of a summary (the exact facts line, {@code **Facts (exact, whole
+ * file):**}, and the coverage line of a source read in chunks, {@value #COVERAGE_HEADER}); the first
+ * other non-blank line is the lead. If that line is a blockquote, the {@value #BLOCKQUOTE_MARKER} marker
  * is stripped and the remainder trimmed; otherwise the trimmed line is returned verbatim (a fallback
  * for a body whose model omitted the blockquote). A blank body yields an empty lead. Only the first
  * non-blank line is considered — a blockquote further down is never promoted to the lead.</p>
@@ -34,11 +37,14 @@ public class AiMdLeadExtractor {
      */
     public static final String BLOCKQUOTE_MARKER = ">";
 
+    /** The start of the coverage line srcmorph writes in front of the summary of an over-window source. */
+    public static final String COVERAGE_HEADER = "**Coverage:** ";
+
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
-     * Returns the one-line lead of {@code body}: the first non-blank line, with a leading
-     * {@value #BLOCKQUOTE_MARKER} blockquote marker stripped when present.
+     * Returns the one-line lead of {@code body}: the first non-blank line that is no facts or coverage
+     * line, with a leading {@value #BLOCKQUOTE_MARKER} blockquote marker stripped when present.
      *
      * @param body the markdown body of an {@code .ai.md} document; must not be {@code null}
      * @return the trimmed lead line, or the empty string when {@code body} has no non-blank line
@@ -49,6 +55,9 @@ public class AiMdLeadExtractor {
                 continue;
             }
             final String line = rawLine.trim();
+            if (line.startsWith(FactExtractor.FACTS_HEADER) || line.startsWith(COVERAGE_HEADER)) {
+                continue;
+            }
             if (line.startsWith(BLOCKQUOTE_MARKER)) {
                 return line.substring(BLOCKQUOTE_MARKER.length()).trim();
             }

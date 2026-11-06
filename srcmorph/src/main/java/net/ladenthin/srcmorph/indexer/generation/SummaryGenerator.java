@@ -976,9 +976,10 @@ public class SummaryGenerator {
      * Returns the effective {@code maxInputChars} for the given field generation entry.
      *
      * <p>When the {@link net.ladenthin.srcmorph.config.ModelDefinition#getCharsPerToken()} value is greater than zero,
-     * the maximum is computed for every file, from the prompt rendered with that file's name, by the
-     * calculation the plan uses ({@link InputWindowCalculator}), so the plan and the run agree; the
-     * calculation is logged in detail once per {@code (aiDefinitionKey, promptKey)} pair. When
+     * the maximum is the budget of the whole rendered prompt, by the calculation the plan uses
+     * ({@link InputWindowCalculator}), so the plan and the run agree; the calculation, with the template
+     * rendered for the file and what it leaves for the source, is logged once per
+     * {@code (aiDefinitionKey, promptKey)} pair. When
      * {@code charsPerToken} is zero, the static {@link net.ladenthin.srcmorph.config.ModelDefinition#DEFAULT_MAX_INPUT_CHARS}
      * fallback is returned instead.</p>
      *

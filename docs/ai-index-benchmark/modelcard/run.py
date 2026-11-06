@@ -172,7 +172,7 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("mybatis", _and({"extensions": [".xml"]}, {"contentMatches": r"mybatis\.org//DTD Mapper"}), "xml", 10),
              ("integration", _and({"extensions": [".xml"]}, {"contentMatches": r"camel\.apache\.org/schema|"
                                   r"springframework\.org/schema/integration|mulesoft\.org/schema/mule|"
-                                  r"ws\.apache\.org/ns/synapse"}), "xml", 10),
+                                  r"ws\.apache\.org/ns/synapse"}), "xml", 11),  # over jee's application.xml
              ("bpmn", _or({"extensions": [".bpmn"]}, {"fileNames": ["*.bpmn20.xml"]}), "xml", 10),
              ("dmn", {"extensions": [".dmn"]}, "xml", 10),
              ("wsdl", {"extensions": [".wsdl"]}, "xml", 10),
@@ -183,7 +183,7 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("proto", {"extensions": [".proto"]}, "contract", 0),
              ("avro", {"extensions": [".avsc"]}, "contract", 0),
              ("graphql", {"extensions": [".graphql", ".graphqls"]}, "contract", 0),
-             ("actions", {"pathGlob": "**/.github/workflows/*.{yml,yaml}"}, "ops", 10),
+             ("actions", {"pathGlob": "**/.github/{workflows,actions}/**/*.{yml,yaml}"}, "ops", 10),
              # the kind as k8s-facts.tsv counts it: quoted or not
              ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"}), "ops", 5),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
@@ -427,28 +427,52 @@ def openrouter_usage():
 
 
 # What srcmorph logs for an answer cut off at maxOutputTokens: the file it does not write ("... (field
-# 'x', TRUNCATED)"), the answer it keeps under onIncomplete: keep, and the older provider line.
+# 'x', TRUNCATED)", with the kind of the call), the answer it keeps under onIncomplete: keep, and the older
+# provider line (neither of the two with the kind).
 CUT_OFF_LINES = (
-    re.compile(r"Incomplete answer for (?:file|package|project) '(.+?)' \(field '[^']*', TRUNCATED\)"),
-    re.compile(r"Incomplete answer for (?!a part of )(.+?): The answer for .+? was cut off at the .+?; kept as it is"),
-    re.compile(r"Generated text for (.+?) was cut off at the"),
+    re.compile(r"Incomplete answer for (?P<kind>file|package|project) '(?P<path>.+?)' \(field '[^']*', TRUNCATED\)"),
+    re.compile(r"Incomplete answer for (?!a part of )(?P<path>.+?): The answer for .+? was cut off at the .+?; "
+               r"kept as it is"),
+    re.compile(r"Generated text for (?P<path>.+?) was cut off at the"),
 )
+# The summary srcmorph's package phase writes into every package directory (score.PACKAGE_FILE).
+PACKAGE_FILE = "package.ai.md"
 
 
-def cut_off_files(log_path, work, out_dir):
+def package_summary(call_name, out_dir):
+    """The package.ai.md a package call wrote, below the model's output tree, from the name srcmorph's
+    PackageIndexer gives the call: the package's path below the output root (`java/config` is
+    `java/config/package.ai.md`), the root package by the output directory's name (`package.ai.md`). A
+    log of srcmorph before 2026-11 named the absolute package.ai.md, which reads as it is."""
+    if call_name == PACKAGE_FILE or call_name.endswith("/" + PACKAGE_FILE):
+        return call_name
+    if call_name in ("", out_dir.name):
+        return PACKAGE_FILE
+    return call_name + "/" + PACKAGE_FILE
+
+
+def cut_off_files(log_path, work, out_dir, phase=None):
     """Paths whose final answer hit the maxOutputTokens budget (srcmorph's WARN lines), relative to the
-    corpus for file summaries and to the model's output tree for package and project summaries. A part
-    summary of a map-reduce that was cut and kept is not one: the file's own answer was complete."""
+    corpus for file summaries and to the model's output tree for package and project summaries, as
+    score.py names them. srcmorph names a file call by its path below the corpus (an older log by the
+    absolute path), a package call by the package's path below the output root (package_summary) and
+    the project call by the absolute project.ai.md. A call is a package call when its line says so, and
+    in the AggregatePackages phase (a kept answer's line names no kind). A part summary of a map-reduce
+    that was cut and kept is not one: the file's own answer was complete."""
     prefixes = [str(work) + os.sep, str(out_dir) + os.sep, out_dir.as_posix() + "/"]
     files = []
     for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
         for pattern in CUT_OFF_LINES:
             match = pattern.search(line)
             if match:
-                path = match.group(1)
+                path = match.group("path")
                 for prefix in prefixes:
                     path = path.replace(prefix, "")
-                files.append(path.replace(os.sep, "/"))
+                path = path.replace(os.sep, "/")
+                kind = match.groupdict().get("kind")
+                if kind == "package" or (kind is None and phase == "AggregatePackages"):
+                    path = package_summary(path, out_dir)
+                files.append(path)
                 break
     return sorted(set(files))
 
@@ -519,7 +543,7 @@ def run_model(args, models, profile, model):
             rc = subprocess.run([args.java, "-cp", classpath, "net.ladenthin.srcmorph.cli.Main", str(config_path)],
                                 stdout=log, stderr=subprocess.STDOUT, env=env).returncode
         meta["phases"][phase] = {"exit": rc, "seconds": round(time.time() - start, 1),
-                                 "cutOff": cut_off_files(log_dir / f"{phase}.log", Path(args.work), out_dir)}
+                                 "cutOff": cut_off_files(log_dir / f"{phase}.log", Path(args.work), out_dir, phase)}
         print(f"{key} {phase} exit {rc} in {meta['phases'][phase]['seconds']} s", flush=True)
         if rc != 0:
             meta["phases"][phase]["errorTail"] = scrubbed(last_lines(log_dir / f"{phase}.log"),

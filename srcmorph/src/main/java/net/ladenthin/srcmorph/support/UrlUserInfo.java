@@ -11,9 +11,12 @@ import java.util.regex.Pattern;
  */
 public final class UrlUserInfo {
 
-    /** The user info after a URL's scheme, up to its {@code @}. */
-    private static final Pattern URL_USER_INFO =
-            Pattern.compile("([A-Za-z][A-Za-z0-9+.-]{0,20}://)[^/?#@\\s\"']{0,256}+@");
+    /**
+     * The user info after a URL's scheme, up to its last {@code @} before the host: of any length (a token
+     * can be long), and with an {@code @} the password itself holds unencoded. The one greedy repetition
+     * reads the authority and gives back to its last {@code @}, so a URL is read at most twice.
+     */
+    private static final Pattern URL_USER_INFO = Pattern.compile("([A-Za-z][A-Za-z0-9+.-]{0,20}://)[^/?#\\s\"']*@");
 
     /** What a URL's user info is printed as: the scheme, then this, then the host. */
     private static final String MASKED_USER_INFO = "$1***@";

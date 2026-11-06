@@ -229,6 +229,33 @@ public class CompletionParserTest {
         assertThat(parser.parseCompletion("Thinking it over.\n</think>"), is(equalTo("")));
     }
 
+    /** A tag at the end of a list item's line is the answer naming it: the lead before it stays. */
+    @Test
+    public void parseCompletion_aClosingTagEndingAListItem_isKept() throws Exception {
+        // arrange
+        final String response = "> Parses model completions.\n\n- Closing marker: </think>\n- Gemma: <|channel>thought";
+
+        // act, assert
+        assertThat(parser.parseCompletion(response), is(equalTo(response)));
+    }
+
+    /** Reasoning that names the tag before its real end: the tag alone on its line ends it. */
+    @Test
+    public void parseCompletion_reasoningNamingTheTagBeforeItsEnd_isStrippedAtTheTagAloneOnItsLine() throws Exception {
+        // arrange
+        final String response = "It strips up to `</think>` first.\nSo it goes.\n</think>\n\n> Lead.";
+
+        // act, assert
+        assertThat(parser.parseCompletion(response), is(equalTo("> Lead.")));
+    }
+
+    /** Spaces around the tag on its line do not make it text. */
+    @Test
+    public void parseCompletion_closingTagWithSpacesOnItsLine_isStripped() throws Exception {
+        // act, assert
+        assertThat(parser.parseCompletion("Thinking.\n  </think>  \n> The lead."), is(equalTo("> The lead.")));
+    }
+
     /** A carriage return after the template's tag ends its line as well. */
     @Test
     public void parseCompletion_closingTagBeforeACarriageReturn_isStripped() throws Exception {

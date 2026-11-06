@@ -208,8 +208,9 @@ public class PackageIndexer {
             IndexOutcome outcome;
             try {
                 outcome = writePackageFile(directory);
-            } catch (final IOException e) {
-                // one failed request (after its retries) does not end the pass
+            } catch (final IOException | RuntimeException e) {
+                // one failed request (after its retries) does not end the pass, nor does an unchecked error
+                // of a provider (the llama.cpp binding throws only those), as in the file phase
                 LOGGER.error("Summarizing the package {} failed: {}", directory, String.valueOf(e.getMessage()));
                 outcome = IndexOutcome.FAILED;
             }
