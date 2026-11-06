@@ -4,15 +4,16 @@
 #
 # Ansible counters (playbooks, and the tasks, handlers, defaults and vars of a role), for a rule
 # with the prompt file-body-ops: one per line, label TAB pattern (Java regex). The [ignore] line
-# blanks YAML comments and the body of a block scalar (the lines below a | or >, as deep as its
-# first line; the key stays, so "ansible.builtin.shell: |" counts), so a "- name:" in a shell script
+# blanks YAML comments and the body of a block scalar (the lines below a | or > that are deeper than
+# its key, past a list item's dash, as deep as the first of them; the key stays, so
+# "ansible.builtin.shell: |" counts, and an empty scalar blanks no sibling key), so a "- name:" in a shell script
 # or a template does not count. "plays" counts a hosts: key, "named tasks, handlers and plays" every
 # list item that starts with name:, "FQCN module calls" a fully qualified module
 # (ansible.builtin.copy:, community.general.ufw:); "loops" loop: and every with_* key; "privilege
 # escalation" a become: true or yes in any case, quoted or not.
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
 # reads linearly.
-[ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+[ignore] comments and block scalars	(?m)[|>](?<=^([ \t]{0,40})-([ \t]{1,4})[^\s#:][^\n#:]{0,99}:[ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]\2[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\3[^\n]*+|[ \t]*+)(?=\n|\z))*+|[|>](?<=^([ \t]{0,40})(?![ \t]|-[ \t]{1,4}[^\s|>])[^\n#:]{0,100}[:-][ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\4[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\5[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
 plays	(?m)^[ \t]*+(?:-[ \t]++)?hosts[ \t]*+:
 named tasks, handlers and plays	(?m)^[ \t]*+-[ \t]++name[ \t]*+:
 FQCN module calls	(?m)^[ \t]*+(?:-[ \t]++)?[a-z0-9_]++\.[a-z0-9_]++\.[a-z0-9_]++[ \t]*+:

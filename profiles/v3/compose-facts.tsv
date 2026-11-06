@@ -4,8 +4,9 @@
 #
 # Docker Compose counters (compose.yaml, docker-compose.yml and their overrides), for a rule with
 # the prompt file-body-ops: one per line, label TAB pattern (Java regex). The [ignore] line blanks
-# YAML comments and the body of a block scalar (the lines below a | or >, as deep as its first line;
-# the key stays), so a key quoted in a command does not count. A service counts by the image: or
+# YAML comments and the body of a block scalar (the lines below a | or > that are deeper than its
+# key, past a list item's dash, as deep as the first of them; the key stays, and an empty command: >
+# blanks no sibling key), so a key quoted in a command does not count. A service counts by the image: or
 # build: it runs, so "services with an image" and "services built here" together are the services
 # (one with both counts in each); the other keys count wherever they stand (a service's volumes: and
 # the top-level volumes: alike). "variable substitutions" counts every ${NAME} and $NAME, not the
@@ -14,7 +15,7 @@
 # reads the file as written ([raw]) and leaves out only a $ in a comment: after a # at a line start or
 # after a blank, at most 200 characters before it on its line.
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
-[ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+[ignore] comments and block scalars	(?m)[|>](?<=^([ \t]{0,40})-([ \t]{1,4})[^\s#:][^\n#:]{0,99}:[ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]\2[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\3[^\n]*+|[ \t]*+)(?=\n|\z))*+|[|>](?<=^([ \t]{0,40})(?![ \t]|-[ \t]{1,4}[^\s|>])[^\n#:]{0,100}[:-][ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\4[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\5[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
 services with an image	(?m)^[ \t]++image[ \t]*+:
 services built here	(?m)^[ \t]++build[ \t]*+:
 port lists	(?m)^[ \t]++ports[ \t]*+:

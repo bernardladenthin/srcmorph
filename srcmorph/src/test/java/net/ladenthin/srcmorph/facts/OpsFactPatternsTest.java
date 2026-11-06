@@ -127,6 +127,54 @@ public class OpsFactPatternsTest {
         assertThat(count(OPENAPI, "object schemas", json), is(1));
     }
 
+    @Test
+    public void openapi_minifiedJsonWithAHashInAString_blanksNoKeyAfterIt() {
+        // arrange: a " #" inside a JSON string is no YAML comment, and the whole spec is one line
+        final String json = "{\"openapi\":\"3.0.3\",\"paths\":{\"/issues\":{\"get\":{\"operationId\":\"list\","
+                + "\"description\":\"Fixes issue #12\"},\"post\":{\"operationId\":\"create\"}},"
+                + "\"/x\":{\"get\":{\"operationId\":\"x\",\"responses\":{\"200\":{\"$ref\":\"#/components/r\"}}}}}}";
+
+        // act, assert
+        assertThat(count(OPENAPI, "paths", json), is(2));
+        assertThat(count(OPENAPI, "operations (approx)", json), is(3));
+        assertThat(count(OPENAPI, "operationIds", json), is(3));
+        assertThat(count(OPENAPI, "$ref references", json), is(1));
+    }
+
+    @Test
+    public void openapi_hashInADoubleQuotedYamlString_isNoComment() {
+        // arrange
+        final String yaml = "paths:\n"
+                + "  /issues:\n"
+                + "    get: {summary: \"Fixes #12\", operationId: list}\n"
+                + "    post:\n"
+                + "      summary: \"see #3\" # operationId: commented\n"
+                + "      operationId: create\n";
+
+        // act, assert
+        assertThat(count(OPENAPI, "operations (approx)", yaml), is(2));
+        assertThat(count(OPENAPI, "operationIds", yaml), is(2));
+    }
+
+    @Test
+    public void openapi_emptyBlockScalarOfAListItem_blanksNoSiblingKey() {
+        // arrange: the empty scalar's next line is a sibling of description, as deep as its key
+        final String yaml = "paths:\n"
+                + "  /a:\n"
+                + "    get:\n"
+                + "      parameters:\n"
+                + "        - description: >\n"
+                + "          in: query\n"
+                + "          name: q\n"
+                + "        - description: |\n"
+                + "            in: path\n"
+                + "          in: header\n";
+
+        // act, assert
+        // query and header; not the "in: path" of the second description
+        assertThat(count(OPENAPI, "parameters (approx)", yaml), is(2));
+    }
+
     /** The accepted approximation: an apiKey scheme's in: has a parameter's shape, hence "(approx)". */
     @Test
     public void openapi_apiKeySecurityScheme_countsItsInWithTheParameters() {
@@ -563,6 +611,34 @@ public class OpsFactPatternsTest {
         assertThat(count(ASYNCAPI, "channel addresses (3.x)", v3), is(2));
         assertThat(count(ASYNCAPI, "operations", v3), is(2));
     }
+
+    @Test
+    public void asyncapi_minifiedJsonWithAHashInAString_blanksNoKeyAfterIt() {
+        // arrange
+        final String json = "{\"asyncapi\":\"2.6.0\",\"channels\":{\"chat\":{\"publish\":{\"operationId\":\"post\","
+                + "\"description\":\"Posts to the #general channel\",\"message\":{\"payload\":{\"type\":\"object\"}}}}}}";
+
+        // act, assert
+        assertThat(count(ASYNCAPI, "operations", json), is(1));
+        assertThat(count(ASYNCAPI, "operationIds", json), is(1));
+        assertThat(count(ASYNCAPI, "payloads", json), is(1));
+        assertThat(count(ASYNCAPI, "object schemas", json), is(1));
+    }
+
+    @Test
+    public void asyncapi_emptyBlockScalar_blanksNoSiblingKey() {
+        // arrange
+        final String yaml = "asyncapi: 2.6.0\n"
+                + "channels:\n"
+                + "  orders:\n"
+                + "    description: >\n"
+                + "    publish:\n"
+                + "      operationId: placeOrder\n";
+
+        // act, assert
+        assertThat(count(ASYNCAPI, "operations", yaml), is(1));
+        assertThat(count(ASYNCAPI, "operationIds", yaml), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="terraform-facts">
@@ -726,6 +802,23 @@ public class OpsFactPatternsTest {
         // act, assert
         assertThat(count(ANSIBLE, "privilege escalation", play), is(3));
     }
+
+    @Test
+    public void ansible_emptyBlockScalar_blanksNoSiblingKey() {
+        // arrange: each empty scalar's next line is a sibling of its key, as deep as the key
+        final String play = "- hosts: web\n"
+                + "  tasks:\n"
+                + "    - ansible.builtin.shell: >\n"
+                + "      register: out\n"
+                + "    - name: Notify\n"
+                + "      ansible.builtin.command: >\n"
+                + "      when: out is changed\n";
+
+        // act, assert
+        assertThat(count(ANSIBLE, "registered results", play), is(1));
+        assertThat(count(ANSIBLE, "FQCN module calls", play), is(2));
+        assertThat(count(ANSIBLE, "conditionals", play), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="compose-facts">
@@ -831,6 +924,23 @@ public class OpsFactPatternsTest {
         // the block scalars' bodies stay blanked for the keys
         assertThat(count(COMPOSE, "services with an image", compose), is(1));
     }
+
+    @Test
+    public void compose_emptyBlockScalar_blanksNoSiblingKey() {
+        // arrange
+        final String compose = "services:\n"
+                + "  db:\n"
+                + "    image: postgres:16\n"
+                + "    command: >\n"
+                + "    healthcheck:\n"
+                + "      test: [\"CMD\", \"pg_isready\"]\n"
+                + "    ports:\n"
+                + "      - \"5432:5432\"\n";
+
+        // act, assert
+        assertThat(count(COMPOSE, "healthchecks", compose), is(1));
+        assertThat(count(COMPOSE, "port lists", compose), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="camel-yaml-facts">
@@ -890,6 +1000,21 @@ public class OpsFactPatternsTest {
         assertThat(count(CAMEL_YAML, "REST definitions", CAMEL_ROUTES), is(1));
         assertThat(count(CAMEL_YAML, "REST verb blocks (get, post, put, delete, patch, head)", CAMEL_ROUTES), is(2));
         assertThat(count(CAMEL_YAML, "bean declarations", CAMEL_ROUTES), is(1));
+    }
+
+    @Test
+    public void camelYaml_emptyBlockScalar_blanksNoSiblingKey() {
+        // arrange
+        final String routes = "- from:\n"
+                + "    uri: timer:tick\n"
+                + "    description: >\n"
+                + "    steps:\n"
+                + "      - log: |\n"
+                + "      - to: direct:a\n";
+
+        // act, assert
+        assertThat(count(CAMEL_YAML, "producers (to, toD, wireTap, enrich, pollEnrich)", routes), is(1));
+        assertThat(count(CAMEL_YAML, "processors and transformations", routes), is(1));
     }
     // </editor-fold>
 
