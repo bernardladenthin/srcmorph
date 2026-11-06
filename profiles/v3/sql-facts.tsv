@@ -19,7 +19,11 @@
 # the like (N too), a "..." that holds an apostrophe (a MySQL string; a quoted identifier, which has
 # none, stays, so INSERT "t" still counts; a " right after a word character or a " is an
 # identifier's closing quote and opens none) and MySQL's # comments (at a line start or after a blank
-# or ;, not a T-SQL #temp table, nor PostgreSQL's #> and #- operators). Statements are counted where
+# or ;, not a T-SQL #temp table, nor PostgreSQL's #> and #- operators), a SQL*Plus REM[ARK] or
+# PRO[MPT] line (abbreviated too, any case; a column named rem or prompt at a line start is blanked
+# with it, which counts the same) and the rows of a COPY ... FROM stdin up to its \. line, which psql
+# reads as data (without that line to the end of the file, as psql does; a COPY from a file opens
+# none). Statements are counted where
 # they start a line (after spaces or tabs, never across a line break, which keeps a long blanked
 # region linear),
 # case-insensitive, for PostgreSQL, MySQL, T-SQL and Oracle. An INSERT counts with or without INTO
@@ -32,7 +36,7 @@
 # VALUES(col) function of MySQL's ON DUPLICATE KEY UPDATE (after an =); rows an INSERT ... SELECT
 # reads from a table are not seen, and a tuple nested inside a row counts once more.
 # SqlFactPatternsTest pins every case.
-[ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\(?!'[ \t]*+(?:[,);+|\r\n]|\z)).|\\)*+(?:'|\z)|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|(?<![\w$#@"])"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*
+[ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\(?!'[ \t]*+(?:[,);+|\r\n]|\z)).|\\)*+(?:'|\z)|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|(?<![\w$#@"])"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*|^[ \t]*+(?i:REM(?:A(?:RK?)?)?|PRO(?:M(?:PT?)?)?)(?![^ \t\r\n])[^\n]*+|^[ \t]*+(?i:COPY\b[^;\n]*?[ \t)]FROM[ \t]++STDIN\b)(?:.*?^\\\.$|.*)
 INSERT statements	(?im)^[ \t]*(?:INSERT(?:\s+/\*\+.*?\*/)?(?:\s+(?:IGNORE|LOW_PRIORITY|DELAYED|HIGH_PRIORITY))*(?:\s+/\*\+.*?\*/)?\s+(?:INTO\b|ALL\b|FIRST\b|(?!(?:VALUES|SELECT|OR|ON|AS|SET|WITH|WHEN|THEN)\b)[A-Za-z_"`\[#@][\w"`\[\].$#@]*)|REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*\s+INTO\b)
 VALUES rows (approx)	(?i)(?:(?<!=[ \t]{0,8})\bVALUES|\),)\s*\(
 tables	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+|FOREIGN\s+)?TABLE\b

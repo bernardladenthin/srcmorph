@@ -272,6 +272,54 @@ public class SqlFactPatternsTest {
     }
 
     /**
+     * SQL*Plus reads a REM[ARK] or PRO[MPT] line as a command of its own, not as SQL, so its apostrophe
+     * opens no '...' literal over the statements below.
+     */
+    @Test
+    public void ignore_anApostropheInASqlPlusRemarkOrPrompt_blanksNoStatement() {
+        // arrange
+        final String sql = "REM Creates the shop's schema\n"
+                + "PROMPT Don't run this twice\n"
+                + "CREATE TABLE a (id NUMBER);\n"
+                + "CREATE TABLE b (id NUMBER);\n"
+                + "CREATE INDEX a_id ON a (id);\n";
+        final String abbreviated = "rem it's\n  pro Don't\nRemark o'clock\nprompt\nCREATE TABLE c (x int);\n";
+
+        // act, assert
+        assertThat(count("tables", sql), is(2));
+        assertThat(count("indexes", sql), is(1));
+        // lower case, indented, abbreviated, spelled out and without text
+        assertThat(count("tables", abbreviated), is(1));
+    }
+
+    /**
+     * psql reads the rows after a COPY ... FROM stdin up to the line {@code \.} as data, so an apostrophe
+     * in a pg_dump's rows opens no '...' literal over the constraints and indexes below; without its
+     * {@code \.} the data runs to the end of the file, as psql reads it.
+     */
+    @Test
+    public void ignore_anApostropheInTheRowsOfACopyFromStdin_blanksNoStatement() {
+        // arrange
+        final String sql = "CREATE TABLE public.customer (id integer, name text);\n"
+                + "COPY public.customer (id, name) FROM stdin;\n"
+                + "1\tO'Brien\n"
+                + "2\tSmith\n"
+                + "\\.\n"
+                + "\n"
+                + "ALTER TABLE ONLY public.customer ADD CONSTRAINT customer_pkey PRIMARY KEY (id);\n"
+                + "CREATE INDEX customer_name ON public.customer USING btree (name);\n";
+        final String fromAFile = "COPY t FROM '/data/it.csv' WITH (FORMAT csv);\nCREATE TABLE a (x int);\n";
+        final String unclosed = "COPY t (x) FROM STDIN;\nCREATE TABLE a (x int);\n";
+
+        // act, assert
+        assertThat(count("tables", sql), is(1));
+        assertThat(count("ALTER TABLE", sql), is(1));
+        assertThat(count("indexes", sql), is(1));
+        assertThat(count("tables", fromAFile), is(1));
+        assertThat(count("tables", unclosed), is(0));
+    }
+
+    /**
      * The closing quote of a quoted identifier opens no "..." string: before a PostgreSQL JSON literal it
      * would end at the literal's first {@code "} and leave its apostrophe to open a '...' literal over
      * the rest of the file.
