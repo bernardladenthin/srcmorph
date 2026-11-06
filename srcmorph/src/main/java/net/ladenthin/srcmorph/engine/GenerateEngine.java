@@ -5,7 +5,6 @@ package net.ladenthin.srcmorph.engine;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -265,18 +264,15 @@ public final class GenerateEngine {
                                     FactExtractor.factsHash(entry.rule().getFacts()),
                                     HeaderHashes.model(
                                             aiDefinitionKey, modelDefinitionSupport.definition(aiDefinitionKey)));
-                        } catch (final InterruptedIOException e) {
-                            // an interrupt ends the run, it is not one file's failure; a timeout is one (a
-                            // SocketTimeoutException is an InterruptedIOException as well)
+                        } catch (final IOException | RuntimeException e) {
+                            // an interrupt ends the run, it is not one file's failure, whatever the exception it
+                            // surfaced as (an InterruptedIOException, a ClosedByInterruptException, any other
+                            // after the flag was set); one failed request (after its retries) does not end the
+                            // run, nor does a timeout (a SocketTimeoutException is an InterruptedIOException as
+                            // well) or an unchecked error of a provider (the llama.cpp binding throws only those)
                             if (Thread.currentThread().isInterrupted()) {
                                 throw e;
                             }
-                            LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
-                            LOGGER.debug("Summarizing {} failed", entry.file(), e);
-                            outcome = IndexOutcome.FAILED;
-                        } catch (final IOException | RuntimeException e) {
-                            // one failed request (after its retries) does not end the run, nor does an unchecked
-                            // error of a provider (the llama.cpp binding throws only those)
                             LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
                             LOGGER.debug("Summarizing {} failed", entry.file(), e);
                             outcome = IndexOutcome.FAILED;

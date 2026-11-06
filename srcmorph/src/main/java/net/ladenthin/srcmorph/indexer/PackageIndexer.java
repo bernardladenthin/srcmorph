@@ -4,7 +4,6 @@
 package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -209,17 +208,15 @@ public class PackageIndexer {
             IndexOutcome outcome;
             try {
                 outcome = writePackageFile(directory);
-            } catch (final InterruptedIOException e) {
-                // an interrupt ends the pass, as in the file phase; a timeout is one package's failure (a
-                // SocketTimeoutException is an InterruptedIOException as well)
+            } catch (final IOException | RuntimeException e) {
+                // an interrupt ends the pass, as in the file phase, whatever the exception it surfaced as (an
+                // InterruptedIOException, a ClosedByInterruptException, any other after the flag was set);
+                // one failed request (after its retries) does not, nor does a timeout (a
+                // SocketTimeoutException is an InterruptedIOException as well) or an unchecked error of a
+                // provider (the llama.cpp binding throws only those)
                 if (Thread.currentThread().isInterrupted()) {
                     throw e;
                 }
-                LOGGER.error("Summarizing the package {} failed: {}", directory, String.valueOf(e.getMessage()));
-                outcome = IndexOutcome.FAILED;
-            } catch (final IOException | RuntimeException e) {
-                // one failed request (after its retries) does not end the pass, nor does an unchecked error
-                // of a provider (the llama.cpp binding throws only those), as in the file phase
                 LOGGER.error("Summarizing the package {} failed: {}", directory, String.valueOf(e.getMessage()));
                 outcome = IndexOutcome.FAILED;
             }

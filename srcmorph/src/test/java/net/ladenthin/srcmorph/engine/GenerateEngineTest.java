@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -1019,6 +1020,41 @@ public class GenerateEngineTest {
         // assert: the record exists and holds what was done before the interrupt
         assertThat(Files.exists(recordFile), is(true));
         assertThat(new String(Files.readAllBytes(recordFile), StandardCharsets.UTF_8), containsString("Bar.java"));
+    }
+
+    @Test
+    public void execute_anInterruptAsAClosedChannel_endsTheRun() throws Exception {
+        // arrange: an interrupted NIO channel throws ClosedByInterruptException, no InterruptedIOException
+        final SrcMorphConfiguration config = baseConfig();
+        Files.write(
+                tempDir.resolve("src/main/java/com/example/Zed.java"),
+                "class Zed {}\n".getBytes(StandardCharsets.UTF_8));
+        final GenerationProviderFactory interrupting = new GenerationProviderFactory() {
+            @Override
+            public GenerationProvider create(
+                    final String providerName, final ProviderConfig providerConfig, final PromptCatalog promptSupport) {
+                return request -> {
+                    if (request.sourceFile().getFileName().toString().equals("Foo.java")) {
+                        Thread.currentThread().interrupt();
+                        throw new ClosedByInterruptException();
+                    }
+                    return "A summary.";
+                };
+            }
+        };
+        final GenerateEngine engine = new GenerateEngine(config, interrupting);
+
+        // act
+        final boolean interrupted;
+        try {
+            assertThrows(ClosedByInterruptException.class, engine::execute);
+        } finally {
+            interrupted = Thread.interrupted();
+        }
+
+        // assert: the run ended at the interrupt; the file after Foo.java was not summarized
+        assertThat(interrupted, is(true));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Zed.java.ai.md")), is(false));
     }
 
     @Test

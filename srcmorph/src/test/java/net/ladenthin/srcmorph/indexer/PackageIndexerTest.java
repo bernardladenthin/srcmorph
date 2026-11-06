@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -557,6 +558,76 @@ public class PackageIndexerTest {
         // assert: the interrupt ends the pass instead of failing one package and going on
         assertThat(interrupted, is(true));
         assertThat(Files.exists(failing.resolve("package.ai.md")), is(false));
+    }
+
+    /** A package indexer over two packages whose first ({@code failing}) is answered by {@code failure}. */
+    private PackageIndexer interruptedIndexer(final Path temp, final Path outputRoot, final IOException failure)
+            throws IOException {
+        final Path failing = outputRoot.resolve("main/java/com/example/failing");
+        final Path working = outputRoot.resolve("main/java/com/example/working");
+        Files.createDirectories(failing);
+        Files.createDirectories(working);
+        writeChildFile(failing.resolve("Foo.java.ai.md"), "Foo.java", "Summary of Foo.");
+        writeChildFile(working.resolve("Bar.java.ai.md"), "Bar.java", "Summary of Bar.");
+        return new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new RegenerateOn(),
+                request -> {
+                    if (request.sourceFile().equals(Paths.get("main/java/com/example/failing"))) {
+                        // what an interrupted blocking call does: the thread's flag is set, then it throws
+                        Thread.currentThread().interrupt();
+                        throw failure;
+                    }
+                    return "A package summary.";
+                },
+                CommonTestFixtures.createPackageFieldGeneration(),
+                new PromptCatalog(CommonTestFixtures.createPackagePromptDefinitions()),
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+    }
+
+    @Test
+    public void aggregate_anInterruptAsAClosedChannel_endsThePass() throws Exception {
+        // arrange: an interrupted NIO channel throws ClosedByInterruptException, no InterruptedIOException
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final PackageIndexer indexer = interruptedIndexer(temp, outputRoot, new ClosedByInterruptException());
+
+        // act
+        final boolean interrupted;
+        try {
+            assertThrows(ClosedByInterruptException.class, () -> indexer.aggregate(outputRoot));
+        } finally {
+            interrupted = Thread.interrupted();
+        }
+
+        // assert: the pass ended at the interrupt; the next package was not summarized
+        assertThat(interrupted, is(true));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/working/package.ai.md")), is(false));
+    }
+
+    @Test
+    public void aggregate_anIOExceptionWithTheInterruptFlagSet_endsThePass() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final PackageIndexer indexer = interruptedIndexer(temp, outputRoot, new IOException("stream closed"));
+
+        // act
+        final boolean interrupted;
+        try {
+            assertThrows(IOException.class, () -> indexer.aggregate(outputRoot));
+        } finally {
+            interrupted = Thread.interrupted();
+        }
+
+        // assert
+        assertThat(interrupted, is(true));
+        assertThat(Files.exists(outputRoot.resolve("main/java/com/example/working/package.ai.md")), is(false));
     }
     // </editor-fold>
 }
