@@ -113,7 +113,10 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
 
     private final OpenAiCompatibleProviderSupport support;
 
-    /** Holds requests back to {@code requestsPerMinute}; {@code null} without a limit. */
+    /** This model's {@code requestsPerMinute}; {@code 0} or less is no limit. */
+    private final int requestsPerMinute;
+
+    /** The server's window, which holds requests back to {@link #requestsPerMinute}; {@code null} without a limit. */
     private final @Nullable RequestRateLimiter limiter;
 
     @ToString.Exclude
@@ -198,9 +201,8 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
         this.truncationSupport = new LlamaCppJniProviderSupport(config, promptSupport);
         this.waiter = Objects.requireNonNull(waiter, "waiter");
         this.maxRetries = Math.max(0, config.maxRetries());
-        this.limiter = config.requestsPerMinute() > 0
-                ? RequestRateLimiter.shared(support.serverKey(), config.requestsPerMinute())
-                : null;
+        this.requestsPerMinute = config.requestsPerMinute();
+        this.limiter = requestsPerMinute > 0 ? RequestRateLimiter.shared(support.serverKey()) : null;
     }
 
     @Override
@@ -345,7 +347,7 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
         // Resolved before the connection is opened: a key that must not go to this endpoint fails here.
         final String key = support.apiKeyFor(endpoint);
         if (limiter != null) {
-            limiter.acquire();
+            limiter.acquire(requestsPerMinute);
         }
         final HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
         try {

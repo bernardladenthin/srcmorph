@@ -22,16 +22,8 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads (159 code smells, no bug, no vulnerability, gate passed), the 98 issues of `main` do not: SonarCloud's main branch is `master`, `main` is a short branch there, and the plan serves no issues of another branch | rename SonarCloud's main branch to `main` (Administration, Branches); then the rest is read | Owner | Review of 2026-11-02, tests and gates |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | Enterprise kinds |
-| 47 | A finding of the 2026-11-06 reviews left open: a run-scoped request limiter | with an engine API change | Owner | Review findings left open |
 
 ## Open
-
-### Review findings left open (round 3, 2026-11-06)
-
-- `RequestRateLimiter.shared` keeps the lowest `requestsPerMinute` of a server for the JVM's life:
-  in a long-lived JVM (mvnd, an IDE, an embedder) a later run configured with a higher limit still
-  sends at the lower one. A fix scopes the limiters to a run (the engines create and pass them),
-  which touches every engine and the factory; not done in the review rounds.
 
 ### Enterprise kinds of profile v3 (2026-11-04)
 

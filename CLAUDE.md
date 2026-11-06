@@ -165,7 +165,7 @@ Package root: `net.ladenthin.srcmorph`.
   `<baseUrl>/chat/completions`, and `listModels()` from `<baseUrl>/models` into `RemoteModel`s, key
   from the env var `apiKeyEnv` names; its pure logic lives in the PIT-gated
   `OpenAiCompatibleProviderSupport`; with `requestsPerMinute` every request first passes the
-  `RequestRateLimiter` shared by all providers of one server, at the smallest limit they name, which waits on a
+  `RequestRateLimiter` window shared by all providers of one server, at the limit of the request's own model, which waits on a
   `Condition` instead of `Thread.sleep`), `ProviderConfig` (one model's configuration for whichever
   provider runs it, built through `ProviderConfig.builder().modelPath(modelPath)`; the
   positional constructor is private, and every value the caller does not name defaults to the matching

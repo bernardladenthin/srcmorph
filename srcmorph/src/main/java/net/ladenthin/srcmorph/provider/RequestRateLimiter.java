@@ -11,7 +11,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongSupplier;
@@ -23,18 +22,21 @@ import org.slf4j.LoggerFactory;
 /**
  * Holds requests to one server back so that no more than {@code requestsPerMinute} of them start
  * within any minute: it keeps the start times of the requests of the last minute, and when that many
- * are in it, the next request waits until the oldest one leaves the window.
+ * are in it, the next request waits until the oldest one leaves the window. The limit is the
+ * request's, the window the server's.
  *
  * <p>A server answers a request over its own limit with {@code 429} (the GitHub Copilot API Gateway's
  * {@code rateLimitPerMinute}). The {@code openai-compatible} provider retries a {@code 429} after a
  * backoff, but a fast model would spend its retries on the limit and fail files; waiting here keeps it
  * under the limit instead.</p>
  *
- * <p>{@link #shared(String, int)} hands every provider of one server (its {@code baseUrl} and key
- * variable) the same window, so the models and the phases of one run count together; two models of
- * one server with different limits share the smallest one, which is the server's. A process does not
- * know the requests of an earlier one: a run started right after another can still meet a full
- * server window.</p>
+ * <p>{@link #shared(String)} hands every provider of one server (its {@code baseUrl} and key variable)
+ * the same window, so the models and the phases of one run, and the runs of one long-lived JVM (mvnd,
+ * an IDE, an embedder), count together. Each request names its model's own limit
+ * ({@link #acquire(int)}): it waits until fewer than that many started in the window, whichever model
+ * started them, so a later run that names a higher limit sends at it. A process does not know the
+ * requests of an earlier one: a run started right after another can still meet a full server
+ * window.</p>
  */
 @ToString
 final class RequestRateLimiter {
@@ -61,8 +63,6 @@ final class RequestRateLimiter {
     }
 
     private final String server;
-    /** How many requests may start within the window: the smallest limit a provider of the server named. */
-    private final AtomicInteger perMinute;
 
     private final long windowNanos;
 
@@ -85,19 +85,13 @@ final class RequestRateLimiter {
      * Creates a limiter.
      *
      * @param server      names the server in the log line of a wait
-     * @param perMinute   how many requests may start within {@code windowNanos}
      * @param windowNanos the window
      * @param clock       the current time in nanoseconds ({@link System#nanoTime()})
      * @param waiter      waits, {@code null} for {@link Condition#awaitNanos(long)}
      */
     RequestRateLimiter(
-            final String server,
-            final int perMinute,
-            final long windowNanos,
-            final LongSupplier clock,
-            final @Nullable Waiter waiter) {
+            final String server, final long windowNanos, final LongSupplier clock, final @Nullable Waiter waiter) {
         this.server = Objects.requireNonNull(server, "server");
-        this.perMinute = new AtomicInteger(perMinute);
         this.windowNanos = windowNanos;
         this.clock = Objects.requireNonNull(clock, "clock");
         // the loop in acquire() re-checks the window after every wake-up, spurious ones included
@@ -105,42 +99,34 @@ final class RequestRateLimiter {
     }
 
     /**
-     * The limiter of one server, shared by every provider of this process that names the same server:
-     * two models of one server with 20 and 10 requests a minute send at most 10 together, not 30.
+     * The window of one server, shared by every provider of this process that names the same server.
      *
-     * @param server    the server: its {@code baseUrl} and the name of its key variable
-     * @param perMinute the limit this provider names, positive; one smaller than the window's lowers it
+     * @param server the server: its {@code baseUrl} and the name of its key variable
      * @return the shared limiter
      */
-    static RequestRateLimiter shared(final String server, final int perMinute) {
-        final RequestRateLimiter limiter = SHARED.computeIfAbsent(
-                server, k -> new RequestRateLimiter(server, perMinute, WINDOW_NANOS, System::nanoTime, null));
-        limiter.lowerLimitTo(perMinute);
-        return limiter;
+    static RequestRateLimiter shared(final String server) {
+        return SHARED.computeIfAbsent(
+                server, k -> new RequestRateLimiter(server, WINDOW_NANOS, System::nanoTime, null));
     }
 
     /**
-     * Lowers the limit to {@code limit} when it is smaller; a larger one leaves it as it is.
+     * Waits until fewer than {@code perMinute} requests to the server started within the window, then
+     * counts this one as started.
      *
-     * @param limit the limit a provider of this server names
+     * @param perMinute the request's model's {@code requestsPerMinute}, positive
+     * @throws InterruptedIOException   if the thread is interrupted while waiting (its interrupt flag is
+     *                                  set again)
+     * @throws IllegalArgumentException if {@code perMinute} is below one
      */
-    void lowerLimitTo(final int limit) {
-        perMinute.accumulateAndGet(limit, Math::min);
-    }
-
-    /**
-     * Waits until a request may start, then counts it as started.
-     *
-     * @throws InterruptedIOException if the thread is interrupted while waiting (its interrupt flag is
-     *                                set again)
-     */
-    void acquire() throws InterruptedIOException {
+    void acquire(final int perMinute) throws InterruptedIOException {
+        if (perMinute < 1) {
+            throw new IllegalArgumentException("requestsPerMinute must be positive: " + perMinute);
+        }
         lock.lock();
         try {
             for (long now = clock.getAsLong(); ; now = clock.getAsLong()) {
                 dropOlderThanTheWindow(now);
-                final int limit = perMinute.get();
-                if (starts.size() < limit) {
+                if (starts.size() < perMinute) {
                     starts.addLast(now);
                     return;
                 }
@@ -152,7 +138,7 @@ final class RequestRateLimiter {
                         server,
                         wait / (double) TimeUnit.SECONDS.toNanos(1),
                         starts.size(),
-                        limit));
+                        perMinute));
                 await(wait);
             }
         } finally {

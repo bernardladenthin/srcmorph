@@ -10,6 +10,7 @@ import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -26,6 +27,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -775,7 +777,7 @@ public class OpenAiCompatibleGenerationProviderTest {
         final OpenAiCompatibleGenerationProvider provider =
                 provider(ProviderConfig.builder().modelPath("").requestsPerMinute(5), NO_ENVIRONMENT);
         final RequestRateLimiter shared = RequestRateLimiter.shared(
-                "http://127.0.0.1:" + server.getAddress().getPort() + "/v1 ", 5);
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/v1 ");
 
         // act
         provider.listModels();
@@ -784,6 +786,33 @@ public class OpenAiCompatibleGenerationProviderTest {
 
         // assert
         assertThat(shared.startedInWindow(), is(2));
+    }
+
+    /**
+     * A long-lived JVM (mvnd, an IDE, an embedder) runs once at one request a minute, then with the
+     * limit raised to three: the later run sends at three. Held at the earlier one, its first request
+     * would wait out the minute, which the timeout turns into a failure.
+     *
+     * @throws Exception if a request fails
+     */
+    @Test
+    public void requestsPerMinute_raisedInALaterRunOfTheSameJvm_sendsAtTheRaisedLimit() throws Exception {
+        // arrange: a key variable of its own, so no other test's requests are in this server's window
+        final String keyVariable = "RAISED_LIMIT_TEST_KEY";
+        final Function<String, @Nullable String> environment = name -> keyVariable.equals(name) ? "key" : null;
+        provider(ProviderConfig.builder().modelPath("").apiKeyEnv(keyVariable).requestsPerMinute(1), environment)
+                .generate(REQUEST);
+        final OpenAiCompatibleGenerationProvider raised = provider(
+                ProviderConfig.builder().modelPath("").apiKeyEnv(keyVariable).requestsPerMinute(3), environment);
+
+        // act
+        assertTimeoutPreemptively(Duration.ofSeconds(20), () -> raised.generate(REQUEST));
+        assertTimeoutPreemptively(Duration.ofSeconds(20), () -> raised.generate(REQUEST));
+
+        // assert
+        final RequestRateLimiter shared = RequestRateLimiter.shared(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/v1 " + keyVariable);
+        assertThat(shared.startedInWindow(), is(3));
     }
     // </editor-fold>
 

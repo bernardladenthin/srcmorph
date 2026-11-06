@@ -419,8 +419,9 @@ public class ModelDefinition {
      * server started in the last 60 seconds, so a fast model stays under a server's rate limit (the
      * GitHub Copilot API Gateway answers a request over its {@code rateLimitPerMinute} with
      * {@code 429}, which srcmorph only retries {@link #DEFAULT_MAX_RETRIES maxRetries} times). Every model
-     * of one server with the same key and the
-     * same limit shares one window, across the phases of one run.
+     * of one server with the same key counts in one window, across the phases of a run and the runs of
+     * one process; each request waits for its own model's limit, so a model at 10 sends while fewer
+     * than 10 requests of any of them started in the last minute.
      */
     public static final int DEFAULT_REQUESTS_PER_MINUTE = 0;
 
