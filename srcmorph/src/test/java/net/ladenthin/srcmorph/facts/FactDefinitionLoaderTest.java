@@ -586,6 +586,37 @@ public class FactDefinitionLoaderTest {
     }
 
     @Test
+    public void load_includeOfAFileOfOnlyIgnoreLines_addsItsRegions() throws IOException {
+        // arrange: shared regions to blank, without a counter of their own
+        write("comments.tsv", "# the regions only\n[ignore] comments\t/\\*.*?\\*/\n");
+        write("java.tsv", "[include]\tcomments\ntypes\tclass\n");
+
+        // act
+        final FactDefinition java = load(null, "java").get(0);
+
+        // assert
+        assertThat(describe(java), is(Arrays.asList("comments = /\\*.*?\\*/", "types = class")));
+        assertThat(Objects.requireNonNull(java.getFacts()).get(0).isIgnore(), is(true));
+    }
+
+    @Test
+    public void load_aFileOfOnlyIgnoreLinesUsedByItself_isRefused() throws IOException {
+        // arrange: what is included may hold regions only, what a rule counts with may not
+        write("comments.tsv", "[ignore] comments\t/\\*.*?\\*/\n");
+        write("java.tsv", "[include]\tcomments\n");
+
+        // act
+        final IllegalArgumentException alone =
+                assertThrows(IllegalArgumentException.class, () -> load(null, "comments"));
+        final IllegalArgumentException included =
+                assertThrows(IllegalArgumentException.class, () -> load(null, "java"));
+
+        // assert
+        assertThat(alone.getMessage(), containsString("comments.tsv: no counter, only ignore patterns"));
+        assertThat(included.getMessage(), containsString("java.tsv: no counter, only ignore patterns"));
+    }
+
+    @Test
     public void load_includeOfItself_isRefusedNamingTheCycle() throws IOException {
         // arrange
         write("a.tsv", "a\tx\n[include]\tb\n");

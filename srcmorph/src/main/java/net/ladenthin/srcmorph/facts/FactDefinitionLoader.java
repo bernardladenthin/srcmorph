@@ -41,7 +41,8 @@ import org.jspecify.annotations.Nullable;
  * <p>A line {@code [include]<TAB><key>} puts the counters of the facts file {@code <key>.tsv} of the
  * profile directory at its place (without a profile directory a file cannot include), its {@code [ignore]} lines included, so a kind that extends another (Jakarta EE
  * descriptors over XML, EE annotations over Java) adds its own counters without copying the shared
- * ones. An included file may include others; a file that includes itself, also through others, is
+ * ones. An included file may hold {@code [ignore]} lines only (regions several kinds blank), as long as the
+ * file that includes it counts something. An included file may include others; a file that includes itself, also through others, is
  * refused, as is a label that two of the files use.</p>
  *
  * <p>Two more markers may open a label, in any order and case: {@code [raw]} counts the source as
@@ -130,7 +131,8 @@ public final class FactDefinitionLoader {
                     parse(
                             label + ": factsFile " + path,
                             text,
-                            directory == null ? null : included -> readKey(directory, included, chain))));
+                            directory == null ? null : included -> readKey(directory, included, chain, false),
+                            true)));
         }
         final File directory = profileDirectory;
         if (directory == null) {
@@ -145,7 +147,7 @@ public final class FactDefinitionLoader {
                 throw new IllegalArgumentException("factsKey " + key
                         + " is used by a rule, but no factDefinition has it and the profile has no " + file);
             }
-            loaded.add(group(key, readKey(directory, key, new ArrayDeque<String>())));
+            loaded.add(group(key, readKey(directory, key, new ArrayDeque<String>(), true)));
         }
         return loaded;
     }
@@ -156,11 +158,13 @@ public final class FactDefinitionLoader {
      * @param directory the directory of the facts files
      * @param key       the key, the file name without {@code .tsv}
      * @param chain     the keys whose files are being read, innermost first, to refuse a cycle
+     * @param counterRequired whether the file must report a counter: not when another file includes it
      * @return the counters
      * @throws IllegalArgumentException if the file is missing, malformed or includes itself
      * @throws IOException              if the file cannot be read
      */
-    private static List<FactCounter> readKey(final File directory, final String key, final Deque<String> chain)
+    private static List<FactCounter> readKey(
+            final File directory, final String key, final Deque<String> chain, final boolean counterRequired)
             throws IOException {
         if (chain.contains(key)) {
             final List<String> cycle = new ArrayList<>(chain);
@@ -177,7 +181,11 @@ public final class FactDefinitionLoader {
         final String text = ProfileFileSupport.read(label + ": file", file.getPath());
         chain.push(key);
         try {
-            return parse(label + ": file " + file, text, included -> readKey(directory, included, chain));
+            return parse(
+                    label + ": file " + file,
+                    text,
+                    included -> readKey(directory, included, chain, false),
+                    counterRequired);
         } finally {
             chain.pop();
         }
@@ -233,6 +241,25 @@ public final class FactDefinitionLoader {
      */
     static <E extends Exception> List<FactCounter> parse(
             final String where, final String text, final @Nullable Includes<E> includes) throws E {
+        return parse(where, text, includes, true);
+    }
+
+    /**
+     * Parses the text of a facts file into counters as {@link #parse(String, String, Includes)} does.
+     *
+     * @param where           the file, for the messages
+     * @param text            the file's text
+     * @param includes        the counters of an included key, or {@code null} when the text cannot include
+     * @param counterRequired whether the counters must report one: not for a file another includes, which
+     *                        may hold {@code [ignore]} lines only
+     * @param <E>             what reading an included file may throw
+     * @return the counters in file order, an included file's at the place of its line
+     * @throws IllegalArgumentException as {@link #parse(String, String, Includes)}
+     * @throws E                        if an included file cannot be read
+     */
+    private static <E extends Exception> List<FactCounter> parse(
+            final String where, final String text, final @Nullable Includes<E> includes, final boolean counterRequired)
+            throws E {
         final List<FactCounter> counters = new ArrayList<>();
         final String[] lines = text.split("\r?\n", -1);
         for (int i = 0; i < lines.length; i++) {
@@ -300,7 +327,7 @@ public final class FactDefinitionLoader {
         if (counters.isEmpty()) {
             throw new IllegalArgumentException(where + ": no counter, only comments");
         }
-        FactExtractor.validate(where, counters);
+        FactExtractor.validate(where, counters, counterRequired);
         return counters;
     }
 

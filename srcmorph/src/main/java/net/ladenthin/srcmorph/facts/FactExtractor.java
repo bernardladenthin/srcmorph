@@ -38,7 +38,9 @@ import org.slf4j.LoggerFactory;
  * a lazy scan for a closer that never comes) is stopped: a counter is left out of the facts, an ignore
  * counter blanks nothing, and a warning names it. The patterns of the shipped profile read at most
  * about 1,160 characters per character (perl-facts' ignore line over one long line of nothing but
- * {@code <}; {@code ProfileFactPatternsLinearityTest} asserts that none reaches the limit).</p>
+ * {@code <}; {@code ProfileFactPatternsLinearityTest} asserts that none reaches the limit). A pattern that
+ * overflows the stack (a repeated group with an alternation, such as {@code (?:a|b)*}, recurses once per
+ * repetition in {@code java.util.regex}) is stopped the same way.</p>
  */
 public final class FactExtractor {
 
@@ -140,6 +142,21 @@ public final class FactExtractor {
      * @throws IllegalArgumentException naming the group and the counter if any of that does not hold
      */
     public static void validate(final String where, final @Nullable List<FactCounter> counters) {
+        validate(where, counters, true);
+    }
+
+    /**
+     * Validates one group of fact counters as {@link #validate(String, List)} does, the rule that at least
+     * one counter is reported only when asked: a facts file another includes may hold regions to blank
+     * only, the counters come from the file that includes it.
+     *
+     * @param where           the group, for the messages
+     * @param counters        the fact counters; {@code null} or empty is valid (nothing to check)
+     * @param counterRequired whether at least one counter must be reported
+     * @throws IllegalArgumentException naming the group and the counter if any of that does not hold
+     */
+    static void validate(
+            final String where, final @Nullable List<FactCounter> counters, final boolean counterRequired) {
         if (counters == null || counters.isEmpty()) {
             return;
         }
@@ -178,7 +195,7 @@ public final class FactExtractor {
             }
             reported |= !counter.isIgnore();
         }
-        if (!reported) {
+        if (counterRequired && !reported) {
             throw new IllegalArgumentException(where + ": no counter, only ignore patterns");
         }
     }
@@ -204,14 +221,20 @@ public final class FactExtractor {
                 while (matcher.find()) {
                     final String breaks = lineBreaks(matcher.group());
                     // a region within one line leaves a space, so FROM t/* x */JOIN u still reads as two words,
-                    // but not at the start of a line, so /* x */class A still starts its line with class
-                    final int start = matcher.start();
-                    final boolean lineStart = start == 0 || isLineBreak(text.charAt(start - 1));
-                    blanked.append(text, last, start).append(!lineStart && breaks.isEmpty() ? " " : breaks);
+                    // but not at the start of a line, so /* x */class A still starts its line with class; the
+                    // line start is read from the blanked text, where a region before this one may have left
+                    // nothing (/* a *//* b */class A)
+                    blanked.append(text, last, matcher.start());
+                    final int length = blanked.length();
+                    final boolean lineStart = length == 0 || isLineBreak(blanked.charAt(length - 1));
+                    blanked.append(!lineStart && breaks.isEmpty() ? " " : breaks);
                     last = matcher.end();
                 }
             } catch (final ReadBudget.Exhausted e) {
                 stopped(String.valueOf(counter.getLabel()), true, text);
+                continue;
+            } catch (final StackOverflowError e) {
+                overflowed(String.valueOf(counter.getLabel()), true, text);
                 continue;
             }
             text = blanked.append(text, last, text.length()).toString();
@@ -278,6 +301,9 @@ public final class FactExtractor {
         } catch (final ReadBudget.Exhausted e) {
             stopped(label, false, text);
             return null;
+        } catch (final StackOverflowError e) {
+            overflowed(label, false, text);
+            return null;
         }
     }
 
@@ -307,6 +333,22 @@ public final class FactExtractor {
                 label,
                 ReadBudget.limit(length),
                 length,
+                ignore ? "not blanked" : "left out of the facts");
+    }
+
+    /**
+     * Logs that a counter's pattern overflowed the stack.
+     *
+     * @param label  the counter's label
+     * @param ignore whether it is an ignore counter
+     * @param text   the text it read
+     */
+    private static void overflowed(final String label, final boolean ignore, final String text) {
+        LOGGER.warn(
+                "Fact counter '{}' overflowed the stack over a {}-character source: its pattern repeats a group"
+                        + " that recurses once per repetition, so it is {}",
+                label,
+                text.length(),
                 ignore ? "not blanked" : "left out of the facts");
     }
 

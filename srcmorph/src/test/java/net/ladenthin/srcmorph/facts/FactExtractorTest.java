@@ -211,6 +211,28 @@ public class FactExtractorTest {
         assertThat(counts.get("types"), is(3));
     }
 
+    @Test
+    public void counts_twoIgnoredRegionsBackToBackAtTheStartOfALine_leaveTheLineStartingWithWhatFollows() {
+        // act: the second region starts where the first, blanked to nothing, ended
+        final Map<String, Integer> counts = FactExtractor.counts(
+                Arrays.asList(ignore("comments", "(?s)/\\*.*?\\*/"), counter("types", "(?m)^class\\b")),
+                "/* a *//* b */class A {}\nx/* c *//* d */class B {}\n");
+
+        // assert: the second line does not start with class, its regions leave a space after the x
+        assertThat(counts.get("types"), is(1));
+    }
+
+    @Test
+    public void counts_twoIgnoredRegionsBackToBackInALine_stillSeparateTheWords() {
+        // act
+        final Map<String, Integer> counts = FactExtractor.counts(
+                Arrays.asList(ignore("comments", "(?s)/\\*.*?\\*/"), counter("joins", "\\bt\\s+JOIN\\b")),
+                "SELECT * FROM t/* x *//* y */JOIN u");
+
+        // assert
+        assertThat(counts.get("joins"), is(1));
+    }
+
     /**
      * Java's ^ also starts a line after NEL, the line separator and the paragraph separator: a region
      * holding one keeps it, and a region right after one starts a line.
@@ -480,6 +502,77 @@ public class FactExtractorTest {
 
         // assert
         assertThat(counts.get("x"), is(16_000));
+    }
+
+    /** A million characters of {@code ab}: {@link #STACK_OVERFLOWING} recurses once per character. */
+    private static final String ALTERNATING = repeat("ab", 500_000);
+
+    /** A repeated group with an alternation, which java.util.regex runs recursively, once per repetition. */
+    private static final String STACK_OVERFLOWING = "(?:a|b)*";
+
+    @Test
+    public void counts_counterThatOverflowsTheStack_isLeftOut() {
+        // act
+        final Map<String, Integer> counts = FactExtractor.counts(
+                Arrays.asList(counter("pairs", STACK_OVERFLOWING), counter("a", "a")), ALTERNATING);
+
+        // assert
+        assertThat(counts.containsKey("pairs"), is(false));
+        assertThat(counts.get("a"), is(500_000));
+    }
+
+    @Test
+    public void counts_distinctCounterThatOverflowsTheStack_isLeftOut() {
+        // act
+        final Map<String, Integer> counts = FactExtractor.counts(
+                Arrays.asList(distinct("pairs", STACK_OVERFLOWING), counter("a", "a")), ALTERNATING);
+
+        // assert
+        assertThat(counts.containsKey("pairs"), is(false));
+    }
+
+    @Test
+    public void counts_ignoreCounterThatOverflowsTheStack_blanksNothing() {
+        // act
+        final Map<String, Integer> counts =
+                FactExtractor.counts(Arrays.asList(ignore("pairs", STACK_OVERFLOWING), counter("a", "a")), ALTERNATING);
+
+        // assert
+        assertThat(counts.get("a"), is(500_000));
+    }
+
+    @Test
+    public void counts_patternThatOverflowsTheStack_warnsNamingTheCounterAndWhatItDoes() {
+        // arrange
+        final Logger logger = (Logger) LoggerFactory.getLogger(FactExtractor.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        // act
+        try {
+            FactExtractor.counts(
+                    Arrays.asList(ignore("blank", STACK_OVERFLOWING), counter("pairs", STACK_OVERFLOWING)),
+                    ALTERNATING);
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        // assert
+        final List<String> warnings = new ArrayList<>();
+        for (final ILoggingEvent event : appender.list) {
+            if (event.getLevel() == Level.WARN) {
+                warnings.add(event.getFormattedMessage());
+            }
+        }
+        assertThat(
+                warnings,
+                is(Arrays.asList(
+                        "Fact counter 'blank' overflowed the stack over a 1000000-character source: its pattern"
+                                + " repeats a group that recurses once per repetition, so it is not blanked",
+                        "Fact counter 'pairs' overflowed the stack over a 1000000-character source: its pattern"
+                                + " repeats a group that recurses once per repetition, so it is left out of the"
+                                + " facts")));
     }
 
     @Test

@@ -137,7 +137,8 @@ public final class ConditionEvaluator {
      * Returns whether a {@code contentMatches} pattern finds a match in a file's head, under the read budget
      * of a fact counter ({@link ReadBudget#READS_PER_CHAR} per character plus
      * {@link ReadBudget#READ_ALLOWANCE}): a pattern that backtracks past it matches nothing, with a
-     * warning, so it cannot hang the plan.
+     * warning, so it cannot hang the plan; one that overflows the stack (a repeated group with an
+     * alternation recurses once per repetition) matches nothing too, so it cannot abort the plan.
      *
      * @param contentMatches the pattern
      * @param context        the file
@@ -150,6 +151,14 @@ public final class ConditionEvaluator {
             return pattern.matcher(ReadBudget.over(head)).find();
         } catch (final ReadBudget.Exhausted e) {
             stopped(contentMatches, context.relativePath(), head.length());
+            return false;
+        } catch (final StackOverflowError e) {
+            LOGGER.warn(
+                    "contentMatches '{}' overflowed the stack over the {}-character head of {}: the pattern repeats"
+                            + " a group that recurses once per repetition, so the condition does not match",
+                    contentMatches,
+                    head.length(),
+                    context.relativePath());
             return false;
         }
     }

@@ -508,6 +508,33 @@ public class ConditionEvaluatorTest {
     }
 
     @Test
+    public void matches_contentMatchesThatOverflowsTheStack_matchesNothingAndWarns() {
+        // arrange: a repeated group with an alternation recurses once per repetition, over a head of a
+        // million characters (contentHeadChars can be set that high)
+        final String head = "ab".repeat(500_000) + "c";
+        final Logger logger = (Logger) LoggerFactory.getLogger(ConditionEvaluator.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        final boolean matched;
+        try {
+            // act
+            matched = evaluator.matches(content("(?:a|b)*c"), headCtx(head));
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        // assert
+        assertThat(matched, is(false));
+        assertThat(appender.list.size(), is(1));
+        assertThat(
+                appender.list.get(0).getFormattedMessage(),
+                is("contentMatches '(?:a|b)*c' overflowed the stack over the 1000001-character head of"
+                        + " k8s/deploy.yaml: the pattern repeats a group that recurses once per repetition, so the"
+                        + " condition does not match"));
+    }
+
+    @Test
     public void matches_contentMatchesWithoutAHead_matchesNothing() {
         // act, assert
         assertThat(evaluator.matches(content("x"), javaCtx()), is(false));
