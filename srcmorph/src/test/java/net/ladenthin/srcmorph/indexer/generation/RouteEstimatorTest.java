@@ -113,6 +113,10 @@ public class RouteEstimatorTest {
         assertThat(
                 estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 777L, 200_000L, 0),
                 is(equalTo(window(777L))));
+        // a source of exactly the window is no oversized file, whatever the rule does with one
+        assertThat(
+                estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 200_000L, 200_000L, 0),
+                is(equalTo(window(200_000L))));
     }
 
     @Test
