@@ -87,7 +87,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   fastest of the top group (6.9 s per file; Claude Haiku 5.5 6.8 s, Mercury 3 2.6 s) and costs about
   0.10 USD per MB.
 - **Mercury 3** (Inception's diffusion model; 96.6 %, 2.6 s per file, 0.12 USD per MB) is twice as
-  fast as any other run. SQL recall is full with all four seed counts, other files 98 %, Java 88 %;
+  fast as any other OpenRouter run (Qwen2.5-Coder-7B on Hugging Face's router takes 3.9 s). SQL recall is full with all four seed counts, other files 98 %, Java 88 %;
   one package summary was cut off at 4096 tokens, and it searches below the top group (88 % first).
 - **Nemotron 3.5 Super VL with reasoning off** (97.9 %, 10.7 s per file, 0.14 USD per MB) has full
   Java recall; with reasoning `low` it scored 90.4 % (finding 1).
@@ -162,7 +162,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
     describes the 88 getters and setters of `AiGenerationConfig.java` and the 37 accessors of
     `SrcMorphConfiguration.java` as groups and names 2 and 3 of them (`LlamaCppJniConfig.java`: 8 of
     44), as Luna did in one repeat run. The other nine Java files have full recall. It writes a long
-    index (83 KB for the 24 file summaries; its other-file summaries are 1.75 times as long as
+    index (78 KB for the 24 file summaries; its other-file summaries are 1.75 times as long as
     their sources) and searches below the top group (91 % first, see
     [Search](#search-do-the-summaries-lead-to-the-right-file)).
   - **Grok 4.7** (76.4 %, 19.1 s per file) has full recall on every kind and all four seed counts,
@@ -332,9 +332,10 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    into a code fence in two of three runs, and "one bullet each" kept the values without the
    fence.
 
-   [`modelcard/large.py`](modelcard/large.py) writes three files no window of this card holds: a
-   1.6 MB SQL dump (3 tables, 30 000 rows), an 870 KB XML catalog and a 283 KB Java enum of 6 000
-   constants. Run with the fact counters and `onOversize` `mapReduce` over at most 6 chunks; more
+   [`modelcard/large.py`](modelcard/large.py) wrote, for this measurement, three files no window of
+   this card holds: a 1.6 MB SQL dump (3 tables, 30 000 rows), an 870 KB XML catalog and a 283 KB Java
+   enum of 6 000 constants. The version in the repository also plants names only the middle of each
+   file holds (its dump has 4 tables, 3 indexes and 30 050 rows). Run with the fact counters and `onOversize` `mapReduce` over at most 6 chunks; more
    chunks than that are a sample: at `charsPerToken` 2 gpt-oss's window cuts the dump into about
    nine, and srcmorph summarizes six of them, evenly spaced, while Luna reads all five of its
    chunks. Every name the score expects stands in the dump's first chunk, so the score does not
@@ -511,9 +512,10 @@ and Kolibri-1 and 0.53 USD for the nine runs of 2026-10-31, which were added lat
 - **The summaries help a model find the right file.** With any of 32 of the 35 runs the reader
   finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
   source (about 65 000 tokens instead of about 16 000) only 72 %.
-- **Keyword search gains little from them.** BM25 over the summaries finds 67 to 91 % first, over
-  the source 84 %: nine of the 35 runs are above the source (by 2 to 7 points, one to three
-  questions), four level with it and 22 below. The source contains the same words and more.
+- **Keyword search does not gain from them.** BM25 over the summaries finds 67 to 91 % first, 81 %
+  on average, over the source 84 %: nine of the 35 runs are above the source (by 2 to 7 points, one
+  to three questions), four level with it and 22 below. The source contains the same words and
+  more.
 - **What hurts search is a missing or broken summary, not a missing name.** The three runs that fall
   behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries), Granite H-Tiny (its
   format slips) and Grok 4.7 (a sentence about the task before almost every lead). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
@@ -528,10 +530,10 @@ and Kolibri-1 and 0.53 USD for the nine runs of 2026-10-31, which were added lat
   for both questions about oversized files its `AiOversizeStrategy.java` summary describes the
   four strategies and the `<onOversize>` token, and the reader still ranks
   `AiConditionEvaluator.java` first in all three runs. Its summaries are among the longest (about
-  71 KB for the 24 files, gpt-oss-20b writes 51 to 58 KB), but length does not explain it: over the
+  70 KB for the 24 files, gpt-oss-20b writes 50 to 57 KB), but length does not explain it: over the
   32 scored runs without empty or broken summaries a longer index searches hardly worse with this
   reader (correlation −0.18 with hit@1, −0.08 with the MRR), and the same model with reasoning low
-  writes 74 KB and finds 95 %. MAI-Code-1.1-Flash, added later, writes one of the longest indexes (83 KB) and misses the
+  writes 72 KB and finds 95 %. MAI-Code-1.1-Flash, added later, writes one of the longest indexes (78 KB) and misses the
   two questions about blocked members and the audit trail, although its `03_routines.sql` summary
   names `is_blocked` and `loan_audit`.
 - One answer was corrected after the first scoring: "Can a single model definition use a different

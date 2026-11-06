@@ -8,9 +8,9 @@ unless they start with a module name. Policy: `workspace/policies/code-quality-t
 **Applied on PR #269** (the names below are those of the review; the CHANGELOG lists the new ones):
 the moves M1 to M10, the renames N1 to N15 (N4 with the configuration keys `rules`, `packageRules`
 and `projectRules`; N10 by dropping `AiGenerationConfig`), and the null-safety findings S1 to S8,
-S12 and S13. **Not applied:** S9 to S11 (low), and P9: the engines' public signatures name types of
-`indexer`, `provider` and `prompt`, so exporting only `config` and `engine` would leave a
-module-path consumer unable to name what the engines take and return.
+S12 and S13, and P9 (2026-11-06: `module-info.java` exports `config` and `engine`, the engines'
+results name no type of another package, `CoreArchitectureTest#exportedApiNamesNoInternalType`).
+**Not applied:** S9 to S11 (low).
 
 ## Summary
 

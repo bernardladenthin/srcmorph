@@ -21,7 +21,7 @@ retrieval.
 
 ## Features
 - Generate AI summaries for source files
-- Per-language prompts — Java, SQL schema, shell, Perl, XML and a generic fallback — selected by file extension
+- Per-kind prompts — class-based languages, SQL, shell, Perl, XML, views, API contracts, deploy files and a generic fallback — selected by routing rules (extension, file name, path, shebang, content)
 - Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
 - Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
@@ -539,7 +539,8 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 
 ## Prompt System
 Prompts are referenced by key from the rules and read from the profile (`profileDirectory`). The
-self-test configuration uses the ten prompt files and the six fact-counter files of
+self-test configuration uses thirteen prompt files (nine file prompts, the package and project
+prompts and the two map-reduce parts) and seventeen fact-counter files of
 [`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
 prompt and each counter exists once in the repository:
 - `file-body-oop` — summarizes a single source file of a class-based language: Java, Kotlin, Groovy, Scala, and TypeScript (types, public API, dependencies)
@@ -548,8 +549,10 @@ prompt and each counter exists once in the repository:
 - `file-body-shell`, `file-body-perl`, `file-body-xml` — the same for shell scripts, Perl and XML
 - `file-body-fallback` — generic multi-language summary for any other source file
 - `file-body-view`, `file-body-contract`, `file-body-ops` — JSP and Facelets views; API contracts
-  (OpenAPI, Protobuf, ...); CI, Docker, Kubernetes and other deploy files. The self-test does not
-  route them; `examples/copilot-api-gateway/srcmorph-luna.yaml` does, with their fact counters
+  (OpenAPI, Protobuf, ...); CI, Docker, Kubernetes and other deploy files. The self-test routes the
+  kinds measured on real projects (JSP, Protocol Buffers, GitHub Actions, Kubernetes, Dockerfiles,
+  Terraform, npm manifests); `examples/copilot-api-gateway/srcmorph-luna.yaml` routes all of them,
+  with their fact counters
 - `package-body` — synthesizes a package summary from the already-generated file summaries
 - `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
 - `map-chunk`, `reduce-parts` — not prompts of their own: a chunked rule's `mapPromptKey` /

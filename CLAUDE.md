@@ -396,7 +396,7 @@ mvn -pl srcmorph-maven-plugin srcmorph:generate -P srcmorph-selftest
 
 ```bash
 mvn install -DskipTests
-mvn -f examples/build-your-own-jar/pom.xml package -Dsrcmorph.version=1.4.0
+mvn -f examples/build-your-own-jar/pom.xml package -Dsrcmorph.version=1.5.0-SNAPSHOT
 java -jar examples/build-your-own-jar/target/srcmorph.jar examples/config_All.json
 ```
 

@@ -39,8 +39,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   `GenerationTimeEstimator` (was `AiGenerationTimeEstimator`) is linear: `REQUEST_OVERHEAD_MS`, `PREFILL_MS_PER_TOKEN` and
   `DECODE_MS_PER_TOKEN` replace the four CPU coefficients, and `estimateDecodeMillis` takes only the
   output tokens. `IncompleteAnswerException.Reason` has a fourth value, `ABORTED`.
-  `AiGenerationUsage.add` is `GenerationUsage.withCall` (one call's usage). `RunRecord` takes the skipped count
-  (`new RunRecord(generatorVersion, skipped)`). `GenerationProvider` has `takeLoadNanos()`.
+  `AiGenerationUsage.add` is `GenerationUsage.withCall` (one call's usage). `GenerationProvider` has
+  `takeLoadNanos()`.
 - **Java callers of the library, the package restructure** (the configuration file, the CLI's
   commands and the plugin's goals and properties stay as they are; see the entry under Changed):
   fix the imports of the moved classes and rename `LlamaCppJniConfig` to `ProviderConfig`,
@@ -89,7 +89,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   `SummaryGenerator.parts()` is `takeParts()`, which also starts the next file's answers anew.
 - **A configuration that sets `pluginVersion` names it `generatorVersion`** (it is srcmorph's own
   version, the header's `G`, in the CLI and the plugin alike); the run record's `pluginVersion` is
-  `generatorVersion` too, and so are the bean's getter and setter and the `RunRecord` parameter.
+  `generatorVersion` too, and so are the bean's getter and setter.
 - **Java callers of the library, the naming review** (`docs/code-review-2026-11-05.md` section 2):
   `AiGenerationTimings` is `TimedGeneration`; `AiPromptPreparationSupport.getBasePromptLength` is
   `PromptPreparer.basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` like
@@ -100,7 +100,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   `checksum()`, `d()` `sourceDate()`, `t()` `generatedAt()`, `g()` `generatorVersion()`, `a()`
   `aiVersion()`, `x()` `nodeType()`, `p()` `promptHash()`, `n()` `factsHash()`, `m()` `modelHash()`
   and `k()` `childrenHash()`.
-  `AiIndexPlan.Entry` is `IndexPlan.Route`, `RunRecord.Entry` is `RunRecord.FileRecord`, and
+  `AiIndexPlan.Entry` is `IndexPlan.Route`, and
   `SourceFileIndexer.recordedHashes` returns a `RecordedHashes` (`promptHash()`, `factsHash()`) instead
   of a `Map.Entry`.
   `AiGenerationConfig` is gone: `ModelRegistry.definition` (was `AiModelDefinitionSupport.getConfig`)
@@ -145,6 +145,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   `listings()` and `Listing` likewise), and `RunRecord`, which no engine returns, is package-private;
   `CoreArchitectureTest#exportedApiNamesNoInternalType` keeps it that way. On the classpath (the CLI,
   the plugin, a Java 8 consumer) nothing changes but these visibilities.
+- **A script that reads srcmorph's log lines**: the file phase names a file by its path below the
+  base directory (it was the absolute path), and the plan's model header and its per-file estimate
+  line have a new form (the entries under Changed).
 
 ### Added
 
@@ -349,8 +352,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   hit@3 stay), and the reader's numbers were taken on the old text too; renewing them is a paid
   re-run, so the file stays as published.
 - **The model card's search prose and caveats match its data:** BM25 over the summaries finds 67 to
-  91 % first (it said 67 to 86 %), and nine of the 35 runs beat BM25 over the source, so keyword
-  search "gains little" from them, not nothing; the index length goes with the reader's hit@1 at
+  91 % first (it said 67 to 86 %), 81 % on average against 84 % over the source, and nine of the 35
+  runs beat the source; the index length goes with the reader's hit@1 at
   −0.18 over the 32 scored runs (it said −0.46, from an older set of runs); Muse's best search ties
   gpt-oss-20b on hit@1 and leads on the MRR. The caveats add that recall does not measure
   faithfulness (a bare name list scores 100 %), that three runs against three reach p = 0.1 at best
