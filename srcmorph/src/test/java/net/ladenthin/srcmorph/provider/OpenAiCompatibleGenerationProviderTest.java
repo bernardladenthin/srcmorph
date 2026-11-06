@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.document.AiMdHeader;
@@ -843,14 +844,27 @@ public class OpenAiCompatibleGenerationProviderTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="requestsPerMinute">
+    /**
+     * A key variable no other test names: the window shared by one JVM is keyed by the server's port and
+     * the variable, and an ephemeral port is reused within a minute (PIT's minions run many tests in one
+     * JVM), so a fixed variable could find another test's starts in the window.
+     *
+     * @return the variable's name, new on every call
+     */
+    private static String uniqueKeyVariable() {
+        return "RATE_LIMIT_TEST_KEY_" + UUID.randomUUID().toString().replace('-', '_');
+    }
+
     @Test
     public void requestsPerMinute_listModelsThenGenerate_countsEveryRequestInTheServersSharedWindow() throws Exception {
-        // arrange
+        // arrange: a key variable of its own, so no other test's requests are in this server's window
         answer = ModelListFixtures.JLLAMA;
-        final OpenAiCompatibleGenerationProvider provider =
-                provider(ProviderConfig.builder().modelPath("").requestsPerMinute(5), NO_ENVIRONMENT);
+        final String keyVariable = uniqueKeyVariable();
+        final OpenAiCompatibleGenerationProvider provider = provider(
+                ProviderConfig.builder().modelPath("").apiKeyEnv(keyVariable).requestsPerMinute(5),
+                name -> keyVariable.equals(name) ? "key" : null);
         final RequestRateLimiter shared = RequestRateLimiter.shared(
-                "http://127.0.0.1:" + server.getAddress().getPort() + "/v1 ");
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/v1 " + keyVariable);
 
         // act
         provider.listModels();
@@ -871,7 +885,7 @@ public class OpenAiCompatibleGenerationProviderTest {
     @Test
     public void requestsPerMinute_raisedInALaterRunOfTheSameJvm_sendsAtTheRaisedLimit() throws Exception {
         // arrange: a key variable of its own, so no other test's requests are in this server's window
-        final String keyVariable = "RAISED_LIMIT_TEST_KEY";
+        final String keyVariable = uniqueKeyVariable();
         final Function<String, @Nullable String> environment = name -> keyVariable.equals(name) ? "key" : null;
         provider(ProviderConfig.builder().modelPath("").apiKeyEnv(keyVariable).requestsPerMinute(1), environment)
                 .generate(REQUEST);
@@ -901,6 +915,27 @@ public class OpenAiCompatibleGenerationProviderTest {
 
         // assert
         assertThat(provider.toString(), containsString("OpenAiCompatibleGenerationProvider"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="toString">
+    @Test
+    public void toString_aBaseUrlWithUserInfoAndARequestLimit_showsNoPassword() {
+        // arrange: the limiter names the server by its baseUrl
+        final OpenAiCompatibleGenerationProvider provider = new OpenAiCompatibleGenerationProvider(
+                ProviderConfig.builder()
+                        .modelPath("")
+                        .baseUrl("https://user:pa/ss@to-string-test.example/v1")
+                        .requestsPerMinute(1)
+                        .build(),
+                PROMPT_SUPPORT);
+
+        // act
+        final String shown = provider.toString();
+
+        // assert
+        assertThat(shown, containsString("limiter=RequestRateLimiter(server=https://***"));
+        assertThat(shown.contains("pa/ss"), is(false));
     }
     // </editor-fold>
 

@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.provider;
 import java.io.InterruptedIOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongSupplier;
 import lombok.ToString;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,8 +24,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Holds requests to one server back so that no more than {@code requestsPerMinute} of them start
  * within any minute: it keeps the start times of the requests of the last minute, and when that many
- * are in it, the next request waits until the oldest one leaves the window. The limit is the
- * request's, the window the server's.
+ * or more are in it, the next request waits until fewer than that many are left: until the newest of
+ * the starts that have to leave the window leaves it. The limit is the request's, the window the
+ * server's.
  *
  * <p>A server answers a request over its own limit with {@code 429} (the GitHub Copilot API Gateway's
  * {@code rateLimitPerMinute}). The {@code openai-compatible} provider retries a {@code 429} after a
@@ -62,6 +65,7 @@ final class RequestRateLimiter {
         void await(long nanos) throws InterruptedException;
     }
 
+    /** The server, its URL masked ({@link UrlUserInfo#mask(String)}): the log line of a wait and toString show it. */
     private final String server;
 
     private final long windowNanos;
@@ -84,14 +88,14 @@ final class RequestRateLimiter {
     /**
      * Creates a limiter.
      *
-     * @param server      names the server in the log line of a wait
+     * @param server      names the server in the log line of a wait, masked there
      * @param windowNanos the window
      * @param clock       the current time in nanoseconds ({@link System#nanoTime()})
      * @param waiter      waits, {@code null} for {@link Condition#awaitNanos(long)}
      */
     RequestRateLimiter(
             final String server, final long windowNanos, final LongSupplier clock, final @Nullable Waiter waiter) {
-        this.server = Objects.requireNonNull(server, "server");
+        this.server = UrlUserInfo.mask(Objects.requireNonNull(server, "server"));
         this.windowNanos = windowNanos;
         this.clock = Objects.requireNonNull(clock, "clock");
         // the loop in acquire() re-checks the window after every wake-up, spurious ones included
@@ -130,7 +134,8 @@ final class RequestRateLimiter {
                     starts.addLast(now);
                     return;
                 }
-                final long wait = starts.getFirst() + windowNanos - now;
+                // every start up to this one has to leave the window before fewer than perMinute are in it
+                final long wait = startAt(starts.size() - perMinute) + windowNanos - now;
                 LOGGER.info(String.format(
                         Locale.ROOT,
                         "Holding the next request to %s for %.1f s: %d requests started in the last minute"
@@ -159,6 +164,20 @@ final class RequestRateLimiter {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * The start at a position of the window, the oldest at {@code 0}.
+     *
+     * @param index the position, below the window's size
+     * @return the start time
+     */
+    private long startAt(final int index) {
+        final Iterator<Long> iterator = starts.iterator();
+        for (int i = 0; i < index; i++) {
+            iterator.next();
+        }
+        return iterator.next();
     }
 
     private void dropOlderThanTheWindow(final long now) {

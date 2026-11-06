@@ -226,6 +226,43 @@ public class RequestRateLimiterTest {
         assertThat(limiter.startedInWindow(), is(1));
     }
 
+    /**
+     * Three starts in the window at a limit of two: two have to leave it, so the wait runs to the newer
+     * of them, in one wait and one log line.
+     *
+     * @throws Exception if a wait is interrupted
+     */
+    @Test
+    public void acquire_twoStartsMustLeave_waitsOnceUntilTheNewerOfThemLeaves() throws Exception {
+        // arrange
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        final Logger logger = (Logger) LoggerFactory.getLogger(RequestRateLimiter.class);
+        final Level previous = logger.getLevel();
+        logger.setLevel(Level.INFO);
+        logger.addAppender(appender);
+        final RequestRateLimiter limiter = limiter();
+        limiter.acquire(5);
+        now = 10;
+        limiter.acquire(5);
+        now = 20;
+        limiter.acquire(5);
+        now = 30;
+        try {
+            // act
+            limiter.acquire(2);
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previous);
+            appender.stop();
+        }
+
+        // assert: the starts at 0 and 10 left the window, the one at 20 and this one are in it
+        assertThat(waits, is(Arrays.asList(WINDOW - 20)));
+        assertThat(appender.list.size(), is(1));
+        assertThat(limiter.startedInWindow(), is(2));
+    }
+
     @Test
     public void acquire_limitBelowOne_throws() {
         // arrange
@@ -278,6 +315,21 @@ public class RequestRateLimiterTest {
         assertThat(limiter.startedInWindow(), is(1));
         assertThat(RequestRateLimiter.WINDOW_NANOS, is(TimeUnit.MINUTES.toNanos(1)));
         assertThat(limiter.toString(), containsString("windowNanos=" + RequestRateLimiter.WINDOW_NANOS));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="toString">
+    @Test
+    public void toString_aServerWithUserInfo_isMasked() {
+        // arrange
+        final RequestRateLimiter limiter = new RequestRateLimiter("https://u:secret@h/v1 K", WINDOW, () -> 0, null);
+
+        // act
+        final String shown = limiter.toString();
+
+        // assert
+        assertThat(shown, containsString("server=https://***@h/v1 K"));
+        assertThat(shown, not(containsString("secret")));
     }
     // </editor-fold>
 
