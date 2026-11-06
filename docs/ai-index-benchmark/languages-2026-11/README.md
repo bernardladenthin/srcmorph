@@ -29,11 +29,12 @@ python score.py --work <copy of corpus-languages> --out ../languages-2026-11/lan
 directory of its own (without it, the card's `scores/` is overwritten).
 
 The quality figures of finding 7 and of `profiles/README.md` (per run and the mean, min and max of
-each model) come from `repeat.py`, with a copy of `corpus-languages/other` as the work directory:
+each model) come from `repeat.py`, with a copy of `corpus-languages` as the work directory (as for
+`score.py`: the facts name the files by their path below it, `other/...`):
 
 ```bash
 L=../languages-2026-11/languages
-python repeat.py --work <copy> --facts facts-languages.json --scores <dir> \
+python repeat.py --work <copy of corpus-languages> --facts facts-languages.json --scores <dir> \
     --runs $L/run1,$L/run2,$L/run3,$L/run4,$L/run5,$L/run6
 ```
 

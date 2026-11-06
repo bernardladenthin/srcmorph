@@ -260,6 +260,26 @@ public class CompletionParserTest {
     }
 
     @Test
+    public void parseCompletion_gluedTagAfterTheLead_isKept() throws Exception {
+        // arrange: an answer that names the tag glued to a list item's label
+        final String response = "> Strips a template-opened reasoning block.\n\n- End marker:</think>\n- The rest.";
+
+        // act, assert
+        assertThat(new CompletionParser().parseCompletion(response), is(response));
+    }
+
+    @Test
+    public void parseCompletion_gluedTagInAFence_isKept() throws Exception {
+        // arrange: a template quoted in a fence, with no lead before it, backtick and tilde
+        final String ticks = "```jinja\n{{ reasoning }}</think>\n{{ content }}\n```";
+        final String tildes = "~~~jinja\n{{ reasoning }}</think>\n{{ content }}\n~~~";
+
+        // act, assert
+        assertThat(new CompletionParser().parseCompletion(ticks), is(ticks));
+        assertThat(new CompletionParser().parseCompletion(tildes), is(tildes));
+    }
+
+    @Test
     public void parseCompletion_tagAloneOnALaterLine_winsOverAGluedOneBefore() throws Exception {
         // act: the reasoning names the tag glued to a word first, then ends at the tag alone on its line
         final String answer =

@@ -45,7 +45,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   commands and the plugin's goals and properties stay as they are; see the entry under Changed):
   fix the imports of the moved classes and rename `LlamaCppJniConfig` to `ProviderConfig`,
   `LlamaCppJniConfigFactory` to `ProviderConfigFactory`, `AiFieldGenerationSupport` to
-  `SummaryGenerator` and `EngineSupport.resolveLlamaCppJniConfig` to `resolveProviderConfig`.
+  `SummaryGenerator`.
   `GenerationRequest` takes three arguments (no header); `SummaryGenerator.generate` takes four
   (no header). `AiConditionEvaluator.CONTENT_HEAD_CHARS` is
   `SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS`, `AiFactExtractor.READS_PER_CHAR` and
@@ -73,6 +73,13 @@ The entries below hold the details; what a 1.4.0 user changes:
   bound can reach another rule than in 1.4.0. The run's `minFileSizeBytes` / `maxFileSizeBytes` band
   stays on the bytes on disk: it filters during the walk, before a file is read. Java callers: `SourceLines.normalize(byte[])` is not public any more
   (`SourceLines.checksumBytes` and `SourceLines.size` are).
+- **A `baseUrl` with user info (`https://user:key@host/v1`), a query or a fragment fails the check.**
+  srcmorph never sent the user info (`HttpURLConnection` does not authenticate with it), so such a
+  model ran in 1.4.0 against a server without a key; put the key in the variable `apiKeyEnv` names
+  and the path alone in `baseUrl`.
+- **The self-test's gpt-oss rules map-reduce a file over the window** (`onOversize: mapReduce` on
+  every rule, the default kinds too), so a configuration copied from it no longer fails a dense file
+  just below a size tier.
 - **Every configuration file renames three keys**: `fieldGenerations` is `rules` (under `srcMorph`),
   `packageFieldGenerations` is `packageRules` and `projectFieldGenerations` is `projectRules` (the
   loader refuses the old names as unknown keys). The beans' accessors follow (`getRules`,
@@ -93,12 +100,12 @@ The entries below hold the details; what a 1.4.0 user changes:
   `checksum()`, `d()` `sourceDate()`, `t()` `generatedAt()`, `g()` `generatorVersion()`, `a()`
   `aiVersion()`, `x()` `nodeType()`, `p()` `promptHash()`, `n()` `factsHash()`, `m()` `modelHash()`
   and `k()` `childrenHash()`.
-  `AiIndexPlan.Entry` is `AiIndexPlan.Route`, `RunRecord.Entry` is `RunRecord.FileRecord`, and
+  `AiIndexPlan.Entry` is `IndexPlan.Route`, `RunRecord.Entry` is `RunRecord.FileRecord`, and
   `SourceFileIndexer.recordedHashes` returns a `RecordedHashes` (`promptHash()`, `factsHash()`) instead
   of a `Map.Entry`.
-  `AiGenerationConfig` is gone: `AiModelDefinitionSupport.getConfig` returns a copy of the
-  `AiModelDefinition` with its model path resolved, `ProviderConfigFactory` builds a `ProviderConfig`
-  from it, and the `DEFAULT_*` constants are `AiModelDefinition`'s (`maxInputChars` was never
+  `AiGenerationConfig` is gone: `ModelRegistry.definition` (was `AiModelDefinitionSupport.getConfig`)
+  returns a copy of the `ModelDefinition` with its model path resolved, `ProviderConfigFactory` builds
+  a `ProviderConfig` from it, and the `DEFAULT_*` constants are `ModelDefinition`'s (`maxInputChars` was never
   configurable: `DEFAULT_MAX_INPUT_CHARS` is the fallback without `charsPerToken`).
   The `Ai` prefix is gone but on the `AiMd*` classes of the `.ai.md` format, and the `*Support`
   names that hid a role say it: `AiChecksumSupport` `ChecksumSupport`, `AiGeneratorVersion`
@@ -182,7 +189,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   prompt and the shared OOP prompt run side by side on the card corpus; `score.py` reports
   `secretsLeaked`, the summaries that copy a value the facts mark as a secret.
 - **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
-  profile reads linearly**, the `[ignore]` lines included, over 110 adversarial lines (unclosed
+  profile reads linearly**, the `[ignore]` lines included, over 121 adversarial lines, each also repeated
+  within one line (unclosed
   openers and tags, heredoc markers, unbalanced parentheses, runs of one character). It counts the
   characters the matcher reads instead of timing it: four times the input may read at most six
   times as many (linear reads four times, quadratic sixteen), so the result is the same on any
@@ -306,6 +314,11 @@ The entries below hold the details; what a 1.4.0 user changes:
   its dependencies count after `{` or `;`; GitHub Actions count every secret in an expression;
   Compose counts `$NAME`; Ansible counts a quoted `become`; batch blanks `& rem`; proto's streaming
   rpcs read CRLF files; MyBatis and properties placeholders count the innermost of nested ones.
+  SQL's `'\'` (T-SQL, PostgreSQL, Oracle) and `ESCAPE '\'` close their literal instead of blanking
+  the rest of the file (a backslash escapes a quote only where no delimiter follows, as MySQL's
+  `'it\'s'`); a Dockerfile `<<` inside quotes opens no heredoc, and a second heredoc on one line is
+  blanked too; Compose counts the substitutions in a block scalar (`command: >`), which it
+  interpolates, and none in a comment.
 - **The model card's scorer reads what the model answered.** `score.py` strips a leading reasoning
   block before recall, invented names, numbers and the format checks (the leak is still counted),
   matches a path- or colon-like name whole (`/orders` is not found in `/orders/{orderId}`; a Perl
@@ -320,9 +333,13 @@ The entries below hold the details; what a 1.4.0 user changes:
   not move (its outputs have none of these cases). Two published numbers elsewhere differ from a
   re-score: the generic-prompt languages run 3 gives gpt-oss-20b 94.9 % instead of 95.3 % (the mean
   95.5 % instead of 95.7 %), because `invoice-service.jar` no longer credits the name
-  `invoice-service`; and the large-corpus run 3 of 2026-11-01 keeps its published 88.3 % (the gpt-oss
-  mean over the three large runs re-scores to 76.0 %, published 78.1 %, a drift of an earlier round's
-  format check). The writeups keep the numbers they were published with.
+  `invoice-service`; and the large-corpus run 2 of 2026-11-01 gives gpt-oss-20b 49.1 % instead of
+  55.2 % (a stricter format check of an earlier round), so the gpt-oss mean over the three large runs
+  re-scores to 76.0 %, published 78.1 % (run 3 keeps its 88.3 %). The writeups keep the numbers they
+  were published with. `scores/search.json` predates `search.py` reading the text without the
+  facts and coverage lines: an offline BM25 re-run moves five runs' MRR by up to 0.016 (hit@1 and
+  hit@3 stay), and the reader's numbers were taken on the old text too; renewing them is a paid
+  re-run, so the file stays as published.
 - **The self-test routes the new kinds measured on real projects:** TypeScript, the Jakarta EE
   descriptors, MyBatis mappers, BPMN, DMN, JSP, Protocol Buffers, GitHub Actions, Kubernetes
   manifests, Dockerfiles, Terraform, npm manifests and other YAML (`ops`), with the Luna example's
@@ -372,11 +389,11 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **The run record and the plan say more of where the time and the tokens go.** The record's totals
   name the files the plan skipped (`skipped`), the run's wall time (`wallSeconds`) and each model's
   load time (`modelLoadSeconds`): a local model loads on its first file, whose own seconds leave the
-  load out now (`AiGenerationProvider.takeLoadNanos`, `0` by default). The plan's model header adds
+  load out now (`GenerationProvider.takeLoadNanos`, `0` by default). The plan's model header adds
   the tokens the model is sent (`~N source tokens (~M sent)`): none of a file `deterministic`
   summarizes, one window of a `sample` or `fail`, `maxChunks` windows of a `sampleChunks`. Its
   map-reduce estimate packs as many part summaries into a reduce call as fit the window, as the run
-  does, instead of always 16 (`AiMapReduceSupport.expectedFanIn`), so a narrow window estimates more
+  does, instead of always 16 (`MapReduceMath.expectedFanIn`), so a narrow window estimates more
   reduce calls.
 - **`requestsPerMinute` keeps one window per server**, at the smallest limit a model of it names:
   two models of one server (same `baseUrl` and `apiKeyEnv`) with 20 and 10 requests a minute sent up
@@ -428,7 +445,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   model). `P` reads a prompt's line endings as `\n`, so a profile checked out with CRLF on one machine
   and LF on another hashes the same. A field a summary does not record counts as changed, so the
   first run after the upgrade rewrites every summary, one model call each (Upgrading from 1.4.0 says
-  how to keep them). `AiMdHeaderSupportTest` pins every switch on and off,
+  how to keep them). `AiMdRewritePolicyTest` pins every switch on and off,
   `PackageIndexerTest` and `ProjectIndexerTest` the children and overview hashes; the plugin README's
   header section says what rewrites a summary, and every example configuration shows the switches.
 - **`java-facts` counts code only**: an `[ignore]` line blanks comments, Javadoc, text blocks,
@@ -492,6 +509,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   remaining package; a timeout is still one package's failure.
 - **A request that failed its retries with a timeout last** says "failed N times, the last with a
   timeout", not "timed out N times" after three 503 answers and one timeout.
+- **A password with `'`, `?` or `#` in a `baseUrl` is masked and refused as user info**, and one with
+  an unencoded `/`, which no URL allows there, fails the check as no URL without being shown.
 - **A long password in a URL is masked too.** The mask of a URL's user info stopped at 256
   characters, so a longer token (a JWT) stayed in the message that refuses such a `baseUrl`; an `@`
   in the password left its tail visible. It masks up to the last `@` before the host now, of any
@@ -536,9 +555,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 - **A template that opens the thinking block itself leaves no reasoning in the summary.** Qwen3 and
   DeepSeek-R1 templates put `<think>` into the prompt, so the answer starts with the reasoning and
-  holds only `</think>`; `AiCompletionParser` kept all of it. The first `</think>` alone on its line,
+  holds only `</think>`; `CompletionParser` kept all of it. The first `</think>` alone on its line,
   with no `<think>` before it, now ends the reasoning, and without one the first that ends its line
-  glued to the reasoning's last word (`I will write it.</think>`); a tag inside a line, or after a
+  glued to the reasoning's last word (`I will write it.</think>`) when no line before it starts
+  like an answer (a `>` lead, a code fence); a tag inside a line, or after a
   space, a quote or a backtick (a sentence, quotes, a list item naming it) is text, in the answer or
   in reasoning that names it before its real end.
 - **The benchmark's scorer** (`score.py`, `report.py`; the card's published numbers stay until it is

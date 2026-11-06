@@ -413,6 +413,67 @@ public class OpsFactPatternsTest {
         assertThat(count(DOCKERFILE, "build stages", atTheLineStart), is(1));
         assertThat(count(DOCKERFILE, "users", atTheLineStart), is(1));
     }
+
+    /** Docker's documented form: two heredocs on one line, their bodies one after the other. */
+    @Test
+    public void dockerfile_twoHeredocsOnOneLine_doNotCountEitherBody() {
+        // arrange
+        final String dockerfile = "FROM alpine\n"
+                + "COPY <<robots.txt <<humans.txt /dst/\n"
+                + "User-agent: *\n"
+                + "robots.txt\n"
+                + "FROM inside\n"
+                + "EXPOSE 1\n"
+                + "humans.txt\n"
+                + "EXPOSE 80\n"
+                + "RUN a \\\n"
+                + " && cat <<x <<'y' > /f\n"
+                + "FROM in1\n"
+                + "x\n"
+                + "FROM in2\n"
+                + "y\n"
+                + "USER app\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "build stages", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "exposed ports", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "COPY and ADD instructions", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "RUN instructions", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "users", dockerfile), is(1));
+    }
+
+    /** A << inside quotes opens no heredoc that would never close and blank the rest of the file. */
+    @Test
+    public void dockerfile_lessThanLessThanInsideQuotes_opensNoHeredoc() {
+        // arrange
+        final String dockerfile = "FROM a\n"
+                + "RUN echo \"usage: cmd <<file>\" > /usage.txt\n"
+                + "RUN python3 <<'PY'\n"
+                + "print(\"FROM x\")\n"
+                + "PY\n"
+                + "FROM b\n"
+                + "RUN apk add curl\n"
+                + "RUN echo 'a <<b' && cat <<EOF > \"/it's here\"\n"
+                + "USER inside\n"
+                + "EOF\n"
+                + "USER app\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "build stages", dockerfile), is(2));
+        assertThat(count(DOCKERFILE, "RUN instructions", dockerfile), is(4));
+        assertThat(count(DOCKERFILE, "users", dockerfile), is(1));
+    }
+
+    @Test
+    public void dockerfile_lessThanLessThanInsideQuotesOnAContinuedLine_opensNoHeredoc() {
+        // arrange
+        final String dockerfile = "FROM a\nRUN set -e \\\n && echo \"a <<b\" \\\nenv X=1 \\\nfrom x\nUSER app\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "environment entries", dockerfile), is(0));
+        assertThat(count(DOCKERFILE, "build stages", dockerfile), is(1));
+        assertThat(count(DOCKERFILE, "users", dockerfile), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="asyncapi-facts">
@@ -746,6 +807,29 @@ public class OpsFactPatternsTest {
         // act, assert
         // TAG and USER after the escaped dollar sign; not the escaped HOME and PATH
         assertThat(count(COMPOSE, "variable substitutions", compose), is(2));
+    }
+
+    @Test
+    public void compose_substitutionInABlockScalar_countsAndOneInAComment_doesNot() {
+        // arrange
+        final String compose = "services:\n"
+                + "  app:\n"
+                + "    image: app:${TAG}\n"
+                + "    command: >\n"
+                + "      sh -c \"echo ${GREETING} $$HOME\"\n"
+                + "    entrypoint: |\n"
+                + "      run $NAME\n"
+                + "  # cache:\n"
+                + "  #   image: redis:${REDIS_TAG}\n"
+                + "    environment:\n"
+                + "      A: x # was ${OLD}\n"
+                + "      B: \"a#b${C}\"\n";
+
+        // act, assert
+        // TAG, GREETING and NAME in the block scalars, and C after a # that opens no comment
+        assertThat(count(COMPOSE, "variable substitutions", compose), is(4));
+        // the block scalars' bodies stay blanked for the keys
+        assertThat(count(COMPOSE, "services with an image", compose), is(1));
     }
     // </editor-fold>
 

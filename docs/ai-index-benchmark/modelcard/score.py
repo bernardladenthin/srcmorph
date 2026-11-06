@@ -22,8 +22,9 @@ For every model under <out> (one directory per model key) and every source file 
   A code block that copies the source (at least half of its lines that hold an identifier are lines
   of the source, whatever the whitespace in them; a line of braces alone counts on neither side)
   does not count: a body that pastes the source names every identifier
-  without summarizing it. A block is a ``` or ~~~ fence, opened and closed at the start of a line as
-  CommonMark reads it (a ``` inside a line of prose opens none), or a run of lines indented by four
+  without summarizing it. A block is a ``` or ~~~ fence, opened and closed at the start of a line or
+  indented under a list item, as CommonMark reads it (fenced_blocks; a ``` inside a line of prose opens
+  none), or a run of lines indented by four
   spaces or a tab after a blank line. A fence around the model's own text (a signature list, a summary wrapped
   in ```markdown) counts; the format column holds it against the body. A name the facts list under "words" is an everyday
   word too (`author`, `status`, `main`): it counts only where the body marks it as code (a backtick
@@ -53,12 +54,15 @@ For every model under <out> (one directory per model key) and every source file 
 - numbers = the exact counts of facts.json the body states (the seed-data row counts), not stuck to a
   letter (`v3`, `S3`) and no part of a date (`2026-11-06`); a missing summary expects its numbers too;
 - format: missing lead line, '#' to '###' headings outside code fences, code fence markers (``` and ~~~
-  at the start of a line), leaked reasoning markers (`<think>`, gpt-oss's harmony and Gemma's channel
+  at the start of a line or indented under a list item, as fenced_blocks reads them), leaked reasoning
+  markers (`<think>`, gpt-oss's harmony and Gemma's channel
   markers; one in backticks or right after a quote is the summary writing about it, no leak);
 - failed = why a body is not a summary: missing, empty, leak-only (a leak and nothing after the leading
   reasoning block, or one that never closes; a complete summary after a reasoning block, `<think>`,
   harmony's analysis channel or Gemma's thought channel, with or without its lead, is a leak, not a
-  failure), refusal, too-short (under 80 bytes); a failed body scores 0 in recall.
+  failure, and so is one after reasoning a chat template opened, which ends in a `</think>` alone on its
+  line or glued to a line's end, as CompletionParser strips it), refusal, too-short (under 80 bytes); a
+  failed body scores 0 in recall.
   The package and project summaries a run writes are expected for every directory that holds an
   indexed source (and the root), so a run whose package or project phase failed has missing rows
   there too. cutOff = the generation hit maxOutputTokens (from the
@@ -68,7 +72,8 @@ A file is a source of the corpus as run.py configures srcmorph: by its extension
 both in any case (run.indexes).
 The facts and coverage lines srcmorph puts in front of a body are srcmorph's, not the model's: every
 measure is taken on the body without them. A reasoning block in front of the answer (`<think>`,
-harmony's analysis channel, Gemma's thought channel) is no part of the summary either: every measure
+harmony's analysis channel, Gemma's thought channel, or reasoning up to a `</think>` without its
+`<think>`, answer_of) is no part of the summary either: every measure
 but the leaks (recall, invented names, numbers, headings, fences, the lead, the body bytes and the
 too-short and refusal checks) reads the answer after it.
 
@@ -496,12 +501,52 @@ UNCLOSED_REASONING = re.compile(r"^\s*(?:<think>(?!.*</think>)|<\|channel>though
                                 r"|(?:<\|start\|>\w*)?<\|channel\|>analysis<\|message\|>(?!.*<\|end\|>))", re.S)
 
 
+# The tag pair of the reasoning a chat template opens itself (Qwen3, DeepSeek-R1): the body holds only the
+# closing tag (CompletionParser.THINK_TAG_START_MARKER / THINK_TAG_END_MARKER).
+THINK_START, THINK_END = "<think>", "</think>"
+# A closing tag after one of these is text about the tag ("`</think>`"), not the end of a line of reasoning.
+NOT_GLUING = "\"'`"
+
+
+def answer_before(before):
+    """Whether a line of the text before a glued closing tag starts like an answer: the lead's '>' or a
+    code fence (CompletionParser.answerBefore). Reasoning has neither."""
+    return any(line.strip().startswith((">", "```", "~~~")) for line in before.split("\n"))
+
+
+def injected_end(text, alone):
+    """Where the closing tag that ends a template-opened reasoning starts, or -1: the first one with no
+    <think> before it that stands alone on its line (alone), or else that ends its line glued to the word
+    before it, after no line that starts like an answer (CompletionParser.injectedEnd)."""
+    index = text.find(THINK_END)
+    while index >= 0 and THINK_START not in text[:index]:
+        line_end = text.find("\n", index)
+        rest = text[index + len(THINK_END):len(text) if line_end < 0 else line_end]
+        before = text[text.rfind("\n", 0, index) + 1:index]
+        if not rest.strip():
+            if alone and not before.strip():
+                return index
+            if (not alone and before and not before[-1].isspace() and before[-1] not in NOT_GLUING
+                    and not answer_before(text[:index])):
+                return index
+        index = text.find(THINK_END, index + 1)
+    return -1
+
+
 def answer_of(text):
-    """The model's answer: its text (model_text) without the reasoning block in front of it, which is no
-    part of the summary (a leak, counted on the whole text); nothing when that block never closes."""
+    """The model's answer: its text (model_text) without the reasoning in front of it, which is no part of
+    the summary (a leak, counted on the whole text); nothing when that block never closes. The reasoning
+    is a block that opens the text, or, as CompletionParser strips it, the text up to a </think> with no
+    <think> before it that stands alone on its line or ends a line glued to its last word (a template
+    opened the block itself)."""
     if UNCLOSED_REASONING.match(text):
         return ""
-    return REASONING_BLOCK.sub("", text, count=1)
+    if REASONING_BLOCK.match(text):
+        return REASONING_BLOCK.sub("", text, count=1)
+    end = injected_end(text, True)
+    if end < 0:
+        end = injected_end(text, False)
+    return text if end < 0 else text[end + len(THINK_END):]
 
 
 def without_copies(body, source):

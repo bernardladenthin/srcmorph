@@ -10,6 +10,9 @@
 # (one with both counts in each); the other keys count wherever they stand (a service's volumes: and
 # the top-level volumes: alike). "variable substitutions" counts every ${NAME} and $NAME, not the
 # escape $${NAME} or $$NAME, which Compose writes as a literal ($$${NAME} is a $ and a substitution).
+# Compose interpolates a block scalar too (command: > with sh -c "echo ${GREETING}"), so that counter
+# reads the file as written ([raw]) and leaves out only a $ in a comment: after a # at a line start or
+# after a blank, at most 200 characters before it on its line.
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [ignore] comments and block scalars	(?m)(?<=[:-][ \t]{1,16})[|>][-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+([ \t]++)[^ \t\n][^\n]*+(?:\n(?:\1[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
 services with an image	(?m)^[ \t]++image[ \t]*+:
@@ -24,4 +27,4 @@ secret lists	(?m)^[ \t]*+secrets[ \t]*+:
 restart policies	(?m)^[ \t]++restart[ \t]*+:
 profiles	(?m)^[ \t]++profiles[ \t]*+:
 deploy sections	(?m)^[ \t]++deploy[ \t]*+:
-variable substitutions	(?<!\$)(?:\$\$)*+\$\{?[A-Za-z_]\w*+
+[raw] variable substitutions	(?m)(?<!\$)(?:\$\$)*+\$\{?[A-Za-z_]\w*+(?<!(?:^|[ \t])#[^\n]{0,200})

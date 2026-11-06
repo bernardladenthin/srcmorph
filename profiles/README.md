@@ -102,8 +102,10 @@ markers existed keeps its facts hash: they enter it only where set.
 
 Every pattern has a time limit, counted in characters the matcher reads rather than in seconds, so
 it holds the same on every machine: 2,000 per character of the source plus 1,000,000. The patterns
-here read at most about 830 per character, `java-facts`' field initializer (read up to 10,000
-characters) over a file of nothing but `public a b=` lines, most of them a few
+here read at most about 1,160 per character, `perl-facts`' ignore line over one long line of nothing
+but `<` (measured over the inputs of `ProfileFactPatternsLinearityTest`: 1,120 at 2,000 characters,
+1,152 at 8,000, 1,162 at 128,000; next `java-facts`' field initializer over `public x y = ` lines, 690),
+most of them a few
 (`ProfileFactPatternsLinearityTest` asserts that none reaches the limit), so it stops only a
 pattern that backtracks without end, a nested quantifier or a lazy scan for a closer that never
 comes, in a counter of your own: that counter is left out of
@@ -127,14 +129,16 @@ again from every later opener. A shell or Perl `<<` that is a shift or sits in a
 Perl, now at most 0.2 s), and the Java parameter list is read possessively, one level of parentheses
 deep (the 6 000 constants of the large corpus's enum took 8 s, now 0.1 s); `ShellFactPatternsTest`, `PerlFactPatternsTest` and
 `JavaStructureFactPatternsTest` pin these. `ProfileFactPatternsLinearityTest` measures all of it for
-every pattern of every file here: it repeats 119 adversarial lines (unclosed openers and tags,
+every pattern of every file here: it repeats 121 adversarial lines (unclosed openers and tags,
 heredoc markers, escaped quotes, unbalanced parentheses, runs of one character), and each of them
 without its line break into one long line, and counts the characters the matcher reads, which may
 grow at most six times for four times the input; a matcher that overflows the stack fails it too.
 It found six quadratic patterns in the 1.4.0 files (the XML and POM regions, the XSD counter, the
 Java type arguments and field initializer, the shell option arms); the one-line inputs found the
-rest: string literals full of escaped quotes in nine files (a literal not closed on its line now
-ends there, a SQL or PowerShell one at the end of the file), the shell and Perl heredoc openers on a
+rest: string literals full of escaped quotes in nine files (`gradle`, `graphql`, `groovy`, `java`,
+which `java-ee` includes, `kotlin`, `proto`, `scala`, `sql` and `terraform`; a literal not closed on
+its line now ends there, a SQL one at the end of the file, as a PowerShell string that may span
+lines now does too), the shell and Perl heredoc openers on a
 last line without a line break, the `${`/`#{` placeholders of MyBatis and properties, the secret
 keys of properties, Kotlin's extension functions and the Java modifier lists, which overflowed the
 stack over thousands of annotations on one line. All are fixed, and a new file is measured without a
@@ -150,7 +154,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `sql-facts` | Counts |
 |---|---|
-| `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` or `'` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL. Also, so an apostrophe in them opens no literal: PostgreSQL's dollar quoting on one line (a multi-line function body stays), Oracle's `q'[...]'`, a `"..."` holding an apostrophe (a quoted identifier stays) and MySQL's `#` comments (not a T-SQL `#temp`). Not seen as written: PostgreSQL's `'C:\'` (the backslash escapes) and nested comments (one ends at its first `*/`) |
+| `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` or `'` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL. Also, so an apostrophe in them opens no literal: PostgreSQL's dollar quoting on one line (a multi-line function body stays), Oracle's `q'[...]'`, a `"..."` holding an apostrophe (a quoted identifier stays) and MySQL's `#` comments (not a T-SQL `#temp`). A backslash escapes a quote as in MySQL (`'it\'s'`), but not one a `,`, `)`, `;`, `+`, `\|` or the line end follows: `'C:\'`, `ESCAPE '\'` and `REPLACE(p, '\', '/')` end there, as T-SQL, Oracle and standard PostgreSQL read them. Not seen as written: `'C:\' AS root` (the backslash escapes, as before a word in MySQL) and nested comments (one ends at its first `*/`) |
 | `INSERT statements` | `INSERT [INTO]` at the start of a line, also MySQL's `IGNORE` / `LOW_PRIORITY`, an Oracle hint, `INSERT ALL` / `FIRST` and `REPLACE INTO`; not a `MERGE` branch or a trigger's event list |
 | `VALUES rows (approx)` | the row tuples of `VALUES` lists, so a multi-row `INSERT` counts each row, not MySQL's `VALUES(col)` of `ON DUPLICATE KEY UPDATE`; rows an `INSERT ... SELECT` reads from a table are not seen |
 | `tables`, `views`, `indexes` | `CREATE` statements, also `TEMP`/`UNLOGGED`/`FOREIGN` and MariaDB's `OR REPLACE` tables, `MATERIALIZED`, `OR REPLACE`/`OR ALTER`, MySQL's `ALGORITHM` / `DEFINER` / `SQL SECURITY` and Oracle's `FORCE EDITIONABLE` views (not a `MATERIALIZED VIEW LOG`), `UNIQUE`/`CLUSTERED`/`COLUMNSTORE`/`FULLTEXT`/`SPATIAL`/`BITMAP` indexes |

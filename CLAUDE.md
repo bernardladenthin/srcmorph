@@ -175,7 +175,7 @@ Package root: `net.ladenthin.srcmorph`.
 - **`support/`** — foundation helpers with no dependency on anything above them: `ChecksumSupport`,
   `TimeSupport`, `SourcePaths`, `SourceExcludeFilter`, `ReadBudget` (the time limit of a fact
   counter's and a `contentMatches` pattern, in characters read), `UrlUserInfo` (masks a URL's
-  `user:password@` in a log line, a message or the CLI's configuration echo),
+  `user:password@`, query and fragment in a log line, a message or the CLI's configuration echo),
   `SourceLines` (a source is read once with `\n` line endings: checksum, plan, prompt and chunks see
   the same text),
   `Shebang` (the interpreter a `#!` line names: `fileInterpreters` and the `interpreters` condition),

@@ -161,9 +161,9 @@ srcMorph:
   # (~260 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
   # gpt-oss reads about 270,000 characters of source (the 96K window less the output budget and the
   # prompt), so the tiers start at 260,000 (a size condition measures the source's bytes with \n
-  # line endings). The kinds without tiers of their own (shell, Perl,
-  # TypeScript, ... the fallback) map-reduce on gpt-oss when a file exceeds that window, instead of
-  # failing the run.
+  # line endings). Every gpt-oss rule map-reduces a file that still exceeds the window (one denser
+  # than the plan's 3 characters per token below a tier, or a kind without tiers: shell, Perl,
+  # TypeScript, ... the fallback) instead of failing the run.
   rules:
     # Files that hold credentials are never sent to a model, whatever their extension: the highest
     # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
@@ -249,6 +249,9 @@ srcMorph:
       promptKey: file-body-oop
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: java-facts
       condition:
         extensions: [".java"]
@@ -256,6 +259,9 @@ srcMorph:
       promptKey: file-body-sql
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: sql-facts
       condition:
         extensions: [".sql"]
@@ -342,6 +348,9 @@ srcMorph:
       promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: pom-facts
       condition:
@@ -350,6 +359,9 @@ srcMorph:
       promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: xml-facts
       condition:
         extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
@@ -366,6 +378,9 @@ srcMorph:
       promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: jee-facts
       condition:
@@ -374,6 +389,9 @@ srcMorph:
       promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: mybatis-facts
       condition:

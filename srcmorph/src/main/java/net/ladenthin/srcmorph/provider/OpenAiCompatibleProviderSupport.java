@@ -149,6 +149,9 @@ final class OpenAiCompatibleProviderSupport {
     /** First HTTP status above the success range. */
     private static final int HTTP_OK_END = 300;
 
+    /** What separates a URL's scheme from the rest. */
+    private static final String SCHEME_SEPARATOR = "://";
+
     /** The character a URL's query starts with. */
     private static final char QUERY_START = '?';
 
@@ -453,7 +456,40 @@ final class OpenAiCompatibleProviderSupport {
         if (query != null) {
             throw new IllegalArgumentException(query);
         }
+        final @Nullable String malformed = malformedProblem(base);
+        if (malformed != null) {
+            throw new IllegalArgumentException(malformed);
+        }
         return withoutTrailingSlashes(base);
+    }
+
+    /**
+     * The problem of a {@code baseUrl} that is no URL, such as one whose password holds an unencoded
+     * {@code /} (the part before it reads as a host and a port that is no number). With an {@code @} in
+     * it nothing after the scheme is shown: it may be the password.
+     *
+     * @param baseUrl the model's {@code baseUrl}, trimmed
+     * @return the problem, or {@code null} when it parses as a URL
+     */
+    static @Nullable String malformedProblem(final String baseUrl) {
+        try {
+            // a URL without a host (https:///v1) is no server either
+            return new URL(baseUrl).getHost().isEmpty() ? malformedMessage(baseUrl) : null;
+        } catch (final MalformedURLException e) {
+            return malformedMessage(baseUrl);
+        }
+    }
+
+    private static String malformedMessage(final String baseUrl) {
+        if (baseUrl.indexOf('@') < 0) {
+            return "its baseUrl is not a URL: '" + UrlUserInfo.mask(baseUrl) + "'";
+        }
+        // with an @ the part after the scheme may be a password the mask did not recognize
+        final int scheme = baseUrl.indexOf(SCHEME_SEPARATOR);
+        final String shown = scheme < 0 ? "***" : baseUrl.substring(0, scheme + SCHEME_SEPARATOR.length()) + "***";
+        return "its baseUrl is not a URL: '" + shown + "' (a character of the password that a URL does not"
+                + " allow there, such as /, must be percent-encoded; better, put the key in the variable"
+                + " apiKeyEnv names)";
     }
 
     /**
@@ -652,6 +688,10 @@ final class OpenAiCompatibleProviderSupport {
         if (query != null) {
             return query;
         }
+        final @Nullable String malformed = malformedProblem(baseUrl.trim());
+        if (malformed != null) {
+            return malformed;
+        }
         final String name = apiKeyEnv.trim();
         if (name.isEmpty()) {
             return null;
@@ -668,7 +708,7 @@ final class OpenAiCompatibleProviderSupport {
         try {
             host = new URL(base).getHost();
         } catch (final MalformedURLException e) {
-            return "its baseUrl is not a URL: '" + UrlUserInfo.mask(base) + "'";
+            return malformedMessage(base);
         }
         return isLoopbackHost(host)
                 ? null

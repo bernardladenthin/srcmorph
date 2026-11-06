@@ -128,6 +128,8 @@ public final class FactPatternLinearity {
             "<decisionTable a=\"b\" \n",
             "<endpoint a=\"b\" \n",
             "FROM \n",
+            "RUN <<a <<b\n",
+            "RUN echo \"<<a \n",
             // Scala, Protobuf, Avro, GraphQL, AsyncAPI
             "object A extends B {\n",
             "def f[A](x: \n",

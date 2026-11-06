@@ -67,5 +67,14 @@ public class UrlUserInfoTest {
         assertThat(UrlUserInfo.carriesUserInfo("https://h/v1?by=a@b"), is(false));
         assertThat(UrlUserInfo.carriesUserInfo("https://h/v1"), is(false));
     }
+
+    @Test
+    public void mask_aPasswordWithAQuoteOrAQueryOrAFragmentMark_isMaskedWhole() {
+        // act, assert: characters a password may hold unencoded before the host
+        assertThat(UrlUserInfo.mask("https://alice:it's@host/v1"), is("https://***@host/v1"));
+        assertThat(UrlUserInfo.mask("https://alice:s3cr?t@host/v1"), is("https://***@host/v1"));
+        assertThat(UrlUserInfo.mask("https://alice:se#cret@host/v1"), is("https://***@host/v1"));
+        assertThat(UrlUserInfo.carriesUserInfo("https://alice:s3cr?t@host/v1"), is(true));
+    }
     // </editor-fold>
 }

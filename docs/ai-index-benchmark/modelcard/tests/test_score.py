@@ -387,6 +387,30 @@ class FailureTest(unittest.TestCase):
 
             self.assertEqual((row["failed"], row["idsFound"]), ("leak-only", 0), text)
 
+    def test_aSummaryAfterReasoningATemplateOpened_isScoredAfterTheClosingTag(self):
+        # the template wrote the <think>; the body holds the reasoning and its closing tag, alone on its
+        # line or glued to the reasoning's last word, as CompletionParser strips it
+        reasoning = "I will name Foo with alpha, beta and gamma, and keep it short and to the point."
+        for tag in ("\n</think>\n", "</think>\n"):
+            row = score.score_file("class Foo { int alpha; int beta; int gamma; }",
+                                   reasoning + tag + "> Foo holds alpha." + LONG, ["Foo", "alpha", "beta", "gamma"], [])
+
+            self.assertEqual((row["failed"], row["lead"], row["leaks"], row["idsFound"]), ("", True, 1, 2), tag)
+
+    def test_reasoningATemplateOpenedWithNothingAfterIt_isLeakOnly(self):
+        row = score.score_file("class Foo { int alpha; }", "Foo has alpha, so I will say that." + LONG + "\n</think>\n",
+                               ["Foo", "alpha"], [])
+
+        self.assertEqual((row["failed"], row["idsFound"]), ("leak-only", 0))
+
+    def test_aClosingTagTheAnswerWritesAbout_endsNoReasoning(self):
+        # inside a line, after a backtick, or glued to a line after the lead: text about the tag
+        for text in (body("Strips the reasoning up to </think> and keeps Foo."),
+                     body("- End marker: `</think>`\n- Foo"), body("- End marker:</think>\n- Foo")):
+            row = score.score_file("class Foo {}", text, ["Foo"], [])
+
+            self.assertEqual((row["failed"], row["lead"], row["idsFound"]), ("", True, 1), text)
+
     def test_aCompleteSummaryAfterAHarmonyAnalysisBlock_isNoFailureButALeak(self):
         row = score.score_file("", "<|channel|>analysis<|message|>planning<|end|>"
                                "<|start|>assistant<|channel|>final<|message|>" + body("Fine."), [], [])

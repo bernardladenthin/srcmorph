@@ -131,11 +131,11 @@ with the code, not with the run's conclusions)
   counts
 - [x] R2 The verified findings of R1 fixed, each with its tests (a large refactor is reported in
   this file instead of applied, as CLAUDE.md says)
-- [ ] R3 Round 2 the same way, on the state after R2; its verified findings fixed. Another round
+- [x] R3 Round 2 the same way, on the state after R2; its verified findings fixed. Another round
   follows while a round finds anything of high or medium weight, at most four rounds in all
   - round 2: 0 high, 12 medium, 31 low; all fixed but one by decision (dcae0e46)
   - round 3: 0 high, 19 medium, 28 low; fixed but two left open with reasons (see Open)
-  - round 4: the last
+  - round 4 (the last): 0 high, 2 medium, 15 low; all fixed but the stale search.json (a paid re-run)
 - [ ] R4 CI green, the SonarCloud analysis of the PR without a new issue of the run's own, no open
   review comment on the PR left unanswered
 

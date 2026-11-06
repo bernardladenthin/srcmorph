@@ -37,9 +37,8 @@ import org.slf4j.LoggerFactory;
  * {@value ReadBudget#READ_ALLOWANCE}. A pattern that backtracks past that (a nested quantifier over a long line,
  * a lazy scan for a closer that never comes) is stopped: a counter is left out of the facts, an ignore
  * counter blanks nothing, and a warning names it. The patterns of the shipped profile read at most
- * about 830 characters per character (java-facts' field initializer over a file of nothing but
- * {@code public a b=} lines; {@code ProfileFactPatternsLinearityTest} asserts that none reaches the
- * limit).</p>
+ * about 1,160 characters per character (perl-facts' ignore line over one long line of nothing but
+ * {@code <}; {@code ProfileFactPatternsLinearityTest} asserts that none reaches the limit).</p>
  */
 public final class FactExtractor {
 

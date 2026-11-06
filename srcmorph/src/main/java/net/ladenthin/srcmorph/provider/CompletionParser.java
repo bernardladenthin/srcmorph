@@ -53,6 +53,15 @@ public class CompletionParser {
     /** Closes a {@link #THINK_TAG_START_MARKER} block. */
     public static final String THINK_TAG_END_MARKER = "</think>";
 
+    /** How a summary's lead line starts; reasoning does not. */
+    private static final String LEAD_MARKER = ">";
+
+    /** How a backtick code fence opens. */
+    private static final String FENCE = "```";
+
+    /** How a tilde code fence opens. */
+    private static final String TILDE_FENCE = "~~~";
+
     /** The characters before a closing tag that make it a tag the text names: quotes and a backtick. */
     private static final String NOT_GLUING = "\"'`";
 
@@ -88,9 +97,10 @@ public class CompletionParser {
      *       closing {@link #THINK_TAG_END_MARKER}, and the trimmed text after it is returned. With no
      *       {@link #THINK_TAG_START_MARKER} before it, the first one that stands alone on its line ends the
      *       reasoning; without such a line, the first one that ends its line glued to the reasoning's last
-     *       word ({@code I will write it.</think>}). A tag inside a line, or after a space, a quote or a
-     *       backtick (in a sentence, in quotes, after a list item's label) is text the answer or the
-     *       reasoning writes about it.</li>
+     *       word ({@code I will write it.</think>}), when no line before it starts like an answer (a
+     *       {@code >} lead, a code fence). A tag inside a line, or after a space, a quote or a backtick (in
+     *       a sentence, in quotes, after a list item's label) is text the answer or the reasoning writes
+     *       about it.</li>
      *   <li>Otherwise the response is returned trimmed, any marker in it kept as text.</li>
      *   <li>{@code null} input is treated as an empty response.</li>
      * </ul>
@@ -165,11 +175,29 @@ public class CompletionParser {
      * @return {@code true} when the tag is glued to the end of its line's text
      */
     private static boolean gluedToALineEnd(final String text, final int index) {
-        if (index == 0 || !restOfLine(text, index).trim().isEmpty()) {
+        if (index == 0 || !restOfLine(text, index).trim().isEmpty() || answerBefore(text.substring(0, index))) {
             return false;
         }
         final char before = text.charAt(index - 1);
         return !Character.isWhitespace(before) && NOT_GLUING.indexOf(before) < 0;
+    }
+
+    /**
+     * Returns whether the text before a glued tag already holds an answer: a line that starts with the
+     * lead's {@code >} or opens a code fence. Reasoning has neither, so a tag after one is text the answer
+     * writes ({@code - End marker:</think>}, a template quoted in a fence).
+     *
+     * @param before the text before the tag
+     * @return {@code true} when a line of it starts like an answer
+     */
+    private static boolean answerBefore(final String before) {
+        for (final String line : before.split("\n", -1)) {
+            final String start = line.trim();
+            if (start.startsWith(LEAD_MARKER) || start.startsWith(FENCE) || start.startsWith(TILDE_FENCE)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String restOfLine(final String text, final int index) {

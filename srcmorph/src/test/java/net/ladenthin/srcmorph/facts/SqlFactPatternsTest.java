@@ -197,6 +197,52 @@ public class SqlFactPatternsTest {
         assertThat(count("VALUES rows (approx)", sql), is(3));
     }
 
+    /**
+     * T-SQL, Oracle and standard PostgreSQL end a literal at its first quote, so {@code '\'} is a whole
+     * literal: a backslash before a quote that a delimiter follows escapes nothing, or the rest of the
+     * file would be blanked.
+     */
+    @Test
+    public void ignore_aBackslashBeforeAQuoteADelimiterFollows_endsTheLiteral() {
+        // arrange
+        final String sql = "CREATE TABLE files (id INT, path NVARCHAR(200));\nGO\n"
+                + "CREATE VIEW v AS SELECT REPLACE(path, '\\', '/') AS p FROM files;\nGO\n"
+                + "CREATE TABLE logs (id INT);\nINSERT INTO logs VALUES (1);\nINSERT INTO logs VALUES (2);\n"
+                + "CREATE PROCEDURE p AS SELECT 1;\n";
+
+        // act, assert
+        assertThat(count("INSERT statements", sql), is(2));
+        assertThat(count("VALUES rows (approx)", sql), is(2));
+        assertThat(count("tables", sql), is(2));
+        assertThat(count("functions/procedures", sql), is(1));
+    }
+
+    @Test
+    public void ignore_anEscapeClauseAndADriveRoot_closeTheirLiterals() {
+        // arrange
+        final String next = "\nINSERT INTO t VALUES ('a');\nINSERT INTO t VALUES (2);\n";
+
+        // act, assert
+        assertThat(count("INSERT statements", "SELECT n FROM t WHERE n LIKE 'a\\_%' ESCAPE '\\';" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT n FROM t WHERE n LIKE 'a\\_%' ESCAPE '\\'" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT 'C:\\', 1;" + next), is(2));
+        assertThat(count("INSERT statements", "SET @p = 'C:\\' + @name;" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT 'C:\\' || name FROM t;" + next), is(2));
+        assertThat(count("INSERT statements", "SELECT f('C:\\' );" + next), is(2));
+    }
+
+    /** MySQL's escaped quote stays inside its literal, before a letter and before a blank and a word. */
+    @Test
+    public void ignore_mySqlEscapedQuotesBeforeALetterOrAWord_stayInsideTheLiteral() {
+        // arrange
+        final String next = "\nINSERT INTO t VALUES ('a');\nINSERT INTO t VALUES (2);\n";
+
+        // act, assert
+        assertThat(count("INSERT statements", "INSERT INTO t VALUES ('it\\'s', 'x');" + next), is(3));
+        assertThat(count("VALUES rows (approx)", "INSERT INTO t VALUES ('it\\'s', 'x');" + next), is(3));
+        assertThat(count("INSERT statements", "SELECT 'say \\'hi\\' now';" + next), is(2));
+    }
+
     @Test
     public void ignore_dashesInAStringLiteral_areNoComment() {
         // act, assert
@@ -273,7 +319,7 @@ public class SqlFactPatternsTest {
     @Test
     public void ignore_manyEscapedQuotes_stayLinear() {
         // arrange
-        final String sql = FactPatternLinearity.repeat("\\'\n", LONG_INPUT_LINES) + "INSERT INTO t VALUES (1);\n";
+        final String sql = FactPatternLinearity.repeat("\\'s\n", LONG_INPUT_LINES) + "INSERT INTO t VALUES (1);\n";
 
         // act, assert
         // the first quote opens a literal the escaped ones never close

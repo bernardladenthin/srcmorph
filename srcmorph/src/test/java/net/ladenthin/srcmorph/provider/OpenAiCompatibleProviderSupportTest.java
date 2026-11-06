@@ -711,6 +711,54 @@ public class OpenAiCompatibleProviderSupportTest {
     }
 
     @Test
+    public void keyProblem_aPasswordWithAQuestionMark_isUserInfoNotAQuery() {
+        // act
+        final String problem =
+                OpenAiCompatibleProviderSupport.keyProblem("https://alice:s3cr?t@gw.example.com/v1", " ", KEY_SET);
+
+        // assert: refused as user info, and nothing of the password shown
+        assertThat(problem, containsString("carries user info ('https://***@gw.example.com/v1')"));
+    }
+
+    @Test
+    public void keyProblem_aPasswordWithASlash_isRefusedWithoutShowingIt() {
+        // act
+        final String problem =
+                OpenAiCompatibleProviderSupport.keyProblem("https://alice:pa/ss@gw.example.com/v1", " ", KEY_SET);
+
+        // assert
+        assertThat(problem, containsString("its baseUrl is not a URL: 'https://***'"));
+        assertThat(problem.contains("alice"), is(false));
+    }
+
+    @Test
+    public void malformedProblem_aUrl_isNone() {
+        // act, assert
+        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("https://gw:8443/v1"), is(nullValue()));
+        assertThat(
+                OpenAiCompatibleProviderSupport.malformedProblem("no url"), is("its baseUrl is not a URL: 'no url'"));
+        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("no url@x"), containsString("'***'"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.malformedProblem("https:///v1"),
+                is("its baseUrl is not a URL: 'https:///v1'"));
+    }
+
+    @Test
+    public void endpoint_aPasswordWithASlash_isRefused() {
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("m")
+                .baseUrl("https://alice:pa/ss@gw/v1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("is not a URL"));
+    }
+
+    @Test
     public void queryProblem_markAtTheStart_showsNothingBeforeIt() {
         // act, assert: the first character is a mark, of either kind
         assertThat(OpenAiCompatibleProviderSupport.queryProblem("?x"), containsString("('' followed by '?...')"));
