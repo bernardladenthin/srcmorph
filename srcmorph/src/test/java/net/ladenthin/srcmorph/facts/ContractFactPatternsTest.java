@@ -201,6 +201,24 @@ public class ContractFactPatternsTest {
     }
 
     @Test
+    public void graphql_schemaDefinitionAndNestedArgumentParentheses_countOnlyTheFields() {
+        // arrange
+        final String schema = "schema @link(url: \"https://specs.apollo.dev/federation/v2.3\") {\n"
+                + "  query: Query\n"
+                + "  mutation: Mutation\n"
+                + "}\n"
+                + "type Query {\n"
+                + "  orders(filter: OrderFilter @deprecated(reason: \"x\"), first: Int): [Order]\n"
+                + "  query: String\n"
+                + "}\n";
+
+        // act, assert
+        // orders and the field named query; not the root operations of the schema definition
+        assertThat(count(GRAPHQL, "fields (approx)", schema), is(2));
+        assertThat(count(GRAPHQL, "directive uses", schema), is(2));
+    }
+
+    @Test
     public void graphql_unclosedBlockString_runsToTheEnd() {
         // act, assert
         assertThat(count(GRAPHQL, "object types", "type A { x: Int }\n\"\"\"\ntype B { y: Int }\n"), is(1));

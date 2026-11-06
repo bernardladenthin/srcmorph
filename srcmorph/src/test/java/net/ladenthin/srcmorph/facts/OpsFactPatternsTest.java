@@ -251,6 +251,34 @@ public class OpsFactPatternsTest {
         assertThat(count(K8S, "Helm control actions (approx)", MANIFEST), is(1));
         assertThat(count(K8S, ".Values references", MANIFEST), is(2));
     }
+
+    @Test
+    public void k8s_manifestEmbeddedInAConfigMap_countsNoContainerButItsHelmValues() {
+        // arrange
+        final String configMap = "apiVersion: v1\n"
+                + "kind: ConfigMap\n"
+                + "data:\n"
+                + "  pod.yaml: |\n"
+                + "    kind: Pod\n"
+                + "    spec:\n"
+                + "      containers:\n"
+                + "        - image: busybox\n"
+                + "          ports:\n"
+                + "            - containerPort: 80\n"
+                + "          livenessProbe: {}\n"
+                + "  app.properties: |\n"
+                + "    url={{ .Values.url }}\n"
+                + "    {{- if .Values.debug }}debug=true{{- end }}\n"
+                + "  # url={{ .Values.old }}\n";
+
+        // act, assert
+        assertThat(count(K8S, "container images", configMap), is(0));
+        assertThat(count(K8S, "container ports", configMap), is(0));
+        assertThat(count(K8S, "probes", configMap), is(0));
+        // Helm renders a block scalar too: url and debug; not the commented-out one
+        assertThat(count(K8S, ".Values references", configMap), is(2));
+        assertThat(count(K8S, "Helm control actions (approx)", configMap), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="actions-facts">
@@ -325,6 +353,32 @@ public class OpsFactPatternsTest {
         // act, assert
         // A, B, C-KEY, D and E; not the secrets: key nor a file named secrets.txt outside an expression
         assertThat(count(ACTIONS, "secret references", workflow), is(5));
+    }
+
+    @Test
+    public void actions_matrixIncludeAndExcludeEntries_areNoSteps() {
+        // arrange
+        final String workflow = "jobs:\n"
+                + "  build:\n"
+                + "    runs-on: ${{ matrix.os }}\n"
+                + "    strategy:\n"
+                + "      matrix:\n"
+                + "        include:\n"
+                + "          - name: linux\n"
+                + "            os: ubuntu-latest\n"
+                + "          - name: windows\n"
+                + "            os: windows-latest\n"
+                + "        exclude:\n"
+                + "        - name: mac\n"
+                + "    steps:\n"
+                + "      - name: Build\n"
+                + "        run: mvn verify\n"
+                + "      - uses: actions/checkout@v4\n";
+
+        // act, assert
+        assertThat(count(ACTIONS, "steps (approx)", workflow), is(2));
+        assertThat(count(ACTIONS, "matrices", workflow), is(1));
+        assertThat(count(ACTIONS, "jobs on a runner", workflow), is(1));
     }
     // </editor-fold>
 
@@ -613,6 +667,30 @@ public class OpsFactPatternsTest {
     }
 
     @Test
+    public void asyncapi_payloadsOfMessageExamples_areNoPayloads() {
+        // arrange
+        final String yaml = "asyncapi: 2.6.0\n"
+                + "channels:\n"
+                + "  orders:\n"
+                + "    publish:\n"
+                + "      message:\n"
+                + "        payload:\n"
+                + "          type: object\n"
+                + "        examples:\n"
+                + "          - name: placed\n"
+                + "            payload:\n"
+                + "              id: 1\n"
+                + "          - payload:\n"
+                + "              id: 2\n"
+                + "        correlationId:\n"
+                + "          location: $message.header#/id\n";
+
+        // act, assert
+        assertThat(count(ASYNCAPI, "payloads", yaml), is(1));
+        assertThat(count(ASYNCAPI, "correlation ids", yaml), is(1));
+    }
+
+    @Test
     public void asyncapi_minifiedJsonWithAHashInAString_blanksNoKeyAfterIt() {
         // arrange
         final String json = "{\"asyncapi\":\"2.6.0\",\"channels\":{\"chat\":{\"publish\":{\"operationId\":\"post\","
@@ -818,6 +896,33 @@ public class OpsFactPatternsTest {
         assertThat(count(ANSIBLE, "registered results", play), is(1));
         assertThat(count(ANSIBLE, "FQCN module calls", play), is(2));
         assertThat(count(ANSIBLE, "conditionals", play), is(1));
+    }
+
+    @Test
+    public void ansible_loopItemsAndTemplatesInABlockScalar_countAsAnsibleReadsThem() {
+        // arrange
+        final String play = "- hosts: all\n"
+                + "  tasks:\n"
+                + "    - name: Users\n"
+                + "      ansible.builtin.user:\n"
+                + "        name: \"{{ item.name }}\"\n"
+                + "      loop:\n"
+                + "        - name: alice\n"
+                + "          groups: admin\n"
+                + "        - name: bob\n"
+                + "    - name: Script\n"
+                + "      ansible.builtin.shell: |\n"
+                + "        echo {{ greeting }}\n"
+                + "        # echo {{ commented }}\n"
+                + "      with_items:\n"
+                + "      - name: x\n";
+
+        // act, assert
+        // Users and Script; not the items of loop: and with_items:
+        assertThat(count(ANSIBLE, "named tasks, handlers and plays", play), is(2));
+        assertThat(count(ANSIBLE, "loops", play), is(2));
+        // item.name and greeting, which Ansible renders in the script; not the commented-out one
+        assertThat(count(ANSIBLE, "template expressions", play), is(2));
     }
     // </editor-fold>
 
@@ -1299,8 +1404,21 @@ public class OpsFactPatternsTest {
         assertThat(count(POWERSHELL, "dot-sourced scripts", POWERSHELL_SCRIPT), is(1));
         assertThat(count(POWERSHELL, "try blocks", POWERSHELL_SCRIPT), is(1));
         assertThat(count(POWERSHELL, "errors raised", POWERSHELL_SCRIPT), is(2));
-        // Import-Module, Deploy-Shop, Get-AzStorageAccount, ForEach-Object, ConvertTo-Json, Write-Error
-        assertThat(count(POWERSHELL, "Verb-Noun command calls (approx)", POWERSHELL_SCRIPT), is(6));
+        // Import-Module, Get-AzStorageAccount, ForEach-Object, ConvertTo-Json, Write-Error; Deploy-Shop is
+        // only defined
+        assertThat(count(POWERSHELL, "Verb-Noun command calls (approx)", POWERSHELL_SCRIPT), is(5));
+    }
+
+    @Test
+    public void powershell_commandCallsInAnyCase_countAndAFunctionDefinitionDoesNot() {
+        // arrange
+        final String script = "function Get-Thing { get-childitem | where-object { $_ } | sort-object }\n"
+                + "Filter Find-Item { $_ }\n"
+                + "Get-Thing\n";
+
+        // act, assert
+        // get-childitem, where-object, sort-object and the call of Get-Thing; not the two definitions
+        assertThat(count(POWERSHELL, "Verb-Noun command calls (approx)", script), is(4));
     }
 
     @Test
@@ -1474,6 +1592,19 @@ public class OpsFactPatternsTest {
         // act, assert
         assertThat(count(NPM, "contributed commands", EXTENSION_JSON), is(2));
         assertThat(count(NPM, "language model tools", EXTENSION_JSON), is(2));
+    }
+
+    @Test
+    public void npm_contributedCommandsWithTheirKeysInAnyOrder_countEach() {
+        // arrange: title first, a key between command and title, a nested icon object
+        final String extension = "{\"contributes\": {\"commands\": [\n"
+                + "  {\"title\": \"Open\", \"command\": \"demo.open\"},\n"
+                + "  {\"command\": \"demo.close\", \"category\": \"Demo\", \"title\": \"Close\","
+                + " \"icon\": {\"light\": \"a.svg\", \"dark\": \"b.svg\"}}\n"
+                + "], \"keybindings\": [{\"command\": \"demo.open\", \"key\": \"ctrl+o\"}]}}\n";
+
+        // act, assert
+        assertThat(count(NPM, "contributed commands", extension), is(2));
     }
 
     @Test

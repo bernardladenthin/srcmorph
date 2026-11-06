@@ -479,11 +479,37 @@ public class EnterpriseXmlFactPatternsTest {
         assertThat(count(WSDL, "ports and endpoints", WSDL_SOURCE), is(1));
         assertThat(count(WSDL, "port types and interfaces", WSDL_SOURCE), is(1));
         assertThat(count(WSDL, "bindings", WSDL_SOURCE), is(1));
-        assertThat(count(WSDL, "operations", WSDL_SOURCE), is(2));
+        // the operation of the port type; its binding, which holds a soap:operation, does not count again
+        assertThat(count(WSDL, "operations", WSDL_SOURCE), is(1));
         assertThat(count(WSDL, "messages", WSDL_SOURCE), is(2));
         assertThat(count(WSDL, "SOAP bindings", WSDL_SOURCE), is(1));
         assertThat(count(WSDL, "XSD type definitions", WSDL_SOURCE), is(1));
-        assertThat(count(WSDL, "operations", WSDL_SOURCE.replace("<", "<wsdl:")), is(2));
+        assertThat(count(WSDL, "operations", WSDL_SOURCE.replace("<", "<wsdl:")), is(1));
+    }
+
+    @Test
+    public void wsdl_anyPrefixAndWsdl20Bindings_countAsWithoutAPrefix() {
+        // arrange
+        final String prefixed = WSDL_SOURCE
+                .replace("<soap:", "<soap12:")
+                .replaceAll(
+                        "<(/?)(definitions|types|message|portType|operation|input|binding|service|port)\\b", "<$1w:$2");
+        final String wsdl20 = "<description xmlns=\"http://www.w3.org/ns/wsdl\">\n"
+                + "<interface name=\"Orders\"><operation name=\"get\" pattern=\"http://www.w3.org/ns/wsdl/in-out\"/>"
+                + "</interface>\n"
+                + "<binding name=\"B\" interface=\"tns:Orders\"><operation ref=\"tns:get\"/></binding>\n"
+                + "</description>\n";
+
+        // act, assert
+        assertThat(count(WSDL, "services", prefixed), is(1));
+        assertThat(count(WSDL, "ports and endpoints", prefixed), is(1));
+        assertThat(count(WSDL, "port types and interfaces", prefixed), is(1));
+        assertThat(count(WSDL, "bindings", prefixed), is(1));
+        assertThat(count(WSDL, "operations", prefixed), is(1));
+        assertThat(count(WSDL, "messages", prefixed), is(2));
+        assertThat(count(WSDL, "SOAP bindings", prefixed), is(1));
+        // the interface's operation; the binding's ref names it again
+        assertThat(count(WSDL, "operations", wsdl20), is(1));
     }
     // </editor-fold>
 }

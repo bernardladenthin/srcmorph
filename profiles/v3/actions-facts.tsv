@@ -4,15 +4,17 @@
 #
 # GitHub Actions workflow counters (.github/workflows/*.yml and composite actions), for a rule with
 # the prompt file-body-ops: one per line, label TAB pattern (Java regex). The [ignore] line blanks
-# comments only: a run: block holds the commands and the secrets a job reads. "steps (approx)" counts
-# a list entry that starts with a step key; "actions used" an owner/repo@ref or a path in one, not
+# comments and the entries of a matrix's include and exclude lists (the lines below the key that are
+# deeper than it, or a list at its depth), not a block scalar: a run: block holds the commands and
+# the secrets a job reads. "steps (approx)" counts a list entry that starts with a step key, so a
+# "- name:" of a matrix entry does not count; "actions used" an owner/repo@ref or a path in one, not
 # a reusable workflow (owner/repo/.github/workflows/x.yml@ref), which "reusable workflow calls"
 # counts; "secret references" every secrets.NAME and secrets['NAME'] inside a ${{ }} expression on
 # its line (${{ inputs.t || secrets.T }}, two in one expression count twice), the name of a secret,
 # never its value; an expression longer than 300 characters before the secret, or with a } in it, is
 # not seen. OpsFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
-[ignore] comments	(?m)^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+[ignore] comments, matrix include and exclude entries	(?m)^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+|^([ \t]++)(?:include|exclude)[ \t]*+:[ \t]*+(?:#[^\n]*+)?(?=\n)(?:\n(?:\1[ \t][^\n]*+|\1-[ \t][^\n]*+|[ \t]*+)(?=\n|\z))*+
 jobs on a runner	(?m)^[ \t]+runs-on:
 reusable workflow calls	(?m)^[ \t]+uses:[ \t]*+["']?[^\s"'#]*?\.github/workflows/
 steps (approx)	(?m)^[ \t]+-[ \t]+(?:name|uses|run|id|if|with|env|shell|working-directory|continue-on-error|timeout-minutes)[ \t]*:

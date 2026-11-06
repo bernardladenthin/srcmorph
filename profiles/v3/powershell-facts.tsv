@@ -11,8 +11,10 @@
 # that is never closed runs to the end of the file.
 # "mandatory parameters" counts Mandatory and Mandatory = $true, not Mandatory = $false; "dot-sourced
 # scripts" a line starting with ". " and a path, a quoted one too (the blanked string leaves the
-# ". " and nothing or the arguments after it). "Verb-Noun command calls (approx)" counts every name of the Verb-Noun shape written with capitals
-# (ForEach-Object, ConvertTo-Json too), the script's own functions too. OpsFactPatternsTest pins
+# ". " and nothing or the arguments after it). "Verb-Noun command calls (approx)" counts every name of
+# the Verb-Noun shape in any case, as PowerShell resolves a command (ForEach-Object, ConvertTo-Json,
+# get-childitem), a call of the script's own functions too, but not the name a function, filter or
+# workflow defines; a hyphenated word outside a string (a host name argument) counts too. OpsFactPatternsTest pins
 # every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [raw] requirements	(?im)^#Requires\b
 [ignore] comments, here-strings and strings	(?ims)<#.*?(?:#>|\z)|@(["'])[ \t]*+\n(?:.*?^\1@|.*+)|(?<![\w`$])#[^\n]*+|"(?:[^"`]++|`.)*+(?:"|\z)|'(?:[^']++|'')*+(?:'|\z)
@@ -25,4 +27,4 @@ modules imported	(?im)^[ \t]*+(?:Import-Module|using[ \t]++module)\b
 dot-sourced scripts	(?m)^[ \t]*+\.[ \t]++(?:[^\s]|$)
 try blocks	(?i)\btry[ \t\n]*+\{
 errors raised	(?i)\b(?:throw|Write-Error)\b
-Verb-Noun command calls (approx)	\b[A-Z][a-z]++(?:[A-Z][a-z]++)*+-[A-Z][A-Za-z]++\b
+Verb-Noun command calls (approx)	(?i)\b[a-z]++-[a-z]++\b(?<!\b(?:function|filter|workflow)[ \t]{1,8}[a-z]{1,60}-[a-z]{1,60})

@@ -3,16 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # WSDL 1.1 and 2.0 counters (.wsdl): the counters of xml-facts, its [ignore] line included (an
-# embedded XML Schema counts there, under "XSD type definitions"), then one per WSDL element, without
-# a prefix or with wsdl: or wsdl2:, so the soap:binding and soap:operation of a binding count only
-# under "SOAP bindings". "operations" counts every <operation> of a portType, an interface and a
-# binding, so an operation bound once counts twice. EnterpriseXmlFactPatternsTest pins every case;
+# embedded XML Schema counts there, under "XSD type definitions"), then one per WSDL element, with any
+# prefix or none but that of a binding extension (soap, soap12, http, mime, wsoap, whttp, jms), so
+# the soap:binding and soap:operation of a binding count only under "SOAP bindings". "operations"
+# counts the <operation> of a portType or an interface, not that of a binding, which holds a
+# soap:operation, soap12:operation or http:operation (WSDL 1.1) or names its operation with ref
+# (WSDL 2.0); a binding's operation without either counts again. EnterpriseXmlFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [include]	xml-facts
-services	<(?:wsdl2?:)?service[ \t\r\n>]
-ports and endpoints	<(?:wsdl2?:)?(?:port|endpoint)[ \t\r\n>]
-port types and interfaces	<(?:wsdl2?:)?(?:portType|interface)[ \t\r\n>]
-bindings	<(?:wsdl2?:)?binding[ \t\r\n>]
-operations	<(?:wsdl2?:)?operation[ \t\r\n>]
-messages	<(?:wsdl2?:)?message[ \t\r\n>]
+services	<(?!(?:soap12|soap|http|mime|wsoap|whttp|jms):)(?:[A-Za-z_][\w.-]*+:)?service[ \t\r\n/>]
+ports and endpoints	<(?!(?:soap12|soap|http|mime|wsoap|whttp|jms):)(?:[A-Za-z_][\w.-]*+:)?(?:port|endpoint)[ \t\r\n/>]
+port types and interfaces	<(?!(?:soap12|soap|http|mime|wsoap|whttp|jms):)(?:[A-Za-z_][\w.-]*+:)?(?:portType|interface)[ \t\r\n/>]
+bindings	<(?!(?:soap12|soap|http|mime|wsoap|whttp|jms):)(?:[A-Za-z_][\w.-]*+:)?binding[ \t\r\n/>]
+operations	<(?!(?:soap12|soap|http|mime|wsoap|whttp|jms):)(?:[A-Za-z_][\w.-]*+:)?operation(?=[ \t\r\n/>])(?![^<>]*?\bref[ \t\r\n]*+=)(?![^<>]*+>[ \t\r\n]*+<(?:[A-Za-z_][\w.-]*+:)?(?:soap12|soap|http):operation\b)
+messages	<(?!(?:soap12|soap|http|mime|wsoap|whttp|jms):)(?:[A-Za-z_][\w.-]*+:)?message[ \t\r\n/>]
 SOAP bindings	<soap(?:12)?:binding\b

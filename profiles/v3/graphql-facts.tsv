@@ -7,14 +7,17 @@
 # blanks # comments, block strings ("""...""", descriptions) and strings, leftmost region first, so a
 # "type" in a description does not count; a string that is never closed runs to the end of its line,
 # a block string to the end of the
-# file. A definition counts at the start of a line, an extension (extend type) too; "object types"
+# file. It also blanks the body of a schema definition (schema { query: Query }, extend schema too;
+# its directives stay), whose root operations are no fields. A definition counts at the start of a
+# line, an extension (extend type) too; "object types"
 # leaves out the root types Query, Mutation and Subscription, which have a counter of their own.
 # "fields (approx)" counts a name at the start of an indented line followed by its arguments and a
-# colon (the fields of types, interfaces and input types; an alias in an operation too); "directive
+# colon (the fields of types, interfaces and input types; an alias in an operation too), arguments
+# with one level of nested parentheses (a directive on an argument) included; "directive
 # uses" every @name that is not the directive's own definition; "operations" and "fragments" count at
 # column 0, where an executable document defines them. ContractFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
-[ignore] comments, descriptions and strings	(?s)""".*?(?:"""|\z)|"(?:[^"\\\n]|\\.)*+"?+|#[^\n]*+
+[ignore] comments, descriptions, strings and the schema definition	(?s)""".*?(?:"""|\z)|"(?:[^"\\\n]|\\.)*+"?+|#[^\n]*+|\{(?<=(?:^|\n)[ \t]{0,40}(?:extend[ \t]{1,8})?schema\b[^{}\n]{0,200}\{)[^{}]*+\}?+
 object types	(?m)^[ \t]*+(?:extend[ \t]++)?type[ \t]++(?!(?:Query|Mutation|Subscription)\b)[A-Za-z_]
 root operation types	(?m)^[ \t]*+(?:extend[ \t]++)?type[ \t]++(?:Query|Mutation|Subscription)\b
 interfaces	(?m)^[ \t]*+(?:extend[ \t]++)?interface[ \t]++[A-Za-z_]
@@ -22,7 +25,7 @@ unions	(?m)^[ \t]*+(?:extend[ \t]++)?union[ \t]++[A-Za-z_]
 enums	(?m)^[ \t]*+(?:extend[ \t]++)?enum[ \t]++[A-Za-z_]
 input types	(?m)^[ \t]*+(?:extend[ \t]++)?input[ \t]++[A-Za-z_]
 scalars	(?m)^[ \t]*+(?:extend[ \t]++)?scalar[ \t]++[A-Za-z_]
-fields (approx)	(?m)^[ \t]++[A-Za-z_]\w*+[ \t]*+(?:\([^()]*+\))?[ \t]*+:
+fields (approx)	(?m)^[ \t]++[A-Za-z_]\w*+[ \t]*+(?:\((?:[^()]++|\([^()]*+\))*+\))?[ \t]*+:
 directive definitions	\bdirective[ \t]*+@[A-Za-z_]
 directive uses	(?<!\bdirective[ \t])@[A-Za-z_]\w*+
 deprecated fields and values	@deprecated\b
