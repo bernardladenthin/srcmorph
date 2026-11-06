@@ -502,6 +502,23 @@ public class OpenAiCompatibleGenerationProviderTest {
     }
 
     @Test
+    public void generate_openReasoningTheProviderStoppedWithAnError_isAbortedNotTruncated() {
+        // arrange: the provider failed while the model was still reasoning
+        answer = completion(CompletionParser.THINK_TAG_START_MARKER + "I will look at", "error");
+        final OpenAiCompatibleGenerationProvider provider =
+                provider(ProviderConfig.builder().modelPath(""), NO_ENVIRONMENT);
+
+        // act
+        final IncompleteAnswerException thrown =
+                assertThrows(IncompleteAnswerException.class, () -> provider.generate(REQUEST));
+
+        // assert
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
+        assertThat(thrown.getMessage(), containsString("Test.java ended with finish reason 'error'"));
+        assertThat(thrown.partialText(), is(""));
+    }
+
+    @Test
     public void generate_streamTheProviderStoppedWithAnError_isRefused() {
         // arrange
         events = streamed("- test ", "paging (", "error");

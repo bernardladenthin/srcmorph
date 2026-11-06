@@ -211,9 +211,7 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
         lastUsage = GenerationUsage.NONE;
         final ChatResponse response = chatResponse(request);
         lastUsage = GenerationUsage.of(response);
-        final String text = completionParser.parseCompletion(response.getFirstContent());
-        truncationSupport.requireCompleteAnswer(request, response, text);
-        return text;
+        return truncationSupport.completeAnswer(request, response, completionParser);
     }
 
     @Override

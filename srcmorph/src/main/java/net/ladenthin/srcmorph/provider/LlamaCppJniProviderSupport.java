@@ -297,6 +297,32 @@ final class LlamaCppJniProviderSupport {
     }
 
     /**
+     * The answer of a response, its thinking block stripped ({@link CompletionParser}), refused as
+     * {@link #requireCompleteAnswer} refuses one. A thinking block left open is an answer the model did not
+     * finish, unless the provider stopped it ({@link #stoppedByProvider(String)}): then that is the reason,
+     * not the output budget, and nothing of the reasoning is kept as the partial answer.
+     *
+     * @param request  the request whose source file is named in a message
+     * @param response the completed chat response
+     * @param parser   strips the thinking block
+     * @return the answer text
+     * @throws IncompleteAnswerException if the answer is no summary
+     */
+    String completeAnswer(final GenerationRequest request, final ChatResponse response, final CompletionParser parser)
+            throws IncompleteAnswerException {
+        final String text;
+        try {
+            text = parser.parseCompletion(response.getFirstContent());
+        } catch (final IncompleteAnswerException e) {
+            // the parser refuses only a block that has content, so the response has a choice
+            requireNotStopped(request, response.getChoices().get(0).getFinishReason(), "");
+            throw e;
+        }
+        requireCompleteAnswer(request, response, text);
+        return text;
+    }
+
+    /**
      * Refuses an answer that is no summary, so it is never stored as one: a response without a choice, an
      * answer the model did not finish (stopped at the output budget), an answer the provider stopped
      * ({@link #stoppedByProvider(String)}: an OpenRouter generation that failed half-way came back with
@@ -316,13 +342,7 @@ final class LlamaCppJniProviderSupport {
                     "The response for " + request.sourceFile() + " has no answer (no choice)");
         }
         final @Nullable String finishReason = response.getChoices().get(0).getFinishReason();
-        if (stoppedByProvider(finishReason)) {
-            throw new IncompleteAnswerException(
-                    IncompleteAnswerException.Reason.ABORTED,
-                    "The answer for " + request.sourceFile() + " ended with finish reason '" + finishReason
-                            + "': the provider stopped it, not the model",
-                    text);
-        }
+        requireNotStopped(request, finishReason, text);
         if (FINISH_REASON_LENGTH.equals(finishReason)) {
             throw new IncompleteAnswerException(
                     IncompleteAnswerException.Reason.TRUNCATED,
@@ -335,6 +355,26 @@ final class LlamaCppJniProviderSupport {
             throw new IncompleteAnswerException(
                     IncompleteAnswerException.Reason.EMPTY,
                     "The model answered nothing for " + request.sourceFile() + " (an empty or reasoning-only answer)");
+        }
+    }
+
+    /**
+     * Refuses an answer the provider stopped ({@link #stoppedByProvider(String)}).
+     *
+     * @param request      the request whose source file is named in the message
+     * @param finishReason the first choice's finish reason, may be {@code null}
+     * @param text         what the model wrote before the provider stopped it
+     * @throws IncompleteAnswerException if the provider stopped the answer
+     */
+    private static void requireNotStopped(
+            final GenerationRequest request, final @Nullable String finishReason, final String text)
+            throws IncompleteAnswerException {
+        if (stoppedByProvider(finishReason)) {
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.ABORTED,
+                    "The answer for " + request.sourceFile() + " ended with finish reason '" + finishReason
+                            + "': the provider stopped it, not the model",
+                    text);
         }
     }
 

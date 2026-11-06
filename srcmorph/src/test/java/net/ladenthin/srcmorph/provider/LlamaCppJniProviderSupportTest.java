@@ -576,6 +576,94 @@ public class LlamaCppJniProviderSupportTest {
 
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="completeAnswer">
+    /** A response whose one choice carries this content and finish reason. */
+    private static ChatResponse answered(final String content, final String finishReason) {
+        final ChatChoice choice = new ChatChoice(0, new ChatMessage("assistant", content), finishReason);
+        return new ChatResponse("id", Collections.singletonList(choice), new Usage(1, 1), null, "{}");
+    }
+
+    /** A reasoning block the model opened and never closed. */
+    private static final String OPEN_REASONING = "<think>I will look at the class and";
+
+    @Test
+    public void completeAnswer_finishedAnswer_returnsItWithoutTheReasoning() throws Exception {
+        // arrange
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
+
+        // act
+        final String text = provider.completeAnswer(
+                request("class A {}"), answered("<think>hmm</think>\nA summary.", "stop"), new CompletionParser());
+
+        // assert
+        assertThat(text, is("A summary."));
+    }
+
+    /** The provider stopped the answer inside the reasoning: that, not the budget, is why it is open. */
+    @Test
+    public void completeAnswer_openReasoningTheProviderStopped_isAbortedWithoutTheReasoning() {
+        // arrange
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
+        final GenerationRequest generationRequest = request("class A {}");
+        final ChatResponse response = answered(OPEN_REASONING, "error");
+        final CompletionParser parser = new CompletionParser();
+
+        // act
+        final IncompleteAnswerException thrown = assertThrows(
+                IncompleteAnswerException.class, () -> provider.completeAnswer(generationRequest, response, parser));
+
+        // assert
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
+        assertThat(
+                thrown.getMessage(),
+                is("The answer for Test.java ended with finish reason 'error': the provider stopped it, not the"
+                        + " model"));
+        assertThat(thrown.partialText(), is(""));
+    }
+
+    @Test
+    public void completeAnswer_openReasoningTheModelStopped_isTruncated() {
+        // arrange: the model ended inside its reasoning, at the budget or not
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
+        final GenerationRequest generationRequest = request("class A {}");
+        final ChatResponse atTheBudget = answered(OPEN_REASONING, "length");
+        final ChatResponse stopped = answered(OPEN_REASONING, "stop");
+        final CompletionParser parser = new CompletionParser();
+
+        // act
+        final IncompleteAnswerException budget = assertThrows(
+                IncompleteAnswerException.class, () -> provider.completeAnswer(generationRequest, atTheBudget, parser));
+        final IncompleteAnswerException stop = assertThrows(
+                IncompleteAnswerException.class, () -> provider.completeAnswer(generationRequest, stopped, parser));
+
+        // assert
+        assertThat(budget.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
+        assertThat(budget.getMessage(), containsString("inside thinking block"));
+        assertThat(stop.reason(), is(IncompleteAnswerException.Reason.TRUNCATED));
+    }
+
+    @Test
+    public void completeAnswer_answerTheProviderStopped_isAbortedWithTheText() {
+        // arrange
+        final LlamaCppJniProviderSupport provider = providerWith(
+                ProviderConfig.builder().modelPath("/does/not/exist.gguf").build());
+        final GenerationRequest generationRequest = request("class A {}");
+        final ChatResponse response = answered("<think>hmm</think>\n- test paging (", "content_filter");
+        final CompletionParser parser = new CompletionParser();
+
+        // act
+        final IncompleteAnswerException thrown = assertThrows(
+                IncompleteAnswerException.class, () -> provider.completeAnswer(generationRequest, response, parser));
+
+        // assert
+        assertThat(thrown.reason(), is(IncompleteAnswerException.Reason.ABORTED));
+        assertThat(thrown.partialText(), is("- test paging ("));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="logPromptCacheReuse">
 
     /** The cache line reports all three counts, so a transposition of two of them is visible. */

@@ -238,9 +238,7 @@ public final class LlamaCppJniGenerationProvider implements GenerationProvider, 
         final ChatResponse response = chatResponse(request);
         lastUsage = GenerationUsage.of(response);
         support.logPromptCacheReuse(request, response);
-        final String text = completionParser.parseCompletion(response.getFirstContent());
-        support.requireCompleteAnswer(request, response, text);
-        return text;
+        return support.completeAnswer(request, response, completionParser);
     }
 
     /**
