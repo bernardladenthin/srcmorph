@@ -4,12 +4,14 @@
 #
 # Dockerfile and Containerfile counters, for a rule with the prompt file-body-ops: one per line,
 # label TAB pattern (Java regex). The [ignore] line blanks comment lines (a # at the start of a line,
-# after blanks; a parser directive such as "# syntax=" is a comment too). An instruction counts at
-# the start of a line, in any case, so a word in a RUN command continued over lines does not.
+# after blanks; a parser directive such as "# syntax=" is a comment too) and the lines a backslash at
+# the end of a line continues, with the comment and empty lines among them, as Docker reads them. An
+# instruction counts at the start of a line, in any case, so a word in a RUN command continued over
+# lines does not, not even an env or a from that starts a continued line.
 # "build stages" counts every FROM; "environment entries" an ENV or ARG instruction, not each name
 # of one. OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
 # every pattern reads linearly.
-[ignore] comments	(?m)^[ \t]*#[^\n]*+
+[ignore] comments and continued lines	(?m)^[ \t]*#[^\n]*+|\\[ \t\r]*+\n(?:[ \t]*+(?:#[^\n]*+)?\r?\n|(?:[^\n\\]|\\(?![ \t\r]*+\n))*+\\[ \t\r]*+\n)*+[^\n]*+
 build stages	(?im)^[ \t]*FROM[ \t]
 RUN instructions	(?im)^[ \t]*RUN[ \t]
 COPY and ADD instructions	(?im)^[ \t]*(?:COPY|ADD)[ \t]

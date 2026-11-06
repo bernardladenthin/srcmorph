@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import net.ladenthin.srcmorph.config.FactCounter;
+import net.ladenthin.srcmorph.config.FactDefinition;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.ModelRegistry;
 import net.ladenthin.srcmorph.config.OversizeStrategy;
@@ -1010,6 +1012,33 @@ public class EngineSupportTest {
         assertThrows(
                 SrcMorphException.class,
                 () -> EngineSupport.validateRoutedModelPaths(GenerationProviderFactory.PROVIDER_MOCK, registry, rules));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="resolveFactsKeys">
+    @Test
+    public void resolveFactsKeys_aPhaseRuleWithAnInvalidInlinePattern_isRefusedBeforeAModelLoads() {
+        // arrange: a package rule names an inline definition whose pattern does not compile
+        final FactCounter counter = new FactCounter();
+        counter.setLabel("broken");
+        counter.setPattern("(");
+        final FactDefinition definition = new FactDefinition();
+        definition.setKey("pk");
+        definition.setFacts(Collections.singletonList(counter));
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setFactDefinitions(Collections.singletonList(definition));
+        final RoutingRule rule = new RoutingRule();
+        rule.setPromptKey("package-body");
+        rule.setAiDefinitionKey("default");
+        rule.setFactsKey("pk");
+        final List<RoutingRule> rules = Collections.singletonList(rule);
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.resolveFactsKeys(config, rules));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("broken"));
     }
     // </editor-fold>
 }

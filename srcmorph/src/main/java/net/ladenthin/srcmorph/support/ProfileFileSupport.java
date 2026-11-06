@@ -51,7 +51,9 @@ public final class ProfileFileSupport {
      *
      * @param label what the file is for, for the messages (e.g. {@code promptDefinitions[2] (key x): templateFile})
      * @param path  the resolved path
-     * @return the file's text, without a leading byte order mark
+     * @return the file's text, without a leading byte order mark and with {@code \n} line endings
+     *         ({@link SourceLines#normalize}): a profile checked out with CRLF renders, sizes and hashes
+     *         the same as one with LF
      * @throws IOException              if the file cannot be read, or the path is no valid path
      * @throws IllegalArgumentException if the file holds nothing but whitespace
      */
@@ -62,7 +64,8 @@ public final class ProfileFileSupport {
         } catch (final IOException | InvalidPathException e) {
             throw new IOException(label + " " + path + " cannot be read: " + e, e);
         }
-        final String content = !text.isEmpty() && text.charAt(0) == BYTE_ORDER_MARK ? text.substring(1) : text;
+        final String content =
+                SourceLines.normalize(!text.isEmpty() && text.charAt(0) == BYTE_ORDER_MARK ? text.substring(1) : text);
         if (new Java8CompatibilityHelper().isBlank(content)) {
             throw new IllegalArgumentException(label + " " + path + " is empty");
         }

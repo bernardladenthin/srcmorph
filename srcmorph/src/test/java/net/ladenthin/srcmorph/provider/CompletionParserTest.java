@@ -201,5 +201,39 @@ public class CompletionParserTest {
         // act, assert
         assertThat(parser.parseCompletion(response), is(equalTo(response)));
     }
+
+    /** A closing tag in double quotes, at the end of its line, is the answer writing about it too. */
+    @Test
+    public void parseCompletion_aClosingTagInDoubleQuotesAtALineEnd_isKept() throws Exception {
+        // arrange
+        final String response = "> Strips the reasoning up to \"</think>\nThe body.";
+
+        // act, assert
+        assertThat(parser.parseCompletion(response), is(equalTo(response)));
+    }
+
+    /** A closing tag inside a sentence names the tag; a template's tag ends its line. */
+    @Test
+    public void parseCompletion_aClosingTagInsideASentence_isKept() throws Exception {
+        // arrange
+        final String response = "> Strips the reasoning up to </think> and keeps the rest.\nThe body.";
+
+        // act, assert
+        assertThat(parser.parseCompletion(response), is(equalTo(response)));
+    }
+
+    /** The template's tag at the very end: the reasoning is all there is, the answer is empty. */
+    @Test
+    public void parseCompletion_reasoningEndingInTheClosingTag_isEmpty() throws Exception {
+        // act, assert
+        assertThat(parser.parseCompletion("Thinking it over.\n</think>"), is(equalTo("")));
+    }
+
+    /** A carriage return after the template's tag ends its line as well. */
+    @Test
+    public void parseCompletion_closingTagBeforeACarriageReturn_isStripped() throws Exception {
+        // act, assert
+        assertThat(parser.parseCompletion("Thinking.\n</think>\r\n> The lead."), is(equalTo("> The lead.")));
+    }
     // </editor-fold>
 }

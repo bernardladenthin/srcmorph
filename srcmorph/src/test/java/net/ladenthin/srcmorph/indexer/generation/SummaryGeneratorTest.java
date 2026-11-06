@@ -710,9 +710,9 @@ public class SummaryGeneratorTest {
 
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="parts">
+    // <editor-fold defaultstate="collapsed" desc="takeParts">
     @Test
-    public void parts_aMapReduceThenAOnePieceCall_areEveryMapAndReduceAnswerThenNone() throws Exception {
+    public void takeParts_aMapReduceThenAOnePieceCall_areEveryMapAndReduceAnswerThenNone() throws Exception {
         // arrange
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> "ANSWER " + calls.incrementAndGet();
@@ -720,14 +720,31 @@ public class SummaryGeneratorTest {
 
         // act
         support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
-        final String chunked = support.parts();
+        final String chunked = support.takeParts();
         support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Small", ".java"), "file", "class Small {}");
 
         // assert
         assertThat(chunked, startsWith("## Chunk 1 of 2, sampled from "));
         assertThat(chunked, containsString("\n\nANSWER 1\n\n## Chunk 2 of 2, sampled from "));
         assertThat(chunked, endsWith("\n\nANSWER 2\n\n## Reduce round 1, batch 1 of 1 (2 parts)\n\nANSWER 3\n\n"));
-        assertThat(support.parts(), is(""));
+        assertThat(support.takeParts(), is(""));
+    }
+
+    @Test
+    public void takeParts_takenOnce_isEmptyTheSecondTime() throws Exception {
+        // arrange
+        final GenerationProvider provider = request -> "ANSWER";
+        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+        support.generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
+
+        // pre-assert
+        assertThat(support.takeParts(), startsWith("## Chunk 1 of 2"));
+
+        // act
+        final String again = support.takeParts();
+
+        // assert: a file the caller does not generate (an unchanged one) gets nothing of the one before
+        assertThat(again, is(""));
     }
     // </editor-fold>
 

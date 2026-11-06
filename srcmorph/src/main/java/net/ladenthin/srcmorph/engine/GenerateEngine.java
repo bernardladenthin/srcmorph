@@ -292,7 +292,7 @@ public final class GenerateEngine {
                                 support.takeUsage(),
                                 Math.max(0L, System.nanoTime() - fileStartNanos - loadNanos),
                                 recordedHeader(fileIndexer, entry, outcome, promptSupport)));
-                        keepParts(basePath, entry.file(), support.parts());
+                        keepParts(basePath, entry.file(), support.takeParts());
                         if (outcome == IndexOutcome.WRITTEN) {
                             wrote++;
                         } else if (outcome == IndexOutcome.UNCHANGED) {
@@ -353,7 +353,7 @@ public final class GenerateEngine {
      *
      * @param basePath   the base directory
      * @param sourceFile the file
-     * @param parts      its answers ({@link SummaryGenerator#parts()}), {@code ""} for none
+     * @param parts      its answers ({@link SummaryGenerator#takeParts()}), {@code ""} for none
      */
     private void keepParts(final Path basePath, final Path sourceFile, final String parts) {
         final File directory = config.getPartsDirectory();

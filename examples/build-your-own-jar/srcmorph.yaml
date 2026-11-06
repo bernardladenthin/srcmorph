@@ -84,6 +84,7 @@ srcMorph:
     - "Dockerfile.*"
     - "*.dockerfile"
     - "Containerfile"
+    - "Jenkinsfile"
     - "package.json"
   excludes:
     - "**/package-info.java"
@@ -374,7 +375,10 @@ srcMorph:
       priority: 10
       factsKey: bpmn-facts
       condition:
-        extensions: [".bpmn"]
+        or:
+          conditions:
+            - extensions: [".bpmn"]
+            - fileNames: ["*.bpmn20.xml"]        # Flowable and Activiti, over the xml rule
     - id: dmn
       promptKey: file-body-xml
       onIncomplete: retryOnce
@@ -415,7 +419,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".yml", ".yaml"]
-            - contentMatches: '(?m)^kind:[ \t]*[A-Z]'
+            - contentMatches: '(?m)^kind:[ \t]*["'']?[A-Z]'   # kind: Deployment, quoted too
     - id: dockerfile
       promptKey: file-body-ops
       onIncomplete: retryOnce

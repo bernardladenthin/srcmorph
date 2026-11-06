@@ -162,15 +162,20 @@ public class PromptTemplateLoaderTest {
         }
     }
 
-    /** The file is the system message verbatim: line breaks and trailing whitespace stay. */
+    /**
+     * The file is the system message as written, its line endings {@code \n}: indentation, blank lines
+     * and trailing whitespace stay, a CRLF or a lone CR becomes a line feed, so the window and the hash
+     * of a profile are the same on every checkout.
+     */
     @Test
-    public void load_templateFile_keepsWhitespaceAsWritten() throws IOException {
+    public void load_templateFile_keepsWhitespaceAndEndsLinesWithLineFeeds() throws IOException {
         // arrange
-        final String text = "\n  Indent kept.\r\nTrailing spaces kept.   \n\n";
-        write("raw.md", text);
+        write("raw.md", "\n  Indent kept.\r\nTrailing spaces kept.   \rLast.\n\n");
 
         // act, assert
-        assertThat(load(fromFile("raw", "raw.md")).get(0).getTemplate(), is(text));
+        assertThat(
+                load(fromFile("raw", "raw.md")).get(0).getTemplate(),
+                is("\n  Indent kept.\nTrailing spaces kept.   \nLast.\n\n"));
     }
 
     @Test

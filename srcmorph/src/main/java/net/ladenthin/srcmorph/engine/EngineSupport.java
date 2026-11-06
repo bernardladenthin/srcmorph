@@ -17,6 +17,7 @@ import net.ladenthin.srcmorph.config.PromptDefinition;
 import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.facts.FactDefinitionLoader;
+import net.ladenthin.srcmorph.facts.FactExtractor;
 import net.ladenthin.srcmorph.facts.FactGroups;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
@@ -246,12 +247,14 @@ final class EngineSupport {
 
     /**
      * Resolves each rule's {@code factsKey} to its group (a definition or {@code <profileDirectory>/<key>.tsv}),
-     * copying the counters onto the rule's facts, for the file rules and the phases' rule alike.
+     * copying the counters onto the rule's facts, for the file rules and the phases' rule alike, and
+     * validates the counters each rule now has: an inline definition's pattern is checked here,
+     * before a model loads, not when the first file reaches it.
      *
      * @param config the run configuration (its fact definitions and profile directory)
      * @param rules  the rules, changed in place
-     * @throws SrcMorphException if a key is found nowhere, a group is malformed, or a rule names its facts
-     *                           twice
+     * @throws SrcMorphException if a key is found nowhere, a group is malformed, a rule names its facts
+     *                           twice, or a resolved counter is invalid
      */
     static void resolveFactsKeys(final SrcMorphConfiguration config, final List<RoutingRule> rules)
             throws SrcMorphException {
@@ -263,6 +266,10 @@ final class EngineSupport {
             new FactGroups(new FactDefinitionLoader(config.getProfileDirectory())
                             .load(config.getFactDefinitions(), usedKeys))
                     .resolveFactsKeys(rules);
+            for (final RoutingRule rule : rules) {
+                final String id = rule.getId() != null ? rule.getId() : String.valueOf(rule.getPromptKey());
+                FactExtractor.validate("the facts of rule '" + id + "'", rule.getFacts());
+            }
         } catch (final IllegalArgumentException | IOException e) {
             throw new SrcMorphException("Invalid factDefinitions/factsKey configuration: " + e.getMessage(), e);
         }

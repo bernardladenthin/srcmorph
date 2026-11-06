@@ -40,6 +40,13 @@ public class AggregatePackagesMojo extends AbstractSrcMorphMojo {
     @Parameter(property = "srcmorph.package.skip", defaultValue = "false")
     private boolean skipPackage;
 
+    /**
+     * When {@code true}, this phase does not run, whatever the file's {@code planOnly} says: with
+     * {@code -Dsrcmorph.planOnly=true} the whole build plans the file phase and loads no model.
+     */
+    @Parameter(property = "srcmorph.planOnly", defaultValue = "false")
+    private boolean planOnly;
+
     @Override
     protected boolean isPhaseSkipped() {
         return skipPackage;
@@ -52,6 +59,9 @@ public class AggregatePackagesMojo extends AbstractSrcMorphMojo {
             return;
         }
         final SrcMorphConfiguration config = buildConfiguration(RuleSection.PACKAGE);
+        if (planOnly) {
+            config.setPlanOnly(true);
+        }
         try {
             new AggregatePackagesEngine(config).execute();
         } catch (SrcMorphException e) {

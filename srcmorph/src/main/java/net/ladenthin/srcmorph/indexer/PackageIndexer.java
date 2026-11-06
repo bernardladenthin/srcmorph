@@ -300,7 +300,13 @@ public class PackageIndexer {
 
         final String sourceText = buildPackageSourceText(baseHeader, contents, summaries, bodyCount);
 
-        final SummaryResult result = summaryGenerator.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText);
+        // the call names its input by the package's path below the output root, as package-body says (a
+        // relative path heads the user message whole, an absolute one by its file name); the root package
+        // by the output directory's name
+        final Path packagePath = outputRoot.relativize(directory);
+        final Path rootName = outputRoot.getFileName();
+        final Path callName = rootName != null && packagePath.toString().isEmpty() ? rootName : packagePath;
+        final SummaryResult result = summaryGenerator.generate(rule, callName, CONTEXT_TYPE_PACKAGE, sourceText);
 
         if (!result.complete()) {
             return IndexOutcome.FAILED;

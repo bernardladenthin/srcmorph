@@ -6,9 +6,10 @@
 # of xml-facts, its [ignore] line included (so the HQL or SQL of a query in CDATA does not count),
 # then one per mapping element, with or without a namespace prefix. "entity mappings" counts the
 # JPA <entity> and the Hibernate <class> and subclass elements; "named queries" every named query
-# of either vocabulary; "listed classes" the <class> entries of a persistence unit. A <class> of
-# persistence.xml is a listed class and, in an hbm.xml, a mapping, so each file counts it under the
-# label of its own kind and once under the other. EnterpriseXmlFactPatternsTest pins every case;
+# of either vocabulary; "listed classes" the <class> entries of a persistence unit. The two kinds of
+# <class> do not mix: one of persistence.xml has no attributes (<class>shop.Order</class>) and counts
+# as a listed class only, one of an hbm.xml has them (<class name="shop.Order">) and counts as an
+# entity mapping only. EnterpriseXmlFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [include]	xml-facts
 persistence units	<(?:[\w.-]+:)?persistence-unit[ \t\r\n>]

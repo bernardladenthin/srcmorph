@@ -312,6 +312,23 @@ public class JvmFactPatternsTest {
         assertThat(count(JAVA_EE, "EJB timers", JAVA_EE_SOURCE), is(1));
         assertThat(count(JAVA_EE, "security annotations", JAVA_EE_SOURCE), is(1));
     }
+
+    @Test
+    public void javaEe_schedulesContainer_countsItsTimersAndNotTheContainer() {
+        // arrange
+        final String source = "class Jobs {\n"
+                + "    @Schedules({\n"
+                + "        @Schedule(hour = \"1\"),\n"
+                + "        @Schedule(hour = \"2\")\n"
+                + "    })\n"
+                + "    void twice() {}\n"
+                + "    @Schedules({@Schedule(hour = \"3\"), @jakarta.ejb.Schedule(hour = \"4\")}) void again() {}\n"
+                + "    // @Schedule(hour = \"5\")\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(JAVA_EE, "EJB timers", source), is(4));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="scala-facts">

@@ -53,8 +53,8 @@ public class CompletionParser {
     /** Closes a {@link #THINK_TAG_START_MARKER} block. */
     public static final String THINK_TAG_END_MARKER = "</think>";
 
-    /** The backtick of a Markdown code span: a marker right after one is quoted, not emitted. */
-    private static final char CODE_QUOTE = '`';
+    /** The characters a quoted tag stands after: the answer writing about it, not a template's tag. */
+    private static final String QUOTES = "`\"'";
 
     /** The kinds of thinking block, in the order they are tried. */
     private enum ThinkingBlock {
@@ -121,11 +121,16 @@ public class CompletionParser {
             return thinking.substring(thinkingEnd + end.length()).trim();
         }
         // a template that opened the block itself (Qwen3, DeepSeek-R1) leaves only the closing tag: a first
-        // </think> with no <think> before it, and not quoted in backticks, ends the reasoning
+        // </think> with no <think> before it ends the reasoning when it ends its line and stands after no
+        // quote; one inside a sentence or in quotes is the answer writing about the tag
         final int injectedEnd = trimmed.indexOf(THINK_TAG_END_MARKER);
+        final int afterTag = injectedEnd + THINK_TAG_END_MARKER.length();
         if (injectedEnd >= 0
                 && !trimmed.substring(0, injectedEnd).contains(THINK_TAG_START_MARKER)
-                && (injectedEnd == 0 || trimmed.charAt(injectedEnd - 1) != CODE_QUOTE)) {
+                && (injectedEnd == 0 || QUOTES.indexOf(trimmed.charAt(injectedEnd - 1)) < 0)
+                && (afterTag == trimmed.length()
+                        || trimmed.charAt(afterTag) == '\n'
+                        || trimmed.charAt(afterTag) == '\r')) {
             return trimmed.substring(injectedEnd + THINK_TAG_END_MARKER.length())
                     .trim();
         }

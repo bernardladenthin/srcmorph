@@ -227,13 +227,16 @@ public class SummaryGenerator {
     }
 
     /**
-     * Returns the answers of the last {@link #generate} call's map-reduce, as Markdown: each chunk's map
-     * answer under its label, then each reduce batch's answer under its round and batch.
+     * Returns the map-reduce answers since the last {@link #takeParts()}, as Markdown: each chunk's map
+     * answer under its label, then each reduce batch's answer under its round and batch; and starts
+     * anew, so the answers belong to the one file the caller summarized since.
      *
-     * @return the answers, {@code ""} when the last call read its source in one piece
+     * @return the answers, {@code ""} when no call since read its source in chunks
      */
-    public String parts() {
-        return parts.text();
+    public String takeParts() {
+        final String taken = parts.text();
+        parts = new SummaryParts();
+        return taken;
     }
 
     /**
@@ -996,7 +999,7 @@ public class SummaryGenerator {
                 fieldGeneration.requireAiDefinitionKey(), fieldGeneration.requirePromptKey()))) {
             logMaxInputChars(generationConfig, basePromptLength);
         }
-        return InputWindowCalculator.maxInputChars(generationConfig, basePromptLength);
+        return InputWindowCalculator.maxInputChars(generationConfig);
     }
 
     /**
@@ -1006,9 +1009,9 @@ public class SummaryGenerator {
      * <p>The formula is:</p>
      * <pre>
      *   totalChars     = contextSize × charsPerToken
-     *   overheadTotal  = promptChars + eofChars + (maxOutputTokens × charsPerToken) + safetyChars
-     *   availableChars = totalChars - overheadTotal
-     *   finalChars     = floor(availableChars / 100) × 100   (rounded down conservatively)
+     *   overheadTotal  = (maxOutputTokens × charsPerToken) + safetyChars
+     *   promptBudget   = floor((totalChars - overheadTotal) / 100) × 100   (rounded down conservatively)
+     *   sourceChars    = promptBudget - promptChars   (the template takes its room once)
      * </pre>
      *
      * <p>All intermediate values are emitted at INFO level so that the calculation is
@@ -1025,13 +1028,12 @@ public class SummaryGenerator {
 
         final int totalChars = contextSize * charsPerToken;
         final int promptChars = basePromptLength;
-        final int eofChars = PromptPreparer.EOF_MARKER_LENGTH;
         final int outputChars = maxOutputTokens * charsPerToken;
         final int safetyChars = ModelDefinition.DEFAULT_SAFETY_MARGIN_CHARS;
-        final int overheadTotal = promptChars + eofChars + outputChars + safetyChars;
-        final int availableChars = totalChars - overheadTotal;
+        final int overheadTotal = outputChars + safetyChars;
         // Single source of truth for the threshold shared with the planning path ({@code SourceFileIndexer.classify}).
-        final int finalChars = InputWindowCalculator.maxInputChars(config, basePromptLength);
+        final int finalChars = InputWindowCalculator.maxInputChars(config);
+        final long sourceChars = InputWindowCalculator.availableSourceChars(config, basePromptLength);
 
         LOGGER.info(
                 "Maximum input characters for source code before trimming. Calculated as: (context_size x {}) -"
@@ -1041,14 +1043,12 @@ public class SummaryGenerator {
         LOGGER.info("  Chars per token: ~{}", charsPerToken);
         LOGGER.info("  [Total available]: {} x {} = {} chars", contextSize, charsPerToken, totalChars);
         LOGGER.info("  Overhead (conservative estimate):");
-        LOGGER.info("  - Prompt template: ~{} chars", promptChars);
-        LOGGER.info("  - EOF marker: ~{} chars", eofChars);
         LOGGER.info("  - Max output ({} tokens x {}): ~{} chars", maxOutputTokens, charsPerToken, outputChars);
         LOGGER.info("  - Safety margin: ~{} chars", safetyChars);
         LOGGER.info("  - [Subtotal overhead]: ~{} chars", overheadTotal);
-        LOGGER.info("  Available for source: [Total available] - [Subtotal overhead]");
-        LOGGER.info("  Available for source: {} - {} = {} chars", totalChars, overheadTotal, availableChars);
-        LOGGER.info("  Set to: {} (rounded, conservative)", finalChars);
+        LOGGER.info("  Prompt budget: {} - {}, rounded down: {} chars", totalChars, overheadTotal, finalChars);
+        LOGGER.info(
+                "  Available for source: {} - prompt template ~{} = {} chars", finalChars, promptChars, sourceChars);
     }
 
     /**

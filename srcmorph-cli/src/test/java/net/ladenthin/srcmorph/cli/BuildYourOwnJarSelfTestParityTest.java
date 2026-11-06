@@ -136,10 +136,13 @@ public class BuildYourOwnJarSelfTestParityTest {
 
     // <editor-fold defaultstate="collapsed" desc="scope">
     @Test
-    public void scope_buildYourOwnJarExample_matchesTheSelfTest() {
+    public void scope_buildYourOwnJarExample_matchesTheSelfTest() throws IOException {
         // act, assert
         assertThat(exampleRun().getFileExtensions(), is(selftestRun().getFileExtensions()));
+        assertThat(exampleRun().getFileNames(), is(selftestRun().getFileNames()));
+        assertThat(exampleRun().getFileInterpreters(), is(selftestRun().getFileInterpreters()));
         assertThat(exampleRun().getExcludes(), is(selftestRun().getExcludes()));
+        assertThat(json(exampleRun().getRegenerateOn()), is(json(selftestRun().getRegenerateOn())));
         assertThat(exampleRun().getGenerationProvider(), is(selftestRun().getGenerationProvider()));
     }
     // </editor-fold>

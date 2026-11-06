@@ -112,8 +112,10 @@ backtracking pattern therefore costs at most that many reads per file instead of
 
 Several ignore lines blank in file order, each over the text the one before left, so a region that
 can hold another one's opener (a `<!--` inside CDATA, POD or `__END__` inside a Perl heredoc, a `/*`
-inside a SQL string) would be cut at the wrong place. The files here therefore have one ignore line
-per language, an alternation of all its regions: the region that starts first wins, as in a lexer.
+inside a SQL string) would be cut at the wrong place. The files here therefore blank the regions of a
+language that can hold each other's openers in one ignore line, an alternation of them all: the
+region that starts first wins, as in a lexer. A second ignore line only blanks what that one left:
+`bpmn-facts` and `dmn-facts` add one for the diagram interchange after the XML line they include.
 Blanking leaves a space within a line, so `INSERT/* x */INTO` reads as `INSERT INTO`, and nothing at a
 line start. A counter anchored at
 a line start allows spaces and tabs there (`^[ \t]*`), never `\s*`: a blanked region leaves a run of
@@ -217,20 +219,21 @@ and no summary copied the password the corpus holds. The runs are under
 [`remeasure-2026-11-04/`](../docs/ai-index-benchmark/remeasure-2026-11-04/README.md). Measured are
 therefore Java, SQL, shell, Perl, XML and the fallback on the card and language corpora, and the
 kinds of the enterprise corpus on that corpus alone; Scala, the contract formats other than OpenAPI,
-Terraform, Ansible and Compose ran in no measurement. TypeScript ran once, on a repository measured
+Terraform, Ansible and Compose ran in none of these measurements. TypeScript ran once, on a repository measured
 internally: with `file-body-oop` both models named more of its exported API than with the fallback,
 which is why `run.py` and the Luna example route `.ts`, `.mts` and `.cts` there; it has no counters.
 On 2026-11-06 the kinds ran on three open-source projects (jpetstore-6, microservices-demo,
 camunda-bpm-examples; 218 files of 13 kinds, [`remeasure-2026-11-06/`](../docs/ai-index-benchmark/remeasure-2026-11-06/README.md)):
 with their rules gpt-oss-20b named 97.3 % of the names derived from the sources, through the fallback
-81.2 %, GPT-6 Luna 97.7 % against 92.2 %, and Terraform ran there too. The self-test routes those
-kinds since.
-Their counters (`scala-facts`, `proto-facts`,
-`avro-facts`, `graphql-facts`, `asyncapi-facts`, `terraform-facts`, `ansible-facts`,
-`compose-facts`, `camel-yaml-facts`, and `dmn-facts`, `gradle-facts`, `properties-facts`,
-`powershell-facts`, `batch-facts`, `npm-facts`) are pinned by their tests, not by a model run: a facts line is
-written in front of every summary of its rule but reaches the model only in a reduce call, and the
-scores read names, not counts.
+81.2 %, GPT-6 Luna 97.7 % against 92.2 %; Protocol Buffers, DMN and Terraform ran there for the
+first time. The self-test routes those kinds since. That run counted with `--facts`, so the counters
+of its kinds ran in a model run, `proto-facts`, `dmn-facts` and `terraform-facts` among them; but a
+facts line is written in front of every summary of its rule and reaches the model only in a reduce
+call, and the scores read names, not counts, so no model run checks a count. The counters of the
+kinds added with this profile (`scala-facts`, `proto-facts`, `avro-facts`, `graphql-facts`,
+`asyncapi-facts`, `terraform-facts`, `ansible-facts`, `compose-facts`, `camel-yaml-facts`, and
+`dmn-facts`, `gradle-facts`, `properties-facts`, `powershell-facts`, `batch-facts`, `npm-facts`) are
+therefore pinned by their tests.
 
 Three changes followed the same day ([`remeasure-2026-11-04b/`](../docs/ai-index-benchmark/remeasure-2026-11-04b/README.md)):
 the user message of a file starts with its path below the base directory, `file-body-oop` names the

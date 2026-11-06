@@ -11,7 +11,8 @@
 # assignment or a property of that name (implementation.extendsFrom, id = ...). "plugins" counts
 # id, alias, kotlin(...), a backquoted plugin id and apply plugin; "dependency declarations" a
 # dependency in one of the standard configurations of the java, kotlin and annotation-processor
-# plugins; "project dependencies" project(...) and Kotlin's projects.name accessors.
+# plugins; "project dependencies" project(...) and Kotlin's projects.name accessors; "include and
+# includeBuild statements" the statements, not the projects one names (include("core", "web") is one).
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
 # reads linearly.
 [ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|""".*?(?:"""|\z)|'''.*?(?:'''|\z)|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)*+'
@@ -21,5 +22,5 @@ project dependencies	\bproject[ \t]*+\(|\bprojects\.[A-Za-z_]
 platforms and BOMs	\b(?:platform|enforcedPlatform)[ \t]*+\(
 repositories	(?m)^[ \t]*+(?:mavenCentral|google|gradlePluginPortal|mavenLocal|jcenter)[ \t]*+\(|^[ \t]*+(?:maven|ivy)[ \t]*+[({]
 tasks registered, created or configured	(?m)\btasks\.(?:register|create|named|withType)\b|^[ \t]*+task[ \t]++[A-Za-z_]
-included projects and builds	(?m)^[ \t]*+include(?:Build)?\b(?![ \t]*+[=.])
+include and includeBuild statements	(?m)^[ \t]*+include(?:Build)?\b(?![ \t]*+[=.])
 version catalog references	\blibs\.[A-Za-z_][\w.]*+

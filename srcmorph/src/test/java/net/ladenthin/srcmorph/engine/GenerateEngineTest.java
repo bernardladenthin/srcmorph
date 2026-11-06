@@ -25,6 +25,7 @@ import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -781,6 +782,27 @@ public class GenerateEngineTest {
                 Files.exists(parts.resolve("src/main/java/com/example/Foo.java" + GenerateEngine.PARTS_SUFFIX)),
                 is(false));
         assertThat(logged(Level.INFO, "Kept the map-reduce answers of src/main/java/com/example/Big.java"), is(true));
+    }
+
+    @Test
+    public void execute_partsDirectoryAndAnUnchangedFileAfterAChunkedOne_keepsNothingForTheUnchanged()
+            throws Exception {
+        // arrange: a first run writes both summaries; then only Big.java changes, so Foo.java, after it
+        // in path order, is unchanged and never generated
+        final SrcMorphConfiguration config = oversizeConfig("mapReduce");
+        final Path parts = tempDir.resolve("parts");
+        config.setPartsDirectory(parts.toFile());
+        new GenerateEngine(config).execute();
+        final Path big = tempDir.resolve("src/main/java/com/example/Big.java");
+        Files.write(big, "// changed\n".getBytes(StandardCharsets.UTF_8), StandardOpenOption.APPEND);
+        final Path fooParts = parts.resolve("src/main/java/com/example/Foo.java" + GenerateEngine.PARTS_SUFFIX);
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.unchanged(), is(1));
+        assertThat(Files.exists(fooParts), is(false));
     }
 
     @Test

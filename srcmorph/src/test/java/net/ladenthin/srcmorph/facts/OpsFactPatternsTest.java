@@ -105,7 +105,7 @@ public class OpsFactPatternsTest {
         assertThat(count(OPENAPI, "paths", OPENAPI_YAML), is(2));
         assertThat(count(OPENAPI, "operations (approx)", OPENAPI_YAML), is(3));
         assertThat(count(OPENAPI, "operationIds", OPENAPI_YAML), is(3));
-        assertThat(count(OPENAPI, "parameters", OPENAPI_YAML), is(2));
+        assertThat(count(OPENAPI, "parameters (approx)", OPENAPI_YAML), is(2));
         assertThat(count(OPENAPI, "$ref references", OPENAPI_YAML), is(1));
         assertThat(count(OPENAPI, "object schemas", OPENAPI_YAML), is(1));
         assertThat(count(OPENAPI, "security schemes", OPENAPI_YAML), is(1));
@@ -123,8 +123,28 @@ public class OpsFactPatternsTest {
         assertThat(count(OPENAPI, "paths", json), is(1));
         assertThat(count(OPENAPI, "operations (approx)", json), is(2));
         assertThat(count(OPENAPI, "operationIds", json), is(2));
-        assertThat(count(OPENAPI, "parameters", json), is(1));
+        assertThat(count(OPENAPI, "parameters (approx)", json), is(1));
         assertThat(count(OPENAPI, "object schemas", json), is(1));
+    }
+
+    /** The accepted approximation: an apiKey scheme's in: has a parameter's shape, hence "(approx)". */
+    @Test
+    public void openapi_apiKeySecurityScheme_countsItsInWithTheParameters() {
+        // arrange
+        final String yaml = "components:\n"
+                + "  parameters:\n"
+                + "    Trace:\n"
+                + "      name: X-Trace\n"
+                + "      in: header\n"
+                + "  securitySchemes:\n"
+                + "    key:\n"
+                + "      type: apiKey\n"
+                + "      name: X-Key\n"
+                + "      in: header\n";
+
+        // act, assert
+        assertThat(count(OPENAPI, "parameters (approx)", yaml), is(2));
+        assertThat(count(OPENAPI, "security schemes", yaml), is(1));
     }
     // </editor-fold>
 
@@ -251,6 +271,33 @@ public class OpsFactPatternsTest {
         assertThat(count(DOCKERFILE, "users", DOCKERFILE_SOURCE), is(1));
         assertThat(count(DOCKERFILE, "entrypoints and commands", DOCKERFILE_SOURCE), is(1));
         assertThat(count(DOCKERFILE, "healthchecks", DOCKERFILE_SOURCE), is(1));
+    }
+
+    @Test
+    public void dockerfile_linesABackslashContinues_doNotCountAsInstructions() {
+        // arrange
+        final String dockerfile = "FROM alpine\n"
+                + "RUN set -e; \\\n"
+                + "env LANG=C sort list \\\n"
+                + "# a comment inside the command\n"
+                + "\n"
+                + "copy src dst \\  \n"
+                + "    && from-cache\n"
+                + "ENV A=1\n"
+                + "RUN cmd /c C:\\dir\\ x\n"
+                + "arg B\n";
+
+        // act, assert
+        assertThat(count(DOCKERFILE, "environment entries", dockerfile), is(2));
+        assertThat(count(DOCKERFILE, "RUN instructions", dockerfile), is(2));
+        assertThat(count(DOCKERFILE, "COPY and ADD instructions", dockerfile), is(0));
+        assertThat(count(DOCKERFILE, "build stages", dockerfile), is(1));
+    }
+
+    @Test
+    public void dockerfile_continuedLinesWithWindowsLineBreaks_doNotCountAsInstructions() {
+        // act, assert
+        assertThat(count(DOCKERFILE, "environment entries", "RUN a \\\r\nenv X=1\r\nENV Y=2\r\n"), is(1));
     }
     // </editor-fold>
 
@@ -682,7 +729,8 @@ public class OpsFactPatternsTest {
         assertThat(count(GRADLE, "project dependencies", KOTLIN_BUILD), is(1));
         assertThat(count(GRADLE, "platforms and BOMs", KOTLIN_BUILD), is(1));
         assertThat(count(GRADLE, "tasks registered, created or configured", KOTLIN_BUILD), is(1));
-        assertThat(count(GRADLE, "included projects and builds", settings), is(3));
+        // statements, not projects: include("core", "web") is one
+        assertThat(count(GRADLE, "include and includeBuild statements", settings), is(3));
     }
     // </editor-fold>
 

@@ -556,7 +556,7 @@ public class ModelDefinitionTest {
         final ModelDefinition c = new ModelDefinition();
 
         // pre-assert
-        assertThat(c.getMaxRetries(), is(ModelDefinition.DEFAULT_MAX_RETRIES));
+        assertThat(c.getMaxRetries(), is(3));
 
         // act
         c.setMaxRetries(7);
@@ -573,7 +573,7 @@ public class ModelDefinitionTest {
         ModelDefinition c = new ModelDefinition();
 
         // pre-assert
-        assertThat(c.getRequestsPerMinute(), is(ModelDefinition.DEFAULT_REQUESTS_PER_MINUTE));
+        assertThat(c.getRequestsPerMinute(), is(0));
 
         // act
         c.setRequestsPerMinute(25);

@@ -13,6 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -131,7 +132,8 @@ public class PackageIndexerTest {
 
         // assert: the example package's AI source text contains both child bodies, each under a
         // per-file heading — not merely the file names.
-        final String exampleSource = provider.sourceTextFor(packageDirectory.resolve("package.ai.md"));
+        // the call names the package by its path below the output root
+        final String exampleSource = provider.sourceTextFor(Paths.get("main/java/com/example"));
         assertThat(exampleSource, is(notNullValue()));
         assertThat(exampleSource.contains("### Foo.java"), is(true));
         assertThat(exampleSource.contains("FOO_BODY_MARKER summary of Foo."), is(true));
@@ -171,8 +173,7 @@ public class PackageIndexerTest {
 
         // assert: the parent ("com") package source embeds the leaf sub-package's generated body
         // under a directory-suffixed heading.
-        final Path comPackageFile = outputRoot.resolve("main/java/com").resolve("package.ai.md");
-        final String comSource = provider.sourceTextFor(comPackageFile);
+        final String comSource = provider.sourceTextFor(Paths.get("main/java/com"));
         assertThat(comSource, is(notNullValue()));
         assertThat(comSource.contains("### example/"), is(true));
         assertThat(comSource.contains(CapturingProvider.GENERATED_BODY), is(true));
@@ -223,7 +224,8 @@ public class PackageIndexerTest {
 
         // assert: the root package was aggregated (its sub-package is embedded) but the stray
         // project.ai.md is neither embedded as a child body nor listed as content.
-        final String rootSource = provider.sourceTextFor(outputRoot.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
+        // the root package has no path below the output root: it is named by the output directory
+        final String rootSource = provider.sourceTextFor(Paths.get("ai"));
         assertThat(rootSource, is(notNullValue()));
         assertThat(rootSource, containsString("### main/"));
         assertThat(rootSource, not(containsString("PROJECT_BODY_MARKER")));
@@ -409,7 +411,8 @@ public class PackageIndexerTest {
                 false,
                 new RegenerateOn(),
                 request -> {
-                    if (request.sourceFile().startsWith(failing)) {
+                    // the call names the package by its path below the output root
+                    if (request.sourceFile().equals(Paths.get("main/java/com/example/failing"))) {
                         throw new IOException("server unreachable");
                     }
                     return "A package summary.";

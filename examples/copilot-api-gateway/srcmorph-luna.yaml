@@ -345,11 +345,11 @@ srcMorph:
           conditions:
             - extensions: [".xml"]
             - contentMatches: 'mybatis\.org//DTD Mapper'
-    - id: integration                        # Camel, Spring Integration, Mule, Synapse
-      promptKey: file-body-xml
+    - id: integration                        # Camel, Spring Integration, Mule, Synapse; over jee, so a
+      promptKey: file-body-xml               # Spring application.xml with Camel routes gets these counters
       onIncomplete: retryOnce
       aiDefinitionKey: luna
-      priority: 10
+      priority: 11
       factsKey: integration-facts
       onOversize: mapReduce
       mapPromptKey: map-chunk
@@ -369,7 +369,10 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".bpmn"]
+        or:
+          conditions:
+            - extensions: [".bpmn"]
+            - fileNames: ["*.bpmn20.xml"]        # Flowable and Activiti, over the xml rule
     - id: dmn
       promptKey: file-body-xml
       onIncomplete: retryOnce
@@ -500,7 +503,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".yml", ".yaml"]
-            - contentMatches: '(?m)^-[ \t]+(?:route|routeTemplate|from|rest)[ \t]*:'
+            - contentMatches: '(?m)^-[ \t]+(?:route|routeTemplate|templatedRoute|from|rest)[ \t]*:'
     - id: k8s                                # Kubernetes manifests and Helm templates
       promptKey: file-body-ops
       onIncomplete: retryOnce
@@ -514,7 +517,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".yml", ".yaml"]
-            - contentMatches: '(?m)^kind:[ \t]*[A-Z]'
+            - contentMatches: '(?m)^kind:[ \t]*["'']?[A-Z]'   # kind: Deployment, quoted too
     - id: dockerfile
       promptKey: file-body-ops
       onIncomplete: retryOnce

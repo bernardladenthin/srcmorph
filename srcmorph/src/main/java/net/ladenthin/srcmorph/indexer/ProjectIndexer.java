@@ -238,7 +238,7 @@ public class ProjectIndexer {
         final String deterministicBody = leadLine + "\n\n" + packagesSection;
 
         // C: the packages the project lists and their checksums, so a changed source below shows whatever
-        // regenerateOn.children says; K: their leads, which the listing and the overview read; P and M: the
+        // regenerateOn.source says; K: their leads, which the listing and the overview read; P and M: the
         // overview's prompts and model (empty without an overview)
         final RoutingRule overview = this.overviewFieldGeneration;
         final SummaryGenerator support = this.summaryGenerator;

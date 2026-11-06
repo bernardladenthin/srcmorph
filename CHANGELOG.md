@@ -17,6 +17,13 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 - **A rule naming `promptKey: file-body-java` names `file-body-oop`:** profile v3 has no
   `file-body-java` any more.
+- **Configuration values that read differently now:** a `{` in an `excludes`, `pathGlob` or
+  `fileNames` glob opens an alternative (`{a,b}`) and an unclosed one fails the run (a glob has no
+  escape for a literal brace; `?` matches it); `$${name}` writes a literal `${name}` (it was left as written); a key
+  defined twice in `aiDefinitions`, `promptDefinitions` or `factDefinitions` fails the run instead of
+  the last one winning.
+- **The plugin's `G` is srcmorph's version**, no longer the project's: a reader or a script that took
+  the header's `G` for the project version reads `projectName` and the build instead.
 - **The first run rewrites every summary**, one model call each: a summary of 1.4.0 records no `M`
   and no `K`, the project's `C` is built differently, and every file prompt of profile v3 changed (the
   secrets rule). To keep the old summaries instead, set all five `regenerateOn` switches to `false`
@@ -63,6 +70,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   `packageFieldGenerations` is `packageRules` and `projectFieldGenerations` is `projectRules` (the
   loader refuses the old names as unknown keys). The beans' accessors follow (`getRules`,
   `getPackageRules`, `getProjectRules`; the CLI's `CConfiguration` fields too).
+- **Java callers of the window and the parts**: `InputWindowCalculator.maxInputChars(config)` takes
+  one argument and is the budget of the whole rendered prompt (it took the template out a second time);
+  `SummaryGenerator.parts()` is `takeParts()`, which also starts the next file's answers anew.
 - **A configuration that sets `pluginVersion` names it `generatorVersion`** (it is srcmorph's own
   version, the header's `G`, in the CLI and the plugin alike); the run record's `pluginVersion` is
   `generatorVersion` too, and so are the bean's getter and setter and the `RunRecord` parameter.
@@ -191,7 +201,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   (`python` matches `python3.12`; a name ending with a digit only from a dot on: `python3.1` does not
   match `python3.12`), and the arguments of `env`'s options (GNU `-u`, `-C`, `-a`, BSD `-P`, `-L`,
   `-U`) and its `-S` command line are read as `env` reads them. The line is read only for a file the subtrees, excludes and size band let
-  through; one that cannot be read is skipped with a warning, the run goes on. `support.AiShebang` holds the rule; an interpreter given with its directory
+  through; one that cannot be read is skipped with a warning, the run goes on. `support.Shebang` holds the rule; an interpreter given with its directory
   (`/bin/bash`) fails the run.
 - **Fact counters can count before the blanking and count names** (`[raw]` and `[distinct]` in a
   facts file, `raw` and `distinct` in a configuration): a raw counter counts the source as written,
@@ -214,7 +224,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   the body of a block scalar from the indentation of its first line, as YAML reads it, and keep its
   key (`ansible.builtin.shell: |` counts).
 - **`{a,b}` alternatives in every glob** (`excludes`, `pathGlob`, `fileNames`), nested too:
-  `**/*.{yml,yaml}`, `**/{target,build}/**`. The syntax lives once in `support.AiGlob`; a glob that
+  `**/*.{yml,yaml}`, `**/{target,build}/**`. The syntax lives once in `support.Glob`; a glob that
   opens a `{` it does not close fails the run, naming it.
 
 - **Profile v3 covers the kinds of an enterprise Java code base**, with four prompts and fifteen
@@ -315,8 +325,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   to 30 together, two windows; they send at most 10 now.
 - **`G` is srcmorph's own version, in the CLI and the plugin alike.** The plugin recorded the
   version of the user's project as the generator and the CLI recorded none; a summary now names the
-  srcmorph release that wrote it (`support.AiGeneratorVersion`, which the core's build fills in), and
-  `pluginVersion` in the file still overrides it. `G` never causes a rewrite, so no summary is
+  srcmorph release that wrote it (`support.GeneratorVersion`, which the core's build fills in), and
+  `generatorVersion` in the file still overrides it. `G` never causes a rewrite, so no summary is
   rewritten for this.
 - **The examples, the self-test and `run.py` ask once more on an incomplete answer**
   (`onIncomplete: retryOnce` on every rule, the package and project rules too). gpt-oss-20b ran
@@ -395,6 +405,34 @@ The entries below hold the details; what a 1.4.0 user changes:
   is not rewritten for this alone.
 
 ### Fixed
+
+- **A package call names the package**, as `package-body` and `profiles/README.md` say: its user
+  message started with `package.ai.md` (the file name of the absolute path), now with the package's
+  path below the output root (`main/java/com/example`; the root package by the output directory's name).
+
+- **A prompt or facts file checked out with CRLF line endings reads as with LF.** Its hash ignored the
+  line endings already, but the template was sent and measured as written, so the same profile gave
+  another window and other chunk boundaries on Windows than on Linux.
+
+- **`-Dsrcmorph.planOnly=true` reaches the aggregation goals too.** Only `generate` read it, so a
+  build with the self-test profile planned the file phase and then let `aggregate-packages` and
+  `aggregate-project` load the model and rewrite every package; they do not run now, as the CLI's
+  `All` command never did.
+- **The window counted the prompt template twice.** `InputWindowCalculator.maxInputChars` took the
+  template out of the budget the whole prompt (template and source) is then compared with, so every
+  file lost one template's length of window (3 to 6 KB with profile v3's prompts) and some that fit
+  were read in chunks, or failed under `onOversize: fail`. `maxInputChars(config)` is the budget of
+  the rendered prompt now (the window less the output and the safety margin), and the source gets it
+  less the template, once; the plan and the run still agree. Java callers drop the second argument.
+- **A phase rule's counters from an inline `factDefinitions` entry are checked before a model loads**:
+  they were resolved after the rule's check, so a pattern that does not compile failed the run at the
+  first package instead.
+- **`partsDirectory` no longer writes a chunked file's answers under the next file's name** when that
+  file was unchanged (or failed before it was read): `SummaryGenerator.takeParts()` returns the
+  answers once and starts anew (`parts()` is gone).
+- **A `</think>` inside the answer's text is kept**: a closing tag ends a template's reasoning only
+  when it ends its line and stands after no quote, so a summary that names the tag in a sentence or in
+  double quotes is no longer cut before it.
 
 - **Files are planned and summarized in path order, on every machine.** The walk of a subtree came
   in the file system's order, so the plan, the progress and the run record listed files differently on

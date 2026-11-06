@@ -8,8 +8,10 @@
 # rule that routes Java files using these APIs (a contentMatches on their imports, or on an
 # annotation written with its package) next to the plain Java rule. java-facts' [ignore] line blanks
 # comments and strings first, and an annotation counts at the start of a line or after other
-# annotations on it, so an "@Stateless" in Javadoc prose or a commented-out one does not count. JvmFactPatternsTest pins every case;
-# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+# annotations on it, so an "@Stateless" in Javadoc prose or a commented-out one does not count.
+# "EJB timers" counts every @Schedule, the members of a @Schedules container too, and not the
+# container. JvmFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
+# every pattern reads linearly.
 [include]	java-facts
 EJB session beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?(?:Stateless|Stateful|Singleton)\b
 message-driven beans	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?MessageDriven\b
@@ -21,5 +23,5 @@ HTTP method annotations	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ws
 servlets, filters and listeners	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.servlet\.annotation\.)?(?:WebServlet|WebFilter|WebListener)\b
 SOAP endpoints	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.(?:jws|xml\.ws)\.)?(?:WebService|WebServiceProvider)\b
 transaction annotations	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:(?:javax|jakarta)\.(?:transaction|ejb)|org\.springframework\.transaction\.annotation)\.)?(?:Transactional|TransactionAttribute)\b
-EJB timers	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.ejb\.)?Schedules?\b
+EJB timers	@(?:(?:javax|jakarta)\.ejb\.)?Schedule\b
 security annotations	(?m)^[ \t]*+(?:@[^\n]*?[ \t)])?@(?:(?:javax|jakarta)\.annotation\.security\.)?(?:RolesAllowed|PermitAll|DenyAll|RunAs|DeclareRoles)\b

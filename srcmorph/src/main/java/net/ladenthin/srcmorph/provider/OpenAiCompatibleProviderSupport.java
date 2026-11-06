@@ -695,8 +695,8 @@ final class OpenAiCompatibleProviderSupport {
      * {@link #RETRY_BASE_DELAY_MILLIS}, at most {@link #MAX_RETRY_BACKOFF_MILLIS}, plus up to a quarter
      * of it as jitter so that clients that failed together do not retry together.
      *
-     * @param retryAfter the {@code Retry-After} header, or {@code null}; seconds of any length are capped,
-     *                   a date instead of seconds is ignored
+     * @param retryAfter the {@code Retry-After} header, or {@code null}: seconds of any length or an HTTP
+     *                   date, either capped at {@link #MAX_RETRY_AFTER_MILLIS}
      * @param retry      the retry about to be made, from {@code 1}
      * @param jitter     a random number in {@code [0, 1)}
      * @return the delay in milliseconds

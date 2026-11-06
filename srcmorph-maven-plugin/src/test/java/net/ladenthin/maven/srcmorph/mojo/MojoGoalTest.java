@@ -96,6 +96,22 @@ public class MojoGoalTest {
     }
 
     @Test
+    public void aggregatePackages_planOnly_writesNoPackageSummaryWhateverTheFileSays() throws Exception {
+        // arrange
+        writeConfiguration(project, MOCK_CONFIGURATION.replace("srcMorph:\n", "srcMorph:\n  planOnly: false\n"));
+        writeSource(project);
+        generate();
+        final AggregatePackagesMojo mojo = configured(new AggregatePackagesMojo(), project);
+        setField(mojo, "planOnly", true);
+
+        // act
+        mojo.execute();
+
+        // assert
+        assertThat(Files.exists(output().resolve("main/java/com/example/package.ai.md")), is(false));
+    }
+
+    @Test
     public void aggregatePackages_withoutAPackageRule_failsNamingIt() throws Exception {
         // arrange
         writeConfiguration(project, MOCK_CONFIGURATION.substring(MOCK_CONFIGURATION.indexOf("projectRules:")));
@@ -112,6 +128,23 @@ public class MojoGoalTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="aggregate-project">
+    @Test
+    public void aggregateProject_planOnly_writesNoProjectSummaryWhateverTheFileSays() throws Exception {
+        // arrange
+        writeConfiguration(project, MOCK_CONFIGURATION.replace("srcMorph:\n", "srcMorph:\n  planOnly: false\n"));
+        writeSource(project);
+        generate();
+        configured(new AggregatePackagesMojo(), project).execute();
+        final AggregateProjectMojo mojo = configured(new AggregateProjectMojo(), project);
+        setField(mojo, "planOnly", true);
+
+        // act
+        mojo.execute();
+
+        // assert
+        assertThat(Files.exists(output().resolve("project.ai.md")), is(false));
+    }
+
     @Test
     public void aggregateProject_mockConfiguration_takesTheProjectRule() throws Exception {
         // arrange

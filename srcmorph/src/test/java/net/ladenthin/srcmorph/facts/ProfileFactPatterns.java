@@ -10,16 +10,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import net.ladenthin.srcmorph.config.FactCounter;
 
 /**
  * The fact counters of the repository's current profile ({@code profiles/v3/<key>.tsv}), read with the
- * production parser, so a pattern test checks the file that ships and never a copy of it.
+ * production parser, so a pattern test checks the file that ships and never a copy of it, and counted
+ * only through {@link FactExtractor#counts}, so the ignore counters blank their regions first as in
+ * the facts line (a raw find over one pattern would miss what the blanking changes).
  */
 final class ProfileFactPatterns {
 
@@ -28,35 +27,6 @@ final class ProfileFactPatterns {
 
     private ProfileFactPatterns() {
         // static helpers only
-    }
-
-    /**
-     * Reads one facts file of the profile.
-     *
-     * @param key the facts key, the file name without {@code .tsv}
-     * @return the patterns by label, in file order
-     */
-    static Map<String, String> load(final String key) {
-        final Map<String, String> patterns = new LinkedHashMap<>();
-        for (final FactCounter counter : counters(key)) {
-            patterns.put(counter.getLabel(), counter.getPattern());
-        }
-        return patterns;
-    }
-
-    /**
-     * Returns one pattern, failing when the file has no counter of that label.
-     *
-     * @param patterns the patterns by label
-     * @param label    the counter's label
-     * @return its pattern
-     */
-    static String pattern(final Map<String, String> patterns, final String label) {
-        final String pattern = patterns.get(label);
-        if (pattern == null) {
-            throw new IllegalStateException("no counter '" + label + "' in " + patterns.keySet());
-        }
-        return pattern;
     }
 
     /**
@@ -108,21 +78,5 @@ final class ProfileFactPatterns {
         } catch (final IOException e) {
             throw new UncheckedIOException(e);
         }
-    }
-
-    /**
-     * Counts the matches the way {@link FactExtractor} does.
-     *
-     * @param pattern the pattern
-     * @param source  the text
-     * @return the number of non-overlapping matches
-     */
-    static int count(final String pattern, final String source) {
-        final Matcher matcher = Pattern.compile(pattern).matcher(source);
-        int count = 0;
-        while (matcher.find()) {
-            count++;
-        }
-        return count;
     }
 }

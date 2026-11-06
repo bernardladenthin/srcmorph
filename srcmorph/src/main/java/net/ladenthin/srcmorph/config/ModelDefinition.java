@@ -56,9 +56,9 @@ public class ModelDefinition {
     public static final int DEFAULT_THREADS = Math.min(4, Runtime.getRuntime().availableProcessors());
 
     /**
-     * The maximum number of characters of source text fed into the prompt when {@link #charsPerToken}
-     * is zero (e.g. in mock-based tests). When {@link #charsPerToken} is greater than zero, the limit is
-     * calculated from the context size, the output tokens, the prompt overhead and the safety margin.
+     * The maximum length of the rendered prompt (template and source) when {@link #charsPerToken} is zero
+     * (e.g. in mock-based tests). When {@link #charsPerToken} is greater than zero, the limit is calculated
+     * from the context size, the output tokens and the safety margin.
      */
     public static final int DEFAULT_MAX_INPUT_CHARS = 120000;
 

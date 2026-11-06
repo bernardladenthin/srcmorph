@@ -125,11 +125,11 @@ Granite run may run beside one; the scores go to `scores/`, the model card is no
 **Phase R: the reviews** (after phase C; at least two review agents per round, each started fresh
 with the code, not with the run's conclusions)
 
-- [ ] R1 Round 1: one agent reviews the whole repository, one the delta of the branch against
+- [x] R1 Round 1: one agent reviews the whole repository, one the delta of the branch against
   `main` (`git diff main...HEAD`): correctness, the guides, tests, documentation against the code,
   the benchmark's claims against its data. Each finding is verified against the code before it
   counts
-- [ ] R2 The verified findings of R1 fixed, each with its tests (a large refactor is reported in
+- [x] R2 The verified findings of R1 fixed, each with its tests (a large refactor is reported in
   this file instead of applied, as CLAUDE.md says)
 - [ ] R3 Round 2 the same way, on the state after R2; its verified findings fixed. Another round
   follows while a round finds anything of high or medium weight, at most four rounds in all
