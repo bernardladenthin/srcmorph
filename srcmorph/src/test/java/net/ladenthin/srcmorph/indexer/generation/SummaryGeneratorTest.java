@@ -460,8 +460,8 @@ public class SummaryGeneratorTest {
     }
 
     /**
-     * The retry after an overflow really sends less: the whole source first, a quarter less of the window
-     * the second time, so a source near the window is cut (a rule that may cut it, here sample).
+     * The retry after an overflow really sends less: the whole source first, a quarter less than the refused
+     * prompt the second time, so the source is cut (a rule that may cut it, here sample).
      */
     @Test
     public void generate_contextOverflow_theRetrySendsTheSmallerWindow() throws Exception {
@@ -498,67 +498,133 @@ public class SummaryGeneratorTest {
         assertThat(sent.get(1) < sent.get(0), is(true));
     }
 
+    /**
+     * A source whose prompt (about 3 000 chars) is far below the window of {@link #normalWindowModel} (7 400
+     * chars): a smaller window that shrank only the budget, not the prompt, would send it unchanged.
+     */
+    private static final int SHORT_DENSE_SOURCE_LINES = 330;
+
+    /** The rendered prompt of a request, as the provider receives it. */
+    private static int promptLength(final GenerationRequest request) {
+        return new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions())
+                .buildPrompt(request)
+                .length();
+    }
+
     @Test
     public void generate_contextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
-        // arrange
-        final Path contextFile = tempFile("Dense", ".sql");
-        final AtomicInteger calls = new AtomicInteger();
-        // Fits the char window but the provider rejects the first prompt as over-context (token-dense);
-        // the retry with a smaller window then succeeds.
+        // arrange: the prompt fits the char window, the provider refuses it once as over-context (token-dense)
+        final List<Integer> prompts = new ArrayList<>();
         final GenerationProvider provider = request -> {
-            if (calls.getAndIncrement() == 0) {
-                throw new RuntimeException("request (16549 tokens) exceeds the available context size (16384 tokens)");
+            prompts.add(promptLength(request));
+            if (prompts.size() == 1) {
+                throw new RuntimeException("request (2100 tokens) exceeds the available context size (2048 tokens)");
             }
             return "OK";
         };
-        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+        final String source = largeSource(SHORT_DENSE_SOURCE_LINES);
 
         // act
-        final SummaryResult result = support.generate((plainRoute("m")), contextFile, "file", "small source");
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(oversizeRule("m", "sample", 0), tempFile("Dense", ".sql"), "file", source);
 
-        // assert
-        assertThat(result.body(), is(equalTo("OK")));
-        assertThat(calls.get(), is(equalTo(2)));
+        // assert: the retry sends a quarter less than the refused prompt, not the same prompt again
+        assertThat(result.body(), endsWith("OK"));
+        assertThat(prompts.size(), is(2));
+        assertThat(prompts.get(1) <= prompts.get(0) * OverflowBackoff.BACKOFF_PERCENT / 100, is(true));
     }
 
     @Test
     public void generate_remoteContextOverflowThenSuccess_retriesWithSmallerWindowAndSucceeds() throws Exception {
         // arrange
-        final AtomicInteger calls = new AtomicInteger();
+        final List<Integer> prompts = new ArrayList<>();
         final GenerationProvider provider = request -> {
-            if (calls.incrementAndGet() == 1) {
+            prompts.add(promptLength(request));
+            if (prompts.size() == 1) {
                 throw new ContextOverflowException("http://h answered HTTP 413: ");
             }
             return "OK";
         };
+        final String source = largeSource(SHORT_DENSE_SOURCE_LINES);
 
         // act
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
-                .generate((normalRule("m", null)), tempFile("Test", ".java"), "file", "public class Test {}");
+                .generate(oversizeRule("m", "sample", 0), tempFile("Test", ".java"), "file", source);
 
         // assert
-        assertThat(calls.get(), is(equalTo(2)));
-        assertThat(result.body(), is(equalTo("OK")));
+        assertThat(result.body(), endsWith("OK"));
+        assertThat(prompts.size(), is(2));
+        assertThat(prompts.get(1) <= prompts.get(0) * OverflowBackoff.BACKOFF_PERCENT / 100, is(true));
     }
 
     @Test
     public void generate_persistentContextOverflow_rethrowsAfterRetrying() throws Exception {
         // arrange
         final Path contextFile = tempFile("Dense", ".sql");
+        final List<Integer> prompts = new ArrayList<>();
+        final GenerationProvider provider = request -> {
+            prompts.add(promptLength(request));
+            throw new RuntimeException("request exceeds the available context size (2048 tokens)");
+        };
+        final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
+        final RoutingRule route = oversizeRule("m", "sample", 0);
+        final String source = largeSource(SHORT_DENSE_SOURCE_LINES);
+
+        // act
+        final RuntimeException failed =
+                assertThrows(RuntimeException.class, () -> support.generate(route, contextFile, "file", source));
+
+        // assert: the whole source once (its smaller window would cut it, so sample reads the head), then the
+        // head and every retry of it, each shorter than the one before, then the overflow is rethrown
+        assertThat(failed.getMessage(), containsString(OverflowBackoff.CONTEXT_OVERFLOW_MARKER));
+        assertThat(prompts.size(), is(2 + OverflowBackoff.MAX_RETRIES));
+        for (int i = 1; i < prompts.size(); i++) {
+            assertThat(prompts.get(i) < prompts.get(i - 1), is(true));
+        }
+    }
+
+    @Test
+    public void generate_contextOverflowOfAShortPromptUnderMapReduce_isMapReducedInsteadOfResent() throws Exception {
+        // arrange: the whole source fits the char window, the provider refuses it as over-context; its chunks
+        // it answers
+        final String source = largeSource(SHORT_DENSE_SOURCE_LINES);
+        final AtomicInteger wholeCalls = new AtomicInteger();
+        final GenerationProvider provider = request -> {
+            if (request.sourceText().equals(source)) {
+                wholeCalls.incrementAndGet();
+                throw new RuntimeException("request (2100 tokens) exceeds the available context size (2048 tokens)");
+            }
+            return "PART";
+        };
+
+        // act
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".sql"), "file", source);
+
+        // assert: the refused prompt went once, then the rule's map-reduce read the file
+        assertThat(wholeCalls.get(), is(1));
+        assertThat(result.body(), startsWith(MapReduceMath.COVERAGE_HEADER));
+        assertThat(result.body(), containsString(" chunks summarized"));
+        assertThat(result.body(), endsWith("PART"));
+    }
+
+    @Test
+    public void generate_contextOverflowOfAPromptBelowTheSmallestWindow_isRethrownWithoutResending() throws Exception {
+        // arrange: a smaller window than the smallest retry window would not shorten the prompt
         final AtomicInteger calls = new AtomicInteger();
         final GenerationProvider provider = request -> {
             calls.incrementAndGet();
-            throw new RuntimeException("request exceeds the available context size (16384 tokens)");
+            throw new RuntimeException("request exceeds the available context size (2048 tokens)");
         };
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
-        final RoutingRule route = plainRoute("m");
+        final RoutingRule route = oversizeRule("m", "sample", 0);
+        final Path contextFile = tempFile("Dense", ".sql");
 
         // act
         assertThrows(RuntimeException.class, () -> support.generate(route, contextFile, "file", "small source"));
 
-        // assert
-        // Retried before giving up (more than the single initial attempt).
-        assertThat(calls.get() > 1, is(true));
+        // assert: the same prompt is not sent again
+        assertThat(calls.get(), is(1));
     }
 
     @Test
@@ -1256,12 +1322,18 @@ public class SummaryGeneratorTest {
         final SummaryGenerator support = supportWithModels(provider, normalWindowModel("m"));
 
         // act
-        support.generate(oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", largeSource(1_000));
+        final SummaryResult result = support.generate(
+                oversizeRule("m", "mapReduce", 0), tempFile("Dense", ".java"), "file", largeSource(1_000));
 
-        // assert: no map call needed a smaller window, so every chunk read the whole of itself
+        // assert: the chunks are sized by the measured window (about 2 000 chars, a chunk of about 1 300): seven
+        // chunks and one reduce. Chunks of the estimate (about 5 600 chars) would be two, each over the limit,
+        // and each read in halves. No map call needed a smaller window, so every chunk read the whole of itself
+        assertThat(result.body(), startsWith(MapReduceMath.COVERAGE_HEADER + "7 of 7 chunks summarized\n"));
+        assertThat(provider.generated.size(), is(7 + 1));
         for (final GenerationRequest request : provider.generated) {
             assertThat(request.sourceText().length() <= NORMAL_WINDOW_TOKEN_LIMIT, is(true));
             assertThat(request.sourceText().contains("[EOF - source was truncated]"), is(false));
+            assertThat(request.sourceText().contains(", half "), is(false));
         }
     }
 
@@ -1544,8 +1616,10 @@ public class SummaryGeneratorTest {
         final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
                 .generate(oversizeRule("m", "mapReduce", 0), tempFile("Huge", ".java"), "file", largeSource(7000));
 
-        // assert: chunks of the estimated window, none cut
-        assertThat(requests.size() > 2, is(true));
+        // assert: chunks of the estimated window (about 5 600 of the 68 890 chars each, less the overlap):
+        // thirteen chunks and one reduce, none cut
+        assertThat(result.body(), startsWith(MapReduceMath.COVERAGE_HEADER + "13 of 13 chunks summarized\n"));
+        assertThat(requests.size(), is(13 + 1));
         assertThat(result.body().contains("cut to fit the window"), is(false));
     }
 

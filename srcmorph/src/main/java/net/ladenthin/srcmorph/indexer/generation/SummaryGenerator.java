@@ -867,9 +867,12 @@ public class SummaryGenerator {
     }
 
     /**
-     * Trims {@code source} to {@code window} and generates, retrying with a progressively smaller window
-     * (up to {@link OverflowBackoff#MAX_RETRIES}) when the provider rejects the prompt for exceeding the model's
-     * context. This is the char-estimate safety net: a token-dense prompt can exceed the context even
+     * Trims {@code source} to {@code window} and generates. When the provider rejects the prompt for exceeding
+     * the model's context, the next window is {@link OverflowBackoff#BACKOFF_PERCENT} percent of the refused
+     * prompt's length (not of the window, which a short prompt may be far below), so every retry sends a
+     * shorter prompt, up to {@link OverflowBackoff#MAX_RETRIES} times; a prompt no smaller window shortens
+     * (one of {@link OverflowBackoff#MIN_WINDOW_CHARS} or fewer) is not sent again, its overflow is rethrown.
+     * This is the char-estimate safety net: a token-dense prompt can exceed the context even
      * after the char-based trim, so rather than fail the build we re-trim and retry. Any non-overflow
      * exception propagates immediately. A provider that counts a prompt's tokens is asked first: a prompt
      * over {@code tokenLimit} is never sent; the window shrinks by the measured density instead
@@ -944,8 +947,11 @@ public class SummaryGenerator {
             } catch (final IOException | RuntimeException e) {
                 // a call that failed still cost its tokens
                 usage = usage.withCall(generationProvider.lastUsage());
+                // the refused prompt, not the budget, has to shrink: a prompt shorter than its budget would
+                // otherwise be sent again unchanged
+                final int refused = Math.min(budget, prepared.prompt().length());
                 final int reduced = OverflowBackoff.isContextOverflow(e)
-                        ? OverflowBackoff.nextWindow(overflows++, budget)
+                        ? OverflowBackoff.nextWindow(overflows++, refused)
                         : OverflowBackoff.NO_SMALLER_WINDOW;
                 if (reduced == OverflowBackoff.NO_SMALLER_WINDOW) {
                     throw e;
@@ -954,7 +960,7 @@ public class SummaryGenerator {
                         "AI provider rejected the prompt (context overflow) for {}; retrying with a smaller window"
                                 + " ({} -> {} chars)",
                         contextFile,
-                        budget,
+                        refused,
                         reduced);
                 budget = reduced;
             }
