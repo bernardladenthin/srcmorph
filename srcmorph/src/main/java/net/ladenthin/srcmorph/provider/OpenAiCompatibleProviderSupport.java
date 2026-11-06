@@ -472,11 +472,21 @@ final class OpenAiCompatibleProviderSupport {
      * @return the problem, or {@code null} when it parses as a URL
      */
     static @Nullable String malformedProblem(final String baseUrl) {
+        return parsed(baseUrl) == null ? malformedMessage(baseUrl) : null;
+    }
+
+    /**
+     * Parses a {@code baseUrl}.
+     *
+     * @param baseUrl the model's {@code baseUrl}, trimmed
+     * @return the URL, or {@code null} when it is none or has no host ({@code https:///v1} is no server)
+     */
+    private static @Nullable URL parsed(final String baseUrl) {
         try {
-            // a URL without a host (https:///v1) is no server either
-            return new URL(baseUrl).getHost().isEmpty() ? malformedMessage(baseUrl) : null;
+            final URL url = new URL(baseUrl);
+            return url.getHost().isEmpty() ? null : url;
         } catch (final MalformedURLException e) {
-            return malformedMessage(baseUrl);
+            return null;
         }
     }
 
@@ -688,9 +698,10 @@ final class OpenAiCompatibleProviderSupport {
         if (query != null) {
             return query;
         }
-        final @Nullable String malformed = malformedProblem(baseUrl.trim());
-        if (malformed != null) {
-            return malformed;
+        final String base = baseUrl.trim();
+        final @Nullable URL url = parsed(base);
+        if (url == null) {
+            return malformedMessage(base);
         }
         final String name = apiKeyEnv.trim();
         if (name.isEmpty()) {
@@ -700,16 +711,10 @@ final class OpenAiCompatibleProviderSupport {
         if (key == null || key.trim().isEmpty()) {
             return "its apiKeyEnv names " + name + ", which is not set in this process's environment";
         }
-        final String base = baseUrl.trim();
         if (!base.startsWith(HTTP_SCHEME)) {
             return null;
         }
-        final String host;
-        try {
-            host = new URL(base).getHost();
-        } catch (final MalformedURLException e) {
-            return malformedMessage(base);
-        }
+        final String host = url.getHost();
         return isLoopbackHost(host)
                 ? null
                 : "its key from " + name + " would go in cleartext to " + host
