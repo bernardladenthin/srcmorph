@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
         IMC_IMMATURE_CLASS_NO_EQUALS on SummaryParts.
 
         SummaryParts collects the answers of one map-reduce while it runs and is read once
-        as text (SummaryGenerator.parts()); it is never compared or used as a key. A value
+        as text (SummaryGenerator.takeParts()); it is never compared or used as a key. A value
         equality over a buffer that grows with every answer would mislead. Identity is the
         correct semantics.
     -->

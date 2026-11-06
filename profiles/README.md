@@ -347,7 +347,8 @@ still lost there:
   family rule names no analysis channel; the SQL, XML and fallback prompts have a family rule for
   long runs of rows, records and constants, and in the SQL prompt more than five `INSERT`s into one
   table are a family; no prompt quotes an example lead any more, and none asks to recount; the
-  closing paragraph says that the user message starts with the file name; chunked rules append
+  closing paragraph says that the user message starts with the file name (its path below the base
+  directory since 2026-11-04); chunked rules append
   `map-chunk` and `reduce-parts`. The tables below were measured before these changes.
 
 The last two additions came from the drafts in between: with the command-line sentence alone,
@@ -394,8 +395,12 @@ materialized views, triggers, types and `ALTER TABLE` are counted.
 
 ## A new version, and the earlier ones
 
-The next profile goes into `v4/` with a file for each key, is measured with `run.py --profile v4`,
-and replaces `v3/` when it wins; the configurations above then switch to it, and `v3/` goes. Only the
+Between releases `v3/` changes in place: a fixed counter, a new kind and a measured prompt change go
+into its files, each in the CHANGELOG, and the facts and prompt hashes in a summary's header rewrite
+what they touch (after 1.4.0: `file-body-java` became `file-body-oop`, the enterprise kinds and their
+counters came in). A rewrite of the prompts that has to be measured against the current set goes
+into `v4/` with a file for each key, is measured with `run.py --profile v4`, and replaces `v3/` when
+it wins; the configurations above then switch to it, and `v3/` goes. Only the
 current profile is kept here, the earlier prompt sets are in the history (`git show <commit>:<path>`
 prints one; the directory was called `prompts/` then):
 
