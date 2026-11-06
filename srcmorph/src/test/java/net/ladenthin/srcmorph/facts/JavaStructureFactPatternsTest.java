@@ -328,6 +328,26 @@ public class JavaStructureFactPatternsTest {
                 count(FIELDS, "    @Inject private Clock clock;\n    @Column(name = \"x\") protected int x = 1;\n"),
                 is(2));
     }
+
+    @Test
+    public void field_typeUseAnnotationBeforeOrAfterTheModifiers_counts() {
+        // arrange
+        // as this repository writes its nullable fields
+        final String source = "    @Nullable private String a;\n"
+                + "    private @Nullable String b;\n"
+                + "    private final @NonNull List<String> c = new ArrayList<>();\n"
+                + "    private static @Size(max = 3) int @Nullable [] d;\n";
+
+        // act, assert
+        // a, b and c; an annotation on an array dimension is not read
+        assertThat(count(FIELDS, source), is(3));
+    }
+
+    @Test
+    public void field_typeUseAnnotationOnAMethodsReturnType_isNoField() {
+        // act, assert
+        assertThat(count(FIELDS, "    private @Nullable String find(int id) {\n        return null;\n    }\n"), is(0));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="constructors">
