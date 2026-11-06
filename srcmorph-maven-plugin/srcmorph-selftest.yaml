@@ -57,6 +57,27 @@ srcMorph:
     - ".xslt"
     - ".wsdl"
     - ".xhtml"
+    - ".ts"
+    - ".mts"
+    - ".cts"
+    - ".jsp"
+    - ".jspf"
+    - ".jspx"
+    - ".tag"
+    - ".tagx"
+    - ".bpmn"
+    - ".dmn"
+    - ".yml"
+    - ".yaml"
+    - ".proto"
+    - ".tf"
+    - ".hcl"
+  fileNames:
+    - "Dockerfile"
+    - "Dockerfile.*"
+    - "*.dockerfile"
+    - "Containerfile"
+    - "package.json"
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
@@ -320,6 +341,111 @@ srcMorph:
       factsKey: xml-facts
       condition:
         extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+    - id: typescript                         # the oop prompt names more of a TypeScript file's API than
+      promptKey: file-body-oop               # the fallback (measured 2026-11-05); no counters of its own
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      condition:
+        extensions: [".ts", ".mts", ".cts"]
+    - id: jee                                # Jakarta EE descriptors
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: jee-facts
+      condition:
+        fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]
+    - id: mybatis
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: mybatis-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml"]
+            - contentMatches: 'mybatis\.org//DTD Mapper'
+    - id: bpmn
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: bpmn-facts
+      condition:
+        extensions: [".bpmn"]
+    - id: dmn
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: dmn-facts
+      condition:
+        extensions: [".dmn"]
+    - id: jsp
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: jsp-facts
+      condition:
+        extensions: [".jsp", ".jspf", ".jspx", ".tag", ".tagx"]
+    - id: proto
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: proto-facts
+      condition:
+        extensions: [".proto"]
+    - id: actions
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: actions-facts
+      condition:
+        pathGlob: "**/.github/{workflows,actions}/**/*.{yml,yaml}"
+    - id: k8s                                # Kubernetes manifests and Helm templates
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 5
+      factsKey: k8s-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - contentMatches: '(?m)^kind:[ \t]*[A-Z]'
+    - id: dockerfile
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: dockerfile-facts
+      condition:
+        fileNames: ["Dockerfile", "Dockerfile.*", "*.dockerfile", "Containerfile"]
+    - id: terraform
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: terraform-facts
+      condition:
+        extensions: [".tf", ".hcl"]
+    - id: npm                                # an npm manifest: the ops prompt has a line for it (measured
+      promptKey: file-body-ops               # 2026-11-06 on an extension's manifest)
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: npm-facts
+      condition:
+        fileNames: ["package.json"]
+    - id: ops                                # every other YAML, Jenkinsfile
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      condition:
+        or:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - fileNames: ["Jenkinsfile", ".gitlab-ci.yml"]
     - id: fallback                      # the rule for every file no other rule matches
       promptKey: file-body-fallback
       onIncomplete: retryOnce

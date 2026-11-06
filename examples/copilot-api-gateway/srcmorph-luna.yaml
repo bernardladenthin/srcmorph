@@ -105,6 +105,7 @@ srcMorph:
     - "openapi*.json"
     - "swagger*.json"
     - "asyncapi*.json"
+    - "package.json"
   # Scripts without an extension (bin/deploy, a Git hook), by the interpreter their #! line names; a
   # name also matches its versions (python matches python3 and python3.12).
   fileInterpreters:
@@ -606,6 +607,17 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         extensions: [".bat", ".cmd"]
+    - id: npm                                # an npm manifest: the ops prompt has a line for it (measured
+      promptKey: file-body-ops               # 2026-11-06 on an extension's manifest)
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: npm-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["package.json"]
     - id: ops                                # every other YAML, Jenkinsfile
       promptKey: file-body-ops
       onIncomplete: retryOnce

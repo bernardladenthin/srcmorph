@@ -255,6 +255,19 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The self-test routes the new kinds measured on real projects:** TypeScript, the Jakarta EE
+  descriptors, MyBatis mappers, BPMN, DMN, JSP, Protocol Buffers, GitHub Actions, Kubernetes
+  manifests, Dockerfiles, Terraform, npm manifests and other YAML (`ops`), with the Luna example's
+  rules on the self-test's model, and the extensions and file names they need. Measured on
+  jpetstore-6, microservices-demo and camunda-bpm-examples (218 files of 13 kinds, 1072 names
+  derived from the sources, two runs each): with the kinds' rules gpt-oss-20b names 97.3 % of the
+  names, with every file through the fallback prompt 81.2 %; GPT-6 Luna 97.7 % against 92.2 %. No
+  kind is worse with its rule for gpt-oss-20b; for Luna the Spring XML files through the `xml` rule
+  are (90 % against 100 %). The kinds not measured on a real project (persistence and integration
+  XML, WSDL, Facelets, OpenAPI, AsyncAPI, Avro, GraphQL, Camel YAML, Compose, Ansible, Gradle,
+  properties, PowerShell, batch, Kotlin, Groovy, Scala, Java EE classes) stay out of the self-test.
+  The Luna example routes `package.json` too.
+
 - **The self-test's `big-pom` rule takes `file-body-xml`** instead of the generic prompt: on a real
   590 KB POM Granite H-Tiny invents no names with it and about half of them with the generic one, at
   the same low recall (6 and 4 of 99; `profiles/README.md`). `huge-pom` is unchanged.

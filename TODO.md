@@ -118,7 +118,7 @@ Granite run may run beside one; the scores go to `scores/`, the model card is no
   and what follows from it for the map or reduce prompt
 - [x] C3 Row 35: a large POM for `big-pom` / `huge-pom`, three runs each with the local Granite tiers;
   the self-test's rule follows the result
-- [ ] C4 Row 36: the new kinds on real open-source projects (picked and named in the writeup); the
+- [x] C4 Row 36: the new kinds on real open-source projects (picked and named in the writeup); the
   self-test routes the kinds that hold up
 - [ ] C5 The writeups (`docs/ai-index-benchmark/`), CHANGELOG, this file
 
@@ -142,10 +142,10 @@ with the code, not with the run's conclusions)
 
 - **PR #269** (branch `feat/profiles-v3-kinds-and-safety`): CI green but the Claude review action;
   the owner merges, then this line goes.
-- The plugin's self-test profile routes only the kinds measured on this repository; the new ones are
-  routed in `examples/copilot-api-gateway/srcmorph-luna.yaml` and measured on the enterprise corpus
-  (`docs/ai-index-benchmark/remeasure-2026-11-04b/`), which is written for the benchmark. Once
-  measured on a corpus of real projects, the self-test can take them too.
+- The plugin's self-test routes the kinds measured on real projects (C4, 2026-11-06); still only in
+  the Luna example, because no real project of theirs was measured: persistence and integration XML,
+  WSDL, Facelets, OpenAPI, AsyncAPI, Avro, GraphQL, Camel YAML, Compose, Ansible, Gradle, properties,
+  PowerShell, batch, Kotlin, Groovy, Scala and the Java EE classes.
 
 ### TypeScript measurement of 2026-11-05 (internal; the data stays out of the repository)
 
