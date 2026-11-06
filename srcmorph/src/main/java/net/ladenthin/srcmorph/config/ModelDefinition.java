@@ -18,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Instances are registered in the {@code aiDefinitions} list of the configuration
  * file and referenced by their {@link #key} from
  * {@link RoutingRule#aiDefinitionKey}. This allows a single model configuration
- * to be defined once and reused across multiple field-generation entries and goals.</p>
+ * to be defined once and reused across multiple rules and goals.</p>
  *
  * <p>All numeric fields default to the same values as {@link ModelDefinition} so that
  * a minimal definition only needs to supply a {@link #key} and a {@link #modelPath}.</p>
@@ -551,7 +551,7 @@ public class ModelDefinition {
     /**
      * Sets the unique lookup key for this definition.
      *
-     * @param key the key used to reference this definition from field-generation configs
+     * @param key the key used to reference this definition from rules
      */
     public void setKey(final @Nullable String key) {
         this.key = key;

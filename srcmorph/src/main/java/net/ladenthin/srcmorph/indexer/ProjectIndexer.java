@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * <p>By default this step is fully <strong>deterministic</strong>: it harvests existing leads and never
  * calls the AI model, so it adds negligible cost and scales to projects with hundreds of packages.</p>
  *
- * <p><strong>Optional AI overview.</strong> When an overview field generation (prompt + model) is
+ * <p><strong>Optional AI overview.</strong> When an overview rule (prompt + model) is
  * supplied, one — and only one — extra AI call writes a short project overview paragraph under a
  * {@code #### Overview} heading, synthesised from the per-package leads alone (not the full package
  * bodies), so the entry document opens with a project narrative. It is opt-in: with no overview field
@@ -100,8 +100,8 @@ public class ProjectIndexer {
     private final String aiVersion;
     private final boolean force;
 
-    /** Overview field generation (prompt + model); {@code null} disables the AI overview. */
-    private final @Nullable RoutingRule overviewFieldGeneration;
+    /** Overview rule (prompt + model); {@code null} disables the AI overview. */
+    private final @Nullable RoutingRule overviewRule;
 
     /** AI generation loop used for the overview; {@code null} when the overview is disabled. */
     private final @Nullable SummaryGenerator summaryGenerator;
@@ -176,7 +176,7 @@ public class ProjectIndexer {
             // overview ignore its rule's onOversize and facts)
             final RoutingRule rule = overview.rule();
             final ModelRegistry modelDefinitionSupport = overview.modelDefinitionSupport();
-            this.overviewFieldGeneration = rule;
+            this.overviewRule = rule;
             this.summaryGenerator = new SummaryGenerator(
                     overview.generationProvider(),
                     new PromptPreparer(overview.promptSupport()),
@@ -186,7 +186,7 @@ public class ProjectIndexer {
             this.overviewModelHash = HeaderHashes.model(
                     rule.requireAiDefinitionKey(), modelDefinitionSupport.definition(rule.requireAiDefinitionKey()));
         } else {
-            this.overviewFieldGeneration = null;
+            this.overviewRule = null;
             this.summaryGenerator = null;
             this.overviewPromptHash = "";
             this.overviewFactsHash = "";
@@ -240,7 +240,7 @@ public class ProjectIndexer {
         // C: the packages the project lists and their checksums, so a changed source below shows whatever
         // regenerateOn.source says; K: their leads, which the listing and the overview read; P and M: the
         // overview's prompts and model (empty without an overview)
-        final RoutingRule overview = this.overviewFieldGeneration;
+        final RoutingRule overview = this.overviewRule;
         final SummaryGenerator support = this.summaryGenerator;
         final List<String> leads = new ArrayList<>(entries.size());
         final StringBuilder checksumLines = new StringBuilder();
@@ -356,7 +356,7 @@ public class ProjectIndexer {
      * title and the one-line package leads, never the full package bodies, keeping the input compact.
      *
      * @param support     the generator of the overview (non-null)
-     * @param overview    the overview field generation (non-null)
+     * @param overview    the overview rule (non-null)
      * @param projectFile the project index file path, used as the request context file
      * @param entries     the harvested package entries
      * @return the generated overview, or an incomplete result when the model's answer was incomplete

@@ -310,7 +310,7 @@ public class GenerateEngineTest {
     private ListAppender<ILoggingEvent> logAppender;
 
     /**
-     * The loggers the tests read: the engine's, the engine support's, and the field generation's, which
+     * The loggers the tests read: the engine's, the engine support's, and the summary generator's, which
      * reports what an oversize strategy did.
      */
     private static List<Logger> capturedLoggers() {

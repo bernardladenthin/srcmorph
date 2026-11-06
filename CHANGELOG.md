@@ -148,6 +148,22 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **A script that reads srcmorph's log lines**: the file phase names a file by its path below the
   base directory (it was the absolute path), and the plan's model header and its per-file estimate
   line have a new form (the entries under Changed).
+- **The plan, the run record and the progress list files of several subtrees in one path order**
+  (`src/extra/...` before `src/main/...`), no longer subtree by subtree in configured order.
+- **Plan times change:** lower for map-reduce files whose rounds end in a single partial, lower for
+  multi-byte (CJK) sources, and 0 s for a chunked file whose window leaves less than 1000 chars for a
+  chunk (the run fails that file). A context overflow of a prompt of 1000 chars or fewer is not
+  retried; the retry warning's "(A -> B chars)" names the refused prompt's length as A.
+- **Java callers of the generation classes:** `RouteEstimator.estimateRouteSeconds(...)` has no
+  `fileSizeBytes` parameter, `MapReduceMath.sourceBudget` is gone; `SourceFileIndexer.sortByPath` and
+  `SourceLines.cutIndex` are new.
+- **`.jspx` and `.tagx` take `factsKey: jspx-facts`** (jsp-facts with XML comments blanked); a copied
+  configuration splits its jsp rule the same way. A configuration that copied the `secrets` rule
+  takes its new form (the self-test's), which keeps CI workflows, Helm templates and Android
+  settings.
+- **A `baseUrl` that holds an `@` anywhere fails the check** (user info before the host, a password
+  with a `/`, an `@` in the path), and **a 3xx answer is an error**: srcmorph follows no redirect, so
+  `baseUrl` names the final server.
 
 ### Added
 
@@ -237,8 +253,9 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **Every fact pattern has a time limit**: it may read 2,000 characters per character of the source
   plus 1,000,000, counted by the matcher's reads, so the limit is the same on every machine. A
   pattern of a user's own that backtracks past it is stopped: its counter is left out of the facts
-  line, an ignore counter blanks nothing, and a warning names it. The profile's patterns read at
-  most about 830 per character; the linearity test asserts that none reaches the limit.
+  line, an ignore counter blanks nothing, and a warning names it. The profile's patterns read far
+  less (`profiles/README.md` gives the measured maximum); the linearity test asserts that none
+  reaches the limit.
 - **Fact counters for the kinds that had a prompt and none**: `scala-facts`, `proto-facts`,
   `avro-facts`, `graphql-facts`, `asyncapi-facts`, `terraform-facts` (OpenTofu and Terragrunt too),
   `ansible-facts`, `compose-facts` and `camel-yaml-facts`; `dmn-facts` for DMN decisions (inputs,
@@ -532,8 +549,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   remaining package; a timeout is still one package's failure.
 - **A request that failed its retries with a timeout last** says "failed N times, the last with a
   timeout", not "timed out N times" after three 503 answers and one timeout.
-- **A password with `'`, `?` or `#` in a `baseUrl` is masked and refused as user info**, and one with
-  an unencoded `/`, which no URL allows there, fails the check as no URL without being shown.
+- **A password with `'`, `?` or `#` in a `baseUrl` is masked and refused as user info.**
 - **A long password in a URL is masked too.** The mask of a URL's user info stopped at 256
   characters, so a longer token (a JWT) stayed in the message that refuses such a `baseUrl`; an `@`
   in the password left its tail visible. It masks up to the last `@` before the host now, of any
@@ -656,6 +672,125 @@ The entries below hold the details; what a 1.4.0 user changes:
   now read within one line, an initializer up to 10,000 characters (a generic type split over lines,
   or a longer initializer, is no longer counted; `JavaStructureFactPatternsTest` pins both), and the
   blanks possessively.
+- **search.py no longer overwrites the card's search scores with a partial run.** With the card's
+  scores/ directory, `--no-reader` (which nulled every reader result) or a non-default `--out` (which
+  replaced the card's runs) is refused with a hint to pass a `--scores` of its own, as repeat.py
+  already refuses `--runs` there.
+- **run.py hands each model only its own API key.** The CLI's environment drops every `apiKeyEnv`
+  named in models.json except the one the model's definition names; `COPILOT_GATEWAY_API_KEY`
+  reached every model's subprocess, against the script's docstring.
+- **search.py's reader no longer loses or freezes answers.** An empty answer is asked again up to
+  four times and never cached (one already in an older cache is asked again too); `"usage": null`
+  no longer raises before a paid answer is cached; a 200 whose body is no JSON or is cut off is
+  retried like a 5xx.
+- **score.py counts a heading indented by one to three spaces**, as CommonMark reads it; no published
+  summary has one, so the card's figures do not change. Three of its tests are renamed or split to
+  say what they check.
+- **SQL: an identifier's closing quote opens no "..." string.** In `INSERT INTO "cfg" ("data")
+  VALUES ('{"k": "v"}')` the `[ignore]` alternative for a MySQL string with an apostrophe ran from the
+  closing quote of `"data"` to the JSON literal's first `"`, and the literal's apostrophe, left
+  unpaired, opened a literal over the rest of the file (INSERT 1, VALUES rows 0, tables 0, indexes 0
+  of 2, 2, 1, 1).
+- **A SQL*Plus remark or pg_dump's COPY rows open no SQL string literal.** The sql-facts `[ignore]`
+  line opened a `'...'` literal at any apostrophe, also on a line that is no SQL: `REM Creates the
+  shop's schema` / `PROMPT Don't ...` before two `CREATE TABLE` and one `CREATE INDEX` counted tables 0
+  and indexes 0, now 2 and 1; a pg_dump whose `COPY ... FROM stdin` rows hold an `O'Brien` hid the
+  `ALTER TABLE` and index after them (0 and 0, now 1 and 1). A `REM[ARK]` / `PRO[MPT]` line and the
+  rows of a `COPY ... FROM stdin` up to `\.` are blanked; without the `\.` line the data runs to the
+  end of the file, as psql reads it.
+- **A Groovy method with a generic return type counts.** "methods (approx)" read the type arguments
+  possessively up to the line end, which ate their `>`: `List<Order> all() {`, `Map<String,Integer>
+  counts(int x) {`, `public static List<String> names() {` and `String plain() {` counted 1, now 4. An
+  annotation on the method's line and a brace on the next line count too.
+- **A type-use annotation after a field's modifier no longer hides the field** (java-facts, and so
+  java-ee-facts): `@Nullable private String a;`, `private @Nullable String b;` and
+  `private final @NonNull List<String> c = ...;` counted 1, now 3.
+- **A CDI, Guice or Dagger `@Singleton` is no EJB session bean.** java-ee-facts counted every bare
+  `@Singleton` (`import javax.inject.Singleton; @Singleton class Cache {}` counted 1, now 0). An EJB
+  singleton counts through its `jakarta.ejb` / `javax.ejb` import or when written with its package;
+  one imported through `javax.ejb.*` is no longer seen.
+- **Kotlin object expressions, annotated and vararg constructors count as written:** two
+  `object : Runnable {` expressions next to `object Registry` and `data object Empty` counted 4 type
+  declarations, now 2; `@Inject constructor(...)` and `@JvmOverloads internal constructor(...)` 0
+  secondary constructors, now 2; `vararg val` and `final val` 0 of 3 constructor properties, now 3.
+- **Scala package objects, infix defs and abstract type members count as written:**
+  `package object shop {` counted 0 type declarations, now 1; `infix def max(...)` and
+  `private infix def min(...)` 0 methods, now 2; `type T <: AnyRef`, `type U` and
+  `type V >: Null <: F[A => B]` next to five aliases 8 type aliases, now 5.
+- **A context overflow's retry sends a shorter prompt, not the same one again.** The next window was
+  75 % of the window budget, so a prompt far below it (a dense 12 000-char prompt in a 30 000-char
+  window, on a provider that cannot count tokens) was sent four times unchanged and the file failed:
+  a `mapReduce` rule never chunked it. The next window is 75 % of the refused prompt; a prompt of
+  1000 chars or fewer is not sent again.
+- **A trimmed prompt reads the long line behind a short one.** The trim backed up to the last line
+  break before the window, so a cut map call of a one-line (minified) chunk kept only its label
+  ("Chunk 3 of 9, half 2, half 1:"), and the sampled head of "header + one long line" read the header
+  alone. A line break that keeps less than half of what fits is no longer the cut.
+- **No cut splits a character outside the Basic Multilingual Plane:** trimmed prompts, chunks,
+  shortened part summaries, halved chunks and the counted head stop before a surrogate pair.
+  `SourceChunker`'s Javadoc no longer claims a `maxChunks` of 1 keeps the last chunk.
+- **The whole plan is in path order:** files were sorted within each subtree and the subtrees taken in
+  configured order; all candidates are sorted by path together now, as this file said they were.
+- **An interrupt ends the file run and the package pass however it surfaces.** A
+  `ClosedByInterruptException`, or any `IOException` after the interrupt flag was set, was taken as
+  one file's or one package's failure, and every remaining one then failed too.
+- **The plan's time counts what the run does:** no reduce call for a one-partial batch that is passed
+  on (17 partials: 2, not 3); characters, not bytes (a CJK source was about 3 times too long); 0 s
+  for a mapReduce or sampleChunks file whose window leaves less than 1000 chars for a chunk, which the
+  run refuses.
+- **A deterministic body fences a Markdown source safely:** the fence is one backtick longer than the
+  longest backtick run in the lines it shows (at least three), so a ``` line in the source no longer
+  closes the block.
+- **A `#` in a JSON string no longer blanks the rest of an OpenAPI or AsyncAPI spec.** A
+  double-quoted string holding a `#` is blanked whole instead of opening a YAML comment: a one-line
+  JSON spec with `"Fixes issue #12"` counted 0/0/0 paths, operations and operationIds, now 2/3/3.
+- **An empty YAML block scalar no longer blanks its sibling keys** (asyncapi, compose, ansible,
+  camel-yaml and openapi facts): the body must be deeper than its key, past a list item's dash, and
+  the key line stays. After an empty `command: >` healthchecks and port lists went from 0/0 to 1/1.
+- **properties-facts reads keys as `java.util.Properties` does:** a continuation line is no key; a
+  key separated by a blank alone (`welcome message`) or with no value counts.
+- **batch-facts counts no echoed text and no exit labels:** the text an echo prints is blanked, and
+  "exits" counts the exit command, not `:exit` or `goto :exit` (6 to 2 on the pinned sample).
+- **gradle-facts counts no plugin declarations, publications or task references:** plugins went from
+  5 to 2 (`gradlePlugin { plugins { id } }`, developer ids), repositories from 2 to 1
+  (`maven(MavenPublication)`), tasks from 3 to 1 (`dependsOn tasks.named(...)`).
+- **JSP documents count their directive elements and blank their XML comments:** jsp-facts counts
+  `<jsp:directive.page|include|attribute>`, and the new jspx-facts blanks XML comments (a .jspx went
+  from 0/0/1/2 page directives, includes, scriptlets and EL to 1/1/0/1).
+- **Counters that counted the wrong items:** GitHub Actions matrix entries are no steps (5 to 2);
+  Ansible loop items are no tasks (5 to 2) and template expressions in block scalars count;
+  PowerShell Verb-Noun calls count in any case and a function definition is no call; a GraphQL
+  schema definition holds no fields and a field with nested argument parentheses counts; WSDL
+  counters accept any element prefix and count an operation once; a manifest embedded in a ConfigMap
+  counts no container; AsyncAPI message examples are no payloads (3 to 1); npm contributed commands
+  count with their keys in any order (0 to 2).
+- **file-body-oop names TypeScript, and file-body-xml indexes SQL, scripts and conditions in CDATA.**
+- **The secrets skip rule skips credential files, not CI workflows, Helm templates or Android
+  settings:** secret-scan.yml, a Helm templates/secret.yaml, vault-deployment.yaml and Android's
+  res/xml/settings.xml are routed again; secrets.hcl and *.pkrvars.hcl are skipped. run.py gets the
+  same rule and routes build.gradle.kts to gradle instead of kotlin.
+- **A password with an unencoded `/` in a `baseUrl` is shown nowhere.** The mask stopped at the first
+  `/`, so `https://user:pa/ss@host/v1` reached the CLI's configuration echo, the ListModels log line
+  and error and both `toString`s unchanged; an `@` after a URL's first `/` masks everything after the
+  scheme now (`https://***`). The check refuses every `baseUrl` that holds an `@`, including
+  `https://u:123/abc@host/v1`, which parsed as host `u`, port `123`, and passed.
+- **A redirect is not followed with the key.** The models GET followed a 30x with `Authorization` to
+  whatever server the `Location` named, and a streamed POST reported a redirect as a refused key; a
+  3xx fails the request now, naming the status and the masked `Location`.
+- **A `</think>` alone on its line inside an answer is kept:** a summary that quoted the tag in a code
+  fence lost its lead and was stored as complete from the fence on. The tag ends the reasoning only
+  outside an open fence and before any `>` lead line.
+- **A pattern that overflows the stack is stopped like one past its read budget.** A fact counter or
+  `contentMatches` such as `(?:a|b)*` over a long text threw a `StackOverflowError` that aborted the
+  plan or the run; the counter is left out now, an `[ignore]` line blanks nothing, the condition does
+  not match, and a warning names the pattern.
+- **Two ignored regions back to back at a line start** leave the line starting with what follows
+  (`/* a *//* b */class A {}` counts as a `^class` line again), and **a facts file of `[ignore]` lines
+  only can be included** (the file that includes it must still count something).
+- **An answer the provider stopped inside open reasoning is ABORTED, not TRUNCATED:** one that ended
+  with finish reason `error` or `content_filter` inside `<think>` asked to raise `maxOutputTokens`.
+- **`requestsPerMinute` waits once, to the start that frees the window**, instead of once per start
+  with a "Holding ..." line each; the server in that line and in `toString` is masked.
 
 ## [1.4.0] - 2026-11-02
 

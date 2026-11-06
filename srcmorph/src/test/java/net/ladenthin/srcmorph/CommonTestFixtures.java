@@ -56,11 +56,11 @@ public class CommonTestFixtures {
     }
 
     /**
-     * Creates the standard file-level field generation configs.
+     * Creates the standard file-level rules.
      *
      * <p>Used in file summarizer and source file indexer tests.</p>
      *
-     * @return list with one field generation config for the body
+     * @return list with one rule for the body
      */
     public static List<RoutingRule> createFileRules() {
         return Arrays.asList(createFileFieldGeneration());
@@ -96,11 +96,11 @@ public class CommonTestFixtures {
     }
 
     /**
-     * Creates the standard package-level field generation configs.
+     * Creates the standard package-level rules.
      *
      * <p>Used in package indexer and summarizer tests.</p>
      *
-     * @return list with one field generation config for the body
+     * @return list with one rule for the body
      */
     public static List<RoutingRule> createPackageRules() {
         return Arrays.asList(createPackageFieldGeneration());

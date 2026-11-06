@@ -3,6 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Orchestration: walks source/package trees and drives field generation.
+ * Orchestration: walks source/package trees and drives the summary generation.
  */
 package net.ladenthin.srcmorph.indexer;

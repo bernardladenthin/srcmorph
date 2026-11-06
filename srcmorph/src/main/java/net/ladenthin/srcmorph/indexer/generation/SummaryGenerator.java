@@ -981,7 +981,7 @@ public class SummaryGenerator {
     }
 
     /**
-     * Returns the effective {@code maxInputChars} for the given field generation entry.
+     * Returns the effective {@code maxInputChars} for the given rule.
      *
      * <p>When the {@link net.ladenthin.srcmorph.config.ModelDefinition#getCharsPerToken()} value is greater than zero,
      * the maximum is the budget of the whole rendered prompt, by the calculation the plan uses
@@ -994,7 +994,7 @@ public class SummaryGenerator {
      * @param fieldGeneration  the field configuration identifying the definition and prompt keys
      * @param generationConfig the resolved generation config carrying {@code charsPerToken} etc.
      * @param contextFile      a representative file path used to render the base prompt length
-     * @return effective maximum input characters for this field generation step
+     * @return effective maximum input characters for this rule
      */
     private int resolveMaxInputChars(
             final RoutingRule fieldGeneration, final ModelDefinition generationConfig, final Path contextFile) {

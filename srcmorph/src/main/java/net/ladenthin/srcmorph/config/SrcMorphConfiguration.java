@@ -344,7 +344,7 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns the prompt template definitions referenced by field generation configurations.
+     * Returns the prompt template definitions referenced by the rules.
      *
      * @return the prompt definitions, or {@code null} when none are configured
      */
@@ -470,7 +470,7 @@ public class SrcMorphConfiguration {
      * Returns the per-field AI generation configurations (routing rules) controlling which prompt and AI
      * definition each matched file uses.
      *
-     * @return the field generation rules, or {@code null} when none are configured
+     * @return the routing rules, or {@code null} when none are configured
      */
     public @Nullable List<RoutingRule> getRules() {
         return rules;
@@ -479,7 +479,7 @@ public class SrcMorphConfiguration {
     /**
      * Sets the per-field AI generation configurations (routing rules).
      *
-     * @param rules the field generation rules, or {@code null} for none
+     * @param rules the routing rules, or {@code null} for none
      */
     public void setRules(final @Nullable List<RoutingRule> rules) {
         this.rules = rules;

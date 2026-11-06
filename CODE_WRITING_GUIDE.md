@@ -341,7 +341,8 @@ to be confused:
 
 - **Production API at package level.** `provider.LlamaCppJniProviderSupport`'s
   `buildChatTemplateKwargs`, `buildInferenceParameters`, `truncationWarning`,
-  `logPromptCacheReuse`, `stoppedByProvider` and the static `lazyMode` / `cacheType` are
+  `logPromptCacheReuse`, `stoppedByProvider`, `requireCompleteAnswer`, `completeAnswer` and the
+  static `lazyMode` / `cacheType` are
   package-private because `LlamaCppJniGenerationProvider` and `OpenAiCompatibleGenerationProvider`
   call them (they live in the support class so the PIT gate reaches them). Their tests ride along.
 - **Test seams.** `document.AiMdDocumentCodec.read(List)`, its `String write(AiMdDocument)` overload
