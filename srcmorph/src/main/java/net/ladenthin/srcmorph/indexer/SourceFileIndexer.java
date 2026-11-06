@@ -330,7 +330,6 @@ public final class SourceFileIndexer {
                 final long routeSeconds = routeEstimator.estimateRouteSeconds(
                         rule,
                         modelConfig,
-                        fileSizeBytes,
                         sourceChars,
                         availableSourceChars,
                         basePromptLength,
@@ -350,8 +349,8 @@ public final class SourceFileIndexer {
                         availableSourceChars,
                         IndexPlan.estimatedTokens(sourceChars, charsPerToken));
             } else {
-                final long estimatedSeconds =
-                        timeEstimator.estimateSeconds((int) Math.min(fileSizeBytes, Integer.MAX_VALUE));
+                // characters, as the run's estimate counts them, not bytes
+                final long estimatedSeconds = timeEstimator.estimateSeconds(source.length());
                 plan.addRoute(rule.requireAiDefinitionKey(), file, rule, estimatedSeconds);
             }
         }

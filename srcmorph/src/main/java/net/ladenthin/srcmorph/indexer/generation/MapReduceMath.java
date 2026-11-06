@@ -97,22 +97,10 @@ public final class MapReduceMath {
     }
 
     /**
-     * Returns the source budget of one chunk and one reduce batch: the safe window less the prompt
-     * template, at least {@link #MIN_CHUNK_CHARS}.
-     *
-     * @param safeWindow       the {@link #safeWindow(int) safe window}
-     * @param basePromptLength the length of the prompt template with an empty source
-     * @return the budget in characters
-     */
-    public static int sourceBudget(final int safeWindow, final int basePromptLength) {
-        return Math.max(MIN_CHUNK_CHARS, safeWindow - basePromptLength);
-    }
-
-    /**
      * Returns the overlap between consecutive chunks: a twentieth of the budget, at most
      * {@link #MAX_OVERLAP_CHARS}.
      *
-     * @param sourceBudget the {@link #sourceBudget(int, int) chunk budget}
+     * @param sourceBudget the characters of one chunk
      * @return the overlap in characters
      */
     public static int overlap(final int sourceBudget) {
@@ -369,8 +357,8 @@ public final class MapReduceMath {
 
     /**
      * Returns how many reduce calls a map-reduce of {@code chunks} partials makes, when every batch holds
-     * {@link #MAX_REDUCE_FANIN} partials (fewer when they are long): one per batch of every round, until
-     * one summary is left; none for a single chunk.
+     * {@link #MAX_REDUCE_FANIN} partials (fewer when they are long), as {@link #reduceCalls(long, int)}
+     * counts them.
      *
      * @param chunks the partials of the first round
      * @return the reduce calls
@@ -382,7 +370,8 @@ public final class MapReduceMath {
     /**
      * Returns how many reduce calls a map-reduce of {@code chunks} partials makes when every batch holds
      * {@code fanIn} of them (2 to {@link #MAX_REDUCE_FANIN}): one per batch of every round, until one
-     * summary is left; none for a single chunk.
+     * summary is left, but none for the last batch of a round that is not the last when it holds a single
+     * partial, which the run passes on as it is ({@code ReduceRound}); none for a single chunk.
      *
      * @param chunks the partials of the first round
      * @param fanIn  the partials of a batch, held to 2 to {@link #MAX_REDUCE_FANIN}
@@ -392,7 +381,9 @@ public final class MapReduceMath {
         final int perBatch = Math.max(MIN_REDUCE_FANIN, Math.min(MAX_REDUCE_FANIN, fanIn));
         long calls = 0;
         for (long level = chunks; level > 1; level = (level + perBatch - 1) / perBatch) {
-            calls += (level + perBatch - 1) / perBatch;
+            // every full batch, and a last one of more than one partial; one of a single partial passes it on
+            // (a round of one batch is full or holds more than one, as level is above 1)
+            calls += level / perBatch + (level % perBatch > 1 ? 1 : 0);
         }
         return calls;
     }

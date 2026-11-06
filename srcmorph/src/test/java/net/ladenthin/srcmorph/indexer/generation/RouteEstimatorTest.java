@@ -103,12 +103,15 @@ public class RouteEstimatorTest {
 
     // <editor-fold defaultstate="collapsed" desc="estimateRouteSeconds">
     @Test
-    public void estimateRouteSeconds_aFileThatFits_costsOneGenerationOfItsSize() {
+    public void estimateRouteSeconds_aFileThatFits_costsOneGenerationOfItsCharacters() {
         // act, assert
-        // exactly the window still fits; the estimate is of the file size, not the window (one large enough
-        // that the linear, flat estimate tells the two apart)
+        // exactly the window still fits; the estimate is of the source's characters, as the run's (not of its
+        // bytes: a CJK source has three a character), not of the window
         assertThat(
-                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 777L, 200_000L, 200_000L, 0),
+                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 200_000L, 200_000L, 0),
+                is(equalTo(window(200_000L))));
+        assertThat(
+                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 777L, 200_000L, 0),
                 is(equalTo(window(777L))));
     }
 
@@ -116,18 +119,17 @@ public class RouteEstimatorTest {
     public void estimateRouteSeconds_overTheWindow_deterministicIsFree() {
         // act, assert
         assertThat(
-                estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
-                is(0L));
+                estimator.estimateRouteSeconds(rule("deterministic", 0), uncalibrated, 200_001L, 200_000L, 0), is(0L));
     }
 
     @Test
     public void estimateRouteSeconds_overTheWindow_sampleAndFailCostOneWindow() {
         // act, assert
         assertThat(
-                estimator.estimateRouteSeconds(rule("sample", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
+                estimator.estimateRouteSeconds(rule("sample", 0), uncalibrated, 200_001L, 200_000L, 0),
                 is(equalTo(window(200_000L))));
         assertThat(
-                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 400_000L, 200_001L, 200_000L, 0),
+                estimator.estimateRouteSeconds(rule("fail", 0), uncalibrated, 200_001L, 200_000L, 0),
                 is(equalTo(window(200_000L))));
     }
 
@@ -135,26 +137,27 @@ public class RouteEstimatorTest {
      * A window of 10 000 characters and no prompt: the run's chunk budget is 8 000 (20 % headroom), the
      * overlap 400, so a chunk advances 7 600 characters. 15 600 characters are exactly 2 chunks, 15 601
      * are 3. A reduce batch of that budget holds 2 part summaries (950 tokens at 4 characters each and a
-     * label): 2 partials take one reduce, 3 take two and then one more.
+     * label): 2 partials take one reduce, 3 take one (the third passes on, as in the run) and then one more.
      */
     @Test
     public void estimateRouteSeconds_mapReduce_everyChunkPlusTheReduce() {
         // act, assert
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_600L, 10_000L, 0),
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 15_600L, 10_000L, 0),
                 is(equalTo(3 * window(10_000L))));
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_601L, 10_000L, 0),
-                is(equalTo(6 * window(10_000L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 15_601L, 10_000L, 0),
+                is(equalTo(5 * window(10_000L))));
     }
 
     @Test
     public void estimateRouteSeconds_mapReduceOfManyChunks_reducesInRounds() {
         // act, assert
-        // 304 400 characters are 40 chunks; two a batch: 20, 10, 5, 3, 2 and 1 reduce calls
+        // 304 400 characters are 40 chunks; two a batch: 20, 10, 5, 2, 1 and 1 reduce calls (of 5 and of 3
+        // partials the last passes on)
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 304_400L, 10_000L, 0),
-                is(equalTo(81 * window(10_000L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 304_400L, 10_000L, 0),
+                is(equalTo(79 * window(10_000L))));
     }
 
     /** A model's own characters per token size its part summaries; without one, the estimate's 4 does. */
@@ -169,12 +172,12 @@ public class RouteEstimatorTest {
         // act, assert
         // 3 chunks; at 2 characters a part summary is 1 964 characters, 4 fit the 8 000: one reduce call
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), dense, 1L, 15_601L, 10_000L, 0),
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), dense, 15_601L, 10_000L, 0),
                 is(equalTo(4 * window(10_000L))));
-        // unset reads as 4 characters a token: 2 fit, so 2 and then 1 reduce calls
+        // unset reads as 4 characters a token: 2 fit, so 1 and then 1 reduce call
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), unset, 1L, 15_601L, 10_000L, 0),
-                is(equalTo(6 * window(10_000L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), unset, 15_601L, 10_000L, 0),
+                is(equalTo(5 * window(10_000L))));
     }
 
     @Test
@@ -183,7 +186,7 @@ public class RouteEstimatorTest {
         // a window of 100 000: budget 80 000 holds 20 part summaries, so a batch is the 16 of the run;
         // 1 520 000 characters are 20 chunks (76 000 a chunk): 2 reduce calls and one of their 2 results
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 1_520_000L, 100_000L, 0),
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1_520_000L, 100_000L, 0),
                 is(equalTo(23 * window(100_000L))));
     }
 
@@ -192,8 +195,8 @@ public class RouteEstimatorTest {
         // act, assert
         // a prompt of 2 000: window 12 000, budget 7 600, overlap 380, so 15 600 characters are 3 chunks
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 15_600L, 10_000L, 2_000),
-                is(equalTo(6 * window(10_000L))));
+                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 15_600L, 10_000L, 2_000),
+                is(equalTo(5 * window(10_000L))));
     }
 
     @Test
@@ -201,21 +204,28 @@ public class RouteEstimatorTest {
         // act, assert
         // 20 000 characters are 3 chunks
         assertThat(
-                estimator.estimateRouteSeconds(rule("sampleChunks", 2), uncalibrated, 1L, 20_000L, 10_000L, 0),
+                estimator.estimateRouteSeconds(rule("sampleChunks", 2), uncalibrated, 20_000L, 10_000L, 0),
                 is(equalTo(3 * window(10_000L))));
         // a cap above the natural count changes nothing
         assertThat(
-                estimator.estimateRouteSeconds(rule("sampleChunks", 9), uncalibrated, 1L, 20_000L, 10_000L, 0),
-                is(equalTo(6 * window(10_000L))));
+                estimator.estimateRouteSeconds(rule("sampleChunks", 9), uncalibrated, 20_000L, 10_000L, 0),
+                is(equalTo(5 * window(10_000L))));
     }
 
     @Test
-    public void estimateRouteSeconds_aWindowOfZero_isTheMinimumChunk() {
+    public void estimateRouteSeconds_aWindowWithoutRoomForAChunk_isRefusedAsByTheRun() {
         // act, assert
-        // no room at all: the run still chunks at the 1 000-character minimum
+        // no room at all, or room for less than the 1 000-character minimum chunk: the run refuses the file
+        // without a call
+        assertThat(estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1_000L, 0L, 0), is(0L));
+        // a window of 1 330: the safe window of 1 064 less a chunk prompt of 65 leaves 999 characters
         assertThat(
-                estimator.estimateRouteSeconds(rule("mapReduce", 0), uncalibrated, 1L, 1_000L, 0L, 0),
-                is(equalTo(window(0L))));
+                estimator.estimateRouteSeconds(rule("sampleChunks", 2), uncalibrated, 5_000L, 1_330L, 0, 65), is(0L));
+        // one character more leaves the minimum: chunks of 1 000, overlap 50, 5 000 characters are 6 chunks
+        // and their sample of 2 one reduce call
+        assertThat(
+                estimator.estimateRouteSeconds(rule("sampleChunks", 2), uncalibrated, 5_000L, 1_330L, 0, 64),
+                is(equalTo(3 * window(1_330L))));
     }
 
     @Test
@@ -226,12 +236,12 @@ public class RouteEstimatorTest {
         final ModelDefinition model = new ModelDefinition();
 
         // act
-        final long sameAsTheRule = estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000, 1_000);
-        final long longer = estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000, 5_000);
+        final long sameAsTheRule = estimator.estimateRouteSeconds(rule, model, 100_000, 10_000, 1_000, 1_000);
+        final long longer = estimator.estimateRouteSeconds(rule, model, 100_000, 10_000, 1_000, 5_000);
 
         // assert
         assertThat(longer > sameAsTheRule, is(true));
-        assertThat(estimator.estimateRouteSeconds(rule, model, 100_000, 100_000, 10_000, 1_000), is(sameAsTheRule));
+        assertThat(estimator.estimateRouteSeconds(rule, model, 100_000, 10_000, 1_000), is(sameAsTheRule));
     }
     // </editor-fold>
 }

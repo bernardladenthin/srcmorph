@@ -42,16 +42,6 @@ public class MapReduceMathTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="sourceBudget">
-    @Test
-    public void sourceBudget_isTheSafeWindowLessThePrompt_atLeastTheMinimum() {
-        // act, assert
-        assertThat(MapReduceMath.sourceBudget(8_000, 500), is(7_500));
-        assertThat(MapReduceMath.sourceBudget(1_200, 500), is(MapReduceMath.MIN_CHUNK_CHARS));
-        assertThat(MapReduceMath.sourceBudget(1_500, 500), is(1_000));
-    }
-    // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="overlap">
     @Test
     public void overlap_isATwentiethOfTheBudget_atMostTheMaximum() {
@@ -205,9 +195,10 @@ public class MapReduceMathTest {
         assertThat(MapReduceMath.reduceCalls(1), is(0L));
         assertThat(MapReduceMath.reduceCalls(2), is(1L));
         assertThat(MapReduceMath.reduceCalls(16), is(1L));
-        assertThat(MapReduceMath.reduceCalls(17), is(3L));
+        // 17: one batch of 16 and the 17th passed on, then the two
+        assertThat(MapReduceMath.reduceCalls(17), is(2L));
         assertThat(MapReduceMath.reduceCalls(256), is(17L));
-        assertThat(MapReduceMath.reduceCalls(257), is(20L));
+        assertThat(MapReduceMath.reduceCalls(257), is(18L));
     }
 
     @Test
@@ -216,7 +207,52 @@ public class MapReduceMathTest {
         assertThat(MapReduceMath.reduceCalls(8, 2), is(7L));
         assertThat(MapReduceMath.reduceCalls(9, 3), is(4L));
         assertThat(MapReduceMath.reduceCalls(8, 1), is(7L));
-        assertThat(MapReduceMath.reduceCalls(17, 99), is(3L));
+        assertThat(MapReduceMath.reduceCalls(17, 99), is(2L));
+    }
+
+    @Test
+    public void reduceCalls_aLastBatchOfOneOrTwo_isPassedOnOrReduced() {
+        // act, assert
+        // 7 a batch of 3: two batches and the seventh passed on, then the three
+        assertThat(MapReduceMath.reduceCalls(7, 3), is(3L));
+        // 8 a batch of 3: the last batch holds two, which are reduced
+        assertThat(MapReduceMath.reduceCalls(8, 3), is(4L));
+        // 5 a batch of 2: 2 calls (the fifth passed on), 1 (the third passed on), 1
+        assertThat(MapReduceMath.reduceCalls(5, 2), is(4L));
+    }
+
+    @Test
+    public void reduceCalls_everyFanInAndCount_isTheCallsTheReduceRoundsMake() {
+        // act, assert: the estimate counts what the run's rounds summarize, without a batch passed on
+        for (int fanIn = MapReduceMath.MIN_REDUCE_FANIN; fanIn <= MapReduceMath.MAX_REDUCE_FANIN; fanIn++) {
+            // a budget the fanIn-th part summary just fits, and the one after it not: fanIn make a batch
+            final String part = chars(10);
+            final int budget = MapReduceMath.combineAll(Collections.nCopies(fanIn - 1, part))
+                            .length()
+                    + part.length()
+                    + MapReduceMath.LABEL_OVERHEAD_CHARS;
+            for (int chunks = 1; chunks <= 300; chunks++) {
+                assertThat(MapReduceMath.reduceCalls(chunks, fanIn), is(roundCalls(chunks, part, budget)));
+            }
+        }
+    }
+
+    /** The reduce calls the run makes for {@code chunks} equal part summaries: every batch it does not pass on. */
+    private static long roundCalls(final int chunks, final String part, final int budget) {
+        List<String> level = new ArrayList<>(Collections.nCopies(chunks, part));
+        long calls = 0;
+        while (level.size() > 1) {
+            final ReduceRound round = ReduceRound.of(level, budget);
+            final List<String> next = new ArrayList<>();
+            for (final List<String> batch : round.batches()) {
+                if (!round.passesOn(batch)) {
+                    calls++;
+                }
+                next.add(part);
+            }
+            level = next;
+        }
+        return calls;
     }
     // </editor-fold>
 

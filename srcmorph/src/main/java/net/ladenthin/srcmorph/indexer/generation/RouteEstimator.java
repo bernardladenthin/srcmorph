@@ -13,7 +13,9 @@ import net.ladenthin.srcmorph.config.RoutingRule;
  * The time estimate of a routed file, the one both the plan ({@code SourceFileIndexer}) and the live
  * per-file line of a run ({@link SummaryGenerator}) use, so the two agree: a model's
  * {@code calibration} when it has one, otherwise the built-in model of
- * {@link GenerationTimeEstimator}.
+ * {@link GenerationTimeEstimator}. Both count characters, not bytes. The plan sizes a chunk by the
+ * estimated window; a provider that counts a prompt's tokens may size it by its measured window at run
+ * time, which the plan cannot know.
  */
 @ToString
 public final class RouteEstimator {
@@ -68,11 +70,12 @@ public final class RouteEstimator {
      * {@code deterministic}, one window under {@code sample} and {@code fail}, and its map calls plus its
      * reduce calls under {@code mapReduce} (every chunk) and {@code sampleChunks} ({@code maxChunks} of
      * them). The chunks are counted with the budget and overlap of the run
-     * ({@link MapReduceMath}), the reduce calls by its fan-in.
+     * ({@link MapReduceMath}), the reduce calls by its fan-in. A window that leaves less than
+     * {@link MapReduceMath#MIN_CHUNK_CHARS} for a chunk costs nothing: the run refuses such a file without a
+     * call.
      *
      * @param rule                 the routing rule
      * @param modelConfig          the routed model's config
-     * @param fileSizeBytes        the file size in bytes, the estimate of a file that fits
      * @param sourceChars          the source length in characters
      * @param availableSourceChars the per-call source-character budget of the routed model and prompt
      * @param basePromptLength     the length of the prompt template with an empty source
@@ -81,28 +84,20 @@ public final class RouteEstimator {
     public long estimateRouteSeconds(
             final RoutingRule rule,
             final ModelDefinition modelConfig,
-            final long fileSizeBytes,
             final long sourceChars,
             final long availableSourceChars,
             final int basePromptLength) {
         return estimateRouteSeconds(
-                rule,
-                modelConfig,
-                fileSizeBytes,
-                sourceChars,
-                availableSourceChars,
-                basePromptLength,
-                basePromptLength);
+                rule, modelConfig, sourceChars, availableSourceChars, basePromptLength, basePromptLength);
     }
 
     /**
-     * Estimates a route as {@link #estimateRouteSeconds(RoutingRule, ModelDefinition, long, long,
-     * long, int)} does, with the chunks sized as the run sizes them: next to {@code chunkPromptLength}, the
+     * Estimates a route as {@link #estimateRouteSeconds(RoutingRule, ModelDefinition, long, long, int)}
+     * does, with the chunks sized as the run sizes them: next to {@code chunkPromptLength}, the
      * longer of the rule's map and reduce prompts with a chunk's label reserve.
      *
      * @param rule                 the routing rule
      * @param modelConfig          the routed model's config
-     * @param fileSizeBytes        the file size in bytes, the estimate of a file that fits
      * @param sourceChars          the source length in characters
      * @param availableSourceChars the per-call source-character budget of the routed model and prompt
      * @param basePromptLength     the length of the rule's prompt template with an empty source
@@ -112,13 +107,12 @@ public final class RouteEstimator {
     public long estimateRouteSeconds(
             final RoutingRule rule,
             final ModelDefinition modelConfig,
-            final long fileSizeBytes,
             final long sourceChars,
             final long availableSourceChars,
             final int basePromptLength,
             final int chunkPromptLength) {
         if (sourceChars <= availableSourceChars) {
-            return estimateSeconds(fileSizeBytes, modelConfig);
+            return estimateSeconds(sourceChars, modelConfig);
         }
         final OversizeStrategy strategy = rule.oversizeStrategy();
         if (strategy == OversizeStrategy.DETERMINISTIC) {
@@ -129,10 +123,14 @@ public final class RouteEstimator {
             return windowSeconds;
         }
         // the window is the rule's: its source budget and its prompt; the chunks are sized next to the
-        // chunk prompt, as the run sizes them
-        final int sourceBudget = MapReduceMath.sourceBudget(
-                MapReduceMath.safeWindow((int) Math.min(Integer.MAX_VALUE, availableSourceChars + basePromptLength)),
-                chunkPromptLength);
+        // chunk prompt, as the run sizes them, and a room below the minimum chunk the run refuses
+        final int room =
+                MapReduceMath.safeWindow((int) Math.min(Integer.MAX_VALUE, availableSourceChars + basePromptLength))
+                        - chunkPromptLength;
+        if (room < MapReduceMath.MIN_CHUNK_CHARS) {
+            return 0L;
+        }
+        final int sourceBudget = room;
         final long allChunks = MapReduceMath.chunkCount(sourceChars, sourceBudget, MapReduceMath.overlap(sourceBudget));
         final long chunks =
                 strategy == OversizeStrategy.SAMPLE_CHUNKS ? Math.min(rule.getMaxChunks(), allChunks) : allChunks;
