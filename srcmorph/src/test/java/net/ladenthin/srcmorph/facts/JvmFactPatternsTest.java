@@ -262,6 +262,48 @@ public class JvmFactPatternsTest {
     }
 
     @Test
+    public void groovy_methodsWithAGenericReturnType_count() {
+        // arrange
+        final String source = "class Orders {\n"
+                + "    List<Order> all() {\n        []\n    }\n"
+                + "    Map<String,Integer> counts(int x) {\n        [:]\n    }\n"
+                + "    public static List<String> names() {\n        []\n    }\n"
+                + "    Map<String, List<Integer>> nested() {\n        [:]\n    }\n"
+                + "    String plain() {\n        ''\n    }\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(GROOVY, "methods (approx)", source), is(5));
+    }
+
+    @Test
+    public void groovy_annotatedMethodsAndABraceOnTheNextLine_count() {
+        // arrange
+        final String source = "class Orders {\n"
+                + "    @Override String toString() {\n        ''\n    }\n"
+                + "    @Memoized(maxCacheSize = 10) private int size() {\n        1\n    }\n"
+                + "    @Override\n    int hashCode()\n    {\n        1\n    }\n"
+                + "    def load(String id)\n    {\n        id\n    }\n"
+                + "}\n";
+
+        // act, assert
+        // toString, size, hashCode and load; not the annotation on its own line
+        assertThat(count(GROOVY, "methods (approx)", source), is(4));
+    }
+
+    @Test
+    public void groovy_callsAndControlStructuresWithTheBraceOnTheNextLine_doNotCount() {
+        // arrange
+        final String source = "if (ready())\n{\n    go()\n}\n"
+                + "synchronized (lock)\n{\n    go()\n}\n"
+                + "return build(x)\n{\n}\n"
+                + "def x = load(y)\n{\n}\n";
+
+        // act, assert
+        assertThat(count(GROOVY, "methods (approx)", source), is(0));
+    }
+
+    @Test
     public void groovy_shebangAndDollarSlashyString_areBlanked() {
         // act, assert
         assertThat(count(GROOVY, "type declarations", "#!/bin/class X\nclass A {}\n"), is(1));
