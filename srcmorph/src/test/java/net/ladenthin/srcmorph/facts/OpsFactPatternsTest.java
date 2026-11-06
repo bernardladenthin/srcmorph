@@ -1149,6 +1149,53 @@ public class OpsFactPatternsTest {
         // act, assert
         assertThat(count(GRADLE, "dependency declarations", build), is(2));
     }
+
+    @Test
+    public void gradle_pluginDeclarationsPublicationsAndTaskReferences_areNoPluginsRepositoriesOrTasks() {
+        // arrange
+        final String build = "plugins {\n"
+                + "    id 'java-gradle-plugin'\n"
+                + "    id 'maven-publish'\n"
+                + "}\n"
+                + "gradlePlugin {\n"
+                + "    plugins {\n"
+                + "        greeting {\n"
+                + "            id 'org.example.greeting'\n"
+                + "            implementationClass = 'org.example.GreetingPlugin'\n"
+                + "        }\n"
+                + "    }\n"
+                + "}\n"
+                + "publishing {\n"
+                + "    publications {\n"
+                + "        maven(MavenPublication) {\n"
+                + "            pom {\n"
+                + "                developers {\n"
+                + "                    developer {\n"
+                + "                        id 'jdoe'\n"
+                + "                        name 'John Doe'\n"
+                + "                    }\n"
+                + "                    developer { name 'Jane Roe'; id 'jroe' }\n"
+                + "                }\n"
+                + "            }\n"
+                + "        }\n"
+                + "    }\n"
+                + "    repositories {\n"
+                + "        maven { url 'https://repo.example.org' }\n"
+                + "    }\n"
+                + "}\n"
+                + "tasks.register('docs') {\n"
+                + "    dependsOn tasks.named('javadoc')\n"
+                + "    finalizedBy(tasks.named(\"zip\"))\n"
+                + "}\n";
+
+        // act, assert
+        // the two of the plugins block; not the plugin's own id nor a developer's
+        assertThat(count(GRADLE, "plugins", build), is(2));
+        // maven { url }; not the publication maven(MavenPublication)
+        assertThat(count(GRADLE, "repositories", build), is(1));
+        // tasks.register; not the tasks dependsOn and finalizedBy refer to
+        assertThat(count(GRADLE, "tasks registered, created or configured", build), is(1));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="properties-facts">
@@ -1183,6 +1230,29 @@ public class OpsFactPatternsTest {
 
         // act, assert
         assertThat(count(PROPERTIES, "keys naming a secret", properties), is(5));
+    }
+
+    @Test
+    public void properties_continuationLinesAndWhitespaceSeparators_countAsTheLoaderReadsThem() {
+        // arrange
+        final String properties = "# a comment does not continue \\\n"
+                + "server.port=8080\n"
+                + "welcome message\n"
+                + "greeting = Hello, \\\n"
+                + "    world=1 \\\n"
+                + "    password=not a key \\\n"
+                + "    secret=neither\n"
+                + "app.list: a, \\\\\n"
+                + "next.key=1\n"
+                + "db.password hunter2\n";
+
+        // act, assert
+        // server.port, welcome, greeting, app.list (its \\ is an escaped backslash), next.key, db.password
+        assertThat(count(PROPERTIES, "keys (approx)", properties), is(6));
+        // db.password; not password and secret, which continue the value of greeting
+        assertThat(count(PROPERTIES, "keys naming a secret", properties), is(1));
+        // a key without a value is a key
+        assertThat(count(PROPERTIES, "keys (approx)", "empty\nkey=\n"), is(2));
     }
     // </editor-fold>
 
@@ -1312,6 +1382,29 @@ public class OpsFactPatternsTest {
         // act, assert
         assertThat(count(BATCH, "calls", script), is(1));
         assertThat(count(BATCH, "gotos", script), is(0));
+    }
+
+    @Test
+    public void batch_exitLabelsAndEchoedText_areNoExitsCallsOrConditionals() {
+        // arrange
+        final String script = "@echo off\n"
+                + "if \"%1\"==\"\" goto :exit\n"
+                + "call :build || goto exit\n"
+                + "echo if you call this, set nothing and exit\n"
+                + "echo. & exit /b 0\n"
+                + ":build\n"
+                + "echo:for each %%f in (a) do call x\n"
+                + "exit /b 1\n"
+                + ":exit\n";
+
+        // act, assert
+        // exit /b 0 and exit /b 1; not the label :exit nor the gotos to it
+        assertThat(count(BATCH, "exits", script), is(2));
+        assertThat(count(BATCH, "gotos", script), is(2));
+        assertThat(count(BATCH, "calls", script), is(1));
+        assertThat(count(BATCH, "conditionals (approx)", script), is(1));
+        assertThat(count(BATCH, "variables set", script), is(0));
+        assertThat(count(BATCH, "labels", script), is(2));
     }
     // </editor-fold>
 
