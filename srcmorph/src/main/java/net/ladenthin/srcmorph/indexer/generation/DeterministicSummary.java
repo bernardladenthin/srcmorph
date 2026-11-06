@@ -15,6 +15,12 @@ import net.ladenthin.srcmorph.support.SourceLines;
  */
 public final class DeterministicSummary {
 
+    /** The character of a code fence. */
+    private static final char FENCE_CHAR = '`';
+
+    /** The shortest code fence CommonMark knows. */
+    private static final int MIN_FENCE_LENGTH = 3;
+
     /** Utility class; not instantiable. */
     private DeterministicSummary() {
         // no-op
@@ -66,10 +72,39 @@ public final class DeterministicSummary {
      */
     private static void appendFenced(
             final StringBuilder sb, final String label, final String[] lines, final int from, final int toExclusive) {
-        sb.append('\n').append(label).append(":\n```\n");
+        final String fence = fence(lines, from, toExclusive);
+        sb.append('\n').append(label).append(":\n").append(fence).append('\n');
         for (int i = from; i < toExclusive; i++) {
             sb.append(lines[i]).append('\n');
         }
-        sb.append("```\n");
+        sb.append(fence).append('\n');
+    }
+
+    /**
+     * Returns the fence of a code block of {@code lines[from..toExclusive)}: one {@link #FENCE_CHAR} more than
+     * the longest run of them in the lines, at least {@link #MIN_FENCE_LENGTH}. A line of the content (the
+     * fence of a Markdown source) can then never close the block (CommonMark: a closing fence is at least as
+     * long as the opening one).
+     *
+     * @param lines       the split lines
+     * @param from        start index (inclusive)
+     * @param toExclusive end index (exclusive)
+     * @return the fence
+     */
+    private static String fence(final String[] lines, final int from, final int toExclusive) {
+        int longest = 0;
+        for (int i = from; i < toExclusive; i++) {
+            int run = 0;
+            for (final char c : lines[i].toCharArray()) {
+                run = c == FENCE_CHAR ? run + 1 : 0;
+                longest = Math.max(longest, run);
+            }
+        }
+        final int length = Math.max(MIN_FENCE_LENGTH, longest + 1);
+        final StringBuilder fence = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            fence.append(FENCE_CHAR);
+        }
+        return fence.toString();
     }
 }

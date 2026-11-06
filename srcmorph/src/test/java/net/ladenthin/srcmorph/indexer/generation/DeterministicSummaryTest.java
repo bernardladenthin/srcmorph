@@ -4,6 +4,8 @@
 package net.ladenthin.srcmorph.indexer.generation;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -106,6 +108,40 @@ public class DeterministicSummaryTest {
     public void body_anySource_charCountReflectsSourceLength() {
         // act, assert
         assertThat(DeterministicSummary.body("abcde", "f", 0), containsString("5 chars"));
+    }
+
+    @Test
+    public void body_aSourceWithoutBackticks_isFencedWithThree() {
+        // act, assert
+        assertThat(
+                DeterministicSummary.body("a\nb", "f", 1),
+                is(equalTo("> Large file summarized deterministically (no AI): `f` - 3 chars, 2 lines.\n"
+                        + "\nContent:\n```\na\nb\n```\n")));
+    }
+
+    @Test
+    public void body_aMarkdownSourceWithAFence_isFencedLongerThanItsLongestBacktickRun() {
+        // arrange: a Markdown file whose own fence would close a fence of three
+        final String source = "# Title\n```java\ncode\n```\n";
+
+        // act
+        final String body = DeterministicSummary.body(source, "README.md", 10);
+
+        // assert
+        assertThat(body, containsString("\nContent:\n````\n# Title\n```java\ncode\n```\n````\n"));
+    }
+
+    @Test
+    public void body_backtickRuns_theFenceOutgrowsTheLongestRunOfTheLinesItShows() {
+        // act, assert
+        // the longest run (five) is not the first one, and a line may end in it
+        assertThat(DeterministicSummary.body("``a\nb`````", "f", 1), containsString("\n``````\n``a\nb`````\n``````\n"));
+        // two runs of two in one line are no run of four
+        assertThat(DeterministicSummary.body("``a``", "f", 1), containsString("\n```\n``a``\n```\n"));
+        // the head and the tail block each count the lines they show
+        assertThat(
+                DeterministicSummary.body("````\nb\nc\nd\ne", "f", 2),
+                containsString("First 2 lines:\n`````\n````\nb\n`````\n\nLast 2 lines:\n```\nd\ne\n```\n"));
     }
     // </editor-fold>
 }
