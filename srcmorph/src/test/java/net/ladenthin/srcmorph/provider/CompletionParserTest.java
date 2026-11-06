@@ -11,7 +11,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class CompletionParserTest {
 
@@ -259,40 +263,28 @@ public class CompletionParserTest {
         assertThat(answer, is("> The lead."));
     }
 
-    @Test
-    public void parseCompletion_tagAfterASpaceAtALineEndWithoutALead_isKept() throws Exception {
-        // arrange: no lead before, so only the character before the tag tells it from reasoning
-        final String response = "Closing marker: </think>\nThe rest.";
-
-        // act, assert
-        assertThat(new CompletionParser().parseCompletion(response), is(response));
+    /**
+     * Closing tags at a line end that name the tag rather than end reasoning: after a space or a quote,
+     * glued but with the line going on, glued after an answer's lead.
+     *
+     * @return one response per case
+     */
+    private static Stream<Arguments> closingTagsTheTextNames() {
+        return Stream.of(
+                Arguments.of("Closing marker: </think>\nThe rest."),
+                Arguments.of("It strips \"</think>\nThe rest."),
+                Arguments.of("It strips x</think> tags.\nThe rest."),
+                Arguments.of("> Strips a template-opened reasoning block.\n\n- End marker:</think>\n- The rest."));
     }
 
-    @Test
-    public void parseCompletion_tagAfterAQuoteAtALineEndWithoutALead_isKept() throws Exception {
-        // arrange: the first of the characters that mark a named tag, with no lead before
-        final String response = "It strips \"</think>\nThe rest.";
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("closingTagsTheTextNames")
+    public void parseCompletion_aClosingTagTheTextNames_isKept(final String response) throws Exception {
+        // act
+        final String answer = new CompletionParser().parseCompletion(response);
 
-        // act, assert
-        assertThat(new CompletionParser().parseCompletion(response), is(response));
-    }
-
-    @Test
-    public void parseCompletion_gluedTagFollowedByTextWithoutALead_isKept() throws Exception {
-        // arrange: glued to a word, but the line goes on
-        final String response = "It strips x</think> tags.\nThe rest.";
-
-        // act, assert
-        assertThat(new CompletionParser().parseCompletion(response), is(response));
-    }
-
-    @Test
-    public void parseCompletion_gluedTagAfterTheLead_isKept() throws Exception {
-        // arrange: an answer that names the tag glued to a list item's label
-        final String response = "> Strips a template-opened reasoning block.\n\n- End marker:</think>\n- The rest.";
-
-        // act, assert
-        assertThat(new CompletionParser().parseCompletion(response), is(response));
+        // assert
+        assertThat(answer, is(response));
     }
 
     @Test
