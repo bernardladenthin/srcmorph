@@ -114,13 +114,13 @@ test methods, one call in an `assertThrows` lambda)
 Granite run may run beside one; the scores go to `scores/`, the model card is not re-rendered)
 
 - [x] C1 Row 13: the ops prompt with `npm-facts` on `package.json` (gpt-oss-20b and Luna, three runs)
-- [ ] C2 Row 32: a large-corpus run of gpt-oss-20b with `partsDirectory`; where the middle is lost,
+- [x] C2 Row 32: a large-corpus run of gpt-oss-20b with `partsDirectory`; where the middle is lost,
   and what follows from it for the map or reduce prompt
 - [x] C3 Row 35: a large POM for `big-pom` / `huge-pom`, three runs each with the local Granite tiers;
   the self-test's rule follows the result
 - [x] C4 Row 36: the new kinds on real open-source projects (picked and named in the writeup); the
   self-test routes the kinds that hold up
-- [ ] C5 The writeups (`docs/ai-index-benchmark/`), CHANGELOG, this file
+- [x] C5 The writeups (`docs/ai-index-benchmark/`), CHANGELOG, this file
 
 **Phase R: the reviews** (after phase C; at least two review agents per round, each started fresh
 with the code, not with the run's conclusions)
@@ -157,18 +157,17 @@ with the code, not with the run's conclusions)
 
 ### Audit of 2026-11-01 (PR #261)
 
-- **gpt-oss-20b's map-reduce loses the middle of a file.** Since the map and reduce prompts it names
-  the catalog's planted middle element in every run, the enum's middle area in none of the
-  4096-token runs (once at 16384; Luna in every run), on the large corpus of
-  [`remeasure-2026-11-01/`](docs/ai-index-benchmark/remeasure-2026-11-01/README.md). Where it is
-  lost is not known yet: `partsDirectory` keeps every map and reduce answer of a file, so the next
-  run shows it.
+- **gpt-oss-20b's map-reduce loses the middle of a file** at random and at both steps (C2,
+  [`remeasure-2026-11-06/`](docs/ai-index-benchmark/remeasure-2026-11-06/README.md)): the dump's and
+  the catalog's middles reach the summary in every run, the enum's is lost in two of three, once by
+  the map answer and once by the reduce. A sharper family rule in both prompts did worse and is not
+  adopted; a file of this size wants a stronger model. Open only as a note for the next model round.
 
 ### Verification of 2026-11-01 (eleven reviews of b74aa6b)
 
-- **D3. The self-test's Granite tiers for a big POM**: `big-xml` and `huge-xml` take `file-body-xml`
-  since three runs each (`remeasure-2026-11-02/`). Open: a large POM for `big-pom` / `huge-pom`,
-  which keep the generic prompt unmeasured.
+- **D3. The self-test's Granite tiers for a big POM**: `big-pom` takes `file-body-xml` since C3
+  (a real 590 KB POM, `remeasure-2026-11-06/`); `huge-pom` keeps the generic prompt, as no real POM
+  of a megabyte was found.
 
 ### Review of 2026-11-02 (seven reviews of c2d6834)
 

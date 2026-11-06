@@ -1,0 +1,2388 @@
+{
+ "_comment": "C4: names derived per kind from jpetstore-6, microservices-demo and camunda-bpm-examples (Apache-2.0) at the commits in RESULTS.md",
+ "other/jpetstore-6/pom.xml": {
+  "ids": [
+   "mybatis-parent",
+   "jpetstore",
+   "selenium-bom",
+   "mybatis",
+   "mybatis-spring",
+   "spring-context",
+   "spring-jcl",
+   "spring-jdbc",
+   "spring-web",
+   "spring-webmvc",
+   "taglibs-standard-spec",
+   "taglibs-standard-impl",
+   "jakarta.servlet.jsp-api",
+   "jakarta.servlet-api",
+   "commons-logging",
+   "slf4j-api",
+   "slf4j-simple",
+   "hsqldb",
+   "byte-buddy",
+   "byte-buddy-agent",
+   "junit-jupiter-engine",
+   "mockito-core",
+   "mockito-junit-jupiter",
+   "assertj-core",
+   "selenide",
+   "htmlunit3-driver",
+   "spring-test",
+   "maven-war-plugin",
+   "maven-failsafe-plugin",
+   "maven-site-plugin",
+   "cargo-maven3-plugin",
+   "jetty-home",
+   "spring-batch-infrastructure"
+  ],
+  "words": [
+   "jpetstore",
+   "mybatis",
+   "hsqldb",
+   "selenide"
+  ]
+ },
+ "other/jpetstore-6/src/main/resources/org/mybatis/jpetstore/mapper/AccountMapper.xml": {
+  "ids": [
+   "getAccountByUsername",
+   "getAccountByUsernameAndPassword",
+   "updateAccount",
+   "insertAccount",
+   "updateProfile",
+   "insertProfile",
+   "updateSignon",
+   "insertSignon",
+   "AccountMapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/resources/org/mybatis/jpetstore/mapper/CategoryMapper.xml": {
+  "ids": [
+   "getCategory",
+   "getCategoryList",
+   "CategoryMapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/resources/org/mybatis/jpetstore/mapper/ItemMapper.xml": {
+  "ids": [
+   "getItemListByProduct",
+   "getItem",
+   "getInventoryQuantity",
+   "updateInventoryQuantity",
+   "ItemMapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/resources/org/mybatis/jpetstore/mapper/LineItemMapper.xml": {
+  "ids": [
+   "getLineItemsByOrderId",
+   "insertLineItem",
+   "LineItemMapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/resources/org/mybatis/jpetstore/mapper/OrderMapper.xml": {
+  "ids": [
+   "getOrder",
+   "getOrdersByUsername",
+   "insertOrder",
+   "insertOrderStatus",
+   "OrderMapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/resources/org/mybatis/jpetstore/mapper/ProductMapper.xml": {
+  "ids": [
+   "getProduct",
+   "getProductListByCategory",
+   "searchProductList",
+   "ProductMapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/resources/org/mybatis/jpetstore/mapper/SequenceMapper.xml": {
+  "ids": [
+   "getSequence",
+   "updateSequence",
+   "SequenceMapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/applicationContext.xml": {
+  "ids": [
+   "transactionManager",
+   "sqlSessionFactory",
+   "DataSourceTransactionManager",
+   "SqlSessionFactoryBean",
+   "org.mybatis.jpetstore.service",
+   "org.mybatis.jpetstore.mapper"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/account/EditAccountForm.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeAccountFields.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/account/NewAccountForm.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeAccountFields.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/account/SignonForm.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/cart/Cart.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeMyList.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/cart/Checkout.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/catalog/Category.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/catalog/Item.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/catalog/Main.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/catalog/Product.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/catalog/SearchProducts.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/common/Error.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/order/ConfirmOrder.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/order/ListOrders.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/order/NewOrderForm.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/order/ShippingForm.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/jsp/order/ViewOrder.jsp": {
+  "ids": [
+   "IncludeTop.jsp",
+   "IncludeBottom.jsp"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/spring-mvc.xml": {
+  "ids": [
+   "InternalResourceViewResolver",
+   "org.mybatis.jpetstore.web.controllers"
+  ],
+  "words": []
+ },
+ "other/jpetstore-6/src/main/webapp/WEB-INF/web.xml": {
+  "ids": [
+   "dispatcher",
+   "ContextLoaderListener",
+   "DispatcherServlet"
+  ],
+  "words": [
+   "dispatcher"
+  ]
+ },
+ "other/microservices-demo/.github/release-cluster/backend-config.yaml": {
+  "ids": [
+   "frontend-backend-config"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/release-cluster/frontend-config.yaml": {
+  "ids": [
+   "frontend-frontend-config"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/release-cluster/frontend-ingress.yaml": {
+  "ids": [
+   "frontend-ingress"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/release-cluster/frontend-service.yaml": {
+  "ids": [
+   "frontend"
+  ],
+  "words": [
+   "frontend"
+  ]
+ },
+ "other/microservices-demo/.github/release-cluster/managed-cert.yaml": {
+  "ids": [
+   "online-boutique-certificate"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/terraform/main.tf": {
+  "ids": [
+   "terraform_state_storage_bucket",
+   "gke_clusters_service_account",
+   "gke_clusters_service_account_role_metric_writer",
+   "gke_clusters_service_account_role_logging_writer",
+   "gke_clusters_service_account_role_monitoring_viewer",
+   "gke_clusters_service_account_role_stackdriver_writer",
+   "prs_gke_cluster",
+   "enable_google_apis"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/terraform/variables.tf": {
+  "ids": [
+   "project_id"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/ci-main.yaml": {
+  "ids": [
+   "Continuous Integration - Main/Release",
+   "code-tests",
+   "actions/checkout",
+   "actions/setup-dotnet",
+   "actions/setup-go",
+   "deployment-tests",
+   "google-github-actions/auth",
+   "google-github-actions/setup-gcloud",
+   "docker/setup-qemu-action",
+   "docker/setup-buildx-action",
+   "actions/cache"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/ci-pr.yaml": {
+  "ids": [
+   "Continuous Integration - Pull Request",
+   "code-tests",
+   "actions/checkout",
+   "actions/setup-dotnet",
+   "actions/setup-go",
+   "actions/upload-artifact"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/cleanup.yaml": {
+  "ids": [
+   "Clean up deployment",
+   "cleanup-namespace",
+   "google-github-actions/auth",
+   "google-github-actions/setup-gcloud"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/deploy-pr.yaml": {
+  "ids": [
+   "Deploy Staging - Pull Request",
+   "deployment-tests",
+   "actions/checkout",
+   "actions/download-artifact",
+   "google-github-actions/auth",
+   "google-github-actions/setup-gcloud",
+   "docker/setup-qemu-action",
+   "docker/setup-buildx-action",
+   "actions/cache"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/helm-chart-ci.yaml": {
+  "ids": [
+   "helm-chart-ci",
+   "actions/checkout"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/kubevious-manifests-ci.yaml": {
+  "ids": [
+   "kubevious-manifests-ci",
+   "actions/checkout",
+   "kubevious/cli"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/kustomize-build-ci.yaml": {
+  "ids": [
+   "kustomize-build-ci",
+   "actions/checkout"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/make-release.yaml": {
+  "ids": [
+   "Manual Release Builder",
+   "build-and-release",
+   "actions/checkout",
+   "google-github-actions/auth",
+   "google-github-actions/setup-gcloud"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/.github/workflows/terraform-validate-ci.yaml": {
+  "ids": [
+   "terraform-validate-ci",
+   "actions/checkout",
+   "hashicorp/setup-terraform"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/istio-manifests/allow-egress-googleapis.yaml": {
+  "ids": [
+   "allow-egress-googleapis",
+   "allow-egress-google-metadata"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/istio-manifests/frontend-gateway.yaml": {
+  "ids": [
+   "frontend-gateway",
+   "frontend-ingress"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/istio-manifests/frontend.yaml": {
+  "ids": [
+   "frontend"
+  ],
+  "words": [
+   "frontend"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/adservice.yaml": {
+  "ids": [
+   "adservice",
+   "server"
+  ],
+  "words": [
+   "adservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/cartservice.yaml": {
+  "ids": [
+   "cartservice",
+   "server",
+   "redis-cart",
+   "redis"
+  ],
+  "words": [
+   "cartservice",
+   "server",
+   "redis"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/checkoutservice.yaml": {
+  "ids": [
+   "checkoutservice",
+   "server"
+  ],
+  "words": [
+   "checkoutservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/currencyservice.yaml": {
+  "ids": [
+   "currencyservice",
+   "server"
+  ],
+  "words": [
+   "currencyservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/emailservice.yaml": {
+  "ids": [
+   "emailservice",
+   "server"
+  ],
+  "words": [
+   "emailservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/frontend.yaml": {
+  "ids": [
+   "frontend",
+   "server",
+   "frontend-external"
+  ],
+  "words": [
+   "frontend",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/kustomization.yaml": {
+  "ids": [
+   "adservice.yaml",
+   "cartservice.yaml",
+   "checkoutservice.yaml",
+   "currencyservice.yaml",
+   "emailservice.yaml",
+   "frontend.yaml",
+   "paymentservice.yaml",
+   "productcatalogservice.yaml",
+   "recommendationservice.yaml",
+   "shippingservice.yaml"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kubernetes-manifests/loadgenerator.yaml": {
+  "ids": [
+   "loadgenerator",
+   "main",
+   "frontend-check",
+   "busybox"
+  ],
+  "words": [
+   "loadgenerator",
+   "main",
+   "busybox"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/paymentservice.yaml": {
+  "ids": [
+   "paymentservice",
+   "server"
+  ],
+  "words": [
+   "paymentservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/productcatalogservice.yaml": {
+  "ids": [
+   "productcatalogservice",
+   "server"
+  ],
+  "words": [
+   "productcatalogservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/recommendationservice.yaml": {
+  "ids": [
+   "recommendationservice",
+   "server"
+  ],
+  "words": [
+   "recommendationservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kubernetes-manifests/shippingservice.yaml": {
+  "ids": [
+   "shippingservice",
+   "server"
+  ],
+  "words": [
+   "shippingservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/adservice.yaml": {
+  "ids": [
+   "adservice",
+   "server"
+  ],
+  "words": [
+   "adservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/cartservice.yaml": {
+  "ids": [
+   "cartservice",
+   "server",
+   "redis-cart",
+   "redis"
+  ],
+  "words": [
+   "cartservice",
+   "server",
+   "redis"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/checkoutservice.yaml": {
+  "ids": [
+   "checkoutservice",
+   "server"
+  ],
+  "words": [
+   "checkoutservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/currencyservice.yaml": {
+  "ids": [
+   "currencyservice",
+   "server"
+  ],
+  "words": [
+   "currencyservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/emailservice.yaml": {
+  "ids": [
+   "emailservice",
+   "server"
+  ],
+  "words": [
+   "emailservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/frontend.yaml": {
+  "ids": [
+   "frontend",
+   "server",
+   "frontend-external"
+  ],
+  "words": [
+   "frontend",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/kustomization.yaml": {
+  "ids": [
+   "adservice.yaml",
+   "cartservice.yaml",
+   "checkoutservice.yaml",
+   "currencyservice.yaml",
+   "emailservice.yaml",
+   "frontend.yaml",
+   "loadgenerator.yaml",
+   "paymentservice.yaml",
+   "productcatalogservice.yaml",
+   "recommendationservice.yaml",
+   "shippingservice.yaml"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/base/loadgenerator.yaml": {
+  "ids": [
+   "loadgenerator",
+   "main",
+   "frontend-check",
+   "busybox"
+  ],
+  "words": [
+   "loadgenerator",
+   "main",
+   "busybox"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/paymentservice.yaml": {
+  "ids": [
+   "paymentservice",
+   "server"
+  ],
+  "words": [
+   "paymentservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/productcatalogservice.yaml": {
+  "ids": [
+   "productcatalogservice",
+   "server"
+  ],
+  "words": [
+   "productcatalogservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/recommendationservice.yaml": {
+  "ids": [
+   "recommendationservice",
+   "server"
+  ],
+  "words": [
+   "recommendationservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/base/shippingservice.yaml": {
+  "ids": [
+   "shippingservice",
+   "server"
+  ],
+  "words": [
+   "shippingservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/google-cloud-operations/kustomization.yaml": {
+  "ids": [
+   "otel-collector.yaml"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/google-cloud-operations/otel-collector.yaml": {
+  "ids": [
+   "opentelemetrycollector",
+   "otel-gateway",
+   "opentelemetry-collector-contrib",
+   "otel-gateway-init",
+   "busybox",
+   "collector-gateway-config-template"
+  ],
+  "words": [
+   "opentelemetrycollector",
+   "busybox"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/kustomization.yaml": {
+  "ids": [
+   "network-policy-deny-all.yaml",
+   "network-policy-adservice.yaml",
+   "network-policy-cartservice.yaml",
+   "network-policy-checkoutservice.yaml",
+   "network-policy-currencyservice.yaml",
+   "network-policy-emailservice.yaml",
+   "network-policy-frontend.yaml",
+   "network-policy-loadgenerator.yaml",
+   "network-policy-paymentservice.yaml",
+   "network-policy-productcatalogservice.yaml",
+   "network-policy-recommendationservice.yaml",
+   "network-policy-redis.yaml",
+   "network-policy-shippingservice.yaml"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-adservice.yaml": {
+  "ids": [
+   "adservice"
+  ],
+  "words": [
+   "adservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-cartservice.yaml": {
+  "ids": [
+   "cartservice"
+  ],
+  "words": [
+   "cartservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-checkoutservice.yaml": {
+  "ids": [
+   "checkoutservice"
+  ],
+  "words": [
+   "checkoutservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-currencyservice.yaml": {
+  "ids": [
+   "currencyservice"
+  ],
+  "words": [
+   "currencyservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-deny-all.yaml": {
+  "ids": [
+   "deny-all"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-emailservice.yaml": {
+  "ids": [
+   "emailservice"
+  ],
+  "words": [
+   "emailservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-frontend.yaml": {
+  "ids": [
+   "frontend"
+  ],
+  "words": [
+   "frontend"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-loadgenerator.yaml": {
+  "ids": [
+   "loadgenerator"
+  ],
+  "words": [
+   "loadgenerator"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-paymentservice.yaml": {
+  "ids": [
+   "paymentservice"
+  ],
+  "words": [
+   "paymentservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-productcatalogservice.yaml": {
+  "ids": [
+   "productcatalogservice"
+  ],
+  "words": [
+   "productcatalogservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-recommendationservice.yaml": {
+  "ids": [
+   "recommendationservice"
+  ],
+  "words": [
+   "recommendationservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-redis.yaml": {
+  "ids": [
+   "redis-cart"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/network-policies/network-policy-shippingservice.yaml": {
+  "ids": [
+   "shippingservice"
+  ],
+  "words": [
+   "shippingservice"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/service-mesh-istio/allow-egress-googleapis.yaml": {
+  "ids": [
+   "allow-egress-googleapis",
+   "allow-egress-google-metadata"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/service-mesh-istio/frontend-gateway.yaml": {
+  "ids": [
+   "istio-gateway",
+   "frontend-route"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/service-mesh-istio/frontend.yaml": {
+  "ids": [
+   "frontend"
+  ],
+  "words": [
+   "frontend"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/service-mesh-istio/kustomization.yaml": {
+  "ids": [
+   "allow-egress-googleapis.yaml",
+   "frontend-gateway.yaml",
+   "frontend.yaml"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/shopping-assistant/kustomization.yaml": {
+  "ids": [
+   "shoppingassistantservice.yaml"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/kustomize/components/shopping-assistant/shoppingassistantservice.yaml": {
+  "ids": [
+   "shoppingassistantservice",
+   "server"
+  ],
+  "words": [
+   "shoppingassistantservice",
+   "server"
+  ]
+ },
+ "other/microservices-demo/kustomize/components/without-loadgenerator/delete-loadgenerator.patch.yaml": {
+  "ids": [
+   "loadgenerator"
+  ],
+  "words": [
+   "loadgenerator"
+  ]
+ },
+ "other/microservices-demo/kustomize/kustomization.yaml": {
+  "ids": [
+   "base"
+  ],
+  "words": [
+   "base"
+  ]
+ },
+ "other/microservices-demo/kustomize/tests/memorystore-with-all-components/kustomization.yaml": {
+  "ids": [
+   "base",
+   "cymbal-branding",
+   "google-cloud-operations",
+   "network-policies",
+   "memorystore"
+  ],
+  "words": [
+   "base",
+   "memorystore"
+  ]
+ },
+ "other/microservices-demo/kustomize/tests/service-mesh-istio-with-all-components/kustomization.yaml": {
+  "ids": [
+   "base",
+   "cymbal-branding",
+   "google-cloud-operations",
+   "network-policies",
+   "service-mesh-istio"
+  ],
+  "words": [
+   "base"
+  ]
+ },
+ "other/microservices-demo/kustomize/tests/spanner-with-all-components/kustomization.yaml": {
+  "ids": [
+   "base",
+   "cymbal-branding",
+   "google-cloud-operations",
+   "network-policies",
+   "spanner"
+  ],
+  "words": [
+   "base",
+   "spanner"
+  ]
+ },
+ "other/microservices-demo/protos/demo.proto": {
+  "ids": [
+   "CartService",
+   "AddItem",
+   "GetCart",
+   "EmptyCart",
+   "CartItem",
+   "AddItemRequest",
+   "EmptyCartRequest",
+   "GetCartRequest",
+   "Cart",
+   "Empty",
+   "RecommendationService",
+   "ListRecommendations",
+   "ListRecommendationsRequest",
+   "ListRecommendationsResponse",
+   "ProductCatalogService",
+   "ListProducts",
+   "GetProduct",
+   "SearchProducts",
+   "Product",
+   "ListProductsResponse",
+   "GetProductRequest",
+   "SearchProductsRequest",
+   "SearchProductsResponse",
+   "ShippingService",
+   "GetQuote",
+   "ShipOrder",
+   "GetQuoteRequest",
+   "GetQuoteResponse",
+   "ShipOrderRequest",
+   "ShipOrderResponse",
+   "Address",
+   "CurrencyService",
+   "GetSupportedCurrencies",
+   "Convert",
+   "Money",
+   "GetSupportedCurrenciesResponse",
+   "CurrencyConversionRequest",
+   "PaymentService",
+   "Charge",
+   "CreditCardInfo",
+   "ChargeRequest",
+   "ChargeResponse",
+   "EmailService",
+   "SendOrderConfirmation",
+   "OrderItem",
+   "OrderResult",
+   "SendOrderConfirmationRequest",
+   "CheckoutService",
+   "PlaceOrder",
+   "PlaceOrderRequest",
+   "PlaceOrderResponse",
+   "AdService",
+   "GetAds",
+   "AdRequest",
+   "AdResponse",
+   "Ad"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/protos/grpc/health/v1/health.proto": {
+  "ids": [
+   "HealthCheckRequest",
+   "HealthCheckResponse",
+   "ServingStatus",
+   "Health",
+   "Check"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/release/istio-manifests.yaml": {
+  "ids": [
+   "allow-egress-googleapis",
+   "allow-egress-google-metadata",
+   "istio-gateway",
+   "frontend-route",
+   "frontend"
+  ],
+  "words": [
+   "frontend"
+  ]
+ },
+ "other/microservices-demo/release/kubernetes-manifests.yaml": {
+  "ids": [
+   "adservice",
+   "server",
+   "shippingservice",
+   "checkoutservice",
+   "currencyservice",
+   "emailservice",
+   "productcatalogservice",
+   "frontend",
+   "frontend-external",
+   "recommendationservice",
+   "loadgenerator",
+   "main",
+   "frontend-check",
+   "busybox",
+   "cartservice",
+   "redis-cart",
+   "redis",
+   "paymentservice"
+  ],
+  "words": [
+   "adservice",
+   "server",
+   "shippingservice",
+   "checkoutservice",
+   "currencyservice",
+   "emailservice",
+   "productcatalogservice",
+   "frontend",
+   "recommendationservice",
+   "loadgenerator",
+   "main",
+   "busybox",
+   "cartservice",
+   "redis",
+   "paymentservice"
+  ]
+ },
+ "other/microservices-demo/skaffold.yaml": {
+  "ids": [
+   "app",
+   "loadgenerator"
+  ],
+  "words": [
+   "app",
+   "loadgenerator"
+  ]
+ },
+ "other/microservices-demo/src/adservice/Dockerfile": {
+  "ids": [
+   "eclipse-temurin",
+   "builder"
+  ],
+  "words": [
+   "builder"
+  ]
+ },
+ "other/microservices-demo/src/adservice/src/main/proto/demo.proto": {
+  "ids": [
+   "CartService",
+   "AddItem",
+   "GetCart",
+   "EmptyCart",
+   "CartItem",
+   "AddItemRequest",
+   "EmptyCartRequest",
+   "GetCartRequest",
+   "Cart",
+   "Empty",
+   "RecommendationService",
+   "ListRecommendations",
+   "ListRecommendationsRequest",
+   "ListRecommendationsResponse",
+   "ProductCatalogService",
+   "ListProducts",
+   "GetProduct",
+   "SearchProducts",
+   "Product",
+   "ListProductsResponse",
+   "GetProductRequest",
+   "SearchProductsRequest",
+   "SearchProductsResponse",
+   "ShippingService",
+   "GetQuote",
+   "ShipOrder",
+   "GetQuoteRequest",
+   "GetQuoteResponse",
+   "ShipOrderRequest",
+   "ShipOrderResponse",
+   "Address",
+   "CurrencyService",
+   "GetSupportedCurrencies",
+   "Convert",
+   "Money",
+   "GetSupportedCurrenciesResponse",
+   "CurrencyConversionRequest",
+   "PaymentService",
+   "Charge",
+   "CreditCardInfo",
+   "ChargeRequest",
+   "ChargeResponse",
+   "EmailService",
+   "SendOrderConfirmation",
+   "OrderItem",
+   "OrderResult",
+   "SendOrderConfirmationRequest",
+   "CheckoutService",
+   "PlaceOrder",
+   "PlaceOrderRequest",
+   "PlaceOrderResponse",
+   "AdService",
+   "GetAds",
+   "AdRequest",
+   "AdResponse",
+   "Ad"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/src/cartservice/src/Dockerfile": {
+  "ids": [
+   "sdk",
+   "builder",
+   "runtime-deps"
+  ],
+  "words": [
+   "sdk",
+   "builder"
+  ]
+ },
+ "other/microservices-demo/src/cartservice/src/protos/Cart.proto": {
+  "ids": [
+   "CartService",
+   "AddItem",
+   "GetCart",
+   "EmptyCart",
+   "CartItem",
+   "AddItemRequest",
+   "EmptyCartRequest",
+   "GetCartRequest",
+   "Cart",
+   "Empty"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/src/checkoutservice/Dockerfile": {
+  "ids": [
+   "golang",
+   "builder",
+   "static"
+  ],
+  "words": [
+   "golang",
+   "builder",
+   "static"
+  ]
+ },
+ "other/microservices-demo/src/currencyservice/Dockerfile": {
+  "ids": [
+   "node",
+   "builder",
+   "alpine"
+  ],
+  "words": [
+   "node",
+   "builder",
+   "alpine"
+  ]
+ },
+ "other/microservices-demo/src/currencyservice/proto/demo.proto": {
+  "ids": [
+   "CartService",
+   "AddItem",
+   "GetCart",
+   "EmptyCart",
+   "CartItem",
+   "AddItemRequest",
+   "EmptyCartRequest",
+   "GetCartRequest",
+   "Cart",
+   "Empty",
+   "RecommendationService",
+   "ListRecommendations",
+   "ListRecommendationsRequest",
+   "ListRecommendationsResponse",
+   "ProductCatalogService",
+   "ListProducts",
+   "GetProduct",
+   "SearchProducts",
+   "Product",
+   "ListProductsResponse",
+   "GetProductRequest",
+   "SearchProductsRequest",
+   "SearchProductsResponse",
+   "ShippingService",
+   "GetQuote",
+   "ShipOrder",
+   "GetQuoteRequest",
+   "GetQuoteResponse",
+   "ShipOrderRequest",
+   "ShipOrderResponse",
+   "Address",
+   "CurrencyService",
+   "GetSupportedCurrencies",
+   "Convert",
+   "Money",
+   "GetSupportedCurrenciesResponse",
+   "CurrencyConversionRequest",
+   "PaymentService",
+   "Charge",
+   "CreditCardInfo",
+   "ChargeRequest",
+   "ChargeResponse",
+   "EmailService",
+   "SendOrderConfirmation",
+   "OrderItem",
+   "OrderResult",
+   "SendOrderConfirmationRequest",
+   "CheckoutService",
+   "PlaceOrder",
+   "PlaceOrderRequest",
+   "PlaceOrderResponse",
+   "AdService",
+   "GetAds",
+   "AdRequest",
+   "AdResponse",
+   "Ad"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/src/currencyservice/proto/grpc/health/v1/health.proto": {
+  "ids": [
+   "HealthCheckRequest",
+   "HealthCheckResponse",
+   "ServingStatus",
+   "Health",
+   "Check"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/src/emailservice/Dockerfile": {
+  "ids": [
+   "python",
+   "base",
+   "builder"
+  ],
+  "words": [
+   "python",
+   "base",
+   "builder"
+  ]
+ },
+ "other/microservices-demo/src/frontend/Dockerfile": {
+  "ids": [
+   "golang",
+   "builder",
+   "static"
+  ],
+  "words": [
+   "golang",
+   "builder",
+   "static"
+  ]
+ },
+ "other/microservices-demo/src/loadgenerator/Dockerfile": {
+  "ids": [
+   "python",
+   "base",
+   "builder"
+  ],
+  "words": [
+   "python",
+   "base",
+   "builder"
+  ]
+ },
+ "other/microservices-demo/src/paymentservice/Dockerfile": {
+  "ids": [
+   "node",
+   "builder",
+   "alpine"
+  ],
+  "words": [
+   "node",
+   "builder",
+   "alpine"
+  ]
+ },
+ "other/microservices-demo/src/paymentservice/proto/demo.proto": {
+  "ids": [
+   "CartService",
+   "AddItem",
+   "GetCart",
+   "EmptyCart",
+   "CartItem",
+   "AddItemRequest",
+   "EmptyCartRequest",
+   "GetCartRequest",
+   "Cart",
+   "Empty",
+   "RecommendationService",
+   "ListRecommendations",
+   "ListRecommendationsRequest",
+   "ListRecommendationsResponse",
+   "ProductCatalogService",
+   "ListProducts",
+   "GetProduct",
+   "SearchProducts",
+   "Product",
+   "ListProductsResponse",
+   "GetProductRequest",
+   "SearchProductsRequest",
+   "SearchProductsResponse",
+   "ShippingService",
+   "GetQuote",
+   "ShipOrder",
+   "GetQuoteRequest",
+   "GetQuoteResponse",
+   "ShipOrderRequest",
+   "ShipOrderResponse",
+   "Address",
+   "CurrencyService",
+   "GetSupportedCurrencies",
+   "Convert",
+   "Money",
+   "GetSupportedCurrenciesResponse",
+   "CurrencyConversionRequest",
+   "PaymentService",
+   "Charge",
+   "CreditCardInfo",
+   "ChargeRequest",
+   "ChargeResponse",
+   "EmailService",
+   "SendOrderConfirmation",
+   "OrderItem",
+   "OrderResult",
+   "SendOrderConfirmationRequest",
+   "CheckoutService",
+   "PlaceOrder",
+   "PlaceOrderRequest",
+   "PlaceOrderResponse",
+   "AdService",
+   "GetAds",
+   "AdRequest",
+   "AdResponse",
+   "Ad"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/src/paymentservice/proto/grpc/health/v1/health.proto": {
+  "ids": [
+   "HealthCheckRequest",
+   "HealthCheckResponse",
+   "ServingStatus",
+   "Health",
+   "Check"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/src/productcatalogservice/Dockerfile": {
+  "ids": [
+   "golang",
+   "builder",
+   "static"
+  ],
+  "words": [
+   "golang",
+   "builder",
+   "static"
+  ]
+ },
+ "other/microservices-demo/src/recommendationservice/Dockerfile": {
+  "ids": [
+   "python",
+   "base",
+   "builder"
+  ],
+  "words": [
+   "python",
+   "base",
+   "builder"
+  ]
+ },
+ "other/microservices-demo/src/shippingservice/Dockerfile": {
+  "ids": [
+   "golang",
+   "builder",
+   "static"
+  ],
+  "words": [
+   "golang",
+   "builder",
+   "static"
+  ]
+ },
+ "other/microservices-demo/src/shoppingassistantservice/Dockerfile": {
+  "ids": [
+   "python",
+   "base",
+   "builder"
+  ],
+  "words": [
+   "python",
+   "base",
+   "builder"
+  ]
+ },
+ "other/microservices-demo/terraform/main.tf": {
+  "ids": [
+   "my_cluster",
+   "apply_deployment",
+   "wait_conditions",
+   "enable_google_apis",
+   "gcloud"
+  ],
+  "words": [
+   "gcloud"
+  ]
+ },
+ "other/microservices-demo/terraform/memorystore.tf": {
+  "ids": [
+   "redis-cart",
+   "kustomization-update"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/terraform/output.tf": {
+  "ids": [
+   "cluster_location",
+   "cluster_name"
+  ],
+  "words": []
+ },
+ "other/microservices-demo/terraform/variables.tf": {
+  "ids": [
+   "gcp_project_id",
+   "name",
+   "region",
+   "namespace",
+   "filepath_manifest",
+   "memorystore"
+  ],
+  "words": [
+   "name",
+   "region",
+   "namespace",
+   "memorystore"
+  ]
+ },
+ "other/camunda-bpm-examples/.github/workflows/PR.yml": {
+  "ids": [
+   "PR",
+   "Validate",
+   "bpmn-io/actions/pull-request-quality"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/.github/workflows/bump-versions.yml": {
+  "ids": [
+   "Bump all versions in all examples",
+   "bump-versions",
+   "actions/checkout",
+   "actions/setup-java",
+   "peter-evans/create-pull-request"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/.github/workflows/main.yml": {
+  "ids": [
+   "Bump versions",
+   "bump-versions",
+   "actions/checkout",
+   "camunda/bump-versions-action"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/bpmn-model-api/generate-process-fluent-api/pom.xml": {
+  "ids": [
+   "camunda-quickstart-create-invoice-process",
+   "camunda-bom",
+   "camunda-engine",
+   "camunda-bpmn-model",
+   "junit",
+   "h2",
+   "slf4j-jdk14",
+   "maven-compiler-plugin",
+   "maven-war-plugin"
+  ],
+  "words": [
+   "junit"
+  ]
+ },
+ "other/camunda-bpm-examples/bpmn-model-api/generate-process-fluent-api/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/bpmn-model-api/parse-bpmn/pom.xml": {
+  "ids": [
+   "camunda-example-parse-bpmn",
+   "camunda-bpmn-model",
+   "junit",
+   "assertj-core",
+   "maven-compiler-plugin"
+  ],
+  "words": [
+   "junit"
+  ]
+ },
+ "other/camunda-bpm-examples/bpmn-model-api/parse-bpmn/src/test/resources/process.bpmn": {
+  "ids": [
+   "testProcess",
+   "Start Process",
+   "Service Task",
+   "Fork",
+   "User Task A",
+   "User Task B",
+   "Join",
+   "Script Task",
+   "End Process"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/clients/java/order-handling/order-handling.bpmn": {
+  "ids": [
+   "Order_Process",
+   "Create Invoice",
+   "Order received",
+   "Archive invoice?",
+   "Archive invoice",
+   "invoiceCreator",
+   "invoiceArchiver"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/clients/java/order-handling/pom.xml": {
+  "ids": [
+   "order-handling-example",
+   "camunda-external-task-client",
+   "slf4j-simple",
+   "jaxb-impl",
+   "maven-compiler-plugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/cockpit/cockpit-fullstack-count-processes/pom.xml": {
+  "ids": [
+   "cockpit-sample-plugin",
+   "camunda-webapp",
+   "jakarta.ws.rs-api",
+   "camunda-engine",
+   "h2",
+   "junit",
+   "slf4j-jdk14",
+   "maven-compiler-plugin",
+   "frontend-maven-plugin",
+   "maven-resources-plugin"
+  ],
+  "words": [
+   "junit"
+  ]
+ },
+ "other/camunda-bpm-examples/cockpit/cockpit-fullstack-count-processes/src/main/resources/org/camunda/bpm/cockpit/plugin/sample/queries/sample.xml": {
+  "ids": [
+   "processInstanceCountMap",
+   "selectProcessInstanceCountsByProcessDefinition",
+   "sample"
+  ],
+  "words": [
+   "sample"
+  ]
+ },
+ "other/camunda-bpm-examples/cockpit/cockpit-fullstack-count-processes/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/ejb-pa-jakarta/pom.xml": {
+  "ids": [
+   "camunda-quickstart-ejb-pa-jakarta",
+   "camunda-engine",
+   "camunda-ejb-client-jakarta",
+   "camunda-engine-cdi-jakarta",
+   "jakarta.jakartaee-api",
+   "maven-war-plugin",
+   "maven-compiler-plugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/ejb-pa-jakarta/src/main/resources/EjbExpressionResolvingTest.testResolveBean.bpmn": {
+  "ids": [
+   "testResolveBean",
+   "Start",
+   "End",
+   "Service Task"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/embedded-spring-rest/pom.xml": {
+  "ids": [
+   "camunda-quickstart-embedded-spring-rest",
+   "camunda-bom",
+   "camunda-engine",
+   "camunda-engine-spring-6",
+   "camunda-engine-rest-jakarta",
+   "resteasy-core",
+   "spring-web",
+   "spring-beans",
+   "spring-context",
+   "spring-jdbc",
+   "spring-tx",
+   "spring-orm",
+   "h2",
+   "slf4j-simple",
+   "maven-compiler-plugin",
+   "maven-war-plugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/embedded-spring-rest/src/main/resources/loanApproval.bpmn": {
+  "ids": [
+   "loanApproval",
+   "Loan Request&#10;Received",
+   "Loan Approved",
+   "Calculate Interest"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/embedded-spring-rest/src/main/webapp/WEB-INF/applicationContext.xml": {
+  "ids": [
+   "dataSource",
+   "transactionManager",
+   "processEngineConfiguration",
+   "processEngine",
+   "repositoryService",
+   "runtimeService",
+   "taskService",
+   "historyService",
+   "managementService",
+   "calculateInterestService",
+   "TransactionAwareDataSourceProxy",
+   "SimpleDriverDataSource",
+   "DataSourceTransactionManager",
+   "SpringProcessEngineConfiguration",
+   "ProcessEngineFactoryBean",
+   "Starter",
+   "CalculateInterestService"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/embedded-spring-rest/src/main/webapp/WEB-INF/web.xml": {
+  "ids": [
+   "EmptyBodyFilter",
+   "CacheControlFilter",
+   "Resteasy",
+   "ContextLoaderListener",
+   "FilterDispatcher"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/servlet-pa/pom.xml": {
+  "ids": [
+   "camunda-quickstart-servlet-pa",
+   "camunda-engine",
+   "jakarta.servlet-api",
+   "maven-compiler-plugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/servlet-pa/src/main/resources/exampleProcess.bpmn": {
+  "ids": [
+   "exampleProcess",
+   "Example ServiceTask",
+   "ExampleServiceTask"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-tomcat/pom.xml": {
+  "ids": [
+   "camunda-quickstart-spring-servlet-pa-tomcat",
+   "camunda-bom",
+   "jakarta.jakartaee-bom",
+   "camunda-engine-spring-6",
+   "camunda-engine",
+   "spring-beans",
+   "spring-web",
+   "spring-context",
+   "jakarta.servlet-api",
+   "h2",
+   "slf4j-simple",
+   "camunda-bpm-tomcat",
+   "maven-compiler-plugin",
+   "maven-war-plugin",
+   "maven-dependency-plugin",
+   "cargo-maven3-plugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-tomcat/src/main/resources/SpringExpressionResolvingTest.testResolveBean.bpmn": {
+  "ids": [
+   "testResolveBean",
+   "Start",
+   "End",
+   "Service Task"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-tomcat/src/main/resources/SpringExpressionResolvingTest.testResolveBeanFromJobExecutor.bpmn": {
+  "ids": [
+   "testResolveBeanFromJobExecutor",
+   "Start",
+   "End",
+   "Service Task"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-tomcat/src/main/webapp/WEB-INF/applicationContext.xml": {
+  "ids": [
+   "repositoryService",
+   "runtimeService",
+   "taskService",
+   "historyService",
+   "managementService",
+   "exampleBean",
+   "exampleDelegateBean",
+   "BpmPlatform",
+   "ExampleBean",
+   "ExampleDelegateBean"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-tomcat/src/main/webapp/WEB-INF/web.xml": {
+  "ids": [
+   "ContextLoaderListener"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-wildfly/src/main/resources/SpringExpressionResolvingTest.testResolveBean.bpmn": {
+  "ids": [
+   "testResolveBean",
+   "Start",
+   "End",
+   "Service Task"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-wildfly/src/main/resources/SpringExpressionResolvingTest.testResolveBeanFromJobExecutor.bpmn": {
+  "ids": [
+   "testResolveBeanFromJobExecutor",
+   "Start",
+   "End",
+   "Service Task"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-wildfly/src/main/webapp/WEB-INF/applicationContext.xml": {
+  "ids": [
+   "exampleBean",
+   "exampleDelegateBean",
+   "ExampleBean",
+   "ExampleDelegateBean"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-servlet-pa-wildfly/src/main/webapp/WEB-INF/web.xml": {
+  "ids": [
+   "ContextLoaderListener"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-wildfly-non-pa/src/main/webapp/WEB-INF/applicationContext.xml": {
+  "ids": [
+   "processEngine",
+   "JndiObjectFactoryBean",
+   "ProcessEngineClient"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/deployment/spring-wildfly-non-pa/src/main/webapp/WEB-INF/web.xml": {
+  "ids": [
+   "ContextLoaderListener"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/dmn-engine/dmn-engine-drg/src/main/resources/org/camunda/bpm/example/drg/dinnerDecisions.dmn": {
+  "ids": [
+   "beverages",
+   "dish",
+   "Beverages",
+   "Dish",
+   "Guests with children",
+   "Season",
+   "How many guests",
+   "desiredDish"
+  ],
+  "words": [
+   "beverages",
+   "dish"
+  ]
+ },
+ "other/camunda-bpm-examples/migration/migrate-on-deployment/src/main/resources/exampleProcess.bpmn": {
+  "ids": [
+   "exampleProcess",
+   "Example User Task"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/multi-tenancy/schema-isolation/src/main/resources/processes/tenant1/tenant1_process.bpmn": {
+  "ids": [
+   "tenant1-process",
+   "Tenant 1 Activity"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/multi-tenancy/schema-isolation/src/main/resources/processes/tenant2/tenant2_process.bpmn": {
+  "ids": [
+   "tenant2-process",
+   "Tenant 2 Activity",
+   "async"
+  ],
+  "words": [
+   "async"
+  ]
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-embedded/src/main/resources/processes/tenant1/tenant1_process.bpmn": {
+  "ids": [
+   "process",
+   "user task",
+   "tenant-aware service task",
+   "TenantAwareServiceTask"
+  ],
+  "words": [
+   "process"
+  ]
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-embedded/src/main/resources/processes/tenant2/tenant2_process.bpmn": {
+  "ids": [
+   "process",
+   "user task",
+   "tenant-aware service task",
+   "TenantAwareServiceTask"
+  ],
+  "words": [
+   "process"
+  ]
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-embedded/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-shared-definitions/src/main/resources/processes/default/mainProcess.bpmn": {
+  "ids": [
+   "mainProcess",
+   "subprocess"
+  ],
+  "words": [
+   "subprocess"
+  ]
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-shared-definitions/src/main/resources/processes/default/subProcess.bpmn": {
+  "ids": [
+   "subProcess",
+   "task in default subprocess"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-shared-definitions/src/main/resources/processes/tenant2/subProcess.bpmn": {
+  "ids": [
+   "subProcess",
+   "task in tenant specific subprocess",
+   "another task"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-shared-definitions/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "tenantIdProvider",
+   "calledElementTenantIdProvider",
+   "StandaloneInMemProcessEngineConfiguration",
+   "CustomTenantIdProvider",
+   "CalledElementTenantIdProvider"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-shared/src/main/resources/processes/tenant1/tenant1_process.bpmn": {
+  "ids": [
+   "example-process",
+   "user task",
+   "tenant-aware service task",
+   "TenantAwareServiceTask"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/multi-tenancy/tenant-identifier-shared/src/main/resources/processes/tenant2/tenant2_process.bpmn": {
+  "ids": [
+   "example-process",
+   "user task",
+   "tenant-aware service task",
+   "TenantAwareServiceTask"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/bpmn-parse-listener/src/main/resources/bpmnParseListener.bpmn": {
+  "ids": [
+   "bpmnParseListener",
+   "Start",
+   "ServiceTask 1",
+   "ServiceTask 2",
+   "End",
+   "ServiceTaskOneDelegate",
+   "ServiceTaskTwoDelegate"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/bpmn-parse-listener/src/main/resources/bpmnParseListenerOnUserTask.bpmn": {
+  "ids": [
+   "bpmnParseListenerOnUserTask",
+   "Start",
+   "End",
+   "User Task 1",
+   "User Task 2"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/bpmn-parse-listener/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration",
+   "ProgressLoggingSupportParseListenerPlugin",
+   "InformAssigneeParseListenerPlugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/custom-history-level/src/main/resources/process-history-activity.bpmn": {
+  "ids": [
+   "process-history-activity",
+   "Create Variables",
+   "CreateVariablesDelegate"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/custom-history-level/src/main/resources/process-history-custom-variable.bpmn": {
+  "ids": [
+   "process-history-custom-variable",
+   "Create Variables",
+   "CreateVariablesDelegate"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/custom-history-level/src/main/resources/process-history-full.bpmn": {
+  "ids": [
+   "process-history-full",
+   "Create Variables",
+   "CreateVariablesDelegate"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/custom-history-level/src/main/resources/process-history-none.bpmn": {
+  "ids": [
+   "process-history-none",
+   "Create Variables",
+   "CreateVariablesDelegate"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/custom-history-level/src/main/resources/process.bpmn": {
+  "ids": [
+   "process",
+   "Create Variables",
+   "CreateVariablesDelegate"
+  ],
+  "words": [
+   "process"
+  ]
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/custom-history-level/src/test/resources/camunda-custom-variable.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration",
+   "CustomHistoryLevelProcessEnginePlugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/custom-history-level/src/test/resources/camunda-per-process.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration",
+   "CustomHistoryLevelProcessEnginePlugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/failed-job-retry-profile/src/main/resources/retry-example.bpmn": {
+  "ids": [
+   "process",
+   "Start",
+   "End",
+   "Fetch data from the CRM system",
+   "Fetch address data from CRM system",
+   "Send customer data to the ERP system",
+   "Add address data in the ERP system",
+   "ServiceTaskOneDelegate",
+   "ServiceTaskTwoDelegate"
+  ],
+  "words": [
+   "process"
+  ]
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/failed-job-retry-profile/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration",
+   "FailedJobRetryProfilePlugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/handling-jpa-variables/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration",
+   "JPAVariablesSerializerPlugin"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/process-engine-plugin/handling-jpa-variables/src/test/resources/process.bpmn": {
+  "ids": [
+   "process",
+   "Start",
+   "End",
+   "Check variables"
+  ],
+  "words": [
+   "process"
+  ]
+ },
+ "other/camunda-bpm-examples/quarkus-extension/datasource-example/src/main/resources/bpmn/process.bpmn": {
+  "ids": [
+   "approval-process",
+   "Approval Service"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/quarkus-extension/spin-plugin-example/src/main/resources/process.bpmn": {
+  "ids": [
+   "order-item-process",
+   "Store order item"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/scripttask/xslt-scripttask/src/main/resources/xslt-example.bpmn": {
+  "ids": [
+   "xslt-example",
+   "give input",
+   "convert input",
+   "show output"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/scripttask/xslt-scripttask/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "uuidGenerator",
+   "StandaloneInMemProcessEngineConfiguration",
+   "StrongUuidGenerator"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/servicetask/rest-service/src/main/resources/invokeRestService.bpmn": {
+  "ids": [
+   "holiday",
+   "start with date",
+   "Check if date is holiday",
+   "Pack for holiday",
+   "Pack for work"
+  ],
+  "words": [
+   "holiday"
+  ]
+ },
+ "other/camunda-bpm-examples/servicetask/rest-service/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "uuidGenerator",
+   "StandaloneInMemProcessEngineConfiguration",
+   "ConnectProcessEnginePlugin",
+   "SpinProcessEnginePlugin",
+   "StrongUuidGenerator"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/servicetask/service-invocation-asynchronous/src/main/resources/asynchronousServiceInvocation.bpmn": {
+  "ids": [
+   "asynchronousServiceInvocation",
+   "Start",
+   "Wait State Before",
+   "Asynchronous Service Task",
+   "Wait State&#10;After",
+   "End",
+   "AsynchronousServiceTask"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/servicetask/service-invocation-asynchronous/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/servicetask/service-invocation-synchronous/src/main/resources/synchronousServiceInvocation.bpmn": {
+  "ids": [
+   "synchronousServiceInvocation",
+   "Start",
+   "Wait State Before",
+   "Synchronous Service Task",
+   "Wait State&#10;After",
+   "End",
+   "SynchronousServiceTask"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/servicetask/service-invocation-synchronous/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spin/dataformat-configuration-global/src/main/resources/testProcess.bpmn": {
+  "ids": [
+   "testProcess",
+   "Extract Price",
+   "Examine Price"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spin/dataformat-configuration-global/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "uuidGenerator",
+   "StandaloneInMemProcessEngineConfiguration",
+   "SpinProcessEnginePlugin",
+   "StrongUuidGenerator"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spin/dataformat-configuration-in-process-application/src/main/resources/testProcess.bpmn": {
+  "ids": [
+   "testProcess",
+   "Extract Price",
+   "Examine Price"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spin/dataformat-configuration-in-process-application/src/main/webapp/WEB-INF/web.xml": {
+  "ids": [
+   "StartProcessServlet"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spin/dataformat-configuration-in-process-application/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "uuidGenerator",
+   "StandaloneInMemProcessEngineConfiguration",
+   "SpinProcessEnginePlugin",
+   "StrongUuidGenerator"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spring-boot-starter/example-simple/src/main/resources/bpmn/sample.bpmn": {
+  "ids": [
+   "Sample",
+   "do something",
+   "say hello"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spring-boot-starter/example-twitter/src/main/resources/TwitterDemoProcess.bpmn": {
+  "ids": [
+   "TwitterDemoProcess",
+   "Send rejection notification",
+   "Approved?",
+   "Join",
+   "Publish on Twitter",
+   "Tweet handled",
+   "Tweet written",
+   "Review Tweet"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spring-boot-starter/example-web/src/main/resources/bpmn/sample.bpmn": {
+  "ids": [
+   "Sample",
+   "do something",
+   "say hello"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spring-boot-starter/example-webapp-ee/src/main/resources/bpmn/sample.bpmn": {
+  "ids": [
+   "Sample",
+   "do something"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spring-boot-starter/example-webapp/src/main/resources/bpmn/sample.bpmn": {
+  "ids": [
+   "Sample",
+   "do something",
+   "say hello"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/spring-boot-starter/external-task-client/loan-granting-spring-boot-webapp/src/main/resources/bpmn/loan-granting.bpmn": {
+  "ids": [
+   "loan_process",
+   "Check credit score",
+   "Decide if a loan is granted",
+   "Grant loan",
+   "Reject loan request",
+   "creditScoreChecker",
+   "loanGranter",
+   "requestRejecter"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/startevent/message-start/src/main/resources/instantiating_process.bpmn": {
+  "ids": [
+   "Instantiating_Process",
+   "Send Message",
+   "Wait in Instantiating Process",
+   "InstantiateProcessByMessageDelegate"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/startevent/message-start/src/main/resources/message_start_process.bpmn": {
+  "ids": [
+   "Message_Start_Process",
+   "Wait in Message Process"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/startevent/message-start/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "uuidGenerator",
+   "StandaloneInMemProcessEngineConfiguration",
+   "StrongUuidGenerator"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/testing/assert/job-announcement-publication-process/src/test/resources/camunda-testing-job-announcement-publication.bpmn": {
+  "ids": [
+   "camunda-testing-job-announcement-publication",
+   "Publish announcement on website",
+   "Chose Twitter?",
+   "Publish announcement on Twitter",
+   "Publish announcement on Facebook",
+   "Chose Facebook?"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/testing/assert/job-announcement-publication-process/src/test/resources/camunda-testing-job-announcement.bpmn": {
+  "ids": [
+   "camunda-testing-job-announcement",
+   "New open position",
+   "Send confirmation",
+   "New position announced",
+   "Execute announcement",
+   "Review job role description",
+   "OK?",
+   "Describe job role",
+   "Improve job role description",
+   "Publish announcement"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/testing/assert/job-announcement-publication-process/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration",
+   "MockExpressionManager"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/testing/junit5/camunda-bpm-junit-assert/src/test/resources/camunda.cfg.xml": {
+  "ids": [
+   "processEngineConfiguration",
+   "StandaloneInMemProcessEngineConfiguration"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/testing/junit5/camunda-bpm-junit-assert/src/test/resources/testProcess.bpmn": {
+  "ids": [
+   "testProcess",
+   "Handle &#10;Request"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/testing/junit5/camunda-bpm-junit-use-engine/src/test/resources/testProcess.bpmn": {
+  "ids": [
+   "testProcess",
+   "Handle &#10;Request"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/usertask/task-camunda-forms/src/main/resources/invoiceApproval.bpmn": {
+  "ids": [
+   "camundaFormsQuickstart",
+   "Invoice Received",
+   "Invoice Processed",
+   "Approve Invoice"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/usertask/task-form-embedded-bpmn-events/src/main/resources/invoicePayment.bpmn": {
+  "ids": [
+   "embeddedFormsBpmnEvents",
+   "Invoice Receipt",
+   "Pay Invoice",
+   "Invoice Paid",
+   "Unspecified Amount",
+   "Invoice Archived",
+   "Archive Invoice",
+   "Inform Supervisor",
+   "Invoice Escalated",
+   "Suspicous&#10;sender"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/usertask/task-form-embedded-json-variables/src/main/resources/process.bpmn": {
+  "ids": [
+   "customerDataProcess",
+   "Customer entered",
+   "Approve customer",
+   "Customer age?",
+   "Under 21",
+   "Over 21",
+   "Old customer validated",
+   "Young customer vaildated",
+   "Validate customer",
+   "JsonJavaDelegate"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/usertask/task-form-embedded-react/src/main/resources/react-example.bpmn": {
+  "ids": [
+   "reactExample",
+   "Invoice Received",
+   "Approve Invoice",
+   "Invoice not processed",
+   "Invoice Approved?",
+   "Invoice Processed",
+   "Send Rejection Notice",
+   "Prepare Bank Statement",
+   "Archive Invoice"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/usertask/task-form-embedded/src/main/resources/loanApproval.bpmn": {
+  "ids": [
+   "embeddedFormsQuickstart",
+   "Loan Request&#10;Received",
+   "Done",
+   "Approve Request"
+  ],
+  "words": []
+ },
+ "other/camunda-bpm-examples/wildfly/jackson-annotations/src/main/resources/waitingState.bpmn": {
+  "ids": [
+   "waitingProcess",
+   "Wating state"
+  ],
+  "words": []
+ }
+}

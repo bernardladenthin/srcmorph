@@ -220,6 +220,11 @@ kinds of the enterprise corpus on that corpus alone; Scala, the contract formats
 Terraform, Ansible and Compose ran in no measurement. TypeScript ran once, on a repository measured
 internally: with `file-body-oop` both models named more of its exported API than with the fallback,
 which is why `run.py` and the Luna example route `.ts`, `.mts` and `.cts` there; it has no counters.
+On 2026-11-06 the kinds ran on three open-source projects (jpetstore-6, microservices-demo,
+camunda-bpm-examples; 218 files of 13 kinds, [`remeasure-2026-11-06/`](../docs/ai-index-benchmark/remeasure-2026-11-06/README.md)):
+with their rules gpt-oss-20b named 97.3 % of the names derived from the sources, through the fallback
+81.2 %, GPT-6 Luna 97.7 % against 92.2 %, and Terraform ran there too. The self-test routes those
+kinds since.
 Their counters (`scala-facts`, `proto-facts`,
 `avro-facts`, `graphql-facts`, `asyncapi-facts`, `terraform-facts`, `ansible-facts`,
 `compose-facts`, `camel-yaml-facts`, and `dmn-facts`, `gradle-facts`, `properties-facts`,
