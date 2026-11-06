@@ -255,6 +255,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The self-test's `big-pom` rule takes `file-body-xml`** instead of the generic prompt: on a real
+  590 KB POM Granite H-Tiny invents no names with it and about half of them with the generic one, at
+  the same low recall (6 and 4 of 99; `profiles/README.md`). `huge-pom` is unchanged.
+
 - **The core library's packages say what their classes do** (the review of 2026-11-05,
   `docs/code-review-2026-11-05.md`, moves M1 to M10 and renames N1 to N3). `config` holds only the
   beans and the file loader: the routing (`AiConditionEvaluator`, `AiFieldGenerationSelector`,

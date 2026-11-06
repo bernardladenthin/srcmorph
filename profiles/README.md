@@ -297,7 +297,13 @@ names with the XML prompt and 4 with the generic one. `huge-xml` (Granite H-1B, 
 chunks): on a 1.15 MB catalog H-1B wrote one correct sentence with the XML prompt, while with the
 generic one its final answer ran to the output limit and the file failed, in every run. The runs are
 under [`remeasure-2026-11-02/`](../docs/ai-index-benchmark/remeasure-2026-11-02/README.md).
-`big-pom` and `huge-pom` keep the generic prompt: no large POM was measured.
+`big-pom` takes `file-body-xml` too since 2026-11-06: on a real POM of the tier (netty-parent
+4.2.0.Final, 590 KB, 54 modules, 30 profiles, 15 build plugins; three runs each, which wrote the same
+bytes) Granite H-Tiny named 6 of its 99 names with the XML prompt and invented none, 4 with the
+generic one and invented about 51 per 100; neither summary is a good one (both state a wrong
+version, two part summaries were cut at the output budget), and the deterministic strategy names
+none: the facts line's exact counts are what a big POM gets reliably. `huge-pom` keeps the generic
+prompt: no real POM of a megabyte was found.
 
 ## v3 against v2
 

@@ -116,7 +116,7 @@ Granite run may run beside one; the scores go to `scores/`, the model card is no
 - [x] C1 Row 13: the ops prompt with `npm-facts` on `package.json` (gpt-oss-20b and Luna, three runs)
 - [ ] C2 Row 32: a large-corpus run of gpt-oss-20b with `partsDirectory`; where the middle is lost,
   and what follows from it for the map or reduce prompt
-- [ ] C3 Row 35: a large POM for `big-pom` / `huge-pom`, three runs each with the local Granite tiers;
+- [x] C3 Row 35: a large POM for `big-pom` / `huge-pom`, three runs each with the local Granite tiers;
   the self-test's rule follows the result
 - [ ] C4 Row 36: the new kinds on real open-source projects (picked and named in the writeup); the
   self-test routes the kinds that hold up

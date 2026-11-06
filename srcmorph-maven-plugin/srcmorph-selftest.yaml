@@ -277,8 +277,8 @@ srcMorph:
           conditions:
             - pathGlob: "**/*pom.xml"
             - size: {min: 1000000}
-    - id: big-pom
-      promptKey: file-body-fallback
+    - id: big-pom                       # measured 2026-11-06 on a real 590 KB POM: the XML prompt invents no names, the generic one half
+      promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 110
