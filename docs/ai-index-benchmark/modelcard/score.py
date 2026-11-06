@@ -53,7 +53,8 @@ For every model under <out> (one directory per model key) and every source file 
   and format placeholders (`\\t`, `YYYY-MM-DD`, `getX`) are no names;
 - numbers = the exact counts of facts.json the body states (the seed-data row counts), not stuck to a
   letter (`v3`, `S3`) and no part of a date (`2026-11-06`); a missing summary expects its numbers too;
-- format: missing lead line, '#' to '###' headings outside code fences, code fence markers (``` and ~~~
+- format: missing lead line, '#' to '###' headings outside code fences (indented by up to three spaces,
+  as CommonMark reads one), code fence markers (``` and ~~~
   at the start of a line or indented under a list item, as fenced_blocks reads them), leaked reasoning
   markers (`<think>`, gpt-oss's harmony and Gemma's channel
   markers; one in backticks or right after a quote is the summary writing about it, no leak);
@@ -599,7 +600,8 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), 
         "numbersExpected": len(numbers),
         "numbersStated": len(stated),
         "lead": lead,
-        "badHeadings": sum(1 for line in outside_fences if re.match(r"^#{1,3}\s", line)),
+        # CommonMark reads a heading indented by up to three spaces (four make an indented code block)
+        "badHeadings": sum(1 for line in outside_fences if re.match(r"^ {0,3}#{1,3}\s", line)),
         "fences": fence_markers(answer),
         "leaks": leaks,
         "empty": not text.strip(),

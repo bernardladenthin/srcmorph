@@ -121,7 +121,7 @@ class NamesFoundTest(unittest.TestCase):
         # "ledger" is only part of ledger_customer
         self.assertEqual(row["idsFound"], 3)
 
-    def test_aPathLikeId_isASubstring(self):
+    def test_aPathLikeId_inProse_isFoundAsAWholeName(self):
         row = score.score_file("", body("It uses urn:example:catalog throughout."), ["urn:example:catalog"], [])
 
         self.assertEqual(row["idsFound"], 1)
@@ -382,10 +382,15 @@ class FailureTest(unittest.TestCase):
 
     def test_aReasoningBlockThatNeverCloses_isLeakOnly(self):
         for text in ("<think>Foo has alpha and beta." + LONG, "<|channel>thought\nFoo has alpha." + LONG,
-                     "<|channel|>analysis<|message|>Foo has alpha." + LONG, "<think>plan</think>\n\n"):
+                     "<|channel|>analysis<|message|>Foo has alpha." + LONG):
             row = score.score_file("class Foo { int alpha; }", text, ["Foo", "alpha"], [])
 
             self.assertEqual((row["failed"], row["idsFound"]), ("leak-only", 0), text)
+
+    def test_aClosedReasoningBlockWithNothingAfterIt_isLeakOnly(self):
+        row = score.score_file("class Foo { int alpha; }", "<think>Foo has alpha.</think>\n\n", ["Foo", "alpha"], [])
+
+        self.assertEqual((row["failed"], row["idsFound"]), ("leak-only", 0))
 
     def test_aSummaryAfterReasoningATemplateOpened_isScoredAfterTheClosingTag(self):
         # the template wrote the <think>; the body holds the reasoning and its closing tag, alone on its
@@ -673,7 +678,7 @@ class MiddleTest(unittest.TestCase):
         self.assertEqual(score.middle_found(["LEDGER_LOCK"], "LEDGER_LOCK errors"), ["LEDGER_LOCK"])
         self.assertEqual(score.middle_found(["LEDGER_LOCK"], "LEDGER_LOCKED"), [])
 
-    def test_aQualifiedMiddleName_countsAsASubstring(self):
+    def test_aQualifiedMiddleName_countsAsAWholeName(self):
         self.assertEqual(score.middle_found(["inv:recall"], "an `inv:recall` element"), ["inv:recall"])
 
 
@@ -698,6 +703,11 @@ class BoundaryTest(unittest.TestCase):
         for n, text in ((1234, "1,234"), (12345, "12,345"), (123456, "123 456"), (1234567, "1,234,567")):
             self.assertTrue(score.number_pattern(n).search(f"has {text} rows"), text)
         self.assertFalse(score.number_pattern(1234567).search("has 12,34,567 rows"))
+
+    def test_aHeadingIndentedByUpToThreeSpaces_isAHeading_byFourNot(self):
+        row = score.score_file("", body(" # One\n\n  ## Two\n\n   ### Three\n\n    # code\n\n   #### Four\n"), [], [])
+
+        self.assertEqual(row["badHeadings"], 3)
 
     def test_theRowFields(self):
         invented = " ".join(f"`name{i:02d}x`" for i in range(10))
