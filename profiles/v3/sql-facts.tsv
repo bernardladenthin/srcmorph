@@ -17,7 +17,8 @@
 # literal, it also blanks PostgreSQL's dollar quoting on one line ($$it's$$, $fn$...$fn$; a function
 # body over several lines stays, its statements count), Oracle's q'[...]', q'{...}', q'!...!' and
 # the like (N too), a "..." that holds an apostrophe (a MySQL string; a quoted identifier, which has
-# none, stays, so INSERT "t" still counts) and MySQL's # comments (at a line start or after a blank
+# none, stays, so INSERT "t" still counts; a " right after a word character or a " is an
+# identifier's closing quote and opens none) and MySQL's # comments (at a line start or after a blank
 # or ;, not a T-SQL #temp table, nor PostgreSQL's #> and #- operators). Statements are counted where
 # they start a line (after spaces or tabs, never across a line break, which keeps a long blanked
 # region linear),
@@ -31,7 +32,7 @@
 # VALUES(col) function of MySQL's ON DUPLICATE KEY UPDATE (after an =); rows an INSERT ... SELECT
 # reads from a table are not seen, and a tuple nested inside a row counts once more.
 # SqlFactPatternsTest pins every case.
-[ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\(?!'[ \t]*+(?:[,);+|\r\n]|\z)).|\\)*+(?:'|\z)|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*
+[ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\(?!'[ \t]*+(?:[,);+|\r\n]|\z)).|\\)*+(?:'|\z)|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|(?<![\w$#@"])"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*
 INSERT statements	(?im)^[ \t]*(?:INSERT(?:\s+/\*\+.*?\*/)?(?:\s+(?:IGNORE|LOW_PRIORITY|DELAYED|HIGH_PRIORITY))*(?:\s+/\*\+.*?\*/)?\s+(?:INTO\b|ALL\b|FIRST\b|(?!(?:VALUES|SELECT|OR|ON|AS|SET|WITH|WHEN|THEN)\b)[A-Za-z_"`\[#@][\w"`\[\].$#@]*)|REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*\s+INTO\b)
 VALUES rows (approx)	(?i)(?:(?<!=[ \t]{0,8})\bVALUES|\),)\s*\(
 tables	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+|FOREIGN\s+)?TABLE\b

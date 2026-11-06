@@ -272,6 +272,28 @@ public class SqlFactPatternsTest {
     }
 
     /**
+     * The closing quote of a quoted identifier opens no "..." string: before a PostgreSQL JSON literal it
+     * would end at the literal's first {@code "} and leave its apostrophe to open a '...' literal over
+     * the rest of the file.
+     */
+    @Test
+    public void ignore_aQuotedIdentifierBeforeAJsonLiteral_blanksNoStatement() {
+        // arrange
+        final String sql = "INSERT INTO \"cfg\" (\"data\") VALUES ('{\"k\": \"v\"}');\n"
+                + "CREATE TABLE audit (id int);\n"
+                + "CREATE INDEX audit_id ON audit (id);\n"
+                + "INSERT INTO audit VALUES (1);\n";
+
+        // act, assert
+        assertThat(count("INSERT statements", sql), is(2));
+        assertThat(count("VALUES rows (approx)", sql), is(2));
+        assertThat(count("tables", sql), is(1));
+        assertThat(count("indexes", sql), is(1));
+        // a MySQL "..." string with an apostrophe after an opening parenthesis or a comma still blanks
+        assertThat(count("INSERT statements", "SELECT f(\"it's\", \"x's\");\nINSERT INTO t VALUES (1);\n"), is(1));
+    }
+
+    /**
      * What the dialect quoting must leave: a quoted identifier names the INSERT's table, a T-SQL temp
      * table starts with #, and a function body in dollar quotes is SQL whose statements count.
      */
