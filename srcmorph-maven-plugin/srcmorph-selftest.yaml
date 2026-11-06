@@ -433,7 +433,17 @@ srcMorph:
       reducePromptKey: reduce-parts
       factsKey: jsp-facts
       condition:
-        extensions: [".jsp", ".jspf", ".jspx", ".tag", ".tagx"]
+        extensions: [".jsp", ".jspf", ".tag"]
+    - id: jspx                               # a JSP document is XML: its comments are never sent
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      factsKey: jspx-facts
+      condition:
+        extensions: [".jspx", ".tagx"]
     - id: proto
       promptKey: file-body-contract
       onIncomplete: retryOnce

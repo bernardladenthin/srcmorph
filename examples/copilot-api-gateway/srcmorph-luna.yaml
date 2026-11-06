@@ -405,7 +405,17 @@ srcMorph:
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".jsp", ".jspf", ".jspx", ".tag", ".tagx"]
+        extensions: [".jsp", ".jspf", ".tag"]
+    - id: jspx                               # a JSP document is XML: its comments are never sent
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: jspx-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".jspx", ".tagx"]
     - id: facelets
       promptKey: file-body-view
       onIncomplete: retryOnce

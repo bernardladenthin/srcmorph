@@ -6,16 +6,18 @@
 # file-body-view: one per line, label TAB pattern (Java regex). The [ignore] line blanks JSP comments
 # (<%-- --%>), which the container never sends, so a commented-out scriptlet or EL expression does
 # not count; an HTML comment (<!-- -->) is sent to the browser and its <% %> still runs on the
-# server, so it is kept. A JSP comment that is never closed runs to the end of the file. "scriptlets"
+# server, so it is kept. A JSP comment that is never closed runs to the end of the file. A directive
+# counts in either syntax, <%@ page %> or the element <jsp:directive.page/> (include and attribute
+# alike); a JSP document (.jspx, .tagx) takes jspx-facts, which blanks its XML comments. "scriptlets"
 # counts <% blocks that are neither directives, expressions, declarations nor comments; "prefixed
 # tags" every opening tag with a namespace prefix (JSTL, Spring form, custom tags); "request
 # parameters read" both EL's param and getParameter in Java. ViewFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [ignore] JSP comments	(?s)<%--(?:.*?--%>|.*+)
-page directives	<%@[ \t\r\n]*+page\b
+page directives	<%@[ \t\r\n]*+page\b|<jsp:directive\.page\b
 taglib directives	<%@[ \t\r\n]*+taglib\b
-includes and forwards	<%@[ \t\r\n]*+include\b|<jsp:(?:include|forward)\b
-tag file attributes	<%@[ \t\r\n]*+attribute\b
+includes and forwards	<%@[ \t\r\n]*+include\b|<jsp:(?:include|forward|directive\.include)\b
+tag file attributes	<%@[ \t\r\n]*+attribute\b|<jsp:directive\.attribute\b
 scriptlets	<%(?![@=!-])|<jsp:scriptlet\b
 expressions	<%=|<jsp:expression\b
 declarations	<%!|<jsp:declaration\b

@@ -22,6 +22,8 @@ public class ViewFactPatternsTest {
 
     private static final List<FactCounter> JSP = ProfileFactPatterns.counters("jsp-facts");
 
+    private static final List<FactCounter> JSPX = ProfileFactPatterns.counters("jspx-facts");
+
     private static final List<FactCounter> FACELETS = ProfileFactPatterns.counters("facelets-facts");
 
     private static int count(final List<FactCounter> counters, final String label, final String source) {
@@ -75,6 +77,33 @@ public class ViewFactPatternsTest {
         // act, assert
         assertThat(count(JSP, "tag file attributes", "<%@ attribute name=\"total\" required=\"true\" %>\n"), is(1));
         assertThat(count(JSP, "scriptlets", "<% a(); %>\n<%-- <% b(); %>\n<% c(); %>\n"), is(1));
+    }
+
+    /** A JSP document (.jspx, .tagx) writes its directives as elements; its XML comments are never sent. */
+    private static final String DOCUMENT = "<jsp:root xmlns:jsp=\"http://java.sun.com/JSP/Page\" version=\"2.0\">\n"
+            + "<jsp:directive.page contentType=\"text/html\"/>\n"
+            + "<jsp:directive.include file=\"header.jspf\"/>\n"
+            + "<!-- <jsp:scriptlet>old();</jsp:scriptlet> ${old} -->\n"
+            + "<p>${order.id}</p>\n"
+            + "</jsp:root>\n";
+
+    @Test
+    public void jspx_directiveElementsAndAnXmlComment_countTheDirectivesAndNotTheComment() {
+        // act, assert
+        assertThat(count(JSPX, "page directives", DOCUMENT), is(1));
+        assertThat(count(JSPX, "includes and forwards", DOCUMENT), is(1));
+        assertThat(count(JSPX, "scriptlets", DOCUMENT), is(0));
+        assertThat(count(JSPX, "EL expressions", DOCUMENT), is(1));
+        assertThat(count(JSPX, "tag file attributes", "<jsp:directive.attribute name=\"total\"/>\n"), is(1));
+    }
+
+    @Test
+    public void jsp_directiveElements_countInAPageToo() {
+        // act, assert
+        assertThat(count(JSP, "page directives", DOCUMENT), is(1));
+        assertThat(count(JSP, "includes and forwards", DOCUMENT), is(1));
+        // an HTML comment of a page is sent, and its server code runs
+        assertThat(count(JSP, "scriptlets", DOCUMENT), is(1));
     }
     // </editor-fold>
 
