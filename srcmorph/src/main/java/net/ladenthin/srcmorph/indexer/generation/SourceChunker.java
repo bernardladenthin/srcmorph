@@ -9,17 +9,19 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import net.ladenthin.srcmorph.support.SourceLines;
 
 /**
  * Splits a source string into chunks for map-reduce summarization of very large files.
  *
  * <p>Each chunk is at most {@code maxChars} long and ends at a <strong>line boundary</strong> (the last
  * {@code \n} within the window) so records/lines are never torn in the middle; if a single line is longer
- * than {@code maxChars} the chunk is hard-cut. Consecutive chunks may {@code overlap} by a number of
- * characters so context is not lost at the seam. When the file would produce more than {@code maxChunks}
- * chunks (and {@code maxChunks > 0}), a representative subset is selected — always including the first and
- * last chunk and evenly spacing the rest — so the summary samples the <em>whole</em> file, not just its
- * head. Pure; no I/O.</p>
+ * than {@code maxChars} the chunk is hard-cut, before a surrogate pair the cut would split (from a
+ * {@code maxChars} of 2 on), and no chunk starts with the second half of one. Consecutive chunks may
+ * {@code overlap} by a number of characters so context is not lost at the seam. When the file would produce
+ * more than {@code maxChunks} chunks (and {@code maxChunks > 0}), a representative subset is selected —
+ * the first and the last chunk and the rest evenly spaced between them; a {@code maxChunks} of 1 keeps the
+ * first chunk only — so the summary samples the <em>whole</em> file, not just its head. Pure; no I/O.</p>
  */
 public final class SourceChunker {
 
@@ -61,6 +63,9 @@ public final class SourceChunker {
                 // the overlap one character further on, once per character
                 if (lastNewline > pos && lastNewline + 1 > previousEnd) {
                     end = lastNewline + 1;
+                } else if (SourceLines.cutIndex(source, end) > pos) {
+                    // a hard cut does not split a surrogate pair (unless the chunk would hold nothing else)
+                    end = SourceLines.cutIndex(source, end);
                 }
             }
             chunks.add(source.substring(pos, end));
@@ -78,6 +83,10 @@ public final class SourceChunker {
                 }
             }
             pos = Math.max(pos + 1, next);
+            if (SourceLines.cutIndex(source, pos) < pos) {
+                // the next chunk does not start with the second half of a surrogate pair
+                pos++;
+            }
         }
         return select(chunks, maxChunks);
     }

@@ -24,6 +24,7 @@ import net.ladenthin.srcmorph.provider.GenerationProvider;
 import net.ladenthin.srcmorph.provider.GenerationUsage;
 import net.ladenthin.srcmorph.provider.IncompleteAnswerException;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.support.SourceLines;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -386,7 +387,8 @@ public class SummaryGenerator {
         // tokenized whole to size its chunks, and every call is counted again before it is sent
         final String source = request.sourceText();
         final int length = source.length();
-        final int sampleChars = (int) Math.min(length, (long) Math.max(estimate, 1) * COUNTED_WINDOWS);
+        final int sampleChars =
+                SourceLines.cutIndex(source, (int) Math.min(length, (long) Math.max(estimate, 1) * COUNTED_WINDOWS));
         final GenerationRequest sample = sampleChars == length
                 ? request
                 : new GenerationRequest(request.promptKey(), contextFile, source.substring(0, sampleChars));

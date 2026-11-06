@@ -191,8 +191,61 @@ public class PromptPreparerTest {
         final PromptPreparer support = new PromptPreparer(createPromptSupport());
 
         // act, assert
-        // lastNewline == 0 distinguishes "< 0" from the "<= 0" boundary mutant ("\n" vs "\nab").
-        assertThat(support.trimSourceAtLineBreak("\nabc", 3), is(equalTo("\n")));
+        // lastNewline == 0 distinguishes "< 0" from the "<= 0" boundary mutant ("\n" vs "\na"); the line
+        // break keeps one of the two characters, half the target
+        assertThat(support.trimSourceAtLineBreak("\nabc", 2), is(equalTo("\n")));
+    }
+
+    @Test
+    public void trimSourceAtLineBreak_aLineBreakKeepingLessThanHalf_cutsAtTheTarget() {
+        // arrange: the label of a chunk in front of one long (minified) line
+        final PromptPreparer support = new PromptPreparer(createPromptSupport());
+        final String label = "Chunk 3 of 9, half 2, half 1:\n";
+        final String minified = label + "x".repeat(1_500);
+
+        // act
+        final String trimmed = support.trimSourceAtLineBreak(minified, 1_200);
+
+        // assert: the line, not only the label, is read
+        assertThat(trimmed, is(equalTo(minified.substring(0, 1_200))));
+    }
+
+    @Test
+    public void trimSourceAtLineBreak_aLineBreakKeepingExactlyHalf_isTheCut() {
+        // arrange
+        final PromptPreparer support = new PromptPreparer(createPromptSupport());
+
+        // act, assert: two of four characters are half the target, one of three less
+        assertThat(support.trimSourceAtLineBreak("a\nbcdef", 4), is(equalTo("a\n")));
+        assertThat(support.trimSourceAtLineBreak("\nabcdef", 3), is(equalTo("\nab")));
+    }
+
+    @Test
+    public void trimSourceAtLineBreak_aHardCutInsideASurrogatePair_keepsThePairWhole() {
+        // arrange: the target falls between the two chars of a character outside the BMP
+        final PromptPreparer support = new PromptPreparer(createPromptSupport());
+        final String emoji = new String(Character.toChars(0x1F600));
+
+        // act, assert
+        assertThat(support.trimSourceAtLineBreak("ab" + emoji + "cd", 3), is(equalTo("ab")));
+        assertThat(support.trimSourceAtLineBreak("\nabcd" + emoji + "ef", 6), is(equalTo("\nabcd")));
+    }
+
+    @Test
+    public void preparePrompt_aHeaderInFrontOfOneLongLine_readsTheLongLine() {
+        // arrange
+        final PromptPreparer support = new PromptPreparer(createPromptSupport());
+        final String source = "-- header\n" + "x".repeat(5_000);
+        final GenerationRequest request = new GenerationRequest("file-summary", Paths.get("Dump.sql"), source);
+        final int window = 1_000;
+
+        // act
+        final PreparedPrompt prepared = support.preparePrompt(request, window);
+
+        // assert: the head that fits is read, not the header alone
+        assertThat(prepared.trimmed(), is(true));
+        assertThat(prepared.trimmedSourceLength(), is(prepared.availableSourceChars()));
+        assertThat(prepared.prompt().length() <= window, is(true));
     }
 
     @Test

@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.indexer.generation;
 import java.util.ArrayList;
 import java.util.List;
 import net.ladenthin.srcmorph.document.AiMdLeadExtractor;
+import net.ladenthin.srcmorph.support.SourceLines;
 
 /**
  * The arithmetic and the text of a map-reduce summary, without a model: how large a chunk is, how much
@@ -176,8 +177,9 @@ public final class MapReduceMath {
     }
 
     /**
-     * Returns {@code partial} shortened to {@code maxChars} at its last line end before them, with
-     * {@link #SHORTENED_MARKER}, or the partial as it is when it fits.
+     * Returns {@code partial} shortened to {@code maxChars} at its last line end before them (without one,
+     * where the room ends, before a surrogate pair it would split), with {@link #SHORTENED_MARKER}, or the
+     * partial as it is when it fits.
      *
      * @param partial  the partial summary
      * @param maxChars the characters it may take, the marker included
@@ -189,7 +191,7 @@ public final class MapReduceMath {
         }
         final int room = Math.max(0, maxChars - SHORTENED_MARKER.length());
         final int lineEnd = partial.lastIndexOf('\n', room);
-        return partial.substring(0, lineEnd > 0 ? lineEnd : room) + SHORTENED_MARKER;
+        return partial.substring(0, lineEnd > 0 ? lineEnd : SourceLines.cutIndex(partial, room)) + SHORTENED_MARKER;
     }
 
     /**
@@ -226,7 +228,8 @@ public final class MapReduceMath {
     /**
      * Returns where to split a chunk in two at a line end near its middle: after the line break nearest
      * the middle on either side (the one before it on a tie) that leaves each half at least a quarter of
-     * the chunk, or the middle itself when there is none, so no half is left almost empty.
+     * the chunk, or the middle itself when there is none (before a surrogate pair it would split), so no
+     * half is left almost empty.
      *
      * @param chunk the chunk, at least two characters
      * @return the length of the first half, between {@code 1} and {@code chunk.length() - 1}
@@ -243,7 +246,8 @@ public final class MapReduceMath {
         if (beforeFits && (!afterFits || middle - before <= after - middle)) {
             return before;
         }
-        return afterFits ? after : middle;
+        // the middle itself is moved before a surrogate pair it would split, and stays inside the chunk
+        return afterFits ? after : Math.max(1, SourceLines.cutIndex(chunk, middle));
     }
 
     /**

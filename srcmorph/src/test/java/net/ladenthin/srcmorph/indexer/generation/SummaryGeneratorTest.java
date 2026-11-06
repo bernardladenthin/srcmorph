@@ -732,6 +732,57 @@ public class SummaryGeneratorTest {
     }
 
     @Test
+    public void onOversize_sample_aHeaderInFrontOfOneLongLine_readsTheLongLine() throws Exception {
+        // arrange: a dump of one line behind a header line, far over the window
+        final List<GenerationRequest> requests = new ArrayList<>();
+        final GenerationProvider provider = request -> {
+            requests.add(request);
+            return "HEAD";
+        };
+        final String source = "-- header\n" + "x".repeat(50_000);
+
+        // act
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(oversizeRule("m", "sample", 0), tempFile("Dump", ".sql"), "file", source);
+
+        // assert: the head of the long line was read, not only the header
+        assertThat(requests.size(), is(1));
+        assertThat(requests.get(0).sourceText().length() > 5_000, is(true));
+        assertThat(result.body(), not(startsWith(MapReduceMath.headCoverage("-- header\n".length(), source.length()))));
+        assertThat(result.body(), endsWith("HEAD"));
+    }
+
+    @Test
+    public void mapReduce_aOneLineChunkCutToItsWindow_readsTheLineNotOnlyTheLabel() throws Exception {
+        // arrange: one minified line, two chars per token, but a map call's text takes three tokens per char: a
+        // chunk is over its window, read in halves, and a half, too short to be halved again, is cut
+        final CountingProvider provider =
+                new CountingProvider(r -> r.sourceText().startsWith("Chunk ")
+                        ? r.sourceText().length() * 3
+                        : r.sourceText().length() / 2);
+        final String source = "x".repeat(9_000);
+
+        // act
+        final SummaryResult result = supportWithModels(provider, normalWindowModel("m"))
+                .generate(oversizeRule("m", "mapReduce", 0), tempFile("Min", ".js"), "file", source);
+
+        // assert: every map call read characters of the line behind its label
+        assertThat(result.body(), containsString("cut to fit the window"));
+        final List<GenerationRequest> maps = new ArrayList<>();
+        for (final GenerationRequest request : provider.generated) {
+            if (request.sourceText().startsWith("Chunk ")) {
+                maps.add(request);
+            }
+        }
+        assertThat(maps.isEmpty(), is(false));
+        for (final GenerationRequest map : maps) {
+            final String afterLabel =
+                    map.sourceText().substring(map.sourceText().indexOf('\n') + 1);
+            assertThat(afterLabel.startsWith("xxxxxxxxxx"), is(true));
+        }
+    }
+
+    @Test
     public void onOversize_sample_singleCallOnTrimmedHead() throws Exception {
         // arrange
         final Path contextFile = tempFile("Huge", ".java");

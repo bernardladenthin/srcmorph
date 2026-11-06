@@ -181,4 +181,23 @@ public final class SourceLines {
     public static String[] split(final String text) {
         return LINE_ENDING.split(text, -1);
     }
+
+    /**
+     * Returns where a text may be cut at or before {@code index} without splitting a character outside the
+     * Basic Multilingual Plane: {@code index}, or the index before it when the two {@code char}s around it
+     * are the high and the low surrogate of one character. A cut through the pair would leave half a
+     * character at the end of one piece and at the start of the next, which no encoder writes as text.
+     *
+     * @param text  the text
+     * @param index where the text would be cut, {@code 0} to its length
+     * @return the cut, {@code index} or {@code index - 1}
+     */
+    public static int cutIndex(final String text, final int index) {
+        if (index > 0
+                && index < text.length()
+                && Character.isSurrogatePair(text.charAt(index - 1), text.charAt(index))) {
+            return index - 1;
+        }
+        return index;
+    }
 }

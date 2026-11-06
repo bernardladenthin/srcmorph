@@ -218,4 +218,26 @@ public class SourceChunkerTest {
         assertThat(chunks.get(1), is(equalTo("hij\n")));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="chunk surrogate pairs">
+    @Test
+    public void chunk_hardCutsAndOverlapsInALineOfPairs_neverSplitAPair() {
+        // arrange: one line of characters outside the BMP between ASCII ones, so a cut lands inside a pair
+        final String emoji = new String(Character.toChars(0x1F600));
+        final StringBuilder source = new StringBuilder();
+        for (int i = 0; i < 60; i++) {
+            source.append('a').append(emoji);
+        }
+
+        // act, assert
+        for (int maxChars = 2; maxChars <= 9; maxChars++) {
+            for (int overlap = 0; overlap < maxChars; overlap++) {
+                for (final String chunk : SourceChunker.chunk(source.toString(), maxChars, overlap, 0)) {
+                    assertThat(Character.isHighSurrogate(chunk.charAt(chunk.length() - 1)), is(false));
+                    assertThat(Character.isLowSurrogate(chunk.charAt(0)), is(false));
+                }
+            }
+        }
+    }
+    // </editor-fold>
 }

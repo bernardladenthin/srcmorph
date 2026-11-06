@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Test;
 
 public class MapReduceMathTest {
 
+    /** A character outside the Basic Multilingual Plane: two {@code char}s, a surrogate pair. */
+    private static final String EMOJI = new String(Character.toChars(0x1F600));
+
     private static String chars(final int count) {
         final StringBuilder sb = new StringBuilder(count);
         for (int i = 0; i < count; i++) {
@@ -363,6 +366,15 @@ public class MapReduceMathTest {
             assertThat(MapReduceMath.shortened(partial, max).length() <= max, is(true));
         }
     }
+
+    @Test
+    public void shortened_aRoomEndingInsideASurrogatePair_keepsThePairWhole() {
+        // arrange: the room of 10 less the marker ends between the two chars of a character outside the BMP
+        final String partial = chars(5) + EMOJI + chars(20);
+
+        // act, assert
+        assertThat(MapReduceMath.shortened(partial, 10), is(equalTo(chars(5) + MapReduceMath.SHORTENED_MARKER)));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="reduceFacts">
@@ -431,6 +443,14 @@ public class MapReduceMathTest {
         // blank lines in front of one long line: the middle, not an almost empty first half
         final String dense = "\n\n" + "x".repeat(3_000);
         assertThat(MapReduceMath.halfSplit(dense), is(dense.length() / 2));
+    }
+
+    @Test
+    public void halfSplit_aMiddleInsideASurrogatePair_isBeforeThePair() {
+        // act, assert: the middle of 6 falls between the two chars of the character outside the BMP
+        assertThat(MapReduceMath.halfSplit("ab" + EMOJI + "cd"), is(2));
+        // a chunk of the pair alone cannot be split whole: the middle, so both halves keep a char
+        assertThat(MapReduceMath.halfSplit(EMOJI), is(1));
     }
     // </editor-fold>
 

@@ -4,11 +4,12 @@
 package net.ladenthin.srcmorph.prompt;
 
 import lombok.ToString;
+import net.ladenthin.srcmorph.support.SourceLines;
 
 /**
  * Prepares prompts for {@link net.ladenthin.srcmorph.provider.GenerationProvider} calls by substituting the source
- * text into a template and trimming it at a line boundary so that the prompt fits
- * within the configured character budget.
+ * text into a template and trimming it, at a line boundary unless that would keep less than half of what
+ * fits (see {@link #trimSourceAtLineBreak}), so that the prompt fits within the configured character budget.
  */
 @ToString
 public class PromptPreparer {
@@ -26,6 +27,13 @@ public class PromptPreparer {
      */
     public static final int EOF_MARKER_LENGTH = EOF_MARKER.length();
 
+    /**
+     * A trim at a line boundary keeps at least {@code 1/n} of the characters it may keep, or the source is
+     * cut where the characters end instead: half, so a line of a normal source is never torn for a few
+     * characters more, and a label or a header line in front of one long line is not all that is read.
+     */
+    private static final int LINE_CUT_MIN_SHARE_DIVISOR = 2;
+
     private final PromptCatalog promptSupport;
 
     /**
@@ -38,8 +46,8 @@ public class PromptPreparer {
     }
 
     /**
-     * Prepares the prompt for {@code request}, trimming the source text at a line
-     * boundary when the rendered prompt would exceed {@code maxInputChars}.
+     * Prepares the prompt for {@code request}, trimming the source text ({@link #trimSourceAtLineBreak})
+     * when the rendered prompt would exceed {@code maxInputChars}.
      *
      * @param request       generation request to prepare a prompt for
      * @param maxInputChars maximum number of characters allowed in the rendered prompt
@@ -102,15 +110,20 @@ public class PromptPreparer {
     }
 
     /**
-     * Trims the source text at or before the given character index, ensuring the trim
-     * occurs at a line boundary (after a newline) rather than mid-line. This prevents
-     * breaking Java syntax and confusing the AI model.
+     * Trims the source text at or before the given character index, at a line boundary (after a newline)
+     * rather than mid-line, so a line is not torn and the model is not confused. A line boundary that would
+     * keep fewer than {@code targetIndex / }{@link #LINE_CUT_MIN_SHARE_DIVISOR} characters is not taken: the
+     * source is cut at the index instead, before a surrogate pair that it would split. Otherwise a long
+     * line behind a short one (a minified chunk behind its label, a dump behind a header line) would be
+     * read as the short line alone.
+     *
+     * <p>A test seam: production trims through {@link #preparePrompt}.</p>
      *
      * @param sourceText the source code to trim
      * @param targetIndex the target character index
-     * @return the source trimmed after the last newline before {@code targetIndex}, so at most
-     *         {@code targetIndex} characters,
-     *         or the entire source if no newline is found before the index
+     * @return at most {@code targetIndex} characters of the source: up to its last newline before
+     *         {@code targetIndex} when that keeps at least half of them, otherwise cut at the index;
+     *         the entire source when it is not longer than the index
      */
     // Package-private (not private) so the line-boundary trimming branches can be unit-tested
     // directly; the method is not part of the public API.
@@ -121,8 +134,8 @@ public class PromptPreparer {
 
         // a line break at targetIndex itself would keep targetIndex + 1 characters
         final int lastNewline = sourceText.lastIndexOf('\n', targetIndex - 1);
-        if (lastNewline < 0) {
-            return sourceText.substring(0, targetIndex);
+        if (lastNewline < 0 || (long) (lastNewline + 1) * LINE_CUT_MIN_SHARE_DIVISOR < targetIndex) {
+            return sourceText.substring(0, SourceLines.cutIndex(sourceText, targetIndex));
         }
 
         return sourceText.substring(0, lastNewline + 1);

@@ -262,4 +262,40 @@ public class SourceLinesTest {
         return bytes;
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="cutIndex">
+    /** A character outside the Basic Multilingual Plane: two {@code char}s, a surrogate pair. */
+    private static final String EMOJI = new String(Character.toChars(0x1F600));
+
+    @Test
+    public void cutIndex_betweenTheTwoHalvesOfAPair_isBeforeThePair() {
+        // arrange
+        final String text = "ab" + EMOJI + "cd";
+
+        // act, assert
+        assertThat(SourceLines.cutIndex(text, 3), is(2));
+    }
+
+    @Test
+    public void cutIndex_atACodePointBoundary_isTheIndex() {
+        // arrange
+        final String text = "ab" + EMOJI + "cd";
+
+        // act, assert
+        assertThat(SourceLines.cutIndex(text, 2), is(2));
+        assertThat(SourceLines.cutIndex(text, 4), is(4));
+        assertThat(SourceLines.cutIndex(text, 0), is(0));
+        assertThat(SourceLines.cutIndex(text, text.length()), is(text.length()));
+        assertThat(SourceLines.cutIndex(EMOJI, EMOJI.length()), is(EMOJI.length()));
+    }
+
+    @Test
+    public void cutIndex_aLoneHighSurrogate_isNoPairToKeepWhole() {
+        // arrange: a high surrogate followed by an ordinary character
+        final String text = "a" + EMOJI.charAt(0) + "b";
+
+        // act, assert
+        assertThat(SourceLines.cutIndex(text, 2), is(2));
+    }
+    // </editor-fold>
 }
