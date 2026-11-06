@@ -348,6 +348,15 @@ The entries below hold the details; what a 1.4.0 user changes:
   facts and coverage lines: an offline BM25 re-run moves five runs' MRR by up to 0.016 (hit@1 and
   hit@3 stay), and the reader's numbers were taken on the old text too; renewing them is a paid
   re-run, so the file stays as published.
+- **The model card's search prose and caveats match its data:** BM25 over the summaries finds 67 to
+  91 % first (it said 67 to 86 %), and nine of the 35 runs beat BM25 over the source, so keyword
+  search "gains little" from them, not nothing; the index length goes with the reader's hit@1 at
+  −0.18 over the 32 scored runs (it said −0.46, from an older set of runs); Muse's best search ties
+  gpt-oss-20b on hit@1 and leads on the MRR. The caveats add that recall does not measure
+  faithfulness (a bare name list scores 100 %), that three runs against three reach p = 0.1 at best
+  in Fisher's test and that search was compared unpaired (McNemar per question was not run), and
+  that the prompts were tuned on the corpora they are scored on. No table or number of
+  `report.py` moved.
 - **The self-test routes the new kinds measured on real projects:** TypeScript, the Jakarta EE
   descriptors, MyBatis mappers, BPMN, DMN, JSP, Protocol Buffers, GitHub Actions, Kubernetes
   manifests, Dockerfiles, Terraform, npm manifests and other YAML (`ops`), with the Luna example's

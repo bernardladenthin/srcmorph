@@ -67,7 +67,8 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 
 - **Muse Spark 1.3 in Meta's Contributor tier** (100 %, 10.1 s per file, 0.019 USD for the run) is
   the only run with nothing missing: full recall on every kind, all four seed counts, a clean format,
-  and the best search of all runs (98 % first). Two more runs scored 100 % and 99.4 % (one name of
+  and the best search of all runs (98 % first like gpt-oss-20b, at the higher MRR: 0.99 against
+  0.98). Two more runs scored 100 % and 99.4 % (one name of
   the other files missing) and searched 91 % and 93 % first, so it is also the steadiest of the
   top group (see [Repeatability](#repeatability)). The Contributor tier costs a twelfth
   of the standard one (0.10 / 0.20 against 1.25 / 4.25 USD per million tokens) because Meta trains
@@ -323,7 +324,8 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    whose prompts are unchanged; v3 before them scored 100 and 99.8 % for gpt-oss there. On this
    corpus gpt-oss lost the same name of one SQL migration (`book_free_le_total`) in two of the
    three runs, which v3 kept in all three: three runs cannot tell that from run-to-run variation
-   (Fisher's exact test, p = 0.4), nor show that it is one. The reader's hit@1 is the same case:
+   (Fisher's exact test, p = 0.4; three runs against three reach p = 0.1 at best, even when one
+   side loses the name every time), nor show that it is one. The reader's hit@1 is the same case:
    95 against 92 % for gpt-oss is 1.3 of 43 questions, inside the 2 to 7 points one configuration
    moves between runs ([Search](#search-do-the-summaries-lead-to-the-right-file)). One shell draft
    showed what a prompt can cost: asked for every assignment as `name=value`, gpt-oss copied them
@@ -509,8 +511,9 @@ and Kolibri-1 and 0.53 USD for the nine runs of 2026-10-31, which were added lat
 - **The summaries help a model find the right file.** With any of 32 of the 35 runs the reader
   finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
   source (about 65 000 tokens instead of about 16 000) only 72 %.
-- **Keyword search gains nothing from them.** BM25 over the summaries (67 to 86 % first) is not
-  better than BM25 over the source (84 %): the source contains the same words and more.
+- **Keyword search gains little from them.** BM25 over the summaries finds 67 to 91 % first, over
+  the source 84 %: nine of the 35 runs are above the source (by 2 to 7 points, one to three
+  questions), four level with it and 22 below. The source contains the same words and more.
 - **What hurts search is a missing or broken summary, not a missing name.** The three runs that fall
   behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries), Granite H-Tiny (its
   format slips) and Grok 4.7 (a sentence about the task before almost every lead). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
@@ -525,10 +528,10 @@ and Kolibri-1 and 0.53 USD for the nine runs of 2026-10-31, which were added lat
   for both questions about oversized files its `AiOversizeStrategy.java` summary describes the
   four strategies and the `<onOversize>` token, and the reader still ranks
   `AiConditionEvaluator.java` first in all three runs. Its summaries are among the longest (about
-  71 KB for the 24 files, gpt-oss-20b writes 51 to 58 KB), and over the 32 scored runs without
-  empty or broken summaries a longer index tends to search worse with this reader (correlation
-  −0.46). Length does not explain it alone, though: the same model with reasoning low writes 74 KB
-  and finds 95 %. MAI-Code-1.1-Flash, added later, writes one of the longest indexes (83 KB) and misses the
+  71 KB for the 24 files, gpt-oss-20b writes 51 to 58 KB), but length does not explain it: over the
+  32 scored runs without empty or broken summaries a longer index searches hardly worse with this
+  reader (correlation −0.18 with hit@1, −0.08 with the MRR), and the same model with reasoning low
+  writes 74 KB and finds 95 %. MAI-Code-1.1-Flash, added later, writes one of the longest indexes (83 KB) and misses the
   two questions about blocked members and the audit trail, although its `03_routines.sql` summary
   names `is_blocked` and `loan_audit`.
 - One answer was corrected after the first scoring: "Can a single model definition use a different
@@ -787,9 +790,18 @@ measurement.
   points are noise.
 - **Hosted and local weights differ.** An OpenRouter route serves the weights its provider
   chose (often BF16 or FP8); the local models are 4-bit. A hosted model and a local one are not comparable on quality alone.
-- **Recall and invented names are proxies.** A summary that names every method can still describe
-  one wrongly, and one that paraphrases instead of naming scores lower than it deserves. The
-  outputs are there to read.
+- **Recall and invented names are proxies.** Recall counts names, not whether what a summary says
+  about them is true: a bare list of the names scores 100 %, a summary that names every method can
+  still describe one wrongly, and one that paraphrases instead of naming scores lower than it
+  deserves. No metric measures faithfulness; the outputs are there to read.
+- **Few runs, unpaired comparisons.** With three runs against three, Fisher's exact test reaches
+  p = 0.1 at best, so a difference between two prompts or models in how often a name is kept can
+  never be significant at 0.05. Search compares the mean hit@1 of runs; the 43 questions are the
+  same in every run, so a paired test per question (McNemar) would be the sharper one, and was not
+  run.
+- **The prompts were tuned on what they are scored on.** Every prompt version was written against
+  this corpus and the language corpus, and is scored on them, so its scores are optimistic for
+  code it has not seen; a corpus held out from the tuning is the check.
 - **The SQL and other fixtures are small** (1–3 KB, the seed data aside). Compaction on files that
   small mostly measures how much a model writes regardless of input; the Java files (up to 51 KB)
   say more about compaction.
