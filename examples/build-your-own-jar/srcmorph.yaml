@@ -11,9 +11,9 @@
 #
 # Three models: gpt-oss-20b for every file up to ~260 KB, every package and the project overview;
 # IBM Granite 4.0 for larger files - H-Tiny map-reducing over a 64K window up to ~1 MB, H-1B with a
-# 16K window beyond, summarizing a few sampled chunks (sampleChunks). A Java, SQL, shell, Perl or XML
-# summary starts with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables,
-# methods, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
+# 16K window beyond, summarizing a few sampled chunks (sampleChunks). Most summaries
+# start with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables, methods,
+# services, keys, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
 #
 # What is indexed: only the files below src/main/java (subtrees, as the plugin's self-test reads its
 # compile source roots), so in a standard Maven layout that is the Java sources, and the SQL, XML,
@@ -219,6 +219,13 @@ srcMorph:
                 conditions:                      # element, not an Android res/xml/settings.xml
                   - fileNames: ["settings.xml"]
                   - contentMatches: '<settings[\s>]'
+            # A properties file that gives a password, secret, token or API key a value, whatever its
+            # name (gradle.properties, application.properties); a value that only names an environment
+            # variable or another property (${DB_PASSWORD}) is none. Read in the file's head.
+            - and:
+                conditions:
+                  - extensions: [".properties"]
+                  - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)[ \t]*+[=:][ \t]*+(?!\$\{)\S'
             # A file named for a vault, secrets or credentials, but not a CI workflow or action
             # (secret-scan.yml), a Helm chart's template (it names the values it renders) or a
             # Kubernetes manifest of another kind than Secret (vault-deployment.yaml).
@@ -776,7 +783,7 @@ srcMorph:
       condition:
         extensions: [".bat", ".cmd"]
     - id: pyproject                          # a Python project's manifest: the ops prompt keeps more of
-      promptKey: file-body-ops               # its names than the fallback (97 % against 87 %, 2026-11-07)
+      promptKey: file-body-ops               # its names than the fallback (gpt-oss-20b 98 % against 88 %, 2026-11-07)
       onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
       priority: 10

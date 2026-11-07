@@ -175,8 +175,8 @@ public final class GenerateEngine {
         // 2. Plan the run: which model + prompt each file gets (or skip / unmatched), and whether
         //    each file fits its routed model's context window (computed up front, same threshold the
         //    run uses to trim — see InputWindowCalculator).
-        final IndexPlan plan =
-                fileIndexer.classify(candidates, rules, modelDefinitionSupport, promptPreparationSupport);
+        final IndexPlan plan = fileIndexer.classify(
+                candidates, rules, modelDefinitionSupport, promptPreparationSupport, config.getGenerationProvider());
         LOGGER.info("AI index plan (Markdown):\n{}", plan.renderMarkdown(basePath));
 
         // 3. A file that matched no rule and no fallback is a fatal misconfiguration.

@@ -697,16 +697,16 @@ public class GenerateEngineTest {
     // <editor-fold defaultstate="collapsed" desc="oversize strategies, from the plan to the written file">
 
     /**
-     * {@link #baseConfig()} plus {@code Big.java}, about 8 800 characters, on a model with a window of
-     * about 3 200, routed by one rule with the given {@code onOversize} ({@code maxChunks} 2 under
-     * {@code sampleChunks}).
-     */
-    /**
      * A {@code contextSize} for {@link #oversizeConfig}'s model whose window holds source, but leaves a
      * chunk fewer than 1000 characters next to the map and reduce prompts.
      */
     private static final int CONTEXT_WITHOUT_ROOM_FOR_A_CHUNK = 2_000;
 
+    /**
+     * {@link #baseConfig()} plus {@code Big.java}, about 8 800 characters, on a model with a window of
+     * about 3 200, routed by one rule with the given {@code onOversize} ({@code maxChunks} 2 under
+     * {@code sampleChunks}).
+     */
     private SrcMorphConfiguration oversizeConfig(final String onOversize) throws IOException {
         final SrcMorphConfiguration config = baseConfig();
         final ModelDefinition small = mockModelDefinition();
@@ -883,6 +883,28 @@ public class GenerateEngineTest {
                 thrown.getMessage(),
                 startsWith("1 source file(s) are chunked in a window that leaves a chunk"
                         + " fewer than 1000 characters next to the map and reduce prompts"));
+    }
+
+    /**
+     * The same window on a model whose provider counts its prompt's tokens: the run sizes the window by the
+     * count, which may leave the chunks room or let the file fit, so the plan warns instead of failing.
+     */
+    @Test
+    public void execute_tooLittleRoomForAChunkOnACountingProvider_warnsInThePlan() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = oversizeConfig("mapReduce");
+        final ModelDefinition model = config.getAiDefinitions().get(0);
+        model.setContextSize(CONTEXT_WITHOUT_ROOM_FOR_A_CHUNK);
+        model.setProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        config.setPlanOnly(true);
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(0));
+        assertThat(logged(Level.INFO, "onOversize=mapReduce -> handled; WARNING: "), is(true));
+        assertThat(logged(Level.INFO, "FAILS BUILD"), is(false));
     }
 
     @Test

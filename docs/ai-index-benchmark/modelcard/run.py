@@ -219,6 +219,9 @@ SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _o
                    "settings-security.xml", "*.pem", "*.key", "id_rsa*", "id_ed25519*"]},
     # Maven's settings.xml (server passwords) by its root element, not an Android res/xml/settings.xml
     _and({"fileNames": ["settings.xml"]}, {"contentMatches": r"<settings[\s>]"}),
+    # a properties file that gives a password, secret, token or API key a value (not a ${...} reference)
+    _and({"extensions": [".properties"]},
+         {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)[ \t]*+[=:][ \t]*+(?!\$\{)\S"}),
     # named for a vault, secrets or credentials, but not a CI workflow or action, a Helm chart's template
     # or a Kubernetes manifest of another kind than Secret
     _and({"fileNames": ["vault*.{yml,yaml}",

@@ -301,6 +301,32 @@ public class IndexPlanTest {
         assertThat(rendered, not(containsString("The onOversize=fail entries fail the build.")));
     }
 
+    /**
+     * Too little chunk room by the estimate on a model that counts its prompt is a warning: the run may
+     * find the file fits, or its chunks get room, so the plan neither fails it nor gives the failure advice.
+     */
+    @Test
+    public void renderMarkdown_anEstimatedChunkRoom_warnsAndDoesNotFailTheBuild() {
+        // arrange
+        final IndexPlan plan = new IndexPlan();
+        plan.addRoute("modelA", Paths.get("Big.java"), oversizeRule("r1", "mapReduce"), 0, 9000L, 1000L);
+
+        // act
+        plan.estimateChunkRoom(Paths.get("Big.java"), 820);
+        final String rendered = plan.renderMarkdown(Paths.get(""));
+
+        // assert
+        assertThat(plan.chunkRoomFailCount(), is(0));
+        assertThat(
+                rendered,
+                containsString("Big.java -> model `modelA` (source 9000 chars > window 1000 chars)"
+                        + " onOversize=mapReduce -> handled; WARNING: 820 chars for a chunk by the estimate, fewer"
+                        + " than 1000 (the run counts the prompt's tokens and refuses the file only if the count"
+                        + " leaves too little room as well)\n"));
+        assertThat(rendered, not(containsString("FAILS BUILD")));
+        assertThat(rendered, not(containsString("too little room for a chunk fail the build")));
+    }
+
     /** Without a refused room the plan neither counts one nor gives its advice. */
     @Test
     public void chunkRoomFailCount_noRefusedRoom_isZeroAndTheAdviceIsOmitted() {

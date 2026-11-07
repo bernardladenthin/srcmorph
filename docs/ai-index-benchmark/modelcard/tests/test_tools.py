@@ -182,9 +182,16 @@ class RulesTest(unittest.TestCase):
         for secret in (".env", "prod.tfvars", "prod.pkrvars.hcl", "secrets.hcl", "client_secret.json",
                        "settings.xml", "vault.yml", "db-credentials.yaml"):
             self.assertTrue(any(run.name_glob(name).fullmatch(secret) for name in names), secret)
-        # the self-test's rule names the same files
+        # the self-test's rule names the same files, and skips the same properties files by their content
         for name in names:
             self.assertIn(f'"{name}"', selftest, name)
+        properties = [c for c in secrets["condition"]["or"]["conditions"]
+                      if c.get("and", {}).get("conditions", [{}])[0] == {"extensions": [".properties"]}]
+        self.assertEqual(len(properties), 1)
+        pattern = properties[0]["and"]["conditions"][1]["contentMatches"]
+        self.assertIn(f"contentMatches: '{pattern}'", selftest)
+        self.assertTrue(re.search(pattern, "a=1\nsigning.password = x\n"))
+        self.assertFalse(re.search(pattern, "spring.datasource.password=${DB_PASSWORD}\n# token=x\n"))
         # the hashes of the files the rules name pass the skip rule by
         self.assertIn("file-body-oop.md", run.profile_hashes(run.PROFILES / "v3", rules))
 
@@ -845,10 +852,6 @@ class RepeatTest(unittest.TestCase):
                 self.assertIn("--runs", result.stderr)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class CorrelateTest(unittest.TestCase):
 
     def test_pearson_aLinearAndAnAntiLinearSeries_isOneAndMinusOne(self):
@@ -895,3 +898,7 @@ class CorrelateTest(unittest.TestCase):
         self.assertEqual(result["runs"], 3)
         self.assertAlmostEqual(result["pearsonHit1"], -1.0)
         self.assertAlmostEqual(result["spearmanMrr"], -1.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

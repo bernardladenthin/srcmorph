@@ -152,6 +152,7 @@ public final class IndexPlan {
     private final List<Path> skipped = new ArrayList<>();
     private final List<Path> unmatched = new ArrayList<>();
     private final Map<Path, Integer> chunkRoomRefused = new LinkedHashMap<>();
+    private final Map<Path, Integer> chunkRoomEstimated = new LinkedHashMap<>();
     private final Set<String> calibratedModels = new HashSet<>();
 
     /** Creates an empty plan. */
@@ -324,7 +325,8 @@ public final class IndexPlan {
 
     /**
      * Records that an over-window file's rule chunks it ({@code mapReduce} or {@code sampleChunks}) in a
-     * window that leaves a chunk fewer than {@link MapReduceMath#MIN_CHUNK_CHARS} characters: the run
+     * window that leaves a chunk fewer than {@link MapReduceMath#MIN_CHUNK_CHARS} characters, on a model
+     * whose provider does not count its prompt (the run sizes its window by the same estimate): the run
      * would refuse it, so the plan fails it.
      *
      * @param file the source file, routed with {@code addRoute} as well
@@ -332,6 +334,18 @@ public final class IndexPlan {
      */
     public void refuseChunkRoom(final Path file, final int room) {
         chunkRoomRefused.put(file, room);
+    }
+
+    /**
+     * Records that an over-window file's chunks get fewer than {@link MapReduceMath#MIN_CHUNK_CHARS}
+     * characters by the estimate, on a model whose provider counts the prompt's tokens: the run sizes the
+     * window by that count, so the file may fit or get room after all, and the plan only warns.
+     *
+     * @param file the source file, routed with {@code addRoute} as well
+     * @param room the characters a chunk would get by the estimate
+     */
+    public void estimateChunkRoom(final Path file, final int room) {
+        chunkRoomEstimated.put(file, room);
     }
 
     /**
@@ -599,6 +613,7 @@ public final class IndexPlan {
                 if (entry.exceedsWindow()) {
                     final OversizeStrategy strategy = strategyOf(entry);
                     final Integer room = chunkRoomRefused.get(entry.file());
+                    final Integer estimatedRoom = chunkRoomEstimated.get(entry.file());
                     sb.append("- ")
                             .append(relativize(baseDir, entry.file()))
                             .append(" -> model `")
@@ -609,7 +624,7 @@ public final class IndexPlan {
                             .append(entry.availableSourceChars())
                             .append(" chars) onOversize=")
                             .append(strategy.configValue())
-                            .append(outcome(strategy, room))
+                            .append(outcome(strategy, room, estimatedRoom))
                             .append('\n');
                 }
             }
@@ -630,12 +645,20 @@ public final class IndexPlan {
      * Returns what the run does with an over-window file: fail it, or handle it by its strategy.
      *
      * @param strategy the rule's oversize strategy
-     * @param room     the characters a chunk would get when the window leaves too few, {@code null} otherwise
+     * @param room          the characters a chunk would get when the window leaves too few, {@code null}
+     *                      otherwise
+     * @param estimatedRoom the same by the estimate on a model that counts its prompt, {@code null} otherwise
      * @return the text after the file's line
      */
-    private static String outcome(final OversizeStrategy strategy, final @Nullable Integer room) {
+    private static String outcome(
+            final OversizeStrategy strategy, final @Nullable Integer room, final @Nullable Integer estimatedRoom) {
         if (room != null) {
             return " -> FAILS BUILD: " + room + " chars for a chunk, fewer than " + MapReduceMath.MIN_CHUNK_CHARS;
+        }
+        if (estimatedRoom != null) {
+            return " -> handled; WARNING: " + estimatedRoom + " chars for a chunk by the estimate, fewer than "
+                    + MapReduceMath.MIN_CHUNK_CHARS + " (the run counts the prompt's tokens and refuses the file"
+                    + " only if the count leaves too little room as well)";
         }
         return strategy == OversizeStrategy.FAIL ? " -> FAILS BUILD" : " -> handled";
     }

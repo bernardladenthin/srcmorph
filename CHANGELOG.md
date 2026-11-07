@@ -156,7 +156,11 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **Plan times change:** lower for map-reduce files whose rounds end in a single partial, lower for
   multi-byte (CJK) sources, and 0 s for a chunked file whose window leaves less than 1000 chars for a
   chunk. **Such a file fails the plan and `check`** (the "Over window" section says `FAILS BUILD: N
-  chars for a chunk`), as an `onOversize=fail` file does; the run used to fail it file by file. A
+  chars for a chunk`), as an `onOversize=fail` file does; the run used to fail it file by file. On a
+  model whose provider counts the prompt's tokens (`llamacpp-jni`) the room is only estimated before
+  the run, which sizes the window by the count, so there the plan warns (`handled; WARNING: N chars
+  for a chunk by the estimate`) and the run decides. Java callers: `SourceFileIndexer.classify` with
+  the window check takes the run's `generationProvider` as a fifth argument. A
   context overflow of a prompt of 1000 chars or fewer is not
   retried; the retry warning's "(A -> B chars)" names the refused prompt's length as A.
 - **Java callers of the generation classes:** `RouteEstimator.estimateRouteSeconds(...)` has no
@@ -307,9 +311,12 @@ The entries below hold the details; what a 1.4.0 user changes:
   into the summary, and the default output directory `src/site/ai` is published with the Maven
   site. The self-test, `examples/build-your-own-jar/srcmorph.yaml` and the Luna example skip the
   files that hold credentials (`id: secrets`: `.env`, `*.tfvars`, `*.tfstate`, Maven's
-  `settings.xml`, keys, `*secret*` and `*credential*` configuration files), so they never reach a
-  model; `ExamplesConfigBindingTest` pins which names it skips and that no source file is among
-  them.
+  `settings.xml`, keys, `*secret*` and `*credential*` configuration files, and a `.properties` file
+  whose head gives a password, secret, token or API key a value that is not a `${...}` reference,
+  such as a `gradle.properties` with `signing.password` or an `application.properties` with
+  `spring.datasource.password`), so they never reach a model; `ExamplesConfigBindingTest` pins which
+  names it skips and that no source file is among them. Of the 20 properties files of the
+  2026-11-07 runs two are skipped that way (keystore passwords of a TomEE WS-Security example).
 
 - **The CLI runs on the module path in CI:** the `smoke-jar` job plans the demo tree with
   `java -p ... -m net.ladenthin.srcmorph.cli/...`, the only run that reads the `module-info.java`
@@ -378,7 +385,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   were published with. `scores/search.json` is re-run (2026-11-07, 1.46 USD) on the text without
   the facts and coverage lines that `search.py` reads now: BM25's hit@1 stays in every run (MRR up
   to 0.016), the reader's hit@1 moves in 27 of 37 runs by up to 12 points (mean 93.6 % over the 35
-  runs), and the correlation of an index's size with it is +0.13 with hit@1, +0.15 with the MRR.
+  runs; the two baselines, whose input is the same, keep their hit@1 and move by up to 7 points at
+  hit@3, so part of the change is the reader's variance), and the correlation of an index's size with it is +0.13 with hit@1, +0.15 with the MRR.
   The search runs of the repeat, prompt-v2, prompt-v3, language and the two re-measurement
   directories are re-run the same way (1.62 USD; BM25 again unchanged). The model card takes the
   new numbers in its Search section, its recommendations and findings 5 to 7: the reader finds 84 to
@@ -406,9 +414,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   open-source projects and 12 Python projects' `pyproject.toml` (272 files of 20 kinds, 2046 names):
   persistence and integration XML, WSDL and Facelets (which leave the `xml` rule), OpenAPI, AsyncAPI,
   Avro, GraphQL, Camel YAML, Compose, Gradle, properties, PowerShell, batch, Kotlin, Groovy, Scala and
-  `pyproject.toml` (the ops prompt, 97 % against 87 %) take the Luna example's rules; Ansible takes
-  `file-body-fallback` without counters, where gpt-oss-20b names 95 % against 86 % with the ops
-  prompt; the Java EE classes stay on the `java` rule (`file-body-oop` either way). Over all kinds
+  `pyproject.toml` (the ops prompt: gpt-oss-20b 98 % against 88 %, Luna 97 % against 86 %) take the
+  Luna example's rules; Ansible takes `file-body-fallback` without counters, where gpt-oss-20b names
+  95 % (86 % with the ops prompt and its counters); the Java EE classes stay on the `java` rule (`file-body-oop` either way). Over all kinds
   gpt-oss-20b names 88.9 % with the rules against 79.7 % through the fallback, Luna 96.6 % against
   88.6 %. The Luna example routes `package.json` and `pyproject.toml` too.
 

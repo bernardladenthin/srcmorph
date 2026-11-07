@@ -105,4 +105,20 @@ public class GenerationProviderFactoryTest {
         assertThat(GenerationProviderFactory.effectiveProvider("mock", " openai-compatible "), is("openai-compatible"));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="countsPromptTokens">
+    /** Only the local llama.cpp provider counts a prompt before the call; a remote API answers it after. */
+    @Test
+    public void countsPromptTokens_eachProvider_onlyLlamaCppJniCounts() {
+        // act, assert
+        assertThat(
+                GenerationProviderFactory.countsPromptTokens(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI),
+                is(true));
+        assertThat(
+                GenerationProviderFactory.countsPromptTokens(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE),
+                is(false));
+        assertThat(GenerationProviderFactory.countsPromptTokens(GenerationProviderFactory.PROVIDER_MOCK), is(false));
+        assertThat(GenerationProviderFactory.countsPromptTokens(""), is(false));
+    }
+    // </editor-fold>
 }

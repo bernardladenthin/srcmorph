@@ -259,6 +259,12 @@ public class ExamplesConfigBindingTest {
             {"vault/secrets.hcl", "token = \"x\"\n"},
             {"k8s/secret.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
             {"charts/shop/templates/db-secret.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
+            // a properties file that gives a password, a secret, a token or an API key a value, by its content
+            {"gradle.properties", "org.gradle.jvmargs=-Xmx2g\nsigning.password=hunter2\n"},
+            {"src/main/resources/application.properties", "spring.datasource.password = s3cret\n"},
+            {"ci.properties", "ossrhPassword=x\ngithub.token: ghp_x\n"},
+            {"client.properties", "  client-secret=x\n"},
+            {"api.properties", "maps.api-key=x\n"},
         };
         final String[][] sources = {
             {"SecretManager.java", "class SecretManager {}\n"},
@@ -278,6 +284,12 @@ public class ExamplesConfigBindingTest {
             {"k8s/vault-deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n"},
             // an Android preference screen
             {"app/src/main/res/xml/settings.xml", "<PreferenceScreen xmlns:android=\"x\"/>\n"},
+            // a properties file whose secret is a reference, a comment, empty, or a key that only starts so
+            {"application.properties", "spring.datasource.password=${DB_PASSWORD}\n"},
+            {"gradle.properties", "# signing.password=x\norg.gradle.jvmargs=-Xmx2g\n"},
+            {"empty.properties", "password=\n"},
+            {"messages.properties", "password.label=Password\ntoken.expiry=3600\n"},
+            {"log4j2.properties", "appender.out.type = Console\n"},
         };
 
         // act, assert

@@ -45,6 +45,17 @@ public class GenerationProviderFactory {
     }
 
     /**
+     * Whether a provider counts a prompt's tokens before the call ({@link GenerationProvider#promptTokens}):
+     * the run then sizes the window by the count, not by the {@code charsPerToken} estimate the plan uses.
+     *
+     * @param provider a provider key, as {@link #effectiveProvider} returns it
+     * @return {@code true} for {@link #PROVIDER_LLAMACPP_JNI}
+     */
+    public static boolean countsPromptTokens(final String provider) {
+        return PROVIDER_LLAMACPP_JNI.equals(provider);
+    }
+
+    /**
      * Creates an {@link GenerationProvider} for the given provider name, or for the model's own
      * {@code provider} when its configuration names one ({@link #effectiveProvider}).
      *

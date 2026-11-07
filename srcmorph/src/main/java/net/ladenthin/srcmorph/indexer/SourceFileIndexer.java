@@ -33,6 +33,7 @@ import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.indexer.generation.SummaryResult;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import net.ladenthin.srcmorph.routing.ConditionEvaluator;
 import net.ladenthin.srcmorph.routing.FileContext;
 import net.ladenthin.srcmorph.routing.RuleSelector;
@@ -265,7 +266,7 @@ public final class SourceFileIndexer {
      * @throws IOException if a file size or content cannot be read
      */
     public IndexPlan classify(final Collection<Path> candidates, final List<RoutingRule> rules) throws IOException {
-        return plan(candidates, rules, null, null);
+        return plan(candidates, rules, null, null, "");
     }
 
     /**
@@ -280,6 +281,9 @@ public final class SourceFileIndexer {
      * @param rules                    the routing rules in declaration order
      * @param modelDefinitionSupport   model-config lookup by key
      * @param promptPreparationSupport prompt-template helper
+     * @param generationProvider       the run's {@code generationProvider}: a model on a provider that counts
+     *                                 its prompt's tokens gets a warning, not a failure, for too little chunk
+     *                                 room by the estimate
      * @return the routing plan
      * @throws IOException if a file size or content cannot be read
      */
@@ -287,9 +291,10 @@ public final class SourceFileIndexer {
             final Collection<Path> candidates,
             final List<RoutingRule> rules,
             final ModelRegistry modelDefinitionSupport,
-            final PromptPreparer promptPreparationSupport)
+            final PromptPreparer promptPreparationSupport,
+            final String generationProvider)
             throws IOException {
-        return plan(candidates, rules, modelDefinitionSupport, promptPreparationSupport);
+        return plan(candidates, rules, modelDefinitionSupport, promptPreparationSupport, generationProvider);
     }
 
     /**
@@ -299,6 +304,7 @@ public final class SourceFileIndexer {
      * @param rules                    the routing rules in declaration order
      * @param modelDefinitionSupport   model-config lookup by key, or {@code null} without the window check
      * @param promptPreparationSupport prompt-template helper, or {@code null} without the window check
+     * @param generationProvider       the run's {@code generationProvider}, {@code ""} without the window check
      * @return the routing plan
      * @throws IOException if a file size or content cannot be read
      */
@@ -306,7 +312,8 @@ public final class SourceFileIndexer {
             final Collection<Path> candidates,
             final List<RoutingRule> rules,
             final @Nullable ModelRegistry modelDefinitionSupport,
-            final @Nullable PromptPreparer promptPreparationSupport)
+            final @Nullable PromptPreparer promptPreparationSupport,
+            final String generationProvider)
             throws IOException {
         final boolean lineFiltersUsed = anyRuleUsesLines(rules);
         final boolean contentFiltersUsed = anyRuleUsesContent(rules);
@@ -362,8 +369,15 @@ public final class SourceFileIndexer {
                         && rule.oversizeStrategy().chunks()) {
                     final int room =
                             RouteEstimator.chunkRoom(availableSourceChars, basePromptLength, chunkPromptLength);
+                    // the run sizes the window by the counted tokens where the provider counts them: by the
+                    // estimate alone the plan cannot tell whether the file fits or its chunks get room
                     if (room < MapReduceMath.MIN_CHUNK_CHARS) {
-                        plan.refuseChunkRoom(file, room);
+                        if (GenerationProviderFactory.countsPromptTokens(GenerationProviderFactory.effectiveProvider(
+                                generationProvider, modelConfig.getProvider()))) {
+                            plan.estimateChunkRoom(file, room);
+                        } else {
+                            plan.refuseChunkRoom(file, room);
+                        }
                     }
                 }
             } else {
