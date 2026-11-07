@@ -9,7 +9,7 @@
    "seed": 1,
    "max_tokens": 300
   },
-  "readerCostUsd": 0.1102
+  "readerCostUsd": 0.0701
  },
  "runs": {
   "gpt-6-luna": {
@@ -21,7 +21,7 @@
    "reader": {
     "hit1": 0.907,
     "hit3": 1.0,
-    "mrr": 0.953
+    "mrr": 0.95
    }
   },
   "gpt-oss-20b": {
@@ -43,16 +43,16 @@
     "mrr": 0.905
    },
    "reader": {
-    "hit1": 0.767,
+    "hit1": 0.721,
     "hit3": 0.814,
-    "mrr": 0.792
+    "mrr": 0.77
    }
   },
   "paths": {
    "reader": {
-    "hit1": 0.767,
-    "hit3": 0.907,
-    "mrr": 0.829
+    "hit1": 0.744,
+    "hit3": 0.837,
+    "mrr": 0.787
    }
   }
  }

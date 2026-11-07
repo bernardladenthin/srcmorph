@@ -8,9 +8,9 @@ package and project summaries left out) and scores/search.json (the reader's hit
 Pearson's r and Spearman's rank correlation of the two over the scored runs. By default the three
 runs the card names as empty or broken are left out (Grok 4.7's reasoning before every lead, Granite
 4.0 H-Tiny's fenced and headed summaries, Qwen3.5-35B-A3B's five empty Java summaries), as the card's
-"over the 32 scored runs ..." does; --exclude "" takes all of them. The card's -0.18 with hit@1 and
--0.08 with the MRR are of the search.json it was published with; the reader run of 2026-11-07, which
-reads the answer without the facts and coverage lines, gives +0.13 and +0.15.
+"over the 32 scored runs ..." does; --exclude "" takes all of them. Over the 32 runs it gives +0.13 with
+hit@1 and +0.15 with the MRR since the reader run of 2026-11-07, which reads the answer without the
+facts and coverage lines (the first one gave -0.18 and -0.08).
 
 Writes nothing.
 

@@ -378,13 +378,18 @@ The entries below hold the details; what a 1.4.0 user changes:
   were published with. `scores/search.json` is re-run (2026-11-07, 1.46 USD) on the text without
   the facts and coverage lines that `search.py` reads now: BM25's hit@1 stays in every run (MRR up
   to 0.016), the reader's hit@1 moves in 27 of 37 runs by up to 12 points (mean 93.6 % over the 35
-  runs), and the correlation of an index's size with it is +0.13 with hit@1, +0.15 with the MRR. The
-  model card's Search section keeps the numbers it was published with.
+  runs), and the correlation of an index's size with it is +0.13 with hit@1, +0.15 with the MRR.
+  The search runs of the repeat, prompt-v2, prompt-v3, language and the two re-measurement
+  directories are re-run the same way (1.62 USD; BM25 again unchanged). The model card takes the
+  new numbers in its Search section, its recommendations and findings 5 to 7: the reader finds 84 to
+  100 % first with the 32 scored runs (it said 86 to 98 %), Qwen3.8-27B with reasoning off is no
+  longer the one exception that searches worst in every run (86 to 98 % over its three), and an
+  index's size does not go with the reader's result. The writeups of 2026-11-01 and 2026-11-02 and
+  the deck (slides 5 and 13) take them as well, the writeups naming the published values.
 - **The model card's search prose and caveats match its data:** BM25 over the summaries finds 67 to
   91 % first (it said 67 to 86 %), 81 % on average against 84 % over the source, and nine of the 35
   runs beat the source; the index length goes with the reader's hit@1 at
-  −0.18 over the 32 scored runs (it said −0.46, from an older set of runs); Muse's best search ties
-  gpt-oss-20b on hit@1 and leads on the MRR. The caveats add that recall does not measure
+  +0.13 over the 32 scored runs (it said −0.46, from an older set of runs). The caveats add that recall does not measure
   faithfulness (a bare name list scores 100 %), that three runs against three reach p = 0.1 at best
   in Fisher's test and that search was compared unpaired (McNemar per question was not run), and
   that the prompts were tuned on the corpora they are scored on. No table or number of

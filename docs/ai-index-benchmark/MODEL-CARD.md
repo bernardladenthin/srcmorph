@@ -67,20 +67,21 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 
 - **Muse Spark 1.3 in Meta's Contributor tier** (100 %, 10.1 s per file, 0.019 USD for the run) is
   the only run with nothing missing: full recall on every kind, all four seed counts, a clean format,
-  and the best search of all runs (98 % first like gpt-oss-20b, at the higher MRR: 0.99 against
-  0.98). Two more runs scored 100 % and 99.4 % (one name of
-  the other files missing) and searched 91 % and 93 % first, so it is also the steadiest of the
+  and 95 % first in search. Two more runs scored 100 % and 99.4 % (one name of
+  the other files missing) and searched 93 % first both times, so it is also the steadiest of the
   top group (see [Repeatability](#repeatability)). The Contributor tier costs a twelfth
   of the standard one (0.10 / 0.20 against 1.25 / 4.25 USD per million tokens) because Meta trains
   on its prompts, as third-party sources report; OpenRouter refuses it until the account allows
   providers that train on paid requests, in both its privacy settings and the workspace guardrail.
   Fine for public code like this corpus, not for code that must not leave the company.
 - **Qwen3.8-27B with reasoning off** is the best in every one of its three runs and the steadiest
-  of the hosted models, but in the search measurement it is the weakest of the top group (84 to
-  86 % against 91 to 98 %). It costs 3.5 times as much as Luna (0.34 USD per MB), so a 10 MB
+  of the hosted models; in the search measurement it moves most between runs (86 to 98 % first,
+  93 % on average; the other repeated configurations average 93 to 96 %). It costs 3.5 times as
+  much as Luna (0.34 USD per MB), so a 10 MB
   repository costs about 3.40 USD. With reasoning on it cost 18 times as much as Luna.
 - **gpt-oss-20b** is level with Luna over three runs at half the price, and in the search
-  measurement it is at the top (91 to 98 %). It keeps nearly every Java name, but states no seed
+  measurement it is at the top (93 to 98 % first, 96 % on average). It keeps nearly every Java
+  name, but states no seed
   counts.
 - **GPT-6 Luna** had the best single run (99 %, full recall on Java and SQL, all four seed counts,
   clean format), but it was its best of three: the other two scored 96 % and 94 %. It is among the
@@ -88,7 +89,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   0.10 USD per MB.
 - **Mercury 3** (Inception's diffusion model; 96.6 %, 2.6 s per file, 0.12 USD per MB) is twice as
   fast as any other OpenRouter run (Qwen2.5-Coder-7B on Hugging Face's router takes 3.9 s). SQL recall is full with all four seed counts, other files 98 %, Java 88 %;
-  one package summary was cut off at 4096 tokens, and it searches below the top group (88 % first).
+  one package summary was cut off at 4096 tokens; it searches 93 % first.
 - **Nemotron 3.5 Super VL with reasoning off** (97.9 %, 10.7 s per file, 0.14 USD per MB) has full
   Java recall; with reasoning `low` it scored 90.4 % (finding 1).
 - **Qwen3.5-35B-A3B with reasoning off** is fast (5.2 s per file) at twice Luna's price. It writes the
@@ -99,7 +100,8 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   the per-file mean, a small file weighs as much as a large one.
 - **gpt-oss-20b locally** (native MXFP4, layers auto-fitted on the RTX 3070 Laptop; 95.8 %, 33 s
   per file) keeps its hosted quality (96.1 % on OpenRouter): the best local run, Java recall 99.9 %,
-  a clean format, no seed counts, 91 % first in search. It writes at about 26 tokens/s. This is the
+  a clean format, no seed counts, and with Qwen3.8-27B the only run that searches 100 % first. It
+  writes at about 26 tokens/s. This is the
   model of the plugin's self-test profile and of `examples/build-your-own-jar`.
 - **Gemma 4 E4B with thinking off** is the fast local pick. It has full Java recall, no invented
   names, a clean format, and takes 11 s per file on an RTX 3070 Laptop.
@@ -116,7 +118,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
     Apache 2.0; 92.2 %, 61.8 s per file) is the largest local model here and lands just below E4B
     at five and a half times the time. It has full Java recall, a clean format and almost no
     invented names (0.1 per 100), but SQL recall of 90 %, other-file recall of 79 % and no seed
-    counts; it searches like E4B (93 % first). Its Q4_K_M weights are 46 GiB, so it runs only with
+    counts; it searches 95 % first (E4B 98 %). Its Q4_K_M weights are 46 GiB, so it runs only with
     all 50 expert layers in RAM (`cpuMoeLayers: 50`, about 45 GB of a 63 GB machine) and the rest
     on the GPU. Once the weights are in RAM it reads the prompt at 100 to 130 tokens/s and writes at
     about 25 tokens/s; the first file, while the weights were still read from a USB SSD, ran at 22
@@ -136,7 +138,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
     switched off (see finding 1). SQL and other-file recall are full and it states all four seed
     counts, but Java recall is 82 %: it names 18 of the 44 builder methods of
     `LlamaCppJniConfig.java` and leaves the type name out of `AiGenerationProvider`. One package
-    summary carries a reasoning marker, and it searches below the top group (86 % first).
+    summary carries a reasoning marker; it searches 95 % first.
 - **Hugging Face router (nscale): the cheapest, not the best.** Both models together cost under
   0.01 USD at 0.01 / 0.03 USD per million input / output tokens.
   - **Qwen2.5-Coder-7B** is the second-fastest run (3.9 s per file, after Mercury 3), with Java recall at 86 %. It
@@ -150,7 +152,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   minute) were stopped by `429` after a few files.
   - **Claude Haiku 5.5** (98.2 %, 6.8 s per file) is the fourth-best run of the card and on the
     hosted front: full SQL and other-file recall, all four seed counts, a clean format, Java recall
-    93 %. In the search measurement it is in the top group (95 % first). The same model on
+    93 %. In the search measurement it finds 95 % first. The same model on
     OpenRouter scored 93.9 % (6.6 s per file, 0.046 USD): OpenRouter enforces `maxOutputTokens`
     4096 and cut `AiGenerationConfig.java` off while it listed the 88 accessors one by one, which
     the gateway does not pass on; other-file recall was 88 % there.
@@ -163,14 +165,14 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
     `SrcMorphConfiguration.java` as groups and names 2 and 3 of them (`LlamaCppJniConfig.java`: 8 of
     44), as Luna did in one repeat run. The other nine Java files have full recall. It writes a long
     index (78 KB for the 24 file summaries; its other-file summaries are 1.75 times as long as
-    their sources) and searches below the top group (91 % first, see
+    their sources) and still searches 95 % first (see
     [Search](#search-do-the-summaries-lead-to-the-right-file)).
   - **Grok 4.7** (76.4 %, 19.1 s per file) has full recall on every kind and all four seed counts,
     but 35 of its 37 `.ai.md` start with a sentence about the task before the `>` lead ("The user
     wants me to index the provided SQL file.", "Synthesizing a package summary from the provided
     per-file summaries."), sometimes on the lead's own line. That is its reasoning summary arriving
     as answer text through this route; it costs the format share almost entirely. Its index is the
-    longest of all runs (111 KB), and it searches worst of all runs (77 % first). On
+    longest of all runs (111 KB), and it searches 86 % first, below all runs but two. On
     OpenRouter (`x-ai/grok-4.7`, reasoning mandatory) xAI refused the run after 8 files with
     `403 This service is not available in your region`.
 - **Avoid for this task:**
@@ -258,17 +260,18 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 
    | | Quality: run 1 / 2 / 3 | Mean | Reader hit@1 | Mean | s/file | USD |
    |---|---|---|---|---|---|---|
-   | GPT-6 Luna, v1 | 99.0 / 96.0 / 93.6 % | 96.2 % | 93 / 91 / 91 % | 92 % | 6.9 / 7.8 / 10.1 | 0.022 / – / 0.020 |
-   | GPT-6 Luna, v2 | 100 / 100 / 100 % | **100 %** | 88 / 93 / 86 % | 89 % | 8.0 / 7.2 / 7.0 | 0.026 / 0.018 / 0.017 |
-   | gpt-oss-20b, v1 | 96.1 / 97.8 / 96.6 % | 96.8 % | 98 / 95 / 91 % | 95 % | 11.8 / 11.1 / 8.7 | 0.012 / 0.013 / 0.009 |
-   | gpt-oss-20b, v2 | 100 / 100 / 97.0 % | **99.0 %** | 88 / 93 / 95 % | 92 % | 15.6 / 15.4 / 22.7 | 0.006 / 0.006 / 0.006 |
+   | GPT-6 Luna, v1 | 99.0 / 96.0 / 93.6 % | 96.2 % | 95 / 91 / 93 % | 93 % | 6.9 / 7.8 / 10.1 | 0.022 / – / 0.020 |
+   | GPT-6 Luna, v2 | 100 / 100 / 100 % | **100 %** | 93 / 93 / 95 % | 94 % | 8.0 / 7.2 / 7.0 | 0.026 / 0.018 / 0.017 |
+   | gpt-oss-20b, v1 | 96.1 / 97.8 / 96.6 % | 96.8 % | 98 / 98 / 93 % | 96 % | 11.8 / 11.1 / 8.7 | 0.012 / 0.013 / 0.009 |
+   | gpt-oss-20b, v2 | 100 / 100 / 97.0 % | **99.0 %** | 91 / 95 / 98 % | 95 % | 15.6 / 15.4 / 22.7 | 0.006 / 0.006 / 0.006 |
 
    With v2 Luna keeps every expected name in every run, and gpt-oss misses only other-file names in
    one run; gpt-oss states three of the four seed counts in every run (v1: none in two). Neither
    writes a code fence or a `###` heading, and the index grows by at most a tenth (gpt-oss 54 to
-   59 KB, v1 50 to 57 KB). The search measurement did not move beyond its noise: about one of the
-   43 questions lower on average, within the two to seven points runs of one prompt spread over
-   (BM25 over gpt-oss's summaries lost about two). Two cautions: v2 was written from the misses on
+   59 KB, v1 50 to 57 KB). The search measurement did not move beyond its noise: less than one of
+   the 43 questions on average (Luna a third of one up, gpt-oss two thirds down), within the two to
+   twelve points runs of one prompt spread over (BM25 over gpt-oss's summaries lost about two).
+   Two cautions: v2 was written from the misses on
    this corpus, so part of the gain may be fitted to it, and the other models have not been run
    with it. v3 (finding 6) has replaced v2; v1 and v2 are in the history (`profiles/README.md`).
 6. **Prompt v3: v2 on a second corpus, and what it still lost there.** To test the first caution of
@@ -288,14 +291,14 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 
    | | Quality: run 1 / 2 / 3 | Mean | Reader hit@1 | Mean | s/file | USD |
    |---|---|---|---|---|---|---|
-   | GPT-6 Luna, v3 | 100 / 100 / 100 % | **100 %** | 93 / 88 / 88 % | 90 % | 7.8 / 6.7 / 7.5 | 0.020 / 0.018 / 0.015 |
-   | gpt-oss-20b, v3 | 100 / 100 / 100 % | **100 %** | 91 / 95 / 91 % | 92 % | 7.9 / 15.8 / 15.3 | 0.008 / 0.007 / 0.009 |
+   | GPT-6 Luna, v3 | 100 / 100 / 100 % | **100 %** | 93 / 91 / 91 % | 92 % | 7.8 / 6.7 / 7.5 | 0.020 / 0.018 / 0.015 |
+   | gpt-oss-20b, v3 | 100 / 100 / 100 % | **100 %** | 93 / 93 / 95 % | 94 % | 7.9 / 15.8 / 15.3 | 0.008 / 0.007 / 0.009 |
 
    gpt-oss now keeps every expected name of this corpus in every run; the one number it leaves out
    in all three is the 110 of `05_seed_data.sql`, as with v2. On the second corpus it went from
    99.0 to 99.8 % (one run missed an operator class, one a table total), Luna stayed at 100 %. No
    code fence, no `###` heading, the index did not grow (gpt-oss 53 to 57 KB, Luna 65 to 66 KB),
-   and the reader's hit@1 stayed at 92 and 90 % (v2: 92 and 89 %). The drafts also showed how much
+   and the reader's hit@1 stayed at 94 and 92 % (v2: 95 and 94 %). The drafts also showed how much
    gpt-oss varies between runs: with the SQL prompt unchanged between two of them, its SQL recall
    on the second corpus went from 100 % in three runs to 91 to 97 %. Three runs tell a miss that
    recurs from one that does not, not a one-point difference. The other models have not been run
@@ -312,8 +315,8 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 
    | | Language corpus: generic / own prompts | This corpus | Second corpus | Reader hit@1 |
    |---|---|---|---|---|
-   | GPT-6 Luna | 99.6 / **99.9 %** | 100 % | 100 % | 93 / 88 / 93 % (91 %) |
-   | gpt-oss-20b | 95.7 / **97.7 %** (99.1 % without one empty answer) | 99.6 % | 99.5 % | 93 / 95 / 98 % (95 %) |
+   | GPT-6 Luna | 99.6 / **99.9 %** | 100 % | 100 % | 95 / 91 / 98 % (95 %) |
+   | gpt-oss-20b | 95.7 / **97.7 %** (99.1 % without one empty answer) | 99.6 % | 99.5 % | 93 / 95 / 100 % (96 %) |
 
    Runs 4 to 6 on the language corpus came after one wording change in `file-body-perl` (an option
    as the user types it, `--max-age`, its Getopt::Long spec only as the source), which left the Perl
@@ -328,7 +331,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    three runs, which v3 kept in all three: three runs cannot tell that from run-to-run variation
    (Fisher's exact test, p = 0.4; three runs against three reach p = 0.1 at best, even when one
    side loses the name every time), nor show that it is one. The reader's hit@1 is the same case:
-   95 against 92 % for gpt-oss is 1.3 of 43 questions, inside the 2 to 7 points one configuration
+   96 against 94 % for gpt-oss is one of 43 questions, inside the 2 to 12 points one configuration
    moves between runs ([Search](#search-do-the-summaries-lead-to-the-right-file)). One shell draft
    showed what a prompt can cost: asked for every assignment as `name=value`, gpt-oss copied them
    into a code fence in two of three runs, and "one bullet each" kept the values without the
@@ -465,80 +468,78 @@ summaries of each run two ways:
 
 Two baselines go through the same retrievers: the paths alone, and the source files themselves.
 hit@1 counts a question as found when an answer file comes first, hit@3 when it is among the first
-three. One question is 2.3 points. The reader calls cost 1.24 USD for the card's 22 contexts,
-0.81 USD for the repeat runs, 0.28 USD for the four Copilot runs, 0.15 USD for Mistral Large 4
-and Kolibri-1 and 0.53 USD for the nine runs of 2026-10-31, which were added later. Results are in
+three. One question is 2.3 points. Both retrievers read a summary without the facts and coverage
+lines srcmorph writes in front of its body; every search was re-run that way on 2026-11-07 (the
+first measurement also read those lines; the re-run moved a run's hit@1 by up to 12 points). The
+reader calls cost 1.46 USD for the card's 35 runs and 0.62 USD for the repeat runs
+(those of the later findings 1.00 USD). Results are in
 [`modelcard/scores/search.json`](modelcard/scores/search.json), and per question in
 [`search.tsv`](modelcard/scores/search.tsv); those of the repeat runs next to their outputs.
 
 | | Reader hit@1 | Reader hit@3 | MRR | BM25 hit@1 | BM25 hit@3 |
 |---|---|---|---|---|---|
-| Muse Spark 1.3 (Contributor) | 98 % | 100 % | 0.99 | 81 % | 100 % |
+| Qwen3.8-27B | 100 % | 100 % | 1.00 | 81 % | 100 % |
+| gpt-oss-20b (local) | 100 % | 100 % | 1.00 | 91 % | 100 % |
+| Qwen3-4B-Instruct-2507 | 98 % | 100 % | 0.99 | 81 % | 98 % |
+| Gemma 4 12B, thinking off | 98 % | 100 % | 0.99 | 86 % | 93 % |
+| Gemma 4 31B | 98 % | 100 % | 0.99 | 86 % | 95 % |
+| Gemma 4 E4B, thinking off | 98 % | 100 % | 0.99 | 81 % | 100 % |
+| Qwen3.8-27B, reasoning off | 98 % | 100 % | 0.98 | 84 % | 98 % |
 | gpt-oss-20b | 98 % | 98 % | 0.98 | 86 % | 95 % |
+| Gemma 4 26B-A4B, thinking off | 98 % | 98 % | 0.98 | 81 % | 95 % |
+| Muse Spark 1.3 (Contributor) | 95 % | 100 % | 0.98 | 81 % | 100 % |
 | Gemma 4 31B, reasoning off | 95 % | 100 % | 0.98 | 81 % | 98 % |
-| Granite 4.0 H-Small | 95 % | 100 % | 0.98 | 81 % | 93 % |
-| Qwen3-4B-Instruct-2507 | 95 % | 100 % | 0.98 | 81 % | 98 % |
 | Nemotron 3.5 Super VL, reasoning off | 95 % | 100 % | 0.98 | 88 % | 95 % |
-| Gemma 4 12B, thinking off | 95 % | 100 % | 0.97 | 86 % | 93 % |
-| Claude Haiku 5.5 (Copilot) | 95 % | 100 % | 0.97 | 79 % | 100 % |
-| Qwen3.5-4B, thinking off | 95 % | 100 % | 0.97 | 84 % | 100 % |
-| Qwen3.8-27B | 95 % | 98 % | 0.96 | 81 % | 100 % |
-| Gemma 4 31B | 93 % | 100 % | 0.96 | 86 % | 95 % |
-| Gemma 4 E4B, thinking off | 93 % | 100 % | 0.96 | 81 % | 100 % |
-| Kolibri-1, thinking off | 93 % | 100 % | 0.96 | 79 % | 100 % |
-| GPT-6 Luna | 93 % | 100 % | 0.96 | 77 % | 98 % |
+| Qwen3.5-35B-A3B, reasoning off | 95 % | 100 % | 0.98 | 86 % | 98 % |
+| Mistral Large 4 | 95 % | 100 % | 0.98 | 84 % | 95 % |
+| Granite 4.0 H-Small | 95 % | 100 % | 0.97 | 81 % | 93 % |
+| Kolibri-1, thinking off | 95 % | 100 % | 0.97 | 79 % | 100 % |
+| Claude Haiku 5.5 (Copilot) | 95 % | 98 % | 0.96 | 79 % | 100 % |
+| GPT-6 Luna | 95 % | 98 % | 0.96 | 77 % | 98 % |
+| Claude Haiku 5.5 (OpenRouter) | 93 % | 100 % | 0.96 | 91 % | 100 % |
+| Qwen3-Coder-30B-A3B | 93 % | 100 % | 0.96 | 84 % | 95 % |
+| MAI-Code-1.1-Flash | 95 % | 98 % | 0.96 | 81 % | 93 % |
 | Nemotron 3.5 Lightning, reasoning off | 93 % | 100 % | 0.96 | 86 % | 98 % |
-| Qwen2.5-Coder-7B | 93 % | 100 % | 0.96 | 74 % | 95 % |
+| LFM 2.5 24B-A2B | 93 % | 98 % | 0.95 | 77 % | 98 % |
+| GPT-6 Luna (Copilot) | 91 % | 100 % | 0.95 | 79 % | 98 % |
+| Qwen3.5-4B, thinking off | 93 % | 98 % | 0.95 | 84 % | 100 % |
 | Nemotron 3.5 Lightning | 93 % | 98 % | 0.95 | 77 % | 91 % |
-| DeepSeek-Coder-V2-Lite | 93 % | 98 % | 0.95 | 77 % | 98 % |
-| Qwen3.5-35B-A3B, reasoning off | 93 % | 98 % | 0.95 | 86 % | 98 % |
-| Claude Haiku 5.5 (OpenRouter) | 91 % | 100 % | 0.95 | 91 % | 100 % |
-| Gemma 4 26B-A4B, thinking off | 93 % | 95 % | 0.94 | 81 % | 95 % |
-| Qwen3-Coder-30B-A3B | 91 % | 98 % | 0.94 | 84 % | 95 % |
-| Granite 4.2 8B, thinking off | 88 % | 100 % | 0.94 | 88 % | 95 % |
-| Seed-Coder-8B | 91 % | 95 % | 0.93 | 77 % | 93 % |
-| MAI-Code-1.1-Flash | 91 % | 95 % | 0.93 | 81 % | 93 % |
-| gpt-oss-20b (local) | 91 % | 95 % | 0.93 | 91 % | 100 % |
-| LFM 2.5 24B-A2B | 91 % | 95 % | 0.93 | 77 % | 98 % |
-| GPT-6 Luna (Copilot) | 88 % | 98 % | 0.93 | 79 % | 98 % |
-| Qwen3.8-27B, reasoning off | 86 % | 98 % | 0.92 | 84 % | 98 % |
-| Mistral Large 4 | 86 % | 98 % | 0.92 | 84 % | 95 % |
-| Mercury 3 | 88 % | 91 % | 0.89 | 79 % | 95 % |
-| Nemotron 3.5 Super VL | 86 % | 88 % | 0.87 | 74 % | 86 % |
-| Granite 4.0 H-Tiny | 81 % | 91 % | 0.86 | 74 % | 88 % |
-| Grok 4.7 (Copilot) | 77 % | 93 % | 0.85 | 81 % | 95 % |
-| Qwen3.5-35B-A3B | 79 % | 88 % | 0.83 | 67 % | 74 % |
-| *Baseline: paths only* | 74 % | 91 % | 0.82 | – | – |
-| *Baseline: source files* | 72 % | 79 % | 0.76 | 84 % | 98 % |
+| Qwen2.5-Coder-7B | 91 % | 100 % | 0.95 | 74 % | 95 % |
+| Mercury 3 | 93 % | 95 % | 0.94 | 79 % | 95 % |
+| Granite 4.2 8B, thinking off | 91 % | 98 % | 0.94 | 88 % | 95 % |
+| Granite 4.0 H-Tiny | 91 % | 98 % | 0.94 | 74 % | 88 % |
+| DeepSeek-Coder-V2-Lite | 88 % | 98 % | 0.93 | 77 % | 98 % |
+| Seed-Coder-8B | 88 % | 95 % | 0.92 | 77 % | 93 % |
+| Grok 4.7 (Copilot) | 86 % | 95 % | 0.90 | 81 % | 95 % |
+| Nemotron 3.5 Super VL | 84 % | 93 % | 0.88 | 74 % | 86 % |
+| Qwen3.5-35B-A3B | 79 % | 86 % | 0.82 | 67 % | 74 % |
+| *Baseline: paths only* | 74 % | 84 % | 0.79 | – | – |
+| *Baseline: source files* | 72 % | 81 % | 0.77 | 84 % | 98 % |
 
-- **The summaries help a model find the right file.** With any of 32 of the 35 runs the reader
-  finds 86 to 98 % of the answers first. With the paths alone it finds 74 %, and with the whole
-  source (about 65 000 tokens instead of about 16 000) only 72 %.
+- **The summaries help a model find the right file.** With any of 32 of the 35 runs (the three
+  below left out for their empty or broken summaries) the reader finds 84 to 100 % of the answers
+  first, 94 % on average. With the paths alone it finds 74 %, and with the whole source (about
+  65 000 tokens instead of about 16 000) only 72 %.
 - **Keyword search does not gain from them.** BM25 over the summaries finds 67 to 91 % first, 81 %
   on average, over the source 84 %: nine of the 35 runs are above the source (by 2 to 7 points, one
   to three questions), four level with it and 22 below. The source contains the same words and
   more.
-- **What hurts search is a missing or broken summary, not a missing name.** The three runs that fall
-  behind are Qwen3.5-35B-A3B with reasoning low (5 empty Java summaries), Granite H-Tiny (its
-  format slips) and Grok 4.7 (a sentence about the task before almost every lead). Seed-Coder-8B, at a Java recall of 68 %, still finds 91 %.
-- **Among the other 32 runs the order is noise.** The reader misreads one to three questions per
-  run even when the summary is clear. For example, with Qwen3.8-27B's summaries (reasoning off) it
-  ranks `AiConditionEvaluator.java` first for "Where is every checkout and return written to an
-  audit trail?", which is answered by `03_routines.sql`. Over the repeat runs, the six hosted
-  configurations and E4B moved by 2 to 7 points (one to three questions): gpt-oss-20b 91 to 98 %,
-  GPT-6 Luna 91 to 93 %, Gemma 4 31B with reasoning off 95 to 98 %, Gemma 4 E4B 93 to 95 %.
-- **One exception holds in every run: Qwen3.8-27B with reasoning off searches worst of the top
-  group** (86, 84 and 86 %), although it has the best quality score. Its summaries are not wrong:
-  for both questions about oversized files its `AiOversizeStrategy.java` summary describes the
-  four strategies and the `<onOversize>` token, and the reader still ranks
-  `AiConditionEvaluator.java` first in all three runs. Its summaries are among the longest (about
-  70 KB for the 24 files, gpt-oss-20b writes 50 to 57 KB), but length does not explain it: over the
-  32 scored runs without empty or broken summaries a longer index searches hardly worse with this
-  reader (correlation −0.18 with hit@1, −0.08 with the MRR, [`modelcard/correlate.py`](modelcard/correlate.py)),
-  and the same model with reasoning low
-  writes 72 KB and finds 95 %. MAI-Code-1.1-Flash, added later, writes one of the longest indexes (78 KB) and misses the
-  two questions about blocked members and the audit trail, although its `03_routines.sql` summary
-  names `is_blocked` and `loan_audit`.
+- **What hurts search is a missing summary, not a missing name.** The lowest run is Qwen3.5-35B-A3B
+  with reasoning low (79 %, 5 empty Java summaries). Grok 4.7's sentence about the task before
+  almost every lead costs less (86 %), Granite H-Tiny's slipping format hardly anything (91 %).
+  Seed-Coder-8B, at a Java recall of 68 %, still finds 88 %.
+- **Among the other 32 runs the order is mostly noise.** The reader misreads none to seven of the
+  43 questions per run, also where the summary is clear. One question it misses in 25 of the 32:
+  "What stops a blocked member from borrowing a book?" is answered by `03_routines.sql`, and it
+  ranks `AiConditionEvaluator.java` first 17 times and `01_schema.sql`, which has the `is_blocked`
+  column, 7 times. Over the repeat runs, the seven hosted configurations and E4B moved by 2 to
+  12 points (one to five questions): gpt-oss-20b 93 to 98 %, GPT-6 Luna 91 to 95 %, Gemma 4 31B
+  with reasoning off 95 to 98 %, Gemma 4 E4B 93 to 98 %, Qwen3.8-27B with reasoning off 86 to 98 %.
+- **A longer index does not search worse.** Over the 32 scored runs the correlation of the index's
+  size with the reader's result is +0.13 with hit@1 and +0.15 with the MRR
+  ([`modelcard/correlate.py`](modelcard/correlate.py)), that is none: Qwen3.8-27B writes one of the
+  longest indexes (72 KB for the 24 files) and finds every answer first, gpt-oss-20b writes 50 KB
+  and finds 98 %, Granite 4.2 8B writes the longest (85 KB) and finds 91 %.
 - One answer was corrected after the first scoring: "Can a single model definition use a different
   backend than the one the run names?" now also accepts `AiGenerationConfig.java`, whose
   `getProvider()` documents exactly that. Before the correction 18 of 20 runs missed it.
