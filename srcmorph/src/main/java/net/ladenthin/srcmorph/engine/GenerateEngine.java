@@ -104,7 +104,8 @@ public final class GenerateEngine {
 
     /**
      * Checks the configuration as a run would, without loading a model or writing anything: the plan
-     * (every file routed, none over a window with {@code onOversize: fail}, no two into one summary), the
+     * (every file routed, none over a window with {@code onOversize: fail}, no two into one summary,
+     * none into the file of the package or the project phase), the
      * profile files of every rule, and every routed model (a local model's file and its GGUF header, a
      * remote model's {@code baseUrl} and {@code apiKeyEnv}). {@link SrcMorphConfiguration#isPlanOnly()}
      * does not apply.
@@ -209,8 +210,10 @@ public final class GenerateEngine {
         }
 
         // 3c. Two source files summarized into the same .ai.md (src/main/java/Foo.java and
-        //     main/java/Foo.java) would overwrite each other; a prompt longer than its model's window
-        //     leaves no room for any source. Both are configuration errors, found before the run.
+        //     main/java/Foo.java) would overwrite each other, a source named package (or project at the
+        //     base root) would be summarized into the file the package (project) phase writes, and a
+        //     prompt longer than its model's window leaves no room for any source. All are configuration
+        //     errors, found before the run.
         checkTargetsAndWindows(plan, fileIndexer);
 
         // Fail fast on a typo'd modelPath before the model-group loop below, not an hour into it.
@@ -505,18 +508,26 @@ public final class GenerateEngine {
     }
 
     /**
-     * Fails the run when two routed files would be summarized into the same {@code .ai.md}, or when a
-     * rule's prompt leaves its model's window no room for the source.
+     * Fails the run when two routed files would be summarized into the same {@code .ai.md}, when a file
+     * would be summarized into the file the package or the project phase writes
+     * ({@link SourceFileIndexer#phaseFileClash(Path)}), or when a rule's prompt leaves its model's window no
+     * room for the source.
      *
      * @param plan        the routing plan
      * @param fileIndexer the indexer that names each file's summary
-     * @throws SrcMorphException naming the files, or the model and the prompt
+     * @throws SrcMorphException naming the files, the file and the reason, or the model and the prompt
      */
     private static void checkTargetsAndWindows(final IndexPlan plan, final SourceFileIndexer fileIndexer)
             throws SrcMorphException {
         final Map<Path, Path> sourceByTarget = new HashMap<>();
         for (final List<IndexPlan.Route> entries : plan.routesByModel().values()) {
             for (final IndexPlan.Route entry : entries) {
+                final String clash = fileIndexer.phaseFileClash(entry.file());
+                if (clash != null) {
+                    throw new SrcMorphException(entry.file() + " would be summarized into "
+                            + fileIndexer.targetFile(entry.file()) + ", " + clash
+                            + "; exclude it or route it to a skip rule");
+                }
                 final Path other = sourceByTarget.put(fileIndexer.targetFile(entry.file()), entry.file());
                 if (other != null) {
                     throw new SrcMorphException(entry.file() + " and " + other + " would both be summarized into "

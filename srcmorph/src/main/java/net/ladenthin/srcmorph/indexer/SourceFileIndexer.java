@@ -82,6 +82,22 @@ public final class SourceFileIndexer {
     /** Bytes read per character of the content head: a UTF-8 character takes at most four. */
     private static final int HEAD_BYTES_PER_CHAR = 4;
 
+    /**
+     * Why a summary named {@link AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME}, in any case, cannot be written:
+     * the package phase writes that file into the directory ({@link #phaseFileClash(Path)}).
+     */
+    static final String PACKAGE_FILE_CLASH = "the file the package phase writes into every directory ("
+            + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME
+            + ", in any case: a case-insensitive file system takes one for the other)";
+
+    /**
+     * Why a summary named {@link AiMdHeaderCodec#PROJECT_AI_MD_FILENAME}, in any case, cannot be written
+     * into the output root: the project phase writes that file there ({@link #phaseFileClash(Path)}).
+     */
+    static final String PROJECT_FILE_CLASH = "the file the project phase writes into the output root ("
+            + AiMdHeaderCodec.PROJECT_AI_MD_FILENAME
+            + ", in any case: a case-insensitive file system takes one for the other)";
+
     private final Path baseDirectory;
     private final Path outputRoot;
     private final List<String> fileExtensions;
@@ -413,6 +429,33 @@ public final class SourceFileIndexer {
         return outputRoot
                 .resolve(relativeToBase.toString() + AiMdHeaderCodec.AI_MD_EXTENSION)
                 .normalize();
+    }
+
+    /**
+     * Returns why a source file's summary would take the place of a file the package or the project phase
+     * owns, or {@code null} when it would not: a source named {@code package} is summarized into
+     * {@link AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} in whatever directory it sits, a source named
+     * {@code project} at the base root (or directly in its {@code src}) into
+     * {@link AiMdHeaderCodec#PROJECT_AI_MD_FILENAME} in the output root. The names are compared in any case, as a case-insensitive file system compares them.
+     *
+     * @param sourceFile the source file
+     * @return the reason, or {@code null}
+     */
+    public @Nullable String phaseFileClash(final Path sourceFile) {
+        final Path target = targetFile(sourceFile);
+        final Path name = target.getFileName();
+        if (name == null) {
+            return null;
+        }
+        final String fileName = name.toString();
+        if (fileName.equalsIgnoreCase(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)) {
+            return PACKAGE_FILE_CLASH;
+        }
+        if (fileName.equalsIgnoreCase(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)
+                && outputRoot.normalize().equals(target.getParent())) {
+            return PROJECT_FILE_CLASH;
+        }
+        return null;
     }
 
     /**

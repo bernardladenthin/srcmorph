@@ -674,6 +674,66 @@ public class GenerateEngineTest {
         assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
+    /** A configuration that indexes the files without an extension {@code fileNames} names, by a fallback. */
+    private SrcMorphConfiguration fileNamesConfig(final String... fileNames) throws IOException {
+        final SrcMorphConfiguration config = baseConfig();
+        config.setFileNames(Arrays.asList(fileNames));
+        final RoutingRule fallback = new RoutingRule();
+        fallback.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
+        fallback.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        fallback.setFallback(true);
+        config.setRules(Arrays.asList(javaFileRule(), fallback));
+        return config;
+    }
+
+    @Test
+    public void execute_aSourceNamedPackageInAnotherCase_failsNamingItAndThePackagePhase() throws Exception {
+        // arrange: Package.ai.md is package.ai.md on a case-insensitive file system
+        final SrcMorphConfiguration config = fileNamesConfig("package");
+        final Path source = tempDir.resolve("src/main/java/com/example/Package");
+        Files.write(source, "package\n".getBytes(StandardCharsets.UTF_8));
+        final GenerateEngine engine = new GenerateEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
+        assertThat(thrown.getMessage(), startsWith(source + " would be summarized into "));
+        assertThat(thrown.getMessage(), containsString("the file the package phase writes into every directory"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    @Test
+    public void check_aSourceNamedProjectAtTheBaseRoot_failsNamingItAndTheProjectPhase() throws Exception {
+        // arrange: src/project is summarized into out/project.ai.md
+        final SrcMorphConfiguration config = fileNamesConfig("project");
+        config.setSubtrees(Collections.singletonList("src"));
+        final Path source = tempDir.resolve("src/project");
+        Files.write(source, "project\n".getBytes(StandardCharsets.UTF_8));
+        final GenerateEngine engine = new GenerateEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::check);
+
+        // assert
+        assertThat(thrown.getMessage(), startsWith(source + " would be summarized into "));
+        assertThat(thrown.getMessage(), containsString("the file the project phase writes into the output root"));
+    }
+
+    @Test
+    public void execute_aSourceNamedProjectBelowTheBaseRoot_isSummarized() throws Exception {
+        // arrange: only the output root holds the project phase's file
+        final SrcMorphConfiguration config = fileNamesConfig("project");
+        Files.write(tempDir.resolve("src/main/java/com/example/project"), "project\n".getBytes(StandardCharsets.UTF_8));
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(2));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/project.ai.md")), is(true));
+    }
+
     @Test
     public void execute_promptThatFillsTheWindow_failsNamingModelAndPrompt() throws Exception {
         // arrange

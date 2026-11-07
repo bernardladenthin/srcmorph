@@ -7,6 +7,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1084,6 +1085,46 @@ public class SourceFileIndexerTest {
         assertThat(
                 indexer.targetFile(temp.resolve("src/main/java/com/example/Foo.java")),
                 is(equalTo(outputRoot.resolve("main/java/com/example/Foo.java.ai.md"))));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="phaseFileClash">
+    @Test
+    public void phaseFileClash_aSourceNamedPackageInAnyCaseAndDirectory_clashesWithThePackagePhase() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+
+        // act, assert
+        assertThat(
+                indexer.phaseFileClash(temp.resolve("src/main/java/com/example/package")),
+                is(equalTo(SourceFileIndexer.PACKAGE_FILE_CLASH)));
+        assertThat(indexer.phaseFileClash(temp.resolve("PACKAGE")), is(equalTo(SourceFileIndexer.PACKAGE_FILE_CLASH)));
+    }
+
+    @Test
+    public void phaseFileClash_aSourceNamedProjectAtTheBaseRoot_clashesWithTheProjectPhase() throws Exception {
+        // arrange: the output root given unnormalized, as a caller may
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final SourceFileIndexer indexer =
+                indexer(temp, temp.resolve("x/../out"), Collections.<String>emptyList(), 0L, 0L);
+
+        // act, assert
+        assertThat(
+                indexer.phaseFileClash(temp.resolve("src/Project")), is(equalTo(SourceFileIndexer.PROJECT_FILE_CLASH)));
+        assertThat(indexer.phaseFileClash(temp.resolve("project")), is(equalTo(SourceFileIndexer.PROJECT_FILE_CLASH)));
+    }
+
+    @Test
+    public void phaseFileClash_aSourceNamedProjectBelowTheRootOrAnyOtherName_doesNotClash() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+
+        // act, assert
+        assertThat(indexer.phaseFileClash(temp.resolve("src/main/project")), is(nullValue()));
+        assertThat(indexer.phaseFileClash(temp.resolve("src/main/java/package.java")), is(nullValue()));
+        assertThat(indexer.phaseFileClash(temp.resolve("src/main/java/Foo.java")), is(nullValue()));
     }
     // </editor-fold>
 
