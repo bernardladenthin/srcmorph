@@ -232,6 +232,27 @@ public class RouteEstimatorTest {
                 is(equalTo(3 * window(1_330L))));
     }
 
+    // <editor-fold defaultstate="collapsed" desc="chunkRoom">
+    @Test
+    public void chunkRoom_aWindowAndAChunkPrompt_isTheSafeWindowLessThePrompt() {
+        // act, assert
+        // a window of 1 330 (a source budget of 1 300 next to a prompt of 30): the safe window of 1 064 less
+        // a chunk prompt of 65 leaves 999 characters, as the run computes it
+        assertThat(RouteEstimator.chunkRoom(1_300L, 30, 65), is(999));
+        // a chunk prompt longer than the window leaves less than nothing
+        assertThat(RouteEstimator.chunkRoom(1_300L, 30, 2_000) < 0, is(true));
+    }
+
+    @Test
+    public void chunkRoom_aBudgetBeyondAnInt_isCapped() {
+        // act
+        final int room = RouteEstimator.chunkRoom(Long.MAX_VALUE, 0, 0);
+
+        // assert
+        assertThat(room, is(MapReduceMath.safeWindow(Integer.MAX_VALUE)));
+    }
+    // </editor-fold>
+
     @Test
     public void estimateRouteSeconds_chunksSizedNextToALongerChunkPrompt_areMore() {
         // arrange: a map-reduce of a source ten windows long

@@ -105,12 +105,13 @@ JAVA_FILES = [
     "provider/OpenAiCompatibleProviderSupport.java",
 ]
 EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh", ".pl", ".pm", ".xml", ".xsd", ".xsl", ".xslt",
-              ".wsdl", ".kt", ".kts", ".groovy", ".scala", ".jsp", ".jspf", ".tag", ".xhtml", ".bpmn", ".dmn",
-              ".yml", ".yaml", ".proto", ".avsc", ".graphql", ".graphqls", ".tf", ".hcl", ".gradle", ".properties",
-              ".ts", ".mts", ".cts"]
+              ".wsdl", ".kt", ".kts", ".groovy", ".gvy", ".scala", ".jsp", ".jspf", ".tag", ".xhtml", ".bpmn", ".dmn",
+              ".yml", ".yaml", ".proto", ".avsc", ".graphql", ".graphqls", ".gql", ".tf", ".hcl", ".gradle",
+              ".properties", ".ps1", ".psm1", ".bat", ".cmd", ".ts", ".mts", ".cts"]
 # Files the runs index by name: without an extension, or a manifest no extension of theirs selects.
 # srcmorph reads them as globs over the file name, in any case (the dockerfile rule's Dockerfile.*).
-FILE_NAMES = ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json"]
+FILE_NAMES = ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json", "pyproject.toml", "openapi*.json",
+              "swagger*.json", "asyncapi*.json"]
 
 
 def name_glob(glob):
@@ -164,7 +165,7 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("xml", {"extensions": XML_EXTENSIONS + [".wsdl"]}, "xml", 0),
              ("java-ee", _and({"extensions": [".java"]}, {"contentMatches": EE_IMPORTS}), None, 10),
              ("kotlin", {"extensions": [".kt", ".kts"]}, "oop", 0),
-             ("groovy", {"extensions": [".groovy"]}, "oop", 0),
+             ("groovy", {"extensions": [".groovy", ".gvy"]}, "oop", 0),
              ("scala", {"extensions": [".scala"]}, "oop", 0),
              # measured 2026-11-05 on a TypeScript repository: the oop prompt names more of the API than the fallback
              ("typescript", {"extensions": [".ts", ".mts", ".cts"]}, "oop", 0),
@@ -179,23 +180,37 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("wsdl", {"extensions": [".wsdl"]}, "xml", 10),
              ("jsp", {"extensions": [".jsp", ".jspf", ".tag"]}, "view", 0),
              ("facelets", {"extensions": [".xhtml"]}, "view", 0),
-             ("openapi", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^[\"']?(?:openapi|swagger)[\"']?[ \t]*:"}),
-              "contract", 10),
+             ("openapi", _or(_and({"extensions": YAML_EXTENSIONS},
+                                  {"contentMatches": r"""(?m)^["']?(?:openapi|swagger)["']?[ \t]*:"""}),
+                             {"fileNames": ["openapi*.json", "swagger*.json"]}), "contract", 10),
+             ("asyncapi", _or(_and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"""(?m)^["']?asyncapi["']?[ \t]*:"""}),
+                              {"fileNames": ["asyncapi*.json"]}), "contract", 10),
              ("proto", {"extensions": [".proto"]}, "contract", 0),
              ("avro", {"extensions": [".avsc"]}, "contract", 0),
-             ("graphql", {"extensions": [".graphql", ".graphqls"]}, "contract", 0),
+             ("graphql", {"extensions": [".graphql", ".graphqls", ".gql"]}, "contract", 0),
              ("actions", {"pathGlob": "**/.github/{workflows,actions}/**/*.{yml,yaml}"}, "ops", 10),
              # the kind as k8s-facts.tsv counts it: quoted or not
              ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"}), "ops", 5),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
+             ("camel-yaml", _and({"extensions": YAML_EXTENSIONS},
+                                {"contentMatches": r"(?m)^-[ \t]+(?:route|routeTemplate|templatedRoute|from|rest)[ \t]*:"}),
+              "ops", 10),
              ("compose", {"fileNames": ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]}, "ops", 10),
+             ("ansible", _or({"pathGlob": "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"},
+                             _and({"extensions": YAML_EXTENSIONS},
+                                  {"contentMatches": r"(?m)^-[ \t]++(?:name[ \t]*+:[^\n]*+\n[ \t]++)?hosts[ \t]*+:"})),
+              "ops", 5),
              ("terraform", {"extensions": [".tf", ".hcl"]}, "ops", 0),
              # build scripts of both DSLs: a .gradle.kts over the kotlin rule
              ("gradle", _or({"extensions": [".gradle"]}, {"fileNames": ["*.gradle.kts"]}), "ops", 10),
              ("properties", {"extensions": [".properties"]}, "ops", 0),
+             # no prompt of their own: the fallback prompt, with their counters under --facts
+             ("powershell", {"extensions": [".ps1", ".psm1"]}, "fallback", 0),
+             ("batch", {"extensions": [".bat", ".cmd"]}, "fallback", 0),
              # measured 2026-11-06 on an extension manifest: with the ops prompt's npm line gpt-oss-20b names more
              # than with the fallback (mean 36 of 45 against 25), GPT-6 Luna all of them
              ("npm", {"fileNames": ["package.json"]}, "ops", 10),
+             ("pyproject", {"fileNames": ["pyproject.toml"]}, "ops", 10),
              ("ops", {"extensions": YAML_EXTENSIONS}, "ops", 0))
 # Files that hold credentials never reach a model: the secrets rule of the self-test and the examples,
 # at the highest priority, so no other rule takes them.

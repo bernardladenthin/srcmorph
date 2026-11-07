@@ -68,13 +68,7 @@ public class RangeCondition {
      * @return {@code true} if the value is in range
      */
     public boolean contains(final long value) {
-        if (min > 0 && value <= min) {
-            return false;
-        }
-        if (max > 0 && value > max) {
-            return false;
-        }
-        return true;
+        return (min <= 0 || value > min) && (max <= 0 || value <= max);
     }
 
     /**

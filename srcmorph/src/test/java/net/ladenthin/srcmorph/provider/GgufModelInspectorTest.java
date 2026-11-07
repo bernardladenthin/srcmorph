@@ -4,11 +4,14 @@
 package net.ladenthin.srcmorph.provider;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.emptyOrNullString;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.OptionalLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -40,8 +43,8 @@ public class GgufModelInspectorTest {
 
         // assert
         assertThat(info.readable(), is(false));
-        assertThat(info.failure().isEmpty(), is(false));
-        assertThat(info.contextLength(), is(GgufModelInfo.UNKNOWN_CONTEXT_LENGTH));
+        assertThat(info.failure(), is(not(emptyOrNullString())));
+        assertThat(info.contextLength(), is(OptionalLong.empty()));
     }
 
     /** A truncated download: the right magic bytes, then nothing. */

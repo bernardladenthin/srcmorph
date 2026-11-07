@@ -430,6 +430,24 @@ jobs:
           work-dir: .
           marker: '\*\*Total:\*\* 1 file\(s\) across 1 model\(s\)'
           args: examples/config_Plan.json
+      # The same plan on the module path, as a JPMS consumer runs the CLI: the module-info.java of the
+      # core and the CLI (what the core exports, and to whom; what the CLI opens to Jackson) is read
+      # only here; every other job and test runs on the classpath. The module path takes modules only: no pom entry, and none of llama's natives
+      # jars, which are no modules either (Plan with the mock provider loads none).
+      - name: Run the CLI on the module path
+        run: |
+          set -euo pipefail
+          version=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n1)
+          mvn --batch-mode --no-transfer-progress -q -pl srcmorph-cli dependency:build-classpath \
+            -DincludeScope=runtime -Dmdep.outputFile="$PWD/module-path.txt"
+          modules=$(tr ':' '\n' < module-path.txt | grep -v '\.pom$' | grep -vE '/llama-[0-9][^/-]*-[^/]*\.jar$' | paste -sd:)
+          echo "$modules" | tr ':' '\n'
+          cd examples
+          java -p "$GITHUB_WORKSPACE/srcmorph-cli/target/srcmorph-cli-$version.jar:$modules" \
+            -m net.ladenthin.srcmorph.cli/net.ladenthin.srcmorph.cli.Main config_Plan.json \
+            > "$GITHUB_WORKSPACE/module-path-out.log" 2>&1
+          grep -q 'Main#run end\.' "$GITHUB_WORKSPACE/module-path-out.log"
+          grep -qE '\*\*Total:\*\* 1 file\(s\) across 1 model\(s\)' "$GITHUB_WORKSPACE/module-path-out.log"
       - name: Upload smoke logs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -438,6 +456,7 @@ jobs:
           path: |
             smoke-out.log
             smoke-err.log
+            module-path-out.log
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------

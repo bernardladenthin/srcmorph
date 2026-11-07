@@ -9,14 +9,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.GenerationRequest;
 import org.junit.jupiter.api.Test;
 
 public class MockGenerationProviderTest {
-
-    private static final AiMdHeader HEADER = new AiMdHeader(
-            "Foo.java", "1.0", "C", "2026-01-01T00:00:00Z", "2026-01-01T00:00:10Z", "0.1.0", "1.0.0", "file");
 
     private final MockGenerationProvider provider = new MockGenerationProvider();
 
@@ -89,9 +85,6 @@ public class MockGenerationProviderTest {
     // <editor-fold defaultstate="collapsed" desc="lastUsage">
     @Test
     public void lastUsage_afterGenerate_isAFixedEstimateOfTheLastCall() throws IOException {
-        // arrange
-        final MockGenerationProvider provider = new MockGenerationProvider();
-
         // pre-assert
         assertThat(provider.lastUsage(), is(GenerationUsage.NONE));
 

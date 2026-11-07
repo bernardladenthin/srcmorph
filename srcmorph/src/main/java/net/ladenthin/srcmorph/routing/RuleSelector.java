@@ -42,10 +42,11 @@ public final class RuleSelector {
      * @return the winning rule (which may be a skip or the fallback), or {@code null} when nothing
      *         matches and no fallback is configured
      */
-    public @Nullable RoutingRule select(final Iterable<RoutingRule> configs, final FileContext context) {
+    public @Nullable RoutingRule select(
+            final Iterable<? extends @Nullable RoutingRule> configs, final FileContext context) {
         RoutingRule fallback = null;
         RoutingRule best = null;
-        for (final RoutingRule config : configs) {
+        for (final @Nullable RoutingRule config : configs) {
             if (config == null) {
                 continue;
             }
@@ -106,9 +107,9 @@ public final class RuleSelector {
      * @param configs the configured rules
      * @throws IllegalArgumentException if the rule set is invalid
      */
-    public void validate(final Iterable<RoutingRule> configs) {
+    public void validate(final Iterable<? extends @Nullable RoutingRule> configs) {
         int fallbackCount = 0;
-        for (final RoutingRule config : configs) {
+        for (final @Nullable RoutingRule config : configs) {
             if (config == null) {
                 continue;
             }

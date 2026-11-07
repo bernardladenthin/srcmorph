@@ -13,41 +13,29 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public class SourcePathsTest {
 
     private final SourcePaths pathSupport = new SourcePaths();
 
     // <editor-fold defaultstate="collapsed" desc="relativizeFromSrc">
-    @Test
-    public void relativizeFromSrc_leadingSrcSegment_stripsLeadingSrcSegment() {
+    /** A leading {@code src} segment goes; none, or one further down, leaves the path relative to the base. */
+    @ParameterizedTest(name = "{0} -> {1}")
+    @CsvSource({
+        "/project/src/main/java/Foo.java, main/java/Foo.java",
+        "/project/main/Foo.java, main/Foo.java",
+        "/project/main/src/Foo.java, main/src/Foo.java"
+    })
+    public void relativizeFromSrc_aPath_dropsOnlyALeadingSrcSegment(final String source, final String expected) {
         // arrange
-        Path base = Paths.get("/project");
-        Path path = Paths.get("/project/src/main/java/Foo.java");
+        final Path base = Paths.get("/project");
+        final Path path = Paths.get(source);
 
         // act, assert
         // The subpath(1, n) return is asserted, killing the null-return mutant on that branch.
-        assertThat(pathSupport.relativizeFromSrc(base, path), is(Paths.get("main/java/Foo.java")));
-    }
-
-    @Test
-    public void relativizeFromSrc_pathWithoutLeadingSrc_keepsPath() {
-        // arrange
-        Path base = Paths.get("/project");
-        Path path = Paths.get("/project/main/Foo.java");
-
-        // act, assert
-        assertThat(pathSupport.relativizeFromSrc(base, path), is(Paths.get("main/Foo.java")));
-    }
-
-    @Test
-    public void relativizeFromSrc_srcNotFirstSegment_doesNotStripSrc() {
-        // arrange
-        Path base = Paths.get("/project");
-        Path path = Paths.get("/project/main/src/Foo.java");
-
-        // act, assert
-        assertThat(pathSupport.relativizeFromSrc(base, path), is(Paths.get("main/src/Foo.java")));
+        assertThat(pathSupport.relativizeFromSrc(base, path), is(Paths.get(expected)));
     }
 
     @Test

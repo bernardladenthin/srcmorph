@@ -96,8 +96,8 @@ public final class FactGroups {
      * @throws IllegalArgumentException if a rule's {@code factsKey} matches no registered group, or a rule
      *                                  sets both inline {@code facts} and a {@code factsKey}
      */
-    public void resolveFactsKeys(final Iterable<RoutingRule> rules) {
-        for (final RoutingRule rule : rules) {
+    public void resolveFactsKeys(final Iterable<? extends @Nullable RoutingRule> rules) {
+        for (final @Nullable RoutingRule rule : rules) {
             if (rule == null) {
                 continue;
             }

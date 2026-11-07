@@ -14,6 +14,8 @@ import java.util.TreeMap;
 import net.ladenthin.srcmorph.config.OversizeStrategy;
 import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.indexer.generation.GenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.MapReduceMath;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The routing plan for one {@code generate} run: which files each AI model will index (with which
@@ -149,6 +151,7 @@ public final class IndexPlan {
     private final Map<String, List<Route>> routesByModel = new LinkedHashMap<>();
     private final List<Path> skipped = new ArrayList<>();
     private final List<Path> unmatched = new ArrayList<>();
+    private final Map<Path, Integer> chunkRoomRefused = new LinkedHashMap<>();
     private final Set<String> calibratedModels = new HashSet<>();
 
     /** Creates an empty plan. */
@@ -317,6 +320,28 @@ public final class IndexPlan {
             }
         }
         return total;
+    }
+
+    /**
+     * Records that an over-window file's rule chunks it ({@code mapReduce} or {@code sampleChunks}) in a
+     * window that leaves a chunk fewer than {@link MapReduceMath#MIN_CHUNK_CHARS} characters: the run
+     * would refuse it, so the plan fails it.
+     *
+     * @param file the source file, routed with {@code addRoute} as well
+     * @param room the characters a chunk would get
+     */
+    public void refuseChunkRoom(final Path file, final int room) {
+        chunkRoomRefused.put(file, room);
+    }
+
+    /**
+     * Returns the number of over-window files whose chunks the window leaves too little room
+     * ({@link #refuseChunkRoom}): they fail the build as the {@code onOversize=fail} ones do.
+     *
+     * @return the count
+     */
+    public int chunkRoomFailCount() {
+        return chunkRoomRefused.size();
     }
 
     /**
@@ -573,6 +598,7 @@ public final class IndexPlan {
             for (final Route entry : group.getValue()) {
                 if (entry.exceedsWindow()) {
                     final OversizeStrategy strategy = strategyOf(entry);
+                    final Integer room = chunkRoomRefused.get(entry.file());
                     sb.append("- ")
                             .append(relativize(baseDir, entry.file()))
                             .append(" -> model `")
@@ -583,7 +609,7 @@ public final class IndexPlan {
                             .append(entry.availableSourceChars())
                             .append(" chars) onOversize=")
                             .append(strategy.configValue())
-                            .append(strategy == OversizeStrategy.FAIL ? " -> FAILS BUILD" : " -> handled")
+                            .append(outcome(strategy, room))
                             .append('\n');
                 }
             }
@@ -594,6 +620,24 @@ public final class IndexPlan {
                     .append(" (sample/mapReduce/sampleChunks/deterministic)")
                     .append(" to handle oversized files (config only; the build never picks a model for you).\n");
         }
+        if (chunkRoomFailCount() > 0) {
+            sb.append("\nThe entries with too little room for a chunk fail the build: give their model a larger")
+                    .append(" contextSize or a smaller maxOutputTokens, or shorten the map and reduce prompts.\n");
+        }
+    }
+
+    /**
+     * Returns what the run does with an over-window file: fail it, or handle it by its strategy.
+     *
+     * @param strategy the rule's oversize strategy
+     * @param room     the characters a chunk would get when the window leaves too few, {@code null} otherwise
+     * @return the text after the file's line
+     */
+    private static String outcome(final OversizeStrategy strategy, final @Nullable Integer room) {
+        if (room != null) {
+            return " -> FAILS BUILD: " + room + " chars for a chunk, fewer than " + MapReduceMath.MIN_CHUNK_CHARS;
+        }
+        return strategy == OversizeStrategy.FAIL ? " -> FAILS BUILD" : " -> handled";
     }
 
     /**

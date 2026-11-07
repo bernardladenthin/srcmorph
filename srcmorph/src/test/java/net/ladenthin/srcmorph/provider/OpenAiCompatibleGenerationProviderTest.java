@@ -37,8 +37,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.document.AiMdHeader;
-import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.GenerationRequest;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import org.jspecify.annotations.Nullable;
@@ -58,16 +56,6 @@ public class OpenAiCompatibleGenerationProviderTest {
 
     private static final PromptCatalog PROMPT_SUPPORT =
             new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
-
-    private static final AiMdHeader HEADER = new AiMdHeader(
-            "Test.java",
-            AiMdHeaderCodec.HEADER_VERSION_1_0,
-            "00000000",
-            "2026-10-28T00:00:00Z",
-            "2026-10-28T00:00:00Z",
-            "0.1.0-SNAPSHOT",
-            "0.0.0",
-            AiMdHeaderCodec.NODE_TYPE_FILE);
 
     private static final GenerationRequest REQUEST =
             new GenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), "class Test {}");
@@ -957,7 +945,7 @@ public class OpenAiCompatibleGenerationProviderTest {
     }
 
     @Test
-    public void lastUsage_ofACutOffAnswer_isKeptAlthoughTheCallThrows() throws Exception {
+    public void lastUsage_ofACutOffAnswer_isKeptAlthoughTheCallThrows() {
         // arrange
         answer = completion("half an answ", "length");
         final OpenAiCompatibleGenerationProvider provider =

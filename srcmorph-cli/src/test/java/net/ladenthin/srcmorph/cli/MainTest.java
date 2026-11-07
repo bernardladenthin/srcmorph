@@ -94,7 +94,7 @@ public class MainTest {
         // arrange
         final Path configFile = tempDir.resolve("config.txt");
         Files.write(configFile, MINIMAL_JSON_STRING.getBytes(StandardCharsets.UTF_8));
-        final String[] arguments = new String[] {configFile.toString()};
+        final String[] arguments = {configFile.toString()};
 
         // act, assert
         assertThrows(IllegalArgumentException.class, () -> Main.main(arguments));

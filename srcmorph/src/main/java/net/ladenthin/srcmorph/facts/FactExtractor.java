@@ -108,11 +108,12 @@ public final class FactExtractor {
      * @param source   the full source text
      * @return the count per label, in counter order
      */
-    public static Map<String, Integer> counts(final @Nullable List<FactCounter> counters, final String source) {
+    public static Map<String, Integer> counts(
+            final @Nullable List<? extends @Nullable FactCounter> counters, final String source) {
         final Map<String, Integer> counts = new LinkedHashMap<>();
         if (counters != null) {
             final String counted = withoutIgnored(counters, source);
-            for (final FactCounter counter : counters) {
+            for (final @Nullable FactCounter counter : counters) {
                 if (counter == null || counter.isIgnore()) {
                     continue;
                 }
@@ -141,7 +142,7 @@ public final class FactExtractor {
      * @param counters the fact counters; {@code null} or empty is valid (nothing to check)
      * @throws IllegalArgumentException naming the group and the counter if any of that does not hold
      */
-    public static void validate(final String where, final @Nullable List<FactCounter> counters) {
+    public static void validate(final String where, final @Nullable List<? extends @Nullable FactCounter> counters) {
         validate(where, counters, true);
     }
 
@@ -156,14 +157,16 @@ public final class FactExtractor {
      * @throws IllegalArgumentException naming the group and the counter if any of that does not hold
      */
     static void validate(
-            final String where, final @Nullable List<FactCounter> counters, final boolean counterRequired) {
+            final String where,
+            final @Nullable List<? extends @Nullable FactCounter> counters,
+            final boolean counterRequired) {
         if (counters == null || counters.isEmpty()) {
             return;
         }
         final Set<String> labels = new HashSet<>(new Java8CompatibilityHelper().hashMapCapacityFor(counters.size()));
         boolean reported = false;
         for (int i = 0; i < counters.size(); i++) {
-            final FactCounter counter = counters.get(i);
+            final @Nullable FactCounter counter = counters.get(i);
             final String entry = where + " counter " + (i + 1);
             if (counter == null) {
                 throw new IllegalArgumentException(entry + " is missing");
@@ -207,11 +210,11 @@ public final class FactExtractor {
      * @param source   the source text
      * @return the text the reported counters count
      */
-    private static String withoutIgnored(final List<FactCounter> counters, final String source) {
+    private static String withoutIgnored(final List<? extends @Nullable FactCounter> counters, final String source) {
         String text = source;
-        for (final FactCounter counter : counters) {
+        for (final @Nullable FactCounter counter : counters) {
             final String pattern = counter == null || !counter.isIgnore() ? null : counter.getPattern();
-            if (pattern == null) {
+            if (counter == null || pattern == null) {
                 continue;
             }
             final Matcher matcher = matcher(pattern, text);

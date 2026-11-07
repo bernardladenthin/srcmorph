@@ -237,7 +237,9 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    incremental run regenerates it only after the source changes. An empty body is written as well
    (`AI provider returned empty body …`), but the next run retries it. For the OpenAI-compatible
    provider the cut-off warning is logged under the `LlamaCppJniProviderSupport` logger, which points
-   at the wrong backend. Both are in [`TODO.md`](../../TODO.md).
+   at the wrong backend. Both are fixed since: a cut-off answer is asked for again or left unwritten for
+   the next run, or written with a marker under `onIncomplete: keep`, and the warning is logged under
+   the provider that ran.
 4. **Format discipline depends on the model, not on the prompt.** All prompts are the v1 prompts, and
    25 of 35 runs follow them without a slip. The June code-fence regression of DeepSeek and
    Seed-Coder came with June's experimental prompt v2 and does not show up with v1. Granite
@@ -532,7 +534,8 @@ and Kolibri-1 and 0.53 USD for the nine runs of 2026-10-31, which were added lat
   `AiConditionEvaluator.java` first in all three runs. Its summaries are among the longest (about
   70 KB for the 24 files, gpt-oss-20b writes 50 to 57 KB), but length does not explain it: over the
   32 scored runs without empty or broken summaries a longer index searches hardly worse with this
-  reader (correlation −0.18 with hit@1, −0.08 with the MRR), and the same model with reasoning low
+  reader (correlation −0.18 with hit@1, −0.08 with the MRR, [`modelcard/correlate.py`](modelcard/correlate.py)),
+  and the same model with reasoning low
   writes 72 KB and finds 95 %. MAI-Code-1.1-Flash, added later, writes one of the longest indexes (78 KB) and misses the
   two questions about blocked members and the audit trail, although its `03_routines.sql` summary
   names `is_blocked` and `loan_audit`.
@@ -782,8 +785,9 @@ writes [`scores/files.tsv`](modelcard/scores/files.tsv) (one row per model and f
 trees are in [`outputs-2026-10/`](outputs-2026-10/), one directory per model.
 [`modelcard/repeat.py`](modelcard/repeat.py) scores the repeat runs under
 [`repeat-2026-10/`](repeat-2026-10/) (made with `run.py --out <run>/out --meta <run>/meta`, and
-`--seed` for the local ones), and [`modelcard/search.py`](modelcard/search.py) runs the search
-measurement.
+`--seed` for the local ones), [`modelcard/search.py`](modelcard/search.py) runs the search
+measurement, and [`modelcard/correlate.py`](modelcard/correlate.py) correlates an index's size with
+its search scores.
 
 ### Caveats
 

@@ -725,6 +725,9 @@ the path a user takes: `mvn install` of the reactor, then `examples/build-your-o
 `srcmorph.version` and `llama.version` read from the reactor, so the example pom itself is under test
 on every pull request. It then runs the `java/smoke-fatjar-cli` action of [bernardladenthin/actions](https://github.com/bernardladenthin/actions)
 (BAF runs it too) from `examples/` against `config_Plan.json`, asserting exit 0 plus `Main#run end.` in the output.
+A last step runs the same plan on the module path (`java -p ... -m net.ladenthin.srcmorph.cli/...`,
+the CLI's runtime dependencies without the pom entry and llama's natives jars): the only place the
+`module-info.java` files run, as every test runs on the classpath.
 `Plan` with the `mock` provider needs no GGUF, no GPU and no network, which makes this the cheapest
 possible real launch of the CLI. **Do not "strengthen" it to `config_All.json` over a real source
 tree:** the example configs are tuned for a small demo tree, so `All` against this repo's own

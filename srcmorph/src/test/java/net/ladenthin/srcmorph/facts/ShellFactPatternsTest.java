@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import net.ladenthin.srcmorph.config.FactCounter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Validates the shell fact counters of the current profile ({@code profiles/v3/shell-facts.tsv}) on Bash,
@@ -195,28 +197,12 @@ public class ShellFactPatternsTest {
         assertThat(count("functions", "f() {\n}\ncat <<EOF\ng() {\n}\n"), is(1));
     }
 
-    @Test
-    public void ignore_manyArithmeticShifts_stayLinear() {
+    /** Arithmetic shifts, heredoc markers in strings, unclosed heredocs: many of one, one function. */
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"x=$((1 << 4))", "echo \"cat <<EOF here\"", "cat <<EOF >> out.txt"})
+    public void ignore_manyLinesOfAHeredocLookalike_stayLinear(final String line) {
         // arrange
-        final String source = functionThenLines("x=$((1 << 4))");
-
-        // act, assert
-        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
-    }
-
-    @Test
-    public void ignore_manyHeredocMarkersInStrings_stayLinear() {
-        // arrange
-        final String source = functionThenLines("echo \"cat <<EOF here\"");
-
-        // act, assert
-        assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));
-    }
-
-    @Test
-    public void ignore_manyUnclosedHeredocs_stayLinear() {
-        // arrange
-        final String source = functionThenLines("cat <<EOF >> out.txt");
+        final String source = functionThenLines(line);
 
         // act, assert
         assertThat(assertTimeoutPreemptively(LONG_INPUT_LIMIT, () -> count("functions", source)), is(1));

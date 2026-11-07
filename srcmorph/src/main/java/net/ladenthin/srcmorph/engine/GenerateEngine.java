@@ -23,6 +23,7 @@ import net.ladenthin.srcmorph.indexer.IndexPlan;
 import net.ladenthin.srcmorph.indexer.RecordedHashes;
 import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
 import net.ladenthin.srcmorph.indexer.generation.GenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.MapReduceMath;
 import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
@@ -125,7 +126,7 @@ public final class GenerateEngine {
 
         logRun(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
-        final List<RoutingRule> configured = config.getRules();
+        final List<? extends @Nullable RoutingRule> configured = config.getRules();
         if (configured == null || configured.isEmpty()) {
             throw new SrcMorphException(
                     "No rules configured (srcMorph.rules of the" + " configuration file); nothing to generate.");
@@ -197,6 +198,14 @@ public final class GenerateEngine {
                     + "(see the 'Over window' section in the plan above). Route them to a model with a "
                     + "large enough context window, or set onOversize=sample|mapReduce|sampleChunks|deterministic"
                     + " on the rule. The build does not pick a model for you; this is configuration only.");
+        }
+        final int chunkRoomFailCount = plan.chunkRoomFailCount();
+        if (chunkRoomFailCount > 0) {
+            throw new SrcMorphException(chunkRoomFailCount
+                    + " source file(s) are chunked in a window that leaves a chunk fewer than "
+                    + MapReduceMath.MIN_CHUNK_CHARS + " characters next to the map and reduce prompts (see the"
+                    + " 'Over window' section in the plan above); the run would refuse them. Give the model a larger"
+                    + " contextSize or a smaller maxOutputTokens, or shorten the map and reduce prompts.");
         }
 
         // 3c. Two source files summarized into the same .ai.md (src/main/java/Foo.java and
@@ -433,10 +442,16 @@ public final class GenerateEngine {
      *
      * @param rules the configured rules
      * @return the copies, in order
+     * @throws SrcMorphException if a rule is {@code null} (a list built in code; the file's loader refuses one)
      */
-    private static List<RoutingRule> copies(final List<RoutingRule> rules) {
+    private static List<RoutingRule> copies(final List<? extends @Nullable RoutingRule> rules)
+            throws SrcMorphException {
         final List<RoutingRule> copies = new ArrayList<>(rules.size());
-        for (final RoutingRule rule : rules) {
+        for (int i = 0; i < rules.size(); i++) {
+            final RoutingRule rule = rules.get(i);
+            if (rule == null) {
+                throw new SrcMorphException("Invalid rules: srcMorph.rules[" + i + "] is null");
+            }
             copies.add(rule.copy());
         }
         return copies;

@@ -142,9 +142,9 @@ public final class ModelListReport {
                     Locale.ROOT,
                     row,
                     escapeLineBreaks(model.id()),
-                    model.contextLength() != RemoteModel.UNKNOWN_CONTEXT_LENGTH
-                            ? Integer.toString(model.contextLength())
-                            : UNKNOWN,
+                    model.contextLength() == RemoteModel.UNKNOWN_CONTEXT_LENGTH
+                            ? UNKNOWN
+                            : Integer.toString(model.contextLength()),
                     price(model.inputUsdPerMillion()),
                     price(model.outputUsdPerMillion())));
         }
@@ -188,9 +188,9 @@ public final class ModelListReport {
      * @return the window of the entry
      */
     static int contextSize(final int patternContextSize, final int modelLimit) {
-        return modelLimit != RemoteModel.UNKNOWN_CONTEXT_LENGTH
-                ? Math.min(modelLimit, patternContextSize)
-                : patternContextSize;
+        return modelLimit == RemoteModel.UNKNOWN_CONTEXT_LENGTH
+                ? patternContextSize
+                : Math.min(modelLimit, patternContextSize);
     }
 
     private static void appendField(final StringBuilder out, final String name, final String value) {

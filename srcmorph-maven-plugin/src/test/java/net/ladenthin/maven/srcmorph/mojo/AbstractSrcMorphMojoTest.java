@@ -300,7 +300,7 @@ public class AbstractSrcMorphMojoTest {
     }
 
     @Test
-    public void properties_theProjectsValues_areNamedAsInAPom() throws Exception {
+    public void properties_theProjectsValues_areNamedAsInAPom() {
         // arrange
         final TestMojo mojo = mojo();
         mojo.buildDirectory = project.resolve("target").toFile();
@@ -327,7 +327,7 @@ public class AbstractSrcMorphMojoTest {
     }
 
     @Test
-    public void properties_aProjectValueMavenLeavesUnset_isNoProperty() throws Exception {
+    public void properties_aProjectValueMavenLeavesUnset_isNoProperty() {
         // arrange
         final TestMojo mojo = mojo();
         mojo.sourceDirectory = null;

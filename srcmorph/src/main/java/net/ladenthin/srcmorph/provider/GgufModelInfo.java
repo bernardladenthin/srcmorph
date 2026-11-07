@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.provider;
 
+import java.util.OptionalLong;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import net.ladenthin.srcmorph.support.ConvertToRecord;
@@ -22,31 +23,37 @@ import org.jspecify.annotations.Nullable;
 @EqualsAndHashCode
 public final class GgufModelInfo {
 
-    /** {@link #contextLength()} when the file declares no context length. */
-    public static final long UNKNOWN_CONTEXT_LENGTH = -1L;
+    private final @Nullable String modelName;
+    private final @Nullable Long contextLength;
+    private final @Nullable String failure;
 
-    private final boolean readable;
-    private final String modelName;
-    private final long contextLength;
-    private final String failure;
+    private GgufModelInfo(
+            final @Nullable String modelName, final @Nullable Long contextLength, final @Nullable String failure) {
+        this.modelName = modelName;
+        this.contextLength = contextLength;
+        this.failure = failure;
+    }
 
     /**
-     * Creates a new {@link GgufModelInfo}.
+     * What a file that parsed as a GGUF declares.
      *
-     * @param readable      whether the file parsed as a GGUF at all
-     * @param modelName     the declared model name, or empty when absent/unreadable
-     * @param contextLength the declared context length in tokens, or {@link #UNKNOWN_CONTEXT_LENGTH}
-     * @param failure       why the file could not be read, or empty when it could
+     * @param modelName     the declared model name, {@code null} when it declares none (an empty one is
+     *                      none)
+     * @param contextLength the declared context length in tokens, {@code null} when it declares none
+     * @return the readable result
      */
-    public GgufModelInfo(
-            final boolean readable,
-            final @Nullable String modelName,
-            final long contextLength,
-            final @Nullable String failure) {
-        this.readable = readable;
-        this.modelName = modelName != null ? modelName : "";
-        this.contextLength = contextLength;
-        this.failure = failure != null ? failure : "";
+    public static GgufModelInfo parsed(final @Nullable String modelName, final @Nullable Long contextLength) {
+        return new GgufModelInfo(modelName == null || modelName.isEmpty() ? null : modelName, contextLength, null);
+    }
+
+    /**
+     * A file that did not parse as a GGUF: the reason, and no claims about the model.
+     *
+     * @param failure why the file could not be read
+     * @return the unreadable result
+     */
+    public static GgufModelInfo unreadable(final String failure) {
+        return new GgufModelInfo(null, null, failure);
     }
 
     /**
@@ -55,33 +62,33 @@ public final class GgufModelInfo {
      * @return {@code true} when the header was read successfully
      */
     public boolean readable() {
-        return readable;
+        return failure == null;
     }
 
     /**
      * Returns the model name the file declares.
      *
-     * @return the model name, or an empty string when absent or unreadable
+     * @return the model name, {@code null} when it declares none or is unreadable
      */
-    public String modelName() {
+    public @Nullable String modelName() {
         return modelName;
     }
 
     /**
      * Returns the context length in tokens the file declares.
      *
-     * @return the declared context length, or {@link #UNKNOWN_CONTEXT_LENGTH} when it declares none
+     * @return the declared context length, empty when it declares none or is unreadable
      */
-    public long contextLength() {
-        return contextLength;
+    public OptionalLong contextLength() {
+        return contextLength == null ? OptionalLong.empty() : OptionalLong.of(contextLength);
     }
 
     /**
      * Returns why the file could not be read.
      *
-     * @return the failure description, or an empty string when the file was readable
+     * @return the failure description, {@code null} when the file was readable
      */
-    public String failure() {
+    public @Nullable String failure() {
         return failure;
     }
 }

@@ -119,14 +119,11 @@ public final class RouteEstimator {
             return 0L;
         }
         final long windowSeconds = estimateSeconds(availableSourceChars, modelConfig);
-        if (strategy != OversizeStrategy.MAP_REDUCE && strategy != OversizeStrategy.SAMPLE_CHUNKS) {
+        if (!strategy.chunks()) {
             return windowSeconds;
         }
-        // the window is the rule's: its source budget and its prompt; the chunks are sized next to the
-        // chunk prompt, as the run sizes them, and a room below the minimum chunk the run refuses
-        final int room =
-                MapReduceMath.safeWindow((int) Math.min(Integer.MAX_VALUE, availableSourceChars + basePromptLength))
-                        - chunkPromptLength;
+        // a room below the minimum chunk the run refuses
+        final int room = chunkRoom(availableSourceChars, basePromptLength, chunkPromptLength);
         if (room < MapReduceMath.MIN_CHUNK_CHARS) {
             return 0L;
         }
@@ -141,5 +138,21 @@ public final class RouteEstimator {
         final int fanIn = MapReduceMath.expectedFanIn(
                 sourceBudget, charsPerToken, GenerationTimeEstimator.DEFAULT_EXPECTED_OUTPUT_TOKENS);
         return (chunks + MapReduceMath.reduceCalls(chunks, fanIn)) * windowSeconds;
+    }
+
+    /**
+     * Returns the characters a chunk gets in a window, as the run sizes its chunks: the window is the
+     * rule's (its source budget and its prompt), the chunk sits next to {@code chunkPromptLength}. Below
+     * {@link MapReduceMath#MIN_CHUNK_CHARS} the run refuses the file.
+     *
+     * @param availableSourceChars the per-call source-character budget of the routed model and prompt
+     * @param basePromptLength     the length of the rule's prompt template with an empty source
+     * @param chunkPromptLength    the prompt length a chunk is sized next to
+     * @return the characters, negative when the chunk prompt alone is longer than the window
+     */
+    public static int chunkRoom(
+            final long availableSourceChars, final int basePromptLength, final int chunkPromptLength) {
+        return MapReduceMath.safeWindow((int) Math.min(Integer.MAX_VALUE, availableSourceChars + basePromptLength))
+                - chunkPromptLength;
     }
 }

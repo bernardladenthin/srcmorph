@@ -272,6 +272,51 @@ public class IndexPlanTest {
     }
 
     /**
+     * A chunked over-window entry whose window leaves a chunk too little room fails the build, and says
+     * how many characters it would get; the count is what the engine fails the plan on.
+     */
+    @Test
+    public void renderMarkdown_aRefusedChunkRoom_marksBuildFailureWithTheRoomAndAddsAdvice() {
+        // arrange
+        final IndexPlan plan = new IndexPlan();
+        plan.addRoute("modelA", Paths.get("Big.java"), oversizeRule("r1", "mapReduce"), 0, 9000L, 1000L);
+        plan.addRoute("modelA", Paths.get("Other.java"), oversizeRule("r1", "mapReduce"), 60, 9000L, 5000L);
+
+        // act
+        plan.refuseChunkRoom(Paths.get("Big.java"), 820);
+        final String rendered = plan.renderMarkdown(Paths.get(""));
+
+        // assert
+        assertThat(plan.chunkRoomFailCount(), is(1));
+        assertThat(plan.windowFailCount(), is(0));
+        assertThat(
+                rendered,
+                containsString("Big.java -> model `modelA` (source 9000 chars > window 1000 chars)"
+                        + " onOversize=mapReduce -> FAILS BUILD: 820 chars for a chunk, fewer than 1000\n"));
+        assertThat(
+                rendered,
+                containsString("Other.java -> model `modelA` (source 9000 chars > window 5000 chars)"
+                        + " onOversize=mapReduce -> handled\n"));
+        assertThat(rendered, containsString("The entries with too little room for a chunk fail the build"));
+        assertThat(rendered, not(containsString("The onOversize=fail entries fail the build.")));
+    }
+
+    /** Without a refused room the plan neither counts one nor gives its advice. */
+    @Test
+    public void chunkRoomFailCount_noRefusedRoom_isZeroAndTheAdviceIsOmitted() {
+        // arrange
+        final IndexPlan plan = new IndexPlan();
+        plan.addRoute("modelA", Paths.get("Big.java"), oversizeRule("r1", "mapReduce"), 60, 9000L, 5000L);
+
+        // act
+        final String rendered = plan.renderMarkdown(Paths.get(""));
+
+        // assert
+        assertThat(plan.chunkRoomFailCount(), is(0));
+        assertThat(rendered, not(containsString("too little room for a chunk")));
+    }
+
+    /**
      * A plan with no over-window entry at all must not emit the advice paragraph either -- this is the
      * zero case for the {@code windowFailCount() > 0} guard, distinct from the "handled" case above.
      */

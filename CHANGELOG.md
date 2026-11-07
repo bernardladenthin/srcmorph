@@ -92,8 +92,11 @@ The entries below hold the details; what a 1.4.0 user changes:
   `generatorVersion` too, and so are the bean's getter and setter.
 - **Java callers of the library, the naming review** (`docs/code-review-2026-11-05.md` section 2):
   `AiGenerationTimings` is `TimedGeneration`; `AiPromptPreparationSupport.getBasePromptLength` is
-  `PromptPreparer.basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` like
-  `GgufModelInfo.UNKNOWN_CONTEXT_LENGTH` (it was `0`). The CLI's `Main.logConfigurationTransformation`
+  `PromptPreparer.basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` (it was `0`).
+  `GgufModelInfo` has no sentinels (null-safety finding S10): it is made by `parsed(name,
+  contextLength)` or `unreadable(failure)`, `modelName()` and `failure()` are `null` where they were
+  `""`, `contextLength()` is an `OptionalLong`, and `UNKNOWN_CONTEXT_LENGTH` is gone. The CLI's
+  `Main.logConfigurationTransformation`
   is `logConfigurationEcho`, `configurationToYAML` is `configurationToYaml`, and `readString`,
   `fromJson`, `fromYaml`, `configurationToJson` and `configurationToYaml` are package-private.
   `AiMdHeader`'s accessors are named (the file keeps its letters): `h()` is `headerVersion()`, `c()`
@@ -152,7 +155,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   (`src/extra/...` before `src/main/...`), no longer subtree by subtree in configured order.
 - **Plan times change:** lower for map-reduce files whose rounds end in a single partial, lower for
   multi-byte (CJK) sources, and 0 s for a chunked file whose window leaves less than 1000 chars for a
-  chunk (the run fails that file). A context overflow of a prompt of 1000 chars or fewer is not
+  chunk. **Such a file fails the plan and `check`** (the "Over window" section says `FAILS BUILD: N
+  chars for a chunk`), as an `onOversize=fail` file does; the run used to fail it file by file. A
+  context overflow of a prompt of 1000 chars or fewer is not
   retried; the retry warning's "(A -> B chars)" names the refused prompt's length as A.
 - **Java callers of the generation classes:** `RouteEstimator.estimateRouteSeconds(...)` has no
   `fileSizeBytes` parameter, `MapReduceMath.sourceBudget` is gone; `SourceFileIndexer.sortByPath` and
@@ -305,6 +310,12 @@ The entries below hold the details; what a 1.4.0 user changes:
   `settings.xml`, keys, `*secret*` and `*credential*` configuration files), so they never reach a
   model; `ExamplesConfigBindingTest` pins which names it skips and that no source file is among
   them.
+
+- **The CLI runs on the module path in CI:** the `smoke-jar` job plans the demo tree with
+  `java -p ... -m net.ladenthin.srcmorph.cli/...`, the only run that reads the `module-info.java`
+  files (what the core exports, what the CLI opens to Jackson).
+- **`modelcard/correlate.py`** computes the model card's correlation of an index's size with its
+  search scores from `scores/` (Pearson and Spearman, the card's 32 runs by default).
 
 ### Changed
 
@@ -737,7 +748,12 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **The plan's time counts what the run does:** no reduce call for a one-partial batch that is passed
   on (17 partials: 2, not 3); characters, not bytes (a CJK source was about 3 times too long); 0 s
   for a mapReduce or sampleChunks file whose window leaves less than 1000 chars for a chunk, which the
-  run refuses.
+  run refuses; the plan and `check` fail on such a file now, before a model loads, naming the room
+  its chunks would get.
+- **A `null` rule in a list built in code fails the run naming it** (`Invalid rules: srcMorph.rules[1]
+  is null`) instead of a `NullPointerException`; the configuration file's loader refuses one already.
+  The classes that skip a `null` rule or counter say so in their parameter types
+  (`? extends @Nullable`), null-safety finding S9.
 - **A deterministic body fences a Markdown source safely:** the fence is one backtick longer than the
   longest backtick run in the lines it shows (at least three), so a ``` line in the source no longer
   closes the block.

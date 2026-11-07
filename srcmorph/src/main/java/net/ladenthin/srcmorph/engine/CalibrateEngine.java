@@ -25,6 +25,7 @@ import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
 import net.ladenthin.srcmorph.provider.GenerationProvider;
 import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +67,7 @@ public final class CalibrateEngine {
      *                            with the failing model's key)
      */
     public CalibrationReport execute() throws SrcMorphException {
-        final List<RoutingRule> rules = config.getRules();
+        final List<? extends @Nullable RoutingRule> rules = config.getRules();
         if (rules == null || rules.isEmpty()) {
             throw new SrcMorphException(
                     "No rules configured (srcMorph.rules of the" + " configuration file); nothing to calibrate.");
@@ -81,7 +82,7 @@ public final class CalibrateEngine {
 
         // Distinct routed models, each mapped to a representative prompt key (skip rules have none).
         final Map<String, String> modelToPrompt = new LinkedHashMap<>();
-        for (final RoutingRule rule : rules) {
+        for (final @Nullable RoutingRule rule : rules) {
             if (rule == null) {
                 continue;
             }

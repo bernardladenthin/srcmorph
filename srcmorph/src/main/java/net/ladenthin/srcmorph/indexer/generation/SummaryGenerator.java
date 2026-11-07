@@ -455,7 +455,7 @@ public class SummaryGenerator {
                     sourceText.length());
             return DeterministicSummary.body(sourceText, contextName(contextFile), DETERMINISTIC_SAMPLE_LINES);
         }
-        if (oversize == OversizeStrategy.MAP_REDUCE || oversize == OversizeStrategy.SAMPLE_CHUNKS) {
+        if (oversize.chunks()) {
             return mapReduceSummarize(fieldGeneration, contextFile, sourceText, window, facts);
         }
         final String generated =

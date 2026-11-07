@@ -13,8 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
-import net.ladenthin.srcmorph.document.AiMdHeader;
-import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.GenerationRequest;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import org.junit.jupiter.api.Test;
@@ -22,16 +20,6 @@ import org.junit.jupiter.api.Test;
 public class LlamaCppJniGenerationProviderTest {
 
     private static final String MODEL_PATH = NativeLlamaAvailability.modelPath();
-
-    private static final AiMdHeader HEADER = new AiMdHeader(
-            "Test.java",
-            AiMdHeaderCodec.HEADER_VERSION_1_0,
-            "00000000",
-            "2026-03-18T00:00:00Z",
-            "2026-03-18T00:00:00Z",
-            "0.1.0-SNAPSHOT",
-            "0.0.0",
-            AiMdHeaderCodec.NODE_TYPE_FILE);
 
     private static ProviderConfig config(final int contextSize, final int maxOutputTokens) {
         return ProviderConfig.builder()
@@ -65,7 +53,7 @@ public class LlamaCppJniGenerationProviderTest {
 
     // <editor-fold defaultstate="collapsed" desc="generate">
     @Test
-    public void generate_realProviderAtATinyBudget_refusesTheCutOffAnswerWithWhatItWrote() throws Exception {
+    public void generate_realProviderAtATinyBudget_refusesTheCutOffAnswerWithWhatItWrote() {
         // arrange
         NativeLlamaAvailability.assumeAvailable();
         final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
@@ -97,7 +85,7 @@ public class LlamaCppJniGenerationProviderTest {
 
     // <editor-fold defaultstate="collapsed" desc="generateWithTimings">
     @Test
-    public void generateWithTimings_realProvider_reportsEngineTimingsThatScaleWithPromptSize() throws Exception {
+    public void generateWithTimings_realProvider_reportsEngineTimingsThatScaleWithPromptSize() {
         // arrange
         NativeLlamaAvailability.assumeAvailable();
         final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
@@ -137,7 +125,7 @@ public class LlamaCppJniGenerationProviderTest {
 
     // <editor-fold defaultstate="collapsed" desc="promptTokens">
     @Test
-    public void promptTokens_realProvider_areTheTokensTheCallsPrefillReads() throws Exception {
+    public void promptTokens_realProvider_areTheTokensTheCallsPrefillReads() {
         // arrange
         NativeLlamaAvailability.assumeAvailable();
         final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());

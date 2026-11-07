@@ -7,14 +7,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.file.Paths;
-import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.prompt.GenerationRequest;
 import org.junit.jupiter.api.Test;
 
 public class GenerationProviderDefaultTimingsTest {
-
-    private static final AiMdHeader HEADER = new AiMdHeader(
-            "Foo.java", "1.0", "C", "2026-01-01T00:00:00Z", "2026-01-01T00:00:10Z", "0.1.0", "1.0.0", "file");
 
     // <editor-fold defaultstate="collapsed" desc="generateWithTimings">
     @Test

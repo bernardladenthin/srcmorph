@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
 #
 # SPDX-License-Identifier: MIT OR Apache-2.0
-"""Tests of run.py, search.py, large.py, report.py and repeat.py that need no network and no model.
+"""Tests of run.py, search.py, large.py, report.py, repeat.py and correlate.py that need no network and no
+model.
 
 Run from the repository root: python -m unittest discover -s docs/ai-index-benchmark/modelcard/tests
 """
@@ -21,6 +22,7 @@ from unittest import mock
 
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
+import correlate  # noqa: E402
 import run  # noqa: E402
 import repeat  # noqa: E402
 import score  # noqa: E402
@@ -206,7 +208,34 @@ class RulesTest(unittest.TestCase):
         definition = {"key": "m", "provider": "mock"}
         config = run.phase_config("GenerateFileIndex", Path("w"), Path("o"), run.PROFILES / "v3", definition)
 
-        self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json"])
+        self.assertEqual(config["srcMorph"]["fileNames"], ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json",
+                                                           "pyproject.toml", "openapi*.json", "swagger*.json",
+                                                           "asyncapi*.json"])
+
+    def test_theKindsOfTheLunaExample_routeAsTheExampleRoutesThem(self):
+        import yaml
+        luna = yaml.safe_load((run.REPO / "examples" / "copilot-api-gateway" / "srcmorph-luna.yaml")
+                              .read_text(encoding="utf-8"))
+        theirs = {r["id"]: r for r in luna["srcMorph"]["rules"]}
+        ours = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
+
+        for kind in ("persistence", "integration", "wsdl", "facelets", "openapi", "asyncapi", "avro", "graphql",
+                     "camel-yaml", "compose", "ansible", "gradle", "properties", "powershell", "batch", "kotlin",
+                     "groovy", "scala", "java-ee"):
+            for field in ("condition", "promptKey", "factsKey"):
+                self.assertEqual(ours[kind].get(field), theirs[kind].get(field), f"{kind} {field}")
+            self.assertEqual(ours[kind].get("priority", 0), theirs[kind].get("priority", 0), kind)
+            for extension in self.extensions(theirs[kind]["condition"]):
+                self.assertIn(extension, run.EXTENSIONS, kind)
+
+    @staticmethod
+    def extensions(condition):
+        """Every extensions entry of a condition, through its and / or groups."""
+        found = list(condition.get("extensions", []))
+        for group in ("and", "or"):
+            for inner in condition.get(group, {}).get("conditions", []):
+                found += RulesTest.extensions(inner)
+        return found
 
     @staticmethod
     def file_names(condition):
@@ -818,3 +847,42 @@ class RepeatTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CorrelateTest(unittest.TestCase):
+
+    def test_pearson_aLinearAndAnAntiLinearSeries_isOneAndMinusOne(self):
+        self.assertAlmostEqual(correlate.pearson([1, 2, 3], [2, 4, 6]), 1.0)
+        self.assertAlmostEqual(correlate.pearson([1, 2, 3], [6, 4, 2]), -1.0)
+
+    def test_pearson_aSeriesThatDoesNotVary_isNone(self):
+        self.assertIsNone(correlate.pearson([1, 2, 3], [5, 5, 5]))
+
+    def test_ranks_ties_shareTheMeanOfTheirRanks(self):
+        self.assertEqual(correlate.ranks([10, 30, 20, 30]), [1.0, 3.5, 2.0, 3.5])
+
+    def test_spearman_aMonotoneButNotLinearSeries_isOne(self):
+        self.assertAlmostEqual(correlate.spearman([1, 2, 3, 4], [1, 4, 9, 100]), 1.0)
+
+    def test_rows_fileSummariesOnly_andTheExcludedAndUnsearchedRunsLeftOut(self):
+        summary = {
+            "a": {"java": {"bodyBytes": 100}, "sql": {"bodyBytes": 20}, "package": {"bodyBytes": 999}},
+            "b": {"other": {"bodyBytes": 50}},
+            "c": {"java": {"bodyBytes": 1}},
+            "d": {"java": {"bodyBytes": 1}},
+        }
+        search = {name: {"reader": {"hit1": 0.5, "mrr": 0.6}} for name in ("a", "b", "c")}
+
+        table = correlate.rows(summary, search, {"c"})
+
+        self.assertEqual(table, [("a", 120, 0.5, 0.6), ("b", 50, 0.5, 0.6)])
+
+    def test_correlations_theCardsScores_areWhatTheCardQuotes(self):
+        summary = json.loads((HERE / "scores" / "summary.json").read_text(encoding="utf-8"))
+        search = json.loads((HERE / "scores" / "search.json").read_text(encoding="utf-8"))["runs"]
+
+        result = correlate.correlations(correlate.rows(summary, search, set(correlate.CARD_EXCLUDED)))
+
+        self.assertEqual(result["runs"], 32)
+        self.assertEqual(round(result["pearsonHit1"], 2), -0.18)
+        self.assertEqual(round(result["pearsonMrr"], 2), -0.08)

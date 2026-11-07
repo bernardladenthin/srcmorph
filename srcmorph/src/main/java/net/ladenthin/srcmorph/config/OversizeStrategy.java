@@ -56,6 +56,15 @@ public enum OversizeStrategy {
     }
 
     /**
+     * Returns whether the strategy reads a file in chunks ({@link #MAP_REDUCE}, {@link #SAMPLE_CHUNKS}).
+     *
+     * @return {@code true} for the chunking strategies
+     */
+    public boolean chunks() {
+        return this == MAP_REDUCE || this == SAMPLE_CHUNKS;
+    }
+
+    /**
      * Returns the {@code onOversize} config token (e.g. {@code "mapReduce"}).
      *
      * @return the config token

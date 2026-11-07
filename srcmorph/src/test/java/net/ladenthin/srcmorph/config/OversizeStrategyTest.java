@@ -20,6 +20,18 @@ public class OversizeStrategyTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="chunks">
+    @Test
+    public void chunks_eachConstant_isTrueForTheChunkingStrategiesOnly() {
+        // act, assert
+        assertThat(OversizeStrategy.MAP_REDUCE.chunks(), is(true));
+        assertThat(OversizeStrategy.SAMPLE_CHUNKS.chunks(), is(true));
+        assertThat(OversizeStrategy.FAIL.chunks(), is(false));
+        assertThat(OversizeStrategy.SAMPLE.chunks(), is(false));
+        assertThat(OversizeStrategy.DETERMINISTIC.chunks(), is(false));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="configValue">
     @Test
     public void configValue_eachConstant_isTheExpectedToken() {

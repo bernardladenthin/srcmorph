@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.OptionalLong;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.ModelRegistry;
 import net.ladenthin.srcmorph.config.OversizeStrategy;
@@ -324,9 +325,11 @@ final class EngineSupport {
      * @throws SrcMorphException if a routed model's file is missing or its path is unset
      */
     static void validateRoutedModelPaths(
-            final String generationProvider, final ModelRegistry modelDefinitionSupport, final List<RoutingRule> rules)
+            final String generationProvider,
+            final ModelRegistry modelDefinitionSupport,
+            final List<? extends @Nullable RoutingRule> rules)
             throws SrcMorphException {
-        for (final RoutingRule rule : rules) {
+        for (final @Nullable RoutingRule rule : rules) {
             if (rule == null || rule.isSkip()) {
                 continue;
             }
@@ -360,9 +363,10 @@ final class EngineSupport {
      * @param rules       the rules
      * @throws SrcMorphException if a rule (other than a skip rule) names an undefined model
      */
-    static void requireDefinedModels(final ModelRegistry modelDefinitionSupport, final List<RoutingRule> rules)
+    static void requireDefinedModels(
+            final ModelRegistry modelDefinitionSupport, final List<? extends @Nullable RoutingRule> rules)
             throws SrcMorphException {
-        for (final RoutingRule rule : rules) {
+        for (final @Nullable RoutingRule rule : rules) {
             if (rule == null || rule.isSkip()) {
                 continue;
             }
@@ -473,8 +477,10 @@ final class EngineSupport {
                     + " GGUF: " + modelFile + " (" + info.failure() + "). A truncated download or a Git LFS"
                     + " pointer looks like a perfectly good file to an existence check.");
         }
-        final long declared = info.contextLength();
-        if (declared != GgufModelInfo.UNKNOWN_CONTEXT_LENGTH && modelConfig.getContextSize() > declared) {
+        final OptionalLong contextLength = info.contextLength();
+        if (contextLength.isPresent() && modelConfig.getContextSize() > contextLength.getAsLong()) {
+            final long declared = contextLength.getAsLong();
+            final String modelName = info.modelName();
             LOGGER.warn(
                     "aiDefinition '{}' sets contextSize {} but {} declares only {}. llama.cpp caps the"
                             + " slot to the model's trained context, so the runtime window really is {} --"
@@ -483,7 +489,7 @@ final class EngineSupport {
                             + " still die mid-run. Lower contextSize to match.",
                     aiDefinitionKey,
                     modelConfig.getContextSize(),
-                    info.modelName().isEmpty() ? modelFile.toString() : info.modelName(),
+                    modelName == null ? modelFile.toString() : modelName,
                     declared,
                     declared,
                     modelConfig.getContextSize());

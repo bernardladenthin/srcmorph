@@ -11,8 +11,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import net.ladenthin.srcmorph.config.PromptDefinition;
-import net.ladenthin.srcmorph.document.AiMdHeader;
-import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import org.junit.jupiter.api.Test;
 
 public class PromptPreparerTest {
@@ -23,18 +21,6 @@ public class PromptPreparerTest {
         promptDefinition.setTemplate("Prompt header\n" + "\n" + "File: %s\n" + "\n" + "Source:\n" + "%s\n");
 
         return new PromptCatalog(Arrays.asList(promptDefinition));
-    }
-
-    private AiMdHeader buildHeader() {
-        return new AiMdHeader(
-                "Test.java",
-                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                "00000000",
-                "2026-03-18T00:00:00Z",
-                "2026-03-18T00:00:00Z",
-                "0.1.0-SNAPSHOT",
-                "0.0.0",
-                AiMdHeaderCodec.NODE_TYPE_FILE);
     }
 
     // <editor-fold defaultstate="collapsed" desc="preparePrompt">

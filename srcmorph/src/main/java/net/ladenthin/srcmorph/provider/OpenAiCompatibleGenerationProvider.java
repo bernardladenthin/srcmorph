@@ -399,10 +399,13 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
             if (!OpenAiCompatibleProviderSupport.isSuccess(status)) {
                 final InputStream error = connection.getErrorStream();
                 final String text = error == null ? "" : read(error);
-                final String message = status == HttpURLConnection.HTTP_UNAUTHORIZED && text.isEmpty()
-                        // a POST goes in streaming mode, where a 401's body cannot be read
-                        ? OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, UNAUTHORIZED_HINT)
-                        : OpenAiCompatibleProviderSupport.errorMessage(endpoint, status, text);
+                final String message = OpenAiCompatibleProviderSupport.errorMessage(
+                        endpoint,
+                        status,
+                        status == HttpURLConnection.HTTP_UNAUTHORIZED && text.isEmpty()
+                                // a POST goes in streaming mode, where a 401's body cannot be read
+                                ? UNAUTHORIZED_HINT
+                                : text);
                 if (OpenAiCompatibleProviderSupport.isContextOverflow(status, text)) {
                     throw new ContextOverflowException(message);
                 }

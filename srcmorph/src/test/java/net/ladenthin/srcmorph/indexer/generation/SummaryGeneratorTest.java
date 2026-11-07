@@ -1629,8 +1629,9 @@ public class SummaryGeneratorTest {
                 .generate(rule, tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: one call per chunk, as many as the coverage line names
-        final String chunks = result.body().replaceAll("(?s).*?of (\\d+) chunks summarized.*", "$1");
-        assertThat(maps.get(), is(Integer.parseInt(chunks)));
+        final Matcher coverage = Pattern.compile("of (\\d+) chunks summarized").matcher(result.body());
+        assertThat(coverage.find(), is(true));
+        assertThat(maps.get(), is(Integer.parseInt(coverage.group(1))));
     }
     // </editor-fold>
 
@@ -1688,7 +1689,10 @@ public class SummaryGeneratorTest {
                 .generate(oversizeRule("m", "sampleChunks", 2), tempFile("Huge", ".java"), "file", largeSource(7000));
 
         // assert: two chunks sampled from all of them, as the coverage line names them
-        final String total = result.body().replaceAll("(?s).*?2 of (\\d+) chunks summarized.*", "$1");
+        final Matcher coverage =
+                Pattern.compile("2 of (\\d+) chunks summarized").matcher(result.body());
+        assertThat(coverage.find(), is(true));
+        final String total = coverage.group(1);
         assertThat(requests.get(0).sourceText(), startsWith("Chunk 1 of 2, sampled from " + total + " chunks:\n"));
         assertThat(requests.get(1).sourceText(), startsWith("Chunk 2 of 2, sampled from " + total + " chunks:\n"));
     }

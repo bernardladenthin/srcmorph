@@ -6,6 +6,7 @@
 package net.ladenthin.srcmorph.support;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 /**
@@ -123,17 +124,17 @@ public final class SourceLines {
         }
         final byte[] out = new byte[bytes.length];
         int length = 0;
-        for (int i = 0; i < bytes.length; i++) {
+        int i = 0;
+        while (i < bytes.length) {
             if (bytes[i] == '\r') {
                 out[length++] = (byte) LINE_FEED;
-                if (i + 1 < bytes.length && bytes[i + 1] == '\n') {
-                    i++;
-                }
+                // a \r\n is one line break
+                i += i + 1 < bytes.length && bytes[i + 1] == '\n' ? 2 : 1;
             } else {
-                out[length++] = bytes[i];
+                out[length++] = bytes[i++];
             }
         }
-        return java.util.Arrays.copyOf(out, length);
+        return Arrays.copyOf(out, length);
     }
 
     /**

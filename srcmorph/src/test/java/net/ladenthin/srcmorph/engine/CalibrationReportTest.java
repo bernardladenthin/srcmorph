@@ -8,7 +8,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -64,16 +64,12 @@ public class CalibrationReportTest {
     public void measurements_addAttempted_isUnmodifiable() {
         // arrange
         final CalibrationReport report = new CalibrationReport(new ArrayList<CalibrationReport.ModelMeasurement>());
+        final List<CalibrationReport.ModelMeasurement> measurements = report.measurements();
+        final CalibrationReport.ModelMeasurement measurement = new CalibrationReport.ModelMeasurement(
+                "x", new CalibrationMeasurement(0.0d, 0.0d, 0.0d, 0.0d, 0.0d, 0));
 
         // act, assert
-        try {
-            report.measurements()
-                    .add(new CalibrationReport.ModelMeasurement(
-                            "x", new CalibrationMeasurement(0.0d, 0.0d, 0.0d, 0.0d, 0.0d, 0)));
-            fail("expected UnsupportedOperationException");
-        } catch (final UnsupportedOperationException expected) {
-            // expected: measurements() must not allow external mutation
-        }
+        assertThrows(UnsupportedOperationException.class, () -> measurements.add(measurement));
     }
     // </editor-fold>
 

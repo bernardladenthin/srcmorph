@@ -17,7 +17,6 @@ import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.ModelRegistry;
-import net.ladenthin.srcmorph.config.OversizeStrategy;
 import net.ladenthin.srcmorph.config.RegenerateOn;
 import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.RuleCondition;
@@ -341,13 +340,10 @@ public final class SourceFileIndexer {
                 final long availableSourceChars =
                         InputWindowCalculator.availableSourceChars(modelConfig, basePromptLength);
                 final long sourceChars = source.length();
+                final int chunkPromptLength =
+                        chunkPromptLength(rule, shown, basePromptLength, promptPreparationSupport);
                 final long routeSeconds = routeEstimator.estimateRouteSeconds(
-                        rule,
-                        modelConfig,
-                        sourceChars,
-                        availableSourceChars,
-                        basePromptLength,
-                        chunkPromptLength(rule, shown, basePromptLength, promptPreparationSupport));
+                        rule, modelConfig, sourceChars, availableSourceChars, basePromptLength, chunkPromptLength);
                 if (RouteEstimator.isCalibrated(modelConfig)) {
                     plan.markCalibrated(rule.requireAiDefinitionKey());
                 }
@@ -362,6 +358,14 @@ public final class SourceFileIndexer {
                         sourceChars,
                         availableSourceChars,
                         IndexPlan.estimatedTokens(sourceChars, charsPerToken));
+                if (sourceChars > availableSourceChars
+                        && rule.oversizeStrategy().chunks()) {
+                    final int room =
+                            RouteEstimator.chunkRoom(availableSourceChars, basePromptLength, chunkPromptLength);
+                    if (room < MapReduceMath.MIN_CHUNK_CHARS) {
+                        plan.refuseChunkRoom(file, room);
+                    }
+                }
             } else {
                 // characters, as the run's estimate counts them, not bytes
                 final long estimatedSeconds = timeEstimator.estimateSeconds(source.length());
@@ -410,8 +414,7 @@ public final class SourceFileIndexer {
      */
     private static int chunkPromptLength(
             final RoutingRule rule, final Path file, final int basePromptLength, final PromptPreparer preparation) {
-        final OversizeStrategy strategy = rule.oversizeStrategy();
-        if (strategy != OversizeStrategy.MAP_REDUCE && strategy != OversizeStrategy.SAMPLE_CHUNKS) {
+        if (!rule.oversizeStrategy().chunks()) {
             return basePromptLength;
         }
         return Math.max(
@@ -503,8 +506,8 @@ public final class SourceFileIndexer {
      * @param rules the routing rules
      * @return {@code true} if any rule's condition uses a line count
      */
-    private boolean anyRuleUsesLines(final List<RoutingRule> rules) {
-        for (final RoutingRule rule : rules) {
+    private boolean anyRuleUsesLines(final List<? extends @Nullable RoutingRule> rules) {
+        for (final @Nullable RoutingRule rule : rules) {
             if (rule == null) {
                 continue;
             }
@@ -523,8 +526,8 @@ public final class SourceFileIndexer {
      * @param rules the routing rules
      * @return {@code true} if any rule's condition reads the content
      */
-    private boolean anyRuleUsesContent(final List<RoutingRule> rules) {
-        for (final RoutingRule rule : rules) {
+    private boolean anyRuleUsesContent(final List<? extends @Nullable RoutingRule> rules) {
+        for (final @Nullable RoutingRule rule : rules) {
             if (rule == null) {
                 continue;
             }

@@ -115,7 +115,7 @@ public class GenerateEngineTest {
 
     // <editor-fold defaultstate="collapsed" desc="execute">
     @Test
-    public void execute_missingFieldGenerations_throwsSrcMorphException() throws IOException {
+    public void execute_noRules_throwsSrcMorphException() throws IOException {
         // arrange
         final SrcMorphConfiguration config = baseConfig();
         config.setRules(null);
@@ -126,6 +126,21 @@ public class GenerateEngineTest {
 
         // assert
         assertThat(e.getMessage(), containsString("No rules configured"));
+    }
+
+    /** A list built in code may hold a null rule (the file's loader refuses one): it fails by its index. */
+    @Test
+    public void execute_aNullRule_throwsSrcMorphExceptionNamingItsIndex() throws IOException {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        config.setRules(Arrays.asList(javaFileRule(), null));
+        final GenerateEngine engine = new GenerateEngine(config);
+
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
+        assertThat(e.getMessage(), is("Invalid rules: srcMorph.rules[1] is null"));
     }
 
     @Test
@@ -686,6 +701,12 @@ public class GenerateEngineTest {
      * about 3 200, routed by one rule with the given {@code onOversize} ({@code maxChunks} 2 under
      * {@code sampleChunks}).
      */
+    /**
+     * A {@code contextSize} for {@link #oversizeConfig}'s model whose window holds source, but leaves a
+     * chunk fewer than 1000 characters next to the map and reduce prompts.
+     */
+    private static final int CONTEXT_WITHOUT_ROOM_FOR_A_CHUNK = 2_000;
+
     private SrcMorphConfiguration oversizeConfig(final String onOversize) throws IOException {
         final SrcMorphConfiguration config = baseConfig();
         final ModelDefinition small = mockModelDefinition();
@@ -840,6 +861,28 @@ public class GenerateEngineTest {
         // assert
         assertThat(result.written(), is(2));
         assertThat(writtenBody("Big.java"), containsString("**Coverage:** 2 of 4 chunks summarized (sampled)\n\n"));
+    }
+
+    /**
+     * A map-reduce rule over a window that leaves a chunk fewer than 1000 characters next to the map and
+     * reduce prompts: the run would refuse the file, so the plan fails it before a model loads.
+     */
+    @Test
+    public void execute_aWindowWithTooLittleRoomForAChunk_failsThePlan() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = oversizeConfig("mapReduce");
+        config.getAiDefinitions().get(0).setContextSize(CONTEXT_WITHOUT_ROOM_FOR_A_CHUNK);
+        config.setPlanOnly(true);
+        final GenerateEngine engine = new GenerateEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
+        assertThat(
+                thrown.getMessage(),
+                startsWith("1 source file(s) are chunked in a window that leaves a chunk"
+                        + " fewer than 1000 characters next to the map and reduce prompts"));
     }
 
     @Test

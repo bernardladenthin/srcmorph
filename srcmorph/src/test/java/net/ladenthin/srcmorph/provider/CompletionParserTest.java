@@ -8,7 +8,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.stream.Stream;
@@ -40,15 +39,12 @@ public class CompletionParserTest {
         // arrange
         final String response = CompletionParser.THINKING_BLOCK_START_MARKER + "\nreasoning only, no end";
 
-        try {
-            // act
-            parser.parseCompletion(response);
-            fail("Expected IOException");
-        } catch (final IOException e) {
-            // assert
-            assertThat(e.getMessage(), containsString(CompletionParser.THINKING_BLOCK_START_MARKER));
-            assertThat(e.getMessage(), containsString(CompletionParser.THINKING_BLOCK_END_MARKER));
-        }
+        // act
+        final IOException e = assertThrows(IOException.class, () -> parser.parseCompletion(response));
+
+        // assert
+        assertThat(e.getMessage(), containsString(CompletionParser.THINKING_BLOCK_START_MARKER));
+        assertThat(e.getMessage(), containsString(CompletionParser.THINKING_BLOCK_END_MARKER));
     }
 
     @Test
@@ -196,51 +192,11 @@ public class CompletionParserTest {
         assertThat(parser.parseCompletion("</think>\n> The lead."), is(equalTo("> The lead.")));
     }
 
-    /** A closing tag quoted in backticks is the answer writing about it, so nothing is stripped. */
-    @Test
-    public void parseCompletion_aClosingTagQuotedInBackticks_isKept() throws Exception {
-        // arrange
-        final String response = "> The lead.\nThe block ends at `</think>`, the answer follows.";
-
-        // act, assert
-        assertThat(parser.parseCompletion(response), is(equalTo(response)));
-    }
-
-    /** A closing tag in double quotes, at the end of its line, is the answer writing about it too. */
-    @Test
-    public void parseCompletion_aClosingTagInDoubleQuotesAtALineEnd_isKept() throws Exception {
-        // arrange
-        final String response = "> Strips the reasoning up to \"</think>\nThe body.";
-
-        // act, assert
-        assertThat(parser.parseCompletion(response), is(equalTo(response)));
-    }
-
-    /** A closing tag inside a sentence names the tag; a template's tag ends its line. */
-    @Test
-    public void parseCompletion_aClosingTagInsideASentence_isKept() throws Exception {
-        // arrange
-        final String response = "> Strips the reasoning up to </think> and keeps the rest.\nThe body.";
-
-        // act, assert
-        assertThat(parser.parseCompletion(response), is(equalTo(response)));
-    }
-
     /** The template's tag at the very end: the reasoning is all there is, the answer is empty. */
     @Test
     public void parseCompletion_reasoningEndingInTheClosingTag_isEmpty() throws Exception {
         // act, assert
         assertThat(parser.parseCompletion("Thinking it over.\n</think>"), is(equalTo("")));
-    }
-
-    /** A tag at the end of a list item's line is the answer naming it: the lead before it stays. */
-    @Test
-    public void parseCompletion_aClosingTagEndingAListItem_isKept() throws Exception {
-        // arrange
-        final String response = "> Parses model completions.\n\n- Closing marker: </think>\n- Gemma: <|channel>thought";
-
-        // act, assert
-        assertThat(parser.parseCompletion(response), is(equalTo(response)));
     }
 
     /** Reasoning that names the tag before its real end: the tag alone on its line ends it. */
@@ -264,8 +220,9 @@ public class CompletionParserTest {
     }
 
     /**
-     * Closing tags at a line end that name the tag rather than end reasoning: after a space or a quote,
-     * glued but with the line going on, glued after an answer's lead.
+     * Closing tags the answer names rather than reasoning it ends: at a line end after a space or a quote,
+     * glued but with the line going on, glued after an answer's lead, quoted in backticks, inside a
+     * sentence, ending a list item.
      *
      * @return one response per case
      */
@@ -274,7 +231,11 @@ public class CompletionParserTest {
                 Arguments.of("Closing marker: </think>\nThe rest."),
                 Arguments.of("It strips \"</think>\nThe rest."),
                 Arguments.of("It strips x</think> tags.\nThe rest."),
-                Arguments.of("> Strips a template-opened reasoning block.\n\n- End marker:</think>\n- The rest."));
+                Arguments.of("> Strips a template-opened reasoning block.\n\n- End marker:</think>\n- The rest."),
+                Arguments.of("> The lead.\nThe block ends at `</think>`, the answer follows."),
+                Arguments.of("> Strips the reasoning up to \"</think>\nThe body."),
+                Arguments.of("> Strips the reasoning up to </think> and keeps the rest.\nThe body."),
+                Arguments.of("> Parses model completions.\n\n- Closing marker: </think>\n- Gemma: <|channel>thought"));
     }
 
     @ParameterizedTest(name = "{0}")
