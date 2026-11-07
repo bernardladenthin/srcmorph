@@ -46,7 +46,10 @@ public enum CCommand {
 
     /**
      * Runs all three phases in order: {@link #GenerateFileIndex}, then {@link #AggregatePackages},
-     * then {@link #AggregateProject}, stopping at the first phase that fails.
+     * then {@link #AggregateProject}, stopping at the first phase that fails. The package and the
+     * project phase are checked first, as {@link #Check} checks them (their rules, profile files and
+     * models), so a missing or wrong phase rule fails before the file phase sends a single file;
+     * with {@code planOnly} only the file phase is planned and nothing else is checked.
      */
     All("GenerateFileIndex, then AggregatePackages, then AggregateProject"),
 

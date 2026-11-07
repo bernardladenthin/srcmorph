@@ -123,8 +123,8 @@ public final class AggregateProjectEngine {
 
     /**
      * Checks the phase as a run would, without loading a model or writing anything: at most one rule,
-     * and with one its profile files and its model (a local model's file and GGUF header, a remote
-     * model's {@code baseUrl} and {@code apiKeyEnv}).
+     * and with one its profile files and prompts and its model (a local model's file and GGUF header, a
+     * remote model's {@code baseUrl} and {@code apiKeyEnv}).
      *
      * @throws SrcMorphException naming the first problem found
      */
@@ -135,8 +135,10 @@ public final class AggregateProjectEngine {
             return;
         }
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
-        EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
+        EngineSupport.requirePrompts(
+                EngineSupport.buildPromptSupport(
+                        config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules()),
+                Collections.singletonList(overview));
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(),
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),

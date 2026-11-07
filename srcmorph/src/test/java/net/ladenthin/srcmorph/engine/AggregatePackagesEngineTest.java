@@ -208,5 +208,29 @@ public class AggregatePackagesEngineTest {
         // assert
         assertThat(thrown.getMessage(), containsString("Invalid rule of aggregate-packages"));
     }
+
+    /**
+     * A package prompt no definition and no profile file has fails the check, naming the key, not
+     * only the run once the model is up.
+     */
+    @Test
+    public void check_aPromptWithoutATemplate_fails() {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(tempDir.toFile());
+        config.setOutputDirectory(tempDir.resolve("out").toFile());
+        config.setGenerationProvider("mock");
+        config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
+        config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
+        config.setRules(CommonTestFixtures.createPackageRules());
+        config.getRules().get(0).setPromptKey("no-such-prompt");
+        final AggregatePackagesEngine engine = new AggregatePackagesEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::check);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("no-such-prompt"));
+    }
     // </editor-fold>
 }

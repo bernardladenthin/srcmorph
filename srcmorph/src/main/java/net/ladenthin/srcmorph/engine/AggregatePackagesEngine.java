@@ -51,16 +51,18 @@ public final class AggregatePackagesEngine {
 
     /**
      * Checks the phase as a run would, without loading a model or writing anything: its one rule, the
-     * rule's profile files and its model (a local model's file and GGUF header, a remote model's
-     * {@code baseUrl} and {@code apiKeyEnv}). Unlike a run it does not need the output tree yet.
+     * rule's profile files and prompts and its model (a local model's file and GGUF header, a remote
+     * model's {@code baseUrl} and {@code apiKeyEnv}). Unlike a run it does not need the output tree yet.
      *
      * @throws SrcMorphException naming the first problem found
      */
     public void check() throws SrcMorphException {
         final RoutingRule rule = EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getRules());
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(rule));
-        EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
+        EngineSupport.requirePrompts(
+                EngineSupport.buildPromptSupport(
+                        config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules()),
+                Collections.singletonList(rule));
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(),
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),

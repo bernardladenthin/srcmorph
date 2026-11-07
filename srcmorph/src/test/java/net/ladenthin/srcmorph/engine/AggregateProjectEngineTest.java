@@ -166,4 +166,31 @@ public class AggregateProjectEngineTest {
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="check">
+    /**
+     * An overview prompt no definition and no profile file has fails the check, naming the key, not
+     * only the run once the model is up.
+     */
+    @Test
+    public void check_anOverviewPromptWithoutATemplate_fails() {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setOutputDirectory(tempDir.resolve("out").toFile());
+        config.setGenerationProvider("mock");
+        config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
+        config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
+        final RoutingRule overview = new RoutingRule();
+        overview.setPromptKey("no-such-prompt");
+        overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        config.setRules(Collections.singletonList(overview));
+        final AggregateProjectEngine engine = new AggregateProjectEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::check);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("no-such-prompt"));
+    }
+    // </editor-fold>
 }

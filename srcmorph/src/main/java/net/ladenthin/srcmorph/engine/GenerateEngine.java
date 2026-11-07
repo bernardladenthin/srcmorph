@@ -154,7 +154,7 @@ public final class GenerateEngine {
             throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
         }
         EngineSupport.requireDefinedModels(modelDefinitionSupport, rules);
-        requirePrompts(promptSupport, rules);
+        EngineSupport.requirePrompts(promptSupport, rules);
 
         final SourceFileIndexer fileIndexer =
                 newFileIndexer(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
@@ -512,27 +512,6 @@ public final class GenerateEngine {
             copies.add(rule.copy());
         }
         return copies;
-    }
-
-    /**
-     * Checks that every prompt a routing rule names, its map and reduce prompts too, has a template, before
-     * a model loads: a key without one would otherwise fail every file of the rule once the model is up.
-     *
-     * @param promptSupport the prompts
-     * @param rules         the rules
-     * @throws SrcMorphException naming the key without a template
-     */
-    private static void requirePrompts(final PromptCatalog promptSupport, final List<RoutingRule> rules)
-            throws SrcMorphException {
-        for (final RoutingRule rule : rules) {
-            if (!rule.isSkip()) {
-                try {
-                    HeaderHashes.prompt(promptSupport, rule);
-                } catch (final IllegalArgumentException e) {
-                    throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
-                }
-            }
-        }
     }
 
     /**

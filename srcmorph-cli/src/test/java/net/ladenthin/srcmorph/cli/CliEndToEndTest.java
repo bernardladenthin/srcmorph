@@ -197,6 +197,27 @@ public class CliEndToEndTest {
     }
 
     /**
+     * planOnly plans the file phase only: the package and project phases neither run nor are checked
+     * (a check reads their model files, which a planning machine need not have), so a missing package
+     * rule does not stop the plan.
+     *
+     * @throws Exception if the plan fails
+     */
+    @Test
+    public void allCommand_planOnlyWithoutAPackageRule_plansTheFilePhase() throws Exception {
+        // arrange
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        configuration.srcMorph.setPlanOnly(true);
+        configuration.packageRules = null;
+
+        // act
+        new Main(configuration).run();
+
+        // assert
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    /**
      * The prompt comes from a file below {@code profileDirectory}, as every shipped example's does: the
      * run reads it before the first file and completes.
      *
@@ -284,13 +305,14 @@ public class CliEndToEndTest {
     }
 
     /**
-     * The file rules never reach the package phase: without {@code packageRules} it fails,
-     * naming the key, after the file phase completed.
+     * The file rules never reach the package phase: without {@code packageRules} it fails, naming
+     * the key, and before the file phase, which would otherwise have sent (and billed) every file
+     * first.
      *
      * @throws Exception if the fixture cannot be written
      */
     @Test
-    public void allCommand_withoutAPackageRule_failsInThePackagePhase() throws Exception {
+    public void allCommand_withoutAPackageRule_failsBeforeTheFilePhase() throws Exception {
         // arrange
         final CConfiguration configuration = buildAllCommandConfiguration();
         configuration.packageRules = null;
@@ -302,7 +324,30 @@ public class CliEndToEndTest {
         // assert
         assertThat(causeChain(thrown), containsString("aggregate-packages takes exactly one rule"));
         assertThat(causeChain(thrown), containsString("packageRules"));
-        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
+    }
+
+    /**
+     * The project phase is checked before the file phase as well: an overview rule naming a model
+     * nobody defined fails before any file is summarised.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void allCommand_projectRuleWithAnUnknownModel_failsBeforeTheFilePhase() throws Exception {
+        // arrange
+        final CConfiguration configuration = buildAllCommandConfiguration();
+        final RoutingRule rule = phaseRule("file-body");
+        rule.setAiDefinitionKey("no-overview-model");
+        configuration.projectRules = Collections.singletonList(rule);
+        final Main main = new Main(configuration);
+
+        // act
+        final RuntimeException thrown = assertThrows(RuntimeException.class, main::run);
+
+        // assert
+        assertThat(causeChain(thrown), containsString("no-overview-model"));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
 
     /**
@@ -354,13 +399,13 @@ public class CliEndToEndTest {
     }
 
     /**
-     * The package phase really takes its own rule: one naming a prompt nobody defined stops it, while
-     * the file phase before it, on the shared rules, completed.
+     * The package phase really takes its own rule: one naming a prompt nobody defined stops the run,
+     * although the file phase's shared rules are in order, and before that phase sent a file.
      *
      * @throws Exception if the fixture cannot be written
      */
     @Test
-    public void allCommand_packageRuleWithAnUnknownPrompt_failsInThePackagePhase() throws Exception {
+    public void allCommand_packageRuleWithAnUnknownPrompt_failsBeforeTheFilePhase() throws Exception {
         // arrange
         final CConfiguration configuration = buildAllCommandConfiguration();
         configuration.packageRules = Collections.singletonList(phaseRule("no-such-prompt"));
@@ -371,7 +416,7 @@ public class CliEndToEndTest {
 
         // assert
         assertThat(causeChain(thrown), containsString("no-such-prompt"));
-        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+        assertThat(Files.exists(tempDir.resolve("out")), is(false));
     }
     // </editor-fold>
 

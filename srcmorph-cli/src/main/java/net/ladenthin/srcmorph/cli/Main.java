@@ -304,14 +304,26 @@ public class Main {
                     break;
                 }
                 case All: {
+                    final AggregatePackagesEngine packages =
+                            new AggregatePackagesEngine(forPhase(configuration.packageRules));
+                    final AggregateProjectEngine project =
+                            new AggregateProjectEngine(forPhase(configuration.projectRules));
+                    final boolean planOnly = configuration.srcMorph.isPlanOnly();
+                    // the phases' rules, prompts and models first: the file phase sends (and bills) every
+                    // file, and a phase rule that is missing or wrong would only fail after it. planOnly
+                    // runs neither phase and, like the file phase's plan, checks no model file
+                    if (!planOnly) {
+                        packages.check();
+                        project.check();
+                    }
                     new GenerateEngine(configuration.srcMorph).execute();
-                    if (configuration.srcMorph.isPlanOnly()) {
+                    if (planOnly) {
                         // planOnly plans the file phase; the package and project phases would write
                         LOGGER.info("planOnly: the package and project phases do not run.");
                         break;
                     }
-                    new AggregatePackagesEngine(forPhase(configuration.packageRules)).execute();
-                    new AggregateProjectEngine(forPhase(configuration.projectRules)).execute();
+                    packages.execute();
+                    project.execute();
                     break;
                 }
                 case Calibrate: {

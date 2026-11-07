@@ -20,6 +20,7 @@ import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.facts.FactDefinitionLoader;
 import net.ladenthin.srcmorph.facts.FactExtractor;
 import net.ladenthin.srcmorph.facts.FactGroups;
+import net.ladenthin.srcmorph.indexer.HeaderHashes;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
 import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
@@ -350,6 +351,28 @@ final class EngineSupport {
                         + "'; a provider is " + GenerationProviderFactory.PROVIDER_MOCK + ", "
                         + GenerationProviderFactory.PROVIDER_LLAMACPP_JNI + " or "
                         + GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+            }
+        }
+    }
+
+    /**
+     * Checks that every prompt a routing rule names, its map and reduce prompts too, has a template, before
+     * a model loads: a key without one would otherwise fail every file (or package) of the rule once the
+     * model is up.
+     *
+     * @param promptSupport the prompts
+     * @param rules         the rules
+     * @throws SrcMorphException naming the key without a template
+     */
+    static void requirePrompts(final PromptCatalog promptSupport, final List<RoutingRule> rules)
+            throws SrcMorphException {
+        for (final RoutingRule rule : rules) {
+            if (!rule.isSkip()) {
+                try {
+                    HeaderHashes.prompt(promptSupport, rule);
+                } catch (final IllegalArgumentException e) {
+                    throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
+                }
             }
         }
     }
