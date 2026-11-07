@@ -9,7 +9,10 @@
 # indentation as YAML reads it; its key stays, an empty scalar blanks no sibling key), so a
 # description that quotes a channel or a "type: object" does not count. A double-quoted string that
 # holds a # is blanked whole, so its # opens no comment: "Posts to #general" in a one-line JSON
-# document blanks nothing after it (a string not closed on its line ends there). A key that is quoted
+# document blanks nothing after it (a string not closed on its line ends there). A string opens only
+# at a line's start or after a :, a comma, a [, a { or a - and blanks, so the closing quote of a key
+# opens none ("publish": { keeps its colon; a key whose text ends in one of these characters, "a:",
+# still does), and a pretty-printed JSON document counts as its YAML form. A key that is quoted
 # and holds a : opens no block scalar. A key counts with or without JSON
 # quotes. "channel addresses" counts the address of a 3.x (a value on its line, so a schema property
 # named address, which opens a mapping, does not count) channel; "operations" a 2.x publish or
@@ -18,7 +21,7 @@
 # lines below the key that are deeper than it, or a list at its depth; not in JSON).
 # OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
 # pattern reads linearly.
-[ignore] comments, block scalars and message examples	(?m)[|>](?<=^([ \t]{0,40})-([ \t]{1,4})[^\s#:][^\n#:]{0,99}:[ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]\2[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\3[^\n]*+|[ \t]*+)(?=\n|\z))*+|[|>](?<=^([ \t]{0,40})(?![ \t]|-[ \t]{1,4}[^\s|>])[^\n#:]{0,100}[:-][ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\4[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\5[^\n]*+|[ \t]*+)(?=\n|\z))*+|^([ \t]*+)examples[ \t]*+:[ \t]*+(?:#[^\n]*+)?(?=\n)(?:\n(?:\6[ \t][^\n]*+|\6-[ \t][^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+|"(?:[^"\\\n#]|\\.)*+(?:#(?:[^"\\\n]|\\.)*+(?:"|$)|$)
+[ignore] comments, block scalars and message examples	(?m)[|>](?<=^([ \t]{0,40})-([ \t]{1,4})[^\s#:][^\n#:]{0,99}:[ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]\2[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\3[^\n]*+|[ \t]*+)(?=\n|\z))*+|[|>](?<=^([ \t]{0,40})(?![ \t]|-[ \t]{1,4}[^\s|>])[^\n#:]{0,100}[:-][ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\4[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\5[^\n]*+|[ \t]*+)(?=\n|\z))*+|^([ \t]*+)examples[ \t]*+:[ \t]*+(?:#[^\n]*+)?(?=\n)(?:\n(?:\6[ \t][^\n]*+|\6-[ \t][^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+|(?<=(?:^|[:,\[{-])[ \t]{0,40})"(?:[^"\\\n#]|\\.)*+(?:#(?:[^"\\\n]|\\.)*+(?:"|$)|$)
 channel addresses (3.x)	(?m)["']?\baddress["']?[ \t]*:[ \t]*+(?!$|\{|#)
 operations	(?m)(?:^[ \t]+|[{,][ \t]*)["']?(?:publish|subscribe)["']?[ \t]*:[ \t]*+(?:\{|$)|["']?\baction["']?[ \t]*:[ \t]*["']?(?:send|receive)\b
 operationIds	["']?\boperationId["']?[ \t]*:

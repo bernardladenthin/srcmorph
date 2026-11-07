@@ -256,6 +256,73 @@ public class OpsFactPatternsTest {
         // get and delete of /orders/{id}, head and options of /ping; /health has none of its own
         assertThat(count(OPENAPI, "operations (approx)", yaml), is(4));
     }
+
+    @Test
+    public void openapi_prettyPrintedJson_countsAsItsYamlForm() {
+        // arrange
+        final String json = "{\n"
+                + "  \"openapi\": \"3.0.3\",\n"
+                + "  \"paths\": {\n"
+                + "    \"/orders\": {\n"
+                + "      \"get\": {\n"
+                + "        \"operationId\": \"list\",\n"
+                + "        \"description\": \"Fixes #12\",\n"
+                + "        \"responses\": {}\n"
+                + "      },\n"
+                + "\n"
+                + "      \"post\": {\n"
+                + "        \"operationId\": \"create\",\n"
+                + "        \"deprecated\": true\n"
+                + "      }\n"
+                + "    },\n"
+                + "    \"/orders/{id}\": {\n"
+                + "      \"parameters\": [\n"
+                + "        {\"in\": \"path\", \"name\": \"id\"}\n"
+                + "      ],\n"
+                + "      \"delete\": {\n"
+                + "        \"operationId\": \"remove\"\n"
+                + "      }\n"
+                + "    }\n"
+                + "  },\n"
+                + "  \"components\": {\n"
+                + "    \"schemas\": {\n"
+                + "      \"Order\": {\n"
+                + "        \"type\": \"object\",\n"
+                + "        \"properties\": {\n"
+                + "          \"options\": {\n"
+                + "            \"type\": \"string\"\n"
+                + "          }\n"
+                + "        }\n"
+                + "      }\n"
+                + "    }\n"
+                + "  }\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(OPENAPI, "paths", json), is(2));
+        // get, post and delete; not the property options
+        assertThat(count(OPENAPI, "operations (approx)", json), is(3));
+        assertThat(count(OPENAPI, "operationIds", json), is(3));
+        assertThat(count(OPENAPI, "parameters (approx)", json), is(1));
+        assertThat(count(OPENAPI, "object schemas", json), is(1));
+        assertThat(count(OPENAPI, "deprecated operations and fields", json), is(1));
+    }
+
+    @Test
+    public void openapi_doubleQuotedYamlKeys_keepTheirColon() {
+        // arrange
+        final String yaml = "paths:\n"
+                + "  \"/orders\":\n"
+                + "    \"get\":\n"
+                + "      operationId: list\n"
+                + "    \"delete\":\n"
+                + "      operationId: remove\n"
+                + "      deprecated: true\n";
+
+        // act, assert
+        assertThat(count(OPENAPI, "paths", yaml), is(1));
+        assertThat(count(OPENAPI, "operations (approx)", yaml), is(2));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="k8s-facts">
@@ -829,6 +896,32 @@ public class OpsFactPatternsTest {
         // act, assert
         assertThat(count(ASYNCAPI, "operations", yaml), is(1));
         assertThat(count(ASYNCAPI, "operationIds", yaml), is(1));
+    }
+
+    @Test
+    public void asyncapi_prettyPrintedJson_countsAsItsYamlForm() {
+        // arrange
+        final String json = "{\n"
+                + "  \"asyncapi\": \"2.6.0\",\n"
+                + "  \"channels\": {\n"
+                + "    \"order/placed\": {\n"
+                + "      \"publish\": {\n"
+                + "        \"operationId\": \"placeOrder\",\n"
+                + "        \"message\": {\n"
+                + "          \"payload\": {\n"
+                + "            \"type\": \"object\"\n"
+                + "          }\n"
+                + "        }\n"
+                + "      }\n"
+                + "    }\n"
+                + "  }\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(ASYNCAPI, "operations", json), is(1));
+        assertThat(count(ASYNCAPI, "operationIds", json), is(1));
+        assertThat(count(ASYNCAPI, "payloads", json), is(1));
+        assertThat(count(ASYNCAPI, "object schemas", json), is(1));
     }
     // </editor-fold>
 
