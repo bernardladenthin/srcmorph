@@ -173,8 +173,37 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **A `baseUrl` that holds an `@` anywhere fails the check** (user info before the host, a password
   with a `/`, an `@` in the path), and **a 3xx answer is an error**: srcmorph follows no redirect, so
   `baseUrl` names the final server.
+- **`reasoningEffort` defaults to empty, no longer `low`** (breaking): a model definition without
+  `reasoningEffort` sends no effort, neither a `reasoning_effort` argument to a local chat template
+  nor anything to a remote server, so the model's own default applies (gpt-oss: `medium`). A gpt-oss
+  definition that relied on the old default names `reasoningEffort: low`, as the self-test, its CLI
+  twin and the Luna example do; `models.json` sets it in `common`, so the model card's definitions
+  run as measured.
+- **An `openai-compatible` request carries `top_k` and the repetition penalty only when the
+  definition sets them** (breaking): `topK` other than `40` (`0` is sent now and switches top-k
+  off), `repeatPenalty` other than `1.0`. Neither is an OpenAI chat-completions field; llama-server
+  applies the same defaults, and OpenRouter now applies the model's own.
+- **A source named `package` or `project` fails the plan** (breaking): it was summarized into the
+  `package.ai.md` of its directory (`project.ai.md` of the output root), the file the package
+  (project) phase writes; on a case-insensitive file system `Package` too. Exclude it or take it with
+  a skip rule.
+- **Summaries of eleven kinds are written again:** the fact counters of Java, OpenAPI, AsyncAPI,
+  batch, SQL, GitHub Actions, Ansible, Kotlin, Scala, Groovy and JSP changed (see Fixed), and with
+  them the facts hash `N` of their summaries.
+- **A large file of an XML kind stays with its kind's rule:** the self-test's `big-xml` and
+  `huge-xml` tiers no longer take a `persistence.xml`, MyBatis mapper, WSDL, Facelets page or the
+  other XML kinds (see Changed); a copied configuration takes the tiers' new conditions.
 
 ### Added
+
+- **New key `srcMorph.pruneOrphans`: the plan lists the orphaned summaries, and the switch deletes
+  them.** Nothing deleted the summary of a deleted, renamed or newly excluded source (or of one a
+  skip rule now takes), and the package and project phases kept reading it. The `generate` plan now
+  lists every file summary (`X: file`) below the output directory that no file of the plan is
+  summarized into, in a section "Orphaned summaries (N)" with a warning. `pruneOrphans: true`
+  (default `false`) deletes them, each with a log line, before a run that generates; a `planOnly`
+  run and a check delete nothing. Leave it off while narrowing `subtrees` for one run: the summaries
+  of the subtrees left out are orphans of that run too.
 
 - **`partsDirectory` keeps the map-reduce answers of each file:** every map answer and every reduce
   batch's answer of a file read in chunks, in `<partsDirectory>/<path below the base>.parts.md`, so a
@@ -325,6 +354,21 @@ The entries below hold the details; what a 1.4.0 user changes:
   search scores from `scores/` (Pearson and Spearman, the card's 32 runs by default).
 
 ### Changed
+
+- **The XML size tiers leave a kind's file to its rule:** `huge-xml` and `big-xml` take only what the
+  `xml` rule takes and leave out every file an XML kind rule takes by name or content (jee, mybatis,
+  bpmn, persistence, integration; the conditions copied in rule order, a test holds them equal), and
+  `.wsdl` and `.xhtml` by extension. From 260 KB a `persistence.xml`, MyBatis mapper or WSDL got the
+  generic `xml-facts` on Granite; it now keeps its kind's counters on gpt-oss, which map-reduces it.
+  POMs keep their own tiers.
+- **Secrets skip a Kubernetes Secret by its kind:** the secrets rule of the self-test, its CLI twin,
+  the Luna example and run.py skips a YAML file whose head declares `kind: Secret`, whatever its
+  name; `deploy/postgres.yaml` went to the `k8s` rule, in the Luna example to a remote model. A Helm
+  chart's template stays out, as in the name branch.
+- **The `openai-compatible` request body is shaped for OpenRouter and llama-server:** a configured
+  penalty goes out as `repetition_penalty` and `repeat_penalty`, a configured effort as
+  `reasoning.effort` and `reasoning_effort` (OpenAI's and llama-server's name), so llama-server sees
+  both; OpenRouter answers a request with both forms (checked 2026-11-07).
 
 - **The self-test's large tiers start at ~260 KB, where gpt-oss-20b's window really ends.** They
   started at 275,000 bytes, but the 96K window leaves about 270,000 characters next to the XML
@@ -551,6 +595,56 @@ The entries below hold the details; what a 1.4.0 user changes:
   so such a file is not rewritten for this alone; a UTF-16 file's is over its text (see Fixed).
 
 ### Fixed
+
+- **Nine fact counters count what their label says:** Java counts a constructor whose first
+  parameter is generic (`Reg(List<String> names)`) and names with a `$` (`FormatMessageW$MH`), and
+  its header no longer says the methods hold every constructor; OpenAPI counts an operation only one
+  level below a path key, not a schema property named `options` or `head`; batch's `errorlevel` is
+  a word (`:exitWithErrorLevel` is none); SQL counts PostgreSQL's `TEMP`/`RECURSIVE` views,
+  `EVENT TRIGGER` and `DOMAIN`, Oracle's `NOFORCE`/`EDITIONING` views and `PRIVATE TEMPORARY TABLE`;
+  GitHub Actions blanks `inputs:`/`outputs:` entries (an input `runs-on` is no runner) and counts
+  `schedule: [{cron: ...}]`; Ansible counts an FQCN module only as a task key; Kotlin reads
+  `actual val`, Scala `implicit final class`, Groovy `<T extends Comparable<T>>`, JSP Spring's
+  `form:checkboxes`, `radiobutton(s)` and `hidden`.
+- **Pretty-printed JSON OpenAPI and AsyncAPI documents count as their YAML form:** the `[ignore]`
+  alternative that blanks a double-quoted string holding a `#` could start at a key's closing quote
+  and blank the rest of the line, so `"get": {`, `"/orders": {` or `"publish": {` lost their colon
+  and counted no path, operation, payload or `deprecated: true`, nor did a double-quoted YAML key. A
+  string now opens only at a line's start or after a `:`, `,`, `[`, `{` or `-`.
+- **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
+  descended everywhere and applied the excludes per file, so a directory it could not list ended the
+  run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending
+  in `/**` takes as a whole (`target/**`, `**/generated/**`) is no longer entered; a file or
+  directory that cannot be read is left out with a warning (a debug line when excluded). The
+  candidates and their order are unchanged.
+- **`All` checks the package and the project phase before the file phase** (their rule, prompts and
+  model, as `Check` does), so a missing `packageRules` or a wrong phase rule fails before any file is
+  sent and billed, not after the whole file phase; with `planOnly` only the file phase is planned.
+  The package and project checks now also fail on a rule prompt that has no template.
+- **`calibrate` leaves skip rules out and checks the rules as a run does:** a skip rule's model is no
+  longer loaded and measured, and one no `aiDefinitions` entry defines no longer ends the run with an
+  `IllegalArgumentException`. The rule set, the routed models and the prompts are validated first,
+  and a provider's unchecked failure (the JNI binding's `IllegalStateException`) fails naming the
+  model.
+- **Calibration's prompt-cache line fits the provider:** a remote model that reports no cached
+  prompt tokens gets an INFO line instead of the warning about `cachePrompt`/`cacheReuse`/`swaFull`,
+  which never reach a server. The `calibrate` goal's log and the Javadoc say that an
+  `openai-compatible` model's numbers are a wall-clock estimate with one extra billed probe request
+  (the mock reports its rates), that a chat request is not resent after a read timeout, and that
+  `ProviderConfig` has 44 fields.
+- **run.py keeps a paid run's meta when a cost lookup fails:** the meta is written before the
+  OpenRouter price and usage lookups and again with them; a timeout or `URLError` records the cost
+  as `null` with the reason under `costErrors`, and the remaining models still run. A relative
+  `--model-dir` is made absolute; it resolved against the generated configuration's directory.
+- **score.py and search.py read the skip rule:** a file the secrets rule skips no longer scores as a
+  missing summary or counts as a search file (`run.skipped`); search.py reads a source as srcmorph
+  does (`score.source_text`) instead of strict UTF-8. An unclosed fence in a list item ends with
+  the item, so a following heading is counted (no stored summary reads differently); correlate.py
+  prints `n/a` for a correlation of no runs instead of failing.
+- **Example comments say what the configurations do:** the Luna example does not index JavaScript;
+  gpt-oss takes every file but the large Java, SQL, POM and plain XML files (a 500 KB shell or
+  Kotlin file stays on it, map-reduced); the self-test names two packages instead of reading compile
+  source roots.
 
 - **A `size` condition measures the same file on every checkout.** It read the bytes on disk, so a
   file checked out with CRLF line endings was larger than the same file with LF and could reach
