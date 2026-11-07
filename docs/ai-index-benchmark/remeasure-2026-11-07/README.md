@@ -98,13 +98,15 @@ did not write the file, and it scores as missing.
 
 - **For gpt-oss-20b, the self-test's model, every kind but Ansible is at least as good with its rule**
   (batch one name of 482 lower, level). Ansible is not: with the ops prompt and its counters it names
-  fewer of a play's modules (`command`, `lineinfile`, `add_host`) than with the fallback prompt. The self-test and its CLI twin route these kinds now, Ansible to
-  `file-body-fallback` without counters (as measured), and `pyproject.toml` to the ops prompt; the
-  Java EE classes stay on the self-test's `java` rule, which already takes `file-body-oop` (the
-  `java-ee` rule adds only its counters, and was level with the fallback).
-- **For GPT-6 Luna** every kind but properties is at least as good with its rule: in three Log4j 2
-  files it summarises the dotted keys (`appender.out.type`) as groups with the ops prompt. The Luna
-  example routes `pyproject.toml` to the ops prompt now and is otherwise unchanged.
+  fewer of a play's modules (`command`, `lineinfile`, `add_host`) than with the fallback prompt. The
+  self-test and its CLI twin route these kinds now, Ansible to `file-body-fallback` without counters
+  (as measured), and `pyproject.toml` to the ops prompt; the Java EE classes stay on the self-test's
+  `java` rule, which already takes `file-body-oop` (the `java-ee` rule adds only its counters, and
+  was level with the fallback).
+- **For GPT-6 Luna every kind but properties is at least as good with its rule** (persistence XML
+  and PowerShell less than one point lower, level): in three Log4j 2 files it summarises the dotted
+  keys (`appender.out.type`) as groups with the ops prompt. The Luna example routes `pyproject.toml`
+  to the ops prompt now and is otherwise unchanged.
 - **Batch files are weak for gpt-oss-20b either way** (37 %): most expected names are the labels a
   `goto` jumps to (`:gotHome`, `:okHome`), which it leaves out with both prompts; Luna names 82 to
   86 %.

@@ -551,8 +551,9 @@ prompt and each counter exists once in the repository:
 - `file-body-view`, `file-body-contract`, `file-body-ops` — JSP and Facelets views; API contracts
   (OpenAPI, Protobuf, ...); CI, Docker, Kubernetes and other deploy files. The self-test routes
   every kind `examples/copilot-api-gateway/srcmorph-luna.yaml` routes but the Java EE classes (the
-  `java` rule takes their prompt), each measured on real projects, with their fact counters;
-  Ansible goes to `file-body-fallback` there, where the self-test's model names more of a play
+  `java` rule takes their prompt), each measured on real projects, most with their fact counters
+  (`typescript` and `pyproject` have none); Ansible goes to `file-body-fallback` without counters
+  there, where the self-test's model names more of a play's modules
 - `package-body` — synthesizes a package summary from the already-generated file summaries
 - `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
 - `map-chunk`, `reduce-parts` — not prompts of their own: a chunked rule's `mapPromptKey` /

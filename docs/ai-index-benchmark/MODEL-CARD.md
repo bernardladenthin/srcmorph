@@ -470,8 +470,9 @@ Two baselines go through the same retrievers: the paths alone, and the source fi
 hit@1 counts a question as found when an answer file comes first, hit@3 when it is among the first
 three. One question is 2.3 points. Both retrievers read a summary without the facts and coverage
 lines srcmorph writes in front of its body; every search was re-run that way on 2026-11-07 (the
-first measurement also read those lines; the re-run moved a run's hit@1 by up to 12 points). The
-reader calls cost 1.46 USD for the card's 35 runs and 0.62 USD for the repeat runs
+first measurement also read those lines; the re-run moved a run's hit@1 by up to 12 points). Not
+all of that is the lines: the two baselines, whose input did not change, kept their hit@1 but moved
+by up to 7 points at hit@3, so part of a run's change is the reader's own variance. The reader calls cost 1.46 USD for the card's 35 runs and 0.62 USD for the repeat runs
 (those of the later findings 1.00 USD). Results are in
 [`modelcard/scores/search.json`](modelcard/scores/search.json), and per question in
 [`search.tsv`](modelcard/scores/search.tsv); those of the repeat runs next to their outputs.
