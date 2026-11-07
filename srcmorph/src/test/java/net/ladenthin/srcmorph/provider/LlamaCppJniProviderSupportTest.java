@@ -718,14 +718,12 @@ public class LlamaCppJniProviderSupportTest {
      * layer has been moving from "silently ignored" toward "warned about". Unset must now mean
      * "say nothing", so the template's own default applies.
      *
-     * <p>The sibling kwarg is deliberately not asserted away here: {@code reasoningEffort} does
-     * default to {@code "low"} and is therefore still sent by a default run, but unlike
-     * {@code enable_thinking} it has an escape that means exactly "unset" -- the empty string -- so a
-     * non-gpt-oss user can switch it off without picking a value that says something else. That is a
-     * documented choice, not the same defect; the next test pins that escape.</p>
+     * <p>The sibling kwarg had the same defect: {@code reasoningEffort} defaulted to {@code "low"} up
+     * to 1.4.0, so every template was handed {@code reasoning_effort} as well. Its default is empty
+     * now, and a default run sends no kwarg at all; a gpt-oss definition names its effort.</p>
      */
     @Test
-    public void buildChatTemplateKwargs_defaultConfig_doesNotSendEnableThinking() {
+    public void buildChatTemplateKwargs_defaultConfig_sendsNoKwargAtAll() {
         // arrange
         final ProviderConfig defaults =
                 ProviderConfig.builder().modelPath("/does/not/exist.gguf").build();
@@ -734,8 +732,7 @@ public class LlamaCppJniProviderSupportTest {
         final Map<String, String> kwargs = providerWith(defaults).buildChatTemplateKwargs();
 
         // assert
-        assertThat(kwargs.containsKey(KWARG_ENABLE_THINKING), is(false));
-        assertThat(kwargs.get(KWARG_REASONING_EFFORT), is("low"));
+        assertThat(kwargs.isEmpty(), is(true));
     }
 
     /** The other half of "unset means unset": a blank reasoning effort omits its kwarg too. */
@@ -771,13 +768,13 @@ public class LlamaCppJniProviderSupportTest {
         final Map<String, String> kwargs = providerWith(enabled).buildChatTemplateKwargs();
 
         // assert
+        assertThat(kwargs.size(), is(1));
         assertThat(kwargs.get(KWARG_ENABLE_THINKING), is("true"));
-        assertThat(kwargs.get(KWARG_REASONING_EFFORT), is("low"));
     }
 
     /**
-     * The Gemma-4 case the knob exists for: suppress the thinking block at the Jinja level. The
-     * default reasoning effort goes unsent with it: Kolibri-1's template reads
+     * The Gemma-4 case the knob exists for: suppress the thinking block at the Jinja level. A
+     * configured effort goes unsent with it (pinned below): Kolibri-1's template reads
      * {@code reasoning_effort} first and reasoned at {@code "low"} although thinking was off.
      */
     @Test

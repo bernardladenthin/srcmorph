@@ -164,17 +164,21 @@ public class ModelDefinition {
     public static final boolean DEFAULT_CACHE_PROMPT = true;
 
     /**
-     * Default gpt-oss reasoning-effort level ({@code "low"} / {@code "medium"} / {@code "high"}).
+     * Default reasoning-effort level: empty, meaning <em>unset</em>, so no effort is sent and the
+     * model's own default applies.
      *
-     * <p>{@code "low"} keeps the discarded chain-of-thought minimal for the short, structured
-     * summaries this plugin produces (the gpt-oss model default would be {@code "medium"}). It is
-     * passed as the {@code reasoning_effort} chat-template kwarg; most other chat templates ignore
-     * it. An empty value omits the kwarg entirely so the model's own template default applies. The
-     * local provider sends thinking off as llama.cpp's server does, {@code enable_thinking}
+     * <p>A configured level ({@code "low"} / {@code "medium"} / {@code "high"}, or what a server
+     * accepts besides) is sent: by the local provider as the {@code reasoning_effort} chat-template
+     * kwarg (gpt-oss harmony, Kolibri-1; most other templates ignore it), by the
+     * {@code openai-compatible} provider in the request body. Up to 1.4.0 the default was
+     * {@code "low"}, which every model received, a remote one too, whether it had heard of an effort
+     * or not; a gpt-oss definition now names {@code "low"} itself (the measured setting for the short,
+     * structured summaries srcmorph writes; the gpt-oss template's own default is {@code "medium"}).
+     * The local provider sends thinking off as llama.cpp's server does, {@code enable_thinking}
      * {@code false} and no {@code reasoning_effort}: {@code "none"} sends that instead of the effort,
      * and with {@code chatTemplateEnableThinking} {@code false} the effort is not sent.</p>
      */
-    public static final String DEFAULT_REASONING_EFFORT = "low";
+    public static final String DEFAULT_REASONING_EFFORT = "";
 
     /**
      * Default reasoning/think-token budget ({@code thinking_budget_tokens} / {@code --reasoning-budget}).
@@ -1270,20 +1274,21 @@ public class ModelDefinition {
     }
 
     /**
-     * Returns the gpt-oss reasoning-effort level for this model.
+     * Returns the reasoning-effort level for this model.
      *
-     * @return reasoning effort ({@code "low"}/{@code "medium"}/{@code "high"}), or empty to omit it;
-     *         defaults to {@link #DEFAULT_REASONING_EFFORT}
+     * @return reasoning effort ({@code "low"}/{@code "medium"}/{@code "high"}), or empty when none is
+     *         sent; defaults to {@link #DEFAULT_REASONING_EFFORT} (empty)
      */
     public String getReasoningEffort() {
         return reasoningEffort;
     }
 
     /**
-     * Sets the gpt-oss reasoning-effort level for this model.
+     * Sets the reasoning-effort level for this model.
      *
-     * @param reasoningEffort {@code "low"}/{@code "medium"}/{@code "high"} (passed as the
-     *        {@code reasoning_effort} chat-template kwarg), or empty/blank to omit it
+     * @param reasoningEffort {@code "low"}/{@code "medium"}/{@code "high"} (the local provider passes
+     *        it as the {@code reasoning_effort} chat-template kwarg, the {@code openai-compatible}
+     *        provider in the request body), or empty/blank to send none
      */
     public void setReasoningEffort(final String reasoningEffort) {
         this.reasoningEffort = reasoningEffort;

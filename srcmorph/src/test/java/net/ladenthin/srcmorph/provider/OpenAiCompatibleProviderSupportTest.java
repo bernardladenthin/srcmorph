@@ -122,7 +122,7 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(body.get("repetition_penalty").floatValue(), is(1.0f));
         assertThat(body.has("seed"), is(false));
         assertThat(body.has("stop"), is(false));
-        assertThat(body.get("reasoning").get("effort").asText(), is("low"));
+        assertThat(body.has("reasoning"), is(false));
     }
 
     @Test

@@ -488,9 +488,9 @@ public final class ProviderConfig {
     }
 
     /**
-     * Returns the gpt-oss reasoning-effort kwarg value.
+     * Returns the reasoning-effort level.
      *
-     * @return reasoning effort ("low"/"medium"/"high"), or empty to omit the kwarg
+     * @return reasoning effort ("low"/"medium"/"high"), or empty when none is sent
      */
     public String reasoningEffort() {
         return reasoningEffort;
@@ -1022,9 +1022,10 @@ public final class ProviderConfig {
         }
 
         /**
-         * Sets gpt-oss reasoning-effort kwarg value ("low"/"medium"/"high"); empty omits it. {@code null} restores the default.
+         * Sets the reasoning-effort level ("low"/"medium"/"high"); empty sends none. {@code null} restores
+         * the default (empty).
          *
-         * @param reasoningEffort gpt-oss reasoning-effort kwarg value ("low"/"medium"/"high"); empty omits it
+         * @param reasoningEffort reasoning-effort level ("low"/"medium"/"high"); empty sends none
          * @return this builder
          */
         public Builder reasoningEffort(final String reasoningEffort) {

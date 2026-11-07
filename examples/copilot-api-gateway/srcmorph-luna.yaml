@@ -164,6 +164,7 @@ srcMorph:
                                              # fewer chunks, so fewer requests, for a large file
       maxOutputTokens: 4096
       temperature: 0.2
+      reasoningEffort: low                   # what the measured runs sent (the default sends no effort)
 
   # One rule per kind, each with its prompt and its exact fact counters. The counters cost no model
   # call; a single-shot call does not read them, a reduce call does. A file larger than the window is

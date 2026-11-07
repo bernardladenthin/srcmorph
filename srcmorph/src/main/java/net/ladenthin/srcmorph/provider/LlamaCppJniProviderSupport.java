@@ -121,9 +121,9 @@ final class LlamaCppJniProviderSupport {
      * mapping, so it is done here:</p>
      * <ul>
      *   <li>{@code chatTemplateEnableThinking} {@code false} sends no {@code reasoning_effort},
-     *       whatever its value. The effort defaults to {@code "low"} for gpt-oss, and a template that
-     *       reads {@code reasoning_effort} before {@code enable_thinking} (Aleph Alpha's Kolibri-1)
-     *       otherwise reasons at that level although thinking was switched off.</li>
+     *       whatever its value: a template that reads {@code reasoning_effort} before
+     *       {@code enable_thinking} (Aleph Alpha's Kolibri-1) otherwise reasons at a configured level
+     *       although thinking was switched off.</li>
      *   <li>{@code reasoningEffort} {@code "none"} sends {@code enable_thinking} {@code false}
      *       instead of the effort, also over {@code chatTemplateEnableThinking} {@code true}, as the
      *       server does; llama.cpp then knows thinking is off as well, not only the template.</li>

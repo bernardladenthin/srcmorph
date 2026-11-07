@@ -261,7 +261,7 @@ public class ProviderConfigTest {
     /**
      * {@code null} on a String setter restores that knob's default rather than storing {@code null}, so
      * an accessor can never hand back {@code null}. Note the default is not always empty:
-     * {@code reasoningEffort} defaults to {@code "low"}, which is what distinguishes "restores the
+     * {@code baseUrl} defaults to OpenRouter, which is what distinguishes "restores the
      * default" from "clears to empty".
      */
     @Test
@@ -299,7 +299,6 @@ public class ProviderConfigTest {
         assertThat(config.baseUrl(), is(ModelDefinition.DEFAULT_BASE_URL));
         assertThat(config.apiKeyEnv(), is(ModelDefinition.DEFAULT_API_KEY_ENV));
         assertThat(config.reasoningEffort(), is(ModelDefinition.DEFAULT_REASONING_EFFORT));
-        assertThat(config.reasoningEffort(), is("low"));
     }
 
     /** A remote model names no file, so a configuration without one has none rather than {@code ""}. */

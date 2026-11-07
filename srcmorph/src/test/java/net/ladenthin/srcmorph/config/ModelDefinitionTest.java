@@ -142,19 +142,19 @@ public class ModelDefinitionTest {
 
     // <editor-fold defaultstate="collapsed" desc="reasoningEffort">
     @Test
-    public void reasoningEffort_defaultAndSet_defaultsLowAndRoundTrips() {
+    public void reasoningEffort_defaultAndSet_defaultsEmptyAndRoundTrips() {
         // arrange
         ModelDefinition d = new ModelDefinition();
 
         // pre-assert
-        // Default "low" kills the empty/null return mutants on the getter.
-        assertThat(d.getReasoningEffort(), is("low"));
+        // Unset by default: no effort is sent unless a definition names one.
+        assertThat(d.getReasoningEffort(), is(""));
 
         // act
         d.setReasoningEffort("medium");
 
         // assert
-        // Round-tripped value kills the removed-assignment setter mutant.
+        // Round-tripped value kills the removed-assignment setter and the "return empty" getter mutants.
         assertThat(d.getReasoningEffort(), is("medium"));
     }
     // </editor-fold>
